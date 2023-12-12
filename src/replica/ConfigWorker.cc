@@ -26,59 +26,27 @@
 #include <iostream>
 #include <stdexcept>
 
+// Qserv headers
+#include "replica/ConfigParserUtils.h"
+
 using namespace std;
 using json = nlohmann::json;
 
-// Template functions for filling worker attributes from JSON.
-
-namespace {
-template <typename T>
-void parseRequired(T& dest, json const& obj, string const& attr) {
-    dest = obj.at(attr).get<T>();
-}
-
-template <>
-void parseRequired<bool>(bool& dest, json const& obj, string const& attr) {
-    dest = obj.at(attr).get<int>() != 0;
-}
-
-template <typename T>
-void parseOptional(T& dest, json const& obj, string const& attr) {
-    if (auto const itr = obj.find(attr); itr != obj.end()) dest = itr->get<T>();
-}
-}  // namespace
-
 namespace lsst::qserv::replica {
 
-json HostInfo::toJson() const {
-    json infoJson;
-    infoJson["addr"] = addr;
-    infoJson["name"] = name;
-    return infoJson;
-}
-
-bool HostInfo::operator==(HostInfo const& other) const {
-    return (addr == other.addr) && (name == other.name);
-}
-
-ostream& operator<<(ostream& os, HostInfo const& info) {
-    os << "HostInfo: " << info.toJson().dump();
-    return os;
-}
-
-json QservWorkerInfo::toJson() const {
+json ConfigQservWorker::toJson() const {
     json infoJson = json::object();
     infoJson["host"] = host.toJson();
     infoJson["port"] = port;
     return infoJson;
 }
 
-bool QservWorkerInfo::operator==(QservWorkerInfo const& other) const {
+bool ConfigQservWorker::operator==(ConfigQservWorker const& other) const {
     return (host == other.host) && (port == other.port);
 }
 
-WorkerInfo::WorkerInfo(json const& obj) {
-    string const context = "WorkerInfo::WorkerInfo(json): ";
+ConfigWorker::ConfigWorker(json const& obj) {
+    string const context = "ConfigWorker::" + string(__func__) + "[json]: ";
     if (obj.empty()) return;
     if (!obj.is_object()) {
         throw invalid_argument(context + "a JSON object is required.");
@@ -114,7 +82,7 @@ WorkerInfo::WorkerInfo(json const& obj) {
     }
 }
 
-json WorkerInfo::toJson() const {
+json ConfigWorker::toJson() const {
     json infoJson = json::object();
     infoJson["name"] = name;
     infoJson["is-enabled"] = isEnabled ? 1 : 0;
@@ -137,7 +105,7 @@ json WorkerInfo::toJson() const {
     return infoJson;
 }
 
-bool WorkerInfo::operator==(WorkerInfo const& other) const {
+bool ConfigWorker::operator==(ConfigWorker const& other) const {
     return (name == other.name) && (isEnabled == other.isEnabled) && (isReadOnly == other.isReadOnly) &&
            (svcHost == other.svcHost) && (svcPort == other.svcPort) && (fsHost == other.fsHost) &&
            (fsPort == other.fsPort) && (dataDir == other.dataDir) && (loaderHost == other.loaderHost) &&
@@ -148,8 +116,8 @@ bool WorkerInfo::operator==(WorkerInfo const& other) const {
            (qservWorker == other.qservWorker);
 }
 
-ostream& operator<<(ostream& os, WorkerInfo const& info) {
-    os << "WorkerInfo: " << info.toJson().dump();
+ostream& operator<<(ostream& os, ConfigWorker const& info) {
+    os << "ConfigWorker: " << info.toJson().dump();
     return os;
 }
 

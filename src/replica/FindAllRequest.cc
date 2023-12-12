@@ -51,20 +51,21 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindAllRequest");
 namespace lsst::qserv::replica {
 
 FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                           boost::asio::io_service& io_service, string const& worker,
+                                           boost::asio::io_service& io_service, string const& workerName,
                                            string const& database, bool saveReplicaInfo,
                                            CallbackType const& onFinish, int priority, bool keepTracking,
                                            shared_ptr<Messenger> const& messenger) {
-    return FindAllRequest::Ptr(new FindAllRequest(serviceProvider, io_service, worker, database,
+    return FindAllRequest::Ptr(new FindAllRequest(serviceProvider, io_service, workerName, database,
                                                   saveReplicaInfo, onFinish, priority, keepTracking,
                                                   messenger));
 }
 
 FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service, string const& worker,
+                               boost::asio::io_service& io_service, string const& workerName,
                                string const& database, bool saveReplicaInfo, CallbackType const& onFinish,
                                int priority, bool keepTracking, shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "REPLICA_FIND_ALL", worker, priority, keepTracking,
+        : RequestMessenger(serviceProvider, io_service, "REPLICA_FIND_ALL", workerName, priority,
+                           keepTracking,
                            false,  // allowDuplicate
                            true,   // disposeRequired
                            messenger),
@@ -137,7 +138,7 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
 void FindAllRequest::_send(replica::Lock const& lock) {
     auto self = shared_from_base<FindAllRequest>();
     messenger()->send<ProtocolResponseFindAll>(
-            worker(), id(), priority(), buffer(),
+            workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseFindAll const& response) {
                 self->_analyze(success, response);
             });
@@ -186,40 +187,32 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
             if (saveReplicaInfo()) {
-                serviceProvider()->databaseServices()->saveReplicaInfoCollection(worker(), database(),
+                serviceProvider()->databaseServices()->saveReplicaInfoCollection(workerName(), database(),
                                                                                  _replicaInfoCollection);
             }
             finish(lock, SUCCESS);
             break;
-
         case ProtocolStatus::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
-
         case ProtocolStatus::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
-
         case ProtocolStatus::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
-
         case ProtocolStatus::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
-
         case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
-
         case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
-
         case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
-
         default:
             throw logic_error("FindAllRequest::" + string(__func__) + " unknown status '" +
                               ProtocolStatus_Name(message.status()) + "' received from server");

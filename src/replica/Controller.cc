@@ -88,36 +88,34 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
         bool const autoRegisterWorkers =
                 config->get<unsigned int>("controller", "auto-register-workers") != 0;
 
-        vector<WorkerInfo> workers;
+        vector<ConfigWorker> workers;
         try {
             workers = ptr->serviceProvider()->registry()->workers();
         } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_WARN,
                  context << "failed to pull worker info from the registry, ex: " << ex.what());
         }
-        for (auto&& workerInfo : workers) {
+        for (auto&& worker : workers) {
             try {
-                if (config->isKnownWorker(workerInfo.name)) {
-                    auto const prevWorkerInfo = config->workerInfo(workerInfo.name);
-                    if (prevWorkerInfo != workerInfo) {
+                if (config->isKnownWorker(worker.name)) {
+                    auto const prevWorker = config->worker(worker.name);
+                    if (prevWorker != worker) {
                         LOGS(_log, LOG_LVL_INFO,
-                             context << "worker '" << workerInfo.name << "' logged in from '"
-                                     << workerInfo.svcHost
+                             context << "worker '" << worker.name << "' logged in from '" << worker.svcHost
                                      << "'. Updating worker's record in the configuration.");
-                        config->updateWorker(workerInfo);
+                        config->updateWorker(worker);
                     }
                 } else {
                     if (autoRegisterWorkers) {
                         LOGS(_log, LOG_LVL_INFO,
-                             context << "new worker '" << workerInfo.name << "' logged in from '"
-                                     << workerInfo.svcHost
-                                     << "'. Registering new worker in the configuration.");
-                        config->addWorker(workerInfo);
+                             context << "new worker '" << worker.name << "' logged in from '"
+                                     << worker.svcHost << "'. Registering new worker in the configuration.");
+                        config->addWorker(worker);
                     }
                 }
             } catch (exception const& ex) {
                 LOGS(_log, LOG_LVL_WARN,
-                     context << "failed to process worker info, worker '" << workerInfo.name
+                     context << "failed to process worker info, worker '" << worker.name
                              << "', ex: " << ex.what());
             }
         }

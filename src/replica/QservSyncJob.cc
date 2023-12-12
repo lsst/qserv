@@ -189,7 +189,8 @@ void QservSyncJob::notify(replica::Lock const& lock) {
 
 void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  worker=" << request->worker() << " state=" << request->state2string());
+         context() << __func__ << "  worker=" << request->workerName()
+                   << " state=" << request->state2string());
 
     if (state() == State::FINISHED) return;
 
@@ -202,15 +203,15 @@ void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reque
     _numFinished++;
     if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
         _numSuccess++;
-        _replicaData.prevReplicas[request->worker()] = request->replicas();
-        _replicaData.newReplicas[request->worker()] = request->newReplicas();
-        _replicaData.workers[request->worker()] = true;
+        _replicaData.prevReplicas[request->workerName()] = request->replicas();
+        _replicaData.newReplicas[request->workerName()] = request->newReplicas();
+        _replicaData.workers[request->workerName()] = true;
     } else {
-        _replicaData.workers[request->worker()] = false;
+        _replicaData.workers[request->workerName()] = false;
     }
 
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  worker=" << request->worker() << " _numLaunched=" << _numLaunched
+         context() << __func__ << "  worker=" << request->workerName() << " _numLaunched=" << _numLaunched
                    << " _numFinished=" << _numFinished << " _numSuccess=" << _numSuccess);
 
     if (_numFinished == _numLaunched) {

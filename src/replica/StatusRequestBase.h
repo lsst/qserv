@@ -63,7 +63,7 @@ protected:
      * @param serviceProvider  Services of the Replicaion framework.
      * @param io_service  Network communication services.
      * @param requestName  The name of a request.
-     * @param worker  The name of a worker node (the one to be affected by the request).
+     * @param workerName  The name of a worker node (the one to be affected by the request).
      * @param targetRequestId  An identifier of the target request whose remote status
      *   is going to be inspected.
      * @param targetRequestType  The type of a request affected by the operation.
@@ -72,9 +72,9 @@ protected:
      * @param messenger  A service for communicating with workers.
      */
     StatusRequestBase(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      char const* requestName, std::string const& worker, std::string const& targetRequestId,
-                      ProtocolQueuedRequestType targetRequestType, int priority, bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+                      char const* requestName, std::string const& workerName,
+                      std::string const& targetRequestId, ProtocolQueuedRequestType targetRequestType,
+                      int priority, bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
     void startImpl(replica::Lock const& lock) final;

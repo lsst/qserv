@@ -63,7 +63,7 @@ public:
 
     /// @return All workers
     /// @see method Registry::_request for other exceptions.
-    std::vector<WorkerInfo> workers() const;
+    std::vector<ConfigWorker> workers() const;
 
     /**
      * Add (or replace if exists) worker entry.

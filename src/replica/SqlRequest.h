@@ -91,7 +91,7 @@ protected:
      * @param serviceProvider is needed to access the Configuration and the Controller
      *   for communicating with the worker.
      * @param io_service  a communication end-point
-     * @param worker identifier of a worker node
+     * @param workerName identifier of a worker node
      * @param maxRows (optional) limit for the maximum number of rows to be returned with the request.
      *   Leaving the default value of the parameter to 0 will result in not imposing any
      *   explicit restrictions on a size of the result set. Note that other, resource-defined
@@ -102,7 +102,7 @@ protected:
      * @param messenger interface for communicating with workers
      */
     SqlRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-               std::string const& requestName, std::string const& worker, uint64_t maxRows, int priority,
+               std::string const& requestName, std::string const& workerName, uint64_t maxRows, int priority,
                bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()

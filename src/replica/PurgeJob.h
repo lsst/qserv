@@ -166,11 +166,11 @@ private:
      * will eliminate input tasks from the work queue as it goes.
      *
      * @param lock The lock to be be held for the thread safety of the operation
-     * @param targetWorker The name of a worker where the affected replicas are residing
+     * @param targetWorkerName The name of a worker where the affected replicas are residing
      * @param maxJobs The maximum number of jobs to be launched
      * @return The number of jobs launched or 0 if no tasks existed for the worker.
      */
-    size_t _launchNext(replica::Lock const& lock, std::string const& targetWorker, size_t maxJobs);
+    size_t _launchNext(replica::Lock const& lock, std::string const& targetWorkerName, size_t maxJobs);
 
     /// Structure ReplicaPurgeTask encapsulates a task to be schedule for executing
     /// as a replica removal job.

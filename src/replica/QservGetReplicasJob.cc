@@ -160,7 +160,7 @@ void QservGetReplicasJob::notify(replica::Lock const& lock) {
 void QservGetReplicasJob::_onRequestFinish(GetReplicasQservMgtRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  databaseFamily=" << request->databaseFamily()
-                   << " worker=" << request->worker() << " state=" << request->state2string());
+                   << " worker=" << request->workerName() << " state=" << request->state2string());
 
     if (state() == State::FINISHED) return;
 
@@ -178,18 +178,18 @@ void QservGetReplicasJob::_onRequestFinish(GetReplicasQservMgtRequest::Ptr const
         // Merge results of the request into the summary data collection
         // of the job.
 
-        _replicaData.replicas[request->worker()] = request->replicas();
+        _replicaData.replicas[request->workerName()] = request->replicas();
         for (auto&& replica : request->replicas()) {
             _replicaData.useCount.atChunk(replica.chunk)
                     .atDatabase(replica.database)
-                    .atWorker(request->worker()) = replica.useCount;
+                    .atWorker(request->workerName()) = replica.useCount;
         }
-        _replicaData.workers[request->worker()] = true;
+        _replicaData.workers[request->workerName()] = true;
     }
 
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  databaseFamily=" << request->databaseFamily()
-                   << " worker=" << request->worker() << " _numLaunched=" << _numLaunched
+                   << " worker=" << request->workerName() << " _numLaunched=" << _numLaunched
                    << " _numFinished=" << _numFinished << " _numSuccess=" << _numSuccess);
 
     if (_numFinished == _numLaunched) {

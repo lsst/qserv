@@ -141,7 +141,7 @@ public:
      *   updating the worker.
      * @param desired The input worker descriptor that was used in worker specification.
      */
-    void verify(WorkerInfo const& actual, WorkerInfo const& desired) {
+    void verify(ConfigWorker const& actual, ConfigWorker const& desired) {
         _verify("name", actual.name, desired.name);
         _verify("is-enabled", actual.isEnabled, desired.isEnabled);
         _verify("is-read-only", actual.isReadOnly, desired.isReadOnly);
@@ -271,7 +271,7 @@ bool ConfigTestApp::_testWorkers() {
 
     // Adding a worker using full specification.
     {
-        WorkerInfo workerSpec;
+        ConfigWorker workerSpec;
         workerSpec.name = "worker-A";
         workerSpec.isEnabled = true;
         workerSpec.isReadOnly = false;
@@ -281,7 +281,7 @@ bool ConfigTestApp::_testWorkers() {
         try {
             config()->addWorker(workerSpec);
             config()->reload();
-            WorkerInfo const addedWorker = config()->workerInfo(workerSpec.name);
+            ConfigWorker const addedWorker = config()->worker(workerSpec.name);
             comparator.verify(addedWorker, workerSpec);
         } catch (exception const& ex) {
             error = "failed to add worker '" + workerSpec.name + "', ex: " + string(ex.what());
@@ -301,7 +301,7 @@ bool ConfigTestApp::_testWorkers() {
 
     // Adding a worker using partial specification.
     {
-        WorkerInfo workerSpec;
+        ConfigWorker workerSpec;
         // The only required fields are these two. The host names for other services should
         // be set to be the same of the main Replication service. The port numbers and directory
         // paths will be pulled from the worker defaults.
@@ -312,7 +312,7 @@ bool ConfigTestApp::_testWorkers() {
         try {
             config()->addWorker(workerSpec);
             config()->reload();
-            WorkerInfo const addedWorker = config()->workerInfo(workerSpec.name);
+            ConfigWorker const addedWorker = config()->worker(workerSpec.name);
             // Compare against defaults for everything but the name of the worker and the name
             // of a host where it runs.
             comparator.verify(addedWorker, workerSpec);
@@ -334,7 +334,7 @@ bool ConfigTestApp::_testWorkers() {
 
     // Updating an existing worker using partial modifications.
     {
-        WorkerInfo workerSpec = config()->workerInfo("worker-B");
+        ConfigWorker workerSpec = config()->worker("worker-B");
 
         // The only required fields are these two. The host names for other services should
         // be set to be the same of the main Replication service. The port numbers and directory
@@ -347,7 +347,7 @@ bool ConfigTestApp::_testWorkers() {
         try {
             config()->updateWorker(workerSpec);
             config()->reload();
-            WorkerInfo const updatedWorker = config()->workerInfo(workerSpec.name);
+            ConfigWorker const updatedWorker = config()->worker(workerSpec.name);
             comparator.verify(updatedWorker, workerSpec);
         } catch (exception const& ex) {
             error = "failed to update worker '" + workerSpec.name + "', ex: " + string(ex.what());

@@ -87,11 +87,10 @@ list<pair<string, string>> FindAllJob::persistentLogData() const {
     // Report workers failed to respond to the requests
 
     for (auto&& workerInfo : replicaData.workers) {
-        auto&& worker = workerInfo.first;
-
+        auto&& workerName = workerInfo.first;
         bool const responded = workerInfo.second;
         if (not responded) {
-            result.emplace_back("failed-qserv-worker", worker);
+            result.emplace_back("failed-qserv-worker", workerName);
         }
     }
 
@@ -123,14 +122,14 @@ list<pair<string, string>> FindAllJob::persistentLogData() const {
     }
     for (auto&& chunkItr : replicaData.isGood) {
         for (auto&& workerItr : chunkItr.second) {
-            auto&& worker = workerItr.first;
+            auto&& workerName = workerItr.first;
             bool const isGood = workerItr.second;
-            if (isGood) workerCategoryCounter[worker]["good-replicas"]++;
+            if (isGood) workerCategoryCounter[workerName]["good-replicas"]++;
         }
     }
     for (auto&& workerItr : workerCategoryCounter) {
-        auto&& worker = workerItr.first;
-        string val = "worker=" + worker;
+        auto&& workerName = workerItr.first;
+        string val = "worker=" + workerName;
 
         for (auto&& categoryItr : workerItr.second) {
             auto&& category = categoryItr.first;
@@ -150,12 +149,12 @@ void FindAllJob::startImpl(replica::Lock const& lock) {
     auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
                                           : controller()->serviceProvider()->config()->workers();
 
-    for (auto&& worker : workerNames) {
-        _replicaData.workers[worker] = false;
+    for (auto&& workerName : workerNames) {
+        _replicaData.workers[workerName] = false;
         for (auto&& database : _databases) {
-            _workerDatabaseSuccess[worker][database] = false;
+            _workerDatabaseSuccess[workerName][database] = false;
             _requests.push_back(controller()->findAllReplicas(
-                    worker, database, saveReplicaInfo(),
+                    workerName, database, saveReplicaInfo(),
                     [self](FindAllRequest::Ptr request) { self->_onRequestFinish(request); }, priority(),
                     true, /* keepTracking*/
                     id()  /* jobId */
@@ -173,6 +172,9 @@ void FindAllJob::startImpl(replica::Lock const& lock) {
 void FindAllJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
+    auto const noCallbackOnFinish = nullptr;
+    bool const keepTracking = true;
+
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
@@ -180,9 +182,8 @@ void FindAllJob::cancelImpl(replica::Lock const& lock) {
     for (auto&& ptr : _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            controller()->stopById<StopFindAllRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
-                                                       priority(), true,                  /* keepTracking */
-                                                       id() /* jobId */);
+            controller()->stopById<StopFindAllRequest>(ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                                       priority(), keepTracking, id());
         }
     }
     _requests.clear();
@@ -199,7 +200,7 @@ void FindAllJob::notify(replica::Lock const& lock) {
 
 void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  database=" << request->database() << " worker=" << request->worker()
+         context() << __func__ << "  database=" << request->database() << " worker=" << request->workerName()
                    << " state=" << request->state2string());
 
     if (state() == State::FINISHED) return;
@@ -218,11 +219,11 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             _replicaData.chunks.atChunk(info.chunk()).atDatabase(info.database()).atWorker(info.worker()) =
                     info;
         }
-        _workerDatabaseSuccess[request->worker()][request->database()] = true;
+        _workerDatabaseSuccess[request->workerName()][request->database()] = true;
     }
 
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  database=" << request->database() << " worker=" << request->worker()
+         context() << __func__ << "  database=" << request->database() << " worker=" << request->workerName()
                    << " _numLaunched=" << _numLaunched << " _numFinished=" << _numFinished
                    << " _numSuccess=" << _numSuccess);
 
@@ -233,12 +234,12 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
         // Compute the final state of the workers participated in the operation
 
         for (auto const& workerEntry : _workerDatabaseSuccess) {
-            auto const& worker = workerEntry.first;
-            _replicaData.workers[worker] = true;
+            auto const& workerName = workerEntry.first;
+            _replicaData.workers[workerName] = true;
             for (auto const& databaseEntry : workerEntry.second) {
                 bool const success = databaseEntry.second;
                 if (not success) {
-                    _replicaData.workers[worker] = false;
+                    _replicaData.workers[workerName] = false;
                     break;
                 }
             }
@@ -260,11 +261,10 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             for (auto&& database : chunkMap.databaseNames()) {
                 auto databaseMap = chunkMap.database(database);
 
-                for (auto&& worker : databaseMap.workerNames()) {
-                    ReplicaInfo const& replica = databaseMap.worker(worker);
-
+                for (auto&& workerName : databaseMap.workerNames()) {
+                    ReplicaInfo const& replica = databaseMap.worker(workerName);
                     if (replica.status() == ReplicaInfo::Status::COMPLETE) {
-                        _replicaData.complete[chunk][database].push_back(worker);
+                        _replicaData.complete[chunk][database].push_back(workerName);
                     }
                 }
             }
@@ -290,8 +290,8 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             for (auto&& database : chunkMap.databaseNames()) {
                 auto databaseMap = chunkMap.database(database);
 
-                for (auto&& worker : databaseMap.workerNames()) {
-                    worker2numDatabases[worker]++;
+                for (auto&& workerName : databaseMap.workerNames()) {
+                    worker2numDatabases[workerName]++;
                 }
             }
 
@@ -301,10 +301,10 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             // requirement is met.
 
             for (auto&& entry : worker2numDatabases) {
-                string const& worker = entry.first;
+                string const& workerName = entry.first;
                 size_t const numDatabases = entry.second;
 
-                _replicaData.isColocated[chunk][worker] =
+                _replicaData.isColocated[chunk][workerName] =
                         _replicaData.databases[chunk].size() == numDatabases;
             }
         }
@@ -315,7 +315,7 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             unsigned int const chunk = chunk2workers.first;
 
             for (auto&& worker2collocated : chunk2workers.second) {
-                string const& worker = worker2collocated.first;
+                string const& workerName = worker2collocated.first;
                 bool const isColocated = worker2collocated.second;
 
                 // Start with the "as good as collocated" assumption, then drill down
@@ -333,14 +333,14 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
                         auto databaseMap = chunkMap.database(database);
 
                         for (auto&& thisWorker : databaseMap.workerNames()) {
-                            if (worker == thisWorker) {
+                            if (workerName == thisWorker) {
                                 ReplicaInfo const& replica = databaseMap.worker(thisWorker);
                                 isGood = isGood and (replica.status() == ReplicaInfo::Status::COMPLETE);
                             }
                         }
                     }
                 }
-                _replicaData.isGood[chunk][worker] = isGood;
+                _replicaData.isGood[chunk][workerName] = isGood;
             }
         }
         finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS : ExtendedState::FAILED);

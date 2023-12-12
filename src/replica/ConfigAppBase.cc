@@ -75,20 +75,20 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
     vector<string> httpLoaderHostPort;
     vector<string> httpLoaderTmpDir;
 
-    for (auto&& worker : _config->allWorkers()) {
-        auto const wi = _config->workerInfo(worker);
-        name.push_back(wi.name);
-        isEnabled.push_back(wi.isEnabled ? "yes" : "no");
-        isReadOnly.push_back(wi.isReadOnly ? "yes" : "no");
-        dataDir.push_back(wi.dataDir);
-        svcHostPort.push_back(wi.svcHost.addr + ":" + to_string(wi.svcPort));
-        fsHostPort.push_back(wi.fsHost.addr + ":" + to_string(wi.fsPort));
-        loaderHostPort.push_back(wi.loaderHost.addr + ":" + to_string(wi.loaderPort));
-        loaderTmpDir.push_back(wi.loaderTmpDir);
-        exporterHostPort.push_back(wi.exporterHost.addr + ":" + to_string(wi.exporterPort));
-        exporterTmpDir.push_back(wi.exporterTmpDir);
-        httpLoaderHostPort.push_back(wi.httpLoaderHost.addr + ":" + to_string(wi.httpLoaderPort));
-        httpLoaderTmpDir.push_back(wi.httpLoaderTmpDir);
+    for (auto&& workerName : _config->allWorkers()) {
+        auto const worker = _config->worker(workerName);
+        name.push_back(worker.name);
+        isEnabled.push_back(worker.isEnabled ? "yes" : "no");
+        isReadOnly.push_back(worker.isReadOnly ? "yes" : "no");
+        dataDir.push_back(worker.dataDir);
+        svcHostPort.push_back(worker.svcHost.addr + ":" + to_string(worker.svcPort));
+        fsHostPort.push_back(worker.fsHost.addr + ":" + to_string(worker.fsPort));
+        loaderHostPort.push_back(worker.loaderHost.addr + ":" + to_string(worker.loaderPort));
+        loaderTmpDir.push_back(worker.loaderTmpDir);
+        exporterHostPort.push_back(worker.exporterHost.addr + ":" + to_string(worker.exporterPort));
+        exporterTmpDir.push_back(worker.exporterTmpDir);
+        httpLoaderHostPort.push_back(worker.httpLoaderHost.addr + ":" + to_string(worker.httpLoaderPort));
+        httpLoaderTmpDir.push_back(worker.httpLoaderTmpDir);
     }
 
     util::ColumnTablePrinter table(caption, indent, verticalSeparator());

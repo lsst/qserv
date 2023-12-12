@@ -87,11 +87,11 @@ string QservMgtRequest::state2string(ExtendedState state) {
 }
 
 QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider, string const& type,
-                                 string const& worker)
+                                 string const& workerName)
         : _serviceProvider(serviceProvider),
           _type(type),
           _id(Generators::uniqueId()),
-          _worker(worker),
+          _workerName(workerName),
           _state(State::CREATED),
           _extendedState(ExtendedState::NONE) {
     // This report is used solely for debugging purposes to allow tracking
@@ -141,8 +141,9 @@ void QservMgtRequest::start(string const& jobId, unsigned int requestExpirationI
 
     // Check if configuration parameters are valid
     auto const config = _serviceProvider->config();
-    if (!config->isKnownWorker(_worker)) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << " ** MISCONFIGURED ** unknown worker: '" << _worker << "'.");
+    if (!config->isKnownWorker(_workerName)) {
+        LOGS(_log, LOG_LVL_ERROR,
+             context_ << " ** MISCONFIGURED ** unknown worker: '" << _workerName << "'.");
         _setState(lock, State::FINISHED, ExtendedState::CONFIG_ERROR);
         notify(lock);
         return;
@@ -200,7 +201,7 @@ void QservMgtRequest::cancel() {
 void QservMgtRequest::createHttpReq(replica::Lock const& lock, string const& service, string const& query) {
     _assertNotStarted(__func__);
     string const target = service + query + string(query.empty() ? "?" : "&") + "id" + _id +
-                          "&instance_id=" + _serviceProvider->instanceId() + "&worker=" + _worker +
+                          "&instance_id=" + _serviceProvider->instanceId() + "&worker=" + _workerName +
                           "&version=" + to_string(http::MetaModule::version);
     _httpRequest = http::AsyncReq::create(
             _serviceProvider->io_service(),
@@ -214,7 +215,7 @@ void QservMgtRequest::createHttpReq(replica::Lock const& lock, http::Method meth
     json data = body;
     data["id"] = _id;
     data["instance_id"] = _serviceProvider->instanceId();
-    data["worker"] = _worker;
+    data["worker"] = _workerName;
     data["auth_key"] = _serviceProvider->authKey();
     data["admin_auth_key"] = _serviceProvider->adminAuthKey();
     data["version"] = http::MetaModule::version;
@@ -257,9 +258,9 @@ void QservMgtRequest::finish(replica::Lock const& lock, ExtendedState extendedSt
 
 http::AsyncReq::GetHostPort QservMgtRequest::_getHostPortTracker() const {
     return [config = _serviceProvider->config(),
-            worker = _worker](http::AsyncReq::HostPort const&) -> http::AsyncReq::HostPort {
-        auto const info = config->workerInfo(worker);
-        return http::AsyncReq::HostPort{info.qservWorker.host.addr, info.qservWorker.port};
+            workerName = _workerName](http::AsyncReq::HostPort const&) -> http::AsyncReq::HostPort {
+        auto const worker = config->worker(workerName);
+        return http::AsyncReq::HostPort{worker.qservWorker.host.addr, worker.qservWorker.port};
     };
 }
 

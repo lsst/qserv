@@ -108,7 +108,7 @@ public:
     std::string const& id() const { return _id; }
 
     /// @return name of a worker
-    std::string const& worker() const { return _worker; }
+    std::string const& workerName() const { return _workerName; }
 
     /// @return primary status of the request
     State state() const { return _state; }
@@ -363,7 +363,7 @@ private:
 
     std::string const _type;
     std::string const _id;
-    std::string const _worker;
+    std::string const _workerName;
 
     // Two-level state of a request
     std::atomic<State> _state;                  ///< The primary state.

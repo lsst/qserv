@@ -1009,7 +1009,7 @@ json HttpIngestModule::_getRegular() {
 
     json resultLocations = json::array();
     for (auto&& workerName : config->workers()) {
-        auto const worker = config->workerInfo(workerName);
+        auto const worker = config->worker(workerName);
         json resultLocation;
         resultLocation["worker"] = worker.name;
         resultLocation["host"] = worker.loaderHost.addr;

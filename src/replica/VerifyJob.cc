@@ -203,14 +203,13 @@ void VerifyJob::startImpl(replica::Lock const& lock) {
         finish(lock, ExtendedState::FAILED);
         return;
     }
+    auto const currentJobPriority = priority();
+    bool const keepTracking = true;
     for (ReplicaInfo const& replica : replicas) {
         auto request = controller()->findReplica(
                 replica.worker(), replica.database(), replica.chunk(),
-                [self](FindRequest::Ptr request) { self->_onRequestFinish(request); },
-                priority(),              /* inherited from the one of the current job */
-                computeCheckSum(), true, /* keepTracking*/
-                id()                     /* jobId */
-        );
+                [self](FindRequest::Ptr request) { self->_onRequestFinish(request); }, currentJobPriority,
+                computeCheckSum(), keepTracking, id());
         _replicas[request->id()] = replica;
         _requests[request->id()] = request;
     }
@@ -223,13 +222,16 @@ void VerifyJob::cancelImpl(replica::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
+    auto const noCallbackOnFinish = nullptr;
+    auto const currentJobPriority = priority();
+    bool const keepTracking = true;
+
     for (auto&& entry : _requests) {
         auto const& request = entry.second;
         request->cancel();
         if (request->state() != Request::State::FINISHED) {
-            controller()->stopById<StopFindRequest>(request->worker(), request->id(), nullptr, /* onFinish */
-                                                    priority(), true, /* keepTracking */
-                                                    id() /* jobId */);
+            controller()->stopById<StopFindRequest>(request->workerName(), request->id(), noCallbackOnFinish,
+                                                    currentJobPriority, keepTracking, id());
         }
     }
     _replicas.clear();
@@ -243,7 +245,7 @@ void VerifyJob::notify(replica::Lock const& lock) {
 
 void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  database=" << request->database() << " worker=" << request->worker()
+         context() << __func__ << "  database=" << request->database() << " worker=" << request->workerName()
                    << " chunk=" << request->chunk());
 
     if (state() == State::FINISHED) return;
@@ -302,7 +304,7 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
         // Report the error and keep going
 
         LOGS(_log, LOG_LVL_ERROR,
-             context() << "failed request " << request->context() << " worker: " << request->worker()
+             context() << "failed request " << request->context() << " worker: " << request->workerName()
                        << " database: " << request->database() << " chunk: " << request->chunk());
     }
 

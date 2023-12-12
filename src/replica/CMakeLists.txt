@@ -28,6 +28,7 @@ target_sources(replica PRIVATE
     ConfigAppBase.cc
     ConfigDatabase.cc
     ConfigDatabaseFamily.cc
+    ConfigHost.cc
     ConfigParserJSON.cc
     ConfigParserMySQL.cc
     ConfigTable.cc

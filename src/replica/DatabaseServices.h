@@ -480,12 +480,12 @@ public:
      * - new replicas not present in the database will be registered in there
      * - existing replicas will be updated in the database
      *
-     * @param worker the name of a worker (as per the request)
+     * @param workerName the name of a worker (as per the request)
      * @param database the name of a database (as per the request)
      * @param infoCollection a collection of replicas
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void saveReplicaInfoCollection(std::string const& worker, std::string const& database,
+    virtual void saveReplicaInfoCollection(std::string const& workerName, std::string const& database,
                                            ReplicaInfoCollection const& infoCollection) = 0;
 
     /**
@@ -560,7 +560,7 @@ public:
      *   passed into the method should be made if the operation fails.
      *
      * @param replicas a collection of replicas (if any found)
-     * @param worker the name of a worker
+     * @param workerName the name of a worker
      * @param database (optional)the name of a database
      * @param allDatabases (optional) a flag which if set to 'true' will include
      *   into the search all known database entries regardless of their PUBLISHED
@@ -576,7 +576,7 @@ public:
      * @throw std::invalid_argument if the worker name is empty,
      *   or if the database family is unknown (if provided)
      */
-    virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, std::string const& worker,
+    virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, std::string const& workerName,
                                     std::string const& database = std::string(), bool allDatabases = false,
                                     bool isPublished = true, bool includeFileInfo = true) = 0;
 
@@ -587,7 +587,7 @@ public:
      * @note No assumption on a new status of the replica collection
      *   passed into the method should be made if the operation fails.
      *
-     * @param worker the name of a worker
+     * @param workerName the name of a worker
      * @param database (optional) the name of a database
      * @param allDatabases (optional) a flag which if set to 'true' will include
      *   into the search all known database entries regardless of their PUBLISHED
@@ -603,8 +603,9 @@ public:
      * @throw std::invalid_argument if the worker name is empty,
      *   or if the database family is unknown (if provided)
      */
-    virtual uint64_t numWorkerReplicas(std::string const& worker, std::string const& database = std::string(),
-                                       bool allDatabases = false, bool isPublished = true) = 0;
+    virtual uint64_t numWorkerReplicas(std::string const& workerName,
+                                       std::string const& database = std::string(), bool allDatabases = false,
+                                       bool isPublished = true) = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
@@ -614,7 +615,7 @@ public:
      *
      * @param replicas a collection of replicas (if any found)
      * @param chunk a chunk whose replicas will be looked for at the worker
-     * @param worker the name of a worker
+     * @param workerName the name of a worker
      * @param databaseFamily (optional) the name of a database family
      * @param allDatabases (optional) a flag which if set to 'true' will include
      *   into the search all known database entries regardless of their PUBLISHED
@@ -628,7 +629,7 @@ public:
      *   or if the database family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk,
-                                    std::string const& worker,
+                                    std::string const& workerName,
                                     std::string const& databaseFamily = std::string(),
                                     bool allDatabases = false, bool isPublished = true) = 0;
 
@@ -936,13 +937,13 @@ public:
     /// @return contributions into a super-transaction for the given selectors
     /// @param transactionId a unique identifier of the transaction
     /// @param table (optional) the base name of a table (all tables if not provided)
-    /// @param worker (optional) the name of a worker (all workers if not provided)
+    /// @param workerName (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
     /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
     /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
     virtual std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, std::string const& table = std::string(),
-            std::string const& worker = std::string(),
+            std::string const& workerName = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
             bool includeWarnings = false, bool includeRetries = false) = 0;
@@ -951,13 +952,13 @@ public:
     /// @param transactionId a unique identifier of the transaction
     /// @param status the desired status of the contributions
     /// @param table (optional) the base name of a table (all tables if not provided)
-    /// @param worker (optional) the name of a worker (all workers if not provided)
+    /// @param workerName (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
     /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
     /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
     virtual std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, TransactionContribInfo::Status status,
-            std::string const& table = std::string(), std::string const& worker = std::string(),
+            std::string const& table = std::string(), std::string const& workerName = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
             bool includeWarnings = false, bool includeRetries = false) = 0;
@@ -965,13 +966,13 @@ public:
     /// @return contributions into super-transactions for the given selectors
     /// @param database the name of a database
     /// @param table (optional) the base name of a table (all tables if not provided)
-    /// @param worker (optional) the name of a worker (all workers if not provided)
+    /// @param workerName (optional) the name of a worker (all workers if not provided)
     /// @param typeSelector (optional) type of the contributions
     /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
     /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
     virtual std::vector<TransactionContribInfo> transactionContribs(
             std::string const& database, std::string const& table = std::string(),
-            std::string const& worker = std::string(),
+            std::string const& workerName = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
             bool includeWarnings = false, bool includeRetries = false) = 0;

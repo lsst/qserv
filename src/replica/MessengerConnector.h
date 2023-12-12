@@ -219,11 +219,11 @@ public:
      * @param config  The configuration service of the Replication Framework.
      * @param io_service  The I/O service for communication. The lifespan of
      *   the object must exceed the one of this instance.
-     * @param worker  The name of a worker.
+     * @param workerName  The name of a worker.
      * @return  A pointer to the created object.
      */
     static Ptr create(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service,
-                      std::string const& worker);
+                      std::string const& workerName);
 
     /**
      * Stop operations.
@@ -274,7 +274,7 @@ public:
 private:
     /// @see MessengerConnector::create()
     MessengerConnector(std::shared_ptr<Configuration> const& config, boost::asio::io_service& io_service,
-                       std::string const& worker);
+                       std::string const& workerName);
 
     /**
      * The actual implementation of the operation 'send'.
@@ -444,7 +444,7 @@ private:
     std::shared_ptr<Configuration> const _config;
 
     /// The unique identifier of the worker.
-    std::string const _worker;
+    std::string const _workerName;
 
     /// The cached parameter for the buffer sizes (pulled from
     /// the Configuration upon the construction of the object).

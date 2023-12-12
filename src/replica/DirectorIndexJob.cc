@@ -133,12 +133,12 @@ list<pair<string, string>> DirectorIndexJob::persistentLogData() const {
     // Report failed chunks only
     list<pair<string, string>> result;
     for (auto&& workerItr : getResultData().error) {
-        auto&& worker = workerItr.first;
+        auto&& workerName = workerItr.first;
         for (auto&& chunkItr : workerItr.second) {
             auto&& chunk = chunkItr.first;
             auto&& error = chunkItr.second;
             if (!error.empty()) {
-                result.emplace_back("worker=" + worker + " chunk=" + to_string(chunk), "error=" + error);
+                result.emplace_back("worker=" + workerName + " chunk=" + to_string(chunk), "error=" + error);
             }
         }
     }
@@ -173,7 +173,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     bool const includeFileInfo = false;     // to speed up the query as we don't need file info
 
     map<unsigned int, list<string>> chunk2workers;
-    for (auto&& worker : workerNames) {
+    for (auto&& workerName : workerNames) {
         // Scan for chunk replicas at the worker. The algorithm fills the data structure
         // used by the planner algorithm. The scanner has two flavors that depend on the input
         // parameters to the class.
@@ -193,7 +193,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
 
             // Locate all contributions into the table made at the given worker.
             vector<TransactionContribInfo> const contribs =
-                    databaseServices->transactionContribs(transactionId(), directorTable(), worker);
+                    databaseServices->transactionContribs(transactionId(), directorTable(), workerName);
             for (auto&& contrib : contribs) {
                 chunkAndWorker.insert(make_pair(contrib.chunk, contrib.worker));
             }
@@ -204,7 +204,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
             }
         } else {
             vector<ReplicaInfo> replicas;
-            databaseServices->findWorkerReplicas(replicas, worker, database(), unusedAllDatabases,
+            databaseServices->findWorkerReplicas(replicas, workerName, database(), unusedAllDatabases,
                                                  unusedIsPublished, includeFileInfo);
             for (auto&& replica : replicas) {
                 chunk2workers[replica.chunk()].push_back(replica.worker());
@@ -229,19 +229,19 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
 
         // Find the least loaded worker from those where chunk replicas
         // are residing.
-        string worker;
+        string workerName;
         size_t minNumChunks = numeric_limits<size_t>::max();
         for (auto&& candidateWorker : workers) {
             auto const numChunksAtCandidate = _chunks[candidateWorker].size();
             if (numChunksAtCandidate < minNumChunks) {
-                worker = candidateWorker;
+                workerName = candidateWorker;
                 minNumChunks = numChunksAtCandidate;
             }
         }
-        if (worker.empty()) {
+        if (workerName.empty()) {
             throw logic_error(context() + string(__func__) + ":  internal bug");
         }
-        _chunks[worker].push(chunk);
+        _chunks[workerName].push(chunk);
         _totalChunks++;
     }
 
@@ -256,8 +256,8 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     // would be able to work on another batch of the data extraction requests while
     // results of the previous batch were being sent back to the Controller.
     size_t const maxRequestsPerWorker = config->get<size_t>("worker", "num-svc-processing-threads");
-    for (auto&& worker : workerNames) {
-        for (auto&& ptr : _launchRequests(lock, worker, maxRequestsPerWorker)) {
+    for (auto&& workerName : workerNames) {
+        for (auto&& ptr : _launchRequests(lock, workerName, maxRequestsPerWorker)) {
             _inFlightRequests[ptr->id()] = ptr;
         }
     }
@@ -289,14 +289,15 @@ void DirectorIndexJob::cancelImpl(replica::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
+    auto const noCallbackOnFinish = nullptr;
+    bool const keepTracking = true;
+
     for (auto&& itr : _inFlightRequests) {
         auto&& ptr = itr.second;
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            controller()->stopById<StopDirectorIndexRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
-                                                             priority(), true, /* keepTracking */
-                                                             id()              /* jobId */
-            );
+            controller()->stopById<StopDirectorIndexRequest>(ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                                             priority(), keepTracking, id());
         }
     }
     _inFlightRequests.clear();
@@ -315,7 +316,7 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
     // for some chunk tables because they may not have contributions in a context
     // of the given super-transaction.
 
-    string const context_ = context() + string(__func__) + " worker=" + request->worker() + " ";
+    string const context_ = context() + string(__func__) + " worker=" + request->workerName() + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
     if (state() == State::FINISHED) return;
@@ -332,7 +333,7 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
         // need to increment the counter of the fully completed chunks.
         _completeChunks++;
     } else {
-        _resultData.error[request->worker()][request->chunk()] = request->responseData().error;
+        _resultData.error[request->workerName()][request->chunk()] = request->responseData().error;
         finish(lock, ExtendedState::FAILED);
         return;
     }
@@ -341,7 +342,7 @@ void DirectorIndexJob::_onRequestFinish(DirectorIndexRequest::Ptr const& request
     // results of the current one. This little optimization is meant to keep
     // workers busy as a compensatory mechanism for the non-negligible latencies
     // in processing data of the completed requests.
-    for (auto&& ptr : _launchRequests(lock, request->worker())) {
+    for (auto&& ptr : _launchRequests(lock, request->workerName())) {
         _inFlightRequests[ptr->id()] = ptr;
     }
 
@@ -424,7 +425,7 @@ void DirectorIndexJob::_loadDataIntoTable() {
             if (state() == State::FINISHED) return;
             replica::Lock lock(_mtx, context_);
             if (state() == State::FINISHED) return;
-            _resultData.error[request->worker()][request->chunk()] = error;
+            _resultData.error[request->workerName()][request->chunk()] = error;
             finish(lock, ExtendedState::FAILED);
             return;
         }
@@ -501,23 +502,23 @@ DirectorIndexRequest::Ptr DirectorIndexJob::_nextRequest() {
 }
 
 list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(replica::Lock const& lock,
-                                                                  string const& worker, size_t maxRequests) {
+                                                                  string const& workerName,
+                                                                  size_t maxRequests) {
     // Create as many requests as specified by the corresponding parameter of
     // the method or as many as are still available for the specified
     // worker (not to exceed the limit) by popping chunk numbers from the worker's
     // queue.
     list<DirectorIndexRequest::Ptr> requests;
     auto const self = shared_from_base<DirectorIndexJob>();
-    while (_chunks[worker].size() > 0 && requests.size() < maxRequests) {
-        auto const chunk = _chunks[worker].front();
-        _chunks[worker].pop();
+    bool const keepTracking = true;
+    while (_chunks[workerName].size() > 0 && requests.size() < maxRequests) {
+        auto const chunk = _chunks[workerName].front();
+        _chunks[workerName].pop();
 
         requests.push_back(controller()->directorIndex(
-                worker, database(), directorTable(), chunk, hasTransactions(), transactionId(),
+                workerName, database(), directorTable(), chunk, hasTransactions(), transactionId(),
                 [self](DirectorIndexRequest::Ptr const& request) { self->_onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+                priority(), keepTracking, id()));
     }
     return requests;
 }

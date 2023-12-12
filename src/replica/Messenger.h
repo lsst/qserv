@@ -87,7 +87,7 @@ public:
      * the worker name is not valid, and std::logic_error if the Messenger already
      * has another request registered with the same request 'id'.
      *
-     * @param worker  The name of a worker.
+     * @param workerName  The name of a worker.
      * @param id  A unique identifier of a request.
      * @param priority  The priority level of a request.
      * @param requestBufferPtr  A request serialized into a network buffer.
@@ -95,10 +95,10 @@ public:
      *   or failure of the operation
      */
     template <class RESPONSE_TYPE>
-    void send(std::string const& worker, std::string const& id, int priority,
+    void send(std::string const& workerName, std::string const& id, int priority,
               std::shared_ptr<ProtocolBuffer> const& requestBufferPtr,
               std::function<void(std::string const&, bool, RESPONSE_TYPE const&)> onFinish) {
-        _connector(worker)->send<RESPONSE_TYPE>(id, priority, requestBufferPtr, onFinish);
+        _connector(workerName)->send<RESPONSE_TYPE>(id, priority, requestBufferPtr, onFinish);
     }
 
     /**
@@ -111,19 +111,19 @@ public:
      * thrown. The method may also throw std::logic_error if the Messenger
      * doesn't have a request registered with the specified request 'id'.
      *
-     * @param worker  The name of a worker.
+     * @param workerName  The name of a worker.
      * @param id  A unique identifier of a request.
      * @return  The completion status of the operation.
      */
-    void cancel(std::string const& worker, std::string const& id);
+    void cancel(std::string const& workerName, std::string const& id);
 
     /**
      * Return 'true' if the specified request is known to the Messenger
      *
-     * @param worker The name of a worker.
+     * @param workerName The name of a worker.
      * @param id  A unique identifier of a request.
      */
-    bool exists(std::string const& worker, std::string const& id);
+    bool exists(std::string const& workerName, std::string const& id);
 
 private:
     /// @see Messenger::create()
@@ -131,14 +131,14 @@ private:
 
     /**
      * Locate and return a connector for the specified worker
-     * @param  The name of a worker.
+     * @param workerName  The name of a worker.
      * @return  A pointer to the connector.
      * @throw std::invalid_argument  If the worker is unknown.
      */
-    MessengerConnector::Ptr const& _connector(std::string const& worker);
+    MessengerConnector::Ptr const& _connector(std::string const& workerName);
 
     /// @return The context string for the given worker (used for reporting errors and logging).
-    static std::string _context(std::string const& worker);
+    static std::string _context(std::string const& workerName);
 
     // Input parameters
 

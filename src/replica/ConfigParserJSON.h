@@ -53,7 +53,7 @@ public:
      * @param databaseFamilies The collection of the database family descriptors.
      * @param databases The collection of the database descriptors.
      */
-    ConfigParserJSON(nlohmann::json& data, std::map<std::string, WorkerInfo>& workers,
+    ConfigParserJSON(nlohmann::json& data, std::map<std::string, ConfigWorker>& workers,
                      std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
                      std::map<std::string, DatabaseInfo>& databases);
 
@@ -87,7 +87,7 @@ private:
     // Input parameters
 
     nlohmann::json& _data;
-    std::map<std::string, WorkerInfo>& _workers;
+    std::map<std::string, ConfigWorker>& _workers;
     std::map<std::string, DatabaseFamilyInfo>& _databaseFamilies;
     std::map<std::string, DatabaseInfo>& _databases;
 };

@@ -61,7 +61,7 @@ public:
      * @param databases The collection of the database descriptors.
      */
     ConfigParserMySQL(database::mysql::Connection::Ptr const& conn, nlohmann::json& data,
-                      std::map<std::string, WorkerInfo>& workers,
+                      std::map<std::string, ConfigWorker>& workers,
                       std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
                       std::map<std::string, DatabaseInfo>& databases);
 
@@ -126,7 +126,7 @@ private:
     database::mysql::Connection::Ptr const _conn;
     database::mysql::QueryGenerator const _g;
     nlohmann::json& _data;
-    std::map<std::string, WorkerInfo>& _workers;
+    std::map<std::string, ConfigWorker>& _workers;
     std::map<std::string, DatabaseFamilyInfo>& _databaseFamilies;
     std::map<std::string, DatabaseInfo>& _databases;
 

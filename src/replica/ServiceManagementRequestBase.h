@@ -116,14 +116,14 @@ protected:
      * @param serviceProvider  Provides various services for the application.
      * @param io_service  The asynchronous I/O communication services (BOOST ASIO).
      * @param requestName  The name of a request.
-     * @param worker  The name of a worker.
+     * @param workerName  The name of a worker.
      * @param requestType  A type of a request.
      * @param priority  A priority level of a request.
      * @param messenger  The messaging service for workers.
      */
     ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service, char const* requestName,
-                                 std::string const& worker, ProtocolServiceRequestType requestType,
+                                 std::string const& workerName, ProtocolServiceRequestType requestType,
                                  int priority, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()

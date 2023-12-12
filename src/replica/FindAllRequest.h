@@ -79,7 +79,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider a host of services for various communications
-     * @param worker the identifier of a worker node (the one where the chunks
+     * @param workerName the identifier of a worker node (the one where the chunks
      *   expected to be located)
      * @param database the name of a database
      * @param saveReplicaInfo save replica info in a database
@@ -91,7 +91,7 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, std::string const& database, bool saveReplicaInfo,
+                      std::string const& workerName, std::string const& database, bool saveReplicaInfo,
                       CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
@@ -114,7 +114,7 @@ protected:
 private:
     /// @see FindAllRequest::create()
     FindAllRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                   std::string const& worker, std::string const& database, bool saveReplicaInfo,
+                   std::string const& workerName, std::string const& database, bool saveReplicaInfo,
                    CallbackType const& onFinish, int priority, bool keepTracking,
                    std::shared_ptr<Messenger> const& messenger);
 

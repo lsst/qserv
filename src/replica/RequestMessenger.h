@@ -73,7 +73,7 @@ protected:
      * @return A pointer to the created object.
      */
     RequestMessenger(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                     std::string const& type, std::string const& worker, int priority, bool keepTracking,
+                     std::string const& type, std::string const& workerName, int priority, bool keepTracking,
                      bool allowDuplicate, bool disposeRequired, Messenger::Ptr const& messenger);
 
     /// @return pointer to the messaging service

@@ -86,7 +86,7 @@ void ServiceManagementBaseJob::cancelImpl(replica::Lock const& lock) {
 
 void ServiceManagementBaseJob::onRequestFinish(ServiceManagementRequestBase::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  worker=" << request->worker() << " id=" << request->id()
+         context() << __func__ << "  worker=" << request->workerName() << " id=" << request->id()
                    << " type=" << request->type() << " state=" << request->state2string());
 
     if (state() == State::FINISHED) return;
@@ -98,8 +98,8 @@ void ServiceManagementBaseJob::onRequestFinish(ServiceManagementRequestBase::Ptr
     // Update counters and object state if needed.
     _numFinished++;
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
-        _resultData.serviceState[request->worker()] = request->getServiceState();
-        _resultData.workers[request->worker()] = true;
+        _resultData.serviceState[request->workerName()] = request->getServiceState();
+        _resultData.workers[request->workerName()] = true;
     }
 
     // Check for the completion condition of the job

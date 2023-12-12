@@ -33,7 +33,7 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-ConfigParserJSON::ConfigParserJSON(json& data, map<string, WorkerInfo>& workers,
+ConfigParserJSON::ConfigParserJSON(json& data, map<string, ConfigWorker>& workers,
                                    map<string, DatabaseFamilyInfo>& databaseFamilies,
                                    map<string, DatabaseInfo>& databases)
         : _data(data), _workers(workers), _databaseFamilies(databaseFamilies), _databases(databases) {}
@@ -101,7 +101,7 @@ void ConfigParserJSON::parse(json const& obj) {
             // into the output object. Using defaults is needed to ensure the worker entry is
             // complete before storying in the transient state. Note that users of the API may rely
             // on the default values of some parameters of workers.
-            WorkerInfo const worker(inWorker);
+            ConfigWorker const worker(inWorker);
             _workers[worker.name] = worker;
         }
     }

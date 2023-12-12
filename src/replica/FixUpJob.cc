@@ -80,11 +80,11 @@ list<pair<string, string>> FixUpJob::persistentLogData() const {
     // Report workers failed to respond to the requests
 
     for (auto&& workerInfo : replicaData.workers) {
-        auto&& worker = workerInfo.first;
+        auto&& workerName = workerInfo.first;
         auto const numFailedRequests = workerInfo.second;
         if (numFailedRequests != 0) {
-            result.emplace_back("failed-worker",
-                                "worker=" + worker + " num-failed-requests=" + to_string(numFailedRequests));
+            result.emplace_back("failed-worker", "worker=" + workerName + " num-failed-requests=" +
+                                                         to_string(numFailedRequests));
         }
     }
 
@@ -100,8 +100,8 @@ list<pair<string, string>> FixUpJob::persistentLogData() const {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
     for (auto&& workerItr : workerCategoryCounter) {
-        auto&& worker = workerItr.first;
-        string val = "worker=" + worker;
+        auto&& workerName = workerItr.first;
+        string val = "worker=" + workerName;
 
         for (auto&& categoryItr : workerItr.second) {
             auto&& category = categoryItr.first;
@@ -143,12 +143,14 @@ void FixUpJob::cancelImpl(replica::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
+    auto const noCallbackOnFinish = nullptr;
+    bool const keepTracking = true;
+
     for (auto&& ptr : _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            controller()->stopById<StopReplicationRequest>(ptr->worker(), ptr->id(), nullptr, /* onFinish */
-                                                           priority(), true, /* keepTracking */
-                                                           id() /* jobId */);
+            controller()->stopById<StopReplicationRequest>(ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                                           priority(), keepTracking, id());
     }
     _destinationWorker2tasks.clear();
     _requests.clear();
@@ -198,9 +200,9 @@ void FixUpJob::_onPrecursorJobFinish() {
                 if (not replicaData.chunks.chunk(chunk).database(database).workerExists(destinationWorker)) {
                     // Finding a source worker first
                     string sourceWorker;
-                    for (auto&& worker : replicaData.complete.at(chunk).at(database)) {
-                        if (worker != destinationWorker) {
-                            sourceWorker = worker;
+                    for (auto&& workerName : replicaData.complete.at(chunk).at(database)) {
+                        if (workerName != destinationWorker) {
+                            sourceWorker = workerName;
                             break;
                         }
                     }
@@ -240,12 +242,12 @@ void FixUpJob::_onPrecursorJobFinish() {
 
 void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
     string const database = request->database();
-    string const worker = request->worker();
+    string const workerName = request->workerName();
     unsigned int const chunk = request->chunk();
 
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " "
-                   << " database=" << database << " worker=" << worker << " chunk=" << chunk);
+                   << " database=" << database << " worker=" << workerName << " chunk=" << chunk);
 
     if (state() == State::FINISHED) return;
 
@@ -257,14 +259,14 @@ void FixUpJob::_onRequestFinish(ReplicationRequest::Ptr const& request) {
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
         _numSuccess++;
         _replicaData.replicas.push_back(request->responseData());
-        _replicaData.chunks[chunk][database][worker] = request->responseData();
+        _replicaData.chunks[chunk][database][workerName] = request->responseData();
     } else {
-        _replicaData.workers[worker]++;
+        _replicaData.workers[workerName]++;
     }
 
     // Launch a replacement request for the worker and check if this was the very
     // last request in flight and no more are ready to be lunched.
-    if (0 == _launchNext(lock, worker, 1)) {
+    if (0 == _launchNext(lock, workerName, 1)) {
         if (_numFinished == _requests.size()) {
             finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS : ExtendedState::FAILED);
         }
@@ -276,7 +278,8 @@ size_t FixUpJob::_launchNext(replica::Lock const& lock, string const& destinatio
 
     auto const self = shared_from_base<FixUpJob>();
     auto&& tasks = _destinationWorker2tasks[destinationWorker];
-
+    bool const keepTracking = true;
+    bool const allowDuplicate = true;
     size_t numLaunched = 0;
     for (size_t i = 0; i < maxRequests; ++i) {
         if (tasks.size() == 0) break;
@@ -289,10 +292,7 @@ size_t FixUpJob::_launchNext(replica::Lock const& lock, string const& destinatio
         _requests.push_back(controller()->replicate(
                 task.destinationWorker, task.sourceWorker, task.database, task.chunk,
                 [self](ReplicationRequest::Ptr const& ptr) { self->_onRequestFinish(ptr); }, 0, /* priority */
-                true, /* keepTracking */
-                true, /* allowDuplicate */
-                id()  /* jobId */
-                ));
+                keepTracking, allowDuplicate, id()));
         tasks.pop();
         numLaunched++;
     }

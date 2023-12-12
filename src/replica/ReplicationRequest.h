@@ -62,7 +62,7 @@ public:
 
     std::string const& database() const { return _database; }
     unsigned int chunk() const { return _chunk; }
-    std::string const& sourceWorker() const { return _sourceWorker; }
+    std::string const& sourceWorkerName() const { return _sourceWorkerName; }
 
     /// @return target request specific parameters
     ReplicationRequestParams const& targetRequestParams() const { return _targetRequestParams; }
@@ -82,9 +82,9 @@ public:
      *
      * @param serviceProvider a host of services for various communications
      * @param io_service BOOST ASIO API
-     * @param worker the identifier of a worker node (the one to be affected by the replication)
+     * @param workerName the identifier of a worker node (the one to be affected by the replication)
      *   at a destination of the chunk
-     * @param sourceWorker the identifier of a worker node at a source of the chunk
+     * @param sourceWorkerName the identifier of a worker node at a source of the chunk
      * @param database the name of a database
      * @param chunk the number of a chunk to replicate (implies all relevant tables)
      * @param allowDuplicate follow a previously made request if the current one duplicates it
@@ -95,9 +95,10 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, std::string const& sourceWorker, std::string const& database,
-                      unsigned int chunk, bool allowDuplicate, CallbackType const& onFinish, int priority,
-                      bool keepTracking, std::shared_ptr<Messenger> const& messenger);
+                      std::string const& workerName, std::string const& sourceWorkerName,
+                      std::string const& database, unsigned int chunk, bool allowDuplicate,
+                      CallbackType const& onFinish, int priority, bool keepTracking,
+                      std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
@@ -118,7 +119,7 @@ protected:
 private:
     /// @see ReplicationRequest::create()
     ReplicationRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                       std::string const& worker, std::string const& sourceWorker,
+                       std::string const& workerName, std::string const& sourceWorkerName,
                        std::string const& database, unsigned int chunk, bool allowDuplicate,
                        CallbackType const& onFinish, int priority, bool keepTracking,
                        std::shared_ptr<Messenger> const& messenger);
@@ -140,7 +141,7 @@ private:
 
     std::string const _database;
     unsigned int const _chunk;
-    std::string const _sourceWorker;
+    std::string const _sourceWorkerName;
     CallbackType _onFinish;  ///< @note reset when the request is finished
 
     /// Request-specific parameters of the target request

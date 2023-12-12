@@ -637,16 +637,16 @@ public:
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo workerInfo(std::string const& workerName) const;
+    ConfigWorker worker(std::string const& workerName) const;
 
     /**
      * Register a new worker in the Configuration.
-     * @param workerInfo The worker description.
+     * @param worker The worker description.
      * @return A worker descriptor.
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo addWorker(WorkerInfo const& worker);
+    ConfigWorker addWorker(ConfigWorker const& worker);
 
     /**
      * Completely remove the specified worker from the Configuration.
@@ -663,7 +663,7 @@ public:
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo disableWorker(std::string const& workerName);
+    ConfigWorker disableWorker(std::string const& workerName);
 
     /**
      * Update parameters of an existing worker in the transient store, and in
@@ -673,7 +673,7 @@ public:
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo updateWorker(WorkerInfo const& worker);
+    ConfigWorker updateWorker(ConfigWorker const& worker);
 
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
     /// @return The JSON representation of the object.
@@ -753,7 +753,7 @@ private:
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return An updated worker description.
      */
-    WorkerInfo _updateWorker(replica::Lock const& lock, WorkerInfo const& worker);
+    ConfigWorker _updateWorker(replica::Lock const& lock, ConfigWorker const& worker);
 
     /**
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
@@ -813,7 +813,7 @@ private:
 
     // The transient state of the configuration (guarded by Mutex _mtx).
     nlohmann::json _data;
-    std::map<std::string, WorkerInfo> _workers;
+    std::map<std::string, ConfigWorker> _workers;
     std::map<std::string, DatabaseFamilyInfo> _databaseFamilies;
     std::map<std::string, DatabaseInfo> _databases;
 

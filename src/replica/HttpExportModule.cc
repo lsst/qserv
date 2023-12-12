@@ -46,12 +46,12 @@ namespace {
  * be exported.
  */
 struct TableSpec {
-    std::string tableName;     /// The base name of a table to be exported
-    bool partitioned = false;  /// Is 'true' for the partitioned tables
-    unsigned int chunk = 0;    /// The chunk number (partitioned tables)
-    bool overlap = false;      /// Is 'true' for the 'overlap' tables (partitioned tables)
-    HostInfo workerHost;       /// The host name and an IP address of a worker
-    uint16_t workerPort = 0;   /// The port number of the Export Service
+    std::string tableName;     ///< The base name of a table to be exported.
+    bool partitioned = false;  ///< Is 'true' for the partitioned tables.
+    unsigned int chunk = 0;    ///< The chunk number (partitioned tables).
+    bool overlap = false;      ///< Is 'true' for the 'overlap' tables (partitioned tables).
+    ConfigHost workerHost;     ///< The host name and an IP address of a worker.
+    uint16_t workerPort = 0;   ///< The port number of the Export Service.
 
     json toJson() const {
         json spec;
@@ -110,11 +110,11 @@ json HttpExportModule::_getTables() {
     }
 
     // Get a collection of known workers which are in the 'ENABLED' state
-    vector<WorkerInfo> allWorkerInfos;
+    vector<ConfigWorker> allConfigWorkers;
     for (auto&& worker : config->workers()) {
-        allWorkerInfos.push_back(config->workerInfo(worker));
+        allConfigWorkers.push_back(config->worker(worker));
     }
-    if (allWorkerInfos.empty()) {
+    if (allConfigWorkers.empty()) {
         throw http::Error(__func__, "no workers found in the Configuration of the system.");
     }
 
@@ -122,11 +122,11 @@ json HttpExportModule::_getTables() {
      * The helper function is defined here to reduce code duplication along
      * in the rest of the current method. The function will locate the first
      * available (among 'ENABLED') worker hosting a replica of the specified
-     * chunk. The WorkerInfo object will be returned upon successful completion
+     * chunk. The ConfigWorker object will be returned upon successful completion
      * o f the function.
      *
      * @param chunk  The chunk number for
-     * @return The WorkerInfo for the found worker
+     * @return The ConfigWorker for the found worker
      * @throws invalid_argument in case if no replica was found for the specified
      *   chunk. For the databases in the 'PUBLISHED' state it means that the chunk
      *   doesn't exist.
@@ -140,7 +140,7 @@ json HttpExportModule::_getTables() {
             throw invalid_argument("no replica found for chunk " + to_string(chunk) +
                                    " in a scope of database '" + database.name + "'.");
         }
-        return config->workerInfo(replicas[0].worker());
+        return config->worker(replicas[0].worker());
     };
 
     // The following algorithm has two modes of operation, depending on the content
@@ -166,8 +166,8 @@ json HttpExportModule::_getTables() {
             for (auto&& tableName : database.regularTables()) {
                 TableSpec spec;
                 spec.tableName = tableName;
-                spec.workerHost = allWorkerInfos[0].exporterHost;
-                spec.workerPort = allWorkerInfos[0].exporterPort;
+                spec.workerHost = allConfigWorkers[0].exporterHost;
+                spec.workerPort = allConfigWorkers[0].exporterPort;
                 result["location"].push_back(spec.toJson());
             }
 
@@ -207,8 +207,8 @@ json HttpExportModule::_getTables() {
                     spec.overlap = http::RequestBody::required<unsigned int>(tableJson, "overlap");
                     spec.chunk = http::RequestBody::required<unsigned int>(tableJson, "chunk");
                 }
-                WorkerInfo const worker =
-                        spec.partitioned ? findWorkerForChunk(spec.chunk) : allWorkerInfos[0];
+                ConfigWorker const worker =
+                        spec.partitioned ? findWorkerForChunk(spec.chunk) : allConfigWorkers[0];
                 spec.workerHost = worker.exporterHost;
                 spec.workerPort = worker.exporterPort;
 

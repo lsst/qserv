@@ -79,7 +79,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider  a host of services for various communications
-     * @param worker the identifier of a worker node (the one where the chunk is
+     * @param workerName the identifier of a worker node (the one where the chunk is
      *   expected to be located) at a destination of the chunk
      * @param database the name of a database
      * @param chunk the number of a chunk to find (implies all relevant tables)
@@ -92,7 +92,7 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, std::string const& database, unsigned int chunk,
+                      std::string const& workerName, std::string const& database, unsigned int chunk,
                       bool computeCheckSum, CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
@@ -114,7 +114,7 @@ protected:
 
 private:
     FindRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                std::string const& worker, std::string const& database, unsigned int chunk,
+                std::string const& workerName, std::string const& database, unsigned int chunk,
                 bool computeCheckSum, CallbackType const& onFinish, int priority, bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger);
 

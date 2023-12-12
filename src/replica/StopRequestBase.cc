@@ -52,10 +52,10 @@ namespace lsst::qserv::replica {
 
 StopRequestBase::StopRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                  boost::asio::io_service& io_service, char const* requestTypeName,
-                                 string const& worker, string const& targetRequestId,
+                                 string const& workerName, string const& targetRequestId,
                                  ProtocolQueuedRequestType targetRequestType, int priority, bool keepTracking,
                                  shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, requestTypeName, worker, priority, keepTracking,
+        : RequestMessenger(serviceProvider, io_service, requestTypeName, workerName, priority, keepTracking,
                            false,  // allowDuplicate
                            false,  // disposeRequired
                            messenger),

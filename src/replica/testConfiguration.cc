@@ -401,8 +401,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {
     LOGS_INFO("Testing worker comparison operators");
 
-    WorkerInfo w1;
-    WorkerInfo w2;
+    ConfigWorker w1;
+    ConfigWorker w2;
     BOOST_CHECK(w1 == w2);
     BOOST_CHECK(!(w1 != w2));
 
@@ -456,12 +456,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     LOGS_INFO("Testing worker parameters");
 
-    HostInfo const hostA({"127.0.0.1", "host-A"});
+    ConfigHost const hostA({"127.0.0.1", "host-A"});
     BOOST_CHECK_EQUAL(hostA.addr, "127.0.0.1");
     BOOST_CHECK_EQUAL(hostA.name, "host-A");
 
-    WorkerInfo workerA;
-    BOOST_REQUIRE_NO_THROW(workerA = config->workerInfo("worker-A"));
+    ConfigWorker workerA;
+    BOOST_REQUIRE_NO_THROW(workerA = config->worker("worker-A"));
     BOOST_CHECK(workerA.name == "worker-A");
     BOOST_CHECK(workerA.isEnabled);
     BOOST_CHECK(!workerA.isReadOnly);
@@ -471,9 +471,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK_EQUAL(workerA.exporterHost, hostA);
     BOOST_CHECK_EQUAL(workerA.httpLoaderHost, hostA);
 
-    HostInfo const hostB({"168.1.1.1", "host-B"});
-    WorkerInfo workerB;
-    BOOST_REQUIRE_NO_THROW(workerB = config->workerInfo("worker-B"));
+    ConfigHost const hostB({"168.1.1.1", "host-B"});
+    ConfigWorker workerB;
+    BOOST_REQUIRE_NO_THROW(workerB = config->worker("worker-B"));
     BOOST_CHECK(workerB.name == "worker-B");
     BOOST_CHECK(workerB.isEnabled);
     BOOST_CHECK(workerB.isReadOnly);
@@ -485,36 +485,36 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK_EQUAL(workerB.qservWorker.host, hostB);
     BOOST_CHECK_EQUAL(workerB.qservWorker.port, 53004U);
 
-    WorkerInfo workerC;
-    BOOST_REQUIRE_NO_THROW(workerC = config->workerInfo("worker-C"));
+    ConfigWorker workerC;
+    BOOST_REQUIRE_NO_THROW(workerC = config->worker("worker-C"));
     BOOST_CHECK(workerC.name == "worker-C");
     BOOST_CHECK(!workerC.isEnabled);
-    BOOST_CHECK_EQUAL(workerC.svcHost, HostInfo({"168.1.1.1", "host-C1"}));
-    BOOST_CHECK_EQUAL(workerC.fsHost, HostInfo({"168.1.1.2", "host-C2"}));
-    BOOST_CHECK_EQUAL(workerC.loaderHost, HostInfo({"168.1.1.3", "host-C3"}));
-    BOOST_CHECK_EQUAL(workerC.exporterHost, HostInfo({"168.1.1.4", "host-C4"}));
-    BOOST_CHECK_EQUAL(workerC.httpLoaderHost, HostInfo({"168.1.1.5", "host-C5"}));
-    BOOST_CHECK_EQUAL(workerC.qservWorker.host, HostInfo({"168.1.1.6", "host-C6"}));
+    BOOST_CHECK_EQUAL(workerC.svcHost, ConfigHost({"168.1.1.1", "host-C1"}));
+    BOOST_CHECK_EQUAL(workerC.fsHost, ConfigHost({"168.1.1.2", "host-C2"}));
+    BOOST_CHECK_EQUAL(workerC.loaderHost, ConfigHost({"168.1.1.3", "host-C3"}));
+    BOOST_CHECK_EQUAL(workerC.exporterHost, ConfigHost({"168.1.1.4", "host-C4"}));
+    BOOST_CHECK_EQUAL(workerC.httpLoaderHost, ConfigHost({"168.1.1.5", "host-C5"}));
+    BOOST_CHECK_EQUAL(workerC.qservWorker.host, ConfigHost({"168.1.1.6", "host-C6"}));
     BOOST_CHECK_EQUAL(workerC.qservWorker.port, 53005U);
 
     // Adding a new worker with well formed and unique parameters.
-    WorkerInfo workerD;
+    ConfigWorker workerD;
     workerD.name = "worker-D";
     workerD.isEnabled = true;
     workerD.isReadOnly = true;
 
     BOOST_REQUIRE_NO_THROW(config->addWorker(workerD));
     BOOST_CHECK_THROW(config->addWorker(workerD), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(workerD = config->workerInfo("worker-D"));
+    BOOST_REQUIRE_NO_THROW(workerD = config->worker("worker-D"));
     BOOST_CHECK(workerD.name == "worker-D");
     BOOST_CHECK(workerD.isEnabled);
     BOOST_CHECK(workerD.isReadOnly);
 
     // Adding a new worker with incomplete set of specs. The only required
     // attribute is the name of the worker.
-    WorkerInfo workerE;
+    ConfigWorker workerE;
     workerE.name = "worker-E";
-    WorkerInfo addedWorkerE;
+    ConfigWorker addedWorkerE;
     BOOST_REQUIRE_NO_THROW(addedWorkerE = config->addWorker(workerE));
     BOOST_CHECK(addedWorkerE.name == workerE.name);
     BOOST_CHECK(addedWorkerE.isEnabled == workerE.isEnabled);
@@ -526,15 +526,15 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK_THROW(config->deleteWorker("worker-C"), std::invalid_argument);
 
     // Updating worker's status.
-    WorkerInfo disabledWorker;
-    BOOST_REQUIRE_NO_THROW(disabledWorker = config->workerInfo("worker-B"));
+    ConfigWorker disabledWorker;
+    BOOST_REQUIRE_NO_THROW(disabledWorker = config->worker("worker-B"));
     disabledWorker.isEnabled = false;
     BOOST_REQUIRE_NO_THROW(disabledWorker = config->updateWorker(disabledWorker));
     BOOST_CHECK(disabledWorker.name == "worker-B");
     BOOST_CHECK(!disabledWorker.isEnabled);
 
-    WorkerInfo enabledWorker;
-    BOOST_REQUIRE_NO_THROW(enabledWorker = config->workerInfo("worker-B"));
+    ConfigWorker enabledWorker;
+    BOOST_REQUIRE_NO_THROW(enabledWorker = config->worker("worker-B"));
     enabledWorker.isEnabled = true;
     BOOST_REQUIRE_NO_THROW(enabledWorker = config->updateWorker(enabledWorker));
     BOOST_CHECK(enabledWorker.name == "worker-B");
@@ -544,22 +544,22 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK(disabledWorker.name == "worker-B");
     BOOST_CHECK(!disabledWorker.isEnabled);
 
-    WorkerInfo readOnlyWorker;
-    BOOST_REQUIRE_NO_THROW(readOnlyWorker = config->workerInfo("worker-B"));
+    ConfigWorker readOnlyWorker;
+    BOOST_REQUIRE_NO_THROW(readOnlyWorker = config->worker("worker-B"));
     readOnlyWorker.isReadOnly = true;
     BOOST_REQUIRE_NO_THROW(readOnlyWorker = config->updateWorker(readOnlyWorker));
     BOOST_CHECK(readOnlyWorker.name == "worker-B");
     BOOST_CHECK(readOnlyWorker.isReadOnly);
 
-    WorkerInfo readWriteWorker;
-    BOOST_REQUIRE_NO_THROW(readWriteWorker = config->workerInfo("worker-B"));
+    ConfigWorker readWriteWorker;
+    BOOST_REQUIRE_NO_THROW(readWriteWorker = config->worker("worker-B"));
     readWriteWorker.isReadOnly = false;
     BOOST_REQUIRE_NO_THROW(readWriteWorker = config->updateWorker(readWriteWorker));
     BOOST_CHECK(readWriteWorker.name == "worker-B");
     BOOST_CHECK(!readWriteWorker.isReadOnly);
 
-    WorkerInfo updatedWorker;
-    BOOST_REQUIRE_NO_THROW(updatedWorker = config->workerInfo("worker-A"));
+    ConfigWorker updatedWorker;
+    BOOST_REQUIRE_NO_THROW(updatedWorker = config->worker("worker-A"));
     BOOST_REQUIRE_NO_THROW(updatedWorker = config->updateWorker(updatedWorker));
 }
 

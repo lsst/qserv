@@ -61,14 +61,14 @@ string MessengerConnector::_state2string(MessengerConnector::State state) {
 
 MessengerConnector::Ptr MessengerConnector::create(shared_ptr<Configuration> const& config,
                                                    boost::asio::io_service& io_service,
-                                                   string const& worker) {
-    return MessengerConnector::Ptr(new MessengerConnector(config, io_service, worker));
+                                                   string const& workerName) {
+    return MessengerConnector::Ptr(new MessengerConnector(config, io_service, workerName));
 }
 
 MessengerConnector::MessengerConnector(shared_ptr<Configuration> const& config,
-                                       boost::asio::io_service& io_service, string const& worker)
+                                       boost::asio::io_service& io_service, string const& workerName)
         : _config(config),
-          _worker(worker),
+          _workerName(workerName),
           _bufferCapacityBytes(config->get<size_t>("common", "request-buf-size-bytes")),
           _timerIvalSec(config->get<unsigned int>("common", "request-retry-interval-sec")),
           _state(State::STATE_INITIAL),
@@ -242,12 +242,12 @@ void MessengerConnector::_resolve(replica::Lock const& lock) {
     // aren't set or have expired we shall still proceed to the resover. Any failures
     // in the resolver or subsequent connection attempts will trigger the standard
     // recovery sequence that begins with a timeout and a subsequent restart.
-    WorkerInfo const workerInfo = _config->workerInfo(_worker);
-    if (workerInfo.svcHost.addr.empty() || (workerInfo.svcPort == 0)) {
+    ConfigWorker const worker = _config->worker(_workerName);
+    if (worker.svcHost.addr.empty() || (worker.svcPort == 0)) {
         LOGS(_log, LOG_LVL_WARN,
-             _context() << __func__ << "  no connection info available for worker=" << _worker);
+             _context() << __func__ << "  no connection info available for worker=" << _workerName);
     }
-    boost::asio::ip::tcp::resolver::query query(workerInfo.svcHost.addr, to_string(workerInfo.svcPort));
+    boost::asio::ip::tcp::resolver::query query(worker.svcHost.addr, to_string(worker.svcPort));
     _resolver.async_resolve(query, bind(&MessengerConnector::_resolved, shared_from_this(), _1, _2));
     _state = STATE_CONNECTING;
 }
@@ -535,7 +535,7 @@ bool MessengerConnector::_failed(boost::system::error_code const& ec) const {
 }
 
 string MessengerConnector::_context() const {
-    return "MESSENGER-CONNECTION [worker=" + _worker + ", state=" + _state2string(_state) + "]  ";
+    return "MESSENGER-CONNECTION [worker=" + _workerName + ", state=" + _state2string(_state) + "]  ";
 }
 
 }  // namespace lsst::qserv::replica

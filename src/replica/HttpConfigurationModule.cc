@@ -138,11 +138,11 @@ json HttpConfigurationModule::_updateWorker() {
     checkApiVersion(__func__, 12);
 
     auto const config = controller()->serviceProvider()->config();
-    auto const worker = params().at("worker");
+    auto const workerName = params().at("worker");
 
     // Update requested worker attribute changes into the latest transient state
     // of the worker. Then update worker's configuration in the database.
-    WorkerInfo info = config->workerInfo(worker);
+    ConfigWorker worker = config->worker(workerName);
 
     // Get optional parameters of the query. Note the default values which
     // are expected to be replaced by actual values provided by a client in
@@ -150,13 +150,13 @@ json HttpConfigurationModule::_updateWorker() {
     auto const updateBool = [&](string const& func, string const& name, bool& out) {
         int const val = query().optionalInt(name);
         debug(func, name + "=" + to_string(val));
-        WorkerInfo::update(val, out);
+        ConfigWorker::update(val, out);
     };
-    updateBool(__func__, "is-enabled", info.isEnabled);
-    updateBool(__func__, "is-read-only", info.isReadOnly);
+    updateBool(__func__, "is-enabled", worker.isEnabled);
+    updateBool(__func__, "is-read-only", worker.isReadOnly);
 
     json result;
-    result["config"]["workers"][worker] = config->updateWorker(info).toJson();
+    result["config"]["workers"][workerName] = config->updateWorker(worker).toJson();
     return result;
 }
 
@@ -164,8 +164,8 @@ json HttpConfigurationModule::_deleteWorker() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
-    auto const worker = params().at("worker");
-    controller()->serviceProvider()->config()->deleteWorker(worker);
+    auto const workerName = params().at("worker");
+    controller()->serviceProvider()->config()->deleteWorker(workerName);
     return json::object();
 }
 
@@ -173,18 +173,18 @@ json HttpConfigurationModule::_addWorker() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
-    WorkerInfo info;
-    info.name = body().required<string>("worker");
-    info.isEnabled = body().required<int>("is-enabled") != 0;
-    info.isReadOnly = body().required<int>("is-read-only") != 0;
+    ConfigWorker worker;
+    worker.name = body().required<string>("worker");
+    worker.isEnabled = body().required<int>("is-enabled") != 0;
+    worker.isReadOnly = body().required<int>("is-read-only") != 0;
 
-    debug(__func__, "name=" + info.name);
-    debug(__func__, "is-enabled=" + to_string(info.isEnabled ? 1 : 0));
-    debug(__func__, "is-read-only=" + to_string(info.isReadOnly ? 1 : 0));
+    debug(__func__, "name=" + worker.name);
+    debug(__func__, "is-enabled=" + to_string(worker.isEnabled ? 1 : 0));
+    debug(__func__, "is-read-only=" + to_string(worker.isReadOnly ? 1 : 0));
 
     json result;
-    result["config"]["workers"][info.name] =
-            controller()->serviceProvider()->config()->addWorker(info).toJson();
+    result["config"]["workers"][worker.name] =
+            controller()->serviceProvider()->config()->addWorker(worker).toJson();
     return result;
 }
 
@@ -192,8 +192,8 @@ json HttpConfigurationModule::_deleteFamily() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
-    auto const family = params().at("family");
-    controller()->serviceProvider()->config()->deleteDatabaseFamily(family);
+    auto const familyName = params().at("family");
+    controller()->serviceProvider()->config()->deleteDatabaseFamily(familyName);
     return json::object();
 }
 
@@ -201,35 +201,35 @@ json HttpConfigurationModule::_addFamily() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
-    DatabaseFamilyInfo info;
-    info.name = body().required<string>("name");
-    info.replicationLevel = body().required<unsigned int>("replication_level");
-    info.numStripes = body().required<unsigned int>("num_stripes");
-    info.numSubStripes = body().required<unsigned int>("num_sub_stripes");
-    info.overlap = body().required<double>("overlap");
+    DatabaseFamilyInfo family;
+    family.name = body().required<string>("name");
+    family.replicationLevel = body().required<unsigned int>("replication_level");
+    family.numStripes = body().required<unsigned int>("num_stripes");
+    family.numSubStripes = body().required<unsigned int>("num_sub_stripes");
+    family.overlap = body().required<double>("overlap");
 
-    debug(__func__, "name=" + info.name);
-    debug(__func__, "replication_level=" + to_string(info.replicationLevel));
-    debug(__func__, "num_stripes=" + to_string(info.numStripes));
-    debug(__func__, "num_sub_stripes=" + to_string(info.numSubStripes));
-    debug(__func__, "overlap=" + to_string(info.overlap));
+    debug(__func__, "name=" + family.name);
+    debug(__func__, "replication_level=" + to_string(family.replicationLevel));
+    debug(__func__, "num_stripes=" + to_string(family.numStripes));
+    debug(__func__, "num_sub_stripes=" + to_string(family.numSubStripes));
+    debug(__func__, "overlap=" + to_string(family.overlap));
 
-    if (0 == info.replicationLevel) {
+    if (0 == family.replicationLevel) {
         throw http::Error(__func__, "'replication_level' can't be equal to 0");
     }
-    if (0 == info.numStripes) {
+    if (0 == family.numStripes) {
         throw http::Error(__func__, "'num_stripes' can't be equal to 0");
     }
-    if (0 == info.numSubStripes) {
+    if (0 == family.numSubStripes) {
         throw http::Error(__func__, "'num_sub_stripes' can't be equal to 0");
     }
-    if (info.overlap <= 0) {
+    if (family.overlap <= 0) {
         throw http::Error(__func__, "'overlap' can't be less or equal to 0");
     }
 
     json result;
-    result["config"]["database_families"][info.name] =
-            controller()->serviceProvider()->config()->addDatabaseFamily(info).toJson();
+    result["config"]["database_families"][family.name] =
+            controller()->serviceProvider()->config()->addDatabaseFamily(family).toJson();
     return result;
 }
 
@@ -246,15 +246,15 @@ json HttpConfigurationModule::_addDatabase() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
-    string const database = body().required<string>("database");
-    string const family = body().required<string>("family");
+    string const databaseName = body().required<string>("database");
+    string const familyName = body().required<string>("family");
 
-    debug(__func__, "database=" + database);
-    debug(__func__, "family=" + family);
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "family=" + familyName);
 
     json result;
-    result["config"]["databases"][database] =
-            controller()->serviceProvider()->config()->addDatabase(database, family).toJson();
+    result["config"]["databases"][databaseName] =
+            controller()->serviceProvider()->config()->addDatabase(databaseName, familyName).toJson();
     return result;
 }
 

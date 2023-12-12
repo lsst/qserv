@@ -61,22 +61,22 @@ ostream& operator<<(ostream& os, DirectorIndexRequestInfo const& info) {
 
 DirectorIndexRequest::Ptr DirectorIndexRequest::create(
         ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-        string const& worker, string const& database, string const& directorTable, unsigned int chunk,
+        string const& workerName, string const& database, string const& directorTable, unsigned int chunk,
         bool hasTransactions, TransactionId transactionId, CallbackType const& onFinish, int priority,
         bool keepTracking, shared_ptr<Messenger> const& messenger) {
     return DirectorIndexRequest::Ptr(new DirectorIndexRequest(
-            serviceProvider, io_service, worker, database, directorTable, chunk, hasTransactions,
+            serviceProvider, io_service, workerName, database, directorTable, chunk, hasTransactions,
             transactionId, onFinish, priority, keepTracking, messenger));
 }
 
 DirectorIndexRequest::DirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                                           boost::asio::io_service& io_service, string const& worker,
+                                           boost::asio::io_service& io_service, string const& workerName,
                                            string const& database, string const& directorTable,
                                            unsigned int chunk, bool hasTransactions,
                                            TransactionId transactionId, CallbackType const& onFinish,
                                            int priority, bool keepTracking,
                                            shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "INDEX", worker, priority, keepTracking,
+        : RequestMessenger(serviceProvider, io_service, "INDEX", workerName, priority, keepTracking,
                            false,  // allowDuplicate
                            true,   // disposeRequired
                            messenger),
@@ -115,7 +115,7 @@ void DirectorIndexRequest::startImpl(replica::Lock const& lock) { _sendInitialRe
 void DirectorIndexRequest::_sendInitialRequest(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " "
-                   << " worker: " << worker() << " database: " << database()
+                   << " worker: " << workerName() << " database: " << database()
                    << " directorTable: " << directorTable() << " chunk: " << chunk() << " hasTransactions: "
                    << (hasTransactions() ? "true" : "false") << " transactionId: " << transactionId());
 
@@ -187,7 +187,7 @@ void DirectorIndexRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<DirectorIndexRequest>();
     messenger()->send<ProtocolResponseDirectorIndex>(
-            worker(), id(), priority(), buffer(),
+            workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseDirectorIndex const& response) {
                 self->_analyze(success, response);
             });

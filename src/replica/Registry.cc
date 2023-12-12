@@ -58,16 +58,16 @@ Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
           _baseUrl("http://" + serviceProvider->config()->get<string>("registry", "host") + ":" +
                    to_string(serviceProvider->config()->get<uint16_t>("registry", "port"))) {}
 
-vector<WorkerInfo> Registry::workers() const {
-    vector<WorkerInfo> coll;
+vector<ConfigWorker> Registry::workers() const {
+    vector<ConfigWorker> coll;
     string const resource = "/services?instance_id=" + _serviceProvider->instanceId();
     json const resultJson = _request(http::Method::GET, resource);
-    for (auto const& [name, workerJson] : resultJson.at("services").at("workers").items()) {
-        WorkerInfo worker;
-        if (_serviceProvider->config()->isKnownWorker(name)) {
-            worker = _serviceProvider->config()->workerInfo(name);
+    for (auto const& [workerName, workerJson] : resultJson.at("services").at("workers").items()) {
+        ConfigWorker worker;
+        if (_serviceProvider->config()->isKnownWorker(workerName)) {
+            worker = _serviceProvider->config()->worker(workerName);
         } else {
-            worker.name = name;
+            worker.name = workerName;
         }
         if (workerJson.contains("replication")) {
             json const& replicationWorker = workerJson.at("replication");
