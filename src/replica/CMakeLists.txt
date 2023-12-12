@@ -26,6 +26,7 @@ target_sources(replica PRIVATE
     Common.cc
     ConfigApp.cc
     ConfigAppBase.cc
+    ConfigCzar.cc
     ConfigDatabase.cc
     ConfigDatabaseFamily.cc
     ConfigHost.cc

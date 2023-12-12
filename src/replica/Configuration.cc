@@ -290,13 +290,14 @@ void Configuration::_load(replica::Lock const& lock, json const& obj, bool reset
         _workers.clear();
         _databaseFamilies.clear();
         _databases.clear();
+        _czars.clear();
     }
     _configUrl = string();
     _connectionPtr = nullptr;
 
     // Validate and update configuration parameters.
     // Catch exceptions for error reporting.
-    ConfigParserJSON parser(_data, _workers, _databaseFamilies, _databases);
+    ConfigParserJSON parser(_data, _workers, _databaseFamilies, _databases, _czars);
     parser.parse(obj);
 
     bool const showPassword = false;
@@ -308,6 +309,7 @@ void Configuration::_load(replica::Lock const& lock, string const& configUrl, bo
         _workers.clear();
         _databaseFamilies.clear();
         _databases.clear();
+        _czars.clear();
     }
     _configUrl = configUrl;
 
@@ -727,6 +729,65 @@ ConfigWorker Configuration::updateWorker(ConfigWorker const& worker) {
     throw invalid_argument(_context(__func__) + " unknown worker '" + worker.name + "'.");
 }
 
+vector<std::string> Configuration::allCzars() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& [name, czar] : _czars) {
+        names.push_back(name);
+    }
+    return names;
+}
+
+size_t Configuration::numCzars() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _czars.size();
+}
+
+bool Configuration::isKnownCzar(string const& czarName) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _czars.count(czarName) != 0;
+}
+
+ConfigCzar Configuration::czar(string const& czarName) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto const itr = _czars.find(czarName);
+    if (itr != _czars.cend()) return itr->second;
+    throw invalid_argument(_context(__func__) + " unknown Czar '" + czarName + "'.");
+}
+
+ConfigCzar Configuration::addCzar(ConfigCzar const& czar) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (czar.name.empty()) {
+        throw invalid_argument(_context(__func__) + " Czar name was not provided.");
+    }
+    if (_czars.find(czar.name) == _czars.cend()) {
+        _czars[czar.name] = czar;
+        return czar;
+    }
+    throw invalid_argument(_context(__func__) + " Czar '" + czar.name + "' already exists.");
+}
+
+void Configuration::deleteCzar(string const& czarName) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto itr = _czars.find(czarName);
+    if (itr == _czars.end()) {
+        throw invalid_argument(_context(__func__) + " unknown Czar '" + czarName + "'.");
+    }
+    _czars.erase(itr);
+}
+
+ConfigCzar Configuration::updateCzar(ConfigCzar const& czar) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (_czars.find(czar.name) != _czars.end()) {
+        if (czar.name.empty()) {
+            throw invalid_argument(_context(__func__) + " Czar name was not provided.");
+        }
+        _czars[czar.name] = czar;
+        return czar;
+    }
+    throw invalid_argument(_context(__func__) + " unknown Czar '" + czar.name + "'.");
+}
+
 json Configuration::toJson(bool showPassword) const {
     replica::Lock const lock(_mtx, _context(__func__));
     return _toJson(lock, showPassword);
@@ -746,6 +807,10 @@ json Configuration::_toJson(replica::Lock const& lock, bool showPassword) const 
     json& databases = data["databases"];
     for (auto&& [name, database] : _databases) {
         databases.push_back(database.toJson());
+    }
+    json& czarsJson = data["czars"];
+    for (auto&& [name, czar] : _czars) {
+        czarsJson.push_back(czar.toJson());
     }
     return data;
 }

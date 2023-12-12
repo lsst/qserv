@@ -36,7 +36,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                "request-timeout-sec", "job-timeout-sec", "job-heartbeat-sec", "empty-chunks-dir",
                "max-repl-level", "worker-evict-priority-level", "health-monitor-priority-level",
                "ingest-priority-level", "catalog-management-priority-level", "auto-register-workers",
-               "ingest-job-monitor-ival-sec", "num-director-index-connections", "director-index-engine"}},
+               "auto-register-czars", "ingest-job-monitor-ival-sec", "num-director-index-connections",
+               "director-index-engine"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
                "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
@@ -95,6 +96,7 @@ json ConfigTestData::data() {
                                              {"ingest-priority-level", 3},
                                              {"catalog-management-priority-level", 4},
                                              {"auto-register-workers", 1},
+                                             {"auto-register-czars", 0},
                                              {"ingest-job-monitor-ival-sec", 5},
                                              {"num-director-index-connections", 6},
                                              {"director-index-engine", "MyISAM"}});
@@ -158,7 +160,7 @@ json ConfigTestData::data() {
                                     {"http-loader-tmp-dir", "/tmp/http/A"}});
         worker["qserv-worker"]["host"] = json::object({{"addr", "127.0.0.1"}, {"name", "host-A"}});
         worker["qserv-worker"]["port"] = 53004;
-        obj["workers"].emplace_back(worker);
+        obj["workers"].push_back(worker);
     }
     {
         // This configuration is incomplete. An assumption is that the corresponding
@@ -175,7 +177,7 @@ json ConfigTestData::data() {
                                     {"http-loader-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}}});
         worker["qserv-worker"]["host"] = json::object({{"addr", "168.1.1.1"}, {"name", "host-B"}});
         worker["qserv-worker"]["port"] = 53004;
-        obj["workers"].emplace_back(worker);
+        obj["workers"].push_back(worker);
     }
     {
         // This configuration is incomplete. An assumption is that the corresponding
@@ -191,7 +193,7 @@ json ConfigTestData::data() {
                                     {"http-loader-host", {{"addr", "168.1.1.5"}, {"name", "host-C5"}}}});
         worker["qserv-worker"]["host"] = json::object({{"addr", "168.1.1.6"}, {"name", "host-C6"}});
         worker["qserv-worker"]["port"] = 53005;
-        obj["workers"].emplace_back(worker);
+        obj["workers"].push_back(worker);
     }
     obj["database_families"] = json::array();
     {
@@ -200,7 +202,7 @@ json ConfigTestData::data() {
                                     {"num_stripes", 11},
                                     {"num_sub_stripes", 12},
                                     {"overlap", 0.01667}});
-        obj["database_families"].emplace_back(family);
+        obj["database_families"].push_back(family);
     }
     {
         json family = json::object({{"name", "test"},
@@ -208,7 +210,7 @@ json ConfigTestData::data() {
                                     {"num_stripes", 14},
                                     {"num_sub_stripes", 15},
                                     {"overlap", 0.001}});
-        obj["database_families"].emplace_back(family);
+        obj["database_families"].push_back(family);
     }
     obj["databases"] = json::array();
     {
@@ -235,11 +237,11 @@ json ConfigTestData::data() {
                                        {"publish_time", 111},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id11"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl11"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra11"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id11"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl11"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra11"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "MetaTable11"},
@@ -247,9 +249,9 @@ json ConfigTestData::data() {
                                        {"is_published", 1},
                                        {"create_time", 120},
                                        {"publish_time", 121}});
-            database["tables"].emplace_back(table);
+            database["tables"].push_back(table);
         }
-        obj["databases"].emplace_back(database);
+        obj["databases"].push_back(database);
     }
     {
         json database = json::object({{"database", "db2"},
@@ -275,11 +277,11 @@ json ConfigTestData::data() {
                                        {"publish_time", 211},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id21"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl21"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra21"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id21"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl21"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra21"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "Table22"},
@@ -298,10 +300,10 @@ json ConfigTestData::data() {
                                        {"publish_time", 221},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id22"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl22"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra22"}, {"type", "DOUBLE NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id22"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl22"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra22"}, {"type", "DOUBLE NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "MetaTable21"},
@@ -309,7 +311,7 @@ json ConfigTestData::data() {
                                        {"is_published", 1},
                                        {"create_time", 2210},
                                        {"publish_time", 2211}});
-            database["tables"].emplace_back(table);
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "MetaTable22"},
@@ -317,9 +319,9 @@ json ConfigTestData::data() {
                                        {"is_published", 1},
                                        {"create_time", 2220},
                                        {"publish_time", 2221}});
-            database["tables"].emplace_back(table);
+            database["tables"].push_back(table);
         }
-        obj["databases"].emplace_back(database);
+        obj["databases"].push_back(database);
     }
     {
         json database = json::object({{"database", "db3"},
@@ -345,11 +347,11 @@ json ConfigTestData::data() {
                                        {"publish_time", 311},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id31"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl31"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra31"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id31"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl31"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra31"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "Table32"},
@@ -368,10 +370,10 @@ json ConfigTestData::data() {
                                        {"publish_time", 321},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id32"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl32"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra32"}, {"type", "DOUBLE NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id32"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl32"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra32"}, {"type", "DOUBLE NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "Table33"},
@@ -390,8 +392,8 @@ json ConfigTestData::data() {
                                        {"publish_time", 331},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id33"}, {"type", "BIGINT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id33"}, {"type", "BIGINT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "MetaTable31"},
@@ -399,7 +401,7 @@ json ConfigTestData::data() {
                                        {"is_published", 1},
                                        {"create_time", 3310},
                                        {"publish_time", 3311}});
-            database["tables"].emplace_back(table);
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "MetaTable32"},
@@ -407,7 +409,7 @@ json ConfigTestData::data() {
                                        {"is_published", 1},
                                        {"create_time", 3320},
                                        {"publish_time", 3321}});
-            database["tables"].emplace_back(table);
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "MetaTable33"},
@@ -415,9 +417,9 @@ json ConfigTestData::data() {
                                        {"is_published", 0},
                                        {"create_time", 3330},
                                        {"publish_time", 0}});
-            database["tables"].emplace_back(table);
+            database["tables"].push_back(table);
         }
-        obj["databases"].emplace_back(database);
+        obj["databases"].push_back(database);
     }
     {
         json database = json::object({{"database", "db4"},
@@ -443,11 +445,11 @@ json ConfigTestData::data() {
                                        {"publish_time", 411},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id41"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl41"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra41"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id41"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl41"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra41"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "Table42"},
@@ -466,11 +468,11 @@ json ConfigTestData::data() {
                                        {"publish_time", 421},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id42"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl42"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra42"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id42"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl42"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra42"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "RefMatch43"},
@@ -489,10 +491,10 @@ json ConfigTestData::data() {
                                        {"publish_time", 0},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "Table41_id"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "Table42_id"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "flag"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "Table41_id"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "Table42_id"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "flag"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "RefMatch44"},
@@ -511,12 +513,12 @@ json ConfigTestData::data() {
                                        {"publish_time", 0},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "Table21_id"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "Table31_id"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "flag"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "Table21_id"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "Table31_id"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "flag"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
-        obj["databases"].emplace_back(database);
+        obj["databases"].push_back(database);
     }
     {
         json database = json::object({{"database", "db5"},
@@ -542,13 +544,13 @@ json ConfigTestData::data() {
                                        {"publish_time", 511},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id51"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl51"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra51"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id51"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl51"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra51"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
-        obj["databases"].emplace_back(database);
+        obj["databases"].push_back(database);
     }
     {
         json database = json::object({{"database", "db6"},
@@ -574,11 +576,11 @@ json ConfigTestData::data() {
                                        {"publish_time", 0},
                                        {"columns", json::array()}});
             json& columns = table["columns"];
-            columns.emplace_back(json::object({{"name", "id61"}, {"type", "BIGINT NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "decl61"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "ra61"}, {"type", "DOUBLE NOT NULL"}}));
-            columns.emplace_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
-            database["tables"].emplace_back(table);
+            columns.push_back(json::object({{"name", "id61"}, {"type", "BIGINT NOT NULL"}}));
+            columns.push_back(json::object({{"name", "decl61"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "ra61"}, {"type", "DOUBLE NOT NULL"}}));
+            columns.push_back(json::object({{"name", "subChunkId"}, {"type", "INT NOT NULL"}}));
+            database["tables"].push_back(table);
         }
         {
             json table = json::object({{"name", "MetaTable61"},
@@ -586,9 +588,16 @@ json ConfigTestData::data() {
                                        {"is_published", 1},
                                        {"create_time", 6610},
                                        {"publish_time", 6611}});
-            database["tables"].emplace_back(table);
+            database["tables"].push_back(table);
         }
-        obj["databases"].emplace_back(database);
+        obj["databases"].push_back(database);
+    }
+    obj["czars"] = json::array();
+    {
+        json czar = json::object({{"name", "default"},
+                                  {"host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
+                                  {"port", 59001}});
+        obj["czars"].push_back(czar);
     }
     return obj;
 }

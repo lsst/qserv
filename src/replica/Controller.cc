@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "replica/Common.h"
+#include "replica/ConfigCzar.h"
 #include "replica/Configuration.h"
 #include "replica/ConfigWorker.h"
 #include "replica/DatabaseServices.h"
@@ -87,7 +88,6 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
         auto const config = ptr->serviceProvider()->config();
         bool const autoRegisterWorkers =
                 config->get<unsigned int>("controller", "auto-register-workers") != 0;
-
         vector<ConfigWorker> workers;
         try {
             workers = ptr->serviceProvider()->registry()->workers();
@@ -117,6 +117,37 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
                 LOGS(_log, LOG_LVL_WARN,
                      context << "failed to process worker info, worker '" << worker.name
                              << "', ex: " << ex.what());
+            }
+        }
+        bool const autoRegisterCzars = config->get<unsigned int>("controller", "auto-register-czars") != 0;
+        vector<ConfigCzar> czars;
+        try {
+            czars = ptr->serviceProvider()->registry()->czars();
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN,
+                 context << "failed to pull Czar info from the registry, ex: " << ex.what());
+        }
+        for (auto&& czar : czars) {
+            try {
+                if (config->isKnownCzar(czar.name)) {
+                    auto const prevCzar = config->czar(czar.name);
+                    if (prevCzar != czar) {
+                        LOGS(_log, LOG_LVL_INFO,
+                             context << "Czar '" << czar.name << "' logged in from '" << czar.host
+                                     << "'. Updating Czar's record in the configuration.");
+                        config->updateCzar(czar);
+                    }
+                } else {
+                    if (autoRegisterCzars) {
+                        LOGS(_log, LOG_LVL_INFO,
+                             context << "new Czar '" << czar.name << "' logged in from '" << czar.host
+                                     << "'. Registering new Czar in the configuration.");
+                        config->addCzar(czar);
+                    }
+                }
+            } catch (exception const& ex) {
+                LOGS(_log, LOG_LVL_WARN,
+                     context << "failed to process Czar info, Czar '" << czar.name << "', ex: " << ex.what());
             }
         }
         this_thread::sleep_for(

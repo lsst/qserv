@@ -136,6 +136,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<int>("controller", "ingest-priority-level") == 3);
     BOOST_CHECK(config->get<int>("controller", "catalog-management-priority-level") == 4);
     BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-workers") == 1);
+    BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-czars") == 0);
     BOOST_CHECK(config->get<unsigned int>("controller", "ingest-job-monitor-ival-sec") == 5);
     BOOST_CHECK(config->get<unsigned int>("controller", "num-director-index-connections") == 6);
     BOOST_CHECK(config->get<string>("controller", "director-index-engine") == "MyISAM");
@@ -273,6 +274,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "auto-register-workers", 0));
     BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-workers") == 0);
+
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "auto-register-czars", 1));
+    BOOST_CHECK(config->get<unsigned int>("controller", "auto-register-czars") == 1);
 
     BOOST_CHECK_THROW(config->set<uint16_t>("controller", "ingest-job-monitor-ival-sec", 0),
                       std::invalid_argument);
@@ -1431,6 +1435,106 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingFamilies) {
     BOOST_CHECK(config->isKnownDatabase("db4"));
     BOOST_CHECK(config->isKnownDatabase("db5"));
     BOOST_CHECK(config->isKnownDatabase("db6"));
+}
+
+BOOST_AUTO_TEST_CASE(ConfigurationTestCzarOperators) {
+    LOGS_INFO("Testing Czar comparison operators");
+
+    ConfigCzar c1;
+    ConfigCzar c2;
+    BOOST_CHECK(c1 == c2);
+    BOOST_CHECK(!(c1 != c2));
+
+    c1.name = "c1";
+    c2.name = "c2";
+    BOOST_CHECK(c1 != c2);
+    BOOST_CHECK(!(c1 == c2));
+}
+
+BOOST_AUTO_TEST_CASE(ConfigurationTestCzars) {
+    LOGS_INFO("Testing Czar collection");
+
+    vector<string> czars1;
+    BOOST_REQUIRE_NO_THROW(czars1 = config->allCzars());
+    BOOST_CHECK_EQUAL(czars1.size(), 1U);
+    BOOST_CHECK(czars1 == vector<string>({"default"}));
+    BOOST_CHECK_EQUAL(config->numCzars(), 1U);
+
+    for (auto&& name : vector<string>({"default"})) {
+        BOOST_CHECK(config->isKnownCzar(name));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
+    LOGS_INFO("Testing Czar parameters");
+
+    ConfigHost const hostA({"127.0.0.1", "host-A"});
+    BOOST_CHECK_EQUAL(hostA.addr, "127.0.0.1");
+    BOOST_CHECK_EQUAL(hostA.name, "host-A");
+
+    ConfigCzar czarDefault;
+    BOOST_REQUIRE_NO_THROW(czarDefault = config->czar("default"));
+    BOOST_CHECK_EQUAL(czarDefault.name, "default");
+    BOOST_CHECK_EQUAL(czarDefault.host, hostA);
+    BOOST_CHECK_EQUAL(czarDefault.port, 59001U);
+
+    // Adding a new Czar with well formed and unique parameters.
+    ConfigHost const hostB({"192.10.10.12", "host-B"});
+    ConfigCzar czarSecond;
+    czarSecond.name = "second";
+    czarSecond.host = hostB;
+    czarSecond.port = 59002U;
+
+    BOOST_REQUIRE_NO_THROW(config->addCzar(czarSecond));
+    BOOST_REQUIRE_NO_THROW(czarSecond = config->czar("second"));
+    BOOST_CHECK(czarSecond.name == "second");
+    BOOST_CHECK_EQUAL(czarSecond.host, hostB);
+    BOOST_CHECK_EQUAL(czarSecond.port, 59002U);
+    BOOST_CHECK_EQUAL(config->numCzars(), 2U);
+
+    BOOST_CHECK_THROW(config->addCzar(czarSecond), std::invalid_argument);
+    BOOST_CHECK_EQUAL(config->numCzars(), 2U);
+
+    // Adding a new Czar with incomplete set of specs. The only required
+    // attribute is the name of the Czar.
+    ConfigCzar czarIncomplete;
+    czarIncomplete.name = "incomplete";
+    ConfigCzar addedCzarIncomplete;
+    BOOST_REQUIRE_NO_THROW(addedCzarIncomplete = config->addCzar(czarIncomplete));
+    BOOST_CHECK(addedCzarIncomplete.name == czarIncomplete.name);
+    BOOST_CHECK_EQUAL(addedCzarIncomplete.host, czarIncomplete.host);
+    BOOST_CHECK_EQUAL(addedCzarIncomplete.port, czarIncomplete.port);
+    BOOST_CHECK_EQUAL(config->numCzars(), 3U);
+
+    // Make sure the following attempt is blocked and it has no side effects.
+    ConfigCzar czarUnknown;
+    czarUnknown.name = "unknown";
+    BOOST_CHECK_THROW(config->updateCzar(czarUnknown), std::invalid_argument);
+    BOOST_CHECK_EQUAL(config->numCzars(), 3U);
+
+    // Updating an existing Czar
+    ConfigHost const hostC({"192.1.1.1", "host-C"});
+    addedCzarIncomplete.host = hostC;
+    addedCzarIncomplete.port = 59003U;
+    ConfigCzar updatedIncompleteCzar;
+    BOOST_REQUIRE_NO_THROW(updatedIncompleteCzar = config->updateCzar(addedCzarIncomplete));
+    BOOST_CHECK_EQUAL(updatedIncompleteCzar.name, "incomplete");
+    BOOST_CHECK_EQUAL(updatedIncompleteCzar.host, hostC);
+    BOOST_CHECK_EQUAL(updatedIncompleteCzar.port, 59003U);
+    BOOST_CHECK_EQUAL(config->numCzars(), 3U);
+
+    // Adding a new Czar with incorrect spec (missing mandatory name).
+    ConfigCzar czarEmpty;
+    BOOST_CHECK_THROW(config->addCzar(czarEmpty), std::invalid_argument);
+    BOOST_CHECK_EQUAL(config->numCzars(), 3U);
+
+    // Deleting Czars.
+    BOOST_REQUIRE_NO_THROW(config->deleteCzar("second"));
+    BOOST_CHECK(!config->isKnownCzar("second"));
+
+    BOOST_CHECK_EQUAL(config->numCzars(), 2U);
+    BOOST_CHECK_THROW(config->deleteCzar("second"), std::invalid_argument);
+    BOOST_CHECK_EQUAL(config->numCzars(), 2U);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

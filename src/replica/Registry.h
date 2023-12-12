@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "http/Method.h"
+#include "replica/ConfigCzar.h"
 #include "replica/ConfigWorker.h"
 #include "replica/ServiceProvider.h"
 
@@ -78,6 +79,10 @@ public:
      * @see method Registry::_request for other exceptions.
      */
     void removeWorker(std::string const& name) const;
+
+    /// @return All Czars
+    /// @see method Registry::_request for other exceptions.
+    std::vector<ConfigCzar> czars() const;
 
 private:
     /// @see Registry::create()

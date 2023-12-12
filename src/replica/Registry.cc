@@ -135,6 +135,25 @@ void Registry::removeWorker(string const& name) const {
     _request(http::Method::DELETE, "/worker/" + name, request);
 }
 
+vector<ConfigCzar> Registry::czars() const {
+    vector<ConfigCzar> coll;
+    string const resource = "/services?instance_id=" + _serviceProvider->instanceId();
+    json const resultJson = _request(http::Method::GET, resource);
+    for (auto const& [czarName, czarJson] : resultJson.at("services").at("czars").items()) {
+        ConfigCzar czar;
+        if (_serviceProvider->config()->isKnownCzar(czarName)) {
+            czar = _serviceProvider->config()->czar(czarName);
+        } else {
+            czar.name = czarName;
+        }
+        czar.host.addr = czarJson.at("host-addr").get<string>();
+        czar.host.name = czarJson.at("management-host-name").get<string>();
+        czar.port = czarJson.at("management-port").get<uint16_t>();
+        coll.push_back(std::move(czar));
+    }
+    return coll;
+}
+
 json Registry::_request(http::Method method, string const& resource, json const& request) const {
     string const url = _baseUrl + resource;
     vector<string> const headers =

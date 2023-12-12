@@ -29,6 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "replica/ConfigCzar.h"
 #include "replica/ConfigDatabase.h"
 #include "replica/ConfigDatabaseFamily.h"
 #include "replica/ConfigWorker.h"
@@ -50,12 +51,15 @@ public:
      * Construct the parser with references to the collections of the confituration
      * data to be filled in.
      * @param data The collection of the general parameters.
+     * @param workers The collection of worker descriptors.
      * @param databaseFamilies The collection of the database family descriptors.
      * @param databases The collection of the database descriptors.
+     * @param czars The collection of Czar descriptors.
      */
     ConfigParserJSON(nlohmann::json& data, std::map<std::string, ConfigWorker>& workers,
                      std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
-                     std::map<std::string, DatabaseInfo>& databases);
+                     std::map<std::string, DatabaseInfo>& databases,
+                     std::map<std::string, ConfigCzar>& czars);
 
     /**
      * Parse the input object's content, validate it, and update it in the output
@@ -90,6 +94,7 @@ private:
     std::map<std::string, ConfigWorker>& _workers;
     std::map<std::string, DatabaseFamilyInfo>& _databaseFamilies;
     std::map<std::string, DatabaseInfo>& _databases;
+    std::map<std::string, ConfigCzar>& _czars;
 };
 
 }  // namespace lsst::qserv::replica
