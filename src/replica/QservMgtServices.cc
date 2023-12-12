@@ -152,6 +152,19 @@ GetConfigQservMgtRequest::Ptr QservMgtServices::config(string const& worker, str
     return request;
 }
 
+GetResultFilesQservMgtRequest::Ptr QservMgtServices::resultFiles(
+        string const& worker, string const& jobId, vector<QueryId> const& queryIds, unsigned int maxFiles,
+        GetResultFilesQservMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
+    auto const request = GetResultFilesQservMgtRequest::create(
+            serviceProvider(), worker, queryIds, maxFiles,
+            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
+    return request;
+}
+
 void QservMgtServices::_finish(string const& id) {
     string const context = "QservMgtServices::" + string(__func__) + "[" + id + "] ";
     LOGS(_log, LOG_LVL_TRACE, context);

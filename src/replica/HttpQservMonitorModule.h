@@ -40,6 +40,10 @@ namespace lsst::qserv::wbase {
 struct TaskSelector;
 }  // namespace lsst::qserv::wbase
 
+namespace lsst::qserv::replica {
+class QservMgtRequest;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -58,6 +62,7 @@ public:
      *   WORKER                   - get the status info of a specific worker
      *   WORKER-CONFIG            - get configuration parameters of a specific worker
      *   WORKER-DB                - get the database status of a specific worker
+     *   WORKER-FILES             - get acollection of partial result files from a worker
      *   CZAR                     - get the status info of Czar
      *   CZAR-CONFIG              - get configuration parameters of Czar
      *   CZAR-DB                  - get the database status of Czar
@@ -84,6 +89,15 @@ protected:
     nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
+    /**
+     * The helper method for check the completion status of a request to ensure it succeded.
+     * @param func The calling context (for error reporting).
+     * @param request A request to be evaluated.
+     * @throw http::Error If the request didn't succeed.
+     */
+    static void _throwIfNotSucceeded(std::string const& func,
+                                     std::shared_ptr<QservMgtRequest> const& request);
+
     HttpQservMonitorModule(Controller::Ptr const& controller, std::string const& taskName,
                            HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                            qhttp::Response::Ptr const& resp);
@@ -112,6 +126,12 @@ private:
      * service for select Qserv worker.
      */
     nlohmann::json _workerDb();
+
+    /**
+     * Process a request for extracting info on the partial query result files
+     * from select Qserv worker.
+     */
+    nlohmann::json _workerFiles();
 
     /**
      * Process a request for extracting various status info of Czar.

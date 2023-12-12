@@ -35,6 +35,7 @@
 #include "css/CssError.h"
 #include "global/intTypes.h"
 #include "http/Exceptions.h"
+#include "replica/Common.h"
 #include "replica/DatabaseMySQL.h"
 #include "replica/DatabaseMySQLTypes.h"
 #include "replica/DatabaseMySQLUtils.h"
@@ -45,6 +46,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/QservStatusJob.h"
 #include "replica/ServiceProvider.h"
+#include "util/String.h"
 #include "wbase/TaskState.h"
 
 // LSST headers
@@ -131,6 +133,15 @@ void HttpQservMonitorModule::process(Controller::Ptr const& controller, string c
     module.execute(subModuleName, authType);
 }
 
+void HttpQservMonitorModule::_throwIfNotSucceeded(string const& func,
+                                                  shared_ptr<QservMgtRequest> const& request) {
+    if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) return;
+    string const msg = "request id: " + request->id() + " of type: " + request->type() +
+                       " sent to worker: " + request->worker() +
+                       " failed, error: " + QservMgtRequest::state2string(request->extendedState());
+    throw http::Error(func, msg);
+}
+
 HttpQservMonitorModule::HttpQservMonitorModule(Controller::Ptr const& controller, string const& taskName,
                                                HttpProcessorConfig const& processorConfig,
                                                qhttp::Request::Ptr const& req,
@@ -146,6 +157,8 @@ json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
         return _workerConfig();
     else if (subModuleName == "WORKER-DB")
         return _workerDb();
+    else if (subModuleName == "WORKER-FILES")
+        return _workerFiles();
     else if (subModuleName == "CZAR")
         return _czar();
     else if (subModuleName == "CZAR-CONFIG")
@@ -215,7 +228,6 @@ json HttpQservMonitorModule::_worker() {
 
     string const noParentJobId;
     GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
-
     auto const request = controller()->serviceProvider()->qservMgtServices()->status(
             worker, noParentJobId, taskSelector, onFinish, timeoutSec);
     request->wait();
@@ -246,19 +258,12 @@ json HttpQservMonitorModule::_workerConfig() {
 
     string const noParentJobId;
     GetConfigQservMgtRequest::CallbackType const onFinish = nullptr;
-
     auto const request = controller()->serviceProvider()->qservMgtServices()->config(worker, noParentJobId,
                                                                                      onFinish, timeoutSec);
     request->wait();
+    _throwIfNotSucceeded(__func__, request);
 
-    if (request->extendedState() != QservMgtRequest::ExtendedState::SUCCESS) {
-        string const msg = "database operation failed, error: " +
-                           QservMgtRequest::state2string(request->extendedState());
-        throw http::Error(__func__, msg);
-    }
-    json result = json::object();
-    result["config"] = request->info();
-    return result;
+    return json::object({{"config", request->info()}});
 }
 
 json HttpQservMonitorModule::_workerDb() {
@@ -273,19 +278,36 @@ json HttpQservMonitorModule::_workerDb() {
 
     string const noParentJobId;
     GetDbStatusQservMgtRequest::CallbackType const onFinish = nullptr;
-
     auto const request = controller()->serviceProvider()->qservMgtServices()->databaseStatus(
             worker, noParentJobId, onFinish, timeoutSec);
     request->wait();
+    _throwIfNotSucceeded(__func__, request);
 
-    if (request->extendedState() != QservMgtRequest::ExtendedState::SUCCESS) {
-        string const msg = "database operation failed, error: " +
-                           QservMgtRequest::state2string(request->extendedState());
-        throw http::Error(__func__, msg);
-    }
-    json result = json::object();
-    result["status"] = request->info();
-    return result;
+    return json::object({{"status", request->info()}});
+}
+
+json HttpQservMonitorModule::_workerFiles() {
+    debug(__func__);
+    checkApiVersion(__func__, 28);
+
+    auto const worker = params().at("worker");
+    auto const queryIds = query().optionalVectorUInt64("query_ids");
+    auto const maxFiles = query().optionalUInt("max_files", 0);
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
+
+    debug(__func__, "worker=" + worker);
+    debug(__func__, "query_ids=" + util::String::toString(queryIds));
+    debug(__func__, "max_files=" + to_string(maxFiles));
+    debug(__func__, "timeout_sec=" + to_string(timeoutSec));
+
+    string const noParentJobId;
+    GetResultFilesQservMgtRequest::CallbackType const onFinish = nullptr;
+    auto const request = controller()->serviceProvider()->qservMgtServices()->resultFiles(
+            worker, noParentJobId, queryIds, maxFiles, onFinish, timeoutSec);
+    request->wait();
+    _throwIfNotSucceeded(__func__, request);
+
+    return json::object({{"status", request->info()}});
 }
 
 json HttpQservMonitorModule::_czar() {
@@ -368,8 +390,8 @@ wbase::TaskSelector HttpQservMonitorModule::_translateTaskSelector(string const&
     }
     selector.maxTasks = query().optionalUInt("max_tasks", 0);
     debug(func, "include_tasks=" + replica::bool2str(selector.includeTasks));
-    debug(func, "queryIds.size()=" + to_string(selector.queryIds.size()));
-    debug(func, "taskStates.size()=" + to_string(selector.taskStates.size()));
+    debug(func, "query_ids=" + util::String::toString(selector.queryIds));
+    debug(func, "task_states=" + util::String::toString(selector.taskStates));
     debug(func, "max_tasks=" + to_string(selector.maxTasks));
     return selector;
 }
@@ -417,7 +439,6 @@ json HttpQservMonitorModule::_activeQueries() {
     checkApiVersion(__func__, 25);
 
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
-
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     // Check which queries and in which schedulers are being executed
@@ -463,7 +484,6 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
 
     QueryId const selectQueryId = query().optionalUInt64("query_id", 0);
     unsigned int const selectLastSeconds = query().optionalUInt("last_seconds", 0);
-
     debug(__func__, "query_id=" + to_string(selectQueryId));
     debug(__func__, "last_seconds=" + to_string(selectLastSeconds));
 
@@ -472,7 +492,6 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
     QueryGenerator const g(conn);
     string const command = "query_info " + to_string(selectQueryId) + " " + to_string(selectLastSeconds);
     string const query = g.call(g.QSERV_MANAGER(command));
-
     debug(__func__, "query=" + query);
 
     // Result set processor populates the JSON object and returns the completion
@@ -586,11 +605,8 @@ json HttpQservMonitorModule::_userQuery() {
 
     auto const queryId = stoull(params().at("id"));
     bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
-
     debug(__func__, "id=" + to_string(queryId));
     debug(__func__, "include_messages=" + bool2str(includeMessages));
-
-    json result;
 
     // Connect to the master database
     // Manage the new connection via the RAII-style handler to ensure the transaction
@@ -599,6 +615,7 @@ json HttpQservMonitorModule::_userQuery() {
     ConnectionHandler const h(Connection::open(Configuration::qservCzarDbParams("qservMeta")));
     QueryGenerator const g(h.conn);
 
+    json result;
     h.conn->executeInOwnTransaction([&](auto conn) {
         unsigned int const limit4past = 0;
         result["queries_past"] =

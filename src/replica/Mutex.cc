@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "lsst/log/Log.h"
-#include "util/IterableFormatter.h"
+#include "util/String.h"
 
 using namespace std;
 
@@ -45,14 +45,14 @@ void Lock::_lock() {
     if (!_context.empty()) {
         LOGS(_log, LOG_LVL_TRACE,
              _context << "  LOCK[" << _mutex.id() << "]:1 "
-                      << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+                      << "  LOCKED: " << util::String::toString(Mutex::lockedId()));
     }
     assert(!_mutex.lockedByCaller());
     _mutex.lock();
     if (!_context.empty()) {
         LOGS(_log, LOG_LVL_TRACE,
              _context << "  LOCK[" << _mutex.id() << "]:2 "
-                      << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+                      << "  LOCKED: " << util::String::toString(Mutex::lockedId()));
     }
 }
 
@@ -60,7 +60,7 @@ void Lock::_unlock() {
     if (!_context.empty()) {
         LOGS(_log, LOG_LVL_TRACE,
              _context << "  LOCK[" << _mutex.id() << "]:3 "
-                      << "  LOCKED: " << util::printable(Mutex::lockedId(), "", "", " "));
+                      << "  LOCKED: " << util::String::toString(Mutex::lockedId()));
     }
     _mutex.unlock();
 }

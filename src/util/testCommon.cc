@@ -29,6 +29,7 @@
 
 // System headers
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 
@@ -37,10 +38,8 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-#include "StringHelper.h"
 // Qserv headers
 #include "util/common.h"
-#include "util/IterableFormatter.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE common
@@ -97,99 +96,5 @@ BOOST_AUTO_TEST_CASE(prettyPrint) {
     LOGS_DEBUG("strBuf3=" << strBuf3);
     BOOST_CHECK(strBuf3.compare(expectedList3) == 0);
 }
-
-BOOST_AUTO_TEST_CASE(stringToVector) {
-    {
-        auto vect = util::StringHelper::splitString("testing123,qsa4$3,hjdw q,,7321,ml;oujh", ",");
-        LOGS_ERROR("vect=" << util::printable(vect));
-        BOOST_CHECK(vect.size() == 6);
-        BOOST_CHECK(vect[0] == "testing123");
-        BOOST_CHECK(vect[1] == "qsa4$3");
-        BOOST_CHECK(vect[2] == "hjdw q");
-        BOOST_CHECK(vect[3] == "");
-        BOOST_CHECK(vect[4] == "7321");
-        BOOST_CHECK(vect[5] == "ml;oujh");
-    }
-    {
-        auto vect = util::StringHelper::splitString("testing123::q:sa4$3:::hjdw q::::7321::ml;oujh", "::");
-        BOOST_CHECK(vect.size() == 6);
-        BOOST_CHECK(vect[0] == "testing123");
-        BOOST_CHECK(vect[1] == "q:sa4$3");
-        BOOST_CHECK(vect[2] == ":hjdw q");
-        BOOST_CHECK(vect[3] == "");
-        BOOST_CHECK(vect[4] == "7321");
-        BOOST_CHECK(vect[5] == "ml;oujh");
-    }
-    {
-        auto vect = util::StringHelper::splitString(":testing123:qsa4$3:hjdw q::7321:ml;oujh:", ":");
-        BOOST_CHECK(vect.size() == 8);
-        BOOST_CHECK(vect[0] == "");
-        BOOST_CHECK(vect[1] == "testing123");
-        BOOST_CHECK(vect[2] == "qsa4$3");
-        BOOST_CHECK(vect[3] == "hjdw q");
-        BOOST_CHECK(vect[4] == "");
-        BOOST_CHECK(vect[5] == "7321");
-        BOOST_CHECK(vect[6] == "ml;oujh");
-        BOOST_CHECK(vect[7] == "");
-    }
-    {
-        auto vect = util::StringHelper::splitString("qsa4$3", ":");
-        BOOST_CHECK(vect.size() == 1);
-        BOOST_CHECK(vect[0] == "qsa4$3");
-    }
-    {
-        auto vect = util::StringHelper::splitString("", ":");
-        BOOST_CHECK(vect.size() == 1);
-        BOOST_CHECK(vect[0] == "");
-    }
-
-    {
-        auto vect = util::StringHelper::getIntVectFromStr("987:23:0:1:-123", ":");
-        unsigned int j = 0;
-        BOOST_CHECK(vect[j++] == 987);
-        BOOST_CHECK(vect[j++] == 23);
-        BOOST_CHECK(vect[j++] == 0);
-        BOOST_CHECK(vect[j++] == 1);
-        BOOST_CHECK(vect[j++] == -123);
-        BOOST_CHECK(vect.size() == j);
-    }
-    {
-        bool caught = false;
-        try {
-            auto vect = util::StringHelper::getIntVectFromStr("987:23:x:1:-123", ":");
-        } catch (std::invalid_argument const& e) {
-            caught = true;
-        }
-        BOOST_CHECK(caught);
-    }
-    {
-        auto vect = util::StringHelper::getIntVectFromStr("987:23:x8owlq:1:-123:", ":", false, 99);
-        unsigned int j = 0;
-        BOOST_CHECK(vect[j++] == 987);
-        BOOST_CHECK(vect[j++] == 23);
-        BOOST_CHECK(vect[j++] == 99);
-        BOOST_CHECK(vect[j++] == 1);
-        BOOST_CHECK(vect[j++] == -123);
-        BOOST_CHECK(vect[j++] == 99);
-        BOOST_CHECK(vect.size() == j);
-    }
-}
-/*
-    test::output_test_stream output;
-    util::MultiError multiError;
-
-    std::string expected_err_msg = util::MultiError::HEADER_MSG +
-            "\t[1] Stupid error message";
-
-    int errCode = 1;
-    std::string errMsg = "Stupid error message";
-    util::Error error(errCode, errMsg);
-    multiError.push_back(error);
-
-    output << multiError;
-    std::cout << multiError;
-    BOOST_REQUIRE(output.is_equal(expected_err_msg));
-}
-*/
 
 BOOST_AUTO_TEST_SUITE_END()

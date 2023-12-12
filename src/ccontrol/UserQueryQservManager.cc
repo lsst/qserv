@@ -41,7 +41,7 @@
 #include "sql/SqlBulkInsert.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
-#include "util/StringHelper.h"
+#include "util/String.h"
 #include "wconfig/WorkerConfig.h"
 
 using namespace std;
@@ -80,7 +80,7 @@ void UserQueryQservManager::submit() {
     if (_value.size() > 2) {
         string const space = " ";
         string const quotesRemoved = _value.substr(1, _value.size() - 2);
-        for (auto&& str : util::StringHelper::splitString(quotesRemoved, space)) {
+        for (auto&& str : util::String::split(quotesRemoved, space)) {
             // This is just in case if the splitter won't recognise consequtive spaces.
             if (str.empty() || (str == space)) continue;
             if (command.empty()) {

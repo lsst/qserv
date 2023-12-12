@@ -257,6 +257,12 @@ void HttpProcessor::registerServices() {
                                                                  self->_processorConfig, req, resp,
                                                                  "WORKER-DB");
                              });
+    httpServer()->addHandler("GET", "/replication/qserv/worker/files/:worker",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "WORKER-FILES");
+                             });
     httpServer()->addHandler("GET", "/replication/qserv/master/status",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),

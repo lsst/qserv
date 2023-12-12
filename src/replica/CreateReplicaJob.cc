@@ -33,7 +33,7 @@
 #include "replica/QservMgtServices.h"
 #include "replica/ServiceProvider.h"
 #include "replica/StopRequest.h"
-#include "util/IterableFormatter.h"
+#include "util/String.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -312,7 +312,7 @@ void CreateReplicaJob::_qservAddReplica(replica::Lock const& lock, unsigned int 
                                         AddReplicaQservMgtRequest::CallbackType const& onFinish) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  ** START ** Qserv notification on ADD replica:"
-                   << ", chunk=" << chunk << ", databases=" << util::printable(databases)
+                   << ", chunk=" << chunk << ", databases=" << util::String::toString(databases)
                    << "  worker=" << worker);
 
     auto self = shared_from_this();
@@ -322,8 +322,9 @@ void CreateReplicaJob::_qservAddReplica(replica::Lock const& lock, unsigned int 
                 LOGS(_log, LOG_LVL_DEBUG,
                      self->context() << __func__ << "  ** FINISH ** Qserv notification on ADD replica:"
                                      << "  chunk=" << request->chunk()
-                                     << ", databases=" << util::printable(request->databases()) << ", worker="
-                                     << request->worker() << ", state=" << request->state2string());
+                                     << ", databases=" << util::String::toString(request->databases())
+                                     << ", worker=" << request->worker()
+                                     << ", state=" << request->state2string());
                 if (onFinish) onFinish(request);
             },
             id());

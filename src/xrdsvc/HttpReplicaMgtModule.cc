@@ -35,7 +35,7 @@
 #include "http/RequestBody.h"
 #include "http/RequestQuery.h"
 #include "mysql/MySqlUtils.h"
-#include "util/IterableFormatter.h"
+#include "util/String.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/ResourceMonitor.h"
@@ -56,12 +56,6 @@ json const extErrorInvalidParam = json::object({{"invalid_param", 1}});
 json const extErrorReplicaInUse = json::object({{"in_use", 1}});
 
 string makeResource(string const& database, int chunk) { return "/chk/" + database + "/" + to_string(chunk); }
-
-string vec2str(vector<string> const& v) {
-    ostringstream ss;
-    ss << lsst::qserv::util::printable(v, "", "", ",");
-    return ss.str();
-}
 
 }  // namespace
 
@@ -108,7 +102,7 @@ json HttpReplicaMgtModule::_getReplicas() {
     bool const inUseOnly = query().optionalUInt("in_use_only", 0) != 0;
     vector<string> const databases = query().requiredVectorStr("databases");
     debug(__func__, "in_use_only: " + string(inUseOnly ? "1" : "0"));
-    debug(__func__, "databases: " + ::vec2str(databases));
+    debug(__func__, "databases: " + util::String::toString(databases));
     set<string> databaseFilter;
     for (string const& database : databases) {
         databaseFilter.insert(database);
@@ -123,7 +117,7 @@ json HttpReplicaMgtModule::_setReplicas() {
     bool const force = body().optional<int>("force", 0) != 0;
     vector<string> const databases = body().requiredColl<string>("databases");
     debug(__func__, "force: " + string(force ? "1" : "0"));
-    debug(__func__, "databases: " + ::vec2str(databases));
+    debug(__func__, "databases: " + util::String::toString(databases));
     set<string> databaseFilter;
     for (string const& database : databases) {
         databaseFilter.insert(database);
@@ -308,7 +302,7 @@ void HttpReplicaMgtModule::_modifyReplica(string const& func, Direction directio
     bool const force = body().optional<int>("force", 0) != 0;
 
     debug(func, "chunk: " + to_string(chunk));
-    debug(func, "databases: " + ::vec2str(databases));
+    debug(func, "databases: " + util::String::toString(databases));
     debug(func, "force: " + string(force ? "1" : "0"));
 
     if (databases.empty()) {

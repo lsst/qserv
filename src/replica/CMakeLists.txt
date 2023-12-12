@@ -76,6 +76,7 @@ target_sources(replica PRIVATE
     GetReplicasQservMgtRequest.cc
     GetDbStatusQservMgtRequest.cc
     GetConfigQservMgtRequest.cc
+    GetResultFilesQservMgtRequest.cc
     GetStatusQservMgtRequest.cc
     HealthMonitorTask.cc
     HttpAsyncReqApp.cc
@@ -297,7 +298,6 @@ replica_tests(
     testChunkLocker
     testChunkNumber
     testChunkedTable
-    testCommonStr
     testConnectionParams
     testCsv
     testFileIngestApp

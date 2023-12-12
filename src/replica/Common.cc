@@ -23,10 +23,7 @@
 #include "replica/Common.h"
 
 // System headers
-#include <algorithm>
 #include <stdexcept>
-#include <sstream>
-#include <type_traits>
 
 // Third party headers
 #include "boost/uuid/uuid.hpp"
@@ -349,19 +346,6 @@ DirectorIndexRequestParams::DirectorIndexRequestParams(ProtocolRequestDirectorIn
           chunk(request.chunk()),
           hasTransactions(request.has_transactions()),
           transactionId(request.transaction_id()) {}
-
-vector<string> strsplit(string const& str, char delimiter) {
-    vector<string> words;
-    if (!str.empty()) {
-        string word;
-        istringstream ss(str);
-        while (std::getline(ss, word, delimiter)) {
-            remove(word.begin(), word.end(), delimiter);
-            if (!word.empty()) words.push_back(word);
-        }
-    }
-    return words;
-}
 
 string tableNameBuilder(string const& databaseName, string const& tableName, string const& suffix) {
     size_t const tableNameLimit = 64;

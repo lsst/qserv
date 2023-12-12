@@ -25,8 +25,6 @@
 // System headers
 #include <functional>
 #include <stdexcept>
-#include <sstream>
-#include <iostream>
 
 // Third party headers
 #include "boost/date_time/posix_time/posix_time.hpp"
@@ -36,7 +34,7 @@
 #include "replica/DatabaseServices.h"
 #include "replica/Messenger.h"
 #include "replica/ServiceProvider.h"
-#include "util/IterableFormatter.h"
+#include "util/String.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
@@ -101,9 +99,7 @@ list<pair<string, string>> SqlRequest::extendedPersistentState() const {
     result.emplace_back("partition_by_column", requestBody.partition_by_column());
     result.emplace_back("transaction_id", to_string(requestBody.transaction_id()));
     result.emplace_back("num_columns", to_string(requestBody.columns_size()));
-    ostringstream tablesStream;
-    tablesStream << util::printable(requestBody.tables(), "", "", " ");
-    result.emplace_back("tables", tablesStream.str());
+    result.emplace_back("tables", util::String::toString(requestBody.tables()));
     result.emplace_back("batch_mode", bool2str(requestBody.batch_mode()));
     return result;
 }

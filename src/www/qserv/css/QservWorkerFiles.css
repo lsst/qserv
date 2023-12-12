@@ -1,0 +1,24 @@
+#fwk-qserv-files-controls label {
+    font-weight:    bold;
+}
+table#fwk-qserv-files caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-qserv-files > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+table#fwk-qserv-files tbody th,
+table#fwk-qserv-files tbody td {
+    vertical-align:middle;
+}
+table#fwk-qserv-files pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-qserv-files caption.updating {
+    background-color: #ffeeba;
+}

@@ -56,7 +56,7 @@
 #include "util/common.h"
 #include "util/FileMonitor.h"
 #include "util/IterableFormatter.h"
-#include "util/StringHelper.h"
+#include "util/String.h"
 #include "xrdreq/QueryManagementAction.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 
@@ -124,9 +124,9 @@ Czar::Czar(string const& configPath, string const& czarName)
     int qPoolSize = _czarConfig->getQdispPoolSize();
     int maxPriority = std::max(0, _czarConfig->getQdispMaxPriority());
     string vectRunSizesStr = _czarConfig->getQdispVectRunSizes();
-    vector<int> vectRunSizes = util::StringHelper::getIntVectFromStr(vectRunSizesStr, ":", 1);
+    vector<int> vectRunSizes = util::String::parseToVectInt(vectRunSizesStr, ":", 1);
     string vectMinRunningSizesStr = _czarConfig->getQdispVectMinRunningSizes();
-    vector<int> vectMinRunningSizes = util::StringHelper::getIntVectFromStr(vectMinRunningSizesStr, ":", 0);
+    vector<int> vectMinRunningSizes = util::String::parseToVectInt(vectMinRunningSizesStr, ":", 0);
     LOGS(_log, LOG_LVL_INFO,
          "INFO qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
                                         << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)

@@ -22,10 +22,8 @@
 // Class header
 #include "replica/GetStatusQservMgtRequest.h"
 
-// System headers
-#include <algorithm>
-#include <iterator>
-#include <sstream>
+// Qserv headers
+#include "util/String.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -45,18 +43,10 @@ string taskSelectorToHttpQuery(wbase::TaskSelector const& taskSelector) {
     query += "?include_tasks=" + string(taskSelector.includeTasks ? "1" : "0");
     query += "&max_tasks=" + to_string(taskSelector.maxTasks);
     if (!taskSelector.queryIds.empty()) {
-        ostringstream ss;
-        copy(taskSelector.queryIds.begin(), taskSelector.queryIds.end() - 1,
-             ostream_iterator<qserv::QueryId>(ss, ","));
-        ss << taskSelector.queryIds.back();
-        query += "&query_ids=" + ss.str();
+        query += "&query_ids=" + util::String::toString(taskSelector.queryIds);
     }
     if (!taskSelector.taskStates.empty()) {
-        ostringstream ss;
-        copy(taskSelector.taskStates.begin(), taskSelector.taskStates.end() - 1,
-             ostream_iterator<wbase::TaskState>(ss, ","));
-        ss << taskSelector.taskStates.back();
-        query += "&task_states=" + ss.str();
+        query += "&task_states=" + util::String::toString(taskSelector.taskStates);
     }
     return query;
 }

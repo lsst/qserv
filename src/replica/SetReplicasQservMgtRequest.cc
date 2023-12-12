@@ -24,7 +24,6 @@
 
 // System headers
 #include <set>
-#include <sstream>
 #include <stdexcept>
 
 // Qserv headers
@@ -32,7 +31,7 @@
 #include "replica/Common.h"
 #include "replica/Configuration.h"
 #include "replica/ServiceProvider.h"
-#include "util/IterableFormatter.h"
+#include "util/String.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -77,9 +76,7 @@ QservReplicaCollection const& SetReplicasQservMgtRequest::replicas() const {
 list<pair<string, string>> SetReplicasQservMgtRequest::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("num_replicas", to_string(newReplicas().size()));
-    ostringstream ss;
-    ss << util::printable(_databases, "", "", ",");
-    result.emplace_back("databases", ss.str());
+    result.emplace_back("databases", util::String::toString(_databases));
     result.emplace_back("force", replica::bool2str(force()));
     return result;
 }

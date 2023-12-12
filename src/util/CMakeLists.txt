@@ -21,7 +21,7 @@ target_sources(util PRIVATE
     Mutex.cc
     SemaMgr.cc
     StringHash.cc
-    StringHelper.cc
+    String.cc
     Substitution.cc
     TablePrinter.cc
     ThreadPool.cc
@@ -58,5 +58,6 @@ util_tests(
     testHistogram
     testMultiError
     testMutex
+    testString
     testTablePrinter
 )

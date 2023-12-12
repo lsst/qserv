@@ -139,6 +139,7 @@ function(CSSLoader,
          * Display MySQL connections
          */
         _display(data) {
+            const workerFilesInspectTitle = "Click to see files existing on the worker.";
             let html = '';
             for (let worker in data) {
                 if (!data[worker].success) {
@@ -160,7 +161,7 @@ function(CSSLoader,
                         (100.0 * (filesystem.capacity_bytes - filesystem.available_bytes) / filesystem.capacity_bytes).toFixed(1) :
                         -1;
                     html += `
-<tr>
+<tr worker="${worker}" class="display-worker-files" title="${workerFilesInspectTitle}">
   <th>${worker}</th>
   <td>${filesystem.protocol}</td>
   <td>${filesystem.folder}</td>
@@ -173,7 +174,13 @@ function(CSSLoader,
 </tr>`;
                 }
             }
-            this._table().children('tbody').html(html);
+            let tbody = this._table().children('tbody').html(html);
+            let displayWorkerFiles  = function(e) {
+                const worker = $(e.currentTarget).attr("worker");
+                Fwk.find("Workers", "Files").set_worker(worker);
+                Fwk.show("Workers", "Files");
+            };
+            tbody.find("tr.display-worker-files").click(displayWorkerFiles);
         }
         static _GiB = 1024 * 1024 * 1024;
         static _bytes2gb(bytes) {
