@@ -43,6 +43,7 @@
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "czar/CzarErrors.h"
+#include "czar/HttpSvc.h"
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
 #include "http/Client.h"
@@ -85,13 +86,13 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
  * This function will keep periodically updating Czar's info in the Replication
  * System's Registry.
  * @param name The unique identifier of the Czar to be registered.
+ * @param czarConfig A pointer to the Czar configuration service.
  * @note The thread will terminate the process if the registraton request to the Registry
  * was explicitly denied by the service. This means the application may be misconfigured.
  * Transient communication errors when attempting to connect or send requests to
  * the Registry will be posted into the log stream and ignored.
  */
-void registryUpdateLoop(string const& name) {
-    auto const czarConfig = cconfig::CzarConfig::instance();
+void registryUpdateLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
     auto const method = http::Method::POST;
     string const url = "http://" + czarConfig->replicationRegistryHost() + ":" +
                        to_string(czarConfig->replicationRegistryPort()) + "/czar";
@@ -99,7 +100,7 @@ void registryUpdateLoop(string const& name) {
     json const request = json::object({{"instance_id", czarConfig->replicationInstanceId()},
                                        {"auth_key", czarConfig->replicationAuthKey()},
                                        {"czar",
-                                        {{"name", name},
+                                        {{"name", czarConfig->id()},
                                          {"management-port", czarConfig->replicationHttpPort()},
                                          {"management-host-name", util::get_current_host_fqdn()}}}});
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
@@ -209,9 +210,17 @@ Czar::Czar(string const& configPath, string const& czarName)
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
     }
 
+    // Start the control server for processing Czar management requests sent
+    // by the Replication System. Update the port number in the configuration
+    // in case if the server is run on the dynamically allocated port.
+    _controlHttpSvc =
+            HttpSvc::create(_czarConfig->replicationHttpPort(), _czarConfig->replicationNumHttpThreads());
+    auto const port = _controlHttpSvc->start();
+    _czarConfig->setReplicationHttpPort(port);
+
     // Begin periodically updating worker's status in the Replication System's registry
     // in the detached thread. This will continue before the application gets terminated.
-    thread registryUpdateThread(::registryUpdateLoop, "default");
+    thread registryUpdateThread(::registryUpdateLoop, _czarConfig);
     registryUpdateThread.detach();
 }
 
