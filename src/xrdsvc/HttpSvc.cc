@@ -37,9 +37,6 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// Third party headers
-#include "boost/filesystem.hpp"
-
 using namespace nlohmann;
 using namespace std;
 
