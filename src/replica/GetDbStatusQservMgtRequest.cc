@@ -36,16 +36,17 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetDbStatusQservMgtRequest");
 namespace lsst::qserv::replica {
 
 shared_ptr<GetDbStatusQservMgtRequest> GetDbStatusQservMgtRequest::create(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         GetDbStatusQservMgtRequest::CallbackType const& onFinish) {
     return shared_ptr<GetDbStatusQservMgtRequest>(
-            new GetDbStatusQservMgtRequest(serviceProvider, worker, onFinish));
+            new GetDbStatusQservMgtRequest(serviceProvider, workerName, onFinish));
 }
 
 GetDbStatusQservMgtRequest::GetDbStatusQservMgtRequest(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         GetDbStatusQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_GET_DATABASE_STATUS", worker), _onFinish(onFinish) {}
+        : QservWorkerMgtRequest(serviceProvider, "QSERV_GET_DATABASE_STATUS", workerName),
+          _onFinish(onFinish) {}
 
 void GetDbStatusQservMgtRequest::createHttpReqImpl(replica::Lock const& lock) {
     string const service = "/mysql";

@@ -28,7 +28,7 @@
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 
 namespace lsst::qserv::replica {
 class ServiceProvider;
@@ -41,7 +41,7 @@ namespace lsst::qserv::replica {
  * Class GetResultFilesQservMgtRequest is a request for obtaining info
  * on the partial result files from the Qserv worker.
  */
-class GetResultFilesQservMgtRequest : public QservMgtRequest {
+class GetResultFilesQservMgtRequest : public QservWorkerMgtRequest {
 public:
     typedef std::shared_ptr<GetResultFilesQservMgtRequest> Ptr;
 
@@ -52,7 +52,7 @@ public:
     GetResultFilesQservMgtRequest(GetResultFilesQservMgtRequest const&) = delete;
     GetResultFilesQservMgtRequest& operator=(GetResultFilesQservMgtRequest const&) = delete;
 
-    virtual ~GetResultFilesQservMgtRequest() final = default;
+    virtual ~GetResultFilesQservMgtRequest() override = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -60,7 +60,7 @@ public:
      * low-level pointers).
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
-     * @param worker The name of a worker to send the request to.
+     * @param workerName The name of a worker to send the request to.
      * @param queryIds The optional selector for queries. If empty then all queries will
      *   be considered.
      * @param maxFiles The optional limit for maximum number of files to be reported.
@@ -69,21 +69,21 @@ public:
      * @return A pointer to the created object.
      */
     static std::shared_ptr<GetResultFilesQservMgtRequest> create(
-            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
             std::vector<QueryId> const& queryIds = std::vector<QueryId>(), unsigned int maxFiles = 0,
             CallbackType const& onFinish = nullptr);
 
 protected:
     /// @see QservMgtRequest::createHttpReqImpl()
-    virtual void createHttpReqImpl(replica::Lock const& lock) final;
+    virtual void createHttpReqImpl(replica::Lock const& lock) override;
 
     /// @see QservMgtRequest::notify()
-    virtual void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) override;
 
 private:
     /// @see GetResultFilesQservMgtRequest::create()
     GetResultFilesQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
-                                  std::string const& worker, std::vector<QueryId> const& queryIds,
+                                  std::string const& workerName, std::vector<QueryId> const& queryIds,
                                   unsigned int maxFiles, CallbackType const& onFinish);
 
     // Input parameters

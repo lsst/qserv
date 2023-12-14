@@ -29,7 +29,7 @@
 #include <utility>
 
 // Qserv headers
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 
 namespace lsst::qserv::replica {
@@ -43,7 +43,7 @@ namespace lsst::qserv::replica {
  * Class SetReplicasQservMgtRequest implements a request for configuring chunk
  * inventory=ies (both transient and persistent) at Qserv workers.
  */
-class SetReplicasQservMgtRequest : public QservMgtRequest {
+class SetReplicasQservMgtRequest : public QservWorkerMgtRequest {
 public:
     typedef std::shared_ptr<SetReplicasQservMgtRequest> Ptr;
 
@@ -54,7 +54,7 @@ public:
     SetReplicasQservMgtRequest(SetReplicasQservMgtRequest const&) = delete;
     SetReplicasQservMgtRequest& operator=(SetReplicasQservMgtRequest const&) = delete;
 
-    virtual ~SetReplicasQservMgtRequest() final = default;
+    virtual ~SetReplicasQservMgtRequest() override = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -65,14 +65,14 @@ public:
      *   the parameter 'databases' before this request is sent to the worker.
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
-     * @param worker The name of a worker to send the request to.
+     * @param workerName The name of a worker to send the request to.
      * @param newReplicas A collection of new replicas (NOTE: useCount field is ignored).
      * @param databases A set of databases that defines a scope of a scope of the request.
      * @param force Proceed with the operation even if some replicas affected by
      *   the operation are in use.
      * @param onFinish A callback function to be called upon request completion.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                       QservReplicaCollection const& newReplicas, std::vector<std::string> const& databases,
                       bool force = false, CallbackType const& onFinish = nullptr);
 
@@ -93,22 +93,22 @@ public:
     QservReplicaCollection const& replicas() const;
 
     /// @see QservMgtRequest::extendedPersistentState()
-    std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see QservMgtRequest::createHttpReqImpl()
-    virtual void createHttpReqImpl(replica::Lock const& lock) final;
+    virtual void createHttpReqImpl(replica::Lock const& lock) override;
 
     /// @see QservMgtRequest::dataReady()
     virtual QservMgtRequest::ExtendedState dataReady(replica::Lock const& lock,
-                                                     nlohmann::json const& data) final;
+                                                     nlohmann::json const& data) override;
 
     /// @see QservMgtRequest::notify
-    virtual void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) override;
 
 private:
     /// @see SetReplicasQservMgtRequest::create()
-    SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    SetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                                QservReplicaCollection const& newReplicas,
                                std::vector<std::string> const& databases, bool force,
                                CallbackType const& onFinish);

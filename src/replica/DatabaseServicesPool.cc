@@ -102,7 +102,7 @@ void DatabaseServicesPool::updateHeartbeatTime(Job const& job) {
     service()->updateHeartbeatTime(job);
 }
 
-void DatabaseServicesPool::saveState(QservMgtRequest const& request, Performance const& performance,
+void DatabaseServicesPool::saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                                      string const& serverError) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->saveState(request, performance, serverError);

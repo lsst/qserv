@@ -40,17 +40,17 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.AddReplicaQservMgtRequest");
 namespace lsst::qserv::replica {
 
 AddReplicaQservMgtRequest::Ptr AddReplicaQservMgtRequest::create(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, unsigned int chunk,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName, unsigned int chunk,
         vector<string> const& databases, AddReplicaQservMgtRequest::CallbackType const& onFinish) {
     return AddReplicaQservMgtRequest::Ptr(
-            new AddReplicaQservMgtRequest(serviceProvider, worker, chunk, databases, onFinish));
+            new AddReplicaQservMgtRequest(serviceProvider, workerName, chunk, databases, onFinish));
 }
 
 AddReplicaQservMgtRequest::AddReplicaQservMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider,
-                                                     string const& worker, unsigned int chunk,
+                                                     string const& workerName, unsigned int chunk,
                                                      vector<string> const& databases,
                                                      AddReplicaQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_ADD_REPLICA", worker),
+        : QservWorkerMgtRequest(serviceProvider, "QSERV_ADD_REPLICA", workerName),
           _chunk(chunk),
           _databases(databases),
           _onFinish(onFinish) {}

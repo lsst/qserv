@@ -41,18 +41,18 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RemoveReplicaQservMgtRequest");
 namespace lsst::qserv::replica {
 
 RemoveReplicaQservMgtRequest::Ptr RemoveReplicaQservMgtRequest::create(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, unsigned int chunk,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName, unsigned int chunk,
         vector<string> const& databases, bool force,
         RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
     return RemoveReplicaQservMgtRequest::Ptr(
-            new RemoveReplicaQservMgtRequest(serviceProvider, worker, chunk, databases, force, onFinish));
+            new RemoveReplicaQservMgtRequest(serviceProvider, workerName, chunk, databases, force, onFinish));
 }
 
 RemoveReplicaQservMgtRequest::RemoveReplicaQservMgtRequest(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, unsigned int chunk,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName, unsigned int chunk,
         vector<string> const& databases, bool force,
         RemoveReplicaQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_REMOVE_REPLICA", worker),
+        : QservWorkerMgtRequest(serviceProvider, "QSERV_REMOVE_REPLICA", workerName),
           _chunk(chunk),
           _databases(databases),
           _force(force),

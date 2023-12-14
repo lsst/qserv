@@ -31,7 +31,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 
 namespace lsst::qserv::replica {
 class ServiceProvider;
@@ -44,7 +44,7 @@ namespace lsst::qserv::replica {
  * Class TestEchoQservMgtRequest a special kind of requests
  * for testing Qserv workers.
  */
-class TestEchoQservMgtRequest : public QservMgtRequest {
+class TestEchoQservMgtRequest : public QservWorkerMgtRequest {
 public:
     typedef std::shared_ptr<TestEchoQservMgtRequest> Ptr;
 
@@ -55,7 +55,7 @@ public:
     TestEchoQservMgtRequest(TestEchoQservMgtRequest const&) = delete;
     TestEchoQservMgtRequest& operator=(TestEchoQservMgtRequest const&) = delete;
 
-    virtual ~TestEchoQservMgtRequest() final = default;
+    virtual ~TestEchoQservMgtRequest() override = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -63,13 +63,13 @@ public:
      * low-level pointers).
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
-     * @param worker The name of a worker to send the request to.
+     * @param workerName The name of a worker to send the request to.
      * @param data The data string to be echoed back by the worker (if successful).
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
     static std::shared_ptr<TestEchoQservMgtRequest> create(
-            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
             std::string const& data, CallbackType const& onFinish = nullptr);
 
     /// @return input data string sent to the worker
@@ -83,23 +83,24 @@ public:
     std::string const& dataEcho() const;
 
     /// @see QservMgtRequest::extendedPersistentState()
-    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see QservMgtRequest::createHttpReqImpl()
-    virtual void createHttpReqImpl(replica::Lock const& lock) final;
+    virtual void createHttpReqImpl(replica::Lock const& lock) override;
 
     /// @see QservMgtRequest::dataReady()
     virtual QservMgtRequest::ExtendedState dataReady(replica::Lock const& lock,
-                                                     nlohmann::json const& data) final;
+                                                     nlohmann::json const& data) override;
 
     /// @see QservMgtRequest::notify()
-    virtual void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) override;
 
 private:
     /// @see TestEchoQservMgtRequest::create()
     TestEchoQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
-                            std::string const& worker, std::string const& data, CallbackType const& onFinish);
+                            std::string const& workerName, std::string const& data,
+                            CallbackType const& onFinish);
 
     // Input parameters
 

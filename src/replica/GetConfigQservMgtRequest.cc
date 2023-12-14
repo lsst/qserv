@@ -36,16 +36,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetConfigQservMgtRequest");
 namespace lsst::qserv::replica {
 
 shared_ptr<GetConfigQservMgtRequest> GetConfigQservMgtRequest::create(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         GetConfigQservMgtRequest::CallbackType const& onFinish) {
     return shared_ptr<GetConfigQservMgtRequest>(
-            new GetConfigQservMgtRequest(serviceProvider, worker, onFinish));
+            new GetConfigQservMgtRequest(serviceProvider, workerName, onFinish));
 }
 
 GetConfigQservMgtRequest::GetConfigQservMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider,
-                                                   string const& worker,
+                                                   string const& workerName,
                                                    GetConfigQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_GET_DATABASE_STATUS", worker), _onFinish(onFinish) {}
+        : QservWorkerMgtRequest(serviceProvider, "QSERV_GET_CONFIG", workerName), _onFinish(onFinish) {}
 
 void GetConfigQservMgtRequest::createHttpReqImpl(replica::Lock const& lock) {
     string const service = "/config";

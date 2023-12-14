@@ -48,7 +48,7 @@ namespace lsst::qserv::replica {
 class Configuration;
 class ControllerIdentity;
 class NamedMutexRegistry;
-class QservMgtRequest;
+class QservWorkerMgtRequest;
 class Performance;
 class Request;
 }  // namespace lsst::qserv::replica
@@ -423,17 +423,17 @@ public:
     virtual void updateHeartbeatTime(Job const& job) = 0;
 
     /**
-     * Save the state of the QservMgtRequest. This operation can be called many times for
-     * a particular instance of the QservMgtRequest.
+     * Save the state of the QservWorkerMgtRequest. This operation can be called many times for
+     * a particular instance of the QservWorkerMgtRequest.
      *
      * The Performance object is explicitly passed as a parameter to avoid
      * making a blocked call back to the request which may create a deadlock.
      *
-     * @param request a reference to a QservMgtRequest object
+     * @param request a reference to a QservWorkerMgtRequest object
      * @param performance a reference to a Performance object
      * @param serverError a server error message (if any)
      */
-    virtual void saveState(QservMgtRequest const& request, Performance const& performance,
+    virtual void saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                            std::string const& serverError) = 0;
 
     /**

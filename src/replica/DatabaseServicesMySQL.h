@@ -71,7 +71,7 @@ public:
 
     void updateHeartbeatTime(Job const& job) final;
 
-    void saveState(QservMgtRequest const& request, Performance const& performance,
+    void saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                    std::string const& serverError) final;
 
     void saveState(Request const& request, Performance const& performance) final;

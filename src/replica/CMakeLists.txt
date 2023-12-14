@@ -132,12 +132,14 @@ target_sources(replica PRIVATE
     PurgeApp.cc
     PurgeJob.cc
     QhttpTestApp.cc
+    QservCzarMgtRequest.cc
     QservGetReplicasJob.cc
     QservMgtRequest.cc
     QservMgtServices.cc
     QservStatusJob.cc
     QservSyncJob.cc
     QservWorkerApp.cc
+    QservWorkerMgtRequest.cc
     QservWorkerPingApp.cc
     RebalanceApp.cc
     RebalanceJob.cc

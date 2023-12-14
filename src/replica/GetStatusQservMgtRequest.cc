@@ -52,17 +52,17 @@ string taskSelectorToHttpQuery(wbase::TaskSelector const& taskSelector) {
 }
 
 shared_ptr<GetStatusQservMgtRequest> GetStatusQservMgtRequest::create(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         wbase::TaskSelector const& taskSelector, GetStatusQservMgtRequest::CallbackType const& onFinish) {
     return shared_ptr<GetStatusQservMgtRequest>(
-            new GetStatusQservMgtRequest(serviceProvider, worker, taskSelector, onFinish));
+            new GetStatusQservMgtRequest(serviceProvider, workerName, taskSelector, onFinish));
 }
 
 GetStatusQservMgtRequest::GetStatusQservMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider,
-                                                   string const& worker,
+                                                   string const& workerName,
                                                    wbase::TaskSelector const& taskSelector,
                                                    GetStatusQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_GET_STATUS", worker),
+        : QservWorkerMgtRequest(serviceProvider, "QSERV_GET_STATUS", workerName),
           _taskSelector(taskSelector),
           _onFinish(onFinish) {}
 

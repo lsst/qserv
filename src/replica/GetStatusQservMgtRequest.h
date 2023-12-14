@@ -26,7 +26,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 #include "wbase/TaskState.h"
 
 namespace lsst::qserv::replica {
@@ -51,7 +51,7 @@ std::string taskSelectorToHttpQuery(wbase::TaskSelector const& taskSelector);
  * Class GetStatusQservMgtRequest is a request for obtaining various info
  * (status, counters, monitoring) reported the Qserv workers.
  */
-class GetStatusQservMgtRequest : public QservMgtRequest {
+class GetStatusQservMgtRequest : public QservWorkerMgtRequest {
 public:
     typedef std::shared_ptr<GetStatusQservMgtRequest> Ptr;
 
@@ -62,7 +62,7 @@ public:
     GetStatusQservMgtRequest(GetStatusQservMgtRequest const&) = delete;
     GetStatusQservMgtRequest& operator=(GetStatusQservMgtRequest const&) = delete;
 
-    virtual ~GetStatusQservMgtRequest() final = default;
+    virtual ~GetStatusQservMgtRequest() override = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -70,27 +70,27 @@ public:
      * low-level pointers).
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
-     * @param worker The name of a worker to send the request to.
+     * @param workerName The name of a worker to send the request to.
      * @param taskSelector (optional) task selection criterias
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
     static std::shared_ptr<GetStatusQservMgtRequest> create(
-            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
             wbase::TaskSelector const& taskSelector = wbase::TaskSelector(),
             CallbackType const& onFinish = nullptr);
 
 protected:
     /// @see QservMgtRequest::createHttpReqImpl()
-    virtual void createHttpReqImpl(replica::Lock const& lock) final;
+    virtual void createHttpReqImpl(replica::Lock const& lock) override;
 
     /// @see QservMgtRequest::notify()
-    virtual void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) override;
 
 private:
     /// @see GetStatusQservMgtRequest::create()
     GetStatusQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
-                             std::string const& worker, wbase::TaskSelector const& taskSelector,
+                             std::string const& workerName, wbase::TaskSelector const& taskSelector,
                              CallbackType const& onFinish);
 
     // Input parameters

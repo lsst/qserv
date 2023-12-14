@@ -137,7 +137,6 @@ void HttpQservMonitorModule::_throwIfNotSucceeded(string const& func,
                                                   shared_ptr<QservMgtRequest> const& request) {
     if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) return;
     string const msg = "request id: " + request->id() + " of type: " + request->type() +
-                       " sent to worker: " + request->workerName() +
                        " failed, error: " + QservMgtRequest::state2string(request->extendedState());
     throw http::Error(func, msg);
 }

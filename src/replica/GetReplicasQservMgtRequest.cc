@@ -46,16 +46,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetReplicasQservMgtRequest");
 namespace lsst::qserv::replica {
 
 GetReplicasQservMgtRequest::Ptr GetReplicasQservMgtRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& databaseFamily,
+        ServiceProvider::Ptr const& serviceProvider, string const& workerName, string const& databaseFamily,
         bool inUseOnly, GetReplicasQservMgtRequest::CallbackType const& onFinish) {
     return GetReplicasQservMgtRequest::Ptr(
-            new GetReplicasQservMgtRequest(serviceProvider, worker, databaseFamily, inUseOnly, onFinish));
+            new GetReplicasQservMgtRequest(serviceProvider, workerName, databaseFamily, inUseOnly, onFinish));
 }
 
 GetReplicasQservMgtRequest::GetReplicasQservMgtRequest(
-        ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& databaseFamily,
+        ServiceProvider::Ptr const& serviceProvider, string const& workerName, string const& databaseFamily,
         bool inUseOnly, GetReplicasQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_GET_REPLICAS", worker),
+        : QservWorkerMgtRequest(serviceProvider, "QSERV_GET_REPLICAS", workerName),
           _databaseFamily(databaseFamily),
           _inUseOnly(inUseOnly),
           _onFinish(onFinish) {}

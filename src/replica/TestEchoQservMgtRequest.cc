@@ -40,16 +40,18 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.TestEchoQservMgtRequest");
 namespace lsst::qserv::replica {
 
 shared_ptr<TestEchoQservMgtRequest> TestEchoQservMgtRequest::create(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker, string const& data,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName, string const& data,
         TestEchoQservMgtRequest::CallbackType const& onFinish) {
     return shared_ptr<TestEchoQservMgtRequest>(
-            new TestEchoQservMgtRequest(serviceProvider, worker, data, onFinish));
+            new TestEchoQservMgtRequest(serviceProvider, workerName, data, onFinish));
 }
 
 TestEchoQservMgtRequest::TestEchoQservMgtRequest(shared_ptr<ServiceProvider> const& serviceProvider,
-                                                 string const& worker, string const& data,
+                                                 string const& workerName, string const& data,
                                                  TestEchoQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_TEST_ECHO", worker), _data(data), _onFinish(onFinish) {}
+        : QservWorkerMgtRequest(serviceProvider, "QSERV_TEST_ECHO", workerName),
+          _data(data),
+          _onFinish(onFinish) {}
 
 string const& TestEchoQservMgtRequest::dataEcho() const {
     if (not((state() == State::FINISHED) and (extendedState() == ExtendedState::SUCCESS))) {

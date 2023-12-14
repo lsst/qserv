@@ -39,7 +39,7 @@
 #include "replica/DatabaseMySQLUtils.h"
 #include "replica/Job.h"
 #include "replica/NamedMutexRegistry.h"
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/Request.h"
 #include "replica/SemanticMaps.h"
@@ -159,10 +159,10 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performance const& performance,
+void DatabaseServicesMySQL::saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                                       string const& serverError) {
     string const context =
-            "DatabaseServicesMySQL::" + string(__func__) + "[QservMgtRequest::" + request.type() + "] ";
+            "DatabaseServicesMySQL::" + string(__func__) + "[QservWorkerMgtRequest::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     // Requests which haven't started yet or the ones which aren't associated
@@ -181,14 +181,14 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performanc
     replica::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
-    // If a row with the same primary key (QservMgtRequest id) already exists in the table
+    // If a row with the same primary key (id) already exists in the table
     // then the UPDATE query will be executed.
     try {
         auto const insert = [&](decltype(_conn) conn) {
             string const query =
                     _g.insert("request", request.id(), request.jobId(), request.type(), request.workerName(),
-                              0, QservMgtRequest::state2string(request.state()),
-                              QservMgtRequest::state2string(request.extendedState()), serverError,
+                              0, QservWorkerMgtRequest::state2string(request.state()),
+                              QservWorkerMgtRequest::state2string(request.extendedState()), serverError,
                               performance.c_create_time, performance.c_start_time, performance.w_receive_time,
                               performance.w_start_time, performance.w_finish_time, performance.c_finish_time);
             conn->execute(query);
@@ -201,8 +201,10 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performanc
         };
         auto const update = [&](decltype(_conn) conn) {
             string const query =
-                    _g.update("request", make_pair("state", QservMgtRequest::state2string(request.state())),
-                              make_pair("ext_state", QservMgtRequest::state2string(request.extendedState())),
+                    _g.update("request",
+                              make_pair("state", QservWorkerMgtRequest::state2string(request.state())),
+                              make_pair("ext_state",
+                                        QservWorkerMgtRequest::state2string(request.extendedState())),
                               make_pair("server_status", serverError),
                               make_pair("c_create_time", performance.c_create_time),
                               make_pair("c_start_time", performance.c_start_time),
@@ -242,7 +244,7 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
     replica::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
-    // If a row with the same primary key (QservMgtRequest id) already exists in the table
+    // If a row with the same primary key (request id) already exists in the table
     // then the UPDATE query will be executed.
     try {
         auto const insert = [&](decltype(_conn) conn) {
