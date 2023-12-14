@@ -311,52 +311,40 @@ json HttpQservMonitorModule::_workerFiles() {
 
 json HttpQservMonitorModule::_czar() {
     debug(__func__);
-    checkApiVersion(__func__, 25);
+    checkApiVersion(__func__, 29);
 
-    // Connect to the Czar's MySQL proxy service.
-    // Execute w/o any transactions since the transcation management isn't supported
-    // by Qserv Czar.
-    auto const conn = Connection::open(Configuration::qservCzarProxyParams());
-    QueryGenerator const g(conn);
-    string const command = "query_proc_stats";
-    string const query = g.call(g.QSERV_MANAGER(command));
-    string response;
-    conn->execute([&query, &response](auto conn) { selectSingleValue<string>(conn, query, response); });
-    string err;
-    if (response.empty() || (response == command)) {
-        err = "no response received from Czar";
-    } else {
-        if (auto const status = json::parse(response); status.is_object()) {
-            return json::object({{"status", status}});
-        }
-        err = "response received from Czar is not a valid JSON object";
-    }
-    throw http::Error(__func__, err + ", query: " + query);
+    auto const czar = params().at("czar");
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
+    debug(__func__, "czar=" + czar);
+    debug(__func__, "timeout_sec=" + to_string(timeoutSec));
+
+    string const noParentJobId;
+    GetStatusQservCzarMgtRequest::CallbackType const onFinish = nullptr;
+    auto const request = controller()->serviceProvider()->qservMgtServices()->czarStatus(
+            czar, noParentJobId, onFinish, timeoutSec);
+    request->wait();
+    _throwIfNotSucceeded(__func__, request);
+
+    return json::object({{"status", request->info()}});
 }
 
 json HttpQservMonitorModule::_czarConfig() {
     debug(__func__);
-    checkApiVersion(__func__, 26);
+    checkApiVersion(__func__, 29);
 
-    // Connect to the Czar's MySQL proxy service.
-    // Execute w/o any transactions since the transcation management isn't supported
-    // by Qserv Czar.
-    auto const conn = Connection::open(Configuration::qservCzarProxyParams());
-    QueryGenerator const g(conn);
-    string const command = "config";
-    string const query = g.call(g.QSERV_MANAGER(command));
-    string response;
-    conn->execute([&query, &response](auto conn) { selectSingleValue<string>(conn, query, response); });
-    string err;
-    if (response.empty() || (response == command)) {
-        err = "no response received from Czar";
-    } else {
-        if (auto const config = json::parse(response); config.is_object()) {
-            return json::object({{"config", config}});
-        }
-        err = "response received from Czar is not a valid JSON object";
-    }
-    throw http::Error(__func__, err + ", query: " + query);
+    auto const czar = params().at("czar");
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
+    debug(__func__, "czar=" + czar);
+    debug(__func__, "timeout_sec=" + to_string(timeoutSec));
+
+    string const noParentJobId;
+    GetConfigQservCzarMgtRequest::CallbackType const onFinish = nullptr;
+    auto const request = controller()->serviceProvider()->qservMgtServices()->czarConfig(
+            czar, noParentJobId, onFinish, timeoutSec);
+    request->wait();
+    _throwIfNotSucceeded(__func__, request);
+
+    return json::object({{"config", request->info()}});
 }
 
 json HttpQservMonitorModule::_czarDb() {
@@ -479,63 +467,28 @@ json HttpQservMonitorModule::_activeQueries() {
 
 json HttpQservMonitorModule::_activeQueriesProgress() {
     debug(__func__);
-    checkApiVersion(__func__, 25);
+    checkApiVersion(__func__, 29);
 
+    auto const czar = params().at("czar");
+    unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
     QueryId const selectQueryId = query().optionalUInt64("query_id", 0);
     unsigned int const selectLastSeconds = query().optionalUInt("last_seconds", 0);
+
+    debug(__func__, "czar=" + czar);
+    debug(__func__, "timeout_sec=" + to_string(timeoutSec));
     debug(__func__, "query_id=" + to_string(selectQueryId));
     debug(__func__, "last_seconds=" + to_string(selectLastSeconds));
 
-    // Connect to the Czar's MySQL proxy service.
-    auto const conn = Connection::open(Configuration::qservCzarProxyParams());
-    QueryGenerator const g(conn);
-    string const command = "query_info " + to_string(selectQueryId) + " " + to_string(selectLastSeconds);
-    string const query = g.call(g.QSERV_MANAGER(command));
-    debug(__func__, "query=" + query);
+    string const noParentJobId;
+    vector<QueryId> queryIds;
+    if (selectQueryId != 0) queryIds.push_back(selectQueryId);
+    GetQueryProgressQservCzarMgtRequest::CallbackType const onFinish = nullptr;
+    auto const request = controller()->serviceProvider()->qservMgtServices()->czarQueryProgress(
+            czar, noParentJobId, queryIds, selectLastSeconds, onFinish, timeoutSec);
+    request->wait();
+    _throwIfNotSucceeded(__func__, request);
 
-    // Result set processor populates the JSON object and returns the completion
-    // status of the operation as a string. The empty string indicates success.
-    json queries = json::object();
-    auto const extractResultSet = [&queries, this](auto conn) -> string {
-        debug(__func__, "");
-        // Clear the result in case if the previous retry failed mid-flight.
-        queries = json::object();
-        vector<string> const requiredColumnNames = {"queryId", "timestamp_ms", "num_jobs"};
-        if (conn->columnNames() != requiredColumnNames) {
-            return "unexpected schema of the result set";
-        }
-        string prevQueryIdStr;
-        Row row;
-        while (conn->next(row)) {
-            // Default values indicate NULLs
-            string const queryIdStr = row.getAs<string>(0, string());
-            uint64_t const timestampMs = row.getAs<uint64_t>(1, 0);
-            int const numJobs = row.getAs<int>(2, -1);
-            if (queryIdStr.empty() || (timestampMs == 0) || (numJobs < 0)) {
-                return "NULL values in the result set";
-            }
-            // Group query-specific results into dedicated arrays
-            if (prevQueryIdStr.empty() || (prevQueryIdStr != queryIdStr)) {
-                prevQueryIdStr = queryIdStr;
-                queries[queryIdStr] = json::array();
-            }
-            queries[queryIdStr].push_back(json::array({timestampMs, numJobs}));
-            debug(__func__, "(queryIdStr,timestampMs,numJobs)=(" + queryIdStr + "," + to_string(timestampMs) +
-                                    "," + to_string(numJobs) + ")");
-        }
-        return string();
-    };
-
-    // Execute w/o any transactions since the transcation management isn't supported
-    // by Qserv Czar. Execute the query via the automatic query retry wrapper
-    string error;
-    conn->execute([&query, &error, &extractResultSet](auto conn) {
-        conn->execute(query);
-        // if (conn->hasResult()) error = extractResultSet(conn);
-        error = extractResultSet(conn);
-    });
-    if (error.empty()) return json::object({{"queries", queries}});
-    throw http::Error(__func__, error + ", query: " + query);
+    return request->info();
 }
 
 json HttpQservMonitorModule::_pastQueries() {

@@ -165,6 +165,44 @@ GetResultFilesQservMgtRequest::Ptr QservMgtServices::resultFiles(
     return request;
 }
 
+GetStatusQservCzarMgtRequest::Ptr QservMgtServices::czarStatus(
+        string const& czarName, string const& jobId,
+        GetStatusQservCzarMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
+    auto const request = GetStatusQservCzarMgtRequest::create(
+            serviceProvider(), czarName, [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
+    return request;
+}
+
+GetQueryProgressQservCzarMgtRequest::Ptr QservMgtServices::czarQueryProgress(
+        string const& czarName, string const& jobId, vector<QueryId> const& queryIds,
+        unsigned int lastSeconds, GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish,
+        unsigned int requestExpirationIvalSec) {
+    auto const request = GetQueryProgressQservCzarMgtRequest::create(
+            serviceProvider(), czarName, queryIds, lastSeconds,
+            [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
+    return request;
+}
+
+GetConfigQservCzarMgtRequest::Ptr QservMgtServices::czarConfig(
+        string const& czarName, string const& jobId,
+        GetConfigQservCzarMgtRequest::CallbackType const& onFinish, unsigned int requestExpirationIvalSec) {
+    auto const request = GetConfigQservCzarMgtRequest::create(
+            serviceProvider(), czarName, [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
+                self->_finish(request->id());
+            });
+    _register(__func__, request, onFinish);
+    request->start(jobId, requestExpirationIvalSec);
+    return request;
+}
+
 void QservMgtServices::_finish(string const& id) {
     string const context = "QservMgtServices::" + string(__func__) + "[" + id + "] ";
     LOGS(_log, LOG_LVL_TRACE, context);

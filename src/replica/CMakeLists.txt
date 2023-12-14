@@ -77,8 +77,11 @@ target_sources(replica PRIVATE
     FixUpJob.cc
     GetReplicasQservMgtRequest.cc
     GetDbStatusQservMgtRequest.cc
+    GetConfigQservCzarMgtRequest.cc
     GetConfigQservMgtRequest.cc
+    GetQueryProgressQservCzarMgtRequest.cc
     GetResultFilesQservMgtRequest.cc
+    GetStatusQservCzarMgtRequest.cc
     GetStatusQservMgtRequest.cc
     HealthMonitorTask.cc
     HttpAsyncReqApp.cc

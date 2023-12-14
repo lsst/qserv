@@ -263,12 +263,12 @@ void HttpProcessor::registerServices() {
                                                                  self->_processorConfig, req, resp,
                                                                  "WORKER-FILES");
                              });
-    httpServer()->addHandler("GET", "/replication/qserv/master/status",
+    httpServer()->addHandler("GET", "/replication/qserv/master/status/:czar",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp, "CZAR");
                              });
-    httpServer()->addHandler("GET", "/replication/qserv/master/config",
+    httpServer()->addHandler("GET", "/replication/qserv/master/config/:czar",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp,
@@ -286,7 +286,7 @@ void HttpProcessor::registerServices() {
                                                                  self->_processorConfig, req, resp,
                                                                  "QUERIES-ACTIVE");
                              });
-    httpServer()->addHandler("GET", "/replication/qserv/master/queries/active/progress",
+    httpServer()->addHandler("GET", "/replication/qserv/master/queries/active/progress/:czar",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp,
