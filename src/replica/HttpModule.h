@@ -74,6 +74,7 @@ protected:
                HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                qhttp::Response::Ptr const& resp);
 
+    unsigned int czarResponseTimeoutSec() const { return _processorConfig.czarResponseTimeoutSec; }
     unsigned int workerResponseTimeoutSec() const { return _processorConfig.workerResponseTimeoutSec; }
     unsigned int qservSyncTimeoutSec() const { return _processorConfig.qservSyncTimeoutSec; }
     unsigned int workerReconfigTimeoutSec() const { return _processorConfig.workerReconfigTimeoutSec; }
