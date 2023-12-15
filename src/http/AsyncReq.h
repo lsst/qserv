@@ -350,8 +350,11 @@ private:
     /// Extract the header from the response message and cache it.
     void _extractCacheHeader(std::lock_guard<std::mutex> const& lock);
 
-    /// Log a error along with the request's parameters in the specified context
+    /// Log a error along with the request's parameters in the specified context (overload for Boost)
     void _logError(std::string const& prefix, boost::system::error_code const& ec) const;
+
+    /// Log a error along with the request's parameters in the specified context (overload for messages)
+    void _logError(std::string const& prefix, std::string const& message) const;
 
     /**
      * @brief Finalize the request.

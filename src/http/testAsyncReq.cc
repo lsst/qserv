@@ -131,7 +131,7 @@ struct AsyncReqFixture {
 
     // Members that are used for testing the dynamic reconnects.
     vector<http::AsyncReq::HostPort> hostPort;
-    size_t hostPortIndex = 0;
+    size_t hostPortAttempt = 0;
 
 private:
     // The maximum duration of each test case.
@@ -462,20 +462,28 @@ BOOST_FIXTURE_TEST_CASE(dynamic, AsyncReqFixture) {
 
     auto const url = "http://127.0.0.1:" + to_string(httpServer->port()) + target;
     hostPort = {
-            http::AsyncReq::HostPort(),  // invalid connection parameters to be tried first
+            http::AsyncReq::HostPort(),  // invalid connection parameters to be tried on the second iteration
             http::AsyncReq::HostPort{
-                    "127.0.0.1", httpServer->port()}  // valid parameters to be used on the secon iteration
+                    "127.0.0.1", httpServer->port()}  // valid parameters to be used on the third iteration
     };
-    hostPortIndex = 0;
+    hostPortAttempt = 0;
     http::AsyncReq::GetHostPort const getHostPort =
             [this](http::AsyncReq::HostPort const& prev) -> http::AsyncReq::HostPort {
-        // This function is expected to be called exactly 2 times.
-        BOOST_CHECK(hostPortIndex < 2);
-        // The first time it's called to fetch the first (incorrect) set of parameters.
-        if (0 == hostPortIndex) return hostPort[hostPortIndex++];
-        // The second time it's called to retreive the rigth ones. Note that
-        BOOST_CHECK_EQUAL(prev, hostPort[0]);
-        return hostPort[hostPortIndex++];
+        switch (hostPortAttempt++) {
+            case 0:
+                // On the first pass we sumulate a problem to get the desired parameters.
+                // The client should be able to recover form this situation.
+                throw runtime_error("failed to locate the desired connection parameters");
+            case 1:
+                // This time it's called to fetch the incorrect set of parameters.
+                return hostPort[hostPortAttempt - 1];
+            case 2:
+                // This time it's called to fetch the good set of parameters.
+                return hostPort[hostPortAttempt - 1];
+            default:
+                // Return the previous set in case if the async operation keeps failing.
+                return prev;
+        }
     };
     req = http::AsyncReq::create(
             io_service,
@@ -483,7 +491,7 @@ BOOST_FIXTURE_TEST_CASE(dynamic, AsyncReqFixture) {
                 cancelAbortTimer();
                 // Make sure the host & port info was requested exactly 2 times and the last
                 // connection attemnpt succeded yealding the expected response from the server.
-                BOOST_CHECK_EQUAL(hostPortIndex, 2U);
+                BOOST_CHECK_EQUAL(hostPortAttempt, 2U);
                 BOOST_CHECK(req->state() == http::AsyncReq::State::FINISHED);
                 BOOST_CHECK(req->errorMessage().empty());
                 BOOST_CHECK_EQUAL(req->responseCode(), qhttp::STATUS_OK);

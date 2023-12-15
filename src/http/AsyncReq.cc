@@ -39,6 +39,8 @@
 using namespace std;
 namespace asio = boost::asio;
 
+#define CONTEXT_ ("AsyncReq::" + string(__func__) + " ")
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.http.AsyncReq");
@@ -85,10 +87,9 @@ string AsyncReq::state2str(State state) {
 shared_ptr<AsyncReq> AsyncReq::create(asio::io_service& io_service, CallbackType const& onFinish,
                                       http::Method method, string const& url, string const& data,
                                       unordered_map<string, string> const& headers) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     Url const url_(url);
     if (url_.scheme() != Url::Scheme::HTTP) {
-        throw invalid_argument(context + "this implementation only supports urls based on the HTTP scheme.");
+        throw invalid_argument(CONTEXT_ + "this implementation only supports urls based on the HTTP scheme.");
     }
     GetHostPort const getHostPort = [url_](HostPort const&) -> HostPort {
         return HostPort{url_.host(), url_.port()};
@@ -149,23 +150,20 @@ string AsyncReq::version() const {
 }
 
 void AsyncReq::setMaxResponseBodySize(size_t bytes) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
-    _assertState(lock, context, {State::CREATED});
+    _assertState(lock, CONTEXT_, {State::CREATED});
     _maxResponseBodySize = bytes;
 }
 
 void AsyncReq::setExpirationIval(unsigned int seconds) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
-    _assertState(lock, context, {State::CREATED});
+    _assertState(lock, CONTEXT_, {State::CREATED});
     _expirationIvalSec = seconds;
 }
 
 void AsyncReq::start() {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
-    _assertState(lock, context, {State::CREATED});
+    _assertState(lock, CONTEXT_, {State::CREATED});
     try {
         _resolve(lock);
         if (_expirationIvalSec) {
@@ -181,7 +179,6 @@ void AsyncReq::start() {
 }
 
 bool AsyncReq::cancel() {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
     switch (_state) {
         case State::CREATED:
@@ -200,37 +197,32 @@ void AsyncReq::wait() {
 }
 
 string AsyncReq::errorMessage() const {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
     return _error;
 }
 
 int AsyncReq::responseCode() const {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
-    _assertState(lock, context, {State::FINISHED, State::BODY_LIMIT_ERROR});
+    _assertState(lock, CONTEXT_, {State::FINISHED, State::BODY_LIMIT_ERROR});
     auto const& header = _res.get().base();
     return header.result_int();
 }
 
 unordered_map<string, string> const& AsyncReq::responseHeader() const {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
-    _assertState(lock, context, {State::FINISHED, State::BODY_LIMIT_ERROR});
+    _assertState(lock, CONTEXT_, {State::FINISHED, State::BODY_LIMIT_ERROR});
     return _responseHeader;
 }
 
 string const& AsyncReq::responseBody() const {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
-    _assertState(lock, context, {State::FINISHED});
+    _assertState(lock, CONTEXT_, {State::FINISHED});
     return _res.get().body();
 }
 
 size_t AsyncReq::responseBodySize() const {
-    string const context = "AsyncReq::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
-    _assertState(lock, context, {State::FINISHED});
+    _assertState(lock, CONTEXT_, {State::FINISHED});
     return _res.get().body().size();
 }
 
@@ -242,8 +234,6 @@ void AsyncReq::_restart(lock_guard<mutex> const& lock) {
 }
 
 void AsyncReq::_restarted(boost::system::error_code const& ec) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
-
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
 
@@ -257,7 +247,13 @@ void AsyncReq::_restarted(boost::system::error_code const& ec) {
 void AsyncReq::_resolve(lock_guard<mutex> const& lock) {
     // Update and cache (for error reporting) values of the connection parameters
     // in case if there was any change in those.
-    _hostPort = _getHostPort(_hostPort);
+    try {
+        _hostPort = _getHostPort(_hostPort);
+    } catch (exception const& ex) {
+        _logError(CONTEXT_ + "failed to get connection parameters of the server", ex.what());
+        _restart(lock);
+        return;
+    }
     _req.set(boost::beast::http::field::host, _hostPort.host);
     _resolver.async_resolve(
             _hostPort.host, to_string(_hostPort.port == 0 ? 80 : _hostPort.port),
@@ -269,14 +265,12 @@ void AsyncReq::_resolve(lock_guard<mutex> const& lock) {
 
 void AsyncReq::_resolved(boost::system::error_code const& ec,
                          asio::ip::tcp::resolver::results_type const& results) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
-
     if (State::IN_PROGRESS != _state) return;
     lock_guard<mutex> const lock(_mtx);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
-        _logError(context + "failed to resolve the host/port", ec);
+        _logError(CONTEXT_ + "failed to resolve the host/port", ec);
         _restart(lock);
         return;
     }
@@ -287,14 +281,12 @@ void AsyncReq::_resolved(boost::system::error_code const& ec,
 }
 
 void AsyncReq::_connected(boost::system::error_code const& ec) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
-
     if (State::IN_PROGRESS != _state) return;
     lock_guard<mutex> const lock(_mtx);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
-        _logError(context + "failed to connect to the server", ec);
+        _logError(CONTEXT_ + "failed to connect to the server", ec);
         _restart(lock);
         return;
     }
@@ -306,14 +298,12 @@ void AsyncReq::_connected(boost::system::error_code const& ec) {
 }
 
 void AsyncReq::_sent(boost::system::error_code const& ec, size_t bytesSent) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
-
     if (State::IN_PROGRESS != _state) return;
     lock_guard<mutex> const lock(_mtx);
     if (State::IN_PROGRESS != _state) return;
 
     if (ec.value() != 0) {
-        _logError(context + "failed to send a request", ec);
+        _logError(CONTEXT_ + "failed to send a request", ec);
         _restart(lock);
         return;
     }
@@ -328,8 +318,6 @@ void AsyncReq::_sent(boost::system::error_code const& ec, size_t bytesSent) {
 }
 
 void AsyncReq::_received(boost::system::error_code const& ec, size_t bytesReceived) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
-
     if (_state != State::IN_PROGRESS) return;
     lock_guard<mutex> const lock(_mtx);
     if (_state != State::IN_PROGRESS) return;
@@ -340,9 +328,9 @@ void AsyncReq::_received(boost::system::error_code const& ec, size_t bytesReceiv
         if (ec == boost::beast::http::error::body_limit) {
             newState = State::BODY_LIMIT_ERROR;
         } else {
-            _logError(context + "failed to receive server response", ec);
+            _logError(CONTEXT_ + "failed to receive server response", ec);
             _finish(lock, State::FAILED,
-                    context + "failed to receive server response, ec: " + to_string(ec.value()) + " [" +
+                    CONTEXT_ + "failed to receive server response, ec: " + to_string(ec.value()) + " [" +
                             ec.message() + "]");
             return;
         }
@@ -360,8 +348,6 @@ void AsyncReq::_extractCacheHeader(lock_guard<mutex> const& lock) {
 }
 
 void AsyncReq::_expired(boost::system::error_code const& ec) {
-    string const context = "AsyncReq::" + string(__func__) + " ";
-
     // Ignore this event if the timer was aborted
     if (ec == boost::asio::error::operation_aborted) return;
 
@@ -418,6 +404,12 @@ void AsyncReq::_logError(string const& prefix, boost::system::error_code const& 
     LOGS(_log, LOG_LVL_WARN,
          prefix << " method: " << _method << " host: " << _hostPort.host << " port: " << _hostPort.port
                 << " target: " << _target << " ec: " << ec.value() << " [" << ec.message() << "]");
+}
+
+void AsyncReq::_logError(string const& prefix, string const& message) const {
+    LOGS(_log, LOG_LVL_WARN,
+         prefix << " method: " << _method << " host: " << _hostPort.host << " port: " << _hostPort.port
+                << " target: " << _target << " [" << message << "]");
 }
 
 }  // namespace lsst::qserv::http
