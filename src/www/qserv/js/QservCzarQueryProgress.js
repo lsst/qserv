@@ -19,6 +19,8 @@ function(CSSLoader,
 
     class QservCzarQueryProgress extends FwkApplication {
 
+        static czar_name = "default";   /// The name of Czar.
+
         constructor(name) {
             super(name);
             this._data = undefined;
@@ -194,8 +196,9 @@ function(CSSLoader,
             this._loading = true;
             this._status().addClass('updating');
             Fwk.web_service_GET(
-                "replication/qserv/master/queries/active/progress",
+                "replication/qserv/master/queries/active/progress/" + QservCzarQueryProgress.czar_name,
                 {   version: Common.RestAPIVersion,
+                    timeout_sec: 2,
                     query_id: this._query_id(),
                     last_seconds: this._last_seconds()
                 },
