@@ -62,7 +62,6 @@
 #include "wconfig/WorkerConfigError.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/SqlConnMgr.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wpublish/ChunkInventory.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
@@ -232,15 +231,10 @@ SsiService::SsiService(XrdSsiLogger* log) {
     int const resvInteractiveSqlConn = workerConfig->getReservedInteractiveSqlConnections();
     auto sqlConnMgr = make_shared<wcontrol::SqlConnMgr>(maxSqlConn, maxSqlConn - resvInteractiveSqlConn);
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
-
-    int const maxTransmits = workerConfig->getMaxTransmits();
-    int const maxPerQid = workerConfig->getMaxPerQid();
-    auto const transmitMgr = make_shared<wcontrol::TransmitMgr>(maxTransmits, maxPerQid);
-    LOGS(_log, LOG_LVL_WARN, "config transmitMgr" << *transmitMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
     _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries,
-                                              ::makeChunkInventory(mySqlConfig), sqlConnMgr, transmitMgr);
+                                              ::makeChunkInventory(mySqlConfig), sqlConnMgr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log

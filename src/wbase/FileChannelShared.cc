@@ -253,16 +253,14 @@ json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned in
 }
 
 FileChannelShared::Ptr FileChannelShared::create(shared_ptr<wbase::SendChannel> const& sendChannel,
-                                                 shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
                                                  shared_ptr<proto::TaskMsg> const& taskMsg) {
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
-    return shared_ptr<FileChannelShared>(new FileChannelShared(sendChannel, transmitMgr, taskMsg));
+    return shared_ptr<FileChannelShared>(new FileChannelShared(sendChannel, taskMsg));
 }
 
 FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel,
-                                     shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
                                      shared_ptr<proto::TaskMsg> const& taskMsg)
-        : ChannelShared(sendChannel, transmitMgr, taskMsg->czarid()) {}
+        : ChannelShared(sendChannel, taskMsg->czarid()) {}
 
 FileChannelShared::~FileChannelShared() {
     // Normally, the channel should not be dead before the base class's d-tor

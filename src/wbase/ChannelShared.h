@@ -39,11 +39,6 @@
 #include "wbase/SendChannel.h"
 #include "wbase/TransmitData.h"
 
-namespace lsst::qserv::wcontrol {
-class TransmitLock;
-class TransmitMgr;
-}  // namespace lsst::qserv::wcontrol
-
 namespace lsst::qserv::wbase {
 class Task;
 }
@@ -125,8 +120,7 @@ public:
 
 protected:
     /// Protected constructor is seen by subclasses only.
-    ChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                  std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId czarId);
+    ChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId);
 
     std::shared_ptr<wbase::SendChannel> const sendChannel() const { return _sendChannel; }
 
@@ -162,11 +156,6 @@ protected:
                      bool cancelled, bool erred, bool lastIn, TransmitData::Ptr const& tData, int qId,
                      int jId);
 
-    /// Items to share one TransmitLock across all Task's using this
-    /// ChannelShared. If all Task's using this channel are not
-    /// allowed to complete, deadlock is likely.
-    void waitTransmitLock(bool interactive, QueryId const& qId);
-
     std::shared_ptr<TransmitData> transmitData;  ///< TransmitData object
     mutable std::mutex tMtx;                     ///< protects transmitData
 
@@ -200,14 +189,7 @@ private:
                   std::lock_guard<std::mutex> const& streamMutexLock, xrdsvc::StreamBuffer::Ptr& streamBuf,
                   bool last, std::string const& note);
 
-    std::atomic<bool> _firstTransmitLock{true};  ///< True until the first thread tries to lock transmitLock.
-    std::shared_ptr<wcontrol::TransmitLock> _transmitLock;  ///< Hold onto transmitLock until finished.
-    std::mutex _transmitLockMtx;                            ///< protects access to _transmitLock.
-    std::condition_variable _transmitLockCv;
-
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
-
-    std::shared_ptr<wcontrol::TransmitMgr> _transmitMgr;  ///< Pointer to the TransmitMgr
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using ChannelShared.

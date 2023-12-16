@@ -159,8 +159,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
-                    channelShared =
-                            wbase::FileChannelShared::create(sendChannel, _foreman->transmitMgr(), taskMsg);
+                    channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg);
                     break;
                 default:
                     throw std::runtime_error("SsiRequest::" + std::string(__func__) +

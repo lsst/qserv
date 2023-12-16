@@ -39,22 +39,20 @@
 #include "qmeta/types.h"
 #include "wbase/ChannelShared.h"
 
+// Forward declarations
+
 namespace lsst::qserv::proto {
 class TaskMsg;
-}
+}  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::wbase {
 class SendChannel;
 class Task;
 }  // namespace lsst::qserv::wbase
 
-namespace lsst::qserv::wcontrol {
-class TransmitMgr;
-}
-
 namespace lsst::qserv::util {
 class MultiError;
-}
+}  // namespace lsst::qserv::util
 
 namespace lsst::qserv::wbase {
 
@@ -115,7 +113,6 @@ public:
 
     /// The factory method for the channel class.
     static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
                       std::shared_ptr<proto::TaskMsg> const& taskMsg);
 
     FileChannelShared() = delete;
@@ -132,7 +129,6 @@ public:
 private:
     /// Private constructor to protect shared pointer integrity.
     FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
                       std::shared_ptr<proto::TaskMsg> const& taskMsg);
 
     /**

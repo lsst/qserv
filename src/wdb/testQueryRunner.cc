@@ -35,7 +35,6 @@
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wdb/QueryRunner.h"
 #include "wpublish/QueriesAndChunks.h"
@@ -65,14 +64,11 @@ using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wconfig::WorkerConfig;
 using lsst::qserv::wcontrol::SqlConnMgr;
-using lsst::qserv::wcontrol::TransmitMgr;
 using lsst::qserv::wdb::ChunkResource;
 using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wdb::FakeBackend;
 using lsst::qserv::wdb::QueryRunner;
 using lsst::qserv::wpublish::QueriesAndChunks;
-
-TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50, 4);
 
 struct Fixture {
     shared_ptr<TaskMsg> newTaskMsg() {
@@ -111,7 +107,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     WorkerConfig::create();
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
-    auto sc = FileChannelShared::create(sendC, locTransmitMgr, msg);
+    auto sc = FileChannelShared::create(sendC, msg);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
@@ -127,7 +123,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     string out;
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
-    auto sc = FileChannelShared::create(sendC, locTransmitMgr, msg);
+    auto sc = FileChannelShared::create(sendC, msg);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);

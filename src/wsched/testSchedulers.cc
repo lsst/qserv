@@ -41,7 +41,6 @@
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/ChunkTasksQueue.h"
 #include "wsched/BlendScheduler.h"
@@ -73,9 +72,6 @@ using lsst::qserv::wpublish::QueriesAndChunks;
 
 double const oneHr = 60.0;
 
-lsst::qserv::wcontrol::TransmitMgr::Ptr locTransmitMgr =
-        std::make_shared<lsst::qserv::wcontrol::TransmitMgr>(50, 4);
-
 shared_ptr<ChunkResourceMgr> crm;  // not used in this test, required by Task::createTasks
 MySqlConfig mySqlConfig;           // not used in this test, required by Task::createTasks
 SqlConnMgr::Ptr sqlConnMgr;        // not used in this test, required by Task::createTasks
@@ -85,7 +81,7 @@ std::vector<FileChannelShared::Ptr> locSendSharedPtrs;
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm, shared_ptr<QueriesAndChunks> const& queries) {
     WorkerConfig::create();
     auto sendC = std::make_shared<SendChannel>();
-    auto sc = FileChannelShared::create(sendC, locTransmitMgr, tm);
+    auto sc = FileChannelShared::create(sendC, tm);
     locSendSharedPtrs.push_back(sc);
     auto taskVect = Task::createTasks(tm, sc, crm, mySqlConfig, sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];

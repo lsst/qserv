@@ -28,7 +28,6 @@
 #include "qmeta/types.h"
 #include "util/Bug.h"
 #include "util/Error.h"
-#include "wcontrol/TransmitMgr.h"
 #include "wbase/Task.h"
 #include "wpublish/QueriesAndChunks.h"
 
@@ -45,9 +44,8 @@ namespace lsst::qserv::wbase {
 
 atomic<uint64_t> ChannelShared::scsSeqId{0};
 
-ChannelShared::ChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel,
-                             shared_ptr<wcontrol::TransmitMgr> const& transmitMgr, qmeta::CzarId czarId)
-        : _sendChannel(sendChannel), _transmitMgr(transmitMgr), _czarId(czarId), _scsId(scsSeqId++) {
+ChannelShared::ChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId)
+        : _sendChannel(sendChannel), _czarId(czarId), _scsId(scsSeqId++) {
     if (_sendChannel == nullptr) {
         throw util::Bug(ERR_LOC, "ChannelShared constructor given nullptr");
     }
@@ -121,7 +119,6 @@ string ChannelShared::dumpTransmit() const {
 bool ChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::Ptr const& task, bool cancelled) {
     auto qId = task->getQueryId();
     bool scanInteractive = true;
-    waitTransmitLock(scanInteractive, qId);
     lock_guard<mutex> const tMtxLock(tMtx);
     // Ignore the existing transmitData object as it is irrelevant now
     // that there's an error. Create a new one to send the error.
@@ -136,20 +133,6 @@ bool ChannelShared::buildAndTransmitError(util::MultiError& multiErr, Task::Ptr 
 string ChannelShared::dumpTransmit(lock_guard<mutex> const& lock) const {
     return string("ChannelShared::dumpTransmit ") +
            (transmitData == nullptr ? "nullptr" : transmitData->dump());
-}
-
-void ChannelShared::waitTransmitLock(bool interactive, QueryId const& qId) {
-    if (_transmitLock != nullptr) return;
-    {
-        unique_lock<mutex> uLock(_transmitLockMtx);
-        if (_firstTransmitLock.exchange(false)) {
-            // This will wait until TransmitMgr has resources available.
-            _transmitLock.reset(new wcontrol::TransmitLock(*_transmitMgr, interactive, qId));
-        } else {
-            _transmitLockCv.wait(uLock, [this]() { return _transmitLock != nullptr; });
-        }
-    }
-    _transmitLockCv.notify_one();
 }
 
 void ChannelShared::initTransmit(lock_guard<mutex> const& tMtxLock, Task& task) {
