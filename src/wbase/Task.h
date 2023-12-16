@@ -274,8 +274,6 @@ public:
     /// Return a json object describing sdome details of this task.
     nlohmann::json getJson() const;
 
-    int64_t getSession() const { return _session; }
-    int getProtocol() const { return _protocol; }
     std::string getDb() const { return _db; }
     int getCzarId() const { return _czarId; }
     bool getFragmentHasSubchunks() const { return _fragmentHasSubchunks; }
@@ -309,10 +307,8 @@ private:
     int const _attemptCount = 0;       ///< attemptCount from czar
     int const _queryFragmentNum;       ///< The fragment number of the query in the task message.
     bool const _fragmentHasSubchunks;  ///< True if the fragment in this query has subchunks.
-    int64_t const _session;            ///< XrdSsi session.
     bool const _hasDb;                 ///< true if db was in message from czar.
     std::string _db;                   ///< Task database
-    int const _protocol;               ///< protocol expected by czar
     int const _czarId;                 ///< czar Id from the task message.
 
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.

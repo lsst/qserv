@@ -222,21 +222,12 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    switch (_task->getProtocol()) {
-        case 2:
-            // Run the query and send the results back.
-            if (!_dispatchChannel()) {
-                LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
-                return false;
-            }
-            return true;
-        case 1:
-            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
-        default:
-            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Invalid protocol in TaskMsg");
+    // Run the query and send the results back.
+    if (!_dispatchChannel()) {
+        LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
+        return false;
     }
-
-    return false;
+    return true;
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {

@@ -32,13 +32,11 @@ package lsst.qserv.proto;
 // Query message sent to worker
 // One of these Task objects should be sent.
 message TaskMsg {
-    optional int64 session = 1;
     // Future: might have multiple db/chunk dependencies.
     optional string db = 2;
     optional int32 chunkid = 3;
     // repeated string scantables = 4;  // obsolete
     optional string user = 6;
-    optional int32 protocol = 7; // Null or 1: original mysqldump, 2: row-based result
     optional int32 scanpriority = 8;
     message Subchunk {
         optional string database = 1; // database (unused)
@@ -87,26 +85,9 @@ message TaskMsg {
 // This message must be 255 characters or less, because its size is
 // transmitted as an unsigned char.
 message ProtoHeader {
-    optional fixed32 protocol = 1;
     optional sfixed32 size = 2; // protobufs discourages messages > megabytes
-    optional bytes md5 = 3;
     optional string wname = 4;
-    optional bool largeresult = 5; // DEPRECATED
     optional bool endnodata = 6; // True if this header is the end, no more data. size should be 0.
-    optional uint32 seq = 7; // sequence number from SendChannel
-    optional int32 scsseq = 8; // sequence number from SendChannelShared, can be -1
-}
-
-// DEPRECATED
-message ColumnSchema {
-    optional string name = 1; // Optional to allow type-only transmission
-    optional string sqltype = 2;
-    optional int32 mysqltype = 3;
-}
-
-// DEPRECATED
-message RowSchema {
-    repeated ColumnSchema columnschema = 1;
 }
 
 message RowBundle {
@@ -115,8 +96,6 @@ message RowBundle {
 }
 
 message Result {
-    optional int64 session = 1;
-    optional RowSchema rowschema = 2; // DEPRECATED
     optional int32 errorcode = 3;
     optional string errormsg = 4;
     repeated RowBundle row = 5;
@@ -129,7 +108,7 @@ message Result {
     optional string fileresource_http = 12;     /// HTTP url for the result file
 }
 
-// Result protocol 2:
+// Result protocol:
 // Byte 0: N = unsigned char size of ProtoHeader
 // Byte 1-N: ProtoHeader message
 // Byte N+1, extent = ProtoHeader.size, Result msg

@@ -358,9 +358,8 @@ bool SsiRequest::replyFile(int fd, long long fSize) {
     return true;
 }
 
-bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last << " scsseq=" << scsSeq);
+bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
+    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
 
     // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
     // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
@@ -388,8 +387,8 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last, int scsSe
         return false;
     }
     // XrdSsi or Finished() will call Recycle().
-    LOGS(_log, LOG_LVL_INFO, "SsiRequest::replyStream seq=" << getSeq() << " scsseq=" << scsSeq);
-    _stream->append(sBuf, last, scsSeq);
+    LOGS(_log, LOG_LVL_INFO, "SsiRequest::replyStream seq=" << getSeq());
+    _stream->append(sBuf, last);
     return true;
 }
 

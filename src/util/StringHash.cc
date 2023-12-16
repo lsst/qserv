@@ -103,12 +103,6 @@ std::string StringHash::getSha256Hex(char const* buffer, int bufferSize) {
     return wrapHashHex<SHA256, SHA256_DIGEST_LENGTH>(buffer, bufferSize);
 }
 
-/// @return a hexadecimal representation of the MD5 hash of the input buffer
-/// 128 bits -> 16 bytes
-std::string StringHash::getMd5(char const* buffer, int bufferSize) {
-    return wrapHash<MD5, MD5_DIGEST_LENGTH>(buffer, bufferSize);
-}
-
 /// @return the raw SHA1 hash of the input buffer
 /// 160 bits -> 20 bytes
 std::string StringHash::getSha1(char const* buffer, int bufferSize) {

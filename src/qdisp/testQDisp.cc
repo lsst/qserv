@@ -80,7 +80,7 @@ namespace lsst::qserv::qproc {
 // for that job.
 class MockTaskMsgFactory : public TaskMsgFactory {
 public:
-    MockTaskMsgFactory(std::string const& mockPayload_) : TaskMsgFactory(0), mockPayload(mockPayload_) {}
+    MockTaskMsgFactory(std::string const& mockPayload_) : TaskMsgFactory(), mockPayload(mockPayload_) {}
     void serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName, QueryId queryId, int jobId,
                       int attemptCount, qmeta::CzarId czarId, std::ostream& os) override {
         os << mockPayload;

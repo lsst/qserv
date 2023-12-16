@@ -71,7 +71,7 @@ public:
         cout << "NopChannel sendFile(" << fd << ", " << fSize << ");\n";
         return !isDead();
     }
-    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) override {
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
         cout << "NopChannel sendStream(" << (void*)sBuf.get() << ", " << (last ? "true" : "false") << ");\n";
         return !isDead();
     }
@@ -123,7 +123,7 @@ public:
         return true;
     }
 
-    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) override {
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
         if (isDead()) return false;
         char const* buf = sBuf->data;
         size_t bufLen = sBuf->getSize();
@@ -181,9 +181,9 @@ bool SendChannel::isDead() {
     return _dead;
 }
 
-bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) {
+bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     if (isDead()) return false;
-    if (_ssiRequest->replyStream(sBuf, last, scsSeq)) return true;
+    if (_ssiRequest->replyStream(sBuf, last)) return true;
     LOGS(_log, LOG_LVL_ERROR, "_ssiRequest->replyStream failed, killing.");
     kill("SendChannel::sendStream");
     return false;

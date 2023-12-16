@@ -97,9 +97,8 @@ public:
 private:
     void _initState();  ///< Prepare for first call to flush()
     bool _merge();      ///< Call Infile::merge to add the results to the result table.
-    void _setError(int code, std::string const& msg);    ///< Set error code and string
-    bool _setResult(BufPtr const& bufPtr, int blen);     ///< Extract the result from the protobuffer.
-    bool _verifyResult(BufPtr const& bufPtr, int blen);  ///< Check the result against hash in the header.
+    void _setError(int code, std::string const& msg);  ///< Set error code and string
+    bool _setResult(BufPtr const& bufPtr, int blen);   ///< Extract the result from the protobuffer.
     bool _noErrorsInResult();  ///< Check if the result message has no errors, report the ones (if any).
 
     std::shared_ptr<MsgReceiver> _msgReceiver;           ///< Message code receiver

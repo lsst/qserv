@@ -38,7 +38,6 @@
 // Qserv headers
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/ScanTableInfo.h"
-#include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "proto/WorkerResponse.h"
 
@@ -58,9 +57,7 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
     ~ProtocolFixture(void) {}
 
     bool compareTaskMsgs(lsst::qserv::proto::TaskMsg& t1, lsst::qserv::proto::TaskMsg& t2) {
-        bool nonFragEq =
-                (t1.session() == t2.session()) && (t1.chunkid() == t2.chunkid()) && (t1.db() == t2.db());
-
+        bool nonFragEq = (t1.chunkid() == t2.chunkid()) && (t1.db() == t2.db());
         bool sTablesEq = t1.scantable_size() == t2.scantable_size();
         for (int i = 0; i < t1.scantable_size(); ++i) {
             auto const& sTbl1 = t1.scantable(i);
@@ -123,7 +120,7 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
 
     bool compareProtoHeaders(lsst::qserv::proto::ProtoHeader const& p1,
                              lsst::qserv::proto::ProtoHeader const& p2) {
-        return ((p1.protocol() == p2.protocol()) && (p1.size() == p2.size()) && (p1.md5() == p2.md5()));
+        return p1.size() == p2.size();
     }
 
     int counter;
@@ -173,13 +170,6 @@ BOOST_AUTO_TEST_CASE(MsgBuffer) {
     BOOST_CHECK(r1.get());
     r2->MergePartialFromCodedStream(&coded);
     BOOST_CHECK(compareProtoHeaders(*r1, *r2));
-}
-
-BOOST_AUTO_TEST_CASE(ProtoHashDigest) {
-    std::unique_ptr<lsst::qserv::proto::TaskMsg> t1(makeTaskMsg());
-    std::string hash = hashTaskMsg(*t1);
-    std::string expected = "b3ecc6a56205c90642e61943e44c7f14";
-    BOOST_CHECK_EQUAL(hash, expected);
 }
 
 BOOST_AUTO_TEST_CASE(ProtoHeaderWrap) {

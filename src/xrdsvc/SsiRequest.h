@@ -85,7 +85,7 @@ public:
     bool reply(char const* buf, int bufLen);
     bool replyError(std::string const& msg, int code);
     bool replyFile(int fd, long long fSize);
-    bool replyStream(StreamBuffer::Ptr const& sbuf, bool last, int scsSeq);
+    bool replyStream(StreamBuffer::Ptr const& sbuf, bool last);
 
     bool sendMetadata(const char* buf, int blen);
 

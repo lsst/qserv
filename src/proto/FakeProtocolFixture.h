@@ -39,7 +39,6 @@ public:
 
     TaskMsg* makeTaskMsg() {
         TaskMsg* t(new TaskMsg());
-        t->set_session(123456);
         t->set_chunkid(20 + _counter);
         t->set_db("elephant");
         t->set_jobid(0);
@@ -86,9 +85,7 @@ public:
 
     ProtoHeader* makeProtoHeader() {
         ProtoHeader* p(new ProtoHeader());
-        p->set_protocol(2);
         p->set_size(500);
-        p->set_md5(std::string("1234567890abcdef0"));
         p->set_endnodata(false);
         return p;
     }

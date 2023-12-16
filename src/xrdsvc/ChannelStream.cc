@@ -53,20 +53,20 @@ ChannelStream::ChannelStream() : XrdSsiStream(isActive), _closed(false), _seq(_s
 ChannelStream::~ChannelStream() { clearMsgs(); }
 
 /// Push in a data packet
-void ChannelStream::append(StreamBuffer::Ptr const &streamBuffer, bool last, int scsSeq) {
+void ChannelStream::append(StreamBuffer::Ptr const &streamBuffer, bool last) {
     if (_closed) {
         throw util::Bug(ERR_LOC,
                         "ChannelStream::append: Stream closed, append(...,last=true) already received");
     }
     LOGS(_log, LOG_LVL_DEBUG,
-         "seq=" << _seq << " scsseq=" << scsSeq << " ChannelStream::append last=" << last << " "
+         "seq=" << _seq << " ChannelStream::append last=" << last << " "
                 << util::prettyCharBuf(streamBuffer->data, streamBuffer->getSize(), 5));
     {
         unique_lock<mutex> lock(_mutex);
         ++_appendCount;
         LOGS(_log, LOG_LVL_DEBUG,
-             "seq=" << to_string(_seq) << " scsseq=" << scsSeq << " Trying to append message (flowing) appC="
-                    << _appendCount << " getBC=" << _getBufCount);
+             "seq=" << to_string(_seq) << " Trying to append message (flowing) appC=" << _appendCount
+                    << " getBC=" << _getBufCount);
         _msgs.push_back(streamBuffer);
         _closed = last;  // if last is true, then we are closed.
     }

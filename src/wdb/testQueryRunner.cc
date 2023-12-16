@@ -31,7 +31,6 @@
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
-#include "util/StringHash.h"
 #include "wbase/FileChannelShared.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
@@ -78,8 +77,6 @@ TransmitMgr::Ptr locTransmitMgr = make_shared<TransmitMgr>(50, 4);
 struct Fixture {
     shared_ptr<TaskMsg> newTaskMsg() {
         shared_ptr<TaskMsg> t = make_shared<TaskMsg>();
-        t->set_protocol(2);
-        t->set_session(123456);
         t->set_chunkid(3240);  // hardcoded
         t->set_db("LSST");     // hardcoded
         auto scanTbl = t->add_scantable();
@@ -152,9 +149,6 @@ BOOST_AUTO_TEST_CASE(Output) {
     lsst::qserv::proto::Result result;
     BOOST_REQUIRE(ProtoImporter<Result>::setMsgFrom(result, cursor, remain));
     result.PrintDebugString();
-    string computedMd5 = util::StringHash::getMd5(cursor, remain);
-    BOOST_CHECK_EQUAL(ph.md5(), computedMd5);
-    BOOST_CHECK_EQUAL(task->getSession(), result.session());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

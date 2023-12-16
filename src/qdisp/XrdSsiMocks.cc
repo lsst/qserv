@@ -138,9 +138,7 @@ public:
         //
         _protoHeader = google::protobuf::Arena::CreateMessage<lsst::qserv::proto::ProtoHeader>(_arena.get());
         lsst::qserv::proto::ProtoHeader* ph = _protoHeader;
-        ph->set_protocol(2);
         ph->set_size(0);
-        ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
         ph->set_wname("localhost");
         ph->set_endnodata(true);
         std::string pHdrString;

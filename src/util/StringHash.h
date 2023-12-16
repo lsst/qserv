@@ -35,7 +35,6 @@ public:
     static std::string getMd5Hex(char const* buffer, int bufferSize);
     static std::string getSha1Hex(char const* buffer, int bufferSize);
     static std::string getSha256Hex(char const* buffer, int bufferSize);
-    static std::string getMd5(char const* buffer, int bufferSize);
     static std::string getSha1(char const* buffer, int bufferSize);
     static std::string getSha256(char const* buffer, int bufferSize);
 };

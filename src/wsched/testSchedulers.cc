@@ -110,7 +110,6 @@ struct SchedulerFixture {
 
     TaskMsgPtr newTaskMsg(int seq, lsst::qserv::QueryId qId, int jobId) {
         TaskMsgPtr t = std::make_shared<TaskMsg>();
-        t->set_session(123456);
         t->set_queryid(qId);
         t->set_jobid(jobId);
         t->set_chunkid(seq);
@@ -125,7 +124,6 @@ struct SchedulerFixture {
 
     TaskMsgPtr newTaskMsgSimple(int seq, lsst::qserv::QueryId qId, int jobId) {
         TaskMsgPtr t = std::make_shared<TaskMsg>();
-        t->set_session(123456);
         t->set_queryid(qId);
         t->set_jobid(jobId);
         t->set_chunkid(seq);

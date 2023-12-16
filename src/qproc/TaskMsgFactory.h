@@ -51,7 +51,7 @@ class TaskMsgFactory {
 public:
     using Ptr = std::shared_ptr<TaskMsgFactory>;
 
-    TaskMsgFactory(uint64_t session) : _session(session) {}
+    TaskMsgFactory() = default;
     virtual ~TaskMsgFactory() {}
 
     /// Construct a TaskMsg and serialize it to a stream
@@ -66,9 +66,6 @@ private:
     void _addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
                       DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
                       std::vector<std::string> const& queries);
-
-    /// All member variable need to be thread safe.
-    uint64_t const _session;
 };
 
 }  // namespace lsst::qserv::qproc

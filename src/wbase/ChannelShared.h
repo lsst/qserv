@@ -80,7 +80,7 @@ public:
     bool sendFile(int fd, wbase::SendChannel::Size fSize);
 
     /// @see wbase::SendChannel::sendStream
-    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq = -1);
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last);
 
     /// @see wbase::SendChannel::kill
     bool kill(std::string const& note);
@@ -98,10 +98,6 @@ public:
 
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
-
-    /// @return the channel sequence number (this will not be valid until after
-    ///         the channel is open.)
-    uint64_t getSeq() const;
 
     /// @return the sendChannelShared sequence number, which is always valid.
     uint64_t getScsId() const { return _scsId; }
@@ -202,7 +198,7 @@ private:
     bool _sendBuf(std::lock_guard<std::mutex> const& tMtxLock,
                   std::lock_guard<std::mutex> const& queueMtxLock,
                   std::lock_guard<std::mutex> const& streamMutexLock, xrdsvc::StreamBuffer::Ptr& streamBuf,
-                  bool last, std::string const& note, int scsSeq);
+                  bool last, std::string const& note);
 
     std::atomic<bool> _firstTransmitLock{true};  ///< True until the first thread tries to lock transmitLock.
     std::shared_ptr<wcontrol::TransmitLock> _transmitLock;  ///< Hold onto transmitLock until finished.
@@ -228,9 +224,8 @@ private:
     std::atomic<bool> _lastRecvd{false};     ///< The truly 'last' transmit message is in the queue.
     std::atomic<bool> _firstTransmit{true};  ///< True until the first transmit has been sent.
 
-    qmeta::CzarId const _czarId;       ///< id of the czar that requested this task(s).
-    uint64_t const _scsId;             ///< id number for this ChannelShared
-    std::atomic<uint32_t> _scsSeq{0};  ///< ChannelSharedsequence number for transmit.
+    qmeta::CzarId const _czarId;  ///< id of the czar that requested this task(s).
+    uint64_t const _scsId;        ///< id number for this ChannelShared
 
     /// The number of sql connections opened to handle the Tasks using this ChannelShared.
     /// Once this is greater than 0, this object needs free access to sql connections to avoid

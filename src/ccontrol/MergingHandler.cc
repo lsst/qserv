@@ -421,17 +421,9 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, int& next
             {
                 nextBufSize = _response->protoHeader.size();
                 bool endNoData = _response->protoHeader.endnodata();
-                int seq = -1;
-                int scsSeq = -1;
-                if (_response->protoHeader.has_seq()) {
-                    seq = _response->protoHeader.seq();
-                }
-                if (_response->protoHeader.has_scsseq()) {
-                    scsSeq = _response->protoHeader.scsseq();
-                }
                 LOGS(_log, LOG_LVL_DEBUG,
-                     "HEADER_WAIT: From:" << _wName << " nextBufSize=" << nextBufSize << " endNoData="
-                                          << endNoData << " seq=" << seq << " scsseq=" << scsSeq);
+                     "HEADER_WAIT: From:" << _wName << " nextBufSize=" << nextBufSize
+                                          << " endNoData=" << endNoData);
 
                 _state = MsgState::RESULT_WAIT;
                 if (endNoData || nextBufSize == 0) {
@@ -450,9 +442,6 @@ bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, int& next
         case MsgState::RESULT_WAIT: {
             nextBufSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
             auto jobQuery = getJobQuery().lock();
-            if (!_verifyResult(bufPtr, bLen)) {
-                return false;
-            }
             if (!_setResult(bufPtr, bLen)) {  // This sets _response->result
                 LOGS(_log, LOG_LVL_WARN, "setResult failure " << _wName);
                 return false;
@@ -611,17 +600,6 @@ bool MergingHandler::_setResult(BufPtr const& bufPtr, int blen) {
     auto protoEnd = std::chrono::system_clock::now();
     auto protoDur = std::chrono::duration_cast<std::chrono::milliseconds>(protoEnd - start);
     LOGS(_log, LOG_LVL_DEBUG, "protoDur=" << protoDur.count());
-    return true;
-}
-
-bool MergingHandler::_verifyResult(BufPtr const& bufPtr, int blen) {
-    auto& buf = *bufPtr;
-    if (_response->protoHeader.md5() != util::StringHash::getMd5(&(buf[0]), blen)) {
-        LOGS(_log, LOG_LVL_ERROR, "_verifyResult MD5 mismatch");
-        _setError(ccontrol::MSG_RESULT_MD5, "Result message MD5 mismatch");
-        _state = MsgState::RESULT_ERR;
-        return false;
-    }
     return true;
 }
 

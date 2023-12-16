@@ -77,9 +77,9 @@ bool ChannelShared::sendFile(int fd, wbase::SendChannel::Size fSize) {
     return _sendChannel->sendFile(fd, fSize);
 }
 
-bool ChannelShared::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) {
+bool ChannelShared::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     lock_guard<mutex> const streamMutexLock(_streamMutex);
-    return _sendChannel->sendStream(sBuf, last, scsSeq);
+    return _sendChannel->sendStream(sBuf, last);
 }
 
 bool ChannelShared::kill(string const& note) {
@@ -112,8 +112,6 @@ string ChannelShared::makeIdStr(int qId, int jId) {
     string str("QID" + (qId == 0 ? "" : to_string(qId) + "#" + to_string(jId)));
     return str;
 }
-
-uint64_t ChannelShared::getSeq() const { return _sendChannel->getSeq(); }
 
 string ChannelShared::dumpTransmit() const {
     lock_guard<mutex> const tMtxLock(tMtx);
@@ -155,14 +153,14 @@ void ChannelShared::waitTransmitLock(bool interactive, QueryId const& qId) {
 }
 
 void ChannelShared::initTransmit(lock_guard<mutex> const& tMtxLock, Task& task) {
-    LOGS(_log, LOG_LVL_TRACE, "initTransmit " << task.getIdStr() << " seq=" << task.getTSeq());
+    LOGS(_log, LOG_LVL_TRACE, "initTransmit " << task.getIdStr());
     if (transmitData == nullptr) {
         transmitData = createTransmit(tMtxLock, task);
     }
 }
 
 TransmitData::Ptr ChannelShared::createTransmit(lock_guard<mutex> const& tMtxLock, Task& task) {
-    LOGS(_log, LOG_LVL_TRACE, "createTransmit " << task.getIdStr() << " seq=" << task.getTSeq());
+    LOGS(_log, LOG_LVL_TRACE, "createTransmit " << task.getIdStr());
     auto tData = wbase::TransmitData::createTransmitData(_czarId, task.getIdStr());
     tData->initResult(task);
     return tData;
@@ -277,11 +275,7 @@ bool ChannelShared::_transmit(lock_guard<mutex> const& tMtxLock, lock_guard<mute
                                                                         << " nextTr=" << nextTr->dump());
             }
         }
-        uint32_t seq = _sendChannel->getSeq();
-        int scsSeq = ++_scsSeq;
-        string seqStr = string("seq=" + to_string(seq) + " scsseq=" + to_string(scsSeq) +
-                               " scsId=" + to_string(_scsId));
-        thisTransmit->attachNextHeader(nextTr, reallyLast, seq, scsSeq);
+        thisTransmit->attachNextHeader(nextTr, reallyLast);
 
         // The first message needs to put its header data in metadata as there's
         // no previous message it could attach its header to.
@@ -290,7 +284,7 @@ bool ChannelShared::_transmit(lock_guard<mutex> const& tMtxLock, lock_guard<mute
             if (_firstTransmit.exchange(false)) {
                 // Put the header for the first message in metadata
                 // _metaDataBuf must remain valid until Finished() is called.
-                string thisHeaderString = thisTransmit->getHeaderString(seq, scsSeq - 1);
+                string thisHeaderString = thisTransmit->getHeaderString();
                 _metadataBuf = proto::ProtoHeaderWrap::wrap(thisHeaderString);
                 bool metaSet = _sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size());
                 if (!metaSet) {
@@ -306,7 +300,7 @@ bool ChannelShared::_transmit(lock_guard<mutex> const& tMtxLock, lock_guard<mute
             auto streamBuf = thisTransmit->getStreamBuffer(task);
             streamBuf->startTimer();
             bool sent = _sendBuf(tMtxLock, queueMtxLock, streamMutexLock, streamBuf, reallyLast,
-                                 "transmitLoop " + idStr + " " + seqStr, scsSeq);
+                                 "transmitLoop " + idStr);
 
             if (!sent) {
                 LOGS(_log, LOG_LVL_ERROR, "Failed to send " << idStr);
@@ -322,8 +316,8 @@ bool ChannelShared::_transmit(lock_guard<mutex> const& tMtxLock, lock_guard<mute
 
 bool ChannelShared::_sendBuf(lock_guard<mutex> const& tMtxLock, lock_guard<mutex> const& queueMtxLock,
                              lock_guard<mutex> const& streamMutexLock, xrdsvc::StreamBuffer::Ptr& streamBuf,
-                             bool last, string const& note, int scsSeq) {
-    bool sent = _sendChannel->sendStream(streamBuf, last, scsSeq);
+                             bool last, string const& note) {
+    bool sent = _sendChannel->sendStream(streamBuf, last);
     if (!sent) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to transmit " << note << "!");
         return false;

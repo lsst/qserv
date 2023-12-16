@@ -47,7 +47,6 @@
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
 #include "mysql/MySqlConfig.h"
-#include "proto/TaskMsgDigest.h"
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
 #include "util/common.h"
@@ -133,10 +132,8 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
           _attemptCount(t->attemptcount()),
           _queryFragmentNum(fragmentNumber),
           _fragmentHasSubchunks(t->fragment(fragmentNumber).has_subchunks()),
-          _session(t->has_session() ? t->session() : -1),
           _hasDb(t->has_db()),
           _db(t->has_db() ? t->db() : ""),
-          _protocol(t->has_protocol() ? t->protocol() : -1),
           _czarId(t->has_czarid() ? t->czarid() : -1) {
     // These attributes will be passed back to Czar in the Protobuf response
     // to advice which result delivery channel to use.
@@ -490,8 +487,7 @@ nlohmann::json Task::getJson() const {
 
 std::ostream& operator<<(std::ostream& os, Task const& t) {
     os << "Task: "
-       << "msg: " << t.getIdStr() << " session=" << t._session << " chunk=" << t._chunkId << " db=" << t._db
-       << " " << t.getQueryString();
+       << "msg: " << t.getIdStr() << " chunk=" << t._chunkId << " db=" << t._db << " " << t.getQueryString();
 
     return os;
 }

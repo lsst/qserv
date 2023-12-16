@@ -46,7 +46,7 @@ public:
     virtual ~ChannelStream();
 
     /// Push in a data packet
-    void append(StreamBuffer::Ptr const &StreamBuffer, bool last, int scsSeq);
+    void append(StreamBuffer::Ptr const &StreamBuffer, bool last);
 
     /// Empty _msgs, calling StreamBuffer::Recycle() where needed.
     void clearMsgs();

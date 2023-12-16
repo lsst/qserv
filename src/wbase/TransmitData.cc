@@ -66,9 +66,7 @@ TransmitData::TransmitData(qmeta::CzarId const& czarId_, shared_ptr<google::prot
 
 proto::ProtoHeader* TransmitData::_createHeader(lock_guard<mutex> const& lock) {
     proto::ProtoHeader* hdr = google::protobuf::Arena::CreateMessage<proto::ProtoHeader>(_arena.get());
-    hdr->set_protocol(2);  // protocol 2: row-by-row message
     hdr->set_size(0);
-    hdr->set_md5(util::StringHash::getMd5("", 0));
     hdr->set_wname(getHostname());
     hdr->set_endnodata(true);
     return hdr;
@@ -79,8 +77,7 @@ proto::Result* TransmitData::_createResult(lock_guard<mutex> const& lock) {
     return rst;
 }
 
-void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool reallyLast, uint32_t seq,
-                                    int scsSeq) {
+void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool reallyLast) {
     _icPtr = make_shared<util::InstanceCount>(_idStr + "_td_LDB_" + to_string(reallyLast));
     lock_guard<mutex> const lock(_trMtx);
     if (_result == nullptr) {
@@ -92,26 +89,25 @@ void TransmitData::attachNextHeader(TransmitData::Ptr const& nextTr, bool really
         // Need a special header to indicate there are no more messages.
         LOGS(_log, LOG_LVL_TRACE, _dump(lock) << " attachNextHeader reallyLast=" << reallyLast);
         // this _tMtx is already locked, so call private member
-        nextHeaderString = _makeHeaderString(lock, reallyLast, seq, scsSeq);
+        nextHeaderString = _makeHeaderString(lock, reallyLast);
     } else {
         // Need the header from the next TransmitData object in the queue.
         // Using public version to lock its mutex.
         LOGS(_log, LOG_LVL_TRACE,
              _dump(lock) << "attachNextHeader reallyLast=" << reallyLast << " next=" << nextTr->dump());
         // next _tMtx is not locked, so call public member
-        nextHeaderString = nextTr->makeHeaderString(reallyLast, seq, scsSeq);
+        nextHeaderString = nextTr->makeHeaderString(reallyLast);
     }
     // Append the next header to this data.
     _dataMsg += proto::ProtoHeaderWrap::wrap(nextHeaderString);
 }
 
-string TransmitData::makeHeaderString(bool reallyLast, uint32_t seq, int scsSeq) {
+string TransmitData::makeHeaderString(bool reallyLast) {
     lock_guard<mutex> const lock(_trMtx);
-    return _makeHeaderString(lock, reallyLast, seq, scsSeq);
+    return _makeHeaderString(lock, reallyLast);
 }
 
-string TransmitData::_makeHeaderString(lock_guard<mutex> const& lock, bool reallyLast, uint32_t seq,
-                                       int scsSeq) {
+string TransmitData::_makeHeaderString(lock_guard<mutex> const& lock, bool reallyLast) {
     proto::ProtoHeader* pHeader;
     if (reallyLast) {
         // Create a header for an empty dataMsg using the protobuf arena from thisTransmit.
@@ -121,18 +117,14 @@ string TransmitData::_makeHeaderString(lock_guard<mutex> const& lock, bool reall
         pHeader = _header;
     }
     pHeader->set_endnodata(reallyLast);
-    pHeader->set_seq(seq);
-    pHeader->set_scsseq(scsSeq);
     string headerString;
     pHeader->SerializeToString(&headerString);
     return headerString;
 }
 
-string TransmitData::getHeaderString(uint32_t seq, int scsSeq) {
+string TransmitData::getHeaderString() {
     lock_guard<mutex> const lock(_trMtx);
     proto::ProtoHeader* thisPHdr = _header;
-    thisPHdr->set_seq(seq);
-    thisPHdr->set_scsseq(scsSeq);  // should always be 0
     string thisHeaderString;
     thisPHdr->SerializeToString(&thisHeaderString);
     return thisHeaderString;
@@ -148,8 +140,6 @@ void TransmitData::_buildHeader(lock_guard<mutex> const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, _idStr << "TransmitData::_buildHeader");
     // The size of the dataMsg must include space for the header for the next dataMsg.
     _header->set_size(_dataMsg.size() + proto::ProtoHeaderWrap::getProtoHeaderSize());
-    // The md5 hash must not include the header for the next dataMsg.
-    _header->set_md5(util::StringHash::getMd5(_dataMsg.data(), _dataMsg.size()));
     _header->set_endnodata(false);
 }
 
@@ -187,9 +177,6 @@ void TransmitData::initResult(Task& task) {
     lock_guard<mutex> const lock(_trMtx);
     _result->set_queryid(task.getQueryId());
     _result->set_jobid(task.getJobId());
-    if (task.getSession() >= 0) {
-        _result->set_session(task.getSession());
-    }
     _result->set_fileresource_xroot(task.resultFileXrootUrl());
     _result->set_fileresource_http(task.resultFileHttpUrl());
 }
