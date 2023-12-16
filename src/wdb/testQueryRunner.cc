@@ -32,7 +32,7 @@
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
 #include "util/StringHash.h"
-#include "wbase/SendChannelShared.h"
+#include "wbase/FileChannelShared.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
@@ -61,8 +61,8 @@ using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::proto::TaskMsg_Fragment;
 using lsst::qserv::proto::TaskMsg_Subchunk;
 
+using lsst::qserv::wbase::FileChannelShared;
 using lsst::qserv::wbase::SendChannel;
-using lsst::qserv::wbase::SendChannelShared;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wconfig::WorkerConfig;
 using lsst::qserv::wcontrol::SqlConnMgr;
@@ -114,7 +114,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     WorkerConfig::create();
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
-    auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
+    auto sc = FileChannelShared::create(sendC, locTransmitMgr, msg);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     string out;
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
-    auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
+    auto sc = FileChannelShared::create(sendC, locTransmitMgr, msg);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);

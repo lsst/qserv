@@ -142,20 +142,18 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
     // to advice which result delivery channel to use.
     auto const workerConfig = wconfig::WorkerConfig::instance();
     auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
-    if (resultDeliveryProtocol != wconfig::WorkerConfig::ResultDeliveryProtocol::SSI) {
-        _resultFilePath = ::buildResultFilePath(t, workerConfig->resultsDirname());
-        auto const fqdn = util::get_current_host_fqdn();
-        if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT) {
-            // NOTE: one extra '/' after the <host>[:<port>] spec is required to make
-            // a "valid" XROOTD url.
-            _resultFileXrootUrl = "xroot://" + fqdn + ":" + to_string(workerConfig->resultsXrootdPort()) +
-                                  "/" + _resultFilePath;
-        } else if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP) {
-            _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + _resultFilePath;
-        } else {
-            throw std::runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
-                                     wconfig::WorkerConfig::protocol2str(resultDeliveryProtocol));
-        }
+    _resultFilePath = ::buildResultFilePath(t, workerConfig->resultsDirname());
+    auto const fqdn = util::get_current_host_fqdn();
+    if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT) {
+        // NOTE: one extra '/' after the <host>[:<port>] spec is required to make
+        // a "valid" XROOTD url.
+        _resultFileXrootUrl = "xroot://" + fqdn + ":" + to_string(workerConfig->resultsXrootdPort()) + "/" +
+                              _resultFilePath;
+    } else if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP) {
+        _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + _resultFilePath;
+    } else {
+        throw std::runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
+                                 wconfig::WorkerConfig::protocol2str(resultDeliveryProtocol));
     }
     if (t->has_user()) {
         user = t->user();

@@ -312,26 +312,6 @@ bool QueryRunner::_dispatchChannel() {
             auto qStats = _task->getQueryStats();
             if (qStats != nullptr) qStats->addTaskRunQuery(runTimeSeconds, subchunkRunTimeSeconds);
 
-            // This thread may have already been removed from the pool for
-            // other reasons, such as taking too long.
-            bool const streamingProtocol = wconfig::WorkerConfig::instance()->resultDeliveryProtocol() ==
-                                           wconfig::WorkerConfig::ResultDeliveryProtocol::SSI;
-            if (streamingProtocol && !_removedFromThreadPool) {
-                // This query has been answered by the database and the
-                // scheduler for this worker should stop waiting for it.
-                // leavePool() will tell the scheduler this task is finished
-                // and create a new thread in the pool to replace this one.
-                // This thread will wait for the czar to read all of the
-                // results of the query and then die.
-                auto pet = _task->getAndNullPoolEventThread();
-                _removedFromThreadPool = true;
-                if (pet != nullptr) {
-                    pet->leavePool();
-                } else {
-                    LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
-                }
-            }
-
             // Transition task's state to the next one (reading data from MySQL and sending them to Czar).
             _task->queried();
             // Pass all information on to the shared object to add on to

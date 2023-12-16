@@ -47,12 +47,12 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wconfig.WorkerConfig");
 
 WorkerConfig::ResultDeliveryProtocol parseResultDeliveryProtocol(std::string const& str) {
     // Using BOOST's 'iequals' for case-insensitive comparisons.
-    if (str.empty() || boost::iequals(str, "SSI")) {
-        return WorkerConfig::ResultDeliveryProtocol::SSI;
-    } else if (boost::iequals(str, "XROOT")) {
-        return WorkerConfig::ResultDeliveryProtocol::XROOT;
+    if (str.empty() || boost::iequals(str, "HTTP")) {
+        return WorkerConfig::ResultDeliveryProtocol::HTTP;
     } else if (boost::iequals(str, "HTTP")) {
         return WorkerConfig::ResultDeliveryProtocol::HTTP;
+    } else if (boost::iequals(str, "XROOT")) {
+        return WorkerConfig::ResultDeliveryProtocol::XROOT;
     }
     throw std::invalid_argument("WorkerConfig::" + std::string(__func__) + " unsupported method '" + str +
                                 "'.");
@@ -85,12 +85,10 @@ std::shared_ptr<WorkerConfig> WorkerConfig::instance() {
 
 std::string WorkerConfig::protocol2str(ResultDeliveryProtocol const& p) {
     switch (p) {
-        case WorkerConfig::ResultDeliveryProtocol::SSI:
-            return "SSI";
-        case WorkerConfig::ResultDeliveryProtocol::XROOT:
-            return "XROOT";
         case WorkerConfig::ResultDeliveryProtocol::HTTP:
             return "HTTP";
+        case WorkerConfig::ResultDeliveryProtocol::XROOT:
+            return "XROOT";
     }
     throw std::invalid_argument("WorkerConfig::" + std::string(__func__) + ": unknown protocol " +
                                 std::to_string(static_cast<int>(p)));
@@ -131,7 +129,7 @@ WorkerConfig::WorkerConfig()
           _resultsDirname("/qserv/data/results"),
           _resultsXrootdPort(1094),
           _resultsNumHttpThreads(1),
-          _resultDeliveryProtocol(ResultDeliveryProtocol::SSI),
+          _resultDeliveryProtocol(ResultDeliveryProtocol::HTTP),
           _resultsCleanUpOnStart(true),
           _replicationInstanceId(""),
           _replicationAuthKey(""),
@@ -184,7 +182,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
           _resultsDirname(configStore.get("results.dirname", "/qserv/data/results")),
           _resultsXrootdPort(configStore.getInt("results.xrootd_port", 1094)),
           _resultsNumHttpThreads(configStore.getInt("results.num_http_threads", 1)),
-          _resultDeliveryProtocol(::parseResultDeliveryProtocol(configStore.get("results.protocol", "SSI"))),
+          _resultDeliveryProtocol(::parseResultDeliveryProtocol(configStore.get("results.protocol", "HTTP"))),
           _resultsCleanUpOnStart(configStore.getInt("results.clean_up_on_start", 1) != 0),
           _replicationInstanceId(configStore.get("replication.instance_id", "")),
           _replicationAuthKey(configStore.get("replication.auth_key", "")),

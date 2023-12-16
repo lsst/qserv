@@ -193,12 +193,12 @@ results_dirname_option = partial(
 )
 
 
-resultProtocolChoices = ["SSI", "XROOT", "HTTP"]
+resultProtocolChoices = ["XROOT", "HTTP"]
 results_protocol_option = partial(
     click.option,
     "--results-protocol",
     help=f"Result delivery protocol. Allowed options are [{'|'.join(resultProtocolChoices)}]",
-    default="SSI",
+    default="HTTP",
     type=click.Choice(resultProtocolChoices, case_sensitive=False),
     show_default=True,
 )

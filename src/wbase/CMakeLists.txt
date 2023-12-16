@@ -6,7 +6,6 @@ target_sources(wbase PRIVATE
     ChannelShared.cc
     FileChannelShared.cc
     SendChannel.cc
-    SendChannelShared.cc
     Task.cc
     TransmitData.cc
     UserQueryInfo.cc

@@ -45,7 +45,6 @@
 #include "util/HoldTrack.h"
 #include "util/Timer.h"
 #include "wbase/FileChannelShared.h"
-#include "wbase/SendChannelShared.h"
 #include "wbase/TaskState.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
@@ -158,10 +157,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             }
             std::shared_ptr<wbase::ChannelShared> channelShared;
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
-                case wconfig::WorkerConfig::ResultDeliveryProtocol::SSI:
-                    channelShared = wbase::SendChannelShared::create(sendChannel, _foreman->transmitMgr(),
-                                                                     taskMsg->czarid());
-                    break;
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
                     channelShared =
@@ -210,10 +205,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                                         << " query_id=" << request.query_id());
 
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
-                case wconfig::WorkerConfig::ResultDeliveryProtocol::SSI:
-                    // TODO: locate and cancel the coresponding tasks, remove the tasks
-                    //       from the scheduler queues.
-                    break;
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
                     switch (request.op()) {

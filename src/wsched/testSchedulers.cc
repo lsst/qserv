@@ -37,7 +37,7 @@
 #include "proto/worker.pb.h"
 #include "util/Command.h"
 #include "util/EventThread.h"
-#include "wbase/SendChannelShared.h"
+#include "wbase/FileChannelShared.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
@@ -63,8 +63,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 using namespace std;
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::proto::TaskMsg;
+using lsst::qserv::wbase::FileChannelShared;
 using lsst::qserv::wbase::SendChannel;
-using lsst::qserv::wbase::SendChannelShared;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wconfig::WorkerConfig;
 using lsst::qserv::wcontrol::SqlConnMgr;
@@ -80,12 +80,12 @@ shared_ptr<ChunkResourceMgr> crm;  // not used in this test, required by Task::c
 MySqlConfig mySqlConfig;           // not used in this test, required by Task::createTasks
 SqlConnMgr::Ptr sqlConnMgr;        // not used in this test, required by Task::createTasks
 
-std::vector<SendChannelShared::Ptr> locSendSharedPtrs;
+std::vector<FileChannelShared::Ptr> locSendSharedPtrs;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm, shared_ptr<QueriesAndChunks> const& queries) {
     WorkerConfig::create();
     auto sendC = std::make_shared<SendChannel>();
-    auto sc = SendChannelShared::create(sendC, locTransmitMgr, 1);
+    auto sc = FileChannelShared::create(sendC, locTransmitMgr, tm);
     locSendSharedPtrs.push_back(sc);
     auto taskVect = Task::createTasks(tm, sc, crm, mySqlConfig, sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];

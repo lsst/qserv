@@ -56,12 +56,11 @@ public:
     /**
      * The enumeration type representing available methods for pulling query results
      * from workers.
-     * @note The default method, if none was found in the configuration, would be SSI.
+     * @note The default method, if none was found in the configuration, would be HTTP.
      */
     enum class ResultDeliveryProtocol : int {
-        SSI = 0,    ///< Pull data from the SSI stream (default)
-        XROOT = 1,  ///< Use XROOTD file protocol
-        HTTP = 2    ///< Use HTTP protocol
+        HTTP = 0,  ///< Use HTTP protocol
+        XROOT = 1  ///< Use XROOTD file protocol
     };
 
     /// @return the string representation of the protocol
