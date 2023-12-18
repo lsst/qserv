@@ -168,6 +168,9 @@ SsiService::SsiService(XrdSsiLogger* log) {
                 memman::MemMan::create(memManSize, workerConfig->getMemManLocation()));
     } else if (cfgMemMan == "MemManNone") {
         memMan = make_shared<memman::MemManNone>(1, false);
+    } else if (cfgMemMan == "MemManNoneRelaxed") {
+        bool const alwaysLock = true;
+        memMan = make_shared<memman::MemManNone>(1, alwaysLock);
     } else {
         LOGS(_log, LOG_LVL_ERROR, "Unrecognized memory manager " << cfgMemMan);
         throw wconfig::WorkerConfigError("Unrecognized memory manager.");
