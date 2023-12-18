@@ -78,7 +78,7 @@ list<pair<string, string>> SqlJob::persistentLogData() const {
 
     // Per-worker stats
     for (auto&& workerItr : resultData.resultSets) {
-        auto&& worker = workerItr.first;
+        auto&& workerName = workerItr.first;
         auto&& workerResultSets = workerItr.second;
         string workerResultSetsStr;
         for (auto&& resultSet : workerResultSets) {
@@ -94,7 +94,7 @@ list<pair<string, string>> SqlJob::persistentLogData() const {
                                        ",error=" + resultSet.error + "),";
             }
         }
-        result.emplace_back("worker-stats", "worker=" + worker + ",result-set=" + workerResultSetsStr);
+        result.emplace_back("worker-stats", "worker=" + workerName + ",result-set=" + workerResultSetsStr);
     }
     return result;
 }
@@ -110,11 +110,12 @@ json SqlJob::getExtendedErrorReport() const {
     report["job_state"] = Job::state2string(extendedState());
     report["workers"] = json::object();
 
-    getResultData().iterate([&report](SqlJobResult::Worker const& worker, SqlJobResult::Scope const& object,
+    getResultData().iterate([&report](SqlJobResult::Worker const& workerName,
+                                      SqlJobResult::Scope const& object,
                                       SqlResultSet::ResultSet const& resultSet) {
         if (resultSet.extendedStatus != ProtocolStatusExt::NONE) {
-            report["workers"][worker][object]["request_status"] = status2string(resultSet.extendedStatus);
-            report["workers"][worker][object]["request_error"] = resultSet.error;
+            report["workers"][workerName][object]["request_status"] = status2string(resultSet.extendedStatus);
+            report["workers"][workerName][object]["request_error"] = resultSet.error;
         }
     });
     return report;
@@ -131,9 +132,9 @@ void SqlJob::startImpl(replica::Lock const& lock) {
     size_t const maxRequestsPerWorker =
             controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
 
-    for (auto&& worker : workerNames) {
-        _resultData.resultSets[worker] = list<SqlResultSet>();
-        auto const requests = launchRequests(lock, worker, maxRequestsPerWorker);
+    for (auto&& workerName : workerNames) {
+        _resultData.resultSets[workerName] = list<SqlResultSet>();
+        auto const requests = launchRequests(lock, workerName, maxRequestsPerWorker);
         _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     }
 
@@ -157,18 +158,18 @@ void SqlJob::cancelImpl(replica::Lock const& lock) {
 }
 
 void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
-    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->worker());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  worker=" << request->workerName());
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
     _numFinished++;
     // Update stats, including the result sets since they may carry
     // MySQL-specific errors reported by failed queries.
-    _resultData.resultSets[request->worker()].push_back(request->responseData());
+    _resultData.resultSets[request->workerName()].push_back(request->responseData());
 
     // Try submitting a replacement request for the same worker. If none
     // would be launched then evaluate for the completion condition of the job.
-    auto const requests = launchRequests(lock, request->worker());
+    auto const requests = launchRequests(lock, request->workerName());
     auto itr = _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     if (_requests.cend() == itr) {
         if (_requests.size() == _numFinished) {

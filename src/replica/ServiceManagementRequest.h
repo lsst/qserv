@@ -122,17 +122,17 @@ public:
      *
      * @param serviceProvider provides various services for the application
      * @param io_service network communication service (BOOST ASIO)
-     * @param worker identifier of a worker node (the one to be affected by the request)
+     * @param workerName identifier of a worker node (the one to be affected by the request)
      * @param priority a priority level of the request
      * @param onFinish callback function to be called upon a completion of the request
      * @param messenger messenger service for workers
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, CallbackType const& onFinish, int priority,
+                      std::string const& workerName, CallbackType const& onFinish, int priority,
                       std::shared_ptr<Messenger> const& messenger) {
         return ServiceManagementRequest<POLICY>::Ptr(new ServiceManagementRequest<POLICY>(
-                serviceProvider, io_service, POLICY::requestName(), worker, POLICY::requestType(), priority,
-                onFinish, messenger));
+                serviceProvider, io_service, POLICY::requestName(), workerName, POLICY::requestType(),
+                priority, onFinish, messenger));
     }
 
 protected:
@@ -142,10 +142,10 @@ protected:
 
 private:
     ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                             char const* requestName, std::string const& worker,
+                             char const* requestName, std::string const& workerName,
                              ProtocolServiceRequestType requestType, int priority,
                              CallbackType const& onFinish, std::shared_ptr<Messenger> const& messenger)
-            : ServiceManagementRequestBase(serviceProvider, io_service, requestName, worker, requestType,
+            : ServiceManagementRequestBase(serviceProvider, io_service, requestName, workerName, requestType,
                                            priority, messenger),
               _onFinish(onFinish) {}
 

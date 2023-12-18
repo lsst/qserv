@@ -158,7 +158,7 @@ private:
     std::string _format;
 
     /// Parameters of a worker to be updated
-    WorkerInfo _worker;
+    ConfigWorker _worker;
 
     /// The flag for enabling a select worker. The default value of -1 or any
     /// negative number) means that the flag wasn't used. A value of 0 means - disable

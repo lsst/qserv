@@ -52,6 +52,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.MasterControllerHttpApp");
 struct {
     unsigned int const healthProbeIntervalSec = 60;
     unsigned int const replicationIntervalSec = 60;
+    unsigned int const czarResponseTimeoutSec = 60;
     unsigned int const workerResponseTimeoutSec = 60;
     unsigned int const workerEvictTimeoutSec = 3600;
     unsigned int const qservSyncTimeoutSec = 1800;
@@ -93,6 +94,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
                       ::enableServiceProvider),
           _healthProbeIntervalSec(::defaultOptions.healthProbeIntervalSec),
           _replicationIntervalSec(::defaultOptions.replicationIntervalSec),
+          _czarResponseTimeoutSec(::defaultOptions.czarResponseTimeoutSec),
           _workerResponseTimeoutSec(::defaultOptions.workerResponseTimeoutSec),
           _workerEvictTimeoutSec(::defaultOptions.workerEvictTimeoutSec),
           _qservSyncTimeoutSec(::defaultOptions.qservSyncTimeoutSec),
@@ -110,9 +112,13 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
                     "Interval (seconds) between running the linear sequence of"
                     " actions: check - fix-up - replicate - re-balance.",
                     _replicationIntervalSec);
+    parser().option("czar-response-timeout",
+                    "The maximum number of seconds to wait before giving up"
+                    " on requests sent to Czar.",
+                    _czarResponseTimeoutSec);
     parser().option("worker-response-timeout",
                     "The maximum number of seconds to wait before giving up"
-                    " on worker probes when checking for workers.",
+                    " on requests sent to workers.",
                     _workerResponseTimeoutSec);
     parser().option("worker-evict-timeout",
                     "The maximum number of seconds to allow troubled workers to recover"
@@ -208,11 +214,11 @@ int MasterControllerHttpApp::runImpl() {
     _healthMonitorTask->start();
 
     // Running the REST server in its own thread
-    auto const httpProcessor =
-            HttpProcessor::create(_controller,
-                                  HttpProcessorConfig(_workerResponseTimeoutSec, _qservSyncTimeoutSec,
-                                                      _workerReconfigTimeoutSec, _httpRoot),
-                                  _healthMonitorTask);
+    auto const httpProcessor = HttpProcessor::create(
+            _controller,
+            HttpProcessorConfig(_czarResponseTimeoutSec, _workerResponseTimeoutSec, _qservSyncTimeoutSec,
+                                _workerReconfigTimeoutSec, _httpRoot),
+            _healthMonitorTask);
     thread ingestHttpSvrThread([httpProcessor]() { httpProcessor->run(); });
 
     // Keep running before a catastrophic failure is reported by any activity.
@@ -274,6 +280,7 @@ void MasterControllerHttpApp::_logControllerStartedEvent() const {
     event.kvInfo.emplace_back("pid", to_string(_controller->identity().pid));
     event.kvInfo.emplace_back("health-probe-interval", to_string(_healthProbeIntervalSec));
     event.kvInfo.emplace_back("replication-interval", to_string(_replicationIntervalSec));
+    event.kvInfo.emplace_back("czar-response-timeout", to_string(_czarResponseTimeoutSec));
     event.kvInfo.emplace_back("worker-response-timeout", to_string(_workerResponseTimeoutSec));
     event.kvInfo.emplace_back("worker-evict-timeout", to_string(_workerEvictTimeoutSec));
     event.kvInfo.emplace_back("qserv-sync-timeout", to_string(_qservSyncTimeoutSec));

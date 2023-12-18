@@ -94,29 +94,31 @@ int AdminApp::runImpl() {
 
     CommonRequestTracker<ServiceManagementRequestBase> tracker(cout, _progressReport, _errorReport);
 
-    auto const workers =
+    auto const workerNames =
             _allWorkers ? serviceProvider()->config()->allWorkers() : serviceProvider()->config()->workers();
 
-    for (auto&& worker : workers) {
+    for (auto&& workerName : workerNames) {
         if (_operation == "STATUS") {
             tracker.add(controller->statusOfWorkerService(
-                    worker, [&tracker](ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    workerName, [&tracker](ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "SUSPEND") {
             tracker.add(controller->suspendWorkerService(
-                    worker, [&tracker](ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    workerName,
+                    [&tracker](ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "RESUME") {
             tracker.add(controller->resumeWorkerService(
-                    worker, [&tracker](ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    workerName, [&tracker](ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "REQUESTS") {
             tracker.add(controller->requestsOfWorkerService(
-                    worker, [&tracker](ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    workerName,
+                    [&tracker](ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else if (_operation == "DRAIN") {
             tracker.add(controller->drainWorkerService(
-                    worker, [&tracker](ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+                    workerName, [&tracker](ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
 
         } else {
             throw logic_error("AdminApp::" + string(__func__) + "  unsupported operation: " + _operation);
@@ -137,8 +139,7 @@ int AdminApp::runImpl() {
     vector<string> numFinishedRequests;
 
     for (auto const& ptr : tracker.requests) {
-        workerName.push_back(ptr->worker());
-
+        workerName.push_back(ptr->workerName());
         if ((ptr->state() == Request::State::FINISHED) &&
             (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
             startedSecondsAgo.push_back(
@@ -147,7 +148,6 @@ int AdminApp::runImpl() {
             numNewRequests.push_back(to_string(ptr->getServiceState().numNewRequests));
             numInProgressRequests.push_back(to_string(ptr->getServiceState().numInProgressRequests));
             numFinishedRequests.push_back(to_string(ptr->getServiceState().numFinishedRequests));
-
         } else {
             startedSecondsAgo.push_back("*");
             state.push_back("*");
@@ -175,9 +175,9 @@ int AdminApp::runImpl() {
         vector<string> queue;
         vector<uint32_t> priority;
 
-        auto analyzeRemoteRequestInfo = [&](string const& worker, string const& queueName,
+        auto analyzeRemoteRequestInfo = [&](string const& workerName_, string const& queueName,
                                             ProtocolServiceResponseInfo const& info) {
-            workerName.push_back(worker);
+            workerName.push_back(workerName_);
             requestId.push_back(info.id());
             requestType.push_back(ProtocolQueuedRequestType_Name(info.queued_type()));
             queue.push_back(queueName);
@@ -187,13 +187,13 @@ int AdminApp::runImpl() {
             if ((ptr->state() == Request::State::FINISHED) &&
                 (ptr->extendedState() == Request::ExtendedState::SUCCESS)) {
                 for (auto&& info : ptr->getServiceState().newRequests) {
-                    analyzeRemoteRequestInfo(ptr->worker(), "QUEUED", info);
+                    analyzeRemoteRequestInfo(ptr->workerName(), "QUEUED", info);
                 }
                 for (auto&& info : ptr->getServiceState().inProgressRequests) {
-                    analyzeRemoteRequestInfo(ptr->worker(), "IN-PROGRESS", info);
+                    analyzeRemoteRequestInfo(ptr->workerName(), "IN-PROGRESS", info);
                 }
                 for (auto&& info : ptr->getServiceState().finishedRequests) {
-                    analyzeRemoteRequestInfo(ptr->worker(), "FINISHED", info);
+                    analyzeRemoteRequestInfo(ptr->workerName(), "FINISHED", info);
                 }
             }
         }

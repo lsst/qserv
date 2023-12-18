@@ -15,10 +15,8 @@ function(CSSLoader,
 
     class QservCzarConfig extends FwkApplication {
 
-        /**
-         * @returns the default update interval for the page
-         */ 
-        static update_ival_sec() { return 10; }
+        static update_ival_sec = 10;    /// The default update interval for the page.
+        static czar_name = "default";   /// The name of Czar.
 
         constructor(name) {
             super(name);
@@ -33,7 +31,7 @@ function(CSSLoader,
                     this._prev_update_sec = 0;
                 }
                 let now_sec = Fwk.now().sec;
-                if (now_sec - this._prev_update_sec > QservCzarConfig.update_ival_sec()) {
+                if (now_sec - this._prev_update_sec > QservCzarConfig.update_ival_sec) {
                     this._prev_update_sec = now_sec;
                     this._init();
                     this._load();
@@ -67,28 +65,24 @@ function(CSSLoader,
             this.fwk_app_container.html(html);
         }
         _table() {
-            if (_.isUndefined(this._table_obj)) {
-                this._table_obj = this.fwk_app_container.find('table#fwk-qserv-czar-config');
-            }
+            if (_.isUndefined(this._table_obj)) this._table_obj = this.fwk_app_container.find('table#fwk-qserv-czar-config');
             return this._table_obj;
         }
         _status() {
-            if (_.isUndefined(this._status_obj)) {
-                this._status_obj = this._table().children('caption');
-            }
+            if (_.isUndefined(this._status_obj)) this._status_obj = this._table().children('caption');
             return this._status_obj;
         }
         _load() {
-            if (this._loading === undefined) {
-                this._loading = false;
-            }
+            if (this._loading === undefined) this._loading = false;
             if (this._loading) return;
             this._loading = true;
 
             this._status().addClass('updating');
             Fwk.web_service_GET(
-                "/replication/qserv/master/config",
-                {version: Common.RestAPIVersion},
+                "/replication/qserv/master/config/" + QservCzarConfig.czar_name,
+                {   timeout_sec: 2,
+                    version: Common.RestAPIVersion
+                },
                 (data) => {
                     this._display(data);
                     if (data.success) {

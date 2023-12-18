@@ -30,7 +30,6 @@
 #include "http/MetaModule.h"
 #include "replica/Configuration.h"
 #include "replica/Common.h"
-#include "replica/DatabaseServices.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -87,11 +86,12 @@ string QservMgtRequest::state2string(ExtendedState state) {
 }
 
 QservMgtRequest::QservMgtRequest(ServiceProvider::Ptr const& serviceProvider, string const& type,
-                                 string const& worker)
+                                 string const& remoteServiceKey, string const& remoteServiceId)
         : _serviceProvider(serviceProvider),
           _type(type),
           _id(Generators::uniqueId()),
-          _worker(worker),
+          _remoteServiceKey(remoteServiceKey),
+          _remoteServiceId(remoteServiceId),
           _state(State::CREATED),
           _extendedState(ExtendedState::NONE) {
     // This report is used solely for debugging purposes to allow tracking
@@ -139,15 +139,6 @@ void QservMgtRequest::start(string const& jobId, unsigned int requestExpirationI
     // which was created upon the object construction.
     _performance.setUpdateStart();
 
-    // Check if configuration parameters are valid
-    auto const config = _serviceProvider->config();
-    if (!config->isKnownWorker(_worker)) {
-        LOGS(_log, LOG_LVL_ERROR, context_ << " ** MISCONFIGURED ** unknown worker: '" << _worker << "'.");
-        _setState(lock, State::FINISHED, ExtendedState::CONFIG_ERROR);
-        notify(lock);
-        return;
-    }
-
     // Build an association with the corresponding parent job (optional).
     _jobId = jobId;
 
@@ -155,6 +146,7 @@ void QservMgtRequest::start(string const& jobId, unsigned int requestExpirationI
     // creating and starting the request.
     unsigned int actualExpirationIvalSec = requestExpirationIvalSec;
     if (0 == actualExpirationIvalSec) {
+        auto const config = _serviceProvider->config();
         actualExpirationIvalSec = config->get<unsigned int>("xrootd", "request-timeout-sec");
     }
 
@@ -199,13 +191,13 @@ void QservMgtRequest::cancel() {
 
 void QservMgtRequest::createHttpReq(replica::Lock const& lock, string const& service, string const& query) {
     _assertNotStarted(__func__);
-    string const target = service + query + string(query.empty() ? "?" : "&") + "id" + _id +
-                          "&instance_id=" + _serviceProvider->instanceId() + "&worker=" + _worker +
-                          "&version=" + to_string(http::MetaModule::version);
+    string const target = service + query + string(query.empty() ? "?" : "&") + "id=" + _id +
+                          "&instance_id=" + _serviceProvider->instanceId() + "&" + _remoteServiceKey + "=" +
+                          _remoteServiceId + "&version=" + to_string(http::MetaModule::version);
     _httpRequest = http::AsyncReq::create(
             _serviceProvider->io_service(),
             [self = shared_from_this()](shared_ptr<http::AsyncReq> const&) { self->_processResponse(); },
-            http::Method::GET, _getHostPortTracker(), target);
+            http::Method::GET, getHostPortTracker(), target);
 }
 
 void QservMgtRequest::createHttpReq(replica::Lock const& lock, http::Method method, string const& target,
@@ -214,7 +206,7 @@ void QservMgtRequest::createHttpReq(replica::Lock const& lock, http::Method meth
     json data = body;
     data["id"] = _id;
     data["instance_id"] = _serviceProvider->instanceId();
-    data["worker"] = _worker;
+    data[_remoteServiceKey] = _remoteServiceId;
     data["auth_key"] = _serviceProvider->authKey();
     data["admin_auth_key"] = _serviceProvider->adminAuthKey();
     data["version"] = http::MetaModule::version;
@@ -222,7 +214,7 @@ void QservMgtRequest::createHttpReq(replica::Lock const& lock, http::Method meth
     _httpRequest = http::AsyncReq::create(
             _serviceProvider->io_service(),
             [self = shared_from_this()](shared_ptr<http::AsyncReq> const&) { self->_processResponse(); },
-            method, _getHostPortTracker(), target, data.dump(), headers);
+            method, getHostPortTracker(), target, data.dump(), headers);
 }
 
 void QservMgtRequest::finish(replica::Lock const& lock, ExtendedState extendedState,
@@ -242,25 +234,12 @@ void QservMgtRequest::finish(replica::Lock const& lock, ExtendedState extendedSt
     // We have to update the timestamp before invoking a user provided
     // callback on the completion of the operation.
     _performance.setUpdateFinish();
-
-    // TODO: temporarily disabled while this class is not supported by
-    //       the persistent backend.
-    //
-    // _serviceProvider->databaseServices()->saveState(*this, _performance, _serverError);
-
+    updatePersistentState(_performance, _serverError);
     notify(lock);
 
     // Unblock threads (if any) waiting on the synchronization call to the method wait().
     _finished = true;
     _onFinishCv.notify_all();
-}
-
-http::AsyncReq::GetHostPort QservMgtRequest::_getHostPortTracker() const {
-    return [config = _serviceProvider->config(),
-            worker = _worker](http::AsyncReq::HostPort const&) -> http::AsyncReq::HostPort {
-        auto const info = config->workerInfo(worker);
-        return http::AsyncReq::HostPort{info.qservWorker.host.addr, info.qservWorker.port};
-    };
 }
 
 void QservMgtRequest::_processResponse() {
@@ -274,7 +253,7 @@ void QservMgtRequest::_processResponse() {
             try {
                 _info = json::parse(_httpRequest->responseBody());
                 if (_info.at("success").get<int>() == 0) {
-                    string const msg = "worker reported error: " + _info.at("error").get<string>();
+                    string const msg = "service reported error: " + _info.at("error").get<string>();
                     auto extendedState = ExtendedState::SERVER_BAD;
                     // Check for optional markers in the optional extended error section that might
                     // clarify an actual reason behind the failure.
@@ -294,7 +273,7 @@ void QservMgtRequest::_processResponse() {
                     finish(lock, dataReady(lock, _info));
                 }
             } catch (exception const& ex) {
-                string const msg = "failed to parse/process worker response, ex: " + string(ex.what());
+                string const msg = "failed to parse/process server response, ex: " + string(ex.what());
                 finish(lock, ExtendedState::SERVER_BAD_RESPONSE, msg);
             }
             break;
@@ -343,7 +322,7 @@ void QservMgtRequest::_setState(replica::Lock const& lock, State newState, Exten
         _extendedState = newExtendedState;
         _state = newState;
     }
-    _serviceProvider->databaseServices()->saveState(*this, _performance, _serverError);
+    updatePersistentState(_performance, _serverError);
 }
 
 }  // namespace lsst::qserv::replica

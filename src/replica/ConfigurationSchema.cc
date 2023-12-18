@@ -175,6 +175,13 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " service. If the flag is set to 0 then new workers will be ignored."},
              {"empty-allowed", 1},
              {"default", 0}}},
+           {"auto-register-czars",
+            {{"description",
+              "Automatically scale a collection of Czars by registering new Czars reported by the "
+              "Registry"
+              " service. If the flag is set to 0 then new Czars will be ignored."},
+             {"empty-allowed", 1},
+             {"default", 1}}},
            {"ingest-job-monitor-ival-sec",
             {{"description",
               "An interval (seconds) for monitoring progress of jobs submitted by the Controller during"

@@ -24,6 +24,9 @@
 // Class header
 #include "cconfig/CzarConfig.h"
 
+// System headers
+#include <stdexcept>
+
 // Third party headers
 #include "XrdSsi/XrdSsiLogger.hh"
 
@@ -113,7 +116,33 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
           _notifyWorkersOnQueryFinish(configStore.getInt("tuning.notifyWorkersOnQueryFinish", 1)),
           _notifyWorkersOnCzarRestart(configStore.getInt("tuning.notifyWorkersOnCzarRestart", 1)),
           _czarStatsUpdateIvalSec(configStore.getInt("tuning.czarStatsUpdateIvalSec", 1)),
-          _czarStatsRetainPeriodSec(configStore.getInt("tuning.czarStatsRetainPeriodSec", 24 * 3600)) {
+          _czarStatsRetainPeriodSec(configStore.getInt("tuning.czarStatsRetainPeriodSec", 24 * 3600)),
+          _replicationInstanceId(configStore.get("replication.instance_id", "")),
+          _replicationAuthKey(configStore.get("replication.auth_key", "")),
+          _replicationAdminAuthKey(configStore.get("replication.admin_auth_key", "")),
+          _replicationRegistryHost(configStore.get("replication.registry_host", "")),
+          _replicationRegistryPort(configStore.getInt("replication.registry_port", 0)),
+          _replicationRegistryHearbeatIvalSec(
+                  configStore.getInt("replication.registry_heartbeat_ival_sec", 1)),
+          _replicationHttpPort(configStore.getInt("replication.http_port", 0)),
+          _replicationNumHttpThreads(configStore.getInt("replication.num_http_threads", 2)) {
+    if (_replicationRegistryHost.empty()) {
+        throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
+                                    ": 'replication.registry_host' is not set.");
+    }
+    if (_replicationRegistryPort == 0) {
+        throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
+                                    ": 'replication.registry_port' number can't be 0.");
+    }
+    if (_replicationRegistryHearbeatIvalSec == 0) {
+        throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
+                                    ": 'replication.registry_heartbeat_ival_sec' can't be 0.");
+    }
+    if (_replicationNumHttpThreads == 0) {
+        throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
+                                    ": 'replication.num_http_threads' can't be 0.");
+    }
+
     // Cache the cached version of the configuration in the JSON format. The JSON object
     // contains two collections of parameters: the "input" ones that were passed into
     // the contructor, and the "actual" ones that were expected by the current implementation
@@ -173,7 +202,27 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore)
             {"vectMinRunningSizes", _qdispVectMinRunningSizes},
             {"qReqPseudoFifoMaxRunning", std::to_string(_qReqPseudoFifoMaxRunning)},
     });
+    actualJsonConfig["replication"] = nlohmann::json::object(
+            {{"instance_id", _replicationInstanceId},
+             {"auth_key", "xxxxx"},
+             {"admin_auth_key", "xxxxx"},
+             {"registry_host", _replicationRegistryHost},
+             {"registry_port", std::to_string(_replicationRegistryPort)},
+             {"registry_heartbeat_ival_sec", std::to_string(_replicationRegistryHearbeatIvalSec)},
+             {"http_port", std::to_string(_replicationHttpPort)},
+             {"num_http_threads", std::to_string(_replicationNumHttpThreads)}});
 }
+
+void CzarConfig::setReplicationHttpPort(uint16_t port) {
+    if (port == 0) {
+        throw std::invalid_argument("CzarConfig::" + std::string(__func__) + ": port number can't be 0.");
+    }
+    _replicationHttpPort = port;
+    // Update the relevant section of the JSON-ified configuration.
+    _jsonConfig["actual"]["replication"]["http_port"] = std::to_string(_replicationHttpPort);
+}
+
+std::string CzarConfig::id() { return "default"; }
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
     out << czarConfig._jsonConfig.dump();

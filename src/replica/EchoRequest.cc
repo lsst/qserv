@@ -52,19 +52,19 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EchoRequest");
 namespace lsst::qserv::replica {
 
 EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                     boost::asio::io_service& io_service, string const& worker,
+                                     boost::asio::io_service& io_service, string const& workerName,
                                      string const& data, uint64_t delay, CallbackType const& onFinish,
                                      int priority, bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
-    return EchoRequest::Ptr(new EchoRequest(serviceProvider, io_service, worker, data, delay, onFinish,
+    return EchoRequest::Ptr(new EchoRequest(serviceProvider, io_service, workerName, data, delay, onFinish,
                                             priority, keepTracking, messenger));
 }
 
 EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                         string const& worker, string const& data, uint64_t delay,
+                         string const& workerName, string const& data, uint64_t delay,
                          CallbackType const& onFinish, int priority, bool keepTracking,
                          shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "TEST_ECHO", worker, priority, keepTracking,
+        : RequestMessenger(serviceProvider, io_service, "TEST_ECHO", workerName, priority, keepTracking,
                            false,  // allowDuplicate
                            true,   // disposeRequired
                            messenger),
@@ -76,7 +76,7 @@ string const& EchoRequest::responseData() const { return _responseData; }
 
 void EchoRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  worker: " << worker() << " data.length: " << data().size()
+         context() << __func__ << "  worker: " << workerName() << " data.length: " << data().size()
                    << " delay: " << delay());
 
     // Serialize the Request message header and the request itself into
@@ -138,7 +138,7 @@ void EchoRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<EchoRequest>();
     messenger()->send<ProtocolResponseEcho>(
-            worker(), id(), priority(), buffer(),
+            workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseEcho const& response) {
                 self->_analyze(success, response);
             });
@@ -186,35 +186,27 @@ void EchoRequest::_analyze(bool success, ProtocolResponseEcho const& message) {
         case ProtocolStatus::SUCCESS:
             finish(lock, SUCCESS);
             break;
-
         case ProtocolStatus::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
-
         case ProtocolStatus::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
-
         case ProtocolStatus::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
-
         case ProtocolStatus::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
-
         case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
-
         case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
-
         case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
-
         default:
             throw logic_error("EchoRequest::" + string(__func__) + "  unknown status '" +
                               ProtocolStatus_Name(message.status()) + "' received from server");

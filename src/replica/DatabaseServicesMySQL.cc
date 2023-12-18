@@ -39,7 +39,7 @@
 #include "replica/DatabaseMySQLUtils.h"
 #include "replica/Job.h"
 #include "replica/NamedMutexRegistry.h"
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 #include "replica/Request.h"
 #include "replica/SemanticMaps.h"
@@ -159,10 +159,10 @@ void DatabaseServicesMySQL::updateHeartbeatTime(Job const& job) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performance const& performance,
+void DatabaseServicesMySQL::saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                                       string const& serverError) {
     string const context =
-            "DatabaseServicesMySQL::" + string(__func__) + "[QservMgtRequest::" + request.type() + "] ";
+            "DatabaseServicesMySQL::" + string(__func__) + "[QservWorkerMgtRequest::" + request.type() + "] ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     // Requests which haven't started yet or the ones which aren't associated
@@ -181,14 +181,14 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performanc
     replica::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
-    // If a row with the same primary key (QservMgtRequest id) already exists in the table
+    // If a row with the same primary key (id) already exists in the table
     // then the UPDATE query will be executed.
     try {
         auto const insert = [&](decltype(_conn) conn) {
             string const query =
-                    _g.insert("request", request.id(), request.jobId(), request.type(), request.worker(), 0,
-                              QservMgtRequest::state2string(request.state()),
-                              QservMgtRequest::state2string(request.extendedState()), serverError,
+                    _g.insert("request", request.id(), request.jobId(), request.type(), request.workerName(),
+                              0, QservWorkerMgtRequest::state2string(request.state()),
+                              QservWorkerMgtRequest::state2string(request.extendedState()), serverError,
                               performance.c_create_time, performance.c_start_time, performance.w_receive_time,
                               performance.w_start_time, performance.w_finish_time, performance.c_finish_time);
             conn->execute(query);
@@ -201,8 +201,10 @@ void DatabaseServicesMySQL::saveState(QservMgtRequest const& request, Performanc
         };
         auto const update = [&](decltype(_conn) conn) {
             string const query =
-                    _g.update("request", make_pair("state", QservMgtRequest::state2string(request.state())),
-                              make_pair("ext_state", QservMgtRequest::state2string(request.extendedState())),
+                    _g.update("request",
+                              make_pair("state", QservWorkerMgtRequest::state2string(request.state())),
+                              make_pair("ext_state",
+                                        QservWorkerMgtRequest::state2string(request.extendedState())),
                               make_pair("server_status", serverError),
                               make_pair("c_create_time", performance.c_create_time),
                               make_pair("c_start_time", performance.c_start_time),
@@ -242,12 +244,12 @@ void DatabaseServicesMySQL::saveState(Request const& request, Performance const&
     replica::Lock lock(_mtx, context);
 
     // The algorithm will first try the INSERT query into the base table.
-    // If a row with the same primary key (QservMgtRequest id) already exists in the table
+    // If a row with the same primary key (request id) already exists in the table
     // then the UPDATE query will be executed.
     try {
         auto const insert = [&](decltype(_conn) conn) {
             string const query =
-                    _g.insert("request", request.id(), request.jobId(), request.type(), request.worker(),
+                    _g.insert("request", request.id(), request.jobId(), request.type(), request.workerName(),
                               request.priority(), Request::state2string(request.state()),
                               Request::state2string(request.extendedState()),
                               status2string(request.extendedServerStatus()), performance.c_create_time,
@@ -340,12 +342,12 @@ void DatabaseServicesMySQL::saveReplicaInfo(ReplicaInfo const& info) {
     LOGS(_log, LOG_LVL_DEBUG, context + "** DONE **");
 }
 
-void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& worker, string const& database,
+void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& workerName, string const& database,
                                                       ReplicaInfoCollection const& newReplicaInfoCollection) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _assertWorkerIsValid(context, worker);
+    _assertWorkerIsValid(context, workerName);
     _assertDatabaseIsValid(context, database);
 
     unsigned int maxReconnects = 0;  // pull the default value from the Configuration
@@ -356,7 +358,7 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& worker, stri
     try {
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) {
-                    _saveReplicaInfoCollectionImpl(lock, worker, database, newReplicaInfoCollection);
+                    _saveReplicaInfoCollectionImpl(lock, workerName, database, newReplicaInfoCollection);
                 },
                 maxReconnects, timeoutSec, maxRetriesOnDeadLock);
     } catch (exception const& ex) {
@@ -396,11 +398,11 @@ void DatabaseServicesMySQL::_saveReplicaInfoImpl(replica::Lock const& lock, Repl
 }
 
 void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
-        replica::Lock const& lock, string const& worker, string const& database,
+        replica::Lock const& lock, string const& workerName, string const& database,
         ReplicaInfoCollection const& newReplicaInfoCollection) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG,
-         context << "worker: " << worker << " database: " << database
+         context << "worker: " << workerName << " database: " << database
                  << " num.replicas: " << newReplicaInfoCollection.size());
 
     // Group new replicas by contexts
@@ -408,7 +410,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
     WorkerDatabaseChunkMap<ReplicaInfo const*> newReplicas;
     for (auto&& replica : newReplicaInfoCollection) {
         // Ignore replicas which are not in the specified context
-        if (replica.worker() == worker and replica.database() == database) {
+        if (replica.worker() == workerName and replica.database() == database) {
             newReplicas.atWorker(replica.worker()).atDatabase(replica.database()).atChunk(replica.chunk()) =
                     &replica;
         }
@@ -416,7 +418,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
 
     // Obtain old replicas and group them by contexts
     vector<ReplicaInfo> oldReplicaInfoCollection;
-    _findWorkerReplicasImpl(lock, oldReplicaInfoCollection, worker, database);
+    _findWorkerReplicasImpl(lock, oldReplicaInfoCollection, workerName, database);
     WorkerDatabaseChunkMap<ReplicaInfo const*> oldReplicas;
     for (auto&& replica : oldReplicaInfoCollection) {
         oldReplicas.atWorker(replica.worker()).atDatabase(replica.database()).atChunk(replica.chunk()) =
@@ -440,19 +442,19 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
 
     // Eliminate outdated replicas
 
-    for (auto&& worker : inOldReplicasOnly.workerNames()) {
-        auto const& databases = inOldReplicasOnly.worker(worker);
+    for (auto&& workerName : inOldReplicasOnly.workerNames()) {
+        auto const& databases = inOldReplicasOnly.worker(workerName);
         for (auto&& database : databases.databaseNames()) {
             auto const& chunks = databases.database(database);
             for (auto&& chunk : chunks.chunkNumbers()) {
-                _deleteReplicaInfoImpl(lock, worker, database, chunk);
+                _deleteReplicaInfoImpl(lock, workerName, database, chunk);
             }
         }
     }
 
     // Insert new replicas not present in the old collection
-    for (auto&& worker : inNewReplicasOnly.workerNames()) {
-        auto const& databases = inNewReplicasOnly.worker(worker);
+    for (auto&& workerName : inNewReplicasOnly.workerNames()) {
+        auto const& databases = inNewReplicasOnly.worker(workerName);
         for (auto&& database : databases.databaseNames()) {
             auto const& chunks = databases.database(database);
             for (auto&& chunk : chunks.chunkNumbers()) {
@@ -464,10 +466,10 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
 
     // Deep comparison of the replicas in the intersect area to see
     // which of those need to be updated.
-    for (auto&& worker : inBoth.workerNames()) {
-        auto const& newDatabases = newReplicas.worker(worker);
-        auto const& oldDatabases = oldReplicas.worker(worker);
-        auto const& databases = inBoth.worker(worker);
+    for (auto&& workerName : inBoth.workerNames()) {
+        auto const& newDatabases = newReplicas.worker(workerName);
+        auto const& oldDatabases = oldReplicas.worker(workerName);
+        auto const& databases = inBoth.worker(workerName);
         for (auto&& database : databases.databaseNames()) {
             auto const& newChunks = newDatabases.database(database);
             auto const& oldChunks = oldDatabases.database(database);
@@ -476,7 +478,7 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
                 ReplicaInfo const* newPtr = newChunks.chunk(chunk);
                 ReplicaInfo const* oldPtr = oldChunks.chunk(chunk);
                 if (*newPtr != *oldPtr) {
-                    _deleteReplicaInfoImpl(lock, worker, database, chunk);
+                    _deleteReplicaInfoImpl(lock, workerName, database, chunk);
                     _saveReplicaInfoImpl(lock, *newPtr);
                 }
             }
@@ -485,14 +487,14 @@ void DatabaseServicesMySQL::_saveReplicaInfoCollectionImpl(
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE **");
 }
 
-void DatabaseServicesMySQL::_deleteReplicaInfoImpl(replica::Lock const& lock, string const& worker,
+void DatabaseServicesMySQL::_deleteReplicaInfoImpl(replica::Lock const& lock, string const& workerName,
                                                    string const& database, unsigned int chunk) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
 
-    _assertWorkerIsValid(context, worker);
+    _assertWorkerIsValid(context, workerName);
     _assertDatabaseIsValid(context, database);
 
-    string const query = _g.delete_("replica") + _g.where(_g.eq("worker", worker),
+    string const query = _g.delete_("replica") + _g.where(_g.eq("worker", workerName),
                                                           _g.eq("database", database), _g.eq("chunk", chunk));
     _conn->execute(query);
 }
@@ -576,20 +578,20 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, vector<u
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
 
-void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, string const& worker,
+void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, string const& workerName,
                                                string const& database, bool allDatabases, bool isPublished,
                                                bool includeFileInfo) {
-    string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
+    string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + workerName +
                            " database=" + database + " allDatabases=" + bool2str(allDatabases) +
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _assertWorkerIsValid(context, worker);
+    _assertWorkerIsValid(context, workerName);
 
     replica::Lock lock(_mtx, context);
     try {
         _conn->executeInOwnTransaction([&](decltype(_conn) conn) {
-            _findWorkerReplicasImpl(lock, replicas, worker, database, allDatabases, isPublished,
+            _findWorkerReplicasImpl(lock, replicas, workerName, database, allDatabases, isPublished,
                                     includeFileInfo);
         });
     } catch (exception const& ex) {
@@ -599,14 +601,14 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, st
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
 
-uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker, string const& database,
+uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& workerName, string const& database,
                                                   bool allDatabases, bool isPublished) {
-    string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
+    string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + workerName +
                            " database=" + database + " allDatabases=" + bool2str(allDatabases) +
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _assertWorkerIsValid(context, worker);
+    _assertWorkerIsValid(context, workerName);
 
     uint64_t num;
     replica::Lock lock(_mtx, context);
@@ -615,11 +617,11 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker, string c
         if (database.empty()) {
             string const noSpecificFamily;
             auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
-            query += _g.where(_g.in("database", databases), _g.eq("worker", worker));
+            query += _g.where(_g.in("database", databases), _g.eq("worker", workerName));
         } else {
             if (!_configuration->isKnownDatabase(database))
                 throw invalid_argument(context + "unknown database: " + database);
-            query += _g.where(_g.eq("database", database), _g.eq("worker", worker));
+            query += _g.where(_g.eq("database", database), _g.eq("worker", workerName));
         }
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { selectSingleValue(conn, query, num, 0, false); });
@@ -632,40 +634,40 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& worker, string c
 }
 
 void DatabaseServicesMySQL::_findWorkerReplicasImpl(replica::Lock const& lock, vector<ReplicaInfo>& replicas,
-                                                    string const& worker, string const& database,
+                                                    string const& workerName, string const& database,
                                                     bool allDatabases, bool isPublished,
                                                     bool includeFileInfo) {
-    string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
+    string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + workerName +
                            " database=" + database + " allDatabases=" + bool2str(allDatabases) +
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _assertWorkerIsValid(context, worker);
+    _assertWorkerIsValid(context, workerName);
 
     auto query = _g.select(Sql::STAR) + _g.from("replica");
     if (database.empty()) {
         string const noSpecificFamily;
         auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
-        query += _g.where(_g.in("database", databases), _g.eq("worker", worker));
+        query += _g.where(_g.in("database", databases), _g.eq("worker", workerName));
     } else {
         if (!_configuration->isKnownDatabase(database))
             throw invalid_argument(context + "unknown database: " + database);
-        query += _g.where(_g.eq("database", database), _g.eq("worker", worker));
+        query += _g.where(_g.eq("database", database), _g.eq("worker", workerName));
     }
     _findReplicasImpl(lock, replicas, query, includeFileInfo);
     LOGS(_log, LOG_LVL_DEBUG, context << "** DONE ** replicas.size(): " << replicas.size());
 }
 
 void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, unsigned int chunk,
-                                               string const& worker, string const& databaseFamily,
+                                               string const& workerName, string const& databaseFamily,
                                                bool allDatabases, bool isPublished) {
-    string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + worker +
+    string const context = "DatabaseServicesMySQL::" + string(__func__) + " worker=" + workerName +
                            " chunk=" + to_string(chunk) + " family=" + databaseFamily +
                            " allDatabases=" + bool2str(allDatabases) +
                            " isPublished=" + bool2str(isPublished) + "  ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _assertWorkerIsValid(context, worker);
+    _assertWorkerIsValid(context, workerName);
     _assertDatabaseFamilyIsValid(context, databaseFamily);
 
     replica::Lock lock(_mtx, context);
@@ -673,7 +675,7 @@ void DatabaseServicesMySQL::findWorkerReplicas(vector<ReplicaInfo>& replicas, un
         auto const databases = _configuration->databases(databaseFamily, allDatabases, isPublished);
         auto const query =
                 _g.select(Sql::STAR) + _g.from("replica") +
-                _g.where(_g.eq("worker", worker), _g.eq("chunk", chunk), _g.in("database", databases));
+                _g.where(_g.eq("worker", workerName), _g.eq("chunk", chunk), _g.in("database", databases));
         _conn->executeInOwnTransaction(
                 [&](decltype(_conn) conn) { _findReplicasImpl(lock, replicas, query); });
     } catch (exception const& ex) {
@@ -784,9 +786,10 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& database, vector<str
         size_t result = 0;
         if (!uniqueOnWorkers.empty()) {
             vector<string> workersToExclude;
-            for (auto&& worker : _configuration->allWorkers()) {
-                if (uniqueOnWorkers.end() == find(uniqueOnWorkers.begin(), uniqueOnWorkers.end(), worker)) {
-                    workersToExclude.push_back(worker);
+            for (auto&& workerName : _configuration->allWorkers()) {
+                if (uniqueOnWorkers.end() ==
+                    find(uniqueOnWorkers.begin(), uniqueOnWorkers.end(), workerName)) {
+                    workersToExclude.push_back(workerName);
                 }
             }
             string const subQuery = _g.select("chunk") + _g.from("replica") +
@@ -1621,52 +1624,52 @@ string DatabaseServicesMySQL::_typeSelectorPredicate(
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
-        TransactionId transactionId, string const& table, string const& worker,
+        TransactionId transactionId, string const& table, string const& workerName,
         TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings, bool includeRetries) {
     string const context = _context(__func__) + "transactionId=" + to_string(transactionId) +
-                           " table=" + table + " worker=" + worker + " " +
+                           " table=" + table + " worker=" + workerName + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     replica::Lock lock(_mtx, context);
 
-    string const predicate =
-            _g.packConds(_g.eq("transaction_id", transactionId), table.empty() ? "" : _g.eq("table", table),
-                         worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
+    string const predicate = _g.packConds(
+            _g.eq("transaction_id", transactionId), table.empty() ? "" : _g.eq("table", table),
+            workerName.empty() ? "" : _g.eq("worker", workerName), _typeSelectorPredicate(typeSelector));
     return _transactionContribs(lock, predicate, includeWarnings, includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
         TransactionId transactionId, TransactionContribInfo::Status status, string const& table,
-        string const& worker, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings,
+        string const& workerName, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings,
         bool includeRetries) {
     string const context = _context(__func__) + "transactionId=" + to_string(transactionId) +
                            " status=" + TransactionContribInfo::status2str(status) + " table=" + table +
-                           " worker=" + worker + " " +
+                           " worker=" + workerName + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
     replica::Lock lock(_mtx, context);
-    string const predicate =
-            _g.packConds(_g.eq("transaction_id", transactionId),
-                         _g.eq("status", TransactionContribInfo::status2str(status)),
-                         table.empty() ? "" : _g.eq("table", table),
-                         worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
+    string const predicate = _g.packConds(_g.eq("transaction_id", transactionId),
+                                          _g.eq("status", TransactionContribInfo::status2str(status)),
+                                          table.empty() ? "" : _g.eq("table", table),
+                                          workerName.empty() ? "" : _g.eq("worker", workerName),
+                                          _typeSelectorPredicate(typeSelector));
     return _transactionContribs(lock, predicate, includeWarnings, includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
-        string const& database, string const& table, string const& worker,
+        string const& database, string const& table, string const& workerName,
         TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings, bool includeRetries) {
     string const context = _context(__func__) + "database=" + database + " table=" + table +
-                           " worker=" + worker + " " +
+                           " worker=" + workerName + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     _assertDatabaseIsValid(context, database);
 
     replica::Lock lock(_mtx, context);
-    string const predicate =
-            _g.packConds(_g.eq("database", database), table.empty() ? "" : _g.eq("table", table),
-                         worker.empty() ? "" : _g.eq("worker", worker), _typeSelectorPredicate(typeSelector));
+    string const predicate = _g.packConds(
+            _g.eq("database", database), table.empty() ? "" : _g.eq("table", table),
+            workerName.empty() ? "" : _g.eq("worker", workerName), _typeSelectorPredicate(typeSelector));
     return _transactionContribs(lock, predicate, includeWarnings, includeRetries);
 }
 
@@ -2145,16 +2148,17 @@ void DatabaseServicesMySQL::_findReplicasImpl(replica::Lock const& lock, vector<
         while (_conn->next(row)) {
             // Extract general attributes of the replica
             uint64_t id;
-            string worker;
+            string workerName;
             string database;
             unsigned int chunk;
             uint64_t verifyTime;
             row.get("id", id);
-            row.get("worker", worker);
+            row.get("worker", workerName);
             row.get("database", database);
             row.get("chunk", chunk);
             row.get("verify_time", verifyTime);
-            id2replica[id] = ReplicaInfo(ReplicaInfo::Status::COMPLETE, worker, database, chunk, verifyTime);
+            id2replica[id] =
+                    ReplicaInfo(ReplicaInfo::Status::COMPLETE, workerName, database, chunk, verifyTime);
         }
 
         // Extract files for each replica using identifiers of the replicas

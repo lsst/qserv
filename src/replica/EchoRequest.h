@@ -79,7 +79,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider provider of various services
-     * @param worker identifier of a worker node
+     * @param workerName identifier of a worker node
      * @param data data string to be echoed back by a worker
      * @param delay execution time (milliseconds) of the request at worker
      * @param onFinish (optional) callback function to call upon completion of the request
@@ -89,7 +89,7 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, std::string const& data, uint64_t delay,
+                      std::string const& workerName, std::string const& data, uint64_t delay,
                       CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
@@ -112,7 +112,7 @@ protected:
 private:
     /// @see EchoRequest::create()
     EchoRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                std::string const& worker, std::string const& data, uint64_t delay,
+                std::string const& workerName, std::string const& data, uint64_t delay,
                 CallbackType const& onFinish, int priority, bool keepTracking,
                 std::shared_ptr<Messenger> const& messenger);
 

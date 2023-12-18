@@ -36,13 +36,10 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
-#include "qdisp/CzarStats.h"
 #include "qdisp/MessageStore.h"
 #include "sql/SqlBulkInsert.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
-#include "util/String.h"
-#include "wconfig/WorkerConfig.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -71,45 +68,11 @@ void UserQueryQservManager::submit() {
     auto const czarConfig = cconfig::CzarConfig::instance();
     auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
 
-    // Remove quotes around a value of the input parameter. Also parse the command.
-    // Some commands may have optional parameters.
-    // Note that (single or double) quotes are required by SQL when calling
-    // the stored procedure. The quotes  are preserved AS-IS by the Qserv query parser.
-    string command;
-    vector<string> params;
-    if (_value.size() > 2) {
-        string const space = " ";
-        string const quotesRemoved = _value.substr(1, _value.size() - 2);
-        for (auto&& str : util::String::split(quotesRemoved, space)) {
-            // This is just in case if the splitter won't recognise consequtive spaces.
-            if (str.empty() || (str == space)) continue;
-            if (command.empty()) {
-                command = str;
-            } else {
-                params.push_back(str);
-            }
-        }
-    }
-
-    // Create the table as per the command.
-    string createTable;
+    // Create the table.
+    string const createTable = "CREATE TABLE " + _resultTableName + "(`result` BLOB)";
     vector<string> resColumns;  // This must match the schema in the CREATE TABLE statement.
-    if (command == "config") {
-        createTable = "CREATE TABLE " + _resultTableName + "(`config` BLOB)";
-        resColumns.push_back("config");
-    } else if (command == "query_proc_stats") {
-        createTable = "CREATE TABLE " + _resultTableName + "(`stats` BLOB)";
-        resColumns.push_back("stats");
-    } else if (command == "query_info") {
-        createTable = "CREATE TABLE " + _resultTableName +
-                      "(`queryId` BIGINT NOT NULL, `timestamp_ms` BIGINT NOT NULL, `num_jobs` INT NOT NULL)";
-        resColumns.push_back("queryId");
-        resColumns.push_back("timestamp_ms");
-        resColumns.push_back("num_jobs");
-    } else {
-        createTable = "CREATE TABLE " + _resultTableName + "(`result` BLOB)";
-        resColumns.push_back("result");
-    }
+    resColumns.push_back("result");
+
     LOGS(_log, LOG_LVL_TRACE, "creating result table: " << createTable);
     sql::SqlErrorObject errObj;
     if (!resultDbConn->runQuery(createTable, errObj)) {
@@ -120,69 +83,10 @@ void UserQueryQservManager::submit() {
         return;
     }
 
-    // Prepare data for the command.
-    // note that the output string(s) should be quoted.
-    auto const stats = qdisp::CzarStats::get();
+    // Return a value of the original input (which includeds quotes).
     list<vector<string>> rows;
-    if (command == "config") {
-        json const result = cconfig::CzarConfig::instance()->toJson();
-        vector<string> row = {"'" + result.dump() + "'"};
-        rows.push_back(move(row));
-    } else if (command == "query_proc_stats") {
-        json const result = json::object({{"qdisp_stats", stats->getQdispStatsJson()},
-                                          {"transmit_stats", stats->getTransmitStatsJson()}});
-        vector<string> row = {"'" + result.dump() + "'"};
-        rows.push_back(move(row));
-    } else if (command == "query_info") {
-        // The optonal query identifier and the number of the last seconds in a history
-        // of queries may be provided to narrow a scope of the operation:
-        //
-        //   query_info
-        //   query_info <qid>
-        //   query_info <qid> <seconds>
-        //
-        // Where any value may be set to 0 to indicate the default behavior. Any extra
-        // parameters will be ignored.
-        //
-        QueryId selectQueryId = 0;     // any query
-        unsigned int lastSeconds = 0;  // any timestamps
-        try {
-            if (params.size() > 0) selectQueryId = stoull(params[0]);
-            if (params.size() > 1) lastSeconds = stoul(params[1]);
-        } catch (exception const& ex) {
-            string const message =
-                    "failed to parse values of parameter from " + _value + ", ex: " + string(ex.what());
-            LOGS(_log, LOG_LVL_ERROR, message);
-            _messageStore->addMessage(-1, "SQL", 1051, message, MessageSeverity::MSG_ERROR);
-            _qState = ERROR;
-            return;
-        }
-
-        // The original order of timestams within queries will be preserved as if
-        // the following query was issued:
-        //
-        //   SELECT
-        //     `queryId`,
-        //     `timestamp_ms`,
-        //     `num_jobs`
-        //   FROM
-        //     `table`
-        //   ORDER BY
-        //     `queryId`,
-        //     `timestamp_ms` ASC
-        //
-        for (auto&& [queryId, history] : stats->getQueryProgress(selectQueryId, lastSeconds)) {
-            string const queryIdStr = to_string(queryId);
-            for (auto&& point : history) {
-                vector<string> row = {queryIdStr, to_string(point.timestampMs), to_string(point.numJobs)};
-                rows.push_back(move(row));
-            }
-        }
-    } else {
-        // Return a value of the original command (which includeds quotes).
-        vector<string> row = {_value};
-        rows.push_back(move(row));
-    }
+    vector<string> row = {_value};
+    rows.push_back(move(row));
 
     // Ingest row(s) into the table.
     bool success = true;

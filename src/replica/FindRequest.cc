@@ -52,19 +52,19 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindRequest");
 namespace lsst::qserv::replica {
 
 FindRequest::Ptr FindRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                     boost::asio::io_service& io_service, string const& worker,
+                                     boost::asio::io_service& io_service, string const& workerName,
                                      string const& database, unsigned int chunk, bool computeCheckSum,
                                      CallbackType const& onFinish, int priority, bool keepTracking,
                                      shared_ptr<Messenger> const& messenger) {
-    return FindRequest::Ptr(new FindRequest(serviceProvider, io_service, worker, database, chunk,
+    return FindRequest::Ptr(new FindRequest(serviceProvider, io_service, workerName, database, chunk,
                                             computeCheckSum, onFinish, priority, keepTracking, messenger));
 }
 
 FindRequest::FindRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                         string const& worker, string const& database, unsigned int chunk,
+                         string const& workerName, string const& database, unsigned int chunk,
                          bool computeCheckSum, CallbackType const& onFinish, int priority, bool keepTracking,
                          shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "REPLICA_FIND", worker, priority, keepTracking,
+        : RequestMessenger(serviceProvider, io_service, "REPLICA_FIND", workerName, priority, keepTracking,
                            false,  // allowDuplicate
                            true,   // disposeRequired
                            messenger),
@@ -80,7 +80,7 @@ ReplicaInfo const& FindRequest::responseData() const { return _replicaInfo; }
 void FindRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " "
-                   << " worker: " << worker() << " database: " << database() << " chunk: " << chunk()
+                   << " worker: " << workerName() << " database: " << database() << " chunk: " << chunk()
                    << " computeCheckSum: " << (computeCheckSum() ? "true" : "false"));
 
     // Serialize the Request message header and the request itself into
@@ -143,7 +143,7 @@ void FindRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<FindRequest>();
     messenger()->send<ProtocolResponseFind>(
-            worker(), id(), priority(), buffer(),
+            workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseFind const& response) {
                 self->_analyze(success, response);
             });
@@ -192,35 +192,27 @@ void FindRequest::_analyze(bool success, ProtocolResponseFind const& message) {
             serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
             finish(lock, SUCCESS);
             break;
-
         case ProtocolStatus::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
-
         case ProtocolStatus::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
-
         case ProtocolStatus::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
-
         case ProtocolStatus::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
-
         case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
-
         case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
-
         case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
-
         default:
             throw logic_error("FindRequest::" + string(__func__) + " unknown status '" +
                               ProtocolStatus_Name(message.status()) + "' received from server");

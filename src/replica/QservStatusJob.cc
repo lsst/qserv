@@ -130,15 +130,15 @@ void QservStatusJob::notify(replica::Lock const& lock) {
 void QservStatusJob::_onRequestFinish(GetStatusQservMgtRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[qserv]"
-                   << "  worker=" << request->worker());
+                   << "  worker=" << request->workerName());
 
     if (state() == State::FINISHED) return;
     replica::Lock const lock(_mtx, context() + string(__func__) + "[qserv]");
     if (state() == State::FINISHED) return;
 
     if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
-        _qservStatus.workers[request->worker()] = true;
-        _qservStatus.info[request->worker()] = request->info();
+        _qservStatus.workers[request->workerName()] = true;
+        _qservStatus.info[request->workerName()] = request->info();
     }
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }

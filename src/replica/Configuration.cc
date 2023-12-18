@@ -290,13 +290,14 @@ void Configuration::_load(replica::Lock const& lock, json const& obj, bool reset
         _workers.clear();
         _databaseFamilies.clear();
         _databases.clear();
+        _czars.clear();
     }
     _configUrl = string();
     _connectionPtr = nullptr;
 
     // Validate and update configuration parameters.
     // Catch exceptions for error reporting.
-    ConfigParserJSON parser(_data, _workers, _databaseFamilies, _databases);
+    ConfigParserJSON parser(_data, _workers, _databaseFamilies, _databases, _czars);
     parser.parse(obj);
 
     bool const showPassword = false;
@@ -308,6 +309,7 @@ void Configuration::_load(replica::Lock const& lock, string const& configUrl, bo
         _workers.clear();
         _databaseFamilies.clear();
         _databases.clear();
+        _czars.clear();
     }
     _configUrl = configUrl;
 
@@ -379,16 +381,14 @@ void Configuration::_load(replica::Lock const& lock, string const& configUrl, bo
 vector<string> Configuration::workers(bool isEnabled, bool isReadOnly) const {
     replica::Lock const lock(_mtx, _context(__func__));
     vector<string> names;
-    for (auto&& itr : _workers) {
-        string const& workerName = itr.first;
-        WorkerInfo const& worker = itr.second;
+    for (auto&& [name, worker] : _workers) {
         if (isEnabled) {
             if (worker.isEnabled && (isReadOnly == worker.isReadOnly)) {
-                names.push_back(workerName);
+                names.push_back(name);
             }
         } else {
             if (!worker.isEnabled) {
-                names.push_back(workerName);
+                names.push_back(name);
             }
         }
     }
@@ -402,8 +402,7 @@ size_t Configuration::numWorkers(bool isEnabled, bool isReadOnly) const {
 
 size_t Configuration::_numWorkers(replica::Lock const& lock, bool isEnabled, bool isReadOnly) const {
     size_t result = 0;
-    for (auto&& itr : _workers) {
-        WorkerInfo const& worker = itr.second;
+    for (auto&& [name, worker] : _workers) {
         if (isEnabled) {
             if (worker.isEnabled && (isReadOnly == worker.isReadOnly)) result++;
         } else {
@@ -416,8 +415,7 @@ size_t Configuration::_numWorkers(replica::Lock const& lock, bool isEnabled, boo
 vector<string> Configuration::allWorkers() const {
     replica::Lock const lock(_mtx, _context(__func__));
     vector<string> names;
-    for (auto&& itr : _workers) {
-        string const& name = itr.first;
+    for (auto&& [name, worker] : _workers) {
         names.push_back(name);
     }
     return names;
@@ -426,9 +424,8 @@ vector<string> Configuration::allWorkers() const {
 vector<string> Configuration::databaseFamilies() const {
     replica::Lock const lock(_mtx, _context(__func__));
     vector<string> names;
-    for (auto&& itr : _databaseFamilies) {
-        string const& familyName = itr.first;
-        names.push_back(familyName);
+    for (auto&& [name, family] : _databaseFamilies) {
+        names.push_back(name);
     }
     return names;
 }
@@ -480,11 +477,9 @@ void Configuration::deleteDatabaseFamily(string const& familyName) {
     //       tables from MySQL happens automatically since it's enforced by the PK/FK
     //       relationship between the corresponding tables.
     vector<string> databasesToBeRemoved;
-    for (auto&& itr : _databases) {
-        string const& databaseName = itr.first;
-        DatabaseInfo const& database = itr.second;
+    for (auto&& [name, database] : _databases) {
         if (database.family == family.name) {
-            databasesToBeRemoved.push_back(databaseName);
+            databasesToBeRemoved.push_back(name);
         }
     }
     for (string const& databaseName : databasesToBeRemoved) {
@@ -535,9 +530,7 @@ vector<string> Configuration::databases(string const& familyName, bool allDataba
         }
     }
     vector<string> names;
-    for (auto&& itr : _databases) {
-        string const& name = itr.first;
-        DatabaseInfo const& database = itr.second;
+    for (auto&& [name, database] : _databases) {
         if (!familyName.empty() && (familyName != database.family)) {
             continue;
         }
@@ -684,14 +677,14 @@ bool Configuration::isKnownWorker(string const& workerName) const {
     return _workers.count(workerName) != 0;
 }
 
-WorkerInfo Configuration::workerInfo(string const& workerName) const {
+ConfigWorker Configuration::worker(string const& workerName) const {
     replica::Lock const lock(_mtx, _context(__func__));
     auto const itr = _workers.find(workerName);
     if (itr != _workers.cend()) return itr->second;
     throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
 }
 
-WorkerInfo Configuration::addWorker(WorkerInfo const& worker) {
+ConfigWorker Configuration::addWorker(ConfigWorker const& worker) {
     replica::Lock const lock(_mtx, _context(__func__));
     if (_workers.find(worker.name) == _workers.cend()) return _updateWorker(lock, worker);
     throw invalid_argument(_context(__func__) + " worker '" + worker.name + "' already exists.");
@@ -711,13 +704,13 @@ void Configuration::deleteWorker(string const& workerName) {
     _workers.erase(itr);
 }
 
-WorkerInfo Configuration::disableWorker(string const& workerName) {
+ConfigWorker Configuration::disableWorker(string const& workerName) {
     replica::Lock const lock(_mtx, _context(__func__));
     auto itr = _workers.find(workerName);
     if (itr == _workers.end()) {
         throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
     }
-    WorkerInfo& worker = itr->second;
+    ConfigWorker& worker = itr->second;
     if (worker.isEnabled) {
         if (_connectionPtr != nullptr) {
             string const query = _g.update("config_worker", make_pair("is_enabled", 0)) +
@@ -730,10 +723,69 @@ WorkerInfo Configuration::disableWorker(string const& workerName) {
     return worker;
 }
 
-WorkerInfo Configuration::updateWorker(WorkerInfo const& worker) {
+ConfigWorker Configuration::updateWorker(ConfigWorker const& worker) {
     replica::Lock const lock(_mtx, _context(__func__));
     if (_workers.find(worker.name) != _workers.end()) return _updateWorker(lock, worker);
     throw invalid_argument(_context(__func__) + " unknown worker '" + worker.name + "'.");
+}
+
+vector<std::string> Configuration::allCzars() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    vector<string> names;
+    for (auto&& [name, czar] : _czars) {
+        names.push_back(name);
+    }
+    return names;
+}
+
+size_t Configuration::numCzars() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _czars.size();
+}
+
+bool Configuration::isKnownCzar(string const& czarName) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return _czars.count(czarName) != 0;
+}
+
+ConfigCzar Configuration::czar(string const& czarName) const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto const itr = _czars.find(czarName);
+    if (itr != _czars.cend()) return itr->second;
+    throw invalid_argument(_context(__func__) + " unknown Czar '" + czarName + "'.");
+}
+
+ConfigCzar Configuration::addCzar(ConfigCzar const& czar) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (czar.name.empty()) {
+        throw invalid_argument(_context(__func__) + " Czar name was not provided.");
+    }
+    if (_czars.find(czar.name) == _czars.cend()) {
+        _czars[czar.name] = czar;
+        return czar;
+    }
+    throw invalid_argument(_context(__func__) + " Czar '" + czar.name + "' already exists.");
+}
+
+void Configuration::deleteCzar(string const& czarName) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    auto itr = _czars.find(czarName);
+    if (itr == _czars.end()) {
+        throw invalid_argument(_context(__func__) + " unknown Czar '" + czarName + "'.");
+    }
+    _czars.erase(itr);
+}
+
+ConfigCzar Configuration::updateCzar(ConfigCzar const& czar) {
+    replica::Lock const lock(_mtx, _context(__func__));
+    if (_czars.find(czar.name) != _czars.end()) {
+        if (czar.name.empty()) {
+            throw invalid_argument(_context(__func__) + " Czar name was not provided.");
+        }
+        _czars[czar.name] = czar;
+        return czar;
+    }
+    throw invalid_argument(_context(__func__) + " unknown Czar '" + czar.name + "'.");
 }
 
 json Configuration::toJson(bool showPassword) const {
@@ -745,19 +797,20 @@ json Configuration::_toJson(replica::Lock const& lock, bool showPassword) const 
     json data;
     data["general"] = _data;
     json& workersJson = data["workers"];
-    for (auto&& itr : _workers) {
-        WorkerInfo const& info = itr.second;
-        workersJson.push_back(info.toJson());
+    for (auto&& [name, worker] : _workers) {
+        workersJson.push_back(worker.toJson());
     }
     json& databaseFamilies = data["database_families"];
-    for (auto&& itr : _databaseFamilies) {
-        DatabaseFamilyInfo const& info = itr.second;
-        databaseFamilies.push_back(info.toJson());
+    for (auto&& [name, family] : _databaseFamilies) {
+        databaseFamilies.push_back(family.toJson());
     }
     json& databases = data["databases"];
-    for (auto&& itr : _databases) {
-        DatabaseInfo const& info = itr.second;
-        databases.push_back(info.toJson());
+    for (auto&& [name, database] : _databases) {
+        databases.push_back(database.toJson());
+    }
+    json& czarsJson = data["czars"];
+    for (auto&& [name, czar] : _czars) {
+        czarsJson.push_back(czar.toJson());
     }
     return data;
 }
@@ -776,7 +829,7 @@ json& Configuration::_get(replica::Lock const& lock, string const& category, str
     return _data[json::json_pointer("/" + category + "/" + param)];
 }
 
-WorkerInfo Configuration::_updateWorker(replica::Lock const& lock, WorkerInfo const& worker) {
+ConfigWorker Configuration::_updateWorker(replica::Lock const& lock, ConfigWorker const& worker) {
     if (worker.name.empty()) {
         throw invalid_argument(_context(__func__) + " worker name can't be empty.");
     }

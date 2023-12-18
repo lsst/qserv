@@ -40,7 +40,7 @@ using namespace database::mysql;
 int const ConfigParserMySQL::expectedSchemaVersion = 14;
 
 ConfigParserMySQL::ConfigParserMySQL(Connection::Ptr const& conn, json& data,
-                                     map<string, WorkerInfo>& workers,
+                                     map<string, ConfigWorker>& workers,
                                      map<string, DatabaseFamilyInfo>& databaseFamilies,
                                      map<string, DatabaseInfo>& databases)
         : _conn(conn),
@@ -83,7 +83,7 @@ void ConfigParserMySQL::_parseWorkers() {
     string const query = _g.select(Sql::STAR) + _g.from("config_worker");
     _conn->execute(query);
     while (_conn->next(_row)) {
-        WorkerInfo worker;
+        ConfigWorker worker;
         worker.name = _parseParam<string>("name");
         worker.isEnabled = _parseParam<int>("is_enabled") != 0;
         worker.isReadOnly = _parseParam<int>("is_read_only") != 0;

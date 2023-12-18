@@ -41,9 +41,9 @@ namespace lsst::qserv::replica {
 
 RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
                                    boost::asio::io_service& io_service, string const& type,
-                                   string const& worker, int priority, bool keepTracking, bool allowDuplicate,
-                                   bool disposeRequired, Messenger::Ptr const& messenger)
-        : Request(serviceProvider, io_service, type, worker, priority, keepTracking, allowDuplicate,
+                                   string const& workerName, int priority, bool keepTracking,
+                                   bool allowDuplicate, bool disposeRequired, Messenger::Ptr const& messenger)
+        : Request(serviceProvider, io_service, type, workerName, priority, keepTracking, allowDuplicate,
                   disposeRequired),
           _messenger(messenger) {}
 
@@ -56,7 +56,7 @@ void RequestMessenger::finishImpl(replica::Lock const& lock) {
     // will be at the messenger's queue. This optimization also reduces extra
     // locking (and delays) in the messenger because the operation is synchronized.
     if (extendedState() != Request::ExtendedState::SUCCESS) {
-        _messenger->cancel(worker(), id());
+        _messenger->cancel(workerName(), id());
     }
 
     // Tell the worker to dispose the request if a subclass made such requirement,
@@ -95,7 +95,7 @@ void RequestMessenger::dispose(replica::Lock const& lock, int priority,
     message.add_ids(id());
     buffer()->serialize(message);
 
-    _messenger->send<ProtocolResponseDispose>(worker(), id(), priority, buffer(), onFinish);
+    _messenger->send<ProtocolResponseDispose>(workerName(), id(), priority, buffer(), onFinish);
 }
 
 }  // namespace lsst::qserv::replica

@@ -201,9 +201,7 @@ void ClusterHealthJob::notify(replica::Lock const& lock) {
 }
 
 void ClusterHealthJob::_onRequestFinish(ServiceStatusRequest::Ptr const& request) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[replication]"
-                   << "  worker=" << request->worker());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[replication] worker=" << request->workerName());
 
     if (state() == State::FINISHED) return;
 
@@ -211,16 +209,14 @@ void ClusterHealthJob::_onRequestFinish(ServiceStatusRequest::Ptr const& request
 
     if (state() == State::FINISHED) return;
 
-    _health.updateReplicationState(request->worker(),
+    _health.updateReplicationState(request->workerName(),
                                    request->extendedState() == Request::ExtendedState::SUCCESS);
 
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);
 }
 
 void ClusterHealthJob::_onRequestFinish(TestEchoQservMgtRequest::Ptr const& request) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "[qserv]"
-                   << "  worker=" << request->worker());
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "[qserv] worker=" << request->workerName());
 
     if (state() == State::FINISHED) return;
 
@@ -228,7 +224,7 @@ void ClusterHealthJob::_onRequestFinish(TestEchoQservMgtRequest::Ptr const& requ
 
     if (state() == State::FINISHED) return;
 
-    _health.updateQservState(request->worker(),
+    _health.updateQservState(request->workerName(),
                              request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS);
 
     if (++_numFinished == _numStarted) finish(lock, ExtendedState::SUCCESS);

@@ -102,7 +102,7 @@ void DatabaseServicesPool::updateHeartbeatTime(Job const& job) {
     service()->updateHeartbeatTime(job);
 }
 
-void DatabaseServicesPool::saveState(QservMgtRequest const& request, Performance const& performance,
+void DatabaseServicesPool::saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                                      string const& serverError) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
     service()->saveState(request, performance, serverError);
@@ -124,10 +124,10 @@ void DatabaseServicesPool::saveReplicaInfo(ReplicaInfo const& info) {
     service()->saveReplicaInfo(info);
 }
 
-void DatabaseServicesPool::saveReplicaInfoCollection(string const& worker, string const& database,
+void DatabaseServicesPool::saveReplicaInfoCollection(string const& workerName, string const& database,
                                                      ReplicaInfoCollection const& newReplicaInfoCollection) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->saveReplicaInfoCollection(worker, database, newReplicaInfoCollection);
+    service()->saveReplicaInfoCollection(workerName, database, newReplicaInfoCollection);
 }
 
 void DatabaseServicesPool::findOldestReplicas(vector<ReplicaInfo>& replicas, size_t maxReplicas,
@@ -150,24 +150,24 @@ void DatabaseServicesPool::findReplicas(vector<ReplicaInfo>& replicas, vector<un
     service()->findReplicas(replicas, chunks, database, enabledWorkersOnly, includeFileInfo);
 }
 
-void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas, string const& worker,
+void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas, string const& workerName,
                                               string const& database, bool allDatabases, bool isPublished,
                                               bool includeFileInfo) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->findWorkerReplicas(replicas, worker, database, allDatabases, isPublished, includeFileInfo);
+    service()->findWorkerReplicas(replicas, workerName, database, allDatabases, isPublished, includeFileInfo);
 }
 
-uint64_t DatabaseServicesPool::numWorkerReplicas(string const& worker, string const& database,
+uint64_t DatabaseServicesPool::numWorkerReplicas(string const& workerName, string const& database,
                                                  bool allDatabases, bool isPublished) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->numWorkerReplicas(worker, database, allDatabases, isPublished);
+    return service()->numWorkerReplicas(workerName, database, allDatabases, isPublished);
 }
 
 void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas, unsigned int chunk,
-                                              string const& worker, string const& databaseFamily,
+                                              string const& workerName, string const& databaseFamily,
                                               bool allDatabases, bool isPublished) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->findWorkerReplicas(replicas, chunk, worker, databaseFamily, allDatabases, isPublished);
+    service()->findWorkerReplicas(replicas, chunk, workerName, databaseFamily, allDatabases, isPublished);
 }
 
 void DatabaseServicesPool::findDatabaseReplicas(vector<ReplicaInfo>& replicas, string const& database,
@@ -294,27 +294,27 @@ TransactionContribInfo DatabaseServicesPool::transactionContrib(unsigned int id,
 }
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
-        TransactionId transactionId, string const& table, string const& worker,
+        TransactionId transactionId, string const& table, string const& workerName,
         TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings, bool includeRetries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(transactionId, table, worker, typeSelector, includeWarnings,
+    return service()->transactionContribs(transactionId, table, workerName, typeSelector, includeWarnings,
                                           includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
         TransactionId transactionId, TransactionContribInfo::Status status, string const& table,
-        string const& worker, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings,
+        string const& workerName, TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings,
         bool includeRetries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(transactionId, status, table, worker, typeSelector, includeWarnings,
-                                          includeRetries);
+    return service()->transactionContribs(transactionId, status, table, workerName, typeSelector,
+                                          includeWarnings, includeRetries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
-        string const& database, string const& table, string const& worker,
+        string const& database, string const& table, string const& workerName,
         TransactionContribInfo::TypeSelector typeSelector, bool includeWarnings, bool includeRetries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(database, table, worker, typeSelector, includeWarnings,
+    return service()->transactionContribs(database, table, workerName, typeSelector, includeWarnings,
                                           includeRetries);
 }
 

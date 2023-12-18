@@ -136,7 +136,7 @@ int WorkerApp::runImpl() {
     // a configuration and a status of the current worker.
     while (true) {
         try {
-            serviceProvider()->registry()->add(worker);
+            serviceProvider()->registry()->addWorker(worker);
         } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, context << "adding worker to the registry failed, ex: " << ex.what());
         }

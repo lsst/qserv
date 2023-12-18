@@ -76,9 +76,9 @@ void SqlRequest::extendedPrinter(Ptr const& ptr) {
 }
 
 SqlRequest::SqlRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                       std::string const& requestName, string const& worker, uint64_t maxRows, int priority,
-                       bool keepTracking, shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, requestName, worker, priority, keepTracking,
+                       std::string const& requestName, string const& workerName, uint64_t maxRows,
+                       int priority, bool keepTracking, shared_ptr<Messenger> const& messenger)
+        : RequestMessenger(serviceProvider, io_service, requestName, workerName, priority, keepTracking,
                            false,  // allowDuplicate
                            true,   // disposeRequired
                            messenger) {
@@ -163,7 +163,7 @@ void SqlRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<SqlRequest>();
     messenger()->send<ProtocolResponseSql>(
-            worker(), id(), priority(), buffer(),
+            workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseSql const& response) {
                 self->_analyze(success, response);
             });
@@ -212,35 +212,27 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
         case ProtocolStatus::SUCCESS:
             finish(lock, SUCCESS);
             break;
-
         case ProtocolStatus::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);
             break;
-
         case ProtocolStatus::QUEUED:
             keepTrackingOrFinish(lock, SERVER_QUEUED);
             break;
-
         case ProtocolStatus::IN_PROGRESS:
             keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
             break;
-
         case ProtocolStatus::IS_CANCELLING:
             keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
             break;
-
         case ProtocolStatus::BAD:
             finish(lock, SERVER_BAD);
             break;
-
         case ProtocolStatus::FAILED:
             finish(lock, SERVER_ERROR);
             break;
-
         case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);
             break;
-
         default:
             throw logic_error("SqlRequest::" + string(__func__) + "  unknown status '" +
                               ProtocolStatus_Name(response.status()) + "' received from server");

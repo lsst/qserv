@@ -15,6 +15,8 @@ function(CSSLoader,
 
     class QservCzarStatistics extends FwkApplication {
 
+      static czar_name = "default";   /// The name of Czar.
+
         constructor(name) {
             super(name);
             // The previous snapshot of the stats. It's used for  reporting "deltas"
@@ -234,8 +236,9 @@ function(CSSLoader,
             this._loading = true;
             this._status().addClass('updating');
             Fwk.web_service_GET(
-                "/replication/qserv/master/status",
-                {version: Common.RestAPIVersion},
+                "/replication/qserv/master/status/" + QservCzarStatistics.czar_name,
+                {   timeout_sec: 2,
+                    version: Common.RestAPIVersion},
                 (data) => {
                     if (data.success) {
                         this._display(data.status);

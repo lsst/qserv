@@ -32,7 +32,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 
 namespace lsst::qserv::replica {
 class ServiceProvider;
@@ -45,7 +45,7 @@ namespace lsst::qserv::replica {
  * Class RemoveReplicaQservMgtRequest implements a request notifying Qserv workers
  * on new chunks added to the database.
  */
-class RemoveReplicaQservMgtRequest : public QservMgtRequest {
+class RemoveReplicaQservMgtRequest : public QservWorkerMgtRequest {
 public:
     typedef std::shared_ptr<RemoveReplicaQservMgtRequest> Ptr;
 
@@ -56,7 +56,7 @@ public:
     RemoveReplicaQservMgtRequest(RemoveReplicaQservMgtRequest const&) = delete;
     RemoveReplicaQservMgtRequest& operator=(RemoveReplicaQservMgtRequest const&) = delete;
 
-    virtual ~RemoveReplicaQservMgtRequest() final = default;
+    virtual ~RemoveReplicaQservMgtRequest() override = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -65,14 +65,14 @@ public:
      *
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
-     * @param worker The name of a worker to send the request to.
+     * @param workerName The name of a worker to send the request to.
      * @param chunk The chunk whose replicas will be disabled at the Qserv worker.
      * @param databases The names of databases.
      * @param force Force the removal even if the chunk is in use.
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+    static Ptr create(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
                       unsigned int chunk, std::vector<std::string> const& databases, bool force = false,
                       CallbackType const& onFinish = nullptr);
 
@@ -86,19 +86,19 @@ public:
     bool force() const { return _force; }
 
     /// @see QservMgtRequest::extendedPersistentState()
-    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
+    virtual std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
     /// @see QservMgtRequest::createHttpReqImpl
-    virtual void createHttpReqImpl(replica::Lock const& lock) final;
+    virtual void createHttpReqImpl(replica::Lock const& lock) override;
 
     /// @see QservMgtRequest::notify
-    virtual void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) override;
 
 private:
     /// @see RemoveReplicaQservMgtRequest::create()
     RemoveReplicaQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
-                                 std::string const& worker, unsigned int chunk,
+                                 std::string const& workerName, unsigned int chunk,
                                  std::vector<std::string> const& databases, bool force,
                                  CallbackType const& onFinish);
 

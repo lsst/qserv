@@ -92,26 +92,15 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param worker
-     *   the name of a worker to be deleted
-     *
-     * @param permanentDelete
-     *   if set to 'true' the worker record will be completely
+     * @param workerName the name of a worker to be deleted
+     * @param permanentDelete if set to 'true' the worker record will be completely
      *   wiped out from the configuration
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   an identifier of the parent job
-     *
-     * @param onFinish
-     *   the callback function to be called upon a completion of the job
-     *
-     * @param priority
-     *   the priority level of the job
+     * @param controller for launching requests
+     * @param parentJobId an identifier of the parent job
+     * @param onFinish the callback function to be called upon a completion of the job
+     * @param priority the priority level of the job
      */
-    static Ptr create(std::string const& worker, bool permanentDelete, Controller::Ptr const& controller,
+    static Ptr create(std::string const& workerName, bool permanentDelete, Controller::Ptr const& controller,
                       std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Default construction and copy semantics are prohibited
@@ -123,7 +112,7 @@ public:
     ~DeleteWorkerJob() final = default;
 
     /// @return the name of a worker to be deleted
-    std::string const& worker() const { return _worker; }
+    std::string const& workerName() const { return _workerName; }
 
     /// @return 'true' if this is the permanent delete
     bool permanentDelete() const { return _permanentDelete; }
@@ -131,21 +120,14 @@ public:
     /**
      * Return the result of the operation.
      *
-     * @note:
-     *  The method should be invoked only after the job has finished (primary
+     * @note The method should be invoked only after the job has finished (primary
      *  status is set to Job::Status::FINISHED). Otherwise exception
      *  std::logic_error will be thrown
-     *
-     * @note
-     *  The result will be extracted from requests which have successfully
+     * @note The result will be extracted from requests which have successfully
      *  finished. Please, verify the primary and extended status of the object
      *  to ensure that all requests have finished.
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @return the data structure to be filled upon the completion of the job.
+     * @throws std::logic_error if the job didn't finished at a time when the method was called
      */
     DeleteWorkerJobResult const& getReplicaData() const;
 
@@ -167,7 +149,7 @@ protected:
 
 private:
     /// @see DeleteWorkerJob::create()
-    DeleteWorkerJob(std::string const& worker, bool permanentDelete, Controller::Ptr const& controller,
+    DeleteWorkerJob(std::string const& workerName, bool permanentDelete, Controller::Ptr const& controller,
                     std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     /**
@@ -197,7 +179,7 @@ private:
 
     // Input parameters
 
-    std::string const _worker;
+    std::string const _workerName;
     bool const _permanentDelete;
     CallbackType _onFinish;  /// @note is reset when the job finishes
 

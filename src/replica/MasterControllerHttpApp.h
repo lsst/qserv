@@ -123,6 +123,7 @@ private:
 
     unsigned int _healthProbeIntervalSec;
     unsigned int _replicationIntervalSec;
+    unsigned int _czarResponseTimeoutSec;
     unsigned int _workerResponseTimeoutSec;
     unsigned int _workerEvictTimeoutSec;
     unsigned int _qservSyncTimeoutSec;

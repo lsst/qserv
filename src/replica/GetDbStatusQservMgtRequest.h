@@ -26,7 +26,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 
 namespace lsst::qserv::replica {
 class ServiceProvider;
@@ -39,7 +39,7 @@ namespace lsst::qserv::replica {
  * Class GetDbStatusQservMgtRequest is a request for obtaining various info
  * on the database service of the Qserv worker.
  */
-class GetDbStatusQservMgtRequest : public QservMgtRequest {
+class GetDbStatusQservMgtRequest : public QservWorkerMgtRequest {
 public:
     typedef std::shared_ptr<GetDbStatusQservMgtRequest> Ptr;
 
@@ -50,7 +50,7 @@ public:
     GetDbStatusQservMgtRequest(GetDbStatusQservMgtRequest const&) = delete;
     GetDbStatusQservMgtRequest& operator=(GetDbStatusQservMgtRequest const&) = delete;
 
-    virtual ~GetDbStatusQservMgtRequest() final = default;
+    virtual ~GetDbStatusQservMgtRequest() override = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -58,25 +58,25 @@ public:
      * low-level pointers).
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
-     * @param worker The name of a worker to send the request to.
+     * @param workerName The name of a worker to send the request to.
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
     static std::shared_ptr<GetDbStatusQservMgtRequest> create(
-            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
+            std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName,
             CallbackType const& onFinish = nullptr);
 
 protected:
     /// @see QservMgtRequest::createHttpReqImpl()
-    virtual void createHttpReqImpl(replica::Lock const& lock) final;
+    virtual void createHttpReqImpl(replica::Lock const& lock) override;
 
     /// @see QservMgtRequest::notify()
-    virtual void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) override;
 
 private:
     /// @see GetDbStatusQservMgtRequest::create()
     GetDbStatusQservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
-                               std::string const& worker, CallbackType const& onFinish);
+                               std::string const& workerName, CallbackType const& onFinish);
 
     // Input parameters
 

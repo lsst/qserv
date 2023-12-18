@@ -323,7 +323,7 @@ void CreateReplicaJob::_qservAddReplica(replica::Lock const& lock, unsigned int 
                      self->context() << __func__ << "  ** FINISH ** Qserv notification on ADD replica:"
                                      << "  chunk=" << request->chunk()
                                      << ", databases=" << util::String::toString(request->databases())
-                                     << ", worker=" << request->worker()
+                                     << ", worker=" << request->workerName()
                                      << ", state=" << request->state2string());
                 if (onFinish) onFinish(request);
             },

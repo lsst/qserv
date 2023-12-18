@@ -63,20 +63,18 @@ json HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
     auto const delays = healthMonitorTask->workerResponseDelay();
 
     json workersJson = json::array();
-    for (auto&& worker : controller()->serviceProvider()->config()->allWorkers()) {
-        json workerJson;
-
-        workerJson["worker"] = worker;
-
-        WorkerInfo const info = controller()->serviceProvider()->config()->workerInfo(worker);
+    for (auto&& workerName : controller()->serviceProvider()->config()->allWorkers()) {
+        json workerJson = json::object();
+        workerJson["worker"] = workerName;
+        ConfigWorker const worker = controller()->serviceProvider()->config()->worker(workerName);
         uint64_t const numReplicas =
-                controller()->serviceProvider()->databaseServices()->numWorkerReplicas(worker);
+                controller()->serviceProvider()->databaseServices()->numWorkerReplicas(workerName);
 
         workerJson["replication"]["num_replicas"] = numReplicas;
-        workerJson["replication"]["isEnabled"] = info.isEnabled ? 1 : 0;
-        workerJson["replication"]["isReadOnly"] = info.isReadOnly ? 1 : 0;
+        workerJson["replication"]["isEnabled"] = worker.isEnabled ? 1 : 0;
+        workerJson["replication"]["isReadOnly"] = worker.isReadOnly ? 1 : 0;
 
-        auto&& itr = delays.find(worker);
+        auto&& itr = delays.find(workerName);
         if (delays.end() != itr) {
             workerJson["replication"]["probe_delay_s"] = itr->second.at("replication");
             workerJson["qserv"]["probe_delay_s"] = itr->second.at("qserv");

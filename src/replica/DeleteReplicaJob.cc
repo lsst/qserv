@@ -52,20 +52,20 @@ namespace lsst::qserv::replica {
 string DeleteReplicaJob::typeName() { return "DeleteReplicaJob"; }
 
 DeleteReplicaJob::Ptr DeleteReplicaJob::create(string const& databaseFamily, unsigned int chunk,
-                                               string const& worker, Controller::Ptr const& controller,
+                                               string const& workerName, Controller::Ptr const& controller,
                                                string const& parentJobId, CallbackType const& onFinish,
                                                int priority) {
-    return DeleteReplicaJob::Ptr(
-            new DeleteReplicaJob(databaseFamily, chunk, worker, controller, parentJobId, onFinish, priority));
+    return DeleteReplicaJob::Ptr(new DeleteReplicaJob(databaseFamily, chunk, workerName, controller,
+                                                      parentJobId, onFinish, priority));
 }
 
-DeleteReplicaJob::DeleteReplicaJob(string const& databaseFamily, unsigned int chunk, string const& worker,
+DeleteReplicaJob::DeleteReplicaJob(string const& databaseFamily, unsigned int chunk, string const& workerName,
                                    Controller::Ptr const& controller, string const& parentJobId,
                                    CallbackType const& onFinish, int priority)
         : Job(controller, parentJobId, "DELETE_REPLICA", priority),
           _databaseFamily(databaseFamily),
           _chunk(chunk),
-          _worker(worker),
+          _workerName(workerName),
           _onFinish(onFinish) {}
 
 DeleteReplicaJobResult const& DeleteReplicaJob::getReplicaData() const {
@@ -81,7 +81,7 @@ list<pair<string, string>> DeleteReplicaJob::extendedPersistentState() const {
     list<pair<string, string>> result;
     result.emplace_back("database_family", databaseFamily());
     result.emplace_back("chunk", to_string(chunk()));
-    result.emplace_back("worker", worker());
+    result.emplace_back("worker", workerName());
     return result;
 }
 
@@ -102,8 +102,8 @@ list<pair<string, string>> DeleteReplicaJob::persistentLogData() const {
         workerCategoryCounter[info.worker()]["deleted-chunks"]++;
     }
     for (auto&& workerItr : workerCategoryCounter) {
-        auto&& worker = workerItr.first;
-        string val = "worker=" + worker;
+        auto&& workerName = workerItr.first;
+        string val = "worker=" + workerName;
 
         for (auto&& categoryItr : workerItr.second) {
             auto&& category = categoryItr.first;
@@ -122,11 +122,11 @@ void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
 
     auto const& config = controller()->serviceProvider()->config();
 
-    if (not(config->isKnownDatabaseFamily(databaseFamily()) and config->isKnownWorker(worker()))) {
+    if (not(config->isKnownDatabaseFamily(databaseFamily()) and config->isKnownWorker(workerName()))) {
         LOGS(_log, LOG_LVL_ERROR,
              context() << __func__ << "  ** MISCONFIGURED ** "
                        << " database family: '" << databaseFamily() << "'"
-                       << " worker: '" << worker() << "'");
+                       << " worker: '" << workerName() << "'");
 
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
@@ -143,13 +143,13 @@ void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
     //    see if the chunk is available on a source node.
 
     try {
-        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(_replicas, chunk(), worker(),
-                                                                                databaseFamily());
+        controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
+                _replicas, chunk(), workerName(), databaseFamily());
 
     } catch (invalid_argument const& ex) {
         LOGS(_log, LOG_LVL_ERROR,
              context() << __func__ << "  ** MISCONFIGURED ** "
-                       << " chunk: " << chunk() << " worker: " << worker()
+                       << " chunk: " << chunk() << " worker: " << workerName()
                        << " databaseFamily: " << databaseFamily() << " exception: " << ex.what());
 
         finish(lock, ExtendedState::CONFIG_ERROR);
@@ -158,7 +158,7 @@ void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR,
              context() << __func__ << "  ** failed to find replicas ** "
-                       << " chunk: " << chunk() << " worker: " << worker()
+                       << " chunk: " << chunk() << " worker: " << workerName()
                        << " databaseFamily: " << databaseFamily() << " exception: " << ex.what());
 
         finish(lock, ExtendedState::FAILED);
@@ -167,7 +167,7 @@ void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
     if (not _replicas.size()) {
         LOGS(_log, LOG_LVL_ERROR,
              context() << __func__ << "  ** worker has no replicas to be deleted ** "
-                       << " chunk: " << chunk() << " worker: " << worker()
+                       << " chunk: " << chunk() << " worker: " << workerName()
                        << " databaseFamily: " << databaseFamily());
 
         finish(lock, ExtendedState::FAILED);
@@ -196,7 +196,7 @@ void DeleteReplicaJob::startImpl(replica::Lock const& lock) {
         // See the implementation of the corresponding worker management service
         // for specific detail on what "remove" means in that service's context.
         bool const force = true;
-        _qservRemoveReplica(lock, chunk(), databases, worker(), force,
+        _qservRemoveReplica(lock, chunk(), databases, workerName(), force,
                             [self](RemoveReplicaQservMgtRequest::Ptr const& request) {
                                 replica::Lock lock(self->_mtx, self->context() + string(__func__) +
                                                                        "::qservRemoveReplica");
@@ -231,12 +231,14 @@ void DeleteReplicaJob::cancelImpl(replica::Lock const& lock) {
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
 
+    auto const noCallbackOnFinish = nullptr;
+    bool const keepTracking = true;
     for (auto&& ptr : _requests) {
         ptr->cancel();
-        if (ptr->state() != Request::State::FINISHED)
-            controller()->stopById<StopDeleteRequest>(worker(), ptr->id(), nullptr, /* onFinish */
-                                                      priority(), true,             /* keepTracking */
-                                                      id() /* jobId */);
+        if (ptr->state() != Request::State::FINISHED) {
+            controller()->stopById<StopDeleteRequest>(workerName(), ptr->id(), noCallbackOnFinish, priority(),
+                                                      keepTracking, id());
+        }
     }
     _requests.clear();
 }
@@ -252,21 +254,20 @@ void DeleteReplicaJob::_beginDeleteReplica(replica::Lock const& lock) {
     // VERY IMPORTANT: the requests are sent for participating databases
     // only because some catalogs may not have a full coverage
 
+    bool const keepTracking = true;
+    bool const allowDuplicate = true;
     for (auto&& replica : _replicas) {
         _requests.push_back(controller()->deleteReplica(
-                worker(), replica.database(), chunk(),
-                [self](DeleteRequest::Ptr ptr) { self->_onRequestFinish(ptr); }, priority(),
-                true, /* keepTracking */
-                true, /* allowDuplicate */
-                id()  /* jobId */
-                ));
+                workerName(), replica.database(), chunk(),
+                [self](DeleteRequest::Ptr ptr) { self->_onRequestFinish(ptr); }, priority(), keepTracking,
+                allowDuplicate, id()));
     }
 }
 
 void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "(DeleteRequest)"
-                   << "  database=" << request->database() << "  worker=" << worker()
+                   << "  database=" << request->database() << "  worker=" << workerName()
                    << "  chunk=" << chunk());
 
     if (state() == State::FINISHED) return;
@@ -277,7 +278,7 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
         ++_numRequestsSuccess;
         _replicaData.replicas.push_back(request->responseData());
-        _replicaData.chunks[chunk()][request->database()][worker()] = request->responseData();
+        _replicaData.chunks[chunk()][request->database()][workerName()] = request->responseData();
     }
 
     // Evaluate the status of on-going operations to see if the job
@@ -289,22 +290,23 @@ void DeleteReplicaJob::_onRequestFinish(DeleteRequest::Ptr const& request) {
     }
 }
 void DeleteReplicaJob::_qservRemoveReplica(replica::Lock const& lock, unsigned int chunk,
-                                           vector<string> const& databases, string const& worker, bool force,
+                                           vector<string> const& databases, string const& workerName,
+                                           bool force,
                                            RemoveReplicaQservMgtRequest::CallbackType const& onFinish) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  ** START ** Qserv notification on REMOVE replica:"
                    << "  chunk=" << chunk << ", databases=" << util::String::toString(databases)
-                   << ", worker=" << worker << ", force=" << (force ? "true" : "false"));
+                   << ", worker=" << workerName << ", force=" << (force ? "true" : "false"));
 
     auto self = shared_from_this();
     controller()->serviceProvider()->qservMgtServices()->removeReplica(
-            chunk, databases, worker, force,
+            chunk, databases, workerName, force,
             [self, onFinish](RemoveReplicaQservMgtRequest::Ptr const& request) {
                 LOGS(_log, LOG_LVL_DEBUG,
                      self->context() << __func__ << "  ** FINISH ** Qserv notification on REMOVE replica:"
                                      << "  chunk=" << request->chunk()
                                      << ", databases=" << util::String::toString(request->databases())
-                                     << ", worker=" << request->worker()
+                                     << ", worker=" << request->workerName()
                                      << ", force=" << (request->force() ? "true" : "false")
                                      << ", state=" << request->state2string());
                 if (onFinish) onFinish(request);

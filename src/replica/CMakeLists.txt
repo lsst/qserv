@@ -26,8 +26,10 @@ target_sources(replica PRIVATE
     Common.cc
     ConfigApp.cc
     ConfigAppBase.cc
+    ConfigCzar.cc
     ConfigDatabase.cc
     ConfigDatabaseFamily.cc
+    ConfigHost.cc
     ConfigParserJSON.cc
     ConfigParserMySQL.cc
     ConfigTable.cc
@@ -75,8 +77,11 @@ target_sources(replica PRIVATE
     FixUpJob.cc
     GetReplicasQservMgtRequest.cc
     GetDbStatusQservMgtRequest.cc
+    GetConfigQservCzarMgtRequest.cc
     GetConfigQservMgtRequest.cc
+    GetQueryProgressQservCzarMgtRequest.cc
     GetResultFilesQservMgtRequest.cc
+    GetStatusQservCzarMgtRequest.cc
     GetStatusQservMgtRequest.cc
     HealthMonitorTask.cc
     HttpAsyncReqApp.cc
@@ -130,12 +135,14 @@ target_sources(replica PRIVATE
     PurgeApp.cc
     PurgeJob.cc
     QhttpTestApp.cc
+    QservCzarMgtRequest.cc
     QservGetReplicasJob.cc
     QservMgtRequest.cc
     QservMgtServices.cc
     QservStatusJob.cc
     QservSyncJob.cc
     QservWorkerApp.cc
+    QservWorkerMgtRequest.cc
     QservWorkerPingApp.cc
     RebalanceApp.cc
     RebalanceJob.cc
@@ -143,7 +150,7 @@ target_sources(replica PRIVATE
     RegistryHttpApp.cc
     RegistryHttpSvc.cc
     RegistryHttpSvcMod.cc
-    RegistryWorkers.cc
+    RegistryServices.cc
     RemoveReplicaQservMgtRequest.cc
     ReplicaInfo.cc
     ReplicateApp.cc

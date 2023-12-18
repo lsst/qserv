@@ -44,6 +44,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/Common.h"
+#include "replica/ConfigCzar.h"
 #include "replica/ConfigDatabase.h"
 #include "replica/ConfigDatabaseFamily.h"
 #include "replica/ConfigWorker.h"
@@ -637,16 +638,16 @@ public:
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo workerInfo(std::string const& workerName) const;
+    ConfigWorker worker(std::string const& workerName) const;
 
     /**
      * Register a new worker in the Configuration.
-     * @param workerInfo The worker description.
+     * @param worker The worker description.
      * @return A worker descriptor.
-     * @throw std::invalid_argument If the specified worker was not found in
+     * @throw std::invalid_argument If the specified worker already exists in
      *   the configuration.
      */
-    WorkerInfo addWorker(WorkerInfo const& worker);
+    ConfigWorker addWorker(ConfigWorker const& worker);
 
     /**
      * Completely remove the specified worker from the Configuration.
@@ -663,7 +664,7 @@ public:
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo disableWorker(std::string const& workerName);
+    ConfigWorker disableWorker(std::string const& workerName);
 
     /**
      * Update parameters of an existing worker in the transient store, and in
@@ -673,7 +674,53 @@ public:
      * @throw std::invalid_argument If the specified worker was not found in
      *   the configuration.
      */
-    WorkerInfo updateWorker(WorkerInfo const& worker);
+    ConfigWorker updateWorker(ConfigWorker const& worker);
+
+    /// @return The names of all known Czars regardless of their statuses.
+    std::vector<std::string> allCzars() const;
+
+    /// @return The total number of known Czars regardless of their statuses.
+    std::size_t numCzars() const;
+
+    /**
+     * @param czarName The name of a Czar.
+     * @return 'true' if the specified Czar is known to the configuration.
+     */
+    bool isKnownCzar(std::string const& czarName) const;
+
+    /**
+     * @param czarName The name of a Czar.
+     * @return A Czar descriptor.
+     * @throw std::invalid_argument If the specified Czar was not found in
+     *   the configuration.
+     */
+    ConfigCzar czar(std::string const& czarName) const;
+
+    /**
+     * Register a new Czar in the Configuration.
+     * @param czar The Czar description.
+     * @return A Czar descriptor.
+     * @throw std::invalid_argument If the specified Czar already exists in
+     *   the configuration, or if the name of the Czar was not provided.
+     */
+    ConfigCzar addCzar(ConfigCzar const& czar);
+
+    /**
+     * Completely remove the specified Czar from the Configuration.
+     * @param czarName The name of a Czar.
+     * @throw std::invalid_argument If the specified Czar was not found in
+     *   the configuration.
+     */
+    void deleteCzar(std::string const& czarName);
+
+    /**
+     * Update parameters of an existing Czar in the transient store.
+     * @param czar The modified Czar descriptor.
+     * @return An updated Czar descriptor.
+     * @throw std::invalid_argument If the specified Czar was not found in
+     *   the configuration.
+     */
+    ConfigCzar updateCzar(ConfigCzar const& czar);
 
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
     /// @return The JSON representation of the object.
@@ -753,7 +800,7 @@ private:
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return An updated worker description.
      */
-    WorkerInfo _updateWorker(replica::Lock const& lock, WorkerInfo const& worker);
+    ConfigWorker _updateWorker(replica::Lock const& lock, ConfigWorker const& worker);
 
     /**
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
@@ -813,9 +860,10 @@ private:
 
     // The transient state of the configuration (guarded by Mutex _mtx).
     nlohmann::json _data;
-    std::map<std::string, WorkerInfo> _workers;
+    std::map<std::string, ConfigWorker> _workers;
     std::map<std::string, DatabaseFamilyInfo> _databaseFamilies;
     std::map<std::string, DatabaseInfo> _databases;
+    std::map<std::string, ConfigCzar> _czars;
 
     // For implementing synchronized methods.
     mutable replica::Mutex _mtx;

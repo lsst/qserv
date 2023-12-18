@@ -33,10 +33,14 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-ConfigParserJSON::ConfigParserJSON(json& data, map<string, WorkerInfo>& workers,
+ConfigParserJSON::ConfigParserJSON(json& data, map<string, ConfigWorker>& workers,
                                    map<string, DatabaseFamilyInfo>& databaseFamilies,
-                                   map<string, DatabaseInfo>& databases)
-        : _data(data), _workers(workers), _databaseFamilies(databaseFamilies), _databases(databases) {}
+                                   map<string, DatabaseInfo>& databases, map<string, ConfigCzar>& czars)
+        : _data(data),
+          _workers(workers),
+          _databaseFamilies(databaseFamilies),
+          _databases(databases),
+          _czars(czars) {}
 
 void ConfigParserJSON::parse(json const& obj) {
     if (!obj.is_object()) throw invalid_argument(_context + "a JSON object is required.");
@@ -101,7 +105,7 @@ void ConfigParserJSON::parse(json const& obj) {
             // into the output object. Using defaults is needed to ensure the worker entry is
             // complete before storying in the transient state. Note that users of the API may rely
             // on the default values of some parameters of workers.
-            WorkerInfo const worker(inWorker);
+            ConfigWorker const worker(inWorker);
             _workers[worker.name] = worker;
         }
     }
@@ -121,6 +125,17 @@ void ConfigParserJSON::parse(json const& obj) {
             // an existing family name was provided in the input spec.
             DatabaseInfo const database = DatabaseInfo::parse(inDatabase, _databaseFamilies, _databases);
             _databases[database.name] = database;
+        }
+    }
+    if (obj.count("czars") != 0) {
+        for (auto&& inCzar : obj.at("czars")) {
+            // Use this constructor to validate the schema and to fill in the missing (optional)
+            // parameters. If it won't throw then the input description is correct and can be placed
+            // into the output object. Using defaults is needed to ensure the worker entry is
+            // complete before storying in the transient state. Note that users of the API may rely
+            // on the default values of some parameters of workers.
+            ConfigCzar const czar(inCzar);
+            _czars[czar.name] = czar;
         }
     }
 }

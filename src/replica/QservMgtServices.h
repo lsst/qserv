@@ -31,8 +31,11 @@
 #include "replica/AddReplicaQservMgtRequest.h"
 #include "replica/GetReplicasQservMgtRequest.h"
 #include "replica/GetDbStatusQservMgtRequest.h"
+#include "replica/GetConfigQservCzarMgtRequest.h"
 #include "replica/GetConfigQservMgtRequest.h"
+#include "replica/GetQueryProgressQservCzarMgtRequest.h"
 #include "replica/GetResultFilesQservMgtRequest.h"
+#include "replica/GetStatusQservCzarMgtRequest.h"
 #include "replica/GetStatusQservMgtRequest.h"
 #include "replica/RemoveReplicaQservMgtRequest.h"
 #include "replica/SetReplicasQservMgtRequest.h"
@@ -316,6 +319,61 @@ public:
             std::string const& worker, std::string const& jobId = "",
             std::vector<QueryId> const& queryIds = std::vector<QueryId>(), unsigned int maxFiles = 0,
             GetResultFilesQservMgtRequest::CallbackType const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
+
+    /**
+     * Request detailed status of a Qserv Czar
+     * @param czarName  The name of a Czar.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
+     * @return  A pointer to the request object if the request was made. Return
+     *   nullptr otherwise.
+     */
+    GetStatusQservCzarMgtRequest::Ptr czarStatus(
+            std::string const& czarName, std::string const& jobId = "",
+            GetStatusQservCzarMgtRequest::CallbackType const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
+
+    /**
+     * Request the query progress records from the Qserv Czar.
+     * @param czarName  The name of a Czar.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param queryIds The optional selector for queries. If empty then all queries will
+     *   be considered.
+     * @param lastSeconds The optional limit for age of the queries. If 0 then no limit is set.
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
+     * @return  A pointer to the request object if the request was made. Return
+     *   nullptr otherwise.
+     */
+    GetQueryProgressQservCzarMgtRequest::Ptr czarQueryProgress(
+            std::string const& czarName, std::string const& jobId = "",
+            std::vector<QueryId> const& queryIds = std::vector<QueryId>(), unsigned int lastSeconds = 0,
+            GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish = nullptr,
+            unsigned int requestExpirationIvalSec = 0);
+
+    /**
+     * Request configuration parameters of a Qserv Czar
+     * @param czarName  The name of a Czar.
+     * @param jobId  An optional identifier of a job specifying a context in which
+     *    a request will be executed.
+     * @param onFinish  A callback function to be called upon request completion.
+     * @param requestExpirationIvalSec The maximum amount of time to wait before
+     *   completion of the request. If a value of the parameter is set to 0 then no
+     *   limit will be enforced.
+     * @return  A pointer to the request object if the request was made. Return
+     *   nullptr otherwise.
+     */
+    GetConfigQservCzarMgtRequest::Ptr czarConfig(
+            std::string const& czarName, std::string const& jobId = "",
+            GetConfigQservCzarMgtRequest::CallbackType const& onFinish = nullptr,
             unsigned int requestExpirationIvalSec = 0);
 
 private:

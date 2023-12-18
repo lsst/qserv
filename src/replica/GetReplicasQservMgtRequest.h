@@ -31,7 +31,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/QservMgtRequest.h"
+#include "replica/QservWorkerMgtRequest.h"
 #include "replica/ReplicaInfo.h"
 
 namespace lsst::qserv::replica {
@@ -45,7 +45,7 @@ namespace lsst::qserv::replica {
  * Class GetReplicasQservMgtRequest implements a request retrieving a list of
  * replicas known to Qserv workers.
  */
-class GetReplicasQservMgtRequest : public QservMgtRequest {
+class GetReplicasQservMgtRequest : public QservWorkerMgtRequest {
 public:
     typedef std::shared_ptr<GetReplicasQservMgtRequest> Ptr;
 
@@ -56,7 +56,7 @@ public:
     GetReplicasQservMgtRequest(GetReplicasQservMgtRequest const&) = delete;
     GetReplicasQservMgtRequest& operator=(GetReplicasQservMgtRequest const&) = delete;
 
-    virtual ~GetReplicasQservMgtRequest() final = default;
+    virtual ~GetReplicasQservMgtRequest() override = default;
 
     /**
      * Static factory method is needed to prevent issues with the lifespan
@@ -65,13 +65,13 @@ public:
      *
      * @param serviceProvider A reference to a provider of services for accessing
      *   Configuration, saving the request's persistent state to the database.
-     * @param worker The name of a worker to send the request to.
+     * @param workerName The name of a worker to send the request to.
      * @param databaseFamily The name of a database family.
      * @param inUseOnly (optional) return replicas which are presently in use.
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                       std::string const& databaseFamily, bool inUseOnly = false,
                       CallbackType const& onFinish = nullptr);
 
@@ -93,18 +93,18 @@ public:
 
 protected:
     /// @see QservMgtRequest::createHttpReqImpl()
-    virtual void createHttpReqImpl(replica::Lock const& lock) final;
+    virtual void createHttpReqImpl(replica::Lock const& lock) override;
 
     /// @see QservMgtRequest::dataReady()
     virtual QservMgtRequest::ExtendedState dataReady(replica::Lock const& lock,
-                                                     nlohmann::json const& data) final;
+                                                     nlohmann::json const& data) override;
 
     /// @see QservMgtRequest::notify
-    virtual void notify(replica::Lock const& lock) final;
+    virtual void notify(replica::Lock const& lock) override;
 
 private:
     /// @see GetReplicasQservMgtRequest::create()
-    GetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
+    GetReplicasQservMgtRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
                                std::string const& databaseFamily, bool inUseOnly,
                                CallbackType const& onFinish);
 

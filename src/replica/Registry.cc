@@ -58,16 +58,16 @@ Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
           _baseUrl("http://" + serviceProvider->config()->get<string>("registry", "host") + ":" +
                    to_string(serviceProvider->config()->get<uint16_t>("registry", "port"))) {}
 
-vector<WorkerInfo> Registry::workers() const {
-    vector<WorkerInfo> coll;
-    json const resultJson =
-            _request(http::Method::GET, "/workers?instance_id=" + _serviceProvider->instanceId());
-    for (auto const& [name, workerJson] : resultJson.at("workers").items()) {
-        WorkerInfo worker;
-        if (_serviceProvider->config()->isKnownWorker(name)) {
-            worker = _serviceProvider->config()->workerInfo(name);
+vector<ConfigWorker> Registry::workers() const {
+    vector<ConfigWorker> coll;
+    string const resource = "/services?instance_id=" + _serviceProvider->instanceId();
+    json const resultJson = _request(http::Method::GET, resource);
+    for (auto const& [workerName, workerJson] : resultJson.at("services").at("workers").items()) {
+        ConfigWorker worker;
+        if (_serviceProvider->config()->isKnownWorker(workerName)) {
+            worker = _serviceProvider->config()->worker(workerName);
         } else {
-            worker.name = name;
+            worker.name = workerName;
         }
         if (workerJson.contains("replication")) {
             json const& replicationWorker = workerJson.at("replication");
@@ -103,7 +103,7 @@ vector<WorkerInfo> Registry::workers() const {
     return coll;
 }
 
-void Registry::add(string const& name) const {
+void Registry::addWorker(string const& name) const {
     bool const all = true;
     string const hostName = util::get_current_host_fqdn(all);
     auto const config = _serviceProvider->config();
@@ -129,10 +129,29 @@ void Registry::add(string const& name) const {
     _request(http::Method::POST, "/worker", request);
 }
 
-void Registry::remove(string const& name) const {
+void Registry::removeWorker(string const& name) const {
     json const request = json::object(
             {{"instance_id", _serviceProvider->instanceId()}, {"auth_key", _serviceProvider->authKey()}});
     _request(http::Method::DELETE, "/worker/" + name, request);
+}
+
+vector<ConfigCzar> Registry::czars() const {
+    vector<ConfigCzar> coll;
+    string const resource = "/services?instance_id=" + _serviceProvider->instanceId();
+    json const resultJson = _request(http::Method::GET, resource);
+    for (auto const& [czarName, czarJson] : resultJson.at("services").at("czars").items()) {
+        ConfigCzar czar;
+        if (_serviceProvider->config()->isKnownCzar(czarName)) {
+            czar = _serviceProvider->config()->czar(czarName);
+        } else {
+            czar.name = czarName;
+        }
+        czar.host.addr = czarJson.at("host-addr").get<string>();
+        czar.host.name = czarJson.at("management-host-name").get<string>();
+        czar.port = czarJson.at("management-port").get<uint16_t>();
+        coll.push_back(std::move(czar));
+    }
+    return coll;
 }
 
 json Registry::_request(http::Method method, string const& resource, json const& request) const {

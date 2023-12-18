@@ -39,18 +39,18 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.GetResultFilesQservMgtRequest");
 namespace lsst::qserv::replica {
 
 shared_ptr<GetResultFilesQservMgtRequest> GetResultFilesQservMgtRequest::create(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         vector<QueryId> const& queryIds, unsigned int maxFiles,
         GetResultFilesQservMgtRequest::CallbackType const& onFinish) {
     return shared_ptr<GetResultFilesQservMgtRequest>(
-            new GetResultFilesQservMgtRequest(serviceProvider, worker, queryIds, maxFiles, onFinish));
+            new GetResultFilesQservMgtRequest(serviceProvider, workerName, queryIds, maxFiles, onFinish));
 }
 
 GetResultFilesQservMgtRequest::GetResultFilesQservMgtRequest(
-        shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
+        shared_ptr<ServiceProvider> const& serviceProvider, string const& workerName,
         vector<QueryId> const& queryIds, unsigned int maxFiles,
         GetResultFilesQservMgtRequest::CallbackType const& onFinish)
-        : QservMgtRequest(serviceProvider, "QSERV_GET_RESULT_FILES", worker),
+        : QservWorkerMgtRequest(serviceProvider, "QSERV_GET_RESULT_FILES", workerName),
           _queryIds(queryIds),
           _maxFiles(maxFiles),
           _onFinish(onFinish) {}

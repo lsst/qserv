@@ -35,11 +35,13 @@ namespace lsst::qserv::replica {
 class HttpProcessorConfig {
 public:
     /// The normal and the default constructor
-    explicit HttpProcessorConfig(unsigned int workerResponseTimeoutSec_ = 0,
+    explicit HttpProcessorConfig(unsigned int czarResponseTimeoutSec_ = 0,
+                                 unsigned int workerResponseTimeoutSec_ = 0,
                                  unsigned int qservSyncTimeoutSec_ = 0,
                                  unsigned int workerReconfigTimeoutSec_ = 0,
                                  std::string const& httpRoot_ = std::string())
-            : workerResponseTimeoutSec(workerResponseTimeoutSec_),
+            : czarResponseTimeoutSec(czarResponseTimeoutSec_),
+              workerResponseTimeoutSec(workerResponseTimeoutSec_),
               qservSyncTimeoutSec(qservSyncTimeoutSec_),
               workerReconfigTimeoutSec(workerReconfigTimeoutSec_),
               httpRoot(httpRoot_) {}
@@ -48,8 +50,12 @@ public:
 
     ~HttpProcessorConfig() = default;
 
-    /// The maximum number of seconds to wait before giving up on worker probes
-    /// when checking statuses of workers.
+    /// The maximum number of seconds to wait before giving up on requests
+    /// sent to workers.
+    unsigned int czarResponseTimeoutSec = 0;
+
+    /// The maximum number of seconds to wait before giving up on requests
+    /// sent to Czar(s).
     unsigned int workerResponseTimeoutSec = 0;
 
     /// The maximum number of seconds to wait before Qserv workers respond

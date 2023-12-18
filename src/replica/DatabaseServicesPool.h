@@ -74,7 +74,7 @@ public:
 
     void updateHeartbeatTime(Job const& job) final;
 
-    void saveState(QservMgtRequest const& request, Performance const& performance,
+    void saveState(QservWorkerMgtRequest const& request, Performance const& performance,
                    std::string const& serverError) final;
 
     void saveState(Request const& request, Performance const& performance) final;
@@ -84,7 +84,7 @@ public:
 
     void saveReplicaInfo(ReplicaInfo const& info) final;
 
-    void saveReplicaInfoCollection(std::string const& worker, std::string const& database,
+    void saveReplicaInfoCollection(std::string const& workerName, std::string const& database,
                                    ReplicaInfoCollection const& newReplicaInfoCollection) final;
 
     void findOldestReplicas(std::vector<ReplicaInfo>& replicas, size_t maxReplicas, bool enabledWorkersOnly,
@@ -96,15 +96,16 @@ public:
     void findReplicas(std::vector<ReplicaInfo>& replicas, std::vector<unsigned int> const& chunks,
                       std::string const& database, bool enabledWorkersOnly, bool includeFileInfo) final;
 
-    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, std::string const& worker,
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, std::string const& workerName,
                             std::string const& database, bool allDatabases, bool isPublished,
                             bool includeFileInfo) final;
 
-    uint64_t numWorkerReplicas(std::string const& worker, std::string const& database, bool allDatabases,
+    uint64_t numWorkerReplicas(std::string const& workerName, std::string const& database, bool allDatabases,
                                bool isPublished) final;
 
-    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk, std::string const& worker,
-                            std::string const& databaseFamily, bool allDatabases, bool isPublished) final;
+    void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk,
+                            std::string const& workerName, std::string const& databaseFamily,
+                            bool allDatabases, bool isPublished) final;
 
     void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas, std::string const& database,
                               bool enabledWorkersOnly) final;
@@ -168,21 +169,21 @@ public:
 
     std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, std::string const& table = std::string(),
-            std::string const& worker = std::string(),
+            std::string const& workerName = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
             bool includeWarnings = false, bool includeRetries = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
             TransactionId transactionId, TransactionContribInfo::Status status,
-            std::string const& table = std::string(), std::string const& worker = std::string(),
+            std::string const& table = std::string(), std::string const& workerName = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
             bool includeWarnings = false, bool includeRetries = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
             std::string const& database, std::string const& table = std::string(),
-            std::string const& worker = std::string(),
+            std::string const& workerName = std::string(),
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
             bool includeWarnings = false, bool includeRetries = false) final;

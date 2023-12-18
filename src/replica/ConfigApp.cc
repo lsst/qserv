@@ -302,10 +302,10 @@ int ConfigApp::_updateWorker() const {
     // Configuration changes will be updated in the transient object obtained from
     // the database and then be saved to the the persistent configuration.
     try {
-        auto info = config()->workerInfo(_worker.name);
-        WorkerInfo::update(_workerEnable, info.isEnabled);
-        WorkerInfo::update(_workerReadOnly, info.isReadOnly);
-        auto const updatedInfo = config()->updateWorker(info);
+        auto worker = config()->worker(_worker.name);
+        ConfigWorker::update(_workerEnable, worker.isEnabled);
+        ConfigWorker::update(_workerReadOnly, worker.isReadOnly);
+        auto const updatedInfo = config()->updateWorker(worker);
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "ConfigApp::" << __func__ << ": " << ex.what());
         throw;

@@ -105,7 +105,7 @@ public:
      * low-level pointers).
      *
      * @param serviceProvider provider of various services
-     * @param worker identifier of a worker node
+     * @param workerName identifier of a worker node
      * @param targetIds a collection unique identifiers of requests to be disposed
      * @param onFinish (optional) callback function to call upon completion
      *   of the request
@@ -116,7 +116,7 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, std::vector<std::string> const& targetIds,
+                      std::string const& workerName, std::vector<std::string> const& targetIds,
                       CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger);
 
@@ -133,7 +133,7 @@ protected:
 
 private:
     DisposeRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                   std::string const& worker, std::vector<std::string> const& targetIds,
+                   std::string const& workerName, std::vector<std::string> const& targetIds,
                    CallbackType const& onFinish, int priority, bool keepTracking,
                    std::shared_ptr<Messenger> const& messenger);
 

@@ -145,11 +145,12 @@ protected:
      *
      * @param lock A lock on the mutex Job::_mtx to be acquired for protecting
      *   the object's state.
-     * @param worker The name of a worker the requests to be sent to.
+     * @param workerName The name of a worker the requests to be sent to.
      * @param maxRequestsPerWorker The maximum number of requests to be launched per each worker.
      * @return A collection of requests launched.
      */
-    virtual std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
+    virtual std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock,
+                                                      std::string const& workerName,
                                                       size_t maxRequestsPerWorker = 1) = 0;
 
     /**
@@ -165,10 +166,10 @@ protected:
      */
     template <class REQUEST>
     void stopRequestDefaultImpl(replica::Lock const& lock, SqlRequest::Ptr const& request) const {
-        controller()->stopById<REQUEST>(request->worker(), request->id(), nullptr, /* onFinish */
-                                        priority(), true,                          /* keepTracking */
-                                        id()                                       /* jobId */
-        );
+        auto const noCallBackOnFinish = nullptr;
+        bool const keepTracking = true;
+        controller()->stopById<REQUEST>(request->workerName(), request->id(), noCallBackOnFinish, priority(),
+                                        keepTracking, id());
     }
 
     /**

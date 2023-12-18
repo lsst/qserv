@@ -97,27 +97,27 @@ bool HealthMonitorTask::onRun() {
         replica::Lock lock(_mtx, context);
 
         for (auto&& entry : jobs[0]->clusterHealth().qserv()) {
-            auto worker = entry.first;
+            auto workerName = entry.first;
             auto responded = entry.second;
 
             if (responded) {
-                _workerServiceNoResponseSec[worker]["qserv"] = 0;
+                _workerServiceNoResponseSec[workerName]["qserv"] = 0;
             } else {
-                _workerServiceNoResponseSec[worker]["qserv"] += workerResponseDelaySec;
-                info("no response from Qserv at worker '" + worker + "' for " +
-                     to_string(_workerServiceNoResponseSec[worker]["qserv"]) + " seconds");
+                _workerServiceNoResponseSec[workerName]["qserv"] += workerResponseDelaySec;
+                info("no response from Qserv at worker '" + workerName + "' for " +
+                     to_string(_workerServiceNoResponseSec[workerName]["qserv"]) + " seconds");
             }
         }
         for (auto&& entry : jobs[0]->clusterHealth().replication()) {
-            auto worker = entry.first;
+            auto workerName = entry.first;
             auto responded = entry.second;
 
             if (responded) {
-                _workerServiceNoResponseSec[worker]["replication"] = 0;
+                _workerServiceNoResponseSec[workerName]["replication"] = 0;
             } else {
-                _workerServiceNoResponseSec[worker]["replication"] += workerResponseDelaySec;
-                info("no response from Replication at worker '" + worker + "' for " +
-                     to_string(_workerServiceNoResponseSec[worker]["replication"]) + " seconds");
+                _workerServiceNoResponseSec[workerName]["replication"] += workerResponseDelaySec;
+                info("no response from Replication at worker '" + workerName + "' for " +
+                     to_string(_workerServiceNoResponseSec[workerName]["replication"]) + " seconds");
             }
         }
     }
@@ -131,8 +131,8 @@ bool HealthMonitorTask::onRun() {
     size_t numEnabledWorkersOffline = 0;
 
     for (auto&& entry : _workerServiceNoResponseSec) {
-        auto worker = entry.first;
-        auto workerInfo = serviceProvider()->config()->workerInfo(worker);
+        auto workerName = entry.first;
+        auto worker = serviceProvider()->config()->worker(workerName);
 
         // Both services on the worker must be offline for a duration of
         // the eviction interval before electing the worker for eviction.
@@ -141,15 +141,15 @@ bool HealthMonitorTask::onRun() {
             if (entry.second.at("qserv") >= _workerEvictTimeoutSec) {
                 // Only the ENABLED workers are considered for eviction
 
-                if (workerInfo.isEnabled) {
-                    workers2evict.push_back(worker);
-                    info("worker '" + worker + "' has reached eviction timeout of " +
+                if (worker.isEnabled) {
+                    workers2evict.push_back(workerName);
+                    info("worker '" + workerName + "' has reached eviction timeout of " +
                          to_string(_workerEvictTimeoutSec) + " seconds");
                 }
             }
 
             // Only count the ENABLED workers
-            if (workerInfo.isEnabled) {
+            if (worker.isEnabled) {
                 numEnabledWorkersOffline++;
             }
         }

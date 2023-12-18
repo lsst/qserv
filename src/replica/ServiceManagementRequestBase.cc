@@ -165,11 +165,11 @@ ServiceState const& ServiceManagementRequestBase::getServiceState() const {
 
 ServiceManagementRequestBase::ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
                                                            boost::asio::io_service& io_service,
-                                                           char const* requestName, string const& worker,
+                                                           char const* requestName, string const& workerName,
                                                            ProtocolServiceRequestType requestType,
                                                            int priority,
                                                            shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, requestName, worker, priority,
+        : RequestMessenger(serviceProvider, io_service, requestName, workerName, priority,
                            false,  // keepTracking
                            false,  // allowDuplicate
                            false,  // disposeRequired
@@ -195,7 +195,7 @@ void ServiceManagementRequestBase::startImpl(replica::Lock const& lock) {
     // Send the message
     auto self = shared_from_base<ServiceManagementRequestBase>();
     messenger()->send<ProtocolServiceResponse>(
-            worker(), id(), priority(), buffer(),
+            workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolServiceResponse const& response) {
                 self->_analyze(success, response);
             });

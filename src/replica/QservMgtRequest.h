@@ -44,8 +44,8 @@
 namespace lsst::qserv::replica {
 
 /**
- * @brief QservMgtRequest is a base class for a family of the Qserv worker
- *   management requests within the master server.
+ * QservMgtRequest is a base class for a family of the Qserv management requests
+ * sent to different services.
  */
 class QservMgtRequest : public std::enable_shared_from_this<QservMgtRequest> {
 public:
@@ -99,16 +99,13 @@ public:
     virtual ~QservMgtRequest();
 
     /// @return reference to a provider of services
-    std::shared_ptr<ServiceProvider> const& serviceProvider() { return _serviceProvider; }
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
 
     /// @return string representing of the request type.
     std::string const& type() const { return _type; }
 
     /// @return unique identifier of the request
     std::string const& id() const { return _id; }
-
-    /// @return name of a worker
-    std::string const& worker() const { return _worker; }
 
     /// @return primary status of the request
     State state() const { return _state; }
@@ -132,7 +129,7 @@ public:
     std::string const& jobId() const;
 
     /**
-     * @return The info object returned by the worker.
+     * @return The info object returned by the service.
      * @throw std::logic_error if called before the request finishes or if it failed.
      */
     nlohmann::json const& info() const;
@@ -169,10 +166,11 @@ protected:
      * @brief Construct the request with the pointer to the services provider.
      * @param serviceProvider Is required to access configuration services.
      * @param type The type name of he request (used for debugging and error reporting).
-     * @param worker The name of a worker.
+     * @param remoteServiceKey The key assiciated with the remote service.
+     * @param remoteServiceId The unique identifier of the remote service.
      */
     QservMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& type,
-                    std::string const& worker);
+                    std::string const& remoteServiceKey, std::string const& remoteServiceId);
 
     /// @return A shared pointer of the desired subclass (no dynamic type checking).
     template <class T>
@@ -220,7 +218,7 @@ protected:
 
     /**
      * @brief Notify a subclass that a data object was was succesfully retrieved
-     *   from the worker.
+     *   from the service.
      *
      * This method allows subclasses to implement the optional result validation and processing,
      * including a translation of the JSON object into the subclas-specific result type.
@@ -246,7 +244,7 @@ protected:
      * @param lock A lock on QservMgtRequest::_mtx must be acquired before
      *   calling this method.
      * @param extendedState The new extended state.
-     * @param serverError (optional) error message from a Qserv worker service.
+     * @param serverError (optional) error message from a service.
      */
     void finish(replica::Lock const& lock, ExtendedState extendedState, std::string const& serverError = "");
 
@@ -315,10 +313,19 @@ protected:
     /// Mutex guarding internal state (also used by subclasses)
     mutable replica::Mutex _mtx;
 
-private:
-    /// @return The callback function for tracking connection parameters of the worker.
-    http::AsyncReq::GetHostPort _getHostPortTracker() const;
+    /// @return The callback function for tracking connection parameters of the remote service.
+    virtual http::AsyncReq::GetHostPort getHostPortTracker() const = 0;
 
+    /**
+     * Update the persistent state from the subclass's context.
+     * @note Not all request classes have persistent states.
+     * @param performance Performance stats of the request.
+     * @param serverError The server error (if any).
+     */
+    virtual void updatePersistentState(Performance const& performance, std::string const& serverError) const {
+    }
+
+private:
     /// Extract and process data of the completed request. Notify a subclass in case of success.
     void _processResponse();
 
@@ -363,7 +370,8 @@ private:
 
     std::string const _type;
     std::string const _id;
-    std::string const _worker;
+    std::string const _remoteServiceKey;
+    std::string const _remoteServiceId;
 
     // Two-level state of a request
     std::atomic<State> _state;                  ///< The primary state.
@@ -375,8 +383,8 @@ private:
     Performance _performance;  ///< Performance counters.
     std::string _jobId;        ///< An identifier of the parent job which started the request.
 
-    std::shared_ptr<http::AsyncReq> _httpRequest;  ///< The actual request sent to the worker.
-    nlohmann::json _info;                          ///< The data object returned by the worker.
+    std::shared_ptr<http::AsyncReq> _httpRequest;  ///< The actual request sent to the service.
+    nlohmann::json _info;                          ///< The data object returned by the service.
 
     // Synchronization primitives for implementing QservMgtRequest::wait()
 

@@ -69,7 +69,7 @@ protected:
      * @param io_service communication services
      * @param requestName the name of a request (used in reporting messages to the log stream,
      *   and when saving its state in the database)
-     * @param worker the name of a worker node (the one to be affected by the request)
+     * @param workerName the name of a worker node (the one to be affected by the request)
      * @param targetRequestId an identifier of the target request whose remote status
      *   is going to be inspected
      * @param targetRequestType the sub-type of the replication request (if applies for
@@ -79,9 +79,9 @@ protected:
      * @param messenger an interface for communicating with workers
      */
     StopRequestBase(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                    char const* requestName, std::string const& worker, std::string const& targetRequestId,
-                    ProtocolQueuedRequestType targetRequestType, int priority, bool keepTracking,
-                    std::shared_ptr<Messenger> const& messenger);
+                    char const* requestName, std::string const& workerName,
+                    std::string const& targetRequestId, ProtocolQueuedRequestType targetRequestType,
+                    int priority, bool keepTracking, std::shared_ptr<Messenger> const& messenger);
 
     /// @see Request::startImpl()
     void startImpl(replica::Lock const& lock) final;

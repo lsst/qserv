@@ -89,11 +89,11 @@ list<pair<string, string>> PurgeJob::persistentLogData() const {
     // Report workers failed to respond to the jobs
 
     for (auto&& workerInfo : replicaData.workers) {
-        auto&& worker = workerInfo.first;
+        auto&& workerName = workerInfo.first;
         auto const numFailedJobs = workerInfo.second;
         if (numFailedJobs != 0) {
             result.emplace_back("failed-worker",
-                                "worker=" + worker + " num-failed-jobs=" + to_string(numFailedJobs));
+                                "worker=" + workerName + " num-failed-jobs=" + to_string(numFailedJobs));
         }
     }
 
@@ -109,9 +109,8 @@ list<pair<string, string>> PurgeJob::persistentLogData() const {
         workerCategoryCounter[info.worker()]["deleted-chunks"]++;
     }
     for (auto&& workerItr : workerCategoryCounter) {
-        auto&& worker = workerItr.first;
-        string val = "worker=" + worker;
-
+        auto&& workerName = workerItr.first;
+        string val = "worker=" + workerName;
         for (auto&& categoryItr : workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
@@ -236,8 +235,8 @@ void PurgeJob::_onPrecursorJobFinish() {
         for (auto&& database : chunkMap.databaseNames()) {
             auto databaseMap = chunkMap.database(database);
 
-            for (auto&& worker : databaseMap.workerNames()) {
-                worker2occupancy[worker]++;
+            for (auto&& workerName : databaseMap.workerNames()) {
+                worker2occupancy[workerName]++;
             }
         }
     }
@@ -260,11 +259,11 @@ void PurgeJob::_onPrecursorJobFinish() {
 
         list<string> goodWorkersOfThisChunk;
         for (auto&& entry : replicaData.isGood.at(chunk)) {
-            string const& worker = entry.first;
-            goodWorkersOfThisChunk.push_back(worker);
+            string const& workerName = entry.first;
+            goodWorkersOfThisChunk.push_back(workerName);
             LOGS(_log, LOG_LVL_DEBUG,
                  context() << __func__ << "  chunk=" << chunk
-                           << ", goodWorkersOfThisChunk : worker=" << worker);
+                           << ", goodWorkersOfThisChunk : worker=" << workerName);
         }
         LOGS(_log, LOG_LVL_DEBUG,
              context() << __func__ << "  chunk=" << chunk
@@ -277,15 +276,15 @@ void PurgeJob::_onPrecursorJobFinish() {
             // which are still available.
 
             size_t maxNumChunks = 0;  // will get updated within the next loop
-            string targetWorker;      // will be set to the best worker when the loop is over
+            string targetWorkerName;  // will be set to the best worker when the loop is over
 
-            for (auto&& worker : goodWorkersOfThisChunk) {
-                if (targetWorker.empty() or (worker2occupancy[worker] > maxNumChunks)) {
-                    maxNumChunks = worker2occupancy[worker];
-                    targetWorker = worker;
+            for (auto&& workerName : goodWorkersOfThisChunk) {
+                if (targetWorkerName.empty() or (worker2occupancy[workerName] > maxNumChunks)) {
+                    maxNumChunks = worker2occupancy[workerName];
+                    targetWorkerName = workerName;
                 }
             }
-            if (targetWorker.empty() or not maxNumChunks) {
+            if (targetWorkerName.empty() or not maxNumChunks) {
                 LOGS(_log, LOG_LVL_ERROR,
                      context() << __func__ << "  failed to find a target worker for chunk: " << chunk);
                 finish(lock, ExtendedState::FAILED);
@@ -294,16 +293,16 @@ void PurgeJob::_onPrecursorJobFinish() {
 
             // Remove the select worker from the list, so that the next iteration (if the one
             // will happen) will be not considering this worker for deletion.
-            goodWorkersOfThisChunk.remove(targetWorker);
+            goodWorkersOfThisChunk.remove(targetWorkerName);
 
             // Register the replica deletion task which will turn into
             // a job affecting all participating databases.
-            _targetWorker2tasks[targetWorker].emplace(ReplicaPurgeTask{chunk, targetWorker});
+            _targetWorker2tasks[targetWorkerName].emplace(ReplicaPurgeTask{chunk, targetWorkerName});
 
             // Reduce the worker occupancy count by the number of databases participating
             // in the replica of the chunk, so that it will be taken into
             // consideration when creating next replicas.
-            worker2occupancy[targetWorker] -= replicaData.databases.at(chunk).size();
+            worker2occupancy[targetWorkerName] -= replicaData.databases.at(chunk).size();
         }
     }
 
@@ -314,8 +313,8 @@ void PurgeJob::_onPrecursorJobFinish() {
             controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
 
     for (auto&& itr : _targetWorker2tasks) {
-        auto&& targetWorker = itr.first;
-        _launchNext(lock, targetWorker, maxJobsPerWorker);
+        auto&& targetWorkerName = itr.first;
+        _launchNext(lock, targetWorkerName, maxJobsPerWorker);
     }
 
     // In case if everything is alright, and no replica removals were needed.
@@ -325,11 +324,11 @@ void PurgeJob::_onPrecursorJobFinish() {
 }
 
 void PurgeJob::_onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
-    string const worker = job->worker();
+    string const workerName = job->workerName();
     unsigned int const chunk = job->chunk();
 
     LOGS(_log, LOG_LVL_TRACE,
-         context() << __func__ << "  databaseFamily=" << databaseFamily() << "  worker=" << worker
+         context() << __func__ << "  databaseFamily=" << databaseFamily() << "  worker=" << workerName
                    << "  chunk=" << chunk);
 
     if (state() == State::FINISHED) return;
@@ -354,16 +353,16 @@ void PurgeJob::_onDeleteJobFinish(DeleteReplicaJob::Ptr const& job) {
         // Merge the replica info into the dictionary
         for (auto&& databaseEntry : jobReplicaData.chunks.at(chunk)) {
             string const& database = databaseEntry.first;
-            _replicaData.chunks[chunk][database][worker] =
-                    jobReplicaData.chunks.at(chunk).at(database).at(worker);
+            _replicaData.chunks[chunk][database][workerName] =
+                    jobReplicaData.chunks.at(chunk).at(database).at(workerName);
         }
     } else {
-        _replicaData.workers[worker]++;
+        _replicaData.workers[workerName]++;
     }
 
     // Launch a replacement job for the worker and check if this was the very
     // last job in flight and no more are ready to be lunched.
-    if (0 == _launchNext(lock, worker, 1)) {
+    if (0 == _launchNext(lock, workerName, 1)) {
         if (_numFinished == _jobs.size()) {
             finish(lock, _numSuccess == _numFinished ? ExtendedState::SUCCESS : ExtendedState::FAILED);
         }

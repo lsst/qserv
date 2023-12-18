@@ -66,19 +66,19 @@ string DisposeRequest::toString(bool extended) const {
 }
 
 DisposeRequest::Ptr DisposeRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                           boost::asio::io_service& io_service, string const& worker,
+                                           boost::asio::io_service& io_service, string const& workerName,
                                            std::vector<std::string> const& targetIds,
                                            CallbackType const& onFinish, int priority, bool keepTracking,
                                            shared_ptr<Messenger> const& messenger) {
-    return DisposeRequest::Ptr(new DisposeRequest(serviceProvider, io_service, worker, targetIds, onFinish,
-                                                  priority, keepTracking, messenger));
+    return DisposeRequest::Ptr(new DisposeRequest(serviceProvider, io_service, workerName, targetIds,
+                                                  onFinish, priority, keepTracking, messenger));
 }
 
 DisposeRequest::DisposeRequest(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service, string const& worker,
+                               boost::asio::io_service& io_service, string const& workerName,
                                std::vector<std::string> const& targetIds, CallbackType const& onFinish,
                                int priority, bool keepTracking, shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "DISPOSE", worker, priority, keepTracking,
+        : RequestMessenger(serviceProvider, io_service, "DISPOSE", workerName, priority, keepTracking,
                            false,  // allowDuplicate
                            false,  // disposeRequired
                            messenger),
@@ -89,7 +89,7 @@ DisposeRequestResult const& DisposeRequest::responseData() const { return _respo
 
 void DisposeRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  worker: " << worker() << " targetIds.size: " << targetIds().size());
+         context() << __func__ << "  worker: " << workerName() << " targetIds.size: " << targetIds().size());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -116,7 +116,7 @@ void DisposeRequest::startImpl(replica::Lock const& lock) {
 void DisposeRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     messenger()->send<ProtocolResponseDispose>(
-            worker(), id(), priority(), buffer(),
+            workerName(), id(), priority(), buffer(),
             // Don't forward the first parameter (request's identifier) of the callback
             // to the response's analyzer. A value of the identifier is already known
             // in a context of the method.

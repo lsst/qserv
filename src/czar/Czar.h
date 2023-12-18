@@ -45,21 +45,21 @@
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
-namespace lsst::qserv {
+// Forward declarations
 
-namespace cconfig {
+namespace lsst::qserv::cconfig {
 class CzarConfig;
-}
+}  // namespace lsst::qserv::cconfig
 
-namespace qdisp {
-class PseudoFifo;
-}
+namespace lsst::qserv::czar {
+class HttpSvc;
+}  // namespace lsst::qserv::czar
 
-namespace util {
+namespace lsst::qserv::util {
 class FileMonitor;
-}
+}  // namespace lsst::qserv::util
 
-namespace czar {
+namespace lsst::qserv::czar {
 
 /// @addtogroup czar
 
@@ -121,7 +121,6 @@ public:
     ///         interactive queries to stress test the czar.
     bool getQueryDistributionTestVer() { return _queryDistributionTestVer; }
 
-protected:
 private:
     /// Private constructor for singleton.
     Czar(std::string const& configPath, std::string const& czarName);
@@ -173,9 +172,11 @@ private:
 
     /// Reloads the log configuration file on log config file change.
     std::shared_ptr<util::FileMonitor> _logFileMonitor;
+
+    /// The HTTP server processing Czar management requests.
+    std::shared_ptr<HttpSvc> _controlHttpSvc;
 };
 
-}  // namespace czar
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::czar
 
 #endif  // LSST_QSERV_CZAR_CZAR_H

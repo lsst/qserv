@@ -29,67 +29,35 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
+// Qserv headers
+#include "replica/ConfigHost.h"
+
 // This header declarations
 namespace lsst::qserv::replica {
 
 /**
- * @brief The structure HostInfo encapsulates the DNS name and the IP address
- *   of a machine where the replication system's services run.
- *
- * In the current inplementation of the Replication/Ingest system,
- * the IP address of the machine is captured by the Workers Registry
- * service on the connections made by the workers to the Registry.
- * So far, this is the most reliable way of determine a location of
- * the worker services. One known disadvantage of relying on the IP addresses
- * is that they may change in the cloud environmemt should worker services
- * be moved to different hosts or the correposponding pods be restarted.
- *
- * An alternative mechanism is based on using the DNS name of the machine
- * as it's known to the worker service itself locally. Note that information
- * recorded in the host name attribute may be ambigous at the presence of
- * many network interfaces on the worker machine. In this case, it's up to
- * a user to correctly interpret and use the name for establishing
- * connections to the worker services.
- */
-struct HostInfo {
-    std::string addr;  ///< The IP address
-    std::string name;  ///< The DNS name(short or long)
-
-    /// @return JSON representation of the object
-    nlohmann::json toJson() const;
-
-    /// @return 'true' if host objects have the same values of attributes
-    bool operator==(HostInfo const& other) const;
-
-    /// @return 'true' if host objects don't have the same values of attributes
-    bool operator!=(HostInfo const& other) const { return !(operator==(other)); }
-};
-
-std::ostream& operator<<(std::ostream& os, HostInfo const& info);
-
-/**
- * Class QservWorkerInfo encapsulates various parameters describing
+ * Class ConfigQservWorker encapsulates various parameters describing
  * the Qserv worker.
  */
-class QservWorkerInfo {
+class ConfigQservWorker {
 public:
-    HostInfo host;      // The host name (and IP address) of the worker's management service
+    ConfigHost host;    // The host name (and IP address) of the worker's management service
     uint16_t port = 0;  // The port number of the worker's management service
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 
     /// @return 'true' if workers objects have the same values of attributes
-    bool operator==(QservWorkerInfo const& other) const;
+    bool operator==(ConfigQservWorker const& other) const;
 
     /// @return 'true' if workers objects don't have the same values of attributes
-    bool operator!=(QservWorkerInfo const& other) const { return !(operator==(other)); }
+    bool operator!=(ConfigQservWorker const& other) const { return !(operator==(other)); }
 };
 
 /**
- * Class WorkerInfo encapsulates various parameters describing a worker.
+ * Class ConfigWorker encapsulates various parameters describing a worker.
  */
-class WorkerInfo {
+class ConfigWorker {
 public:
     std::string name;  // The logical name of a worker
 
@@ -97,37 +65,37 @@ public:
     bool isReadOnly = false;  // The worker can only serve as a source of replicas.
                               // New replicas can't be placed on it.
 
-    HostInfo svcHost;      // The host name (and IP address) of the worker service
+    ConfigHost svcHost;    // The host name (and IP address) of the worker service
     uint16_t svcPort = 0;  // The port number of the worker service
 
-    HostInfo fsHost;      // The host name (and IP address) of the file service for the worker
+    ConfigHost fsHost;    // The host name (and IP address) of the file service for the worker
     uint16_t fsPort = 0;  // The port number for the file service for the worker
 
     std::string dataDir;  // An absolute path to the data directory under which the MySQL
                           // database folders are residing.
 
-    HostInfo loaderHost;      // The host name (and IP address) of the ingest (loader) service
+    ConfigHost loaderHost;    // The host name (and IP address) of the ingest (loader) service
     uint16_t loaderPort = 0;  // The port number of the ingest service
 
     std::string loaderTmpDir;  // An absolute path to the temporary directory which would be used
                                // by the service. The folder must be write-enabled for a user
                                // under which the service will be run.
 
-    HostInfo exporterHost;      // The host name (and IP address) of the data exporting service
+    ConfigHost exporterHost;    // The host name (and IP address) of the data exporting service
     uint16_t exporterPort = 0;  // The port number of the data exporting service
 
     std::string exporterTmpDir;  // An absolute path to the temporary directory which would be used
                                  // by the service. The folder must be write-enabled for a user
                                  // under which the service will be run.
 
-    HostInfo httpLoaderHost;      // The host name (and IP address) of the HTTP-based ingest (loader) service
+    ConfigHost httpLoaderHost;    // The host name (and IP address) of the HTTP-based ingest (loader) service
     uint16_t httpLoaderPort = 0;  // The port number of the HTTP-based ingest service
 
     std::string httpLoaderTmpDir;  // An absolute path to the temporary directory which would be used
                                    // by the HTTP-based service. The folder must be write-enabled for a user
                                    // under which the service will be run.
 
-    QservWorkerInfo qservWorker;  // Parameters of the corresponding Qserv worker.
+    ConfigQservWorker qservWorker;  // Parameters of the corresponding Qserv worker.
 
     /**
      * This function treats its numeric input as a tri-state variable, where
@@ -177,23 +145,23 @@ public:
      * @throw std::invalid_argument If the input object can't be parsed, or if it has
      *   incorrect schema.
      */
-    explicit WorkerInfo(nlohmann::json const& obj);
+    explicit ConfigWorker(nlohmann::json const& obj);
 
-    WorkerInfo() = default;
-    WorkerInfo(WorkerInfo const&) = default;
-    WorkerInfo& operator=(WorkerInfo const&) = default;
+    ConfigWorker() = default;
+    ConfigWorker(ConfigWorker const&) = default;
+    ConfigWorker& operator=(ConfigWorker const&) = default;
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;
 
     /// @return 'true' if workers objects have the same values of attributes
-    bool operator==(WorkerInfo const& other) const;
+    bool operator==(ConfigWorker const& other) const;
 
     /// @return 'true' if workers objects don't have the same values of attributes
-    bool operator!=(WorkerInfo const& other) const { return !(operator==(other)); }
+    bool operator!=(ConfigWorker const& other) const { return !(operator==(other)); }
 };
 
-std::ostream& operator<<(std::ostream& os, WorkerInfo const& info);
+std::ostream& operator<<(std::ostream& os, ConfigWorker const& info);
 
 }  // namespace lsst::qserv::replica
 

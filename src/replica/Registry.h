@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "http/Method.h"
+#include "replica/ConfigCzar.h"
 #include "replica/ConfigWorker.h"
 #include "replica/ServiceProvider.h"
 
@@ -38,9 +39,9 @@
 namespace lsst::qserv::replica {
 
 /**
- * Class Registry is the client API for comunications with the worker registration
+ * Class Registry is the client API for comunications with the service registration
  * server. The API provides an interface for inspecting and managing (adding/deleting)
- * worker entries at the server.
+ * serice entries at the server.
  *
  * @note The implementation of the class is thread-safe.
  */
@@ -63,21 +64,25 @@ public:
 
     /// @return All workers
     /// @see method Registry::_request for other exceptions.
-    std::vector<WorkerInfo> workers() const;
+    std::vector<ConfigWorker> workers() const;
 
     /**
      * Add (or replace if exists) worker entry.
      * @param name The unique identifier of the worker
      * @see method Registry::_request for other exceptions.
      */
-    void add(std::string const& name) const;
+    void addWorker(std::string const& name) const;
 
     /**
      * Remove (if exists) a worker entry
      * @param name A unique identifier (the name) of the worker
      * @see method Registry::_request for other exceptions.
      */
-    void remove(std::string const& name) const;
+    void removeWorker(std::string const& name) const;
+
+    /// @return All Czars
+    /// @see method Registry::_request for other exceptions.
+    std::vector<ConfigCzar> czars() const;
 
 private:
     /// @see Registry::create()

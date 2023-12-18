@@ -127,7 +127,7 @@ public:
     template <class REQUEST_PTR>
     static void saveReplicaInfo(REQUEST_PTR const& request) {
         request->serviceProvider()->databaseServices()->saveReplicaInfoCollection(
-                request->worker(), request->targetRequestParams().database, request->responseData());
+                request->workerName(), request->targetRequestParams().database, request->responseData());
         request->serviceProvider()->databaseServices()->updateRequestState(
                 *request, request->targetRequestId(), request->targetPerformance());
     }
@@ -229,7 +229,7 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      * @param serviceProvider a host of services for various communications
-     * @param worker the identifier of a worker node (the one to be affected by the request)
+     * @param workerName the identifier of a worker node (the one to be affected by the request)
      * @param io_service network communication service
      * @param targetRequestId an identifier of the target request whose remote status
      *   is going to be inspected
@@ -241,11 +241,11 @@ public:
      * @return pointer to the created object
      */
     static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, std::string const& targetRequestId,
+                      std::string const& workerName, std::string const& targetRequestId,
                       CallbackType const& onFinish, int priority, bool keepTracking,
                       std::shared_ptr<Messenger> const& messenger) {
         return StatusRequest<POLICY>::Ptr(new StatusRequest<POLICY>(
-                serviceProvider, io_service, POLICY::requestName(), worker, targetRequestId,
+                serviceProvider, io_service, POLICY::requestName(), workerName, targetRequestId,
                 POLICY::targetRequestType(), onFinish, priority, keepTracking, messenger));
     }
 
@@ -273,7 +273,7 @@ protected:
     void send(replica::Lock const& lock) final {
         auto self = shared_from_base<StatusRequest<POLICY>>();
         messenger()->send<typename POLICY::ResponseMessageType>(
-                worker(), id(), priority(), buffer(),
+                workerName(), id(), priority(), buffer(),
                 [self](std::string const& id, bool success,
                        typename POLICY::ResponseMessageType const& response) {
                     if (success)
@@ -296,10 +296,10 @@ protected:
 
 private:
     StatusRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                  char const* requestName, std::string const& worker, std::string const& targetRequestId,
+                  char const* requestName, std::string const& workerName, std::string const& targetRequestId,
                   ProtocolQueuedRequestType targetRequestType, CallbackType const& onFinish, int priority,
                   bool keepTracking, std::shared_ptr<Messenger> const& messenger)
-            : StatusRequestBase(serviceProvider, io_service, requestName, worker, targetRequestId,
+            : StatusRequestBase(serviceProvider, io_service, requestName, workerName, targetRequestId,
                                 targetRequestType, priority, keepTracking, messenger),
               _onFinish(onFinish) {}
 

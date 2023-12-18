@@ -105,12 +105,12 @@ string Request::state2string(State state, ExtendedState extendedState,
 }
 
 Request::Request(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                 string const& type, string const& worker, int priority, bool keepTracking,
+                 string const& type, string const& workerName, int priority, bool keepTracking,
                  bool allowDuplicate, bool disposeRequired)
         : _serviceProvider(serviceProvider),
           _type(type),
           _id(Generators::uniqueId()),
-          _worker(worker),
+          _workerName(workerName),
           _priority(priority),
           _keepTracking(keepTracking),
           _allowDuplicate(allowDuplicate),
@@ -120,13 +120,13 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_se
           _extendedServerStatus(ProtocolStatusExt::NONE),
           _bufferPtr(new ProtocolBuffer(
                   serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))),
-          _workerInfo(serviceProvider->config()->workerInfo(worker)),
+          _worker(serviceProvider->config()->worker(workerName)),
           _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request-retry-interval-sec")),
           _timer(io_service),
           _requestExpirationIvalSec(
                   serviceProvider->config()->get<unsigned int>("controller", "request-timeout-sec")),
           _requestExpirationTimer(io_service) {
-    _serviceProvider->config()->assertWorkerIsValid(worker);
+    _serviceProvider->config()->assertWorkerIsValid(workerName);
 
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
@@ -167,7 +167,7 @@ Performance Request::performance(replica::Lock const& lock) const { return _perf
 string Request::toString(bool extended) const {
     ostringstream oss;
     oss << context() << "\n"
-        << "  worker: " << worker() << "\n"
+        << "  worker: " << workerName() << "\n"
         << "  priority: " << priority() << "\n"
         << "  keepTracking: " << bool2str(keepTracking()) << "\n"
         << "  allowDuplicate: " << bool2str(allowDuplicate()) << "\n"

@@ -183,7 +183,7 @@ json HttpIngestChunksModule::_addChunk() {
     // when the Replication system will be enhanced to allow creating replicas
     // of chunks within UNPUBLISHED databases.
 
-    string worker;
+    string workerName;
 
     bool const enabledWorkersOnly = true;
     bool const includeFileInfo = false;
@@ -199,7 +199,7 @@ json HttpIngestChunksModule::_addChunk() {
         throw http::Error(__func__, "this chunk has too many replicas", extendedError);
     }
     if (replicas.size() == 1) {
-        worker = replicas[0].worker();
+        workerName = replicas[0].worker();
     } else {
         // Search chunk in all databases of the same family to see
         // which workers may have replicas of the same chunk.
@@ -227,41 +227,41 @@ json HttpIngestChunksModule::_addChunk() {
             // purely on the replica count, not on the amount of data residing
             // in the workers databases.
 
-            worker = ::leastLoadedWorker(databaseServices, candidateWorkers);
+            workerName = ::leastLoadedWorker(databaseServices, candidateWorkers);
 
         } else {
             // We got here because no database within the family has a chunk
             // with this number. Hence we need to pick some least loaded worker
             // among all known workers.
 
-            worker = ::leastLoadedWorker(databaseServices, config->workers());
+            workerName = ::leastLoadedWorker(databaseServices, config->workers());
         }
-        _registerNewChunk(worker, databaseInfo.name, chunk);
+        _registerNewChunk(workerName, databaseInfo.name, chunk);
     }
 
     // The sanity check, just to make sure we've found a worker
-    if (worker.empty()) {
+    if (workerName.empty()) {
         throw http::Error(__func__, "no suitable worker found");
     }
     ControllerEvent event;
     event.status = "ADD CHUNK";
     event.kvInfo.emplace_back("database", databaseInfo.name);
-    event.kvInfo.emplace_back("worker", worker);
+    event.kvInfo.emplace_back("worker", workerName);
     event.kvInfo.emplace_back("chunk", to_string(chunk));
     logEvent(event);
 
     // Pull connection parameters of the loader for the worker
 
-    auto const workerInfo = config->workerInfo(worker);
+    auto const worker = config->worker(workerName);
 
     json result;
-    result["location"]["worker"] = workerInfo.name;
-    result["location"]["host"] = workerInfo.loaderHost.addr;
-    result["location"]["host_name"] = workerInfo.loaderHost.name;
-    result["location"]["port"] = workerInfo.loaderPort;
-    result["location"]["http_host"] = workerInfo.httpLoaderHost.addr;
-    result["location"]["http_host_name"] = workerInfo.httpLoaderHost.name;
-    result["location"]["http_port"] = workerInfo.httpLoaderPort;
+    result["location"]["worker"] = worker.name;
+    result["location"]["host"] = worker.loaderHost.addr;
+    result["location"]["host_name"] = worker.loaderHost.name;
+    result["location"]["port"] = worker.loaderPort;
+    result["location"]["http_host"] = worker.httpLoaderHost.addr;
+    result["location"]["http_host_name"] = worker.httpLoaderHost.name;
+    result["location"]["http_port"] = worker.httpLoaderPort;
     return result;
 }
 
@@ -401,17 +401,17 @@ json HttpIngestChunksModule::_addChunks() {
 
     for (auto const chunk : chunks) {
         // Pull connection parameters of the loader for the worker
-        auto const workerInfo = config->workerInfo(chunk2worker[chunk]);
+        auto const worker = config->worker(chunk2worker[chunk]);
 
         json workerResult;
         workerResult["chunk"] = chunk;
-        workerResult["worker"] = workerInfo.name;
-        workerResult["host"] = workerInfo.loaderHost.addr;
-        workerResult["host_name"] = workerInfo.loaderHost.name;
-        workerResult["port"] = workerInfo.loaderPort;
-        workerResult["http_host"] = workerInfo.httpLoaderHost.addr;
-        workerResult["http_host_name"] = workerInfo.httpLoaderHost.name;
-        workerResult["http_port"] = workerInfo.httpLoaderPort;
+        workerResult["worker"] = worker.name;
+        workerResult["host"] = worker.loaderHost.addr;
+        workerResult["host_name"] = worker.loaderHost.name;
+        workerResult["port"] = worker.loaderPort;
+        workerResult["http_host"] = worker.httpLoaderHost.addr;
+        workerResult["http_host_name"] = worker.httpLoaderHost.name;
+        workerResult["http_port"] = worker.httpLoaderPort;
 
         result["location"].push_back(workerResult);
     }
