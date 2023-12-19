@@ -28,7 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/CheckSumApp.h"
+#include "replica/apps/CheckSumApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

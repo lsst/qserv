@@ -28,7 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/RegistryHttpApp.h"
+#include "replica/apps/RegistryHttpApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

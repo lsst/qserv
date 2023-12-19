@@ -28,7 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/QservWorkerApp.h"
+#include "replica/apps/QservWorkerApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

@@ -28,7 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/MasterControllerHttpApp.h"
+#include "replica/apps/MasterControllerHttpApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

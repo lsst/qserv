@@ -28,7 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/ConfigTestApp.h"
+#include "replica/apps/ConfigTestApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
