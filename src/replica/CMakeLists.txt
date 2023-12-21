@@ -1,4 +1,3 @@
-protobuf_generate_cpp(REPLICA_PB_SRCS REPLICA_PB_HDRS protocol.proto)
 
 add_library(replica SHARED)
 
@@ -6,237 +5,25 @@ target_compile_options(replica PRIVATE
     -Wno-maybe-uninitialized
 )
 
-target_sources(replica PRIVATE
-    ${REPLICA_PB_SRCS}
-    ${REPLICA_PB_HDRS}
-    AbortTransactionApp.cc
-    AbortTransactionJob.cc
-    AddReplicaQservMgtRequest.cc
-    AdminApp.cc
-    Application.cc
-    ApplicationColl.cc
-    ApplicationTypes.cc
-    CheckSumApp.cc
-    ChunkLocker.cc
-    ChunkNumber.cc
-    ChunkedTable.cc
-    ChunksApp.cc
-    ClusterHealthApp.cc
-    ClusterHealthJob.cc
-    Common.cc
-    ConfigApp.cc
-    ConfigAppBase.cc
-    ConfigCzar.cc
-    ConfigDatabase.cc
-    ConfigDatabaseFamily.cc
-    ConfigHost.cc
-    ConfigParserJSON.cc
-    ConfigParserMySQL.cc
-    ConfigTable.cc
-    ConfigTestApp.cc
-    ConfigTestData.cc
-    ConfigWorker.cc
-    Configuration.cc
-    ConfigurationSchema.cc
-    Controller.cc
-    ControllerApp.cc
-    CreateReplicaJob.cc
-    Csv.cc
-    DatabaseMySQL.cc
-    DatabaseMySQLGenerator.cc
-    DatabaseMySQLRow.cc
-    DatabaseMySQLTypes.cc
-    DatabaseMySQLUtils.cc
-    DatabaseServices.cc
-    DatabaseServicesMySQL.cc
-    DatabaseServicesPool.cc
-    DatabaseTestApp.cc
-    DeleteReplicaJob.cc
-    DeleteRequest.cc
-    DeleteWorkerApp.cc
-    DeleteWorkerJob.cc
-    DeleteWorkerTask.cc
-    DisposeRequest.cc
-    EchoRequest.cc
-    EventLogger.cc
-    ExportClient.cc
-    ExportServer.cc
-    ExportServerConnection.cc
-    FileClient.cc
-    FileExportApp.cc
-    FileIngestApp.cc
-    FileReadApp.cc
-    FileServer.cc
-    FileServerApp.cc
-    FileServerConnection.cc
-    FileUtils.cc
-    FindAllJob.cc
-    FindAllRequest.cc
-    FindRequest.cc
-    FixUpApp.cc
-    FixUpJob.cc
-    GetReplicasQservMgtRequest.cc
-    GetDbStatusQservMgtRequest.cc
-    GetConfigQservCzarMgtRequest.cc
-    GetConfigQservMgtRequest.cc
-    GetQueryProgressQservCzarMgtRequest.cc
-    GetResultFilesQservMgtRequest.cc
-    GetStatusQservCzarMgtRequest.cc
-    GetStatusQservMgtRequest.cc
-    HealthMonitorTask.cc
-    HttpAsyncReqApp.cc
-    HttpClientApp.cc
-    HttpCatalogsModule.cc
-    HttpConfigurationModule.cc
-    HttpControllersModule.cc
-    HttpDirectorIndexModule.cc
-    HttpExportModule.cc
-    HttpIngestChunksModule.cc
-    HttpIngestConfigModule.cc
-    HttpIngestModule.cc
-    HttpIngestTransModule.cc
-    HttpJobsModule.cc
-    HttpModule.cc
-    HttpProcessor.cc
-    HttpQservMonitorModule.cc
-    HttpQservSqlModule.cc
-    HttpReplicationLevelsModule.cc
-    HttpRequestsModule.cc
-    HttpSqlIndexModule.cc
-    HttpSqlSchemaModule.cc
-    HttpSvc.cc
-    HttpWorkerStatusModule.cc
-    DirectorIndexApp.cc
-    DirectorIndexJob.cc
-    DirectorIndexRequest.cc
-    IngestClient.cc
-    IngestFileSvc.cc
-    IngestHttpSvc.cc
-    IngestHttpSvcMod.cc
-	IngestRequest.cc
-	IngestRequestMgr.cc
-    IngestResourceMgr.cc
-    IngestResourceMgrP.cc
-    IngestResourceMgrT.cc
-    IngestSvc.cc
-    IngestSvcConn.cc
-    Job.cc
-    MasterControllerHttpApp.cc
-    Messenger.cc
-    MessengerConnector.cc
-    MessengerTestApp.cc
-    MoveApp.cc
-    MoveReplicaJob.cc
-    MySQLTestApp.cc
-    Mutex.cc
-    NamedMutexRegistry.cc
-    Performance.cc
-    ProtocolBuffer.cc
-    PurgeApp.cc
-    PurgeJob.cc
-    QhttpTestApp.cc
-    QservCzarMgtRequest.cc
-    QservGetReplicasJob.cc
-    QservMgtRequest.cc
-    QservMgtServices.cc
-    QservStatusJob.cc
-    QservSyncJob.cc
-    QservWorkerApp.cc
-    QservWorkerMgtRequest.cc
-    QservWorkerPingApp.cc
-    RebalanceApp.cc
-    RebalanceJob.cc
-    Registry.cc
-    RegistryHttpApp.cc
-    RegistryHttpSvc.cc
-    RegistryHttpSvcMod.cc
-    RegistryServices.cc
-    RemoveReplicaQservMgtRequest.cc
-    ReplicaInfo.cc
-    ReplicateApp.cc
-    ReplicateJob.cc
-    ReplicationRequest.cc
-    ReplicationTask.cc
-    Request.cc
-    RequestMessenger.cc
-    RequestTracker.cc
-    ServiceManagementJob.cc
-    ServiceManagementRequest.cc
-    ServiceManagementRequestBase.cc
-    ServiceProvider.cc
-    SetReplicasQservMgtRequest.cc
-    SqlAlterTablesJob.cc
-    SqlAlterTablesRequest.cc
-    SqlApp.cc
-    SqlCreateDbJob.cc
-    SqlCreateDbRequest.cc
-    SqlCreateIndexesJob.cc
-    SqlCreateIndexesRequest.cc
-    SqlCreateTableJob.cc
-    SqlCreateTableRequest.cc
-    SqlCreateTablesJob.cc
-    SqlCreateTablesRequest.cc
-    SqlDeleteDbJob.cc
-    SqlDeleteDbRequest.cc
-    SqlDeleteTableJob.cc
-    SqlDeleteTablePartitionJob.cc
-    SqlDeleteTablePartitionRequest.cc
-    SqlDeleteTableRequest.cc
-    SqlDisableDbJob.cc
-    SqlDisableDbRequest.cc
-    SqlDropIndexesJob.cc
-    SqlDropIndexesRequest.cc
-    SqlEnableDbJob.cc
-    SqlEnableDbRequest.cc
-    SqlGetIndexesJob.cc
-    SqlGetIndexesRequest.cc
-    SqlGrantAccessJob.cc
-    SqlGrantAccessRequest.cc
-    SqlJob.cc
-    SqlJobResult.cc
-    SqlQueryJob.cc
-    SqlQueryRequest.cc
-    SqlRemoveTablePartitionsJob.cc
-    SqlRemoveTablePartitionsRequest.cc
-    SqlRequest.cc
-    SqlResultSet.cc
-    SqlRowStatsJob.cc
-    SqlRowStatsRequest.cc
-    SqlSchemaUtils.cc
-    StatusRequest.cc
-    StatusRequestBase.cc
-    StopRequest.cc
-    StopRequestBase.cc
-    SuccessRateGenerator.cc
-    SyncApp.cc
-    Task.cc
-    TestEchoQservMgtRequest.cc
-    TransactionContrib.cc
-    TransactionsApp.cc
-    VerifyApp.cc
-    VerifyJob.cc
-    WorkerApp.cc
-    WorkerDeleteRequest.cc
-    WorkerDirectorIndexRequest.cc
-    WorkerEchoRequest.cc
-    WorkerFindAllRequest.cc
-    WorkerFindRequest.cc
-    WorkerProcessor.cc
-    WorkerProcessorThread.cc
-    WorkerReplicationRequest.cc
-    WorkerRequest.cc
-    WorkerRequestFactory.cc
-    WorkerServer.cc
-    WorkerServerConnection.cc
-    WorkerSqlRequest.cc
-    XrdCmsgetVnId.cc
-)
-
 target_include_directories(replica PRIVATE
     ${XROOTD_INCLUDE_DIRS}
 )
 
 target_link_libraries(replica PUBLIC
+    replica_apps
+    replica_config
+    replica_contr
+    replica_export
+    replica_ingest
+    replica_jobs
+    replica_mysql
+    replica_proto
+    replica_qserv
+    replica_registry
+    replica_requests
+    replica_services
+    replica_util
+    replica_worker
     qserv_css
     xrdreq
     xrdsvc
@@ -290,7 +77,7 @@ install(
 
 function(REPLICA_TESTS)
     foreach(TEST IN ITEMS ${ARGV})
-        add_executable(${TEST} ${TEST}.cc)
+        add_executable(${TEST} tests/${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
             replica
             Boost::unit_test_framework
@@ -322,3 +109,18 @@ replica_tests(
     testTypes
     testConfiguration
 )
+
+add_subdirectory(apps)
+add_subdirectory(config)
+add_subdirectory(contr)
+add_subdirectory(export)
+add_subdirectory(ingest)
+add_subdirectory(jobs)
+add_subdirectory(mysql)
+add_subdirectory(proto)
+add_subdirectory(qserv)
+add_subdirectory(registry)
+add_subdirectory(requests)
+add_subdirectory(services)
+add_subdirectory(util)
+add_subdirectory(worker)

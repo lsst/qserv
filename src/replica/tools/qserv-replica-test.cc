@@ -24,15 +24,15 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/ApplicationColl.h"
-#include "replica/DatabaseTestApp.h"
-#include "replica/HttpAsyncReqApp.h"
-#include "replica/HttpClientApp.h"
-#include "replica/MessengerTestApp.h"
-#include "replica/MySQLTestApp.h"
-#include "replica/QhttpTestApp.h"
-#include "replica/TransactionsApp.h"
-#include "replica/QservWorkerPingApp.h"
+#include "replica/apps/ApplicationColl.h"
+#include "replica/apps/DatabaseTestApp.h"
+#include "replica/apps/HttpAsyncReqApp.h"
+#include "replica/apps/HttpClientApp.h"
+#include "replica/apps/MessengerTestApp.h"
+#include "replica/apps/MySQLTestApp.h"
+#include "replica/apps/QhttpTestApp.h"
+#include "replica/apps/TransactionsApp.h"
+#include "replica/apps/QservWorkerPingApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

@@ -24,11 +24,11 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/ApplicationColl.h"
-#include "replica/FileExportApp.h"
-#include "replica/FileIngestApp.h"
-#include "replica/FileReadApp.h"
-#include "replica/FileServerApp.h"
+#include "replica/apps/ApplicationColl.h"
+#include "replica/apps/FileExportApp.h"
+#include "replica/apps/FileIngestApp.h"
+#include "replica/apps/FileReadApp.h"
+#include "replica/apps/FileServerApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;

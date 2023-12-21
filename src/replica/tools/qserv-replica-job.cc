@@ -24,21 +24,21 @@
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/AbortTransactionApp.h"
-#include "replica/AdminApp.h"
-#include "replica/ApplicationColl.h"
-#include "replica/ChunksApp.h"
-#include "replica/DeleteWorkerApp.h"
-#include "replica/FixUpApp.h"
-#include "replica/ClusterHealthApp.h"
-#include "replica/DirectorIndexApp.h"
-#include "replica/MoveApp.h"
-#include "replica/PurgeApp.h"
-#include "replica/RebalanceApp.h"
-#include "replica/ReplicateApp.h"
-#include "replica/SqlApp.h"
-#include "replica/SyncApp.h"
-#include "replica/VerifyApp.h"
+#include "replica/apps/AbortTransactionApp.h"
+#include "replica/apps/AdminApp.h"
+#include "replica/apps/ApplicationColl.h"
+#include "replica/apps/ChunksApp.h"
+#include "replica/apps/DeleteWorkerApp.h"
+#include "replica/apps/FixUpApp.h"
+#include "replica/apps/ClusterHealthApp.h"
+#include "replica/apps/DirectorIndexApp.h"
+#include "replica/apps/MoveApp.h"
+#include "replica/apps/PurgeApp.h"
+#include "replica/apps/RebalanceApp.h"
+#include "replica/apps/ReplicateApp.h"
+#include "replica/apps/SqlApp.h"
+#include "replica/apps/SyncApp.h"
+#include "replica/apps/VerifyApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
