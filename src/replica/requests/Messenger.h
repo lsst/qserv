@@ -31,7 +31,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/requests/MessengerConnector.h"
 #include "replica/util/Mutex.h"
 

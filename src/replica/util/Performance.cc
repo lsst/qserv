@@ -23,7 +23,7 @@
 #include "replica/util/Performance.h"
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "util/TimeUtils.h"
 
 // LSST headers

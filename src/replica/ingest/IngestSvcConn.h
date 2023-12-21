@@ -29,7 +29,7 @@
 
 // Qserv headers
 #include "replica/ingest/IngestFileSvc.h"
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Csv.h"

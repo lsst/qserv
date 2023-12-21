@@ -24,7 +24,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ProtocolBuffer.h"
 

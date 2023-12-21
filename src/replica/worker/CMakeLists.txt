@@ -1,4 +1,5 @@
 add_library(replica_worker OBJECT)
+add_dependencies(replica_worker replica_proto)
 target_sources(replica_worker PRIVATE
     FileClient.cc
     FileServer.cc

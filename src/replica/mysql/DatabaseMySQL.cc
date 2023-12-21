@@ -34,7 +34,7 @@
 #include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/util/Performance.h"
 #include "util/BlockPost.h"
 #include "util/TimeUtils.h"

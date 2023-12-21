@@ -38,7 +38,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/requests/Messenger.h"
 #include "replica/requests/RequestMessenger.h"
 #include "replica/requests/StatusRequestBase.h"

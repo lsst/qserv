@@ -23,7 +23,7 @@
 #include "replica/requests/RequestMessenger.h"
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/util/ProtocolBuffer.h"
 
 // LSST headers

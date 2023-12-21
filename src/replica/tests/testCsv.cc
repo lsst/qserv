@@ -33,7 +33,7 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/util/Csv.h"
 
 // Boost unit test header

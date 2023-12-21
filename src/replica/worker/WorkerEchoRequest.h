@@ -26,7 +26,7 @@
 #include <string>
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/worker/WorkerRequest.h"
 
 // This header declarations

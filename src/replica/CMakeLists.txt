@@ -1,14 +1,8 @@
-protobuf_generate_cpp(REPLICA_PB_SRCS REPLICA_PB_HDRS protocol.proto)
 
 add_library(replica SHARED)
 
 target_compile_options(replica PRIVATE
     -Wno-maybe-uninitialized
-)
-
-target_sources(replica PRIVATE
-    ${REPLICA_PB_SRCS}
-    ${REPLICA_PB_HDRS}
 )
 
 target_include_directories(replica PRIVATE
@@ -23,6 +17,7 @@ target_link_libraries(replica PUBLIC
     replica_ingest
     replica_jobs
     replica_mysql
+    replica_proto
     replica_qserv
     replica_registry
     replica_requests
@@ -122,6 +117,7 @@ add_subdirectory(export)
 add_subdirectory(ingest)
 add_subdirectory(jobs)
 add_subdirectory(mysql)
+add_subdirectory(proto)
 add_subdirectory(qserv)
 add_subdirectory(registry)
 add_subdirectory(requests)

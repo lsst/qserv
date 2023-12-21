@@ -29,7 +29,7 @@
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigParserMySQL.h"
 #include "replica/config/ConfigurationSchema.h"
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "util/Issue.h"
 
 // LSST headers

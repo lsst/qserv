@@ -29,7 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/util/Common.h"
 
 // This header declarations

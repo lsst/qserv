@@ -32,7 +32,7 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Mutex.h"
 #include "replica/worker/WorkerProcessorThread.h"

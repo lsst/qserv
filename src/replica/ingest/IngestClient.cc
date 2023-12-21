@@ -30,7 +30,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/util/ProtocolBuffer.h"
 
 // LSST headers

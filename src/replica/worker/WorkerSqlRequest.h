@@ -27,7 +27,7 @@
 
 // Qserv headers
 #include "replica/mysql/DatabaseMySQL.h"
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/util/Common.h"
 #include "replica/worker/WorkerRequest.h"
 

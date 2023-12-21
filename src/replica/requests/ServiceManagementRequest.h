@@ -40,7 +40,7 @@
 #include <vector>
 
 // Qserv headers
-#include "replica/protocol.pb.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/requests/ServiceManagementRequestBase.h"
 #include "replica/util/Common.h"
 

@@ -1,4 +1,5 @@
 add_library(replica_apps OBJECT)
+add_dependencies(replica_apps replica_proto)
 target_sources(replica_apps PRIVATE
     AbortTransactionApp.cc
     AdminApp.cc
