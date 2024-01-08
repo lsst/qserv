@@ -3,7 +3,6 @@ add_dependencies(wbase proto)
 
 target_sources(wbase PRIVATE
     Base.cc
-    ChannelShared.cc
     FileChannelShared.cc
     SendChannel.cc
     Task.cc

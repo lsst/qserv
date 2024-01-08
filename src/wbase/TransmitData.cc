@@ -111,7 +111,7 @@ string TransmitData::_makeHeaderString(lock_guard<mutex> const& lock, bool reall
     proto::ProtoHeader* pHeader;
     if (reallyLast) {
         // Create a header for an empty dataMsg using the protobuf arena from thisTransmit.
-        // This is the signal to the czar that this SharedSendChannel is finished.
+        // This is the signal to the czar that this FileChannelShared is finished.
         pHeader = _createHeader(lock);
     } else {
         pHeader = _header;
@@ -169,7 +169,7 @@ void TransmitData::_buildDataMsg(lock_guard<mutex> const& lock, Task const& task
     _result->SerializeToString(&_dataMsg);
     // Build the header for this message, but this message can't be transmitted until the
     // next header has been built and appended to _transmitData->dataMsg. That happens
-    // later in ChannelShared.
+    // later in FileChannelShared.
     _buildHeader(lock);
 }
 

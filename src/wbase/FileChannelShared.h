@@ -28,6 +28,7 @@
 #include <fstream>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <vector>
 
 // Third-party headers
@@ -37,7 +38,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "qmeta/types.h"
-#include "wbase/ChannelShared.h"
+#include "wbase/SendChannel.h"
 
 // Forward declarations
 
@@ -46,13 +47,18 @@ class TaskMsg;
 }  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::wbase {
-class SendChannel;
 class Task;
+class TransmitData;
 }  // namespace lsst::qserv::wbase
 
 namespace lsst::qserv::util {
+class InstanceCount;
 class MultiError;
 }  // namespace lsst::qserv::util
+
+namespace lsst::qserv::xrdsvc {
+class StreamBuffer;
+}  // namespace lsst::qserv::xrdsvc
 
 namespace lsst::qserv::wbase {
 
@@ -69,9 +75,11 @@ namespace lsst::qserv::wbase {
 /// All the tasks adding rows to the TransmitData object must be operating on
 /// the same chunk. This only happens for near-neighbor queries, which
 /// have one task per subchunk.
-class FileChannelShared : public ChannelShared {
+class FileChannelShared {
 public:
     using Ptr = std::shared_ptr<FileChannelShared>;
+
+    static std::atomic<uint64_t> scsSeqId;  ///< Source for unique _scsId numbers
 
     /**
      * This method gets called upon receiving a notification from Czar about
@@ -119,17 +127,132 @@ public:
     FileChannelShared(FileChannelShared const&) = delete;
     FileChannelShared& operator=(FileChannelShared const&) = delete;
 
-    // Non-trivial d-tor is needed to garbage collect the file after failures.
-    virtual ~FileChannelShared() override;
+    /// Non-trivial d-tor is needed to close the channel and to garbage collect
+    /// the file after failures.
+    ~FileChannelShared();
 
-    /// @see ChannelShared::buildAndTransmitResult()
-    virtual bool buildAndTransmitResult(MYSQL_RES* mResult, std::shared_ptr<Task> const& task,
-                                        util::MultiError& multiErr, std::atomic<bool>& cancelled) override;
+    /// Set the number of Tasks that will be sent using this wbase::SendChannel.
+    /// This should not be changed once set.
+    void setTaskCount(int taskCount);
+    int getTaskCount() const { return _taskCount; }
+
+    /// @return true if this is the last task to call this
+    bool transmitTaskLast();
+
+    /// Return a normalized id string.
+    static std::string makeIdStr(int qId, int jId);
+
+    /// @return the sendChannelShared sequence number, which is always valid.
+    uint64_t getScsId() const { return _scsId; }
+
+    /// @return the current sql connection count
+    int getSqlConnectionCount() { return _sqlConnectionCount; }
+
+    /// @return the sql connection count after incrementing by 1.
+    int incrSqlConnectionCount() { return ++_sqlConnectionCount; }
+
+    /// @return true if this is the first time this function has been called.
+    bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
+
+    /// @return a transmit data object indicating the errors in 'multiErr'.
+    bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+
+    /// Put the SQL results in a TransmitData object and transmit it to the czar
+    /// if appropriate.
+    /// @return true if there was an error.
+    bool buildAndTransmitResult(MYSQL_RES* mResult, std::shared_ptr<Task> const& task,
+                                util::MultiError& multiErr, std::atomic<bool>& cancelled);
+
+    /// Wrappers for wbase::SendChannel public functions that may need to be used
+    /// by threads.
+    /// @see wbase::SendChannel::send
+    bool send(char const* buf, int bufLen);
+
+    /// @see wbase::SendChannel::sendError
+    bool sendError(std::string const& msg, int code);
+
+    /// @see wbase::SendChannel::sendFile
+    bool sendFile(int fd, wbase::SendChannel::Size fSize);
+
+    /// @see wbase::SendChannel::sendStream
+    bool sendStream(std::shared_ptr<xrdsvc::StreamBuffer> const& sBuf, bool last);
+
+    /// @see wbase::SendChannel::kill
+    bool kill(std::string const& note);
+
+    /// @see wbase::SendChannel::isDead
+    bool isDead();
+
+    /// @return a log worthy string describing transmitData.
+    std::string dumpTransmit() const;
 
 private:
     /// Private constructor to protect shared pointer integrity.
     FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel,
                       std::shared_ptr<proto::TaskMsg> const& taskMsg);
+
+    std::shared_ptr<wbase::SendChannel> const sendChannel() const { return _sendChannel; }
+
+    /// Dumps transmitData into a string within the thread-safe context.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    std::string dumpTransmit(std::lock_guard<std::mutex> const& tMtxLock) const;
+
+    /// @return a pointer to a new TransmitData> object.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    std::shared_ptr<TransmitData> createTransmit(std::lock_guard<std::mutex> const& tMtxLock, Task& task);
+
+    /// Create a new transmitData object if needed.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    void initTransmit(std::lock_guard<std::mutex> const& tMtxLock, Task& task);
+
+    /// Prepare the transmit data and then call addTransmit.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    bool prepTransmit(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                      bool cancelled, bool lastIn);
+
+    /// Try to transmit the data in tData.
+    /// If the queue already has at least 2 TransmitData objects, addTransmit
+    /// may wait before returning. Result rows are read from the
+    /// database until there are no more rows or the buffer is
+    /// sufficiently full. addTransmit waits until that buffer has been
+    /// sent to the czar before reading more rows. Without the wait,
+    /// the worker may read in too many result rows, run out of memory,
+    /// and crash.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    /// @return true if transmit was added successfully.
+    /// @see _transmit code for further explanation.
+    bool addTransmit(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                     bool cancelled, bool erred, bool lastIn, std::shared_ptr<TransmitData> const& tData,
+                     int qId, int jId);
+
+    /// @see wbase::SendChannel::kill
+    /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
+    bool _kill(std::lock_guard<std::mutex> const& streamMutexLock, std::string const& note);
+
+    /// Encode TransmitData items from _transmitQueue and pass them to XrdSsi
+    /// to be sent to the czar.
+    /// The header for the 'nextTransmit' item is appended to the result of
+    /// 'thisTransmit', with a specially constructed header appended for the
+    /// 'reallyLast' transmit.
+    /// The specially constructed header for the 'reallyLast' transmit just
+    /// says that there's no more data, this wbase::SendChannel is done.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    /// @param queueMtxLock - Lock on mutex _queueMtx to be acquired before calling the method.
+    bool _transmit(std::lock_guard<std::mutex> const& tMtxLock,
+                   std::lock_guard<std::mutex> const& queueMtxLock, bool erred,
+                   std::shared_ptr<Task> const& task);
+
+    /// Send the buffer 'streamBuffer' using xrdssi.
+    /// 'last' should only be true if this is the last buffer to be sent with this _sendChannel.
+    /// 'note' is just a log note about what/who is sending the buffer.
+    /// @param tMtxLock - Lock on mutex tMtx to be acquired before calling the method.
+    /// @param queueMtxLock - Lock on mutex _queueMtx to be acquired before calling the method.
+    /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
+    /// @return true if the buffer was sent.
+    bool _sendBuf(std::lock_guard<std::mutex> const& tMtxLock,
+                  std::lock_guard<std::mutex> const& queueMtxLock,
+                  std::lock_guard<std::mutex> const& streamMutexLock,
+                  std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last, std::string const& note);
 
     /**
      * Write a message into the output file. The file will be created at the first call
@@ -154,6 +277,39 @@ private:
      * @param tMtxLock - a lock on the base class's mutex tMtx
      */
     void _removeFile(std::lock_guard<std::mutex> const& tMtxLock);
+
+    std::shared_ptr<TransmitData> transmitData;  ///< TransmitData object
+    mutable std::mutex tMtx;                     ///< protects transmitData
+
+    std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
+
+    /// streamMutex is used to protect _lastCount and messages that are sent
+    /// using FileChannelShared.
+    std::mutex _streamMutex;
+
+    std::queue<std::shared_ptr<TransmitData>> _transmitQueue;  ///< Queue of data to be encoded and sent.
+    std::mutex _queueMtx;                                      ///< protects _transmitQueue
+
+    /// metadata buffer. Once set, it cannot change until after Finish() has been called.
+    std::string _metadataBuf;
+
+    int _taskCount = 0;                      ///< The number of tasks to be sent over this wbase::SendChannel.
+    int _lastCount = 0;                      ///< The number of 'last' buffers received.
+    std::atomic<bool> _lastRecvd{false};     ///< The truly 'last' transmit message is in the queue.
+    std::atomic<bool> _firstTransmit{true};  ///< True until the first transmit has been sent.
+
+    qmeta::CzarId const _czarId;  ///< id of the czar that requested this task(s).
+    uint64_t const _scsId;        ///< id number for this FileChannelShared
+
+    /// The number of sql connections opened to handle the Tasks using this FileChannelShared.
+    /// Once this is greater than 0, this object needs free access to sql connections to avoid
+    // system deadlock. @see SqlConnMgr::_take() and SqlConnMgr::_release().
+    std::atomic<int> _sqlConnectionCount{0};
+
+    /// true until getFirstChannelSqlConn() is called.
+    std::atomic<bool> _firstChannelSqlConn{true};
+
+    std::shared_ptr<util::InstanceCount> _icPtr;  ///< temporary for LockupDB
 
     /// The mutex is locked by the following static methods which require exclusive
     /// access to the results folder: create(), cleanUpResultsOnCzarRestart(),

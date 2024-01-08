@@ -54,7 +54,7 @@
 #include "util/IterableFormatter.h"
 #include "util/TimeUtils.h"
 #include "wbase/Base.h"
-#include "wbase/ChannelShared.h"
+#include "wbase/FileChannelShared.h"
 #include "wbase/UserQueryInfo.h"
 #include "wconfig/WorkerConfig.h"
 #include "wdb/QueryRunner.h"
@@ -100,25 +100,25 @@ bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     return x->_chunkId > y->_chunkId;
 }
 
-std::string const Task::defaultUser = "qsmaster";
+string const Task::defaultUser = "qsmaster";
 IdSet Task::allIds{};
 
 TaskScheduler::TaskScheduler() {
-    auto hour = std::chrono::milliseconds(1h);
+    auto hour = chrono::milliseconds(1h);
     histTimeOfRunningTasks = util::HistogramRolling::Ptr(
             new util::HistogramRolling("RunningTaskTimes", {0.1, 1.0, 10.0, 100.0, 200.0}, hour, 10'000));
     histTimeOfTransmittingTasks = util::HistogramRolling::Ptr(new util::HistogramRolling(
             "TransmittingTaskTime", {0.1, 1.0, 10.0, 60.0, 600.0, 1200.0}, hour, 10'000));
 }
 
-std::atomic<uint32_t> taskSequence{0};
+atomic<uint32_t> taskSequence{0};
 
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
-Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
-           size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc,
+Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> const& userQueryInfo,
+           size_t templateId, int subchunkId, shared_ptr<FileChannelShared> const& sc,
            uint16_t resultsHttpPort)
         : _userQueryInfo(userQueryInfo),
           _sendChannel(sc),
@@ -149,8 +149,8 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
     } else if (resultDeliveryProtocol == wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP) {
         _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + _resultFilePath;
     } else {
-        throw std::runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
-                                 wconfig::WorkerConfig::protocol2str(resultDeliveryProtocol));
+        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
+                            wconfig::WorkerConfig::protocol2str(resultDeliveryProtocol));
     }
     if (t->has_user()) {
         user = t->user();
@@ -158,7 +158,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
         user = defaultUser;
     }
 
-    allIds.add(std::to_string(_qId) + "_" + std::to_string(_jId));
+    allIds.add(to_string(_qId) + "_" + to_string(_jId));
     LOGS(_log, LOG_LVL_DEBUG,
          "Task(...) "
                  << "this=" << this << " : " << allIds);
@@ -214,7 +214,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInf
 }
 
 Task::~Task() {
-    allIds.remove(std::to_string(_qId) + "_" + std::to_string(_jId));
+    allIds.remove(to_string(_qId) + "_" + to_string(_jId));
     LOGS(_log, LOG_LVL_TRACE, "~Task() : " << allIds);
 
     _userQueryInfo.reset();
@@ -224,16 +224,16 @@ Task::~Task() {
     }
 }
 
-std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                         std::shared_ptr<wbase::ChannelShared> const& sendChannel,
-                                         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
-                                         mysql::MySqlConfig const& mySqlConfig,
-                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                                         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-                                         uint16_t resultsHttpPort) {
+vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
+                                    shared_ptr<wbase::FileChannelShared> const& sendChannel,
+                                    shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
+                                    mysql::MySqlConfig const& mySqlConfig,
+                                    shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+                                    shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
+                                    uint16_t resultsHttpPort) {
     QueryId qId = taskMsg->queryid();
     QSERV_LOGCONTEXT_QUERY_JOB(qId, taskMsg->jobid());
-    std::vector<Task::Ptr> vect;
+    vector<Task::Ptr> vect;
 
     UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
 
@@ -246,18 +246,18 @@ std::vector<Task::Ptr> Task::createTasks(std::shared_ptr<proto::TaskMsg> const& 
     string const chunkIdStr = to_string(taskMsg->chunkid());
     for (int fragNum = 0; fragNum < fragmentCount; ++fragNum) {
         proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);
-        for (std::string queryStr : fragment.query()) {
+        for (string queryStr : fragment.query()) {
             size_t templateId = userQueryInfo->addTemplate(queryStr);
             if (fragment.has_subchunks() && not fragment.subchunks().id().empty()) {
                 for (auto subchunkId : fragment.subchunks().id()) {
-                    auto task = std::make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
-                                                              subchunkId, sendChannel, resultsHttpPort);
+                    auto task = make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
+                                                         subchunkId, sendChannel, resultsHttpPort);
                     vect.push_back(task);
                 }
             } else {
                 int subchunkId = -1;  // there are no subchunks.
-                auto task = std::make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
-                                                          subchunkId, sendChannel, resultsHttpPort);
+                auto task = make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId, subchunkId,
+                                                     sendChannel, resultsHttpPort);
                 vect.push_back(task);
             }
         }
@@ -360,14 +360,14 @@ void Task::freeTaskQueryRunner(TaskQueryRunner* tqr) {
 }
 
 /// Set values associated with the Task being put on the queue.
-void Task::queued(std::chrono::system_clock::time_point const& now) {
-    std::lock_guard<std::mutex> guard(_stateMtx);
+void Task::queued(chrono::system_clock::time_point const& now) {
+    lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::QUEUED;
     _queueTime = now;
 }
 
 bool Task::isRunning() const {
-    std::lock_guard<std::mutex> lock(_stateMtx);
+    lock_guard<mutex> lock(_stateMtx);
     switch (_state) {
         case TaskState::STARTED:
         case TaskState::EXECUTING_QUERY:
@@ -378,57 +378,56 @@ bool Task::isRunning() const {
     }
 }
 
-void Task::started(std::chrono::system_clock::time_point const& now) {
-    std::lock_guard<std::mutex> guard(_stateMtx);
+void Task::started(chrono::system_clock::time_point const& now) {
+    lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::STARTED;
     _startTime = now;
 }
 
 void Task::queryExecutionStarted() {
-    std::lock_guard<std::mutex> guard(_stateMtx);
+    lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::EXECUTING_QUERY;
-    _queryExecTime = std::chrono::system_clock::now();
+    _queryExecTime = chrono::system_clock::now();
 }
 
 void Task::queried() {
-    std::lock_guard<std::mutex> guard(_stateMtx);
+    lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::READING_DATA;
-    _queryTime = std::chrono::system_clock::now();
+    _queryTime = chrono::system_clock::now();
     // Reset finish time as it might be already set when the task got booted off
     // a scheduler.
-    _finishTime = std::chrono::system_clock::time_point();
+    _finishTime = chrono::system_clock::time_point();
 }
 
 /// Set values associated with the Task being finished.
 /// @return milliseconds to complete the Task, system clock time.
-std::chrono::milliseconds Task::finished(std::chrono::system_clock::time_point const& now) {
-    std::chrono::milliseconds duration;
+chrono::milliseconds Task::finished(chrono::system_clock::time_point const& now) {
+    chrono::milliseconds duration;
     {
-        std::lock_guard<std::mutex> guard(_stateMtx);
+        lock_guard<mutex> guard(_stateMtx);
         _finishTime = now;
         _state = TaskState::FINISHED;
-        duration = std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
+        duration = chrono::duration_cast<chrono::milliseconds>(_finishTime - _startTime);
     }
     // Ensure that the duration is greater than 0.
     if (duration.count() < 1) {
-        duration = std::chrono::milliseconds{1};
+        duration = chrono::milliseconds{1};
     }
     LOGS(_log, LOG_LVL_DEBUG, "processing millisecs=" << duration.count());
     return duration;
 }
 
-std::chrono::milliseconds Task::getRunTime() const {
-    std::lock_guard<std::mutex> guard(_stateMtx);
+chrono::milliseconds Task::getRunTime() const {
+    lock_guard<mutex> guard(_stateMtx);
     switch (_state) {
         case TaskState::FINISHED:
-            return std::chrono::duration_cast<std::chrono::milliseconds>(_finishTime - _startTime);
+            return chrono::duration_cast<chrono::milliseconds>(_finishTime - _startTime);
         case TaskState::STARTED:
         case TaskState::EXECUTING_QUERY:
         case TaskState::READING_DATA:
-            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
-                                                                         _startTime);
+            return chrono::duration_cast<chrono::milliseconds>(chrono::system_clock::now() - _startTime);
         default:
-            return std::chrono::milliseconds(0);
+            return chrono::milliseconds(0);
     }
 }
 
@@ -485,17 +484,17 @@ nlohmann::json Task::getJson() const {
     return js;
 }
 
-std::ostream& operator<<(std::ostream& os, Task const& t) {
+ostream& operator<<(ostream& os, Task const& t) {
     os << "Task: "
        << "msg: " << t.getIdStr() << " chunk=" << t._chunkId << " db=" << t._db << " " << t.getQueryString();
 
     return os;
 }
 
-std::ostream& operator<<(std::ostream& os, IdSet const& idSet) {
+ostream& operator<<(ostream& os, IdSet const& idSet) {
     // Limiting output as number of entries can be very large.
     int maxDisp = idSet.maxDisp;  // only affects the amount of data printed.
-    std::lock_guard<std::mutex> lock(idSet.mx);
+    lock_guard<mutex> lock(idSet.mx);
     os << "showing " << maxDisp << " of count=" << idSet._ids.size() << " ";
     bool first = true;
     int i = 0;

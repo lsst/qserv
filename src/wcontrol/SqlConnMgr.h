@@ -34,17 +34,17 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-// Qserv headers
+// Forward declarations
+namespace lsst::qserv::wbase {
+class FileChannelShared;
+}  // namespace lsst::qserv::wbase
 
-namespace lsst::qserv {
-
-namespace wbase {
-class ChannelShared;
-}
-
-namespace wcontrol {
-
+namespace lsst::qserv::wcontrol {
 class SqlConnLock;
+}  // namespace lsst::qserv::wcontrol
+
+// This header declarations
+namespace lsst::qserv::wcontrol {
 
 /// A way to limit the number of simultaneous MySQL connections related to
 /// user queries and the worker scheduler. The total number of
@@ -99,7 +99,7 @@ public:
     friend class SqlConnLock;
 
 private:
-    ConnType _take(bool scanQuery, std::shared_ptr<wbase::ChannelShared> const& sendChannelShared,
+    ConnType _take(bool scanQuery, std::shared_ptr<wbase::FileChannelShared> const& channelShared,
                    bool firstChannelSqlConn);
     void _release(ConnType connType);
 
@@ -116,7 +116,7 @@ private:
 class SqlConnLock {
 public:
     SqlConnLock(SqlConnMgr& sqlConnMgr, bool scanQuery,
-                std::shared_ptr<wbase::ChannelShared> const& sendChannelShared);
+                std::shared_ptr<wbase::FileChannelShared> const& channelShared);
     SqlConnLock() = delete;
     SqlConnLock(SqlConnLock const&) = delete;
     SqlConnLock& operator=(SqlConnLock const&) = delete;
@@ -128,7 +128,6 @@ private:
     SqlConnMgr::ConnType _connType;
 };
 
-}  // namespace wcontrol
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wcontrol
 
 #endif  // LSST_QSERV_WCONTROL_TRANSMITMGR_H

@@ -65,7 +65,7 @@
 #include "util/Timer.h"
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
-#include "wbase/ChannelShared.h"
+#include "wbase/FileChannelShared.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"

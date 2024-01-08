@@ -155,7 +155,7 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
-            std::shared_ptr<wbase::ChannelShared> channelShared;
+            std::shared_ptr<wbase::FileChannelShared> channelShared;
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
