@@ -93,7 +93,7 @@ public:
     /// return false.
     /// @return false if there ARE MORE ROWS left in mResult.
     ///         true if there are no more rows remaining in mResult.
-    bool fillRows(MYSQL_RES* mResult, size_t& sz);
+    bool fillRows(MYSQL_RES* mResult);
 
     /// Prepare the summary response by emptying the payload (rows) and setting
     /// the counters.

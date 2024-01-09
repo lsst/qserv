@@ -183,7 +183,7 @@ void TransmitData::initResult(Task& task) {
 
 bool TransmitData::hasErrormsg() const { return _result->has_errormsg(); }
 
-bool TransmitData::fillRows(MYSQL_RES* mResult, size_t& sz) {
+bool TransmitData::fillRows(MYSQL_RES* mResult) {
     lock_guard<mutex> const lock(_trMtx);
     MYSQL_ROW row;
 
@@ -203,7 +203,6 @@ bool TransmitData::fillRows(MYSQL_RES* mResult, size_t& sz) {
             }
         }
         _tSize += rawRow->ByteSizeLong();
-        sz = _tSize;
         ++_rowCount;
 
         // Each element needs to be mysql-sanitized

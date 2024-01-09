@@ -378,29 +378,18 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         util::Timer bufferFillT;
         bufferFillT.start();
 
-        // Initialize transmitData, if needed.
-        initTransmit(tMtxLock, *task);
-
-        // Transfer rows from a result set into the data buffer. Note that tSize
-        // is set by fillRows. A value of this variable is presently not used by
-        // the code.
-        size_t tSize = 0;
-        hasMoreRows = !transmitData->fillRows(mResult, tSize);
-
-        // Serialize the content of the data buffer into the Protobuf data message
-        // that will be writen into the output file.
-        transmitData->buildDataMsg(*task, multiErr);
-        _writeToFile(tMtxLock, task, transmitData->dataMsg());
-
-        bufferFillT.stop();
-        bufferFillSecs += bufferFillT.getElapsed();
-
-        int const bytes = transmitData->getResultSize();
-        int const rows = transmitData->getResultRowCount();
+        // Transfer as many rows as it's allowed by limitations of
+        // the Google Protobuf into the output file.
+        int bytes = 0;
+        int rows = 0;
+        hasMoreRows = _writeToFile(tMtxLock, task, mResult, bytes, rows, multiErr);
         bytesTransmitted += bytes;
         rowsTransmitted += rows;
         _rowcount += rows;
         _transmitsize += bytes;
+
+        bufferFillT.stop();
+        bufferFillSecs += bufferFillT.getElapsed();
 
         // Fail the operation if the amount of data in the result set exceeds the requested
         // "large result" limit (in case if the one was specified).
@@ -461,8 +450,22 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     return erred;
 }
 
-void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
-                                     string const& msg) {
+bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
+                                     MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr) {
+    // Initialize transmitData, if needed.
+    initTransmit(tMtxLock, *task);
+
+    // Transfer rows from a result set into the data buffer.
+    bool const hasMoreRows = !transmitData->fillRows(mResult);
+
+    // Serialize the content of the data buffer into the Protobuf data message
+    // that will be writen into the output file.
+    transmitData->buildDataMsg(*task, multiErr);
+
+    bytes = transmitData->getResultSize();
+    rows = transmitData->getResultRowCount();
+
+    string const msg = transmitData->dataMsg();
     if (!_file.is_open()) {
         _fileName = task->resultFilePath();
         _file.open(_fileName, ios::out | ios::trunc | ios::binary);
@@ -471,6 +474,7 @@ void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
                                 " failed to create/truncate the file '" + _fileName + "'.");
         }
     }
+
     // Write 32-bit length of the subsequent message first before writing
     // the message itself.
     uint32_t const msgSizeBytes = msg.size();
@@ -480,6 +484,7 @@ void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
                             to_string(msg.size()) + " bytes into the file '" + _fileName + "'.");
     }
+    return hasMoreRows;
 }
 
 void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {

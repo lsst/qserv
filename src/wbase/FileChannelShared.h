@@ -255,16 +255,25 @@ private:
                   std::shared_ptr<xrdsvc::StreamBuffer>& streamBuf, bool last, std::string const& note);
 
     /**
-     * Write a message into the output file. The file will be created at the first call
-     * to the method.
+     * Transfer rows of the result set into into the output file.
+     * @note The file will be created at the first call to the method.
+     * @note The method may not extract all rows if the amount of data found
+     *   in the result set exceeded the maximum size allowed by the Google Protobuf
+     *   implementation. Also, the iterative approach to the data extraction allows
+     *   the driving code to be interrupted should the correponding query be cancelled
+     *   during the lengthy data processing phase.
      * @param tMtxLock - a lock on the base class's mutex tMtx
      * @param task - a task that produced the result set
-     * @param msg - data to be written
+     * @param mResult - MySQL result to be used as a source
+     * @param bytes - the number of bytes in the result message recorded into the file
+     * @param rows - the number of rows extracted from th eresult set
+     * @param multiErr - a collector of any errors that were captured during result set processing
+     * @return 'true' if the result set still has more rows to be extracted.
      * @throws std::runtime_error for problems encountered when attemting to create the file
      *   or write into the file.
      */
-    void _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
-                      std::string const& msg);
+    bool _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                      MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr);
 
     /**
      * Unconditionaly close and remove (potentially - the partially written) file.
