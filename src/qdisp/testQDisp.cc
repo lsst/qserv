@@ -38,7 +38,6 @@
 // Qserv headers
 #include "ccontrol/MergingHandler.h"
 #include "global/ResourceUnit.h"
-#include "global/MsgReceiver.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/MessageStore.h"
@@ -59,19 +58,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.testQDisp");
 
 typedef util::Sequential<int> SequentialInt;
 typedef std::vector<qdisp::ResponseHandler::Ptr> RequesterVector;
-
-class ChunkMsgReceiverMock : public MsgReceiver {
-public:
-    virtual void operator()(int code, std::string const& msg) {
-        LOGS_DEBUG("Mock::operator() chunkId=" << _chunkId << ", code=" << code << ", msg=" << msg);
-    }
-    static std::shared_ptr<ChunkMsgReceiverMock> newInstance(int chunkId) {
-        std::shared_ptr<ChunkMsgReceiverMock> r = std::make_shared<ChunkMsgReceiverMock>();
-        r->_chunkId = chunkId;
-        return r;
-    }
-    int _chunkId;
-};
 
 namespace lsst::qserv::qproc {
 
@@ -131,9 +117,8 @@ std::shared_ptr<qdisp::JobQuery> executiveTest(qdisp::Executive::Ptr const& ex, 
     ResourceUnit ru;
     std::string chunkResultName = "mock";
     std::shared_ptr<rproc::InfileMerger> infileMerger;
-    std::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId);
     ccontrol::MergingHandler::Ptr mh =
-            std::make_shared<ccontrol::MergingHandler>(cmr, infileMerger, chunkResultName);
+            std::make_shared<ccontrol::MergingHandler>(infileMerger, chunkResultName);
     RequesterVector rv;
     for (int j = 0; j < copies; ++j) {
         rv.push_back(mh);

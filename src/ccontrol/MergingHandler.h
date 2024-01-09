@@ -33,15 +33,13 @@
 #include "qdisp/ResponseHandler.h"
 
 // Forward decl
-namespace lsst::qserv {
-class MsgReceiver;
-namespace proto {
+namespace lsst::qserv::proto {
 struct WorkerResponse;
-}
-namespace rproc {
+}  // namespace lsst::qserv::proto
+
+namespace lsst::qserv::rproc {
 class InfileMerger;
-}
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::rproc
 
 namespace lsst::qserv::ccontrol {
 
@@ -63,11 +61,9 @@ public:
     typedef std::shared_ptr<MergingHandler> Ptr;
     virtual ~MergingHandler();
 
-    /// @param msgReceiver Message code receiver
     /// @param merger downstream merge acceptor
     /// @param tableName target table for incoming data
-    MergingHandler(std::shared_ptr<MsgReceiver> msgReceiver, std::shared_ptr<rproc::InfileMerger> merger,
-                   std::string const& tableName);
+    MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName);
 
     /// Flush the retrieved buffer where bLen bytes were set. If last==true,
     /// then no more buffer() and flush() calls should occur.
@@ -101,7 +97,6 @@ private:
     bool _setResult(BufPtr const& bufPtr, int blen);   ///< Extract the result from the protobuffer.
     bool _noErrorsInResult();  ///< Check if the result message has no errors, report the ones (if any).
 
-    std::shared_ptr<MsgReceiver> _msgReceiver;           ///< Message code receiver
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
     std::string _tableName;                              ///< Target table name
     Error _error;                                        ///< Error description

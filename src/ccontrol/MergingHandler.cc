@@ -40,7 +40,6 @@
 #include "ccontrol/msgCode.h"
 #include "global/clock_defs.h"
 #include "global/debugUtil.h"
-#include "global/MsgReceiver.h"
 #include "http/Client.h"
 #include "http/Method.h"
 #include "proto/ProtoHeaderWrap.h"
@@ -368,12 +367,8 @@ namespace lsst::qserv::ccontrol {
 ////////////////////////////////////////////////////////////////////////
 // MergingHandler public
 ////////////////////////////////////////////////////////////////////////
-MergingHandler::MergingHandler(std::shared_ptr<MsgReceiver> msgReceiver,
-                               std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
-        : _msgReceiver{msgReceiver},
-          _infileMerger{merger},
-          _tableName{tableName},
-          _response{new WorkerResponse()} {
+MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
+        : _infileMerger{merger}, _tableName{tableName}, _response{new WorkerResponse()} {
     _initState();
 }
 
