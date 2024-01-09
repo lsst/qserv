@@ -159,7 +159,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
-                    channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg);
+                    channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
+                                                                     _foreman->chunkInventory()->id());
                     break;
                 default:
                     throw std::runtime_error("SsiRequest::" + std::string(__func__) +
@@ -335,28 +336,6 @@ bool SsiRequest::replyError(std::string const& msg, int code) {
     return true;
 }
 
-bool SsiRequest::replyFile(int fd, long long fSize) {
-    util::Timer t;
-    t.start();
-    Status s = SetResponse(fSize, fd);
-    if (s == XrdSsiResponder::wasPosted) {
-        LOGS(_log, LOG_LVL_DEBUG, "file posted ok");
-    } else {
-        if (s == XrdSsiResponder::notActive) {
-            LOGS(_log, LOG_LVL_ERROR,
-                 "DANGER: Couldn't post response file of length=" << fSize << ", responder not active.");
-        } else {
-            LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length=" << fSize);
-        }
-        replyError("Internal error posting response file", 1);
-        t.stop();
-        return false;  // call must handle everything else.
-    }
-    t.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "replyFile took " << t.getElapsed() << " seconds");
-    return true;
-}
-
 bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
     LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
 
@@ -397,13 +376,13 @@ bool SsiRequest::sendMetadata(const char* buf, int blen) {
         case XrdSsiResponder::wasPosted:
             return true;
         case XrdSsiResponder::notActive:
-            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notActive");
+            LOGS(_log, LOG_LVL_ERROR, "failed to " << __func__ << " notActive");
             break;
         case XrdSsiResponder::notPosted:
-            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notPosted blen=" << blen);
+            LOGS(_log, LOG_LVL_ERROR, "failed to " << __func__ << " notPosted blen=" << blen);
             break;
         default:
-            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata unkown state blen=" << blen);
+            LOGS(_log, LOG_LVL_ERROR, "failed to " << __func__ << " unkown state blen=" << blen);
     }
     return false;
 }

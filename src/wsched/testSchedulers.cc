@@ -81,7 +81,7 @@ std::vector<FileChannelShared::Ptr> locSendSharedPtrs;
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm, shared_ptr<QueriesAndChunks> const& queries) {
     WorkerConfig::create();
     auto sendC = std::make_shared<SendChannel>();
-    auto sc = FileChannelShared::create(sendC, tm);
+    auto sc = FileChannelShared::create(sendC, tm->czarid());
     locSendSharedPtrs.push_back(sc);
     auto taskVect = Task::createTasks(tm, sc, crm, mySqlConfig, sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];

@@ -67,10 +67,6 @@ public:
         cout << "NopChannel sendError(\"" << msg << "\", " << code << ");\n";
         return true;
     }
-    bool sendFile(int fd, Size fSize) override {
-        cout << "NopChannel sendFile(" << fd << ", " << fSize << ");\n";
-        return !isDead();
-    }
     bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
         cout << "NopChannel sendStream(" << (void*)sBuf.get() << ", " << (last ? "true" : "false") << ");\n";
         return !isDead();
@@ -96,30 +92,6 @@ public:
         ostringstream os;
         os << "(" << code << "," << msg << ")";
         _dest.append(os.str());
-        return true;
-    }
-
-    bool sendFile(int fd, Size fSize) override {
-        if (isDead()) return false;
-        vector<char> buf(fSize);
-        Size remain = fSize;
-        while (remain > 0) {
-            Size frag = ::read(fd, buf.data(), remain);
-            if (frag < 0) {
-                cout << "ERROR reading from fd during "
-                     << "StringChannel::sendFile("
-                     << "," << fSize << ")";
-                return false;
-            } else if (frag == 0) {
-                cout << "ERROR unexpected 0==read() during "
-                     << "StringChannel::sendFile("
-                     << "," << fSize << ")";
-                return false;
-            }
-            _dest.append(buf.data(), frag);
-            remain -= frag;
-        }
-        release();
         return true;
     }
 
@@ -154,15 +126,6 @@ bool SendChannel::sendError(string const& msg, int code) {
     // Kill this send channel. If it wasn't already dead, send the error.
     if (kill("SendChannel::sendError")) return false;
     if (_ssiRequest->replyError(msg.c_str(), code)) return true;
-    return false;
-}
-
-bool SendChannel::sendFile(int fd, Size fSize) {
-    if (!isDead()) {
-        if (_ssiRequest->replyFile(fSize, fd)) return true;
-    }
-    kill("SendChannel::sendFile");
-    release();
     return false;
 }
 

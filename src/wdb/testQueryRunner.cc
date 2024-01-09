@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     WorkerConfig::create();
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
-    auto sc = FileChannelShared::create(sendC, msg);
+    auto sc = FileChannelShared::create(sendC, msg->czarid());
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     string out;
     shared_ptr<TaskMsg> msg(newTaskMsg());
     shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
-    auto sc = FileChannelShared::create(sendC, msg);
+    auto sc = FileChannelShared::create(sendC, msg->czarid());
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
