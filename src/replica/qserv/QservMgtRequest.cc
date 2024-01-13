@@ -278,10 +278,10 @@ void QservMgtRequest::_processResponse() {
             }
             break;
         case http::AsyncReq::State::FAILED:
-            finish(lock, ExtendedState::SERVER_ERROR,
-                   _httpRequest->errorMessage() + ", code: " + to_string(_httpRequest->responseCode()));
+            finish(lock, ExtendedState::SERVER_ERROR, _httpRequest->errorMessage());
             break;
         case http::AsyncReq::State::BODY_LIMIT_ERROR:
+            // The response code posted by the called service is available in this failure mode.
             finish(lock, ExtendedState::BODY_LIMIT_ERROR,
                    _httpRequest->errorMessage() + ", code: " + to_string(_httpRequest->responseCode()));
             break;
