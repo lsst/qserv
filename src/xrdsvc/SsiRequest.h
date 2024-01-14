@@ -42,6 +42,7 @@ class XrdSsiService;
 
 namespace lsst::qserv {
 namespace wbase {
+class FileChannelShared;
 class SendChannel;
 class Task;
 }  // namespace wbase
@@ -114,8 +115,8 @@ private:
     std::string _resourceName;              ///< chunk identifier
 
     std::shared_ptr<ChannelStream> _stream;
-
-    std::vector<std::weak_ptr<wbase::Task>> _tasks;  ///< List of tasks for use in cancellation.
+    std::shared_ptr<wbase::FileChannelShared> _channelShared;  ///< Must live before Finished() gets called.
+    std::vector<std::weak_ptr<wbase::Task>> _tasks;            ///< List of tasks for use in cancellation.
 
     /// Make sure this object exists until Finish() is called.
     /// Make a local copy before calling reset() within and non-static member function.

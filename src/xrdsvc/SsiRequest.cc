@@ -155,18 +155,17 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
-            std::shared_ptr<wbase::FileChannelShared> channelShared;
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
-                    channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
-                                                                     _foreman->chunkInventory()->id());
+                    _channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
+                                                                      _foreman->chunkInventory()->id());
                     break;
                 default:
                     throw std::runtime_error("SsiRequest::" + std::string(__func__) +
                                              " unsupported result delivery protocol");
             }
-            auto const tasks = wbase::Task::createTasks(taskMsg, channelShared, _foreman->chunkResourceMgr(),
+            auto const tasks = wbase::Task::createTasks(taskMsg, _channelShared, _foreman->chunkResourceMgr(),
                                                         _foreman->mySqlConfig(), _foreman->sqlConnMgr(),
                                                         _foreman->queriesAndChunks(), _foreman->httpPort());
             for (auto const& task : tasks) {
@@ -276,6 +275,13 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
             _stream->clearMsgs();
         }
     }
+
+    // This will clear the cyclic dependency:
+    //   FileChannelShared -> ChannelStream -> SsiRequest -> FileChannelShared
+    //
+    // TODO: Eliminate xrdsvc::ChannelStream sinve this class seems to be useless
+    // in the file-based result delivery protocol.
+    _channelShared.reset();
 
     auto keepAlive = freeSelfKeepAlive();
 

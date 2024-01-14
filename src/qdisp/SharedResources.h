@@ -29,8 +29,6 @@ namespace lsst::qserv::qdisp {
 
 class QdispPool;
 
-class PseudoFifo;
-
 /// Put resources that all Executives need to share in one class to reduce
 /// the number of arguments passed.
 /// This class should be kept simple so it can easily be included in headers
@@ -39,9 +37,8 @@ class SharedResources {
 public:
     using Ptr = std::shared_ptr<SharedResources>;
 
-    static Ptr create(std::shared_ptr<qdisp::QdispPool> const& qdispPool,
-                      std::shared_ptr<qdisp::PseudoFifo> const& queryRequestPseudoFifo) {
-        return Ptr(new SharedResources(qdispPool, queryRequestPseudoFifo));
+    static Ptr create(std::shared_ptr<qdisp::QdispPool> const& qdispPool) {
+        return Ptr(new SharedResources(qdispPool));
     }
 
     SharedResources() = delete;
@@ -51,19 +48,11 @@ public:
 
     std::shared_ptr<qdisp::QdispPool> getQdispPool() { return _qdispPool; }
 
-    std::shared_ptr<qdisp::PseudoFifo> getQueryRequestPseudoFifo() { return _queryRequestPseudoFifo; }
-
 private:
-    SharedResources(std::shared_ptr<qdisp::QdispPool> const& qdispPool,
-                    std::shared_ptr<qdisp::PseudoFifo> const& queryRequestPseudoFifo)
-            : _qdispPool(qdispPool), _queryRequestPseudoFifo(queryRequestPseudoFifo) {}
+    SharedResources(std::shared_ptr<qdisp::QdispPool> const& qdispPool) : _qdispPool(qdispPool) {}
 
     /// Thread pool for handling Responses from XrdSsi.
     std::shared_ptr<qdisp::QdispPool> _qdispPool;
-
-    /// PseudoFifo to prevent czar from calling most recent request first and try
-    /// to handle and cleanup older resources first.
-    std::shared_ptr<qdisp::PseudoFifo> _queryRequestPseudoFifo;
 };
 
 }  // namespace lsst::qserv::qdisp

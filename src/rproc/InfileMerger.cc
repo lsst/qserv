@@ -56,8 +56,8 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
-#include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
+#include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
@@ -72,7 +72,6 @@
 #include "util/Bug.h"
 #include "util/Error.h"
 #include "util/IterableFormatter.h"
-#include "util/StringHash.h"
 #include "util/Timer.h"
 
 using namespace std;
@@ -221,47 +220,16 @@ void InfileMerger::mergeCompleteFor(std::set<int> const& jobIds) {
     }
 }
 
-bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response) {
-    if (!response) {
-        LOGS(_log, LOG_LVL_ERROR, "merge response unset");
-        return false;
-    }
-    // TODO: Check session id (once session id mgmt is implemented)
-    if (not(response->result.has_jobid() && response->result.has_rowcount() &&
-            response->result.has_transmitsize() && response->result.has_attemptcount())) {
-        LOGS(_log, LOG_LVL_ERROR,
-             "merge response missing required field"
-                     << " jobid:" << response->result.has_jobid()
-                     << " rowcount:" << response->result.has_rowcount()
-                     << " transmitsize:" << response->result.has_transmitsize()
-                     << " attemptcount:" << response->result.has_attemptcount());
-        return false;
-    }
-    int const jobId = response->result.jobid();
-    std::string queryIdJobStr = QueryIdHelper::makeIdStr(response->result.queryid(), jobId);
+bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
+                         proto::ResponseData const& responseData) {
+    int const jobId = responseSummary.jobid();
+    std::string queryIdJobStr = QueryIdHelper::makeIdStr(responseSummary.queryid(), jobId);
     if (!_queryIdStrSet) {
-        _setQueryIdStr(QueryIdHelper::makeIdStr(response->result.queryid()));
-    }
-    size_t resultSize = response->result.transmitsize();
-    LOGS(_log, LOG_LVL_TRACE,
-         "Executing InfileMerger::merge("
-                 << " sizes=" << static_cast<short>(response->headerSize) << ", "
-                 << response->protoHeader.size() << ", resultSize=" << resultSize << ", rowCount="
-                 << response->result.rowcount() << ", row_size=" << response->result.row_size()
-                 << ", attemptCount=" << response->result.attemptcount()
-                 << ", errCode=" << response->result.has_errorcode()
-                 << " hasErMsg=" << response->result.has_errormsg() << ")");
-
-    if (response->result.has_errorcode() || response->result.has_errormsg()) {
-        _error = util::Error(response->result.errorcode(), response->result.errormsg(),
-                             util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR,
-             "Error from worker:" << response->protoHeader.wname() << " in response data: " << _error);
-        return false;
+        _setQueryIdStr(QueryIdHelper::makeIdStr(responseSummary.queryid()));
     }
 
     // Nothing to do if size is zero.
-    if (response->result.row_size() == 0) {
+    if (responseData.row_size() == 0) {
         return true;
     }
 
@@ -284,9 +252,9 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
     virtFileT.start();
-    int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
+    int resultJobId = makeJobIdAttempt(responseSummary.jobid(), responseSummary.attemptcount());
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(
-            response->result, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
+            responseData, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
@@ -297,6 +265,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         return true;
     }
 
+    size_t const resultSize = responseData.transmitsize();
     size_t tResultSize;
     {
         std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
@@ -318,7 +287,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     tct.reset();  // stop transmit recieve timer before merging happens.
 
     qdisp::CzarStats::get()->addTotalBytesRecv(resultSize);
-    qdisp::CzarStats::get()->addTotalRowsRecv(response->result.rowcount());
+    qdisp::CzarStats::get()->addTotalRowsRecv(responseData.rowcount());
 
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.

@@ -62,6 +62,9 @@ public:
     /// @param last true if no more sendStream calls will be invoked.
     virtual bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last);
 
+    /// Send the data.
+    virtual bool sendData(char const* buf, int bufLen);
+
     ///
     /// ******************************************************************
 

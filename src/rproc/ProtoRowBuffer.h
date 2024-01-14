@@ -36,7 +36,7 @@ namespace lsst::qserv::rproc {
 /// LocalInfile object to use a Protobufs Result message as a row source
 class ProtoRowBuffer : public mysql::RowBuffer {
 public:
-    ProtoRowBuffer(proto::Result& res, int jobId, std::string const& jobIdColName,
+    ProtoRowBuffer(proto::ResponseData const& res, int jobId, std::string const& jobIdColName,
                    std::string const& jobIdSqlType, int jobIdMysqlType);
     unsigned fetch(char* buffer, unsigned bufLen) override;
     std::string dump() const override;
@@ -142,10 +142,10 @@ private:
         return dest.size() - sizeBefore;
     }
 
-    std::string _colSep;     ///< Column separator
-    std::string _rowSep;     ///< Row separator
-    std::string _nullToken;  ///< Null indicator (e.g. \N)
-    proto::Result& _result;  ///< Ref to Resultmessage
+    std::string _colSep;                 ///< Column separator
+    std::string _rowSep;                 ///< Row separator
+    std::string _nullToken;              ///< Null indicator (e.g. \N)
+    proto::ResponseData const& _result;  ///< Ref to the ResponseData message
 
     int _rowIdx;                    ///< Row index
     int _rowTotal;                  ///< Total row count

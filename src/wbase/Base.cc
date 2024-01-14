@@ -45,7 +45,6 @@
 
 // Qserv headers
 #include "global/constants.h"
-#include "util/StringHash.h"
 
 // Local helpers
 namespace {

@@ -30,7 +30,6 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
-#include "proto/ProtoImporter.h"
 #include "wbase/FileChannelShared.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
@@ -52,9 +51,6 @@ namespace util = lsst::qserv::util;
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::mysql::MySqlConnection;
 
-using lsst::qserv::proto::ProtoHeader;
-using lsst::qserv::proto::ProtoImporter;
-using lsst::qserv::proto::Result;
 using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::proto::TaskMsg_Fragment;
 using lsst::qserv::proto::TaskMsg_Subchunk;
@@ -132,19 +128,6 @@ BOOST_AUTO_TEST_CASE(Output) {
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
     BOOST_CHECK(a->runQuery());
-
-    unsigned char phSize = *reinterpret_cast<unsigned char const*>(out.data());
-    char const* cursor = out.data() + 1;
-    int remain = out.size() - 1;
-    lsst::qserv::proto::ProtoHeader ph;
-    BOOST_REQUIRE(ProtoImporter<ProtoHeader>::setMsgFrom(ph, cursor, phSize));
-    cursor += phSize;  // Advance to Result msg
-    remain -= phSize;
-    BOOST_CHECK_EQUAL(remain, ph.size());
-    ph.PrintDebugString();
-    lsst::qserv::proto::Result result;
-    BOOST_REQUIRE(ProtoImporter<Result>::setMsgFrom(result, cursor, remain));
-    result.PrintDebugString();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

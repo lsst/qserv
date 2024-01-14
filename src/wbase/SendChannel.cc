@@ -152,6 +152,14 @@ bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     return false;
 }
 
+bool SendChannel::sendData(char const* buf, int bufLen) {
+    if (isDead()) return false;
+    if (_ssiRequest->reply(buf, bufLen)) return true;
+    LOGS(_log, LOG_LVL_ERROR, "_ssiRequest->reply failed, killing.");
+    kill("SendChannel::sendData");
+    return false;
+}
+
 bool SendChannel::setMetadata(const char* buf, int blen) {
     if (isDead()) return false;
     if (_ssiRequest->sendMetadata(buf, blen)) return true;

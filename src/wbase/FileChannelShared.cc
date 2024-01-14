@@ -266,7 +266,12 @@ shared_ptr<FileChannelShared> FileChannelShared::create(shared_ptr<wbase::SendCh
 
 FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                                      string const& workerId)
-        : _sendChannel(sendChannel), _workerId(workerId), _czarId(czarId), _scsId(scsSeqId++) {
+        : _sendChannel(sendChannel),
+          _czarId(czarId),
+          _workerId(workerId),
+          _protobufArena(make_unique<google::protobuf::Arena>()),
+          _scsId(scsSeqId++) {
+    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created");
     if (_sendChannel == nullptr) {
         throw util::Bug(ERR_LOC, "FileChannelShared constructor given nullptr");
     }
@@ -286,6 +291,7 @@ FileChannelShared::~FileChannelShared() {
             _sendChannel->kill("~FileChannelShared()");
         }
     }
+    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared deleted");
 }
 
 void FileChannelShared::setTaskCount(int taskCount) { _taskCount = taskCount; }
@@ -385,7 +391,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             _file.close();
 
             // Only the last ("summary") message w/o any rows is sent to Czar to notify
-            // the about completion of the request.
+            // the one about completion of the request.
             if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
@@ -422,24 +428,21 @@ bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string c
 
 bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
                                      MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr) {
-    // Initialize the result object
-    proto::Result result;
-    result.set_queryid(task->getQueryId());
-    result.set_jobid(task->getJobId());
-    result.set_fileresource_xroot(task->resultFileXrootUrl());
-    result.set_fileresource_http(task->resultFileHttpUrl());
-    result.set_attemptcount(task->getAttemptCount());
-
-    // Transfer rows from a result set into the object.
+    // Transfer rows from a result set into the response data object.
+    if (nullptr == _responseData) {
+        _responseData = google::protobuf::Arena::CreateMessage<proto::ResponseData>(_protobufArena.get());
+    } else {
+        _responseData->clear_row();
+    }
     size_t tSize = 0;
-    bool const hasMoreRows = _fillRows(tMtxLock, mResult, result, rows, tSize);
-    result.set_rowcount(rows);
-    result.set_transmitsize(tSize);
+    bool const hasMoreRows = _fillRows(tMtxLock, mResult, rows, tSize);
+    _responseData->set_rowcount(rows);
+    _responseData->set_transmitsize(tSize);
 
     // Serialize the content of the data buffer into the Protobuf data message
     // that will be written into the output file.
     std::string msg;
-    result.SerializeToString(&msg);
+    _responseData->SerializeToString(&msg);
     bytes = msg.size();
 
     // Create the file if not open.
@@ -464,8 +467,8 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
     return hasMoreRows;
 }
 
-bool FileChannelShared::_fillRows(lock_guard<mutex> const& tMtxLock, MYSQL_RES* mResult,
-                                  proto::Result& result, int& rows, size_t& tSize) {
+bool FileChannelShared::_fillRows(lock_guard<mutex> const& tMtxLock, MYSQL_RES* mResult, int& rows,
+                                  size_t& tSize) {
     int const numFields = mysql_num_fields(mResult);
     unsigned int szLimit = min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
                                proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
@@ -474,7 +477,7 @@ bool FileChannelShared::_fillRows(lock_guard<mutex> const& tMtxLock, MYSQL_RES* 
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(mResult))) {
         auto lengths = mysql_fetch_lengths(mResult);
-        proto::RowBundle* rawRow = result.add_row();
+        proto::RowBundle* rawRow = _responseData->add_row();
         for (int i = 0; i < numFields; ++i) {
             if (row[i]) {
                 rawRow->add_column(row[i], lengths[i]);
@@ -509,15 +512,6 @@ void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
 
 bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
                                       bool cancelled, util::MultiError const& multiErr) {
-    // Each response is transmitted in two consequitive messages:
-    //
-    // - The first message is sent using the SSI's out-of-bound "metadata" mechanism.
-    //   The message is represented by the header that contains the length of the subsequent
-    //   response and the trailing (the second) header.
-    //
-    // - The second message is composed of the response itself followed by the trailing
-    //   (the second) header indicating the end of the transmission on the channel.
-
     auto const queryId = task->getQueryId();
     auto const jobId = task->getJobId();
     auto const idStr(makeIdStr(queryId, jobId));
@@ -525,6 +519,14 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     // This lock is required for making consistent modifications and usage of the metadata
     // and response buffers.
     lock_guard<mutex> const streamMutexLock(_streamMutex);
+
+    // This will deallocate any memory managed by the Google Protobuf Arena
+    // to avoid unnecessary memory utilization by the application.
+    LOGS(_log, LOG_LVL_DEBUG,
+         __func__ << ": Google Protobuf Arena, 1:SpaceUsed=" << _protobufArena->SpaceUsed());
+    _protobufArena->Reset();
+    LOGS(_log, LOG_LVL_DEBUG,
+         __func__ << ": Google Protobuf Arena, 2:SpaceUsed=" << _protobufArena->SpaceUsed());
 
     QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
     LOGS(_log, LOG_LVL_DEBUG, __func__);
@@ -534,17 +536,17 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     }
 
     // Prepare the response object and serialize in into a message that will
-    // be sent to Czar. This has to be done first before making the first header
-    // because the size of the serialized reponse object will be set in the header.
+    // be sent to Czar.
 
-    proto::Result result;
-    result.set_queryid(queryId);
-    result.set_jobid(jobId);
-    result.set_fileresource_xroot(task->resultFileXrootUrl());
-    result.set_fileresource_http(task->resultFileHttpUrl());
-    result.set_attemptcount(task->getAttemptCount());
-    result.set_rowcount(_rowcount);
-    result.set_transmitsize(_transmitsize);
+    proto::ResponseSummary response;
+    response.set_wname(_workerId);
+    response.set_queryid(queryId);
+    response.set_jobid(jobId);
+    response.set_fileresource_xroot(task->resultFileXrootUrl());
+    response.set_fileresource_http(task->resultFileHttpUrl());
+    response.set_attemptcount(task->getAttemptCount());
+    response.set_rowcount(_rowcount);
+    response.set_transmitsize(_transmitsize);
     string errorMsg;
     int errorCode = 0;
     if (!multiErr.empty()) {
@@ -557,49 +559,29 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     if (!errorMsg.empty() or (errorCode != 0)) {
         errorMsg = "FileChannelShared::" + string(__func__) + " error(s) in result for chunk #" +
                    to_string(task->getChunkId()) + ": " + errorMsg;
-        result.set_errormsg(errorMsg);
-        result.set_errorcode(errorCode);
+        response.set_errormsg(errorMsg);
+        response.set_errorcode(errorCode);
         LOGS(_log, LOG_LVL_ERROR, errorMsg);
     }
-    result.SerializeToString(&_responseBuf);
+    response.SerializeToString(&_responseBuf);
 
-    // The response starts with the first header message sent out-of-band witin
-    // the SSI metadata.
-    proto::ProtoHeader firstHeader;
-    firstHeader.set_size(proto::ProtoHeaderWrap::getProtoHeaderSize() + _responseBuf.size());
-    firstHeader.set_wname(_workerId);
-    firstHeader.set_endnodata(false);
-    string firstHeaderString;
-    firstHeader.SerializeToString(&firstHeaderString);
-    _metadataBuf = proto::ProtoHeaderWrap::wrap(firstHeaderString);
-    if (!_sendChannel->setMetadata(_metadataBuf.data(), _metadataBuf.size())) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         __func__ << " idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size());
+
+    // Send the message sent out-of-band within the SSI metadata.
+    if (!_sendChannel->setMetadata(_responseBuf.data(), _responseBuf.size())) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in setMetadata " << idStr);
         _kill(streamMutexLock, "setMetadata");
         return false;
     }
 
-    // Append the trailing header right after the serialized response to indicate
-    // the end of the transmission. Both objects will be streamed to Czar together.
-
-    proto::ProtoHeader secondHeader;
-    secondHeader.set_size(0);
-    secondHeader.set_wname(_workerId);
-    secondHeader.set_endnodata(true);
-    string secondHeaderString;
-    secondHeader.SerializeToString(&secondHeaderString);
-    _responseBuf += proto::ProtoHeaderWrap::wrap(secondHeaderString);
-
-    // Create the stream buffer. Note that this operation will invalidate
-    // the input response buffer.
-    auto const streamBuf = xrdsvc::StreamBuffer::createWithMove(_responseBuf, task);
-    bool const last = true;
-    if (!_sendChannel->sendStream(streamBuf, last)) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in sendStream " << idStr);
-        _kill(streamMutexLock, "sendStream");
+    // Send back the empty object since no info is expected by a caller
+    // for this type of requests beyond the usual error notifications (if any).
+    // Note that this call is needed to initiate the transaction.
+    if (!_sendChannel->sendData((char const*)0, 0)) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in sendData " << idStr);
+        _kill(streamMutexLock, "sendData");
         return false;
-    } else {
-        LOGS(_log, LOG_LVL_INFO, __func__ << " wait before transmission is finished " << idStr);
-        streamBuf->waitForDoneWithThis();  // Block until this buffer has been sent.
     }
     return true;
 }

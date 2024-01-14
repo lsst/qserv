@@ -40,8 +40,12 @@
 
 // Forward declarations
 
+namespace google::protobuf {
+class Arena;
+}  // namespace google::protobuf
+
 namespace lsst::qserv::proto {
-class Result;
+class ResponseData;
 }  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::wbase {
@@ -196,13 +200,11 @@ private:
      * from the input result set into the output result object.
      * @param tMtxLock - a lock on the mutex tMtx
      * @param mResult - MySQL result to be used as a source
-     * @param result - the output result object to be filled in
      * @param rows - the number of rows extracted from the result set
      * @param tSize - the approximate amount of data extracted from the result set
      * @return 'true' if there are more rows left in the result set.
      */
-    bool _fillRows(std::lock_guard<std::mutex> const& tMtxLock, MYSQL_RES* mResult, proto::Result& result,
-                   int& rows, size_t& tSize);
+    bool _fillRows(std::lock_guard<std::mutex> const& tMtxLock, MYSQL_RES* mResult, int& rows, size_t& tSize);
     /**
      * Unconditionaly close and remove (potentially - the partially written) file.
      * This method gets called in case of any failure detected while processing
@@ -229,7 +231,14 @@ private:
     mutable std::mutex _tMtx;  ///< Protects data recording and Czar notification
 
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
+    qmeta::CzarId const _czarId;                             ///< id of the czar that requested this task(s).
     std::string const _workerId;                             ///< The unique identifier of the worker.
+
+    // Allocatons/deletion of the data messages are managed by Google Protobuf Arena.
+    std::unique_ptr<google::protobuf::Arena> _protobufArena;
+    proto::ResponseData* _responseData = 0;
+
+    uint64_t const _scsId;  ///< id number for this FileChannelShared
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using FileChannelShared.
@@ -241,9 +250,6 @@ private:
 
     int _taskCount = 0;  ///< The number of tasks to be sent over this wbase::SendChannel.
     int _lastCount = 0;  ///< The number of 'last' buffers received.
-
-    qmeta::CzarId const _czarId;  ///< id of the czar that requested this task(s).
-    uint64_t const _scsId;        ///< id number for this FileChannelShared
 
     /// The number of sql connections opened to handle the Tasks using this FileChannelShared.
     /// Once this is greater than 0, this object needs free access to sql connections to avoid

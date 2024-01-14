@@ -36,10 +36,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "proto/ProtoHeaderWrap.h"
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
-#include "proto/WorkerResponse.h"
 
 #include "proto/FakeProtocolFixture.h"
 
@@ -118,11 +116,6 @@ struct ProtocolFixture : public lsst::qserv::proto::FakeProtocolFixture {
         return qEqual && sEqual;
     }
 
-    bool compareProtoHeaders(lsst::qserv::proto::ProtoHeader const& p1,
-                             lsst::qserv::proto::ProtoHeader const& p2) {
-        return p1.size() == p2.size();
-    }
-
     int counter;
 };
 
@@ -141,51 +134,6 @@ BOOST_AUTO_TEST_CASE(TaskMsgMsgSanity) {
     BOOST_CHECK(t1.get());
     t2->ParseFromIstream(&ss2);
     BOOST_CHECK(compareTaskMsgs(*t1, *t2));
-}
-
-BOOST_AUTO_TEST_CASE(ResultMsgSanity) {
-    std::stringstream ss;
-    std::unique_ptr<lsst::qserv::proto::ProtoHeader> r1(makeProtoHeader());
-    BOOST_CHECK(r1.get());
-    r1->SerializeToOstream(&ss);
-
-    std::string blah = ss.str();
-    std::stringstream ss2(blah);
-    std::unique_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
-    BOOST_CHECK(r1.get());
-    r2->ParseFromIstream(&ss2);
-    BOOST_CHECK(compareProtoHeaders(*r1, *r2));
-}
-
-BOOST_AUTO_TEST_CASE(MsgBuffer) {
-    std::stringstream ss;
-    std::unique_ptr<lsst::qserv::proto::ProtoHeader> r1(makeProtoHeader());
-    BOOST_CHECK(r1.get());
-    r1->SerializeToOstream(&ss);
-
-    std::string raw(ss.str());
-    gio::ArrayInputStream input(raw.data(), raw.size());
-    gio::CodedInputStream coded(&input);
-    std::unique_ptr<lsst::qserv::proto::ProtoHeader> r2(new lsst::qserv::proto::ProtoHeader());
-    BOOST_CHECK(r1.get());
-    r2->MergePartialFromCodedStream(&coded);
-    BOOST_CHECK(compareProtoHeaders(*r1, *r2));
-}
-
-BOOST_AUTO_TEST_CASE(ProtoHeaderWrap) {
-    std::unique_ptr<proto::ProtoHeader> ph(makeProtoHeader());
-    std::string str;
-    ph->SerializeToString(&str);
-    LOGS_DEBUG("wrapping " << str.size());
-    std::string msgBuf = proto::ProtoHeaderWrap::wrap(str);
-    std::vector<char> msgVect;
-    std::copy(msgBuf.begin(), msgBuf.end(), std::back_inserter(msgVect));
-    std::shared_ptr<proto::WorkerResponse> response(new proto::WorkerResponse());
-    response->headerSize = msgBuf.size();
-    LOGS_DEBUG("unwrapping");
-    bool worked = proto::ProtoHeaderWrap::unwrap(response, msgVect);
-    BOOST_CHECK(worked);
-    BOOST_CHECK(compareProtoHeaders(response->protoHeader, *ph));
 }
 
 BOOST_AUTO_TEST_CASE(ScanTableInfo) {

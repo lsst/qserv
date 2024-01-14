@@ -49,9 +49,8 @@ namespace mysql {
 class MysqlConfig;
 }
 namespace proto {
-class ProtoHeader;
-class Result;
-struct WorkerResponse;
+class ResponseData;
+class ResponseSummary;
 }  // namespace proto
 namespace qdisp {
 class MessageStore;
@@ -144,10 +143,7 @@ private:
 /// To use, construct a configured instance, then call merge() to kick off the
 /// merging process, and finalize() to wait for outstanding merging processes
 /// and perform the appropriate post-processing before returning.  merge() right
-/// now expects an entire message buffer, where a message buffer consists of:
-/// Byte 0: unsigned char size of ProtoHeader message
-/// Bytes 1 - size_ph : ProtoHeader message (containing size of result message)
-/// Bytes size_ph - size_ph + size_rm : Result message
+/// now expects a parsed ResponseData message.
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
@@ -162,12 +158,9 @@ public:
 
     std::string engineToStr(InfileMerger::DbEngine engine);
 
-    /// Merge a worker response, which contains:
-    /// Size of ProtoHeader message
-    /// ProtoHeader message
-    /// Result message
+    /// Merge a worker response, which contains a single ResponseData message
     /// @return true if merge was successfully imported.
-    bool merge(std::shared_ptr<proto::WorkerResponse> const& response);
+    bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData);
 
     /// Indicate the the merge for all of the jobs in jobIds is complete.
     void mergeCompleteFor(std::set<int> const& jobIds);
@@ -224,7 +217,6 @@ public:
 private:
     bool _applyMysqlMyIsam(std::string const& query, size_t resultSize);
     bool _applyMysqlInnoDb(std::string const& query, size_t resultSize);
-    bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results);

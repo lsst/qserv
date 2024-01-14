@@ -32,6 +32,14 @@
 // Qserv headers
 #include "util/Error.h"
 
+// Forward declarations
+
+namespace lsst::qserv::proto {
+class ResponseSummary;
+}  // namespace lsst::qserv::proto
+
+// This header declaration
+
 namespace lsst::qserv::qdisp {
 
 class JobQuery;
@@ -52,14 +60,11 @@ public:
     void setJobQuery(std::shared_ptr<JobQuery> const& jobQuery) { _jobQuery = jobQuery; }
     virtual ~ResponseHandler() {}
 
-    /// Flush the retrieved buffer where bLen bytes were set. If last==true,
-    /// then no more buffer() and flush() calls should occur.
+    /// Process a request for pulling and merging a job result into the result table
+    /// @param responseSummary - worker response to be analyzed and processed
+    /// @param resultRows - number of result rows in this result.
     /// @return true if successful (no error)
-    /// last, nextBufSize, and resultRows are set in flush.
-    /// last - true if no more messages for this job.
-    /// nextBufSize - size of the next buffer
-    /// resultRows - number of result rows in this result.
-    virtual bool flush(int bLen, BufPtr const& bufPtr, bool& last, int& nextBufSize, int& resultRows) = 0;
+    virtual bool flush(proto::ResponseSummary const& responseSummary, int& resultRows) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;

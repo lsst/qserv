@@ -183,8 +183,6 @@ public:
     ///      The values indicate the minimum number of commands for each
     ///      priority that should be running concurrently
     std::string getQdispVectMinRunningSizes() const { return _qdispVectMinRunningSizes; }
-    /// @return the maximum number of running QueryRequests in the PseudoFifo.
-    int getQReqPseudoFifoMaxRunning() const { return _qReqPseudoFifoMaxRunning; }
 
     int getOldestResultKeptDays() const { return _oldestResultKeptDays; }
 
@@ -295,9 +293,6 @@ private:
     int const _qdispMaxPriority;
     std::string const _qdispVectRunSizes;         // No spaces, values separated by ':'
     std::string const _qdispVectMinRunningSizes;  // No spaces, values separated by ':'
-
-    // Parameters for QueryRequest PseudoFifo
-    int const _qReqPseudoFifoMaxRunning;
 
     // Events sent to workers
     int const _notifyWorkersOnQueryFinish;  ///< Sent by cccontrol::UserQuerySelect

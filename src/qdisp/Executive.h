@@ -67,7 +67,6 @@ class QuerySession;
 namespace qdisp {
 class JobQuery;
 class MessageStore;
-class PseudoFifo;
 }  // namespace qdisp
 
 namespace util {
@@ -210,9 +209,6 @@ private:
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
     QdispPool::Ptr _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
-
-    /// Used to prevent czar from calling the most recent (and possibly critcal) QueryRequests first.
-    std::shared_ptr<PseudoFifo> _queryRequestPseudoFifo;
 
     std::deque<PriorityCommand::Ptr> _jobStartCmdList;  ///< list of jobs to start.
 

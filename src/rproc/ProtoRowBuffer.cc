@@ -64,7 +64,7 @@ std::string printCharVect(std::vector<char> const& cVect) {
 
 namespace lsst::qserv::rproc {
 
-ProtoRowBuffer::ProtoRowBuffer(proto::Result& res, int jobId, std::string const& jobIdColName,
+ProtoRowBuffer::ProtoRowBuffer(proto::ResponseData const& res, int jobId, std::string const& jobIdColName,
                                std::string const& jobIdSqlType, int jobIdMysqlType)
         : _colSep("\t"),
           _rowSep("\n"),

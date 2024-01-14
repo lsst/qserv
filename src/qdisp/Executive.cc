@@ -105,7 +105,6 @@ Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& m
         : _config(c),
           _messageStore(ms),
           _qdispPool(sharedResources->getQdispPool()),
-          _queryRequestPseudoFifo(sharedResources->getQueryRequestPseudoFifo()),
           _qMeta(qStatus),
           _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
@@ -263,7 +262,7 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
     // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
     // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
     //
-    QueryRequest::Ptr qr = QueryRequest::create(jobQuery, _queryRequestPseudoFifo);
+    QueryRequest::Ptr qr = QueryRequest::create(jobQuery);
     jobQuery->setQueryRequest(qr);
 
     // Start the query. The rest is magically done in the background.

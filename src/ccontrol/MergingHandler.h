@@ -32,9 +32,15 @@
 // Qserv headers
 #include "qdisp/ResponseHandler.h"
 
-// Forward decl
+// Forward declarations
+
+namespace lsst::qserv::http {
+class ClientConnPool;
+}  // namespace lsst::qserv::http
+
 namespace lsst::qserv::proto {
-struct WorkerResponse;
+class ResponseData;
+class ResponseSummary;
 }  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::rproc {
@@ -54,10 +60,6 @@ namespace lsst::qserv::ccontrol {
 /// and it can only send one transmit on that channel at a time.
 class MergingHandler : public qdisp::ResponseHandler {
 public:
-    /// Possible MergingHandler message state
-    enum class MsgState { HEADER_WAIT, RESULT_WAIT, RESULT_RECV, HEADER_ERR, RESULT_ERR };
-    static const char* getStateStr(MsgState const& st);
-
     typedef std::shared_ptr<MergingHandler> Ptr;
     virtual ~MergingHandler();
 
@@ -65,10 +67,9 @@ public:
     /// @param tableName target table for incoming data
     MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName);
 
-    /// Flush the retrieved buffer where bLen bytes were set. If last==true,
-    /// then no more buffer() and flush() calls should occur.
+    /// Process the response and read the result file if no error was reported by a worker.
     /// @return true if successful (no error)
-    bool flush(int bLen, BufPtr const& bufPtr, bool& last, int& nextBufSize, int& resultRows) override;
+    bool flush(proto::ResponseSummary const& responseSummary, int& resultRows) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
@@ -91,21 +92,25 @@ public:
     void prepScrubResults(int jobId, int attempt) override;
 
 private:
-    void _initState();  ///< Prepare for first call to flush()
-    bool _merge();      ///< Call Infile::merge to add the results to the result table.
-    void _setError(int code, std::string const& msg);  ///< Set error code and string
-    bool _setResult(BufPtr const& bufPtr, int blen);   ///< Extract the result from the protobuffer.
-    bool _noErrorsInResult();  ///< Check if the result message has no errors, report the ones (if any).
+    ///< Prepare for first call to flush()
+    void _initState();
+
+    bool _merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData);
+
+    ///< Set error code and string
+    void _setError(int code, std::string const& msg);
+
+    /// All instances of the HTTP client class are members of the same pool.
+    /// This allows connection reuse and a significant reduction of
+    /// the kernel memory pressure.
+    static std::shared_ptr<http::ClientConnPool> const _httpConnPool;
 
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
     std::string _tableName;                              ///< Target table name
     Error _error;                                        ///< Error description
     mutable std::mutex _errorMutex;                      ///< Protect readers from partial updates
-    MsgState _state;                                     ///< Received message state
-    std::shared_ptr<proto::WorkerResponse> _response;    ///< protobufs msg buf
     bool _flushed{false};                                ///< flushed to InfileMerger?
     std::string _wName{"~"};                             ///< worker name
-    std::mutex _setResultMtx;  //< Allow only one call to ParseFromArray at a time from _seResult.
     /// Set of jobIds added in this request. Using std::set to prevent duplicates when the same
     /// jobId has multiple merge calls.
     std::set<int> _jobIds;

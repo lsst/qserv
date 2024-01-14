@@ -83,13 +83,6 @@ public:
         s->add_id(scId);
     }
 
-    ProtoHeader* makeProtoHeader() {
-        ProtoHeader* p(new ProtoHeader());
-        p->set_size(500);
-        p->set_endnodata(false);
-        return p;
-    }
-
 private:
     int _counter;
 };

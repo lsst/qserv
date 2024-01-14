@@ -61,7 +61,6 @@
 #include "util/IterableFormatter.h"
 #include "util/HoldTrack.h"
 #include "util/MultiError.h"
-#include "util/StringHash.h"
 #include "util/Timer.h"
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
