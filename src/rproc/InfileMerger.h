@@ -24,7 +24,6 @@
 #define LSST_QSERV_RPROC_INFILEMERGER_H
 /// InfileMerger.h declares:
 ///
-/// struct InfileMergerError
 /// class InfileMergerConfig
 /// class InfileMerger
 /// (see individual class documentation for more information)
@@ -71,15 +70,6 @@ class SqlResults;
 }  // namespace lsst::qserv
 
 namespace lsst::qserv::rproc {
-
-/** \typedef InfileMergerError Store InfileMerger error code.
- *
- * \note:
- * Keep this indirection to util::Error in case
- * InfileMergerError::resultTooBig() method might is needed in the future
- *
- * */
-typedef util::Error InfileMergerError;
 
 /// class InfileMergerConfig - value class for configuring a InfileMerger
 class InfileMergerConfig {
@@ -183,7 +173,7 @@ public:
     void mergeCompleteFor(std::set<int> const& jobIds);
 
     /// @return error details if finalize() returns false
-    InfileMergerError const& getError() const { return _error; }
+    util::Error const& getError() const { return _error; }
     /// @return final target table name  storing results after post processing
     std::string getTargetTable() const { return _config.targetTable; }
 
@@ -263,7 +253,7 @@ private:
     DbEngine _dbEngine = MYISAM;                   ///< ENGINE used for aggregating results.
     std::shared_ptr<sql::SqlConnection> _sqlConn;  ///< SQL connection
     std::string _mergeTable;                       ///< Table for result loading
-    InfileMergerError _error;                      ///< Error state
+    util::Error _error;                            ///< Error state
     bool _isFinished = false;                      ///< Completed?
     std::mutex _sqlMutex;                          ///< Protection for SQL connection
 
