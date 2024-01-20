@@ -162,8 +162,8 @@ public:
     /// @return true if merge was successfully imported.
     bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData);
 
-    /// Indicate the the merge for all of the jobs in jobIds is complete.
-    void mergeCompleteFor(std::set<int> const& jobIds);
+    /// Indicate the merge for the job is complete.
+    void mergeCompleteFor(int jobId);
 
     /// @return error details if finalize() returns false
     util::Error const& getError() const { return _error; }

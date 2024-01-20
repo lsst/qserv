@@ -27,7 +27,6 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <set>
 
 // Qserv headers
 #include "qdisp/ResponseHandler.h"
@@ -111,9 +110,6 @@ private:
     mutable std::mutex _errorMutex;                      ///< Protect readers from partial updates
     bool _flushed{false};                                ///< flushed to InfileMerger?
     std::string _wName{"~"};                             ///< worker name
-    /// Set of jobIds added in this request. Using std::set to prevent duplicates when the same
-    /// jobId has multiple merge calls.
-    std::set<int> _jobIds;
 };
 
 }  // namespace lsst::qserv::ccontrol

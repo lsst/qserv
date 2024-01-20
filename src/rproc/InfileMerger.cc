@@ -213,11 +213,9 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
     _queryIdStrSet = true;
 }
 
-void InfileMerger::mergeCompleteFor(std::set<int> const& jobIds) {
+void InfileMerger::mergeCompleteFor(int jobId) {
     std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-    for (int jobId : jobIds) {
-        _totalResultSize += _perJobResultSize[jobId];
-    }
+    _totalResultSize += _perJobResultSize[jobId];
 }
 
 bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,

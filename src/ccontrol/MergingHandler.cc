@@ -388,15 +388,13 @@ MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__); }
 bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, int& resultRows) {
     _wName = responseSummary.wname();
 
-    int const jobId = responseSummary.jobid();
-    _jobIds.insert(jobId);
-
     // Why this is needed to ensure the job query would be staying alive for the duration
     // of the operation?
     auto const jobQuery = getJobQuery().lock();
 
     LOGS(_log, LOG_LVL_TRACE,
-         "MergingHandler::" << __func__ << " transmitsize=" << responseSummary.transmitsize()
+         "MergingHandler::" << __func__ << " jobid=" << responseSummary.jobid()
+                            << " transmitsize=" << responseSummary.transmitsize()
                             << " rowcount=" << responseSummary.rowcount() << " rowSize="
                             << " attemptcount=" << responseSummary.attemptcount() << " errorcode="
                             << responseSummary.errorcode() << " errormsg=" << responseSummary.errormsg());
@@ -437,7 +435,7 @@ bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, int& r
         throw util::Bug(ERR_LOC, err);
     }
     if (success) {
-        _infileMerger->mergeCompleteFor(_jobIds);
+        _infileMerger->mergeCompleteFor(responseSummary.jobid());
     }
     return success;
 }
