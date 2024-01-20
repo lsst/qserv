@@ -59,6 +59,8 @@
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
+#include "qdisp/Executive.h"
+#include "qdisp/JobQuery.h"
 #include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
@@ -219,7 +221,8 @@ void InfileMerger::mergeCompleteFor(int jobId) {
 }
 
 bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
-                         proto::ResponseData const& responseData) {
+                         proto::ResponseData const& responseData,
+                         std::shared_ptr<qdisp::JobQuery> const& jq) {
     int const jobId = responseSummary.jobid();
     std::string queryIdJobStr = QueryIdHelper::makeIdStr(responseSummary.queryid(), jobId);
     if (!_queryIdStrSet) {
@@ -228,6 +231,15 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
 
     // Nothing to do if size is zero.
     if (responseData.row_size() == 0) {
+        return true;
+    }
+
+    // Do nothing if the query got cancelled for any reason.
+    if (jq->isQueryCancelled()) {
+        return true;
+    }
+    auto executive = jq->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
         return true;
     }
 

@@ -53,8 +53,9 @@ class ResponseData;
 class ResponseSummary;
 }  // namespace proto
 namespace qdisp {
+class JobQuery;
 class MessageStore;
-}
+}  // namespace qdisp
 namespace qproc {
 class DatabaseModels;
 }
@@ -159,8 +160,10 @@ public:
     std::string engineToStr(InfileMerger::DbEngine engine);
 
     /// Merge a worker response, which contains a single ResponseData message
+    /// Using job query info for early termination of the merge if needed.
     /// @return true if merge was successfully imported.
-    bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData);
+    bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
+               std::shared_ptr<qdisp::JobQuery> const& jq);
 
     /// Indicate the merge for the job is complete.
     void mergeCompleteFor(int jobId);

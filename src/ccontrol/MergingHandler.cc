@@ -480,7 +480,7 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
         if (_flushed) {
             throw util::Bug(ERR_LOC, "already flushed");
         }
-        bool success = _infileMerger->merge(responseSummary, responseData);
+        bool success = _infileMerger->merge(responseSummary, responseData, job);
         if (!success) {
             LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
             util::Error const& err = _infileMerger->getError();
