@@ -199,7 +199,7 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
         throw util::Bug(ERR_LOC, err);
     }
-    int resultRows = 0;
+    uint32_t resultRows = 0;
     if (!jq->getDescription()->respHandler()->flush(responseSummary, resultRows)) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " not flushOk");
         _flushError(jq);

@@ -149,7 +149,7 @@ private:
 
     QdispPool::Ptr _qdispPool;
 
-    int _totalRows = 0;  ///< number of rows in query added to the result table.
+    uint32_t _totalRows = 0;  ///< number of rows in query added to the result table.
 
     std::atomic<int> _rowsIgnored{0};  ///< Limit log messages about rows being ignored.
     std::atomic<uint> _respCount{0};   ///< number of responses created

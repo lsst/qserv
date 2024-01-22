@@ -68,7 +68,7 @@ public:
 
     /// Process the response and read the result file if no error was reported by a worker.
     /// @return true if successful (no error)
-    bool flush(proto::ResponseSummary const& responseSummary, int& resultRows) override;
+    bool flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;

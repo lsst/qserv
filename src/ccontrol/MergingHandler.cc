@@ -114,7 +114,7 @@ lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
         };
 
 bool readXrootFileResourceAndMerge(string const& xrootUrl,
-                                   function<bool(char const*, uint32_t)> const& messageIsReady) {
+                                   function<bool(char const*, uint32_t, bool&)> const& messageIsReady) {
     string const context = "MergingHandler::" + string(__func__) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "xrootUrl=" << xrootUrl);
@@ -133,6 +133,10 @@ bool readXrootFileResourceAndMerge(string const& xrootUrl,
         return false;
     }
 
+    // A value of the flag is set by the message processor when it's time to finish
+    // or abort reading  the file.
+    bool last = false;
+
     // Temporary buffer for messages read from the file. The buffer will be (re-)allocated
     // as needed to get the largest message. Note that a size of the messages won't exceed
     // a limit set in ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT.
@@ -142,7 +146,7 @@ bool readXrootFileResourceAndMerge(string const& xrootUrl,
     uint64_t offset = 0;  // A location of the next byte to be read from the input file.
     bool success = true;
     try {
-        while (true) {
+        while (!last) {
             // This starts a timer of the data transmit rate tracker.
             auto transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
 
@@ -206,7 +210,7 @@ bool readXrootFileResourceAndMerge(string const& xrootUrl,
             transmitRateTracker.reset();
 
             // Proceed to the result merge
-            success = messageIsReady(buf.get(), msgSizeBytes);
+            success = messageIsReady(buf.get(), msgSizeBytes, last);
             if (!success) break;
         }
     } catch (exception const& ex) {
@@ -230,7 +234,8 @@ bool readXrootFileResourceAndMerge(string const& xrootUrl,
     return success;
 }
 
-bool readHttpFileAndMerge(string const& httpUrl, function<bool(char const*, uint32_t)> const& messageIsReady,
+bool readHttpFileAndMerge(string const& httpUrl,
+                          function<bool(char const*, uint32_t, bool&)> const& messageIsReady,
                           shared_ptr<http::ClientConnPool> const& httpConnPool) {
     string const context = "MergingHandler::" + string(__func__) + " ";
 
@@ -273,9 +278,12 @@ bool readHttpFileAndMerge(string const& httpUrl, function<bool(char const*, uint
         http::Client reader(http::Method::GET, httpUrl, noClientData, noClientHeaders, clientConfig,
                             httpConnPool);
         reader.read([&](char const* inBuf, size_t inBufSize) {
+            // A value of the flag is set by the message processor when it's time to finish
+            // or abort reading  the file.
+            bool last = false;
             char const* next = inBuf;
             char const* const end = inBuf + inBufSize;
-            while (next < end) {
+            while ((next < end) && !last) {
                 if (msgSizeBytes == 0) {
                     // Continue or finish reading the frame header.
                     size_t const bytes2read =
@@ -331,7 +339,7 @@ bool readHttpFileAndMerge(string const& httpUrl, function<bool(char const*, uint
                         }
 
                         // Parse and evaluate the message.
-                        bool const success = messageIsReady(msgBuf.get(), msgSizeBytes);
+                        bool const success = messageIsReady(msgBuf.get(), msgSizeBytes, last);
                         if (!success) {
                             throw runtime_error(context + "message processing failed at offset " +
                                                 to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
@@ -385,7 +393,7 @@ MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std:
 
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__); }
 
-bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, int& resultRows) {
+bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) {
     _wName = responseSummary.wname();
 
     // Why this is needed to ensure the job query would be staying alive for the duration
@@ -413,11 +421,16 @@ bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, int& r
     // the result delivery protocol configured at the worker.
     // Dispatch result processing to the corresponidng method which depends on
     // the result delivery protocol configured at the worker.
-    auto const dataMerger = [&](char const* buf, uint32_t size) {
+    // Notify the file reader when all rows have been read by setting 'last = true'.
+    auto const dataMerger = [&](char const* buf, uint32_t size, bool& last) {
+        last = true;
         proto::ResponseData responseData;
         if (responseData.ParseFromArray(buf, size) && responseData.IsInitialized()) {
             bool const success = _merge(responseSummary, responseData);
-            if (success) resultRows += responseData.row_size();
+            if (success) {
+                resultRows += responseData.row_size();
+                last = resultRows >= responseSummary.rowcount();
+            }
             return success;
         }
         throw runtime_error("MergingHandler::flush ** message deserialization failed **");
