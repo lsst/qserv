@@ -212,19 +212,19 @@ public:
 private:
     /**
      * Set connection options as requested in the client configuration.
-     * @see _errorChecked for exceptions thrown by the method.
+     * @see _curlEasyErrorChecked for exceptions thrown by the method.
      */
     void _setConnOptions();
 
     /**
      * Set SSL/TLS certificate as requested in the client configuration.
-     * @see _errorChecked for exceptions thrown by the method.
+     * @see _curlEasyErrorChecked for exceptions thrown by the method.
      */
     void _setSslCertOptions();
 
     /**
      * Set proxy options as requested in the client configuration.
-     * @see _errorChecked for exceptions thrown by the method.
+     * @see _curlEasyErrorChecked for exceptions thrown by the method.
      */
     void _setProxyOptions();
 
@@ -235,7 +235,7 @@ private:
      * @param errnum A result reported by the CURL library function.
      * @throw std::runtime_error If the error-code is not CURL_OK.
      */
-    void _errorChecked(std::string const& scope, CURLcode errnum);
+    void _curlEasyErrorChecked(std::string const& scope, CURLcode errnum);
 
     /**
      * This method is invoked by function forwardToClient() on each chunk of data

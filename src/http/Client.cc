@@ -94,36 +94,41 @@ void Client::read(CallbackType const& onDataRead) {
     _setSslCertOptions();
     _setProxyOptions();
 
-    _errorChecked("curl_easy_setopt(CURLOPT_URL)", curl_easy_setopt(_hcurl, CURLOPT_URL, _url.c_str()));
-    _errorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
-                  curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, nullptr));
+    _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_URL)",
+                          curl_easy_setopt(_hcurl, CURLOPT_URL, _url.c_str()));
+    _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
+                          curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, nullptr));
     if (_method == http::Method::GET) {
-        _errorChecked("curl_easy_setopt(CURLOPT_HTTPGET)", curl_easy_setopt(_hcurl, CURLOPT_HTTPGET, 1L));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_HTTPGET)",
+                              curl_easy_setopt(_hcurl, CURLOPT_HTTPGET, 1L));
     } else if (_method == http::Method::POST) {
-        _errorChecked("curl_easy_setopt(CURLOPT_POST)", curl_easy_setopt(_hcurl, CURLOPT_POST, 1L));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POST)", curl_easy_setopt(_hcurl, CURLOPT_POST, 1L));
     } else {
-        _errorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
-                      curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, http::method2string(_method).data()));
+        _curlEasyErrorChecked(
+                "curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
+                curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, http::method2string(_method).data()));
     }
     if (!_data.empty()) {
-        _errorChecked("curl_easy_setopt(CURLOPT_POSTFIELDS)",
-                      curl_easy_setopt(_hcurl, CURLOPT_POSTFIELDS, _data.c_str()));
-        _errorChecked("curl_easy_setopt(CURLOPT_POSTFIELDSIZE)",
-                      curl_easy_setopt(_hcurl, CURLOPT_POSTFIELDSIZE, _data.size()));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POSTFIELDS)",
+                              curl_easy_setopt(_hcurl, CURLOPT_POSTFIELDS, _data.c_str()));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POSTFIELDSIZE)",
+                              curl_easy_setopt(_hcurl, CURLOPT_POSTFIELDSIZE, _data.size()));
     }
     curl_slist_free_all(_hlist);
     _hlist = nullptr;
     for (auto& header : _headers) {
         _hlist = curl_slist_append(_hlist, header.c_str());
     }
-    _errorChecked("curl_easy_setopt(CURLOPT_HTTPHEADER)",
-                  curl_easy_setopt(_hcurl, CURLOPT_HTTPHEADER, _hlist));
+    _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_HTTPHEADER)",
+                          curl_easy_setopt(_hcurl, CURLOPT_HTTPHEADER, _hlist));
 
-    _errorChecked("curl_easy_setopt(CURLOPT_FAILONERROR)", curl_easy_setopt(_hcurl, CURLOPT_FAILONERROR, 1L));
-    _errorChecked("curl_easy_setopt(CURLOPT_WRITEFUNCTION)",
-                  curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToClient));
-    _errorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)", curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
-    _errorChecked("curl_easy_perform()", curl_easy_perform(_hcurl));
+    _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_FAILONERROR)",
+                          curl_easy_setopt(_hcurl, CURLOPT_FAILONERROR, 1L));
+    _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_WRITEFUNCTION)",
+                          curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToClient));
+    _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)",
+                          curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
+    _curlEasyErrorChecked("curl_easy_perform()", curl_easy_perform(_hcurl));
 }
 
 json Client::readAsJson() {
@@ -134,96 +139,99 @@ json Client::readAsJson() {
 
 void Client::_setConnOptions() {
     if (_clientConfig.httpVersion != CURL_HTTP_VERSION_NONE) {
-        _errorChecked("curl_easy_setopt(CURLOPT_HTTP_VERSION)",
-                      curl_easy_setopt(_hcurl, CURLOPT_HTTP_VERSION, _clientConfig.httpVersion));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_HTTP_VERSION)",
+                              curl_easy_setopt(_hcurl, CURLOPT_HTTP_VERSION, _clientConfig.httpVersion));
     }
     if (_clientConfig.bufferSize > 0) {
-        _errorChecked("curl_easy_setopt(CURLOPT_BUFFERSIZE)",
-                      curl_easy_setopt(_hcurl, CURLOPT_BUFFERSIZE, _clientConfig.bufferSize));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_BUFFERSIZE)",
+                              curl_easy_setopt(_hcurl, CURLOPT_BUFFERSIZE, _clientConfig.bufferSize));
     }
     if (_clientConfig.connectTimeout > 0) {
-        _errorChecked("curl_easy_setopt(CURLOPT_CONNECTTIMEOUT)",
-                      curl_easy_setopt(_hcurl, CURLOPT_CONNECTTIMEOUT, _clientConfig.connectTimeout));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_CONNECTTIMEOUT)",
+                              curl_easy_setopt(_hcurl, CURLOPT_CONNECTTIMEOUT, _clientConfig.connectTimeout));
     }
     if (_clientConfig.timeout > 0) {
-        _errorChecked("curl_easy_setopt(CURLOPT_TIMEOUT)",
-                      curl_easy_setopt(_hcurl, CURLOPT_TIMEOUT, _clientConfig.timeout));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_TIMEOUT)",
+                              curl_easy_setopt(_hcurl, CURLOPT_TIMEOUT, _clientConfig.timeout));
     }
     if (_clientConfig.lowSpeedLimit > 0) {
-        _errorChecked("curl_easy_setopt(CURLOPT_LOW_SPEED_LIMIT)",
-                      curl_easy_setopt(_hcurl, CURLOPT_LOW_SPEED_LIMIT, _clientConfig.lowSpeedLimit));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_LOW_SPEED_LIMIT)",
+                              curl_easy_setopt(_hcurl, CURLOPT_LOW_SPEED_LIMIT, _clientConfig.lowSpeedLimit));
     }
     if (_clientConfig.lowSpeedTime > 0) {
-        _errorChecked("curl_easy_setopt(CURLOPT_LOW_SPEED_TIME)",
-                      curl_easy_setopt(_hcurl, CURLOPT_LOW_SPEED_TIME, _clientConfig.lowSpeedTime));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_LOW_SPEED_TIME)",
+                              curl_easy_setopt(_hcurl, CURLOPT_LOW_SPEED_TIME, _clientConfig.lowSpeedTime));
     }
     if (_clientConfig.tcpKeepAlive) {
-        _errorChecked("curl_easy_setopt(CURLOPT_TCP_KEEPALIVE)",
-                      curl_easy_setopt(_hcurl, CURLOPT_TCP_KEEPALIVE, 1L));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_TCP_KEEPALIVE)",
+                              curl_easy_setopt(_hcurl, CURLOPT_TCP_KEEPALIVE, 1L));
         if (_clientConfig.tcpKeepIdle > 0) {
-            _errorChecked("curl_easy_setopt(CURLOPT_TCP_KEEPIDLE)",
-                          curl_easy_setopt(_hcurl, CURLOPT_TCP_KEEPIDLE, _clientConfig.tcpKeepIdle));
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_TCP_KEEPIDLE)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_TCP_KEEPIDLE, _clientConfig.tcpKeepIdle));
         }
         if (_clientConfig.tcpKeepIntvl > 0) {
-            _errorChecked("curl_easy_setopt(CURLOPT_TCP_KEEPINTVL)",
-                          curl_easy_setopt(_hcurl, CURLOPT_TCP_KEEPINTVL, _clientConfig.tcpKeepIntvl));
+            _curlEasyErrorChecked(
+                    "curl_easy_setopt(CURLOPT_TCP_KEEPINTVL)",
+                    curl_easy_setopt(_hcurl, CURLOPT_TCP_KEEPINTVL, _clientConfig.tcpKeepIntvl));
         }
     }
 }
 
 void Client::_setSslCertOptions() {
     if (!_clientConfig.sslVerifyHost) {
-        _errorChecked("curl_easy_setopt(CURLOPT_SSL_VERIFYHOST)",
-                      curl_easy_setopt(_hcurl, CURLOPT_SSL_VERIFYHOST, 0L));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_SSL_VERIFYHOST)",
+                              curl_easy_setopt(_hcurl, CURLOPT_SSL_VERIFYHOST, 0L));
     }
     if (_clientConfig.sslVerifyPeer) {
         if (!_clientConfig.caPath.empty()) {
-            _errorChecked("curl_easy_setopt(CURLOPT_CAPATH)",
-                          curl_easy_setopt(_hcurl, CURLOPT_CAPATH, _clientConfig.caPath.c_str()));
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_CAPATH)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_CAPATH, _clientConfig.caPath.c_str()));
         }
         if (!_clientConfig.caInfo.empty()) {
-            _errorChecked("curl_easy_setopt(CURLOPT_CAINFO)",
-                          curl_easy_setopt(_hcurl, CURLOPT_CAINFO, _clientConfig.caInfo.c_str()));
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_CAINFO)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_CAINFO, _clientConfig.caInfo.c_str()));
         }
     } else {
-        _errorChecked("curl_easy_setopt(CURLOPT_SSL_VERIFYPEER)",
-                      curl_easy_setopt(_hcurl, CURLOPT_SSL_VERIFYPEER, 0L));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_SSL_VERIFYPEER)",
+                              curl_easy_setopt(_hcurl, CURLOPT_SSL_VERIFYPEER, 0L));
     }
 }
 
 void Client::_setProxyOptions() {
     if (!_clientConfig.proxy.empty()) {
-        _errorChecked("curl_easy_setopt(CURLOPT_PROXY)",
-                      curl_easy_setopt(_hcurl, CURLOPT_PROXY, _clientConfig.proxy.c_str()));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_PROXY)",
+                              curl_easy_setopt(_hcurl, CURLOPT_PROXY, _clientConfig.proxy.c_str()));
         if (_clientConfig.httpProxyTunnel != 0) {
-            _errorChecked("curl_easy_setopt(CURLOPT_HTTPPROXYTUNNEL)",
-                          curl_easy_setopt(_hcurl, CURLOPT_HTTPPROXYTUNNEL, 1L));
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_HTTPPROXYTUNNEL)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_HTTPPROXYTUNNEL, 1L));
         }
     }
     if (!_clientConfig.noProxy.empty()) {
-        _errorChecked("curl_easy_setopt(CURLOPT_NOPROXY)",
-                      curl_easy_setopt(_hcurl, CURLOPT_NOPROXY, _clientConfig.noProxy.c_str()));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_NOPROXY)",
+                              curl_easy_setopt(_hcurl, CURLOPT_NOPROXY, _clientConfig.noProxy.c_str()));
     }
     if (!_clientConfig.proxySslVerifyHost) {
-        _errorChecked("curl_easy_setopt(CURLOPT_PROXY_SSL_VERIFYHOST)",
-                      curl_easy_setopt(_hcurl, CURLOPT_PROXY_SSL_VERIFYHOST, 0L));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_PROXY_SSL_VERIFYHOST)",
+                              curl_easy_setopt(_hcurl, CURLOPT_PROXY_SSL_VERIFYHOST, 0L));
     }
     if (_clientConfig.proxySslVerifyPeer) {
         if (!_clientConfig.proxyCaPath.empty()) {
-            _errorChecked("curl_easy_setopt(CURLOPT_PROXY_CAPATH)",
-                          curl_easy_setopt(_hcurl, CURLOPT_PROXY_CAPATH, _clientConfig.proxyCaPath.c_str()));
+            _curlEasyErrorChecked(
+                    "curl_easy_setopt(CURLOPT_PROXY_CAPATH)",
+                    curl_easy_setopt(_hcurl, CURLOPT_PROXY_CAPATH, _clientConfig.proxyCaPath.c_str()));
         }
         if (!_clientConfig.proxyCaInfo.empty()) {
-            _errorChecked("curl_easy_setopt(CURLOPT_PROXY_CAINFO)",
-                          curl_easy_setopt(_hcurl, CURLOPT_PROXY_CAINFO, _clientConfig.proxyCaInfo.c_str()));
+            _curlEasyErrorChecked(
+                    "curl_easy_setopt(CURLOPT_PROXY_CAINFO)",
+                    curl_easy_setopt(_hcurl, CURLOPT_PROXY_CAINFO, _clientConfig.proxyCaInfo.c_str()));
         }
     } else {
-        _errorChecked("curl_easy_setopt(CURLOPT_PROXY_SSL_VERIFYPEER)",
-                      curl_easy_setopt(_hcurl, CURLOPT_PROXY_SSL_VERIFYPEER, 0L));
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_PROXY_SSL_VERIFYPEER)",
+                              curl_easy_setopt(_hcurl, CURLOPT_PROXY_SSL_VERIFYPEER, 0L));
     }
 }
 
-void Client::_errorChecked(string const& scope, CURLcode errnum) {
+void Client::_curlEasyErrorChecked(string const& scope, CURLcode errnum) {
     if (errnum != CURLE_OK) {
         string errorStr = curl_easy_strerror(errnum);
         long httpResponseCode = 0;
