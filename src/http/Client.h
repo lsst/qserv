@@ -23,6 +23,7 @@
 
 // System headers
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,11 @@
 // Qserv headers
 #include "http/ClientConfig.h"
 #include "http/Method.h"
+
+// Forward declarations
+namespace lsst::qserv::http {
+class ClientConnPool;
+}  // namespace lsst::qserv::http
 
 // This header declarations
 namespace lsst::qserv::http {
@@ -83,10 +89,12 @@ public:
      * @param data Optional data to be sent with a request (depends on the HTTP headers).
      * @param headers Optional HTTP headers to be send with a request.
      * @param clientConfig Optional configuration parameters of the reader.
+     * @param connPool Optional connection pool
      */
     Client(http::Method method, std::string const& url, std::string const& data = std::string(),
            std::vector<std::string> const& headers = std::vector<std::string>(),
-           ClientConfig const& clientConfig = ClientConfig());
+           ClientConfig const& clientConfig = ClientConfig(),
+           std::shared_ptr<ClientConnPool> const& connPool = nullptr);
 
     /**
      * Begin processing a request. The whole content of the remote data source
@@ -136,7 +144,7 @@ private:
      *
      * @param scope A location from which the method was called (used for error reporting).
      * @param errnum A result reported by the CURL library function.
-     * @throw std::runtime_error If the error-code is not CURL_OK.
+     * @throw std::runtime_error If the error-code is not CURLE_OK.
      */
     void _curlEasyErrorChecked(std::string const& scope, CURLcode errnum);
 
@@ -166,6 +174,7 @@ private:
     std::string const _data;
     std::vector<std::string> const _headers;
     ClientConfig const _clientConfig;
+    std::shared_ptr<ClientConnPool> const _connPool;
 
     CallbackType _onDataRead;  ///< set by method read() before pulling the data
 

@@ -23,6 +23,7 @@
 #include "http/Client.h"
 
 // Qserv headers
+#include "http/ClientConnPool.h"
 #include "http/Exceptions.h"
 
 // Standard headers
@@ -44,10 +45,15 @@ size_t forwardToClient(char* ptr, size_t size, size_t nmemb, void* client) {
 }
 
 Client::Client(http::Method method, string const& url, string const& data, vector<string> const& headers,
-               ClientConfig const& clientConfig)
-        : _method(method), _url(url), _data(data), _headers(headers), _clientConfig(clientConfig) {
+               ClientConfig const& clientConfig, shared_ptr<ClientConnPool> const& connPool)
+        : _method(method),
+          _url(url),
+          _data(data),
+          _headers(headers),
+          _clientConfig(clientConfig),
+          _connPool(connPool) {
     _hcurl = curl_easy_init();
-    assert(_hcurl != nullptr);  // curl_easy_init() failed to allocate memory, etc.
+    assert(_hcurl != nullptr);
 }
 
 Client::~Client() {
@@ -144,6 +150,14 @@ void Client::_setConnOptions() {
             _curlEasyErrorChecked(
                     "curl_easy_setopt(CURLOPT_TCP_KEEPINTVL)",
                     curl_easy_setopt(_hcurl, CURLOPT_TCP_KEEPINTVL, _clientConfig.tcpKeepIntvl));
+        }
+    }
+    if (_connPool != nullptr) {
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_SHARE)",
+                              curl_easy_setopt(_hcurl, CURLOPT_SHARE, _connPool->shareCurl()));
+        if (_connPool->maxConnections() > 0) {
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_MAXCONNECTS)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_MAXCONNECTS, _connPool->maxConnections()));
         }
     }
 }
