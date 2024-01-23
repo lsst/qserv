@@ -43,35 +43,6 @@ size_t forwardToClient(char* ptr, size_t size, size_t nmemb, void* client) {
     return nchars;
 }
 
-string const ClientConfig::category = "worker-http-file-reader";
-
-string const ClientConfig::httpVersionKey = "CURLOPT_HTTP_VERSION";
-string const ClientConfig::bufferSizeKey = "CURLOPT_BUFFERSIZE";
-string const ClientConfig::connectTimeoutKey = "CONNECTTIMEOUT";
-string const ClientConfig::timeoutKey = "TIMEOUT";
-string const ClientConfig::lowSpeedLimitKey = "LOW_SPEED_LIMIT";
-string const ClientConfig::lowSpeedTimeKey = "LOW_SPEED_TIME";
-string const ClientConfig::tcpKeepAliveKey = "CURLOPT_TCP_KEEPALIVE";
-string const ClientConfig::tcpKeepIdleKey = "CURLOPT_TCP_KEEPIDLE";
-string const ClientConfig::tcpKeepIntvlKey = "CURLOPT_TCP_KEEPINTVL";
-
-string const ClientConfig::sslVerifyHostKey = "SSL_VERIFYHOST";
-string const ClientConfig::sslVerifyPeerKey = "SSL_VERIFYPEER";
-string const ClientConfig::caPathKey = "CAPATH";
-string const ClientConfig::caInfoKey = "CAINFO";
-string const ClientConfig::caInfoValKey = "CAINFO_VAL";
-
-string const ClientConfig::proxyKey = "CURLOPT_PROXY";
-string const ClientConfig::noProxyKey = "CURLOPT_NOPROXY";
-string const ClientConfig::httpProxyTunnelKey = "CURLOPT_HTTPPROXYTUNNEL";
-string const ClientConfig::proxySslVerifyHostKey = "PROXY_SSL_VERIFYHOST";
-string const ClientConfig::proxySslVerifyPeerKey = "PROXY_SSL_VERIFYPEER";
-string const ClientConfig::proxyCaPathKey = "PROXY_CAPATH";
-string const ClientConfig::proxyCaInfoKey = "PROXY_CAINFO";
-string const ClientConfig::proxyCaInfoValKey = "PROXY_CAINFO_VAL";
-
-string const ClientConfig::asyncProcLimitKey = "ASYNC_PROC_LIMIT";
-
 Client::Client(http::Method method, string const& url, string const& data, vector<string> const& headers,
                ClientConfig const& clientConfig)
         : _method(method), _url(url), _data(data), _headers(headers), _clientConfig(clientConfig) {
