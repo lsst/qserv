@@ -72,18 +72,26 @@ private:
             std::function<void(boost::system::error_code const& ec, std::size_t bytesTransferred)>;
 
     Response(std::shared_ptr<Server> const server, std::shared_ptr<boost::asio::ip::tcp::socket> const socket,
-             DoneCallback const& doneCallback);
+             DoneCallback const& doneCallback, std::size_t const maxResponseBufSize);
 
     std::string _headers() const;
-    void _write();
+    void _startTransmit();
+    void _finishTransmit(boost::system::error_code const& ec, std::size_t sent);
+    void _sendFileRecord(std::string::size_type pos, std::size_t size);
 
     std::shared_ptr<Server> const _server;
 
     std::shared_ptr<boost::asio::ip::tcp::socket> const _socket;
-    boost::asio::streambuf _responsebuf;
+    std::string _responseBuf;
     std::atomic_flag _transmissionStarted;
 
+    std::string _fileName;
+    std::ifstream _inFile;
+    std::size_t _bytesRemaining = 0;  // initialized with the file size
+    std::size_t _bytesSent = 0;       // including the header
+
     DoneCallback _doneCallback;
+    std::size_t const _maxResponseBufSize;
 };
 
 }  // namespace lsst::qserv::qhttp

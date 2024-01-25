@@ -380,6 +380,61 @@ struct QhttpFixture {
         return std::string(respbegin, respbegin + respbuf.size());
     }
 
+    void testStaticContent() {
+        //----- test invalid root directory
+
+        BOOST_CHECK_THROW(server->addStaticContent("/*", "/doesnotexist"), fs::filesystem_error);
+        BOOST_CHECK_THROW(server->addStaticContent("/*", dataDir + "index.html"), fs::filesystem_error);
+
+        //----- set up valid static content for subsequent tests
+
+        server->addStaticContent("/*", dataDir);
+        start();
+
+        CurlEasy curl(numRetries, retryDelayMs);
+
+        //----- test default index.html
+
+        curl.setup("GET", urlPrefix, "").perform().validate(qhttp::STATUS_OK, "text/html");
+        compareWithFile(curl.recdContent, dataDir + "index.html");
+
+        //----- test subdirectories and file typing by extension
+
+        curl.setup("GET", urlPrefix + "css/style.css", "").perform().validate(qhttp::STATUS_OK, "text/css");
+        compareWithFile(curl.recdContent, dataDir + "css/style.css");
+        curl.setup("GET", urlPrefix + "images/lsst.gif", "")
+                .perform()
+                .validate(qhttp::STATUS_OK, "image/gif");
+        compareWithFile(curl.recdContent, dataDir + "images/lsst.gif");
+        curl.setup("GET", urlPrefix + "images/lsst.jpg", "")
+                .perform()
+                .validate(qhttp::STATUS_OK, "image/jpeg");
+        compareWithFile(curl.recdContent, dataDir + "images/lsst.jpg");
+        curl.setup("GET", urlPrefix + "images/lsst.png", "")
+                .perform()
+                .validate(qhttp::STATUS_OK, "image/png");
+        compareWithFile(curl.recdContent, dataDir + "images/lsst.png");
+        curl.setup("GET", urlPrefix + "js/main.js", "")
+                .perform()
+                .validate(qhttp::STATUS_OK, "application/javascript");
+        compareWithFile(curl.recdContent, dataDir + "js/main.js");
+
+        //----- test redirect for directory w/o trailing "/"
+
+        char* redirect = nullptr;
+        curl.setup("GET", urlPrefix + "css", "").perform().validate(qhttp::STATUS_MOVED_PERM, "text/html");
+        BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_MOVED_PERM)) != std::string::npos);
+        BOOST_TEST(curl_easy_getinfo(curl.hcurl, CURLINFO_REDIRECT_URL, &redirect) == CURLE_OK);
+        BOOST_TEST(redirect == urlPrefix + "css/");
+
+        //----- test non-existent file
+
+        curl.setup("GET", urlPrefix + "doesNotExist", "")
+                .perform()
+                .validate(qhttp::STATUS_NOT_FOUND, "text/html");
+        BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_NOT_FOUND)) != std::string::npos);
+    }
+
     asio::io_service service;
     std::vector<std::thread> serviceThreads;
     qhttp::Server::Ptr server;
@@ -512,53 +567,17 @@ BOOST_FIXTURE_TEST_CASE(percent_decoding, QhttpFixture) {
     BOOST_TEST(curl.recdContent == "params[] query[key-with-==value-with-&,key2=value2]");
 }
 
-BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture) {
-    //----- test invalid root directory
+BOOST_FIXTURE_TEST_CASE(static_content, QhttpFixture) { testStaticContent(); }
 
-    BOOST_CHECK_THROW(server->addStaticContent("/*", "/doesnotexist"), fs::filesystem_error);
-    BOOST_CHECK_THROW(server->addStaticContent("/*", dataDir + "index.html"), fs::filesystem_error);
+BOOST_FIXTURE_TEST_CASE(static_content_small_buf, QhttpFixture) {
+    //----- set a tiny buffer size for sending responses to evaluate an ability
+    //      of the implementation to break the response into multiple messages.
 
-    //----- set up valid static content for subsequent tests
+    server->setMaxResponseBufSize(128);
 
-    server->addStaticContent("/*", dataDir);
-    start();
+    //----- after that repeat the static content reading test
 
-    CurlEasy curl(numRetries, retryDelayMs);
-
-    //----- test default index.html
-
-    curl.setup("GET", urlPrefix, "").perform().validate(qhttp::STATUS_OK, "text/html");
-    compareWithFile(curl.recdContent, dataDir + "index.html");
-
-    //----- test subdirectories and file typing by extension
-
-    curl.setup("GET", urlPrefix + "css/style.css", "").perform().validate(qhttp::STATUS_OK, "text/css");
-    compareWithFile(curl.recdContent, dataDir + "css/style.css");
-    curl.setup("GET", urlPrefix + "images/lsst.gif", "").perform().validate(qhttp::STATUS_OK, "image/gif");
-    compareWithFile(curl.recdContent, dataDir + "images/lsst.gif");
-    curl.setup("GET", urlPrefix + "images/lsst.jpg", "").perform().validate(qhttp::STATUS_OK, "image/jpeg");
-    compareWithFile(curl.recdContent, dataDir + "images/lsst.jpg");
-    curl.setup("GET", urlPrefix + "images/lsst.png", "").perform().validate(qhttp::STATUS_OK, "image/png");
-    compareWithFile(curl.recdContent, dataDir + "images/lsst.png");
-    curl.setup("GET", urlPrefix + "js/main.js", "")
-            .perform()
-            .validate(qhttp::STATUS_OK, "application/javascript");
-    compareWithFile(curl.recdContent, dataDir + "js/main.js");
-
-    //----- test redirect for directory w/o trailing "/"
-
-    char* redirect = nullptr;
-    curl.setup("GET", urlPrefix + "css", "").perform().validate(qhttp::STATUS_MOVED_PERM, "text/html");
-    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_MOVED_PERM)) != std::string::npos);
-    BOOST_TEST(curl_easy_getinfo(curl.hcurl, CURLINFO_REDIRECT_URL, &redirect) == CURLE_OK);
-    BOOST_TEST(redirect == urlPrefix + "css/");
-
-    //----- test non-existent file
-
-    curl.setup("GET", urlPrefix + "doesNotExist", "")
-            .perform()
-            .validate(qhttp::STATUS_NOT_FOUND, "text/html");
-    BOOST_TEST(curl.recdContent.find(std::to_string(qhttp::STATUS_NOT_FOUND)) != std::string::npos);
+    testStaticContent();
 }
 
 BOOST_FIXTURE_TEST_CASE(relative_url_containment, QhttpFixture) {

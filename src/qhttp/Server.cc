@@ -24,6 +24,7 @@
 #include "qhttp/Server.h"
 
 // System headers
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -50,6 +51,7 @@ namespace chrono = std::chrono;
 using namespace std::literals;
 
 #define DEFAULT_REQUEST_TIMEOUT 5min
+#define DEFAULT_MAX_RESPONSE_BUF_SIZE 2097152
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
@@ -57,15 +59,18 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 
 namespace lsst::qserv::qhttp {
 
-Server::Ptr Server::create(asio::io_service& io_service, unsigned short port, int backlog) {
-    return std::shared_ptr<Server>(new Server(io_service, port, backlog));
+Server::Ptr Server::create(asio::io_service& io_service, unsigned short port, int backlog,
+                           std::size_t const maxResponseBufSize) {
+    return std::shared_ptr<Server>(new Server(io_service, port, backlog, maxResponseBufSize));
 }
 
 unsigned short Server::getPort() { return _acceptor.local_endpoint().port(); }
 
-Server::Server(asio::io_service& io_service, unsigned short port, int backlog)
+Server::Server(asio::io_service& io_service, unsigned short port, int backlog,
+               std::size_t const maxResponseBufSize)
         : _io_service(io_service),
           _backlog(backlog),
+          _maxResponseBufSize(std::max(maxResponseBufSize, (std::size_t)DEFAULT_MAX_RESPONSE_BUF_SIZE)),
           _acceptorEndpoint(ip::tcp::v4(), port),
           _acceptor(io_service),
           _requestTimeout(DEFAULT_REQUEST_TIMEOUT) {}
@@ -95,6 +100,10 @@ AjaxEndpoint::Ptr Server::addAjaxEndpoint(const std::string& pattern) {
 }
 
 void Server::setRequestTimeout(chrono::milliseconds const& timeout) { _requestTimeout = timeout; }
+
+void Server::setMaxResponseBufSize(std::size_t const maxResponseBufSize) {
+    _maxResponseBufSize = std::max(maxResponseBufSize, (std::size_t)DEFAULT_MAX_RESPONSE_BUF_SIZE);
+}
 
 void Server::_accept() {
     auto socket = std::make_shared<ip::tcp::socket>(_io_service);
@@ -206,7 +215,8 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
                     socket->lowest_layer().shutdown(ip::tcp::socket::shutdown_both, ignore);
                     socket->lowest_layer().close(ignore);
                 }
-            }));
+            },
+            _maxResponseBufSize));
 
     // Create Request object for this request, and initiate header read.
 

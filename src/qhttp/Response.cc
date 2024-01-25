@@ -24,6 +24,8 @@
 #include "qhttp/Response.h"
 
 // System headers
+#include <algorithm>
+#include <errno.h>
 #include <map>
 #include <memory>
 #include <string>
@@ -35,6 +37,7 @@
 #include "boost/asio.hpp"
 #include "boost/filesystem.hpp"
 #include "boost/filesystem/fstream.hpp"
+#include "boost/system/error_code.hpp"
 
 // Local headers
 #include "lsst/log/Log.h"
@@ -120,8 +123,11 @@ std::unordered_map<std::string, const std::string> contentTypesByExtension = {
 namespace lsst::qserv::qhttp {
 
 Response::Response(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp::socket> const socket,
-                   DoneCallback const& doneCallback)
-        : _server(std::move(server)), _socket(std::move(socket)), _doneCallback(doneCallback) {
+                   DoneCallback const& doneCallback, std::size_t const maxResponseBufSize)
+        : _server(std::move(server)),
+          _socket(std::move(socket)),
+          _doneCallback(doneCallback),
+          _maxResponseBufSize(maxResponseBufSize) {
     _transmissionStarted.clear();
 }
 
@@ -142,67 +148,115 @@ void Response::send(std::string const& content, std::string const& contentType) 
     headers["Content-Type"] = contentType;
     headers["Content-Length"] = std::to_string(content.length());
 
-    std::ostream responseStream(&_responsebuf);
-    responseStream << _headers() << "\r\n" << content;
-    _write();
+    _responseBuf = _headers() + "\r\n" + content;
+    _startTransmit();
+    asio::async_write(*_socket, asio::buffer(_responseBuf.data(), _responseBuf.size()),
+                      [self = shared_from_this()](boost::system::error_code const& ec, std::size_t sent) {
+                          self->_finishTransmit(ec, sent);
+                      });
 }
 
 void Response::sendFile(fs::path const& path) {
+    _bytesRemaining = fs::file_size(path);
     auto ct = contentTypesByExtension.find(path.extension().string());
     headers["Content-Type"] = (ct != contentTypesByExtension.end()) ? ct->second : "text/plain";
-    headers["Content-Length"] = std::to_string(fs::file_size(path));
+    headers["Content-Length"] = std::to_string(_bytesRemaining);
 
-    // Try to open the file for streaming input. Throw if we hit a snag; exception expected to be caught by
+    // Try to open the file. Throw if we hit a snag; exception expected to be caught by
     // top-level handler in Server::_dispatchRequest().
-    fs::ifstream responseFile(path);
-    if (!responseFile) {
-        LOGLS_ERROR(_log, logger(_server) << logger(_socket) << "open failed for " << path << ": "
+    _fileName = path.string();
+    _inFile.open(_fileName, std::ios::binary);
+    if (!_inFile.is_open()) {
+        LOGLS_ERROR(_log, logger(_server) << logger(_socket) << "open failed for " << _fileName << ": "
                                           << std::strerror(errno));
         throw(boost::system::system_error(errno, boost::system::generic_category()));
     }
 
-    std::ostream responseStream(&_responsebuf);
-    responseStream << _headers() << "\r\n" << responseFile.rdbuf();
-    _write();
+    // Make the initial allocation of the response buffer. For smaller files
+    // the buffer should be large enough to accomodate both the header and
+    // the file payload. And that would be the only record sent to a requestor.
+    // For the large files the buffer size will be set to the upper limit.
+    // In the last case a series of records of the same (but perhaps the very
+    // last one) size will be transmitted. The very last record may have
+    // the smaller size.
+    _responseBuf = _headers() + "\r\n";
+    std::size_t const hdrSize = _responseBuf.size();
+    if (hdrSize >= _maxResponseBufSize) {
+        // Disregard the suggested buffer size if it's too small to accomodate the header.
+        _responseBuf.resize(hdrSize);
+    } else {
+        _responseBuf.resize(std::min(hdrSize + _bytesRemaining, _maxResponseBufSize));
+    }
+
+    // Start reading the file payload into the buffer and transmitting a series of records.
+    _startTransmit();
+    std::string::size_type const pos = hdrSize;
+    std::size_t const size = std::min(_bytesRemaining, _responseBuf.size() - pos);
+    _sendFileRecord(pos, size);
 }
 
 std::string Response::_headers() const {
-    std::ostringstream headerst;
-    headerst << "HTTP/1.1 ";
+    std::ostringstream headerStream;
+    headerStream << "HTTP/1.1 ";
 
-    auto r = responseStringsByCode.find(status);
-    if (r == responseStringsByCode.end()) r = responseStringsByCode.find(STATUS_INTERNAL_SERVER_ERR);
-    headerst << r->first << " " << r->second;
+    auto resp = responseStringsByCode.find(status);
+    if (resp == responseStringsByCode.end()) resp = responseStringsByCode.find(STATUS_INTERNAL_SERVER_ERR);
+    headerStream << resp->first << " " << resp->second;
 
-    auto ilength = headers.find("Content-Length");
-    std::size_t length = (ilength == headers.end()) ? 0 : std::stoull(ilength->second);
-    LOGLS_INFO(_log, logger(_server) << logger(_socket) << headerst.str() << " + " << length << " bytes");
+    auto itr = headers.find("Content-Length");
+    std::size_t const length = (itr == headers.end()) ? 0 : std::stoull(itr->second);
+    LOGLS_INFO(_log, logger(_server) << logger(_socket) << headerStream.str() << " + " << length << " bytes");
 
-    headerst << "\r\n";
-    for (auto const& h : headers) {
-        headerst << h.first << ": " << h.second << "\r\n";
+    headerStream << "\r\n";
+    for (auto const& [key, val] : headers) {
+        headerStream << key << ": " << val << "\r\n";
     }
-
-    return headerst.str();
+    return headerStream.str();
 }
 
-void Response::_write() {
+void Response::_startTransmit() {
     if (_transmissionStarted.test_and_set()) {
         LOGLS_ERROR(_log, logger(_server)
                                   << logger(_socket) << "handler logic error: multiple responses sent");
+    }
+}
+
+void Response::_finishTransmit(boost::system::error_code const& ec, std::size_t sent) {
+    if (ec) {
+        LOGLS_ERROR(_log, logger(_server) << logger(_socket) << "write failed: " << ec.message());
+    }
+    _responseBuf.clear();
+    _responseBuf.shrink_to_fit();
+    if (_inFile.is_open()) _inFile.close();
+    if (_doneCallback) _doneCallback(ec, sent);
+}
+
+void Response::_sendFileRecord(std::string::size_type pos, std::size_t size) {
+    if (!_inFile.read(&_responseBuf[pos], size)) {
+        LOGLS_ERROR(_log, logger(_server) << logger(_socket) << "read failed for " << _fileName << ": "
+                                          << std::strerror(errno));
+        auto const ec = boost::system::system_error(errno, boost::system::generic_category());
+        _finishTransmit(ec.code(), _bytesSent);
         return;
     }
-
-    auto self = shared_from_this();
-    asio::async_write(*_socket, _responsebuf, [self](boost::system::error_code const& ec, std::size_t sent) {
-        if (ec) {
-            LOGLS_ERROR(_log, logger(self->_server)
-                                      << logger(self->_socket) << "write failed: " << ec.message());
-        }
-        if (self->_doneCallback) {
-            self->_doneCallback(ec, sent);
-        }
-    });
+    _bytesRemaining -= size;
+    asio::async_write(
+            *_socket, asio::buffer(_responseBuf.data(), pos + size),
+            [self = shared_from_this()](boost::system::error_code const& ec, std::size_t sent) {
+                if (ec) {
+                    self->_finishTransmit(ec, self->_bytesSent);
+                } else {
+                    self->_bytesSent += sent;
+                    if (self->_bytesRemaining == 0) {
+                        auto const ec = boost::system::errc::make_error_code(boost::system::errc::success);
+                        self->_finishTransmit(ec, self->_bytesSent);
+                    } else {
+                        std::string::size_type const pos = 0;
+                        std::size_t const size = std::min(self->_bytesRemaining, self->_maxResponseBufSize);
+                        self->_sendFileRecord(pos, size);
+                    }
+                }
+            });
 }
 
 }  // namespace lsst::qserv::qhttp

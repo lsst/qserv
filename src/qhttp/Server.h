@@ -75,7 +75,8 @@ public:
     //      maximum length of the queue of pending connections.
 
     static Ptr create(boost::asio::io_service& io_service, unsigned short port,
-                      int backlog = boost::asio::socket_base::max_listen_connections);
+                      int backlog = boost::asio::socket_base::max_listen_connections,
+                      std::size_t const _maxResponseBufSize = 0);
     unsigned short getPort();
 
     ~Server();
@@ -99,6 +100,13 @@ public:
 
     void setRequestTimeout(std::chrono::milliseconds const& timeout);
 
+    //----- setMaxResponseBufSize() allows the user to override the default (or explicitly specified in
+    //      the class's constructor) size of the response buffer. There are no restricton on when the method
+    //      is called. The change will affect next requests processed after making the call.
+    //      Passing 0 as a value of the parameter will reset the buffer size to the implementation default.
+
+    void setMaxResponseBufSize(std::size_t const maxResponseBufSize);
+
     //----- start() opens the server listening socket and installs the head of the asynchronous event
     //      handler chain onto the asio::io_service provided when the Server instance was constructed.
     //      Server execution may be halted either calling stop(), or by calling asio::io_service::stop()
@@ -117,7 +125,8 @@ private:
     Server(Server const&) = delete;
     Server& operator=(Server const&) = delete;
 
-    Server(boost::asio::io_service& io_service, unsigned short port, int backlog);
+    Server(boost::asio::io_service& io_service, unsigned short port, int backlog,
+           std::size_t const _maxResponseBufSize);
 
     void _accept();
 
@@ -134,6 +143,7 @@ private:
     boost::asio::io_service& _io_service;
 
     int const _backlog;
+    std::size_t _maxResponseBufSize;
     boost::asio::ip::tcp::endpoint _acceptorEndpoint;
     boost::asio::ip::tcp::acceptor _acceptor;
 
