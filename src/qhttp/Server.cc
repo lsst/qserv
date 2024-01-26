@@ -245,10 +245,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
                 }
 
                 if (request->version == "HTTP/1.1") {
-                    // Temporary disable this option due to a bug in the implementation
-                    // causing disconnect if running the service within the Docker environment.
-                    // See: DM-27396
-                    //*reuseSocket = true;
+                    *reuseSocket = true;
                 }
 
                 if (request->header.count("Content-Length") > 0) {

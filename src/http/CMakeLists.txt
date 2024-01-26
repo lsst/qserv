@@ -3,6 +3,9 @@ add_library(http SHARED)
 target_sources(http PRIVATE
     AsyncReq.cc
     Client.cc
+    ClientConnPool.cc
+    ClientConfig.cc
+    ClientConnPool.cc
     Exceptions.cc
     MetaModule.cc
     Method.cc
