@@ -75,7 +75,12 @@ private:
              DoneCallback const& doneCallback, std::size_t const maxResponseBufSize);
 
     std::string _headers() const;
-    void _startTransmit();
+
+    //----- Mark a start of transmission. Return 'false' if multiple transmission attempts
+    //      were detected. Duplicate transmission requests will be ignored. An error message
+    //      may be logged. The ongoing transmission won't be affected.
+
+    bool _startTransmit();
     void _finishTransmit(boost::system::error_code const& ec, std::size_t sent);
     void _sendFileRecord(std::string::size_type pos, std::size_t size);
 

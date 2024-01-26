@@ -145,11 +145,12 @@ void Response::sendStatus(Status status) {
 }
 
 void Response::send(std::string const& content, std::string const& contentType) {
+    if (!_startTransmit()) return;
+
     headers["Content-Type"] = contentType;
     headers["Content-Length"] = std::to_string(content.length());
 
     _responseBuf = _headers() + "\r\n" + content;
-    _startTransmit();
     asio::async_write(*_socket, asio::buffer(_responseBuf.data(), _responseBuf.size()),
                       [self = shared_from_this()](boost::system::error_code const& ec, std::size_t sent) {
                           self->_finishTransmit(ec, sent);
@@ -157,20 +158,23 @@ void Response::send(std::string const& content, std::string const& contentType) 
 }
 
 void Response::sendFile(fs::path const& path) {
+    // Try to open the file. Throw if we hit a snag; exception expected to be caught by
+    // top-level handler in Server::_dispatchRequest().
+    _inFile.open(path.string(), std::ios::binary);
+    if (!_inFile.is_open()) {
+        LOGLS_ERROR(_log, logger(_server) << logger(_socket) << "open failed for " << path << ": "
+                                          << std::strerror(errno));
+        throw(boost::system::system_error(errno, boost::system::generic_category()));
+    }
+    if (!_startTransmit()) {
+        _inFile.close();
+        return;
+    }
+    _fileName = path.string();
     _bytesRemaining = fs::file_size(path);
     auto ct = contentTypesByExtension.find(path.extension().string());
     headers["Content-Type"] = (ct != contentTypesByExtension.end()) ? ct->second : "text/plain";
     headers["Content-Length"] = std::to_string(_bytesRemaining);
-
-    // Try to open the file. Throw if we hit a snag; exception expected to be caught by
-    // top-level handler in Server::_dispatchRequest().
-    _fileName = path.string();
-    _inFile.open(_fileName, std::ios::binary);
-    if (!_inFile.is_open()) {
-        LOGLS_ERROR(_log, logger(_server) << logger(_socket) << "open failed for " << _fileName << ": "
-                                          << std::strerror(errno));
-        throw(boost::system::system_error(errno, boost::system::generic_category()));
-    }
 
     // Make the initial allocation of the response buffer. For smaller files
     // the buffer should be large enough to accomodate both the header and
@@ -189,7 +193,6 @@ void Response::sendFile(fs::path const& path) {
     }
 
     // Start reading the file payload into the buffer and transmitting a series of records.
-    _startTransmit();
     std::string::size_type const pos = hdrSize;
     std::size_t const size = std::min(_bytesRemaining, _responseBuf.size() - pos);
     _sendFileRecord(pos, size);
@@ -214,11 +217,13 @@ std::string Response::_headers() const {
     return headerStream.str();
 }
 
-void Response::_startTransmit() {
-    if (_transmissionStarted.test_and_set()) {
+bool Response::_startTransmit() {
+    const bool multipleResponses = _transmissionStarted.test_and_set();
+    if (multipleResponses) {
         LOGLS_ERROR(_log, logger(_server)
                                   << logger(_socket) << "handler logic error: multiple responses sent");
     }
+    return !multipleResponses;
 }
 
 void Response::_finishTransmit(boost::system::error_code const& ec, std::size_t sent) {
