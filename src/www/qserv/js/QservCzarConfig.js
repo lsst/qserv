@@ -16,7 +16,7 @@ function(CSSLoader,
     class QservCzarConfig extends FwkApplication {
 
         static update_ival_sec = 10;    /// The default update interval for the page.
-        static czar_name = "default";   /// The name of Czar.
+        static czar_name = "proxy";     /// The name of Czar.
 
         constructor(name) {
             super(name);

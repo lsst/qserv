@@ -126,15 +126,15 @@ namespace lsst::qserv::czar {
 
 Czar::Ptr Czar::_czar;
 
-Czar::Ptr Czar::createCzar(string const& configPath, string const& czarName) {
-    _czar.reset(new Czar(configPath, czarName));
+Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName) {
+    _czar.reset(new Czar(configFilePath, czarName));
     return _czar;
 }
 
 // Constructors
-Czar::Czar(string const& configPath, string const& czarName)
+Czar::Czar(string const& configFilePath, string const& czarName)
         : _czarName(czarName),
-          _czarConfig(cconfig::CzarConfig::create(configPath)),
+          _czarConfig(cconfig::CzarConfig::create(configFilePath, czarName)),
           _idCounter(),
           _uqFactory(),
           _clientToQuery(),

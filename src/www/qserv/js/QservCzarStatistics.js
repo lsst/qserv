@@ -15,7 +15,7 @@ function(CSSLoader,
 
     class QservCzarStatistics extends FwkApplication {
 
-      static czar_name = "default";   /// The name of Czar.
+      static czar_name = "proxy";   /// The name of Czar.
 
         constructor(name) {
             super(name);

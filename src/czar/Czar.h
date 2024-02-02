@@ -97,11 +97,11 @@ public:
     /**
      * Make new instance.
      *
-     * @param configPath:   Path to the configuration file.
-     * @param czarName:     Name if this instance, must be unique. If empty name
-     *                      is given then random name will be constructed.
+     * @param configFilePath: Path to the configuration file.
+     * @param czarName:       Name if this instance, must be unique. If empty name
+     *                        is given then random name will be constructed.
      */
-    static Ptr createCzar(std::string const& configPath, std::string const& czarName);
+    static Ptr createCzar(std::string const& configFilePath, std::string const& czarName);
 
     /**
      * During startup, this may return nullptr.
@@ -123,7 +123,7 @@ public:
 
 private:
     /// Private constructor for singleton.
-    Czar(std::string const& configPath, std::string const& czarName);
+    Czar(std::string const& configFilePath, std::string const& czarName);
 
     /// Clean query maps from expired entries, _mutex must be locked
     void _cleanupQueryHistoryLocked();

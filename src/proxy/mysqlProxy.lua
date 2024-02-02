@@ -288,7 +288,7 @@ function queryProcessing()
 
         if (not self.initialized) then
             -- use proxy.connection.client.dst.name as czar name
-            local czarName = proxy.connection.client.dst.name
+            local czarName = "proxy";
             local ok, msg = pcall(czarProxy.initCzar, czarName)
             czarProxy.log("mysql-proxy", "INFO", "Initializing czar using name '" .. czarName .. "'")
             if (not ok) then

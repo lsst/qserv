@@ -77,8 +77,8 @@ void killQuery(std::string const& query, std::string const& clientId);
 /**
  *  Send message to logging system. level is a string like "DEBUG".
  */
-void log(std::string const& loggername, std::string const& level, std::string const& filename,
-         std::string const& funcname, unsigned lineno, std::string const& message);
+void log(std::string const& loggerName, std::string const& level, std::string const& fileName,
+         std::string const& funcName, unsigned lineNo, std::string const& message);
 
 }  // namespace lsst::qserv::proxy
 

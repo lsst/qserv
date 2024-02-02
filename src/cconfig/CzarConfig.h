@@ -59,9 +59,10 @@ public:
      *   can be called many times. A new instance would be created each time and
      *   stored within the class.
      * @param configFileName - path to worker INI configuration file
+     * @param czarId - the unique identifier of Czar.
      * @return the shared pointer to the configuration object
      */
-    static std::shared_ptr<CzarConfig> create(std::string const& configFileName);
+    static std::shared_ptr<CzarConfig> create(std::string const& configFileName, std::string const& czarId);
 
     /**
      * Get a pointer to an instance that was created by the last call to
@@ -226,10 +227,8 @@ public:
     /// @param port The actual port number.
     void setReplicationHttpPort(uint16_t port);
 
-    /// @note This is the temporary identity mechanism designed for the single Czar
-    ///   architecture of Qserv and the implementation based on using the MySQL proxy.
     /// @return The unique identifier of Czar.
-    std::string id();
+    std::string const& id() const { return _czarId; }
 
     /// @return the JSON representation of the configuration parameters.
     /// @note The object has two collections of the parameters: 'input' - for
@@ -242,13 +241,16 @@ public:
     nlohmann::json toJson() const { return _jsonConfig; }
 
 private:
-    CzarConfig(util::ConfigStore const& ConfigStore);
+    CzarConfig(util::ConfigStore const& ConfigStore, std::string const& czarId);
 
     /// This mutex is needed for managing a state of the static member _instance.
     static std::mutex _mtxOnInstance;
 
     /// The configuratoon object created by the last call to the method 'create()'.
     static std::shared_ptr<CzarConfig> _instance;
+
+    /// The unique identifier of the Czar instance
+    std::string const _czarId;
 
     nlohmann::json _jsonConfig;  ///< JSON-ified configuration
 

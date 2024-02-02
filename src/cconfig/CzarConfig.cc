@@ -63,10 +63,10 @@ std::mutex CzarConfig::_mtxOnInstance;
 
 std::shared_ptr<CzarConfig> CzarConfig::_instance;
 
-std::shared_ptr<CzarConfig> CzarConfig::create(std::string const& configFileName) {
+std::shared_ptr<CzarConfig> CzarConfig::create(std::string const& configFileName, std::string const& czarId) {
     std::lock_guard<std::mutex> const lock(_mtxOnInstance);
     if (_instance == nullptr) {
-        _instance = std::shared_ptr<CzarConfig>(new CzarConfig(util::ConfigStore(configFileName)));
+        _instance = std::shared_ptr<CzarConfig>(new CzarConfig(util::ConfigStore(configFileName), czarId));
     }
     return _instance;
 }
@@ -79,8 +79,9 @@ std::shared_ptr<CzarConfig> CzarConfig::instance() {
     return _instance;
 }
 
-CzarConfig::CzarConfig(util::ConfigStore const& configStore)
-        : _mySqlResultConfig(configStore.get("resultdb.user", "qsmaster"),
+CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& czarId)
+        : _czarId(czarId),
+          _mySqlResultConfig(configStore.get("resultdb.user", "qsmaster"),
                              configStore.getRequired("resultdb.passwd"),
                              configStore.getRequired("resultdb.host"), configStore.getInt("resultdb.port"),
                              configStore.getRequired("resultdb.unix_socket"),
@@ -221,8 +222,6 @@ void CzarConfig::setReplicationHttpPort(uint16_t port) {
     // Update the relevant section of the JSON-ified configuration.
     _jsonConfig["actual"]["replication"]["http_port"] = std::to_string(_replicationHttpPort);
 }
-
-std::string CzarConfig::id() { return "default"; }
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {
     out << czarConfig._jsonConfig.dump();

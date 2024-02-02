@@ -38,75 +38,61 @@
 // Qserv headers
 #include "czar/Czar.h"
 
+using namespace std;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.proxy.czarProxy");
 
-void initMDC() { LOG_MDC("LWP", std::to_string(lsst::log::lwpID())); }
+void initMDC() { LOG_MDC("LWP", to_string(lsst::log::lwpID())); }
 
-std::shared_ptr<lsst::qserv::czar::Czar> _czar;
+shared_ptr<lsst::qserv::czar::Czar> _czar;
 
 // mutex is used for czar initialization only which could potentially
 // happen simultaneously from several threads.
-std::mutex _czarMutex;
+mutex _czarMutex;
 
 }  // namespace
 
 namespace lsst::qserv::proxy {
 
-void initCzar(std::string const& czarName) {
-    std::lock_guard<std::mutex> lock(_czarMutex);
+void initCzar(string const& czarName) {
+    lock_guard<mutex> lock(_czarMutex);
 
-    // ignore repeated calls (they are hard to filter on mysql-proxy side)
-    if (czar::Czar::getCzar() != nullptr) {
-        return;
-    }
+    // Ignore repeated calls (they are hard to filter on mysql-proxy side)
+    if (czar::Czar::getCzar() != nullptr) return;
 
-    // add some MDC data in every thread
+    // Add some MDC data in every thread
     LOG_MDC_INIT(initMDC);
 
-    // Find QSERV_CONFIG envvar value
-    auto qConfig = std::getenv("QSERV_CONFIG");
-    if (not qConfig or *qConfig == '\0') {
-        throw std::runtime_error("QSERV_CONFIG is not defined");
+    // Get a location of the configuration file
+    char const* configFilePath = getenv("QSERV_CONFIG");
+    if ((configFilePath == nullptr) || (configFilePath[0] == '\0')) {
+        throw runtime_error(string(__func__) + " environment variable QSERV_CONFIG is not defined");
     }
-
-    // get czar name from parameter, QSERV_CZAR_NAME can override
-    std::string name;
-    auto qName = std::getenv("QSERV_CZAR_NAME");
-    if (qName and *qName != '\0') {
-        name = qName;
-    } else {
-        name = czarName;
-        if (name.empty()) {
-            // if still unknown generate something ~unique
-            name = "czar." + std::to_string(getpid());
-        }
-    }
-
-    _czar = czar::Czar::createCzar(qConfig, name);
+    _czar = czar::Czar::createCzar(configFilePath, czarName);
 }
 
-czar::SubmitResult submitQuery(std::string const& query, std::map<std::string, std::string> const& hints) {
-    if (not ::_czar) {
-        throw std::runtime_error("czarProxy/submitQuery(): czar instance not initialized");
+czar::SubmitResult submitQuery(string const& query, map<string, string> const& hints) {
+    if (::_czar == nullptr) {
+        throw runtime_error(string(__func__) + ": czar instance not initialized");
     }
     return ::_czar->submitQuery(query, hints);
 }
 
-void killQuery(std::string const& query, std::string const& clientId) {
-    if (not ::_czar) {
-        throw std::runtime_error("czarProxy/killQuery(): czar instance not initialized");
+void killQuery(string const& query, string const& clientId) {
+    if (::_czar == nullptr) {
+        throw runtime_error(string(__func__) + ": czar instance not initialized");
     }
     ::_czar->killQuery(query, clientId);
 }
 
-void log(std::string const& loggername, std::string const& level, std::string const& filename,
-         std::string const& funcname, unsigned int lineno, std::string const& message) {
-    auto logger = lsst::log::Log::getLogger(loggername);
+void log(string const& loggerName, string const& level, string const& fileName, string const& funcName,
+         unsigned int lineNo, string const& message) {
+    auto logger = lsst::log::Log::getLogger(loggerName);
     auto levelPtr = log4cxx::Level::toLevel(level);
     if (logger.isEnabledFor(levelPtr->toInt())) {
-        logger.logMsg(levelPtr, log4cxx::spi::LocationInfo(filename.c_str(), funcname.c_str(), lineno),
+        logger.logMsg(levelPtr, log4cxx::spi::LocationInfo(fileName.data(), funcName.data(), lineNo),
                       message);
     }
 }
