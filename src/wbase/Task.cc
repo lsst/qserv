@@ -465,6 +465,7 @@ memman::MemMan::Status Task::getMemHandleStatus() {
 nlohmann::json Task::getJson() const {
     // It would be nice to have the _queryString in this, but that could make the results very large.
     nlohmann::json js;
+    js["czarId"] = _czarId;
     js["queryId"] = _qId;
     js["templateId"] = getTemplateId();
     js["jobId"] = _jId;
