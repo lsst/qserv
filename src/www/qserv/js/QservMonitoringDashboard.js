@@ -163,8 +163,8 @@ function(CSSLoader,
                     new QservCzarMySQLQueries('MySQL Queries'),
                     new QservCzarStatistics('Statistics'),
                     new QservCzarQueryProgress('Query Progress'),
-                    new QservCss('CSS'),
-                    new QservCzarConfig('Config')
+                    new QservCzarConfig('Config'),
+                    new QservCss('CSS')
                 ]
             },
             {   name: 'Workers',

@@ -15,8 +15,6 @@ function(CSSLoader,
 
     class QservCzarStatistics extends FwkApplication {
 
-      static czar_name = "proxy";   /// The name of Czar.
-
         constructor(name) {
             super(name);
             // The previous snapshot of the stats. It's used for  reporting "deltas"
@@ -72,6 +70,11 @@ function(CSSLoader,
 <div class="row" id="fwk-qserv-czar-stats-controls">
   <div class="col">
     <div class="form-row">
+      <div class="form-group col-md-1">
+        <label for="czar">Czar:</label>
+        <select id="czar" class="form-control form-control-selector">
+        </select>
+      </div>
       <div class="form-group col-md-1">
         ${Common.html_update_ival('update-interval', 2)}
       </div>
@@ -190,6 +193,20 @@ function(CSSLoader,
         }
         _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
         _set_update_interval_sec(val) { this._form_control('select', 'update-interval').val(val); }
+        _czar() { return this._form_control('select', 'czar').val(); }
+        _set_czar(val) { this._form_control('select', 'czar').val(val); }
+        _set_czars(czars) {
+            const prev_czar = this._czar();
+            let html = '';
+            for (let i in czars) {
+                const czar = czars[i];
+                const selected = (_.isEmpty(prev_czar) && (i === 0)) ||
+                                 (!_.isEmpty(prev_czar) && (prev_czar === czar));
+                html += `
+ <option value="${czar}" ${selected ? "selected" : ""}>${czar}</option>`;
+            }
+            this._form_control('select', 'czar').html(html);
+        }
         _table(name) {
             if (_.isUndefined(this._table_obj)) this._table_obj = {};
             if (!_.has(this._table_obj, name)) {
@@ -230,13 +247,40 @@ function(CSSLoader,
             }
             this._counters_obj[table][counter_id].text(val);
         }
-        _load() {
-            if (this._loading === undefined) this._loading = false;
-            if (this._loading) return;
-            this._loading = true;
-            this._status().addClass('updating');
+        _load(czar = undefined) {
+          if (this._loading === undefined) this._loading = false;
+          if (this._loading) return;
+          this._loading = true;
+          this._table().children('caption').addClass('updating');
+          Fwk.web_service_GET(
+              "/replication/config",
+              {   timeout_sec: 2,
+                  version: Common.RestAPIVersion},
+              (data) => {
+                  if (data.success) {
+                      let czars = [];
+                      for (let i in data.config.czars) {
+                          czars.push(data.config.czars[i].name);
+                      }
+                      this._set_czars(czars);
+                      if (!_.isUndefined(czar)) this._set_czar(czar);
+                      this._load_stats();
+                  } else {
+                      console.log('request failed', this.fwk_app_name, data.error);
+                      this._status().html('<span style="color:maroon">' + data.error + '</span>');
+                  }
+              },
+              (msg) => {
+                  console.log('request failed', this.fwk_app_name, msg);
+                  this._status().html('<span style="color:maroon">No Response</span>');
+                  this._status().removeClass('updating');
+                  this._loading = false;
+              }
+          );
+        }
+        _load_stats() {
             Fwk.web_service_GET(
-                "/replication/qserv/master/status/" + QservCzarStatistics.czar_name,
+                "/replication/qserv/master/status/" + this._czar(),
                 {   timeout_sec: 2,
                     version: Common.RestAPIVersion},
                 (data) => {
