@@ -121,6 +121,10 @@ public:
     ///         interactive queries to stress test the czar.
     bool getQueryDistributionTestVer() { return _queryDistributionTestVer; }
 
+    /// @param queryId The unique identifier of the previously submitted user query
+    /// @return The reconstructed info for the query
+    SubmitResult getQueryInfo(QueryId queryId) const;
+
 private:
     /// Private constructor for singleton.
     Czar(std::string const& configFilePath, std::string const& czarName);

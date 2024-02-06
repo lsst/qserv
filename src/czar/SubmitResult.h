@@ -25,9 +25,8 @@
 // System headers
 #include <string>
 
-// Third-party headers
-
 // Qserv headers
+#include "global/intTypes.h"
 
 namespace lsst::qserv::czar {
 
@@ -35,15 +34,23 @@ namespace lsst::qserv::czar {
 
 /**
  *  @ingroup czar
- *
- *  @brief Structure used for returning result from submitQuery.
+ *  @brief Structure used for returning result from Czar::submitQuery and from subsequent
+ *   calls to Czar::getQueryInfo
  */
-
 struct SubmitResult {
+    // Populated by methods Czar::submitQuery and Czar::getQueryInfo
     std::string errorMessage;  ///< empty if there is no error
     std::string resultTable;   ///< Result table name
     std::string messageTable;  ///< Message table name
     std::string resultQuery;   ///< The query to execute to get results
+    QueryId queryId = 0;       ///< The unique identifier of the user query
+
+    // Populated by Czar::getQueryInfo only for queries which are still in flight
+    std::string status;       ///< 'EXECUTING','COMPLETED','FAILED','ABORTED'
+    int totalChunks = 0;      ///< The total number of chunks required by the query
+    int completedChunks = 0;  ///< The number of chubnks that have been processed so far
+    int queryBeginEpoch = 0;  ///< Seconds since UNIX Epoch
+    int lastUpdateEpoch = 0;  ///< Seconds since UNIX Epoch
 };
 
 }  // namespace lsst::qserv::czar

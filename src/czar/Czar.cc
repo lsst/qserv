@@ -289,6 +289,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     }
 
     auto resultQuery = uq->getResultQuery();
+    result.queryId = uq->getQueryId();
 
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
@@ -536,6 +537,86 @@ void Czar::removeOldResultTables() {
     });
     t.detach();
     _oldTableRemovalThread = std::move(t);
+}
+
+SubmitResult Czar::getQueryInfo(QueryId queryId) const {
+    string const context = "Czar::" + string(__func__) + " ";
+    auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlQmetaConfig());
+    string sql = "SELECT status,messageTable,resultQuery FROM QInfo WHERE queryId=" + to_string(queryId);
+    sql::SqlResults results;
+    sql::SqlErrorObject err;
+    if (!sqlConn->runQuery(sql, results, err)) {
+        string const msg = context +
+                           "Query to find info for the user query failed, err=" + err.printErrMsg() +
+                           ", sql=" + sql;
+        throw runtime_error(msg);
+    }
+    vector<string> colStatus;
+    vector<string> colMessageTable;
+    vector<string> colResultQuery;
+    if (!results.extractFirst3Columns(colStatus, colMessageTable, colResultQuery, err)) {
+        string const msg = context + "Failed to extract info for the user query, err=" + err.printErrMsg() +
+                           ", sql=" + sql;
+        throw runtime_error(msg);
+    }
+    if (colStatus.size() != 1) {
+        string const msg = context + "Unknown user query, err=" + err.printErrMsg() + ", sql=" + sql;
+        throw runtime_error(msg);
+    }
+
+    SubmitResult result;
+    if (colStatus[0] == "FAILED") {
+        result.errorMessage = "The query failed";
+    } else if (colStatus[0] == "FAILED") {
+        result.errorMessage = "The query was aborted";
+    }
+    result.resultTable = "result_" + to_string(queryId);
+    result.messageTable = colMessageTable[0];
+    result.resultQuery = colResultQuery[0];
+    result.queryId = queryId;
+    result.status = colStatus[0];
+
+    // Pull ongoing query processing stats if this information is still available.
+    // This is a transient information located in the temporary table.
+    // It's available for the duration of the query processing.
+    sql = "SELECT totalChunks,completedChunks,UNIX_TIMESTAMP(queryBegin),UNIX_TIMESTAMP(lastUpdate) FROM "
+          "QStatsTmp WHERE queryId=" +
+          to_string(queryId);
+    if (!sqlConn->runQuery(sql, results, err)) {
+        string const msg = context +
+                           "Query to find stats for the user query failed, err=" + err.printErrMsg() +
+                           ", sql=" + sql;
+        throw runtime_error(msg);
+    }
+    vector<string> colTotalChunks;
+    vector<string> colCompletedChunks;
+    vector<string> colQueryBeginEpoch;
+    vector<string> colLastUpdateEpoch;
+    if (!results.extractFirst4Columns(colTotalChunks, colCompletedChunks, colQueryBeginEpoch,
+                                      colLastUpdateEpoch, err)) {
+        string const msg = context + "Failed to extract stats for the user query, err=" + err.printErrMsg() +
+                           ", sql=" + sql;
+        throw runtime_error(msg);
+    }
+    switch (colTotalChunks.size()) {
+        case 0:
+            // No stats means the query is over
+            break;
+        case 1:
+            // The query might be still in progress
+            result.totalChunks = stoi(colTotalChunks[0]);
+            result.completedChunks = stoi(colCompletedChunks[0]);
+            result.queryBeginEpoch = stoi(colQueryBeginEpoch[0]);
+            result.lastUpdateEpoch = stoi(colLastUpdateEpoch[0]);
+            break;
+        default:
+            // Should never be here.
+            string const msg = context +
+                               "Inconsistent stats returned for the user query, err=" + err.printErrMsg() +
+                               ", sql=" + sql;
+            throw runtime_error(msg);
+    }
+    return result;
 }
 
 QueryId Czar::_lastQueryIdBeforeRestart() const {
