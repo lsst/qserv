@@ -109,6 +109,7 @@ nlohmann::json QueryStatistics::getJsonTasks(wbase::TaskSelector const& taskSele
     return result;
 }
 
+
 /// Add a Task to the user query statistics.
 void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
     lock_guard<mutex> guard(_qStatsMtx);
@@ -158,13 +159,13 @@ void QueryStatistics::addTaskTransmit(double timeSeconds, int64_t bytesTransmitt
     _histTimeBufferFillPerTask->addEntry(bufferFillSecs);
 }
 
+
 void QueryStatistics::addTaskRunQuery(double runTimeSeconds, double subchunkRunTimeSeconds) {
     _histTimeRunningPerTask->addEntry(runTimeSeconds);
     _histTimeSubchunkPerTask->addEntry(subchunkRunTimeSeconds);
 }
 
-void QueryStatistics::tasksAddedToScheduler(std::shared_ptr<wsched::SchedulerBase> const& sched,
-                                            int numberOfTasksAdded) {
+void QueryStatistics::tasksAddedToScheduler(std::shared_ptr<wsched::SchedulerBase> const& sched, int numberOfTasksAdded) {
     if (sched == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "QueryStatistics::tasksAddedToScheduler sched == nullptr");
         return;

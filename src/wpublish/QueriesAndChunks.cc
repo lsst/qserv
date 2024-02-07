@@ -464,9 +464,16 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
     return scanTblSums;
 }
 
+
 void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                                  wsched::SchedulerBase::Ptr const& sched) {
     LOGS(_log, LOG_LVL_INFO, "taking too long, booting from " << sched->getName());
+    // &&& Add Task to a map of booted tasks _bootedTaskMap. A simple map probably isn't good enough for this.
+    // &&& Map of user queries, data indicates - (Most of this is already in QueryStatistics):
+    // &&&    - how many Tasks in the user query have been booted
+    // &&&    - how many booted Tasks are still running <- this should be the only thing that needs to be added to QueryStatistics.
+    // &&&    - how many booted Tasks have completed
+    // &&&    - how many tasks have completed without being booted.
     sched->removeTask(task, true);
     bool alreadyBooted = task->setBooted();
     if (alreadyBooted) {
@@ -542,6 +549,36 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
         }
     }
     return;
+/* &&&
+        // and move the worst offender to the snailScan. The worst offender is the UserQuery with
+        // the most tasks running that are taking too long.
+        auto [bootedTaskCount, qIdWithMostBooted] = _bootedTaskTracker.getTotalBootedTaskCount();
+        if (bootedTaskCount > _maxTasksBooted) {
+            // Get query info
+            QueryStatistics::Ptr queryToBoot = getStats(qIdWithMostBooted);
+            if (queryToBoot == nullptr) {
+                LOGS(_log, LOG_LVL_WARN, "Couldn't locate query with most booted tasks, booting examined query instead.");
+                queryToBoot = uq;
+            }
+
+            // It may be possible for Tasks associated with a QueryId to be on more than 1 scheduler.
+            QueryStatistics::SchedTasksInfoMap schedTaskMap = queryToBoot->getSchedulerTasksInfoMap();
+            for (auto const& [key, schedInfo]:schedTaskMap) {
+                wsched::SchedulerBase::Ptr schedTarget = schedInfo.scheduler.lock();
+                if (schedTarget == nullptr) {
+                    LOGS(_log, LOG_LVL_ERROR, "QueriesAndChunks::_bootTask schedTarg was nullptr for key=" << key);
+                    continue;
+                }
+                if (bSched->isScanSnail(schedTarget)) {
+                    LOGS(_log, LOG_LVL_TRACE, "QueriesAndChunks::_bootTask schedTarg was snailScan for key=" << key);
+                    continue;
+                }
+                queryToBoot->_queryBooted = true;
+                bSched->moveUserQueryToSnail(queryToBoot->queryId, schedTarget);
+            }
+        }
+    }
+*/
 }
 
 /// Remove all Tasks belonging to the user query 'qId' from the queue of 'sched'.
@@ -685,6 +722,7 @@ void BootedTaskTracker::removeQuery(QueryId qId) {
     lock_guard<mutex> lockG(_bootedMapMtx);
     _bootedMap.erase(qId);
 }
+
 
 pair<int, vector<BootedTaskTracker::CountQId>> BootedTaskTracker::getTotalBootedTaskCount() const {
     lock_guard<mutex> lockG(_bootedMapMtx);

@@ -102,6 +102,7 @@ private:
     double _weightSum = _weightAvg + _weightNew;  ///< denominator
 };
 
+
 /// Statistics for one chunk, including scan table statistics.
 class ChunkStatistics {
 public:
