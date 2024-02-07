@@ -145,6 +145,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     // should be added to. All tasks in 'cmds' must belong to the same
     // user query and will go to the same scheduler.
     bool first = true;
+    wpublish::QueryStatistics::Ptr queryStats;
     std::vector<util::Command::Ptr> taskCmds;
     SchedulerBase::Ptr targSched = nullptr;
     bool onInteractive = false;
@@ -207,7 +208,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                     }
                 }
                 // If the user query for this task has been booted, put this task on the snail scheduler.
-                auto queryStats = _queries->getStats(task->getQueryId());
+                queryStats = _queries->getStats(task->getQueryId());
                 if (queryStats && queryStats->getQueryBooted()) {
                     targSched = _scanSnail;
                 }
@@ -217,6 +218,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                     LOGS_WARN("Task had unexpected scanRating=" << scanPriority << " adding to scanSnail");
                     targSched = _scanSnail;
                 }
+
             }
         }
         task->setOnInteractive(onInteractive);
@@ -233,6 +235,9 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     if (!taskCmds.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
         targSched->queCmd(taskCmds);
+        if (queryStats) {
+             queryStats->tasksAddedToScheduler(targSched, taskCmds.size());
+         }
         _infoChanged = true;
         notify(true);  // notify all=true
     }

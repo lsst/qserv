@@ -4,6 +4,7 @@ add_dependencies(wpublish proto)
 target_sources(wpublish PRIVATE
     ChunkInventory.cc
     QueriesAndChunks.cc
+    QueryStatistics.cc
 )
 
 target_include_directories(wpublish PRIVATE

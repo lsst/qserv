@@ -50,65 +50,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueriesAndChunks");
 
 namespace lsst::qserv::wpublish {
 
-QueryStatistics::QueryStatistics(QueryId const& qId_) : creationTime(CLOCK::now()), queryId(qId_) {
-    /// For all of the histograms, all entries should be kept at least until the work is finished.
-    string qidStr = to_string(queryId);
-    _histSizePerTask = util::Histogram::Ptr(new util::Histogram(
-            string("SizePerTask_") + qidStr, {1'000, 10'0000, 1'000'000, 10'000'000, 100'000'000}));
-    _histRowsPerTask = util::Histogram::Ptr(new util::Histogram(string("RowsPerChunk_") + qidStr,
-                                                                {1, 100, 1'000, 10'000, 100'000, 1'000'000}));
-    _histTimeRunningPerTask = util::Histogram::Ptr(new util::Histogram(
-            string("TimeRunningPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
-    _histTimeSubchunkPerTask = util::Histogram::Ptr(new util::Histogram(
-            string("TimeSubchunkPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
-    _histTimeTransmittingPerTask = util::Histogram::Ptr(new util::Histogram(
-            string("TimeTransmittingPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
-    _histTimeBufferFillPerTask = util::Histogram::Ptr(new util::Histogram(
-            string("TimeFillingBuffersPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
-}
-
-/// Return a json object containing high level data, such as histograms.
-nlohmann::json QueryStatistics::getJsonHist() const {
-    nlohmann::json js = nlohmann::json::object();
-    js["timeRunningPerTask"] = _histTimeRunningPerTask->getJson();
-    js["timeSubchunkPerTask"] = _histTimeSubchunkPerTask->getJson();
-    js["timeTransmittingPerTask"] = _histTimeTransmittingPerTask->getJson();
-    js["timeBufferFillPerTask"] = _histTimeBufferFillPerTask->getJson();
-    js["sizePerTask"] = _histSizePerTask->getJson();
-    js["rowsPerTask"] = _histRowsPerTask->getJson();
-    return js;
-}
-
-nlohmann::json QueryStatistics::getJsonTasks(wbase::TaskSelector const& taskSelector) const {
-    lock_guard<mutex> const guard(_qStatsMtx);
-    nlohmann::json result = nlohmann::json::object();
-    result["snapshotTime_msec"] = util::TimeUtils::now();
-    result["entries"] = nlohmann::json::array();
-    auto& taskEntriesJson = result["entries"];
-    uint32_t numTasksSelected = 0;
-    if (taskSelector.includeTasks) {
-        auto const& ids = taskSelector.queryIds;
-        auto const& states = taskSelector.taskStates;
-        for (auto&& task : _tasks) {
-            bool const selectedByQueryId =
-                    ids.empty() || find(ids.begin(), ids.end(), task->getQueryId()) != ids.end();
-            bool const selectedByTaskState =
-                    states.empty() || find(states.begin(), states.end(), task->state()) != states.end();
-            if (selectedByQueryId && selectedByTaskState) {
-                ++numTasksSelected;
-                // Stop reporting tasks if the limit has been reached. Just keep
-                // counting the number of tasks selected by the filter.
-                if ((taskSelector.maxTasks == 0) || (numTasksSelected < taskSelector.maxTasks)) {
-                    taskEntriesJson.push_back(task->getJson());
-                }
-            }
-        }
-    }
-    result["total"] = _tasks.size();
-    result["selected"] = numTasksSelected;
-    return result;
-}
-
 QueriesAndChunks::Ptr QueriesAndChunks::_globalQueriesAndChunks;
 
 QueriesAndChunks::Ptr QueriesAndChunks::get(bool noThrow) {
@@ -240,6 +181,9 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
             (*_newlyDeadQueries)[qId] = stats;
         }
     }
+    if (task->isBooted()) {
+        _bootedTaskTracker.removeTask(task);
+    }
 
     _finishedTaskForChunk(task, taskDuration);
 }
@@ -313,13 +257,19 @@ void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
     gS.unlock();
     LOGS(_log, LOG_LVL_TRACE, "Queries::removeDead");
 
+    _bootedTaskTracker.removeQuery(qId);
     lock_guard<mutex> gQ(_queryStatsMtx);
     _queryStats.erase(qId);
 }
 
-/// @return the statistics for a user query.
+
 QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
-    lock_guard<mutex> g(_queryStatsMtx);
+    lock_guard<mutex> lockG(_queryStatsMtx);
+    return _getStats(qId);
+}
+
+/// @return the statistics for a user query.
+QueryStatistics::Ptr QueriesAndChunks::_getStats(QueryId const& qId) const {
     auto iter = _queryStats.find(qId);
     if (iter != _queryStats.end()) {
         return iter->second;
@@ -332,6 +282,24 @@ QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
 /// move user queries that are too slow to the snail scan.
 /// This is expected to be called maybe once every 5 minutes.
 void QueriesAndChunks::examineAll() {
+    // Make sure only one `examineAll()` is running at any given time.
+    if (_runningExamineAll.exchange(true) == true) {
+        // Already running this function.
+        return;
+    }
+
+    /// Ensure that `_runningExamineAll` gets set to false.
+    class SetExamineAllRunningFalse {
+    public:
+        SetExamineAllRunningFalse(std::atomic<bool>& runningExAll_) : _runningExAll(runningExAll_) {}
+        ~SetExamineAllRunningFalse() {
+            _runningExAll = false;
+        }
+    private:
+        std::atomic<bool>& _runningExAll;
+    };
+    SetExamineAllRunningFalse setExamineAllRunningFalse(_runningExamineAll);
+
     // Need to know how long it takes to complete tasks on each table
     // in each chunk, and their percentage total of the whole.
     auto scanTblSums = _calcScanTableSums();
@@ -501,16 +469,25 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
     return scanTblSums;
 }
 
-/// Remove the running 'task' from a scheduler and possibly move all Tasks that belong to its user query
-/// to the snail scheduler. 'task' continues to run in its thread, but the scheduler is told 'task' is
-/// finished, which allows the scheduler to move on to another Task.
-/// If too many Tasks from the same user query are booted, all remaining tasks are moved to the snail
-/// scheduler in an attempt to keep a single user query from jamming up a scheduler.
+
 void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                                  wsched::SchedulerBase::Ptr const& sched) {
     LOGS(_log, LOG_LVL_INFO, "taking too long, booting from " << sched->getName());
+    // &&& Add Task to a map of booted tasks _bootedTaskMap. A simple map probably isn't good enough for this.
+    // &&& Map of user queries, data indicates - (Most of this is already in QueryStatistics):
+    // &&&    - how many Tasks in the user query have been booted
+    // &&&    - how many booted Tasks are still running <- this should be the only thing that needs to be added to QueryStatistics.
+    // &&&    - how many booted Tasks have completed
+    // &&&    - how many tasks have completed without being booted.
     sched->removeTask(task, true);
+    bool alreadyBooted = task->setBooted();
+    if (alreadyBooted) {
+        LOGS(_log, LOG_LVL_WARN, "Task " << task->getIdStr() << " was already booted");
+        return;
+    }
     uq->_tasksBooted += 1;
+    _bootedTaskTracker.addTask(task);
+
 
     auto bSched = _blendSched.lock();
     if (bSched == nullptr) {
@@ -525,69 +502,35 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
             // TODO: Add code to send message back to czar to cancel this user query.
         }
     } else {
-        // Disabled as too aggressive and vulnerable to bad statistics. DM-11526
-        if (false && uq->_tasksBooted > _maxTasksBooted) {
-            LOGS(_log, LOG_LVL_INFO,
-                 "entire UserQuery booting from " << sched->getName() << " tasksBooted=" << uq->_tasksBooted
-                                                  << " maxTasksBooted=" << _maxTasksBooted);
-            uq->_queryBooted = true;
-            bSched->moveUserQueryToSnail(uq->queryId, sched);
+        // Change strategy, track the total number of Tasks that are running while booted (sansSched)
+        // and move the worst offender to the snailScan. The worst offender is the UserQuery with
+        // the most tasks running that are taking too long.
+        auto [bootedTaskCount, qIdWithMostBooted] = _bootedTaskTracker.getTotalBootedTaskCount();
+        if (bootedTaskCount > _maxTasksBooted) {
+            // Get query info
+            QueryStatistics::Ptr queryToBoot = getStats(qIdWithMostBooted);
+            if (queryToBoot == nullptr) {
+                LOGS(_log, LOG_LVL_WARN, "Couldn't locate query with most booted tasks, booting examined query instead.");
+                queryToBoot = uq;
+            }
+
+            // It may be possible for Tasks associated with a QueryId to be on more than 1 scheduler.
+            QueryStatistics::SchedTasksInfoMap schedTaskMap = queryToBoot->getSchedulerTasksInfoMap();
+            for (auto const& [key, schedInfo]:schedTaskMap) {
+                wsched::SchedulerBase::Ptr schedTarget = schedInfo.scheduler.lock();
+                if (schedTarget == nullptr) {
+                    LOGS(_log, LOG_LVL_ERROR, "QueriesAndChunks::_bootTask schedTarg was nullptr for key=" << key);
+                    continue;
+                }
+                if (bSched->isScanSnail(schedTarget)) {
+                    LOGS(_log, LOG_LVL_TRACE, "QueriesAndChunks::_bootTask schedTarg was snailScan for key=" << key);
+                    continue;
+                }
+                queryToBoot->_queryBooted = true;
+                bSched->moveUserQueryToSnail(queryToBoot->queryId, schedTarget);
+            }
         }
     }
-}
-
-/// Add a Task to the user query statistics.
-void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
-    lock_guard<mutex> guard(_qStatsMtx);
-    if (queryId != task->getQueryId()) {
-        string const msg = "QueryStatistics::" + string(__func__) +
-                           ": the task has queryId=" + to_string(task->getQueryId()) +
-                           " where queryId=" + to_string(queryId) + " was expected.";
-        throw util::Bug(ERR_LOC, msg);
-    }
-    _tasks.push_back(task);
-}
-
-/// @return the number of Tasks that have been booted for this user query.
-int QueryStatistics::getTasksBooted() {
-    lock_guard<mutex> guard(_qStatsMtx);
-    return _tasksBooted;
-}
-
-/// @return true if this query is done and has not been touched for deadTime.
-bool QueryStatistics::isDead(chrono::seconds deadTime, chrono::system_clock::time_point now) {
-    lock_guard<mutex> guard(_qStatsMtx);
-    if (_isMostlyDead()) {
-        if (now - _touched > deadTime) {
-            return true;
-        }
-    }
-    return false;
-}
-
-/// @return true if all Tasks for this query are complete.
-/// Precondition, _qStatsMtx must be locked.
-bool QueryStatistics::_isMostlyDead() const { return _tasksCompleted >= _size; }
-
-ostream& operator<<(ostream& os, QueryStatistics const& q) {
-    lock_guard<mutex> gd(q._qStatsMtx);
-    os << QueryIdHelper::makeIdStr(q.queryId) << " time=" << q._totalTimeMinutes << " size=" << q._size
-       << " tasksCompleted=" << q._tasksCompleted << " tasksRunning=" << q._tasksRunning
-       << " tasksBooted=" << q._tasksBooted;
-    return os;
-}
-
-void QueryStatistics::addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted,
-                                      double bufferFillSecs) {
-    _histTimeTransmittingPerTask->addEntry(timeSeconds);
-    _histRowsPerTask->addEntry(rowsTransmitted);
-    _histSizePerTask->addEntry(bytesTransmitted);
-    _histTimeBufferFillPerTask->addEntry(bufferFillSecs);
-}
-
-void QueryStatistics::addTaskRunQuery(double runTimeSeconds, double subchunkRunTimeSeconds) {
-    _histTimeRunningPerTask->addEntry(runTimeSeconds);
-    _histTimeSubchunkPerTask->addEntry(subchunkRunTimeSeconds);
 }
 
 /// Remove all Tasks belonging to the user query 'qId' from the queue of 'sched'.
@@ -601,21 +544,21 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
     vector<wbase::Task::Ptr> removedList;  // Return value;
 
     // Find the user query.
-    unique_lock<mutex> lock(_queryStatsMtx);
-    auto query = _queryStats.find(qId);
-    if (query == _queryStats.end()) {
+    auto query = getStats(qId);
+    if (query == nullptr) {
         LOGS(_log, LOG_LVL_DEBUG, "was not found by removeQueryFrom");
         return removedList;
     }
-    lock.unlock();
 
     // Remove Tasks from their scheduler put them on 'removedList', but only if their Scheduler is the same
     // as 'sched' or if sched == nullptr.
     vector<wbase::Task::Ptr> taskList;
     {
-        lock_guard<mutex> taskLock(query->second->_qStatsMtx);
-        taskList = query->second->_tasks;
+        lock_guard<mutex> taskLock(query->_qStatsMtx);
+        taskList = query->_tasks;
     }
+
+    // Lambda function to do the work of moving tasks.
     auto moveTasks = [&sched, &taskList, &removedList](bool moveRunning) {
         vector<wbase::Task::Ptr> taskListNotRemoved;
         for (auto const& task : taskList) {
@@ -637,7 +580,7 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
     // tasks are pulled off the scheduler queue every time a running one is removed.
     moveTasks(false);
 
-    // Remove all remaining tasks. Most likely, all will be running.
+    // Remove all remaining tasks. Most likely all will be running.
     moveTasks(true);
 
     return removedList;
@@ -709,5 +652,45 @@ ostream& operator<<(ostream& os, ChunkTableStats const& cts) {
        << ",booted=" << cts._data.tasksBooted << "))";
     return os;
 }
+
+void BootedTaskTracker::addTask(wbase::Task::Ptr const& task) {
+    lock_guard<mutex> lockG(_bootedMapMtx);
+    QueryId qId = task->getQueryId();
+    MapOfTasks& mapOfTasks = _bootedMap[qId];
+    mapOfTasks[task->getTSeq()] = task;
+}
+
+
+void BootedTaskTracker::removeTask(wbase::Task::Ptr const& task) {
+    lock_guard<mutex> lockG(_bootedMapMtx);
+    QueryId qId = task->getQueryId();
+    auto iter = _bootedMap.find(qId);
+    if (iter != _bootedMap.end()) {
+        MapOfTasks& setOfTasks = iter->second;
+        setOfTasks.erase(task->getTSeq());
+    }
+}
+
+void BootedTaskTracker::removeQuery(QueryId qId) {
+    lock_guard<mutex> lockG(_bootedMapMtx);
+    _bootedMap.erase(qId);
+}
+
+std::pair<int, QueryId> BootedTaskTracker::getTotalBootedTaskCount() const {
+    lock_guard<mutex> lockG(_bootedMapMtx);
+    int taskCount = 0;
+    size_t largestQueryCount = 0;
+    QueryId largestQueryId = 0;
+    for (auto const& [key, mapOfTasks]: _bootedMap) {
+        auto sz = mapOfTasks.size();
+        taskCount += sz;
+        if (sz > largestQueryCount) {
+            largestQueryCount = sz;
+            largestQueryId = key;
+        }
+    }
+    return {taskCount, largestQueryId};
+}
+
 
 }  // namespace lsst::qserv::wpublish
