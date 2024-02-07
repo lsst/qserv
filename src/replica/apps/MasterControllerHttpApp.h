@@ -137,9 +137,6 @@ private:
     /// A connection URL for the MySQL service of the Qserv master database.
     std::string _qservCzarDbUrl;
 
-    /// A connection URL for the MySQL proxy service of Czar.
-    std::string _qservCzarProxyUrl;
-
     /// The root folder for the static content to be served by the built-in
     /// HTTP service.
     std::string _httpRoot;
