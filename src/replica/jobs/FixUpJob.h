@@ -1,6 +1,6 @@
 /*
  * LSST Data Management System
-= *
+ *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
  *

@@ -264,7 +264,7 @@ public:
 
     uint64_t getTSeq() const { return _tSeq; }
 
-    /// The returned string is only usefult for logging purposes.
+    /// The returned string is only useful for logging purposes.
     std::string getIdStr(bool invalid = false) const {
         return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
     }
@@ -292,6 +292,12 @@ public:
     /// task's queries. The identifier is sampled by the worker tasks monitoring
     /// system in order to see what MySQL queries are being executed by tasks.
     void setMySqlThreadId(unsigned long id) { _mysqlThreadId.store(id); }
+
+    /// Return true if this task was already booted.
+    bool setBooted() { return _booted.exchange(true); }
+
+    /// Return true if the task was booted.
+    bool isBooted() { return _booted; }
 
 private:
     std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
@@ -351,6 +357,8 @@ private:
     std::weak_ptr<wpublish::QueryStatistics> _queryStats;
 
     std::atomic<unsigned long> _mysqlThreadId{0};  ///< 0 if not connected to MySQL
+
+    std::atomic<bool> _booted{false}; ///< Set to true if this task takes too long and is booted.
 };
 
 }  // namespace lsst::qserv::wbase
