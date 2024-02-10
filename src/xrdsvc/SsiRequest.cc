@@ -220,15 +220,16 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                         case proto::QueryManagement::CANCEL_AFTER_RESTART:
                             // TODO: locate and cancel the coresponding tasks, remove the tasks
                             //       from the scheduler queues.
-                            wbase::FileChannelShared::cleanUpResultsOnCzarRestart(request.query_id());
+                            wbase::FileChannelShared::cleanUpResultsOnCzarRestart(request.czar_id(),
+                                                                                  request.query_id());
                             break;
                         case proto::QueryManagement::CANCEL:
                             // TODO: locate and cancel the coresponding tasks, remove the tasks
                             //       from the scheduler queues.
-                            wbase::FileChannelShared::cleanUpResults(request.query_id());
+                            wbase::FileChannelShared::cleanUpResults(request.czar_id(), request.query_id());
                             break;
                         case proto::QueryManagement::COMPLETE:
-                            wbase::FileChannelShared::cleanUpResults(request.query_id());
+                            wbase::FileChannelShared::cleanUpResults(request.czar_id(), request.query_id());
                             break;
                         default:
                             reportError("QueryManagement: op=" +

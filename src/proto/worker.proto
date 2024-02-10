@@ -162,5 +162,6 @@ message QueryManagement {
         COMPLETE = 3;               // Notify workers on the completion of the specified query.
     }
     required Operation op = 1;
+    required uint64 czar_id = 3;
     required uint64 query_id = 2;
 }

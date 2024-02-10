@@ -24,6 +24,7 @@
 
 // System headers
 #include <functional>
+#include <limits>
 #include <set>
 #include <stdexcept>
 
@@ -38,7 +39,7 @@
 #include "wconfig/WorkerConfig.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "util/MultiError.h"
-#include "util/String.h"
+#include "util/ResultFileNameParser.h"
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
 
@@ -55,33 +56,9 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.FileChannelShared");
 
-string const resultFileExt = ".proto";
-
 bool isResultFile(fs::path const& filePath) {
-    return filePath.has_filename() && filePath.has_extension() && (filePath.extension() == resultFileExt);
-}
-
-/**
- * Extract task attributes from the file path.
- * The file path is required to have the following format:
- * @code
- *   [<folder>/]<query-id>-<job-id>-<chunk-id>-<attemptcount>[.<ext>]
- * @code
- * @param filePath The file to be evaluated.
- * @return nlohmann::json::object Task attributes.
- * @throw std::invalid_argument If the file path did not match expectations.
- */
-json file2task(fs::path const& filePath) {
-    vector<std::uint64_t> const taskAttributes =
-            util::String::parseToVectUInt64(filePath.stem().string(), "-");
-    if (taskAttributes.size() != 4) {
-        throw invalid_argument("FileChannelShared::" + string(__func__) +
-                               " not a valid result file: " + filePath.string());
-    }
-    return json::object({{"query_id", taskAttributes[0]},
-                         {"job_id", taskAttributes[1]},
-                         {"chunk_id", taskAttributes[2]},
-                         {"attemptcount", taskAttributes[3]}});
+    return filePath.has_filename() && filePath.has_extension() &&
+           (filePath.extension() == util::ResultFileNameParser::fileExt);
 }
 
 /**
@@ -133,26 +110,23 @@ namespace lsst::qserv::wbase {
 
 mutex FileChannelShared::_resultsDirCleanupMtx;
 
-void FileChannelShared::cleanUpResultsOnCzarRestart(QueryId queryId) {
+void FileChannelShared::cleanUpResultsOnCzarRestart(uint32_t czarId, QueryId queryId) {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     fs::path const dirPath = wconfig::WorkerConfig::instance()->resultsDirname();
     LOGS(_log, LOG_LVL_INFO,
-         context << "removing result files from " << dirPath << " for queryId=" << queryId << " or older.");
+         context << "removing result files from " << dirPath << " for czarId=" << czarId
+                 << " queryId=" << queryId << " or older.");
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
-    size_t const numFilesRemoved =
-            ::cleanUpResultsImpl(context, dirPath, [queryId, &context](string const& fileName) -> bool {
+    size_t const numFilesRemoved = ::cleanUpResultsImpl(
+            context, dirPath, [czarId, queryId, &context](string const& fileName) -> bool {
                 try {
-                    // Names of the result files begin with identifiers of the corresponding queries:
-                    // '<id>-...'
-                    auto const pos = fileName.find_first_of('-');
-                    return (pos != string::npos) && (pos != 0) &&
-                           (stoull(fileName.substr(0, pos)) <= queryId);
+                    auto const fileAttributes = util::ResultFileNameParser(fileName);
+                    return (fileAttributes.czarId == czarId) && (fileAttributes.queryId <= queryId);
                 } catch (exception const& ex) {
                     LOGS(_log, LOG_LVL_WARN,
-                         context << "failed to locate queryId in the file name " << fileName
-                                 << ", ex: " << ex.what());
-                    return false;
+                         context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
                 }
+                return false;
             });
     LOGS(_log, LOG_LVL_INFO,
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
@@ -168,18 +142,23 @@ void FileChannelShared::cleanUpResultsOnWorkerRestart() {
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
 }
 
-void FileChannelShared::cleanUpResults(QueryId queryId) {
+void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId) {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     fs::path const dirPath = wconfig::WorkerConfig::instance()->resultsDirname();
-    string const queryIdPrefix = to_string(queryId) + "-";
     LOGS(_log, LOG_LVL_INFO,
-         context << "removing result files from " << dirPath << " for queryId=" << queryId << ".");
+         context << "removing result files from " << dirPath << " for czarId=" << czarId
+                 << " and queryId=" << queryId << ".");
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
-    size_t const numFilesRemoved =
-            ::cleanUpResultsImpl(context, dirPath, [&queryIdPrefix](string const& fileName) -> bool {
-                // Names of the result files begin with identifiers of the corresponding queries:
-                // '<id>-...'
-                return fileName.substr(0, queryIdPrefix.size()) == queryIdPrefix;
+    size_t const numFilesRemoved = ::cleanUpResultsImpl(
+            context, dirPath, [&context, czarId, queryId](string const& fileName) -> bool {
+                try {
+                    auto const fileAttributes = util::ResultFileNameParser(fileName);
+                    return (fileAttributes.czarId == czarId) && (fileAttributes.queryId == queryId);
+                } catch (exception const& ex) {
+                    LOGS(_log, LOG_LVL_WARN,
+                         context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
+                }
+                return false;
             });
     LOGS(_log, LOG_LVL_INFO,
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
@@ -242,7 +221,7 @@ json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned in
                 ++numTotal;
 
                 // Skip files not matching the query criteria if the one was requested.
-                json const jsonTask = ::file2task(filePath);
+                json const jsonTask = util::ResultFileNameParser(filePath).toJson();
                 QueryId const queryId = jsonTask.at("query_id");
                 if (!queryIdsFilter.empty() && !queryIdsFilter.contains(queryId)) continue;
 

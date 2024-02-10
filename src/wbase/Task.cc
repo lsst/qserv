@@ -73,8 +73,9 @@ string buildResultFilePath(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMs
                            string const& resultsDirname) {
     if (resultsDirname.empty()) return resultsDirname;
     fs::path path(resultsDirname);
-    path /= to_string(taskMsg->queryid()) + "-" + to_string(taskMsg->jobid()) + "-" +
-            to_string(taskMsg->chunkid()) + "-" + to_string(taskMsg->attemptcount()) + ".proto";
+    path /= to_string(taskMsg->czarid()) + "-" + to_string(taskMsg->queryid()) + "-" +
+            to_string(taskMsg->jobid()) + "-" + to_string(taskMsg->chunkid()) + "-" +
+            to_string(taskMsg->attemptcount()) + ".proto";
     return path.string();
 }
 

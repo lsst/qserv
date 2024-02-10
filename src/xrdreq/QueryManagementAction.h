@@ -66,7 +66,7 @@ public:
      *   the manager or initiating the requesed operation.
      */
     static void notifyAllWorkers(std::string const& xrootdFrontendUrl, proto::QueryManagement::Operation op,
-                                 QueryId queryId, CallbackType onFinish = nullptr);
+                                 uint32_t czarId, QueryId queryId, CallbackType onFinish = nullptr);
 
     QueryManagementAction(QueryManagementAction const&) = delete;
     QueryManagementAction& operator=(QueryManagementAction const&) = delete;
@@ -80,7 +80,7 @@ private:
      * @see QueryManagementAction::notifyAllWorkers()
      */
     void _notifyAllWorkers(std::string const& xrootdFrontendUrl, proto::QueryManagement::Operation op,
-                           QueryId queryId, CallbackType onFinish);
+                           uint32_t czarId, QueryId queryId, CallbackType onFinish);
 
     /// The collection of worker responses.
     Response _response;

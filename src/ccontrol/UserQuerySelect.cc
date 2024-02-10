@@ -392,7 +392,7 @@ QueryState UserQuerySelect::join() {
     if (czarConfig->notifyWorkersOnQueryFinish()) {
         try {
             xrdreq::QueryManagementAction::notifyAllWorkers(czarConfig->getXrootdFrontendUrl(), operation,
-                                                            _qMetaQueryId);
+                                                            _qMetaCzarId, _qMetaQueryId);
         } catch (std::exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }

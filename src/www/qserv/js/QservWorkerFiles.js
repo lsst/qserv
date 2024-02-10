@@ -98,8 +98,9 @@ function(CSSLoader,
         <tr>
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
-          <th class="sticky" style="text-align:right;">chunk</th>
+          <th class="sticky" style="text-align:right;">czar</th>
           <th class="sticky" style="text-align:right;">job</th>
+          <th class="sticky" style="text-align:right;">chunk</th>
           <th class="sticky" style="text-align:right;">attempt</th>
           <th class="sticky" style="text-align:right;">filename</th>
           <th class="sticky" style="text-align:right;">size</th>
@@ -252,8 +253,9 @@ function(CSSLoader,
                     const snapshotTime_msec = file.current_time_ms;
                     htmlFiles += `
 <tr>
-  <td style="text-align:right;"><pre>${file.task.chunk_id}</pre></td>
+  <td style="text-align:right;"><pre>${file.task.czar_id}</pre></td>
   <td style="text-align:right;"><pre>${file.task.job_id}</pre></td>
+  <td style="text-align:right;"><pre>${file.task.chunk_id}</pre></td>
   <td style="text-align:right;"><pre>${file.task.attemptcount}</pre></td>
   <td style="text-align:right;"><pre>${file.filename}</pre></td>
   <td style="text-align:right;"><pre>${file.size}</pre></td>

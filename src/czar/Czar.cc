@@ -40,6 +40,7 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "ccontrol/ConfigMap.h"
+#include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "czar/CzarErrors.h"
@@ -145,26 +146,29 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
 
-    // Tell workers to cancel any queries that were submitted before this restart of Czar.
-    // Figure out which query (if any) was recorded in Czar database before the restart.
-    // The id will be used as the high-watermark for queries that need to be cancelled.
-    // All queries that have identifiers that are strictly less than this one will
-    // be affected by the operation.
-    if (_czarConfig->notifyWorkersOnCzarRestart()) {
-        try {
-            xrdreq::QueryManagementAction::notifyAllWorkers(_czarConfig->getXrootdFrontendUrl(),
-                                                            proto::QueryManagement::CANCEL_AFTER_RESTART,
-                                                            _lastQueryIdBeforeRestart());
-        } catch (std::exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, ex.what());
-        }
-    }
-
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());
 
     // Need to be done first as it adds logging context for new threads
     _uqFactory.reset(new ccontrol::UserQueryFactory(databaseModels, _czarName));
+
+    // Tell workers to cancel any queries that were submitted before this restart of Czar.
+    // Figure out which query (if any) was recorded in Czar database before the restart.
+    // The id will be used as the high-watermark for queries that need to be cancelled.
+    // All queries that have identifiers that are strictly less than this one will
+    // be affected by the operation.
+    //
+    // NOTE: This steps should be done after copnstructing the query factory where
+    //       the name of the Czar gets translated into a numeric icdentifier.
+    if (_czarConfig->notifyWorkersOnCzarRestart()) {
+        try {
+            xrdreq::QueryManagementAction::notifyAllWorkers(
+                    _czarConfig->getXrootdFrontendUrl(), proto::QueryManagement::CANCEL_AFTER_RESTART,
+                    _uqFactory->userQuerySharedResources()->qMetaCzarId, _lastQueryIdBeforeRestart());
+        } catch (std::exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, ex.what());
+        }
+    }
 
     int qPoolSize = _czarConfig->getQdispPoolSize();
     int maxPriority = std::max(0, _czarConfig->getQdispMaxPriority());

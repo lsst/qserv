@@ -86,6 +86,10 @@ public:
                                             std::string const& userQueryId, std::string const& msgTableName,
                                             std::string const& resultDb);
 
+    std::shared_ptr<UserQuerySharedResources> const& userQuerySharedResources() const {
+        return _userQuerySharedResources;
+    }
+
 private:
     std::shared_ptr<UserQuerySharedResources> _userQuerySharedResources;
     std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;

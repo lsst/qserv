@@ -35,16 +35,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdreq.QueryManagementRequest");
 namespace lsst::qserv::xrdreq {
 
 QueryManagementRequest::Ptr QueryManagementRequest::create(proto::QueryManagement::Operation op,
-                                                           QueryId queryId,
+                                                           uint32_t czarId, QueryId queryId,
                                                            QueryManagementRequest::CallbackType onFinish) {
-    QueryManagementRequest::Ptr ptr(new QueryManagementRequest(op, queryId, onFinish));
+    QueryManagementRequest::Ptr ptr(new QueryManagementRequest(op, czarId, queryId, onFinish));
     ptr->setRefToSelf4keepAlive(ptr);
     return ptr;
 }
 
-QueryManagementRequest::QueryManagementRequest(proto::QueryManagement::Operation op, QueryId queryId,
-                                               QueryManagementRequest::CallbackType onFinish)
-        : _op(op), _queryId(queryId), _onFinish(onFinish) {
+QueryManagementRequest::QueryManagementRequest(proto::QueryManagement::Operation op, uint32_t czarId,
+                                               QueryId queryId, QueryManagementRequest::CallbackType onFinish)
+        : _op(op), _czarId(czarId), _queryId(queryId), _onFinish(onFinish) {
     LOGS(_log, LOG_LVL_TRACE, "QueryManagementRequest  ** CONSTRUCTED **");
 }
 
@@ -55,6 +55,7 @@ QueryManagementRequest::~QueryManagementRequest() {
 void QueryManagementRequest::onRequest(proto::FrameBuffer& buf) {
     proto::QueryManagement message;
     message.set_op(_op);
+    message.set_czar_id(_czarId);
     message.set_query_id(_queryId);
     buf.serialize(message);
 }
