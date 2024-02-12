@@ -111,7 +111,7 @@ TaskScheduler::TaskScheduler() {
             "TransmittingTaskTime", {0.1, 1.0, 10.0, 60.0, 600.0, 1200.0}, hour, 10'000));
 }
 
-std::atomic<uint32_t> taskSequence{0}; ///< Unique identifier source for Task.
+std::atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
@@ -447,7 +447,7 @@ void Task::waitForMemMan() {
              "waitForMemMan " << _memMan->getStatistics().logString() << " "
                               << _memMan->getStatus(_memHandle).logString());
     }
-    _safeToMoveRunning = true;
+    setSafeToMoveRunning(true);
 }
 
 memman::MemMan::Status Task::getMemHandleStatus() {

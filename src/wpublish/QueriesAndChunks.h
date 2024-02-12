@@ -60,7 +60,6 @@ class QueriesAndChunks;
 // This header declarations
 namespace lsst::qserv::wpublish {
 
-
 /// Statistics for a table in a chunk. Statistics are based on the slowest table in a query,
 /// so this most likely includes values for queries on _scanTableName and queries that join
 /// against _scanTableName. Source is slower than Object, so joins with Source and Object will
@@ -103,7 +102,6 @@ private:
     double _weightSum = _weightAvg + _weightNew;  ///< denominator
 };
 
-
 /// Statistics for one chunk, including scan table statistics.
 class ChunkStatistics {
 public:
@@ -136,16 +134,17 @@ public:
 
     void addTask(wbase::Task::Ptr const& task);
     void removeTask(wbase::Task::Ptr const& task);
-    void removeQuery(QueryId qId); ///< Remove a `QueryId` and all associated `Task`s from `_bootedMap`.
+    void removeQuery(QueryId qId);  ///< Remove a `QueryId` and all associated `Task`s from `_bootedMap`.
 
     /// Return a count of all tasks booted from all queries in `_bootedMap`
     /// and the QueryId associated with the most booted tasks. If the count
     /// is zero, the QueryId is meaningless.
     std::pair<int, QueryId> getTotalBootedTaskCount() const;
+
 private:
     /// Map of booted tasks that are still running organized by `QueryId`, `Task::_tSeq`.
     std::map<QueryId, MapOfTasks> _bootedMap;
-    mutable std::mutex _bootedMapMtx; ///< protects `_bootedMap`.
+    mutable std::mutex _bootedMapMtx;  ///< protects `_bootedMap`.
 };
 
 class QueriesAndChunks {
@@ -274,9 +273,9 @@ private:
     /// considered valid enough to boot a Task.
     unsigned int _requiredTasksCompleted = 50;
 
-    BootedTaskTracker _bootedTaskTracker; ///< Keeps track of booted Tasks.
+    BootedTaskTracker _bootedTaskTracker;  ///< Keeps track of booted Tasks.
 
-    std::atomic<bool> _runningExamineAll{false}; ///< Latch to only allow one call to `examineAll` at a time.
+    std::atomic<bool> _runningExamineAll{false};  ///< Latch to only allow one call to `examineAll` at a time.
 };
 
 }  // namespace lsst::qserv::wpublish
