@@ -218,7 +218,6 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                     LOGS_WARN("Task had unexpected scanRating=" << scanPriority << " adding to scanSnail");
                     targSched = _scanSnail;
                 }
-
             }
         }
         task->setOnInteractive(onInteractive);
@@ -236,8 +235,8 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
         LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
         targSched->queCmd(taskCmds);
         if (queryStats) {
-             queryStats->tasksAddedToScheduler(targSched, taskCmds.size());
-         }
+            queryStats->tasksAddedToScheduler(targSched, taskCmds.size());
+        }
         _infoChanged = true;
         notify(true);  // notify all=true
     }

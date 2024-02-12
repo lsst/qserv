@@ -358,7 +358,7 @@ private:
 
     std::atomic<unsigned long> _mysqlThreadId{0};  ///< 0 if not connected to MySQL
 
-    std::atomic<bool> _booted{false}; ///< Set to true if this task takes too long and is booted.
+    std::atomic<bool> _booted{false};  ///< Set to true if this task takes too long and is booted.
 };
 
 }  // namespace lsst::qserv::wbase

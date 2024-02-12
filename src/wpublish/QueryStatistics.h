@@ -59,7 +59,6 @@ class QueriesAndChunks;
 }  // namespace lsst::qserv::wpublish
 */
 
-
 // This header declarations
 namespace lsst::qserv::wpublish {
 
@@ -101,16 +100,19 @@ public:
     public:
         SchedulerTasksInfo() = delete;
         SchedulerTasksInfo(std::shared_ptr<wsched::SchedulerBase> const& sched_, int taskCount_)
-            : scheduler(sched_), schedulerName(sched_->getName()), firstTaskAdded(CLOCK::now()),
-              mostRecentTaskAdded(firstTaskAdded), taskCount(taskCount_) {}
+                : scheduler(sched_),
+                  schedulerName(sched_->getName()),
+                  firstTaskAdded(CLOCK::now()),
+                  mostRecentTaskAdded(firstTaskAdded),
+                  taskCount(taskCount_) {}
         SchedulerTasksInfo(SchedulerTasksInfo const&) = default;
         SchedulerTasksInfo& operator=(SchedulerTasksInfo const&) = delete;
 
         std::weak_ptr<wsched::SchedulerBase> const scheduler;
         std::string const schedulerName;
-        TIMEPOINT const firstTaskAdded; ///< The time the first `task` was added to this scheduler.
-        TIMEPOINT mostRecentTaskAdded; ///< The time the last `task` was added to this scheduler.
-        int taskCount = 0; ///< how many tasks were added to this scheduler.
+        TIMEPOINT const firstTaskAdded;  ///< The time the first `task` was added to this scheduler.
+        TIMEPOINT mostRecentTaskAdded;   ///< The time the last `task` was added to this scheduler.
+        int taskCount = 0;               ///< how many tasks were added to this scheduler.
     };
 
     /// Type definition for consistency.
@@ -158,14 +160,13 @@ private:
     std::vector<wbase::Task::Ptr> _tasks;  ///< A collection of all tasks of the query
 
     util::Histogram::Ptr _histTimeRunningPerTask;  ///< Histogram of SQL query run times.
-    util::Histogram::Ptr
-            _histTimeSubchunkPerTask;  ///< Histogram of time waiting for temporary table generation.
+    util::Histogram::Ptr _histTimeSubchunkPerTask;  ///< Histogram of time waiting for temporary table generation.
     util::Histogram::Ptr _histTimeTransmittingPerTask;  ///< Histogram of time spent transmitting.
     util::Histogram::Ptr _histTimeBufferFillPerTask;    ///< Histogram of time filling buffers.
     util::Histogram::Ptr _histSizePerTask;              ///< Histogram of bytes per Task.
     util::Histogram::Ptr _histRowsPerTask;              ///< Histogram of rows per Task.
 
-    SchedTasksInfoMap _taskSchedMap; ///< &&& rename
+    SchedTasksInfoMap _taskSchedMap;  ///< &&& rename
 };
 
 }  // namespace lsst::qserv::wpublish
