@@ -42,22 +42,7 @@
 #include "wbase/Task.h"
 #include "wsched/SchedulerBase.h"
 
-/* &&&
-// Forward declarations
-namespace lsst::qserv::wbase {
-struct TaskSelector;
-}  // namespace lsst::qserv::wbase
 
-namespace lsst::qserv::wsched {
-class SchedulerBase;
-class BlendScheduler;
-class ScanScheduler;
-}  // namespace lsst::qserv::wsched
-
-namespace lsst::qserv::wpublish {
-class QueriesAndChunks;
-}  // namespace lsst::qserv::wpublish
-*/
 namespace lsst::qserv::wbase {
 class Histogram;
 }

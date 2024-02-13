@@ -32,7 +32,6 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-//&&& #include "util/Histogram.h"
 #include "wcontrol/Foreman.h"
 
 namespace lsst::qserv::util {
