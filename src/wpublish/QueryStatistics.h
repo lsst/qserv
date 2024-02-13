@@ -58,6 +58,9 @@ namespace lsst::qserv::wpublish {
 class QueriesAndChunks;
 }  // namespace lsst::qserv::wpublish
 */
+namespace lsst::qserv::wbase {
+class Histogram;
+}
 
 // This header declarations
 namespace lsst::qserv::wpublish {
@@ -159,12 +162,13 @@ private:
 
     std::vector<wbase::Task::Ptr> _tasks;  ///< A collection of all tasks of the query
 
-    util::Histogram::Ptr _histTimeRunningPerTask;  ///< Histogram of SQL query run times.
-    util::Histogram::Ptr _histTimeSubchunkPerTask;  ///< Histogram of time waiting for temporary table generation.
-    util::Histogram::Ptr _histTimeTransmittingPerTask;  ///< Histogram of time spent transmitting.
-    util::Histogram::Ptr _histTimeBufferFillPerTask;    ///< Histogram of time filling buffers.
-    util::Histogram::Ptr _histSizePerTask;              ///< Histogram of bytes per Task.
-    util::Histogram::Ptr _histRowsPerTask;              ///< Histogram of rows per Task.
+    std::shared_ptr<util::Histogram> _histTimeRunningPerTask;  ///< Histogram of SQL query run times.
+    std::shared_ptr<util::Histogram>
+            _histTimeSubchunkPerTask;  ///< Histogram of time waiting for temporary table generation.
+    std::shared_ptr<util::Histogram> _histTimeTransmittingPerTask;  ///< Histogram of time spent transmitting.
+    std::shared_ptr<util::Histogram> _histTimeBufferFillPerTask;    ///< Histogram of time filling buffers.
+    std::shared_ptr<util::Histogram> _histSizePerTask;              ///< Histogram of bytes per Task.
+    std::shared_ptr<util::Histogram> _histRowsPerTask;              ///< Histogram of rows per Task.
 
     SchedTasksInfoMap _taskSchedMap;  ///< &&& rename
 };
