@@ -471,12 +471,6 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
                                  wsched::SchedulerBase::Ptr const& sched) {
     LOGS(_log, LOG_LVL_INFO, "taking too long, booting from " << sched->getName());
     // &&& Add Task to a map of booted tasks _bootedTaskMap. A simple map probably isn't good enough for this.
-    // &&& Map of user queries, data indicates - (Most of this is already in QueryStatistics):
-    // &&&    - how many Tasks in the user query have been booted
-    // &&&    - how many booted Tasks are still running <- this should be the only thing that needs to be
-    // added to QueryStatistics.
-    // &&&    - how many booted Tasks have completed
-    // &&&    - how many tasks have completed without being booted.
     sched->removeTask(task, true);
     bool alreadyBooted = task->setBooted();
     if (alreadyBooted) {
