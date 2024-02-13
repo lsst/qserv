@@ -25,12 +25,19 @@
 #ifndef LSST_QSERV_WSCHED_SCHEDULERBASE_H
 #define LSST_QSERV_WSCHED_SCHEDULERBASE_H
 
+// System headers
+#include <string>
+
 // Third party headers
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "util/Histogram.h"
+//&&& #include "util/Histogram.h"
 #include "wcontrol/Foreman.h"
+
+namespace lsst::qserv::util {
+class Histogram;
+}
 
 namespace lsst::qserv::wsched {
 
@@ -168,10 +175,11 @@ protected:
     std::atomic<int> _recentlyCompleted{0};  ///< Number of completed tasks, reset at intervals.
     std::atomic<int> _transmitCount{0};      ///< Number of tasks transmitting.
 
-    util::HistogramRolling::Ptr _histQueuedTasks;        ///< Histogram to track tasks on the queue
-    util::HistogramRolling::Ptr _histRunningTasks;       ///< Histogram to track running tasks
-    util::HistogramRolling::Ptr _histTransmittingTasks;  ///< Histogram to track transmitting tasks
-    util::HistogramRolling::Ptr
+    std::shared_ptr<util::HistogramRolling> _histQueuedTasks;   ///< Histogram to track tasks on the queue
+    std::shared_ptr<util::HistogramRolling> _histRunningTasks;  ///< Histogram to track running tasks
+    std::shared_ptr<util::HistogramRolling>
+            _histTransmittingTasks;  ///< Histogram to track transmitting tasks
+    std::shared_ptr<util::HistogramRolling>
             _histRecentlyCompletedTasks;  ///< Histogram to track how many tasks were completed
 
 private:
