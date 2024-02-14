@@ -43,6 +43,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "qmeta/types.h"
 #include "replica/config/ConfigCzar.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigDatabaseFamily.h"
@@ -702,6 +703,12 @@ public:
      *   the configuration.
      */
     ConfigCzar updateCzar(ConfigCzar const& czar);
+
+    /**
+     * @return Mapping between the unique identifiers to the corresponding names
+     *   for all known Czars.
+     */
+    std::map<qmeta::CzarId, std::string> czarIds() const;
 
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
     /// @return The JSON representation of the object.

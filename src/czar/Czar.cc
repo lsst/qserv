@@ -101,7 +101,8 @@ void registryUpdateLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
     json const request = json::object({{"instance_id", czarConfig->replicationInstanceId()},
                                        {"auth_key", czarConfig->replicationAuthKey()},
                                        {"czar",
-                                        {{"name", czarConfig->id()},
+                                        {{"name", czarConfig->name()},
+                                         {"id", czarConfig->id()},
                                          {"management-port", czarConfig->replicationHttpPort()},
                                          {"management-host-name", util::get_current_host_fqdn()}}}});
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
@@ -152,19 +153,21 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // Need to be done first as it adds logging context for new threads
     _uqFactory.reset(new ccontrol::UserQueryFactory(databaseModels, _czarName));
 
+    // NOTE: This steps should be done after constructing the query factory where
+    //       the name of the Czar gets translated into a numeric icdentifier.
+    _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
+
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar database before the restart.
     // The id will be used as the high-watermark for queries that need to be cancelled.
     // All queries that have identifiers that are strictly less than this one will
     // be affected by the operation.
     //
-    // NOTE: This steps should be done after copnstructing the query factory where
-    //       the name of the Czar gets translated into a numeric icdentifier.
     if (_czarConfig->notifyWorkersOnCzarRestart()) {
         try {
-            xrdreq::QueryManagementAction::notifyAllWorkers(
-                    _czarConfig->getXrootdFrontendUrl(), proto::QueryManagement::CANCEL_AFTER_RESTART,
-                    _uqFactory->userQuerySharedResources()->qMetaCzarId, _lastQueryIdBeforeRestart());
+            xrdreq::QueryManagementAction::notifyAllWorkers(_czarConfig->getXrootdFrontendUrl(),
+                                                            proto::QueryManagement::CANCEL_AFTER_RESTART,
+                                                            _czarConfig->id(), _lastQueryIdBeforeRestart());
         } catch (std::exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }

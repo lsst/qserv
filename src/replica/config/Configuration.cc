@@ -769,6 +769,15 @@ ConfigCzar Configuration::updateCzar(ConfigCzar const& czar) {
     throw invalid_argument(_context(__func__) + " unknown Czar '" + czar.name + "'.");
 }
 
+map<qmeta::CzarId, string> Configuration::czarIds() const {
+    map<qmeta::CzarId, string> ids;
+    replica::Lock const lock(_mtx, _context(__func__));
+    for (auto&& [name, czar] : _czars) {
+        ids[czar.id] = name;
+    }
+    return ids;
+}
+
 json Configuration::toJson(bool showPassword) const {
     replica::Lock const lock(_mtx, _context(__func__));
     return _toJson(lock, showPassword);

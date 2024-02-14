@@ -63,10 +63,11 @@ std::mutex CzarConfig::_mtxOnInstance;
 
 std::shared_ptr<CzarConfig> CzarConfig::_instance;
 
-std::shared_ptr<CzarConfig> CzarConfig::create(std::string const& configFileName, std::string const& czarId) {
+std::shared_ptr<CzarConfig> CzarConfig::create(std::string const& configFileName,
+                                               std::string const& czarName) {
     std::lock_guard<std::mutex> const lock(_mtxOnInstance);
     if (_instance == nullptr) {
-        _instance = std::shared_ptr<CzarConfig>(new CzarConfig(util::ConfigStore(configFileName), czarId));
+        _instance = std::shared_ptr<CzarConfig>(new CzarConfig(util::ConfigStore(configFileName), czarName));
     }
     return _instance;
 }
@@ -79,8 +80,8 @@ std::shared_ptr<CzarConfig> CzarConfig::instance() {
     return _instance;
 }
 
-CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& czarId)
-        : _czarId(czarId),
+CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& czarName)
+        : _czarName(czarName),
           _mySqlResultConfig(configStore.get("resultdb.user", "qsmaster"),
                              configStore.getRequired("resultdb.passwd"),
                              configStore.getRequired("resultdb.host"), configStore.getInt("resultdb.port"),
@@ -212,6 +213,8 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
              {"registry_heartbeat_ival_sec", std::to_string(_replicationRegistryHearbeatIvalSec)},
              {"http_port", std::to_string(_replicationHttpPort)},
              {"num_http_threads", std::to_string(_replicationNumHttpThreads)}});
+    actualJsonConfig["identity"] =
+            nlohmann::json::object({{"name", _czarName}, {"id", std::to_string(_czarId)}});
 }
 
 void CzarConfig::setReplicationHttpPort(uint16_t port) {
@@ -221,6 +224,12 @@ void CzarConfig::setReplicationHttpPort(uint16_t port) {
     _replicationHttpPort = port;
     // Update the relevant section of the JSON-ified configuration.
     _jsonConfig["actual"]["replication"]["http_port"] = std::to_string(_replicationHttpPort);
+}
+
+void CzarConfig::setId(qmeta::CzarId id) {
+    _czarId = id;
+    // Update the relevant section of the JSON-ified configuration.
+    _jsonConfig["actual"]["identity"]["id"] = std::to_string(_czarId);
 }
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {

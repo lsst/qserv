@@ -54,7 +54,7 @@ json HttpMonitorModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
     debug(func);
     enforceInstanceId(func, cconfig::CzarConfig::instance()->replicationInstanceId());
-    enforceCzarId(func);
+    enforceCzarName(func);
     if (subModuleName == "CONFIG")
         return _config();
     else if (subModuleName == "STATUS")

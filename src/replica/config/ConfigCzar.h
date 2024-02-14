@@ -30,6 +30,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "qmeta/types.h"
 #include "replica/config/ConfigHost.h"
 
 // This header declarations
@@ -41,6 +42,7 @@ namespace lsst::qserv::replica {
 class ConfigCzar {
 public:
     std::string name;   ///< The logical name of a Czar.
+    qmeta::CzarId id;   ///< The unique name of a Czar.
     ConfigHost host;    ///< The host name (and IP address) of the Czar management service.
     uint16_t port = 0;  ///< The port number of the Czar management service.
 

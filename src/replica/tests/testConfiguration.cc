@@ -1473,6 +1473,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     ConfigCzar czarDefault;
     BOOST_REQUIRE_NO_THROW(czarDefault = config->czar("default"));
     BOOST_CHECK_EQUAL(czarDefault.name, "default");
+    BOOST_CHECK_EQUAL(czarDefault.id, 123);
     BOOST_CHECK_EQUAL(czarDefault.host, hostA);
     BOOST_CHECK_EQUAL(czarDefault.port, 59001U);
 
@@ -1480,12 +1481,14 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     ConfigHost const hostB({"192.10.10.12", "host-B"});
     ConfigCzar czarSecond;
     czarSecond.name = "second";
+    czarSecond.id = 456;
     czarSecond.host = hostB;
     czarSecond.port = 59002U;
 
     BOOST_REQUIRE_NO_THROW(config->addCzar(czarSecond));
     BOOST_REQUIRE_NO_THROW(czarSecond = config->czar("second"));
     BOOST_CHECK(czarSecond.name == "second");
+    BOOST_CHECK(czarSecond.id == 456);
     BOOST_CHECK_EQUAL(czarSecond.host, hostB);
     BOOST_CHECK_EQUAL(czarSecond.port, 59002U);
     BOOST_CHECK_EQUAL(config->numCzars(), 2U);
@@ -1500,6 +1503,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     ConfigCzar addedCzarIncomplete;
     BOOST_REQUIRE_NO_THROW(addedCzarIncomplete = config->addCzar(czarIncomplete));
     BOOST_CHECK(addedCzarIncomplete.name == czarIncomplete.name);
+    BOOST_CHECK(addedCzarIncomplete.id == czarIncomplete.id);
     BOOST_CHECK_EQUAL(addedCzarIncomplete.host, czarIncomplete.host);
     BOOST_CHECK_EQUAL(addedCzarIncomplete.port, czarIncomplete.port);
     BOOST_CHECK_EQUAL(config->numCzars(), 3U);
