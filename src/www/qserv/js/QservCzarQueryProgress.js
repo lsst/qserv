@@ -160,9 +160,9 @@ function(CSSLoader,
             for (let i in czars) {
                 const czar = czars[i];
                 const selected = (_.isEmpty(prev_czar) && (i === 0)) ||
-                                 (!_.isEmpty(prev_czar) && (prev_czar === czar));
+                                 (!_.isEmpty(prev_czar) && (prev_czar === czar.name));
                 html += `
- <option value="${czar}" ${selected ? "selected" : ""}>${czar}</option>`;
+ <option value="${czar.name}" ${selected ? "selected" : ""}>${czar.name}[${czar.id}]</option>`;
             }
             this._form_control('select', 'czar').html(html);
         }
@@ -218,11 +218,7 @@ function(CSSLoader,
                     version: Common.RestAPIVersion},
                 (data) => {
                     if (data.success) {
-                        let czars = [];
-                        for (let i in data.config.czars) {
-                            czars.push(data.config.czars[i].name);
-                        }
-                        this._set_czars(czars);
+                        this._set_czars(data.config.czars);
                         if (!_.isUndefined(czar)) this._set_czar(czar);
                         this._load_query();
                     } else {
