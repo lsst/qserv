@@ -381,7 +381,7 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
             LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
             status["blend_scheduler"] = nlohmann::json::object();
         } else {
-            status["blend_scheduler"] = bSched->statusToJson();
+            status["blend_scheduler"] = bSched->statusToJsonBlend();
         }
     }
     status["query_stats"] = nlohmann::json::object();

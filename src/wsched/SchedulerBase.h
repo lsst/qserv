@@ -122,7 +122,7 @@ public:
     std::string chunkStatusStr();  //< @return a string
 
     /// @return a JSON representation of the object's status for the monitoring
-    nlohmann::json statusToJson();
+    nlohmann::json statusToJsonBase();
 
     int getTotalTaskCount() { return _totalTaskCount; }
 

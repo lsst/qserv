@@ -127,7 +127,7 @@ public:
     void setPrioritizeByInFlight(bool val) { _prioritizeByInFlight = val; }
 
     /// @return a JSON representation of the object's status for the monitoring
-    nlohmann::json statusToJson();
+    nlohmann::json statusToJsonBlend();
 
     /// Do nothing, the schedulers this class manages keep their own statistics.
     void recordPerformanceData() override{};
