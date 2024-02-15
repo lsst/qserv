@@ -19,6 +19,7 @@ target_sources(util PRIVATE
     Issue.cc
     MultiError.cc
     Mutex.cc
+    ResultFileNameParser.cc
     SemaMgr.cc
     StringHash.cc
     String.cc
@@ -33,6 +34,7 @@ target_sources(util PRIVATE
 )
 
 target_link_libraries(util PUBLIC
+    boost_filesystem
     boost_system
     log
 )
@@ -54,6 +56,7 @@ util_tests(
     testCommon
     testConfigStore
     testEventThread
+    testFileNameParser
     testIterableFormatter
     testHistogram
     testMultiError

@@ -404,7 +404,6 @@ services:
           --qserv-czar-db=mysql://root:CHANGEME@czar-db:3306/qservMeta
           --log-cfg-file=/config-etc/log/log-repl-controller.cnf
           --
-          --qserv-czar-proxy=mysql://qsmaster@czar-proxy:4040
           --instance-id=qserv_proj
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey

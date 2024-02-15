@@ -54,6 +54,7 @@ namespace {
 
 vector<std::string> const allowedOperations = {"CANCEL_AFTER_RESTART", "CANCEL", "COMPLETE"};
 proto::QueryManagement::Operation operation = proto::QueryManagement::CANCEL_AFTER_RESTART;
+uint32_t czarId;
 global::QueryId queryId;
 bool allWorkers = false;
 string serviceProviderLocation;
@@ -73,7 +74,7 @@ int test() {
     bool finished = false;
     if (allWorkers) {
         xrdreq::QueryManagementAction::notifyAllWorkers(
-                serviceProviderLocation, operation, queryId,
+                serviceProviderLocation, operation, czarId, queryId,
                 [&finished](xrdreq::QueryManagementAction::Response const& response) {
                     for (auto itr : response) {
                         cout << "worker: " << itr.first << " error: " << itr.second << endl;
@@ -93,7 +94,8 @@ int test() {
 
         // Prepare the request
         auto request = xrdreq::QueryManagementRequest::create(
-                operation, queryId, [&finished](proto::WorkerCommandStatus::Code code, string const& error) {
+                operation, czarId, queryId,
+                [&finished](proto::WorkerCommandStatus::Code code, string const& error) {
                     cout << "code=" << proto::WorkerCommandStatus_Code_Name(code) << ", error='" << error
                          << "'" << endl;
                     finished = true;
@@ -125,7 +127,7 @@ int main(int argc, const char* const argv[]) {
                 argc, argv,
                 "\n"
                 "Usage:\n"
-                "  <operation> <qid>\n"
+                "  <operation> <czar-id> <qid>\n"
                 "  [--service=<provider>]\n"
                 "\n"
                 "Flags an options:\n"
@@ -135,10 +137,12 @@ int main(int argc, const char* const argv[]) {
                 "Parameters:\n"
                 "  <operation>  - An operation over the query (queries). Allowed values of\n"
                 "                 the parameter are: CANCEL_AFTER_RESTART, CANCEL, COMPLETE.\n"
+                "  <czar-id>    - The unique identifier of Czar.\n"
                 "  <qid>        - User query identifier.\n");
 
         ::operation = ::str2operation(parser.parameterRestrictedBy(1, ::allowedOperations));
-        ::queryId = parser.parameter<global::QueryId>(2);
+        ::czarId = parser.parameter<uint32_t>(2);
+        ::queryId = parser.parameter<global::QueryId>(3);
         ::allWorkers = parser.flag("all-workers");
         ::serviceProviderLocation = parser.option<string>("service", "localhost:1094");
 

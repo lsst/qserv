@@ -595,6 +595,7 @@ json ConfigTestData::data() {
     obj["czars"] = json::array();
     {
         json czar = json::object({{"name", "default"},
+                                  {"id", 123},
                                   {"host", {{"addr", "127.0.0.1"}, {"name", "host-A"}}},
                                   {"port", 59001}});
         obj["czars"].push_back(czar);

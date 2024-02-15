@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "qmeta/types.h"
 #include "util/ConfigStore.h"
 
 namespace lsst::qserv::cconfig {
@@ -59,9 +60,10 @@ public:
      *   can be called many times. A new instance would be created each time and
      *   stored within the class.
      * @param configFileName - path to worker INI configuration file
+     * @param czarName - the unique name of Czar.
      * @return the shared pointer to the configuration object
      */
-    static std::shared_ptr<CzarConfig> create(std::string const& configFileName);
+    static std::shared_ptr<CzarConfig> create(std::string const& configFileName, std::string const& czarName);
 
     /**
      * Get a pointer to an instance that was created by the last call to
@@ -226,10 +228,18 @@ public:
     /// @param port The actual port number.
     void setReplicationHttpPort(uint16_t port);
 
-    /// @note This is the temporary identity mechanism designed for the single Czar
-    ///   architecture of Qserv and the implementation based on using the MySQL proxy.
+    /// @return The unique name of Czar.
+    std::string const& name() const { return _czarName; }
+
     /// @return The unique identifier of Czar.
-    std::string id();
+    qmeta::CzarId id() const { return _czarId; }
+
+    /// Set a unique identifier of Czar.
+    /// @note In the current implementation of Qserv a value of the identifier is not
+    /// available at a time when the configuration is initialized. The identifier is generated
+    /// when registering Czar by name in a special table of teh Qserv database.
+    /// This logic should be fixed in some future version of Qserv.
+    void setId(qmeta::CzarId id);
 
     /// @return the JSON representation of the configuration parameters.
     /// @note The object has two collections of the parameters: 'input' - for
@@ -242,13 +252,16 @@ public:
     nlohmann::json toJson() const { return _jsonConfig; }
 
 private:
-    CzarConfig(util::ConfigStore const& ConfigStore);
+    CzarConfig(util::ConfigStore const& ConfigStore, std::string const& czarName);
 
     /// This mutex is needed for managing a state of the static member _instance.
     static std::mutex _mtxOnInstance;
 
     /// The configuratoon object created by the last call to the method 'create()'.
     static std::shared_ptr<CzarConfig> _instance;
+
+    std::string const _czarName;  ///< The unique name of the Czar instance
+    qmeta::CzarId _czarId;        ///< The unique identifier of the Czar instance
 
     nlohmann::json _jsonConfig;  ///< JSON-ified configuration
 

@@ -72,7 +72,6 @@ unsigned int Configuration::_databaseTransactionTimeoutSec = 3600;
 bool Configuration::_schemaUpgradeWait = true;
 unsigned int Configuration::_schemaUpgradeWaitTimeoutSec = 3600;
 string Configuration::_qservCzarDbUrl = "mysql://qsmaster@localhost:3306/qservMeta";
-string Configuration::_qservCzarProxyUrl = "mysql://qsmaster@localhost:4040/";
 string Configuration::_qservWorkerDbUrl = "mysql://qsmaster@localhost:3306/qservw_worker";
 replica::Mutex Configuration::_classMtx;
 
@@ -96,24 +95,6 @@ string Configuration::qservCzarDbUrl() {
 database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const& database) {
     replica::Lock const lock(_classMtx, _context(__func__));
     return connectionParams(_qservCzarDbUrl, database);
-}
-
-void Configuration::setQservCzarProxyUrl(string const& url) {
-    if (url.empty()) {
-        throw invalid_argument("Configuration::" + string(__func__) + "  empty string is not allowed.");
-    }
-    replica::Lock const lock(_classMtx, _context(__func__));
-    _qservCzarProxyUrl = url;
-}
-
-string Configuration::qservCzarProxyUrl() {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return _qservCzarProxyUrl;
-}
-
-database::mysql::ConnectionParams Configuration::qservCzarProxyParams(string const& database) {
-    replica::Lock const lock(_classMtx, _context(__func__));
-    return connectionParams(_qservCzarProxyUrl, database);
 }
 
 void Configuration::setQservWorkerDbUrl(string const& url) {
@@ -786,6 +767,15 @@ ConfigCzar Configuration::updateCzar(ConfigCzar const& czar) {
         return czar;
     }
     throw invalid_argument(_context(__func__) + " unknown Czar '" + czar.name + "'.");
+}
+
+map<qmeta::CzarId, string> Configuration::czarIds() const {
+    map<qmeta::CzarId, string> ids;
+    replica::Lock const lock(_mtx, _context(__func__));
+    for (auto&& [name, czar] : _czars) {
+        ids[czar.id] = name;
+    }
+    return ids;
 }
 
 json Configuration::toJson(bool showPassword) const {

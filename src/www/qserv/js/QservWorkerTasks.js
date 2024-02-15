@@ -110,6 +110,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
           <th class="sticky" style="text-align:center;">inter</th>
+          <th class="sticky" style="text-align:right;">czar</th>
           <th class="sticky" style="text-align:right;">job</th>
           <th class="sticky" style="text-align:right;">chunk</th>
           <th class="sticky" style="text-align:right;">sub-ch</th>
@@ -240,7 +241,7 @@ function(CSSLoader,
                 },
                 (data) => {
                     if (data.success) {
-                        this._display(data.status);
+                        this._display(data.status, data.czar_ids);
                         Fwk.setLastUpdate(this._table().children('caption'));
                     } else {
                         console.log('request failed', this.fwk_app_name, data.error);
@@ -261,7 +262,7 @@ function(CSSLoader,
         /**
          * Display tasks
          */
-        _display(data) {
+        _display(data, czar_ids) {
             if (_.isEmpty(data)) return;
             let numTasksTotal = 0;
             let numTasksSelected = 0;
@@ -290,6 +291,7 @@ function(CSSLoader,
                         numTasksTotal += query_stats[queryId].tasks.total;
                         numTasksSelected += query_stats[queryId].tasks.selected;
                         let scanInteractive = false;
+                        let czarIdStr = '*';
                         let tasks = _.sortBy(query_stats[queryId].tasks.entries, 'state');
                         const snapshotTime_msec = query_stats[queryId].tasks.snapshotTime_msec;
                         let prevJobId = -1;
@@ -297,6 +299,7 @@ function(CSSLoader,
                             let task = tasks[j];
                             // In theory all tasks of the same query should have it the same.
                             scanInteractive = task.scanInteractive;
+                            czarIdStr = czar_ids[task.czarId] + "[" + task.czarId + "]";
                             // Display jobId and chunkId for the first subchunk of a job only. These parameters
                             // should have the same value for all subchunk tasks.
                             let jobId = '';
@@ -341,6 +344,7 @@ function(CSSLoader,
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
   </td>
   <td rowspan="${rowspan}" style="text-align:center; vertical-align: top;"><pre>${scanInteractive ? "yes" : "no"}</pre></td>
+  <td rowspan="${rowspan}" style="text-align:right; vertical-align: top;"><pre>${czarIdStr}</pre></td>
 </tr>` + htmlTasks;
                     }
                 }

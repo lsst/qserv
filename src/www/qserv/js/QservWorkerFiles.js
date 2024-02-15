@@ -98,8 +98,9 @@ function(CSSLoader,
         <tr>
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
-          <th class="sticky" style="text-align:right;">chunk</th>
+          <th class="sticky" style="text-align:right;">czar</th>
           <th class="sticky" style="text-align:right;">job</th>
+          <th class="sticky" style="text-align:right;">chunk</th>
           <th class="sticky" style="text-align:right;">attempt</th>
           <th class="sticky" style="text-align:right;">filename</th>
           <th class="sticky" style="text-align:right;">size</th>
@@ -211,7 +212,7 @@ function(CSSLoader,
                 },
                 (data) => {
                     if (data.success) {
-                        this._display(data.status);
+                        this._display(data.status, data.czar_ids);
                         Fwk.setLastUpdate(this._table().children('caption'));
                     } else {
                         console.log('request failed', this.fwk_app_name, data.error);
@@ -228,7 +229,7 @@ function(CSSLoader,
                 }
             );
         }
-        _display(status) {
+        _display(status, czar_ids) {
             // Update a collection of queries in the selector.
             const query_ids = _.uniq(_.map(status.files, function(file) { return file.task.query_id; }));
             query_ids.sort();
@@ -252,8 +253,9 @@ function(CSSLoader,
                     const snapshotTime_msec = file.current_time_ms;
                     htmlFiles += `
 <tr>
-  <td style="text-align:right;"><pre>${file.task.chunk_id}</pre></td>
+  <td style="text-align:right;"><pre>${czar_ids[file.task.czar_id]}[${file.task.czar_id}]</pre></td>
   <td style="text-align:right;"><pre>${file.task.job_id}</pre></td>
+  <td style="text-align:right;"><pre>${file.task.chunk_id}</pre></td>
   <td style="text-align:right;"><pre>${file.task.attemptcount}</pre></td>
   <td style="text-align:right;"><pre>${file.filename}</pre></td>
   <td style="text-align:right;"><pre>${file.size}</pre></td>

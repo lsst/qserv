@@ -63,7 +63,8 @@ public:
      *   (successful or not) of the request.
      * @return the smart pointer to the object of the class
      */
-    static Ptr create(proto::QueryManagement::Operation op, QueryId queryId, CallbackType onFinish = nullptr);
+    static Ptr create(proto::QueryManagement::Operation op, uint32_t czarId, QueryId queryId,
+                      CallbackType onFinish = nullptr);
 
     QueryManagementRequest() = delete;
     QueryManagementRequest(QueryManagementRequest const&) = delete;
@@ -73,7 +74,8 @@ public:
 
 protected:
     /// @see QueryManagementRequest::create()
-    QueryManagementRequest(proto::QueryManagement::Operation op, QueryId queryId, CallbackType onFinish);
+    QueryManagementRequest(proto::QueryManagement::Operation op, uint32_t czarId, QueryId queryId,
+                           CallbackType onFinish);
 
     virtual void onRequest(proto::FrameBuffer& buf) override;
     virtual void onResponse(proto::FrameBufferView& view) override;
@@ -83,6 +85,7 @@ private:
     // Parameters of the object
 
     proto::QueryManagement::Operation _op = proto::QueryManagement::CANCEL_AFTER_RESTART;
+    uint32_t _czarId = 0;
     QueryId _queryId = 0;
     CallbackType _onFinish;
 };

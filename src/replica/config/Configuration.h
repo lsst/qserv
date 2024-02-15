@@ -43,6 +43,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "qmeta/types.h"
 #include "replica/config/ConfigCzar.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/config/ConfigDatabaseFamily.h"
@@ -148,25 +149,6 @@ public:
 
     /// @param url A connection string for accessing Qserv czar's database.
     static void setQservCzarDbUrl(std::string const& url);
-
-    /**
-     * Return a connection object for the czar's MySQL proxy service with the name of
-     * a database optionally rewritten from the one stored in the corresponding URL.
-     * This is done for the sake of convenience of clients to ensure a specific
-     * database is set as the default context.
-     * @param database The optional name of a database to assume if a non-empty
-     *   string was provided.
-     * @return The parsed connection object with the name of the database optionally
-     *   overwritten.
-     */
-    static database::mysql::ConnectionParams qservCzarProxyParams(
-            std::string const& database = std::string());
-
-    /// @return A connection string for accessing Qserv czar's proxy.
-    static std::string qservCzarProxyUrl();
-
-    /// @param url A connection string for accessing Qserv czar's proxy.
-    static void setQservCzarProxyUrl(std::string const& url);
 
     /**
      * Return a connection object for the worker's MySQL service with the name of
@@ -722,6 +704,12 @@ public:
      */
     ConfigCzar updateCzar(ConfigCzar const& czar);
 
+    /**
+     * @return Mapping between the unique identifiers to the corresponding names
+     *   for all known Czars.
+     */
+    std::map<qmeta::CzarId, std::string> czarIds() const;
+
     /// @param showPassword If a value of the flag is 'false' then hash a password in the result.
     /// @return The JSON representation of the object.
     nlohmann::json toJson(bool showPassword = false) const;
@@ -844,7 +832,6 @@ private:
     static bool _schemaUpgradeWait;
     static unsigned int _schemaUpgradeWaitTimeoutSec;
     static std::string _qservCzarDbUrl;
-    static std::string _qservCzarProxyUrl;
     static std::string _qservWorkerDbUrl;
 
     // For implementing static synchronized methods.

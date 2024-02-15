@@ -105,6 +105,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">Left (est.)</th>
           <th class="sticky" style="text-align:right;">Chunks</th>
           <th class="sticky" style="text-align:right;">Ch/min</th>
+          <th class="sticky" style="text-align:right;">Czar</th>
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky" class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
@@ -225,6 +226,7 @@ function(CSSLoader,
   <td style="text-align:right; padding-top:0; padding-left:10px;">${left}${trend}</td>
   <th scope="row" style="text-align:right;  padding-left:10px;"><pre>${query.completedChunks}/${query.totalChunks}</pre></th>
   <td style="text-align:right;" ><pre>${performance}</pre></td>
+  <td style="text-align:right;"><pre>${data.czar_ids[query.czarId]}[${query.czarId}]</pre></td>
   <th scope="row" style="text-align:right;"><pre>${query.queryId}</pre></th>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>

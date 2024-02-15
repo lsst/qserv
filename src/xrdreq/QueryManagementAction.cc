@@ -63,10 +63,10 @@ struct LocationInfoRAII {
 namespace lsst::qserv::xrdreq {
 
 void QueryManagementAction::notifyAllWorkers(string const& xrootdFrontendUrl,
-                                             proto::QueryManagement::Operation op, QueryId queryId,
-                                             CallbackType onFinish) {
+                                             proto::QueryManagement::Operation op, uint32_t czarId,
+                                             QueryId queryId, CallbackType onFinish) {
     auto const ptr = shared_ptr<QueryManagementAction>(new QueryManagementAction());
-    ptr->_notifyAllWorkers(xrootdFrontendUrl, op, queryId, onFinish);
+    ptr->_notifyAllWorkers(xrootdFrontendUrl, op, czarId, queryId, onFinish);
 }
 
 QueryManagementAction::QueryManagementAction() {
@@ -78,8 +78,8 @@ QueryManagementAction::~QueryManagementAction() {
 }
 
 void QueryManagementAction::_notifyAllWorkers(std::string const& xrootdFrontendUrl,
-                                              proto::QueryManagement::Operation op, QueryId queryId,
-                                              CallbackType onFinish) {
+                                              proto::QueryManagement::Operation op, uint32_t czarId,
+                                              QueryId queryId, CallbackType onFinish) {
     string const context = "QueryManagementAction::" + string(__func__) + " ";
 
     // Find all subscribers (worker XROOTD servers) serving this special resource.
@@ -118,7 +118,7 @@ void QueryManagementAction::_notifyAllWorkers(std::string const& xrootdFrontendU
 
         // Make and configure the request object
         auto request = xrdreq::QueryManagementRequest::create(
-                op, queryId,
+                op, czarId, queryId,
                 [self, workerAddress, onFinish](proto::WorkerCommandStatus::Code code, string const& error) {
                     if (code != proto::WorkerCommandStatus::SUCCESS) {
                         self->_response[workerAddress] = error;

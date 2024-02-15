@@ -65,7 +65,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
     LOGS_INFO("Testing static parameters");
 
     BOOST_CHECK_THROW(Configuration::setQservCzarDbUrl(""), std::invalid_argument);
-    BOOST_CHECK_THROW(Configuration::setQservCzarProxyUrl(""), std::invalid_argument);
     BOOST_CHECK_THROW(Configuration::setQservWorkerDbUrl(""), std::invalid_argument);
 
     BOOST_REQUIRE_NO_THROW(Configuration::setDatabaseAllowReconnect(true));
@@ -156,7 +155,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
 
     BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
     BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
-    BOOST_CHECK(config->qservCzarProxyUrl() == "mysql://qsmaster@localhost:4040/");
     BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
 
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
@@ -1475,6 +1473,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     ConfigCzar czarDefault;
     BOOST_REQUIRE_NO_THROW(czarDefault = config->czar("default"));
     BOOST_CHECK_EQUAL(czarDefault.name, "default");
+    BOOST_CHECK_EQUAL(czarDefault.id, 123);
     BOOST_CHECK_EQUAL(czarDefault.host, hostA);
     BOOST_CHECK_EQUAL(czarDefault.port, 59001U);
 
@@ -1482,12 +1481,14 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     ConfigHost const hostB({"192.10.10.12", "host-B"});
     ConfigCzar czarSecond;
     czarSecond.name = "second";
+    czarSecond.id = 456;
     czarSecond.host = hostB;
     czarSecond.port = 59002U;
 
     BOOST_REQUIRE_NO_THROW(config->addCzar(czarSecond));
     BOOST_REQUIRE_NO_THROW(czarSecond = config->czar("second"));
     BOOST_CHECK(czarSecond.name == "second");
+    BOOST_CHECK(czarSecond.id == 456);
     BOOST_CHECK_EQUAL(czarSecond.host, hostB);
     BOOST_CHECK_EQUAL(czarSecond.port, 59002U);
     BOOST_CHECK_EQUAL(config->numCzars(), 2U);
@@ -1502,6 +1503,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     ConfigCzar addedCzarIncomplete;
     BOOST_REQUIRE_NO_THROW(addedCzarIncomplete = config->addCzar(czarIncomplete));
     BOOST_CHECK(addedCzarIncomplete.name == czarIncomplete.name);
+    BOOST_CHECK(addedCzarIncomplete.id == czarIncomplete.id);
     BOOST_CHECK_EQUAL(addedCzarIncomplete.host, czarIncomplete.host);
     BOOST_CHECK_EQUAL(addedCzarIncomplete.port, czarIncomplete.port);
     BOOST_CHECK_EQUAL(config->numCzars(), 3U);

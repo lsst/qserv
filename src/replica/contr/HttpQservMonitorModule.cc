@@ -35,6 +35,7 @@
 #include "css/CssError.h"
 #include "global/intTypes.h"
 #include "http/Exceptions.h"
+#include "qmeta/types.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/jobs/QservStatusJob.h"
@@ -120,6 +121,17 @@ void extractQInfo(Connection::Ptr const& conn, json& result) {
     }
 }
 
+/**
+ * Such explicit conversion is required because the JSON library doesn't support
+ * numeric keys in the JSON objects. The keys have to be turned into strings.
+ */
+json czarIdsToJson(map<qmeta::CzarId, string> const& ids) {
+    json result = json::object();
+    for (auto&& [id, name] : ids) {
+        result[to_string(id)] = name;
+    }
+    return result;
+}
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -216,6 +228,7 @@ json HttpQservMonitorModule::_worker() {
     debug(__func__);
     checkApiVersion(__func__, 19);
 
+    auto const config = controller()->serviceProvider()->config();
     auto const worker = params().at("worker");
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
     bool const keepResources = query().optionalUInt("keep_resources", 0) != 0;
@@ -241,6 +254,7 @@ json HttpQservMonitorModule::_worker() {
     _processWorkerInfo(worker, keepResources, info, result["status"], schedulers2chunks, chunks);
     result["schedulers_to_chunks"] = _schedulers2chunks2json(schedulers2chunks);
     result["chunks"] = _chunkInfo(chunks);
+    result["czar_ids"] = ::czarIdsToJson(config->czarIds());
     return result;
 }
 
@@ -288,6 +302,7 @@ json HttpQservMonitorModule::_workerFiles() {
     debug(__func__);
     checkApiVersion(__func__, 28);
 
+    auto const config = controller()->serviceProvider()->config();
     auto const worker = params().at("worker");
     auto const queryIds = query().optionalVectorUInt64("query_ids");
     auto const maxFiles = query().optionalUInt("max_files", 0);
@@ -305,7 +320,10 @@ json HttpQservMonitorModule::_workerFiles() {
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
-    return json::object({{"status", request->info()}});
+    json result = json::object();
+    result["status"] = request->info();
+    result["czar_ids"] = ::czarIdsToJson(config->czarIds());
+    return result;
 }
 
 json HttpQservMonitorModule::_czar() {
@@ -424,6 +442,7 @@ json HttpQservMonitorModule::_activeQueries() {
     debug(__func__);
     checkApiVersion(__func__, 25);
 
+    auto const config = controller()->serviceProvider()->config();
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
@@ -461,6 +480,7 @@ json HttpQservMonitorModule::_activeQueries() {
     json result;
     h.conn->executeInOwnTransaction(
             [&](auto conn) { result["queries"] = _currentUserQueries(conn, queryId2scheduler); });
+    result["czar_ids"] = ::czarIdsToJson(config->czarIds());
     return result;
 }
 
@@ -547,6 +567,7 @@ json HttpQservMonitorModule::_pastQueries() {
     h.conn->executeInOwnTransaction([&](auto conn) {
         result["queries_past"] = _pastUserQueries(conn, constraints, limit4past, includeMessages);
     });
+    result["czar_ids"] = ::czarIdsToJson(config->czarIds());
     return result;
 }
 
@@ -554,6 +575,7 @@ json HttpQservMonitorModule::_userQuery() {
     debug(__func__);
     checkApiVersion(__func__, 12);
 
+    auto const config = controller()->serviceProvider()->config();
     auto const queryId = stoull(params().at("id"));
     bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
     debug(__func__, "id=" + to_string(queryId));
@@ -572,6 +594,7 @@ json HttpQservMonitorModule::_userQuery() {
         result["queries_past"] =
                 _pastUserQueries(conn, g.eq("queryId", queryId), limit4past, includeMessages);
     });
+    result["czar_ids"] = ::czarIdsToJson(config->czarIds());
     return result;
 }
 
@@ -581,7 +604,8 @@ json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
     string const query =
             g.select(g.id("QStatsTmp", Sql::STAR), g.as(g.UNIX_TIMESTAMP("queryBegin"), "queryBegin_sec"),
                      g.as(g.UNIX_TIMESTAMP("lastUpdate"), "lastUpdate_sec"), g.as(Sql::NOW, "samplingTime"),
-                     g.as(g.UNIX_TIMESTAMP(Sql::NOW), "samplingTime_sec"), g.id("QInfo", "query")) +
+                     g.as(g.UNIX_TIMESTAMP(Sql::NOW), "samplingTime_sec"), g.id("QInfo", "query"),
+                     g.id("QInfo", "czarId"), g.id("QInfo", "qType")) +
             g.from("QStatsTmp", "QInfo") +
             g.where(g.eq(g.id("QStatsTmp", "queryId"), g.id("QInfo", "queryId"))) +
             g.orderBy(make_pair(g.id("QStatsTmp", "queryBegin"), "DESC"));
@@ -602,6 +626,8 @@ json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
             ::parseFieldIntoJson<string>(__func__, row, "samplingTime", resultRow);
             ::parseFieldIntoJson<long>(__func__, row, "samplingTime_sec", resultRow);
             ::parseFieldIntoJson<string>(__func__, row, "query", resultRow);
+            ::parseFieldIntoJson<qmeta::CzarId>(__func__, row, "czarId", resultRow);
+            ::parseFieldIntoJson<string>(__func__, row, "qType", resultRow);
 
             // Optionally, add the name of corresponding worker scheduler
             // if the one was already known for the query.
@@ -633,6 +659,7 @@ json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string cons
         while (conn->next(row)) {
             json resultRow;
             ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
+            ::parseFieldIntoJson<qmeta::CzarId>(__func__, row, "czarId", resultRow);
             ::parseFieldIntoJson<string>(__func__, row, "qType", resultRow);
             ::parseFieldIntoJson<int>(__func__, row, "czarId", resultRow);
             ::parseFieldIntoJson<string>(__func__, row, "user", resultRow);

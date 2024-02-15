@@ -80,9 +80,12 @@ public:
      * the Czar service restart. The method will clean result files corresponding
      * to the older (including the specified one) queries.
      * @note The method may be called 0 or many times during the lifetime of the worker service.
+     * @note The Czar identifier is required to avoid possble interferences in the multi-Czar
+     *   deployments where different instances of Czars may restart independently.
+     * @param czarId The unique identifier of Czar that initiated the query.
      * @param queryId The most recent user query registered before restart.
      */
-    static void cleanUpResultsOnCzarRestart(QueryId queryId);
+    static void cleanUpResultsOnCzarRestart(uint32_t czarId, QueryId queryId);
 
     /**
      * This method gets called exactly one time during the initial startup
@@ -92,9 +95,10 @@ public:
 
     /**
      * Clean up result files of the specified query.
+     * @param czarId The unique identifier of Czar that initiated the query.
      * @param queryId The most recent user query registered before restart.
      */
-    static void cleanUpResults(QueryId queryId);
+    static void cleanUpResults(uint32_t czarId, QueryId queryId);
 
     /// @return Status and statistics on the results folder (capacity, usage, etc.)
     static nlohmann::json statusToJson();

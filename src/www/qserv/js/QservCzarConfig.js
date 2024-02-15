@@ -15,9 +15,6 @@ function(CSSLoader,
 
     class QservCzarConfig extends FwkApplication {
 
-        static update_ival_sec = 10;    /// The default update interval for the page.
-        static czar_name = "default";   /// The name of Czar.
-
         constructor(name) {
             super(name);
         }
@@ -27,11 +24,12 @@ function(CSSLoader,
         fwk_app_on_hide() {}
         fwk_app_on_update() {
             if (this.fwk_app_visible) {
+                this._init();
                 if (this._prev_update_sec === undefined) {
                     this._prev_update_sec = 0;
                 }
                 let now_sec = Fwk.now().sec;
-                if (now_sec - this._prev_update_sec > QservCzarConfig.update_ival_sec) {
+                if (now_sec - this._prev_update_sec > this._update_interval_sec()) {
                     this._prev_update_sec = now_sec;
                     this._init();
                     this._load();
@@ -45,6 +43,24 @@ function(CSSLoader,
             if (this._initialized) return;
             this._initialized = true;
             let html = `
+<div class="row" id="fwk-qserv-czar-config-controls">
+  <div class="col">
+    <div class="form-row">
+      <div class="form-group col-md-1">
+        <label for="czar">Czar:</label>
+        <select id="czar" class="form-control form-control-selector">
+        </select>
+      </div>
+      <div class="form-group col-md-1">
+        ${Common.html_update_ival('update-interval', 60)}
+      </div>
+      <div class="form-group col-md-1">
+        <label for="reset-form">&nbsp;</label>
+        <button id="reset-form" class="btn btn-primary form-control">Reset</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="row">
   <div class="col">
     <table class="table table-sm table-hover" id="fwk-qserv-czar-config">
@@ -62,8 +78,39 @@ function(CSSLoader,
     </table>
   </div>
 </div>`;
-            this.fwk_app_container.html(html);
+            let cont = this.fwk_app_container.html(html);
+            cont.find(".form-control-selector").change(() => {
+                this._load();
+            });
+            cont.find("button#reset-form").click(() => {
+                this._set_update_interval_sec(60);
+                this._load();
+            });
         }
+        _form_control(elem_type, id) {
+            if (this._form_control_obj === undefined) this._form_control_obj = {};
+            if (!_.has(this._form_control_obj, id)) {
+                this._form_control_obj[id] = this.fwk_app_container.find(elem_type + '#' + id);
+            }
+            return this._form_control_obj[id];
+        }
+        _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
+        _set_update_interval_sec(val) { this._form_control('select', 'update-interval').val(val); }
+        _czar() { return this._form_control('select', 'czar').val(); }
+        _set_czar(val) { this._form_control('select', 'czar').val(val); }
+        _set_czars(czars) {
+            const prev_czar = this._czar();
+            let html = '';
+            for (let i in czars) {
+                const czar = czars[i];
+                const selected = (_.isEmpty(prev_czar) && (i === 0)) ||
+                                 (!_.isEmpty(prev_czar) && (prev_czar === czar.name));
+                html += `
+ <option value="${czar.name}" ${selected ? "selected" : ""}>${czar.name}[${czar.id}]</option>`;
+            }
+            this._form_control('select', 'czar').html(html);
+        }
+
         _table() {
             if (_.isUndefined(this._table_obj)) this._table_obj = this.fwk_app_container.find('table#fwk-qserv-czar-config');
             return this._table_obj;
@@ -72,14 +119,36 @@ function(CSSLoader,
             if (_.isUndefined(this._status_obj)) this._status_obj = this._table().children('caption');
             return this._status_obj;
         }
-        _load() {
+        _load(czar = undefined) {
             if (this._loading === undefined) this._loading = false;
             if (this._loading) return;
             this._loading = true;
-
-            this._status().addClass('updating');
+            this._table().children('caption').addClass('updating');
             Fwk.web_service_GET(
-                "/replication/qserv/master/config/" + QservCzarConfig.czar_name,
+                "/replication/config",
+                {   timeout_sec: 2,
+                    version: Common.RestAPIVersion},
+                (data) => {
+                    if (data.success) {
+                        this._set_czars(data.config.czars);
+                        if (!_.isUndefined(czar)) this._set_czar(czar);
+                        this._load_config();
+                    } else {
+                        console.log('request failed', this.fwk_app_name, data.error);
+                        this._status().html('<span style="color:maroon">' + data.error + '</span>');
+                    }
+                },
+                (msg) => {
+                    console.log('request failed', this.fwk_app_name, msg);
+                    this._status().html('<span style="color:maroon">No Response</span>');
+                    this._status().removeClass('updating');
+                    this._loading = false;
+                }
+            );
+        }
+        _load_config() {
+            Fwk.web_service_GET(
+                "/replication/qserv/master/config/" + this._czar(),
                 {   timeout_sec: 2,
                     version: Common.RestAPIVersion
                 },

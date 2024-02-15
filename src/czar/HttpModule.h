@@ -60,7 +60,7 @@ protected:
      * @param func The name of the calling context (it's used for error reporting).
      * @throws std::invalid_argument If the dentifiers didn't match.
      */
-    void enforceCzarId(std::string const& func) const;
+    void enforceCzarName(std::string const& func) const;
 
 private:
     std::string const _context;

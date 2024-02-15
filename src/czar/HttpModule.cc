@@ -44,24 +44,24 @@ HttpModule::HttpModule(string const& context, shared_ptr<qhttp::Request> const& 
 
 string HttpModule::context() const { return _context; }
 
-void HttpModule::enforceCzarId(string const& func) const {
-    string const czarIdAttrName = "czar";
-    string czarId;
+void HttpModule::enforceCzarName(string const& func) const {
+    string const czarNameAttrName = "czar";
+    string czarName;
     if (req()->method == "GET") {
-        if (!query().has(czarIdAttrName)) {
+        if (!query().has(czarNameAttrName)) {
             throw http::Error(func, "No Czar identifier was provided in the request query.");
         }
-        czarId = query().requiredString(czarIdAttrName);
+        czarName = query().requiredString(czarNameAttrName);
     } else {
-        if (!body().has(czarIdAttrName)) {
+        if (!body().has(czarNameAttrName)) {
             throw http::Error(func, "No Czar identifier was provided in the request body.");
         }
-        czarId = body().required<string>(czarIdAttrName);
+        czarName = body().required<string>(czarNameAttrName);
     }
-    string const expectedCzarId = cconfig::CzarConfig::instance()->id();
-    if (expectedCzarId != czarId) {
-        string const msg = "Requested Czar identifier '" + czarId + "' does not match the one '" +
-                           expectedCzarId + "' of the current Czar.";
+    string const expectedCzarName = cconfig::CzarConfig::instance()->name();
+    if (expectedCzarName != czarName) {
+        string const msg = "Requested Czar identifier '" + czarName + "' does not match the one '" +
+                           expectedCzarName + "' of the current Czar.";
         throw http::Error(func, msg);
     }
 }

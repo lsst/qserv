@@ -161,6 +161,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">&sum;&nbsp;Bytes</th>
           <th class="sticky" style="text-align:right;">&sum;&nbsp;Rows</th>
           <th class="sticky" style="text-align:right;">Rows</th>
+          <th class="sticky" style="text-align:right;">Czar</th>
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
@@ -313,6 +314,7 @@ function(CSSLoader,
   <th style="text-align:right;"><pre>${query.collectedBytes}</pre></th>
   <th style="text-align:right;"><pre>${query.collectedRows}</pre></th>
   <th style="text-align:right;"><pre>${query.finalRows}</pre></th>
+  <td style="text-align:right;"><pre>${data.czar_ids[query.czarId]}[${query.czarId}]</pre></td>
   <th style="text-align:right;"><pre>${query.queryId}</pre></th>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
