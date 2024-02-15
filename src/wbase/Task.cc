@@ -457,6 +457,14 @@ memman::MemMan::Status Task::getMemHandleStatus() {
     return _memMan->getStatus(_memHandle);
 }
 
+bool Task::setBooted() {
+    bool alreadyBooted = _booted.exchange(true);
+    if (!alreadyBooted) {
+        _bootedTime = CLOCK::now();
+    }
+    return alreadyBooted;
+}
+
 nlohmann::json Task::getJson() const {
     // It would be nice to have the _queryString in this, but that could make the results very large.
     nlohmann::json js;
