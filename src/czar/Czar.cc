@@ -150,11 +150,11 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());
 
-    // Need to be done first as it adds logging context for new threads
+    // This should to done first as it adds logging context for new threads
     _uqFactory.reset(new ccontrol::UserQueryFactory(databaseModels, _czarName));
 
     // NOTE: This steps should be done after constructing the query factory where
-    //       the name of the Czar gets translated into a numeric icdentifier.
+    //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.

@@ -30,12 +30,9 @@
 
 namespace lsst::qserv::czar {
 
-/// @addtogroup czar
-
 /**
- *  @ingroup czar
- *  @brief Structure used for returning result from Czar::submitQuery and from subsequent
- *   calls to Czar::getQueryInfo
+ * Structure used for returning result from Czar::submitQuery and from subsequent
+ * calls to Czar::getQueryInfo
  */
 struct SubmitResult {
     // Populated by methods Czar::submitQuery and Czar::getQueryInfo
