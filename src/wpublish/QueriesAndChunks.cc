@@ -467,7 +467,6 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
 void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                                  wsched::SchedulerBase::Ptr const& sched) {
     LOGS(_log, LOG_LVL_INFO, "taking too long, booting from " << sched->getName());
-    // &&& Add Task to a map of booted tasks _bootedTaskMap. A simple map probably isn't good enough for this.
     sched->removeTask(task, true);
     bool alreadyBooted = task->setBooted();
     if (alreadyBooted) {

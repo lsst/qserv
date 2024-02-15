@@ -269,7 +269,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
 /// If the task is running: the task continues to run, but the scheduler is told
 /// it is finished (this allows the scheduler to move on), and its thread is removed
 /// from the thread pool (the thread pool creates a new thread to replace it).
-bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning) { //&&&HERE
+bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning) {
     QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
     // Check if task is in the queue.
     // _taskQueue has its own mutex to protect this.
@@ -306,13 +306,6 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
     if (poolThread != nullptr) {
         LOGS(_log, LOG_LVL_INFO, "removeTask moving running task");
         return poolThread->leavePool(task);
-        /* &&&
-        bool leftPool = poolThread->leavePool(task);
-        if (leftPool) {
-            _decrCountForUserQuery(task->getQueryId());
-        }
-        return leftPool;
-        */
     } else {
         LOGS(_log, LOG_LVL_DEBUG,
              "removeTask PoolEventThread was null, "

@@ -171,9 +171,9 @@ void QueryStatistics::tasksAddedToScheduler(std::shared_ptr<wsched::SchedulerBas
     }
     string schedName = sched->getName();
     lock_guard<mutex> lockG(_qStatsMtx);
-    auto iter = _taskSchedMap.find(schedName);
-    if (iter == _taskSchedMap.end()) {
-        _taskSchedMap.insert({schedName, SchedulerTasksInfo(sched, numberOfTasksAdded)});
+    auto iter = _taskSchedInfoMap.find(schedName);
+    if (iter == _taskSchedInfoMap.end()) {
+        _taskSchedInfoMap.insert({schedName, SchedulerTasksInfo(sched, numberOfTasksAdded)});
     } else {
         SchedulerTasksInfo& schedTasksInfo = iter->second;
         schedTasksInfo.taskCount += numberOfTasksAdded;
@@ -183,7 +183,7 @@ void QueryStatistics::tasksAddedToScheduler(std::shared_ptr<wsched::SchedulerBas
 
 QueryStatistics::SchedTasksInfoMap QueryStatistics::getSchedulerTasksInfoMap() {
     lock_guard<mutex> lockG(_qStatsMtx);
-    return _taskSchedMap;
+    return _taskSchedInfoMap;
 }
 
 }  // namespace lsst::qserv::wpublish
