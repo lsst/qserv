@@ -155,7 +155,7 @@ private:
     std::shared_ptr<util::Histogram> _histSizePerTask;              ///< Histogram of bytes per Task.
     std::shared_ptr<util::Histogram> _histRowsPerTask;              ///< Histogram of rows per Task.
 
-    SchedTasksInfoMap _taskSchedMap;  ///< &&& rename
+    SchedTasksInfoMap _taskSchedInfoMap;  ///< Map of task information ordered by scheduler name.
 };
 
 }  // namespace lsst::qserv::wpublish
