@@ -277,9 +277,6 @@ QueryStatistics::Ptr QueriesAndChunks::_getStats(QueryId const& qId) const {
     return nullptr;
 }
 
-/// Examine all running Tasks and boot Tasks that are taking too long and
-/// move user queries that are too slow to the snail scan.
-/// This is expected to be called maybe once every 5 minutes.
 void QueriesAndChunks::examineAll() {
     // Make sure only one `examineAll()` is running at any given time.
     if (_runningExamineAll.exchange(true) == true) {
@@ -494,37 +491,58 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
         }
     } else {
         // Change strategy, track the total number of Tasks that are running while booted (sansSched)
-        // and move the worst offender to the snailScan. The worst offender is the UserQuery with
-        // the most tasks running that are taking too long.
-        auto [bootedTaskCount, qIdWithMostBooted] = _bootedTaskTracker.getTotalBootedTaskCount();
+        // and move the worst offenders to the snailScan. The worst offender is the UserQuery with
+        // the most `Task`s running that are taking too long.
+        // The following function only counts booted `Task`s that are still EXECUTING,
+        // and `countQIdVect` is order by worst offender to least worst offender.
+        auto [bootedTaskCount, countQIdVect] = _bootedTaskTracker.getTotalBootedTaskCount();
+        // Sum of Tasks in
+        int uqBootedTasksSum = 0;
         if (bootedTaskCount > _maxTasksBooted) {
-            // Get query info
-            QueryStatistics::Ptr queryToBoot = getStats(qIdWithMostBooted);
-            if (queryToBoot == nullptr) {
-                LOGS(_log, LOG_LVL_WARN,
-                     "Couldn't locate query with most booted tasks, booting examined query instead.");
-                queryToBoot = uq;
-            }
+            for (auto const& countQId : countQIdVect) {
+                // If enough UserQueries have been booted to get under the Task limit,
+                // stop booting UserQueries.
+                if ((bootedTaskCount - uqBootedTasksSum) < _maxTasksBooted / 2) {
+                    break;
+                }
+                QueryId qIdToBoot = countQId.qId;
+                // Get query info
+                QueryStatistics::Ptr queryToBoot = getStats(qIdToBoot);
+                if (queryToBoot == nullptr) {
+                    LOGS(_log, LOG_LVL_ERROR, __func__ << " Couldn't locate qIdToBoot=" << qIdToBoot);
+                    // This really should never happen, but try to boot the next query in the list.
+                    continue;
+                }
 
-            // It may be possible for Tasks associated with a QueryId to be on more than 1 scheduler.
-            QueryStatistics::SchedTasksInfoMap schedTaskMap = queryToBoot->getSchedulerTasksInfoMap();
-            for (auto const& [key, schedInfo] : schedTaskMap) {
-                wsched::SchedulerBase::Ptr schedTarget = schedInfo.scheduler.lock();
-                if (schedTarget == nullptr) {
-                    LOGS(_log, LOG_LVL_ERROR,
-                         "QueriesAndChunks::_bootTask schedTarg was nullptr for key=" << key);
+                // If the UserQuery was already booted, just add its booted `Task`s to the sum.
+                if (queryToBoot->_queryBooted) {
+                    uqBootedTasksSum += countQId.count;
                     continue;
                 }
-                if (bSched->isScanSnail(schedTarget)) {
-                    LOGS(_log, LOG_LVL_TRACE,
-                         "QueriesAndChunks::_bootTask schedTarg was snailScan for key=" << key);
-                    continue;
+
+                // It may be possible for Tasks associated with a QueryId to be on more than 1 scheduler.
+                QueryStatistics::SchedTasksInfoMap schedTaskMap = queryToBoot->getSchedulerTasksInfoMap();
+                for (auto const& [key, schedInfo] : schedTaskMap) {
+                    wsched::SchedulerBase::Ptr schedTarget = schedInfo.scheduler.lock();
+                    if (schedTarget == nullptr) {
+                        LOGS(_log, LOG_LVL_ERROR,
+                             "QueriesAndChunks::_bootTask schedTarg was nullptr for key=" << key);
+                        continue;
+                    }
+                    if (bSched->isScanSnail(schedTarget)) {
+                        LOGS(_log, LOG_LVL_TRACE,
+                             "QueriesAndChunks::_bootTask schedTarg was snailScan for key=" << key);
+                        continue;
+                    }
+                    queryToBoot->_queryBooted = true;
+                    queryToBoot->_queryBootedTime = CLOCK::now();
+                    bSched->moveUserQueryToSnail(queryToBoot->queryId, schedTarget);
+                    uqBootedTasksSum += countQId.count;
                 }
-                queryToBoot->_queryBooted = true;
-                bSched->moveUserQueryToSnail(queryToBoot->queryId, schedTarget);
             }
         }
     }
+    return;
 }
 
 /// Remove all Tasks belonging to the user query 'qId' from the queue of 'sched'.
@@ -669,20 +687,18 @@ void BootedTaskTracker::removeQuery(QueryId qId) {
     _bootedMap.erase(qId);
 }
 
-std::pair<int, QueryId> BootedTaskTracker::getTotalBootedTaskCount() const {
+pair<int, vector<BootedTaskTracker::CountQId>> BootedTaskTracker::getTotalBootedTaskCount() const {
     lock_guard<mutex> lockG(_bootedMapMtx);
     int taskCount = 0;
-    size_t largestQueryCount = 0;
-    QueryId largestQueryId = 0;
+    vector<CountQId> countQId;
     for (auto const& [key, mapOfTasks] : _bootedMap) {
         auto sz = mapOfTasks.size();
         taskCount += sz;
-        if (sz > largestQueryCount) {
-            largestQueryCount = sz;
-            largestQueryId = key;
-        }
+        countQId.emplace_back(sz, key);
     }
-    return {taskCount, largestQueryId};
+    // Sort to descending order of booted `Task`s per UserQuery.
+    sort(countQId.begin(), countQId.end(), greater<CountQId>());
+    return {taskCount, countQId};
 }
 
 }  // namespace lsst::qserv::wpublish

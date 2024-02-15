@@ -42,7 +42,6 @@
 #include "wbase/Task.h"
 #include "wsched/SchedulerBase.h"
 
-
 namespace lsst::qserv::wbase {
 class Histogram;
 }
@@ -142,6 +141,7 @@ private:
     int _tasksRunning = 0;
     int _tasksBooted = 0;                   ///< Number of Tasks booted for being too slow.
     std::atomic<bool> _queryBooted{false};  ///< True when the entire query booted.
+    TIMEPOINT _queryBootedTime;             ///< Set when `_queryBooted` is set to true.
 
     double _totalTimeMinutes = 0.0;
 

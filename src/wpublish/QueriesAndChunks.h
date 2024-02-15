@@ -129,6 +129,22 @@ public:
     /// Map of weak Task pointers organized by Task::_tSeq.
     using MapOfTasks = std::map<uint64_t, std::weak_ptr<wbase::Task>>;
 
+    /// Class to sort UserQueries by number of booted `Task`s.
+    class CountQId {
+    public:
+        CountQId() = delete;
+        CountQId(size_t count_, QueryId qId_) : count(count_), qId(qId_) {}
+        bool operator<(CountQId const& other) const {
+            if (count == other.count) {
+                return qId < other.qId;
+            }
+            return count < other.count;
+        }
+        bool operator>(CountQId const& other) const { return other < *this; }
+        size_t count;
+        QueryId qId;
+    };
+
     BootedTaskTracker() = default;
     BootedTaskTracker(BootedTaskTracker const&) = default;
 
@@ -136,10 +152,10 @@ public:
     void removeTask(wbase::Task::Ptr const& task);
     void removeQuery(QueryId qId);  ///< Remove a `QueryId` and all associated `Task`s from `_bootedMap`.
 
-    /// Return a count of all tasks booted from all queries in `_bootedMap`
-    /// and the QueryId associated with the most booted tasks. If the count
-    /// is zero, the QueryId is meaningless.
-    std::pair<int, QueryId> getTotalBootedTaskCount() const;
+    /// Return a count of all tasks booted from all queries in `_bootedMap` and
+    /// a vector of `QueryId`s that is sorted to have the UserQueries with the
+    /// most booted `Task`s at the front.
+    std::pair<int, std::vector<CountQId>> getTotalBootedTaskCount() const;
 
 private:
     /// Map of booted tasks that are still running organized by `QueryId`, `Task::_tSeq`.
@@ -185,6 +201,9 @@ public:
     void startedTask(wbase::Task::Ptr const& task);
     void finishedTask(wbase::Task::Ptr const& task);
 
+    /// Examine all running Tasks and boot Tasks that are taking too long and
+    /// move user queries that are too slow to the snail scan.
+    /// This is expected to be called maybe once every 5 minutes.
     void examineAll();
 
     /**
@@ -230,7 +249,6 @@ private:
     /// finished, which allows the scheduler to move on to another Task.
     /// If too many Tasks from the same user query are booted, all remaining tasks are moved to the snail
     /// scheduler in an attempt to keep a single user query from jamming up a scheduler.
-    ///
     void _bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                    std::shared_ptr<wsched::SchedulerBase> const& sched);
     ScanTableSumsMap _calcScanTableSums();

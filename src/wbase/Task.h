@@ -294,7 +294,7 @@ public:
     void setMySqlThreadId(unsigned long id) { _mysqlThreadId.store(id); }
 
     /// Return true if this task was already booted.
-    bool setBooted() { return _booted.exchange(true); }
+    bool setBooted();
 
     /// Return true if the task was booted.
     bool isBooted() { return _booted; }
@@ -359,6 +359,8 @@ private:
     std::atomic<unsigned long> _mysqlThreadId{0};  ///< 0 if not connected to MySQL
 
     std::atomic<bool> _booted{false};  ///< Set to true if this task takes too long and is booted.
+    /// Time stamp for when `_booted` is set to true, otherwise meaningless.
+    TIMEPOINT _bootedTime;
 };
 
 }  // namespace lsst::qserv::wbase
