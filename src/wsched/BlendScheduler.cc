@@ -455,7 +455,7 @@ void BlendScheduler::_logChunkStatus() {
     }
 }
 
-nlohmann::json BlendScheduler::statusToJson() {
+nlohmann::json BlendScheduler::statusToJsonBlend() {
     nlohmann::json status;
     status["name"] = getName();
     status["priority"] = getPriority();
@@ -465,7 +465,7 @@ nlohmann::json BlendScheduler::statusToJson() {
     {
         lock_guard<mutex> lg(_schedMtx);
         for (auto&& sched : _schedulers) {
-            schedulers.push_back(sched->statusToJson());
+            schedulers.push_back(sched->statusToJsonBase());
         }
     }
     status["schedulers"] = schedulers;
