@@ -91,7 +91,8 @@ public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     TaskScheduler();
     virtual ~TaskScheduler() {}
-    virtual void taskCancelled(Task*) = 0;  ///< Repeated calls must be harmless.
+    virtual std::string getName() const = 0;  //< @return the name of the scheduler.
+    virtual void taskCancelled(Task*) = 0;    ///< Repeated calls must be harmless.
     virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning) = 0;
 
     util::HistogramRolling::Ptr histTimeOfRunningTasks;       ///< Store information about running tasks
@@ -208,7 +209,7 @@ public:
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner* tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
-    TaskScheduler::Ptr getTaskScheduler() { return _taskScheduler.lock(); }
+    TaskScheduler::Ptr getTaskScheduler() const { return _taskScheduler.lock(); }
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
     // Shared scan information
