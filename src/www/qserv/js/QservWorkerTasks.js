@@ -115,12 +115,11 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">chunk</th>
           <th class="sticky" style="text-align:right;">sub-ch</th>
           <th class="sticky" style="text-align:right;">attempt</th>
-          <th class="sticky" style="text-align:right;">frag</th>
           <th class="sticky" style="text-align:right;">templ</th>
           <th class="sticky" style="text-align:right;">seq</th>
           <th class="sticky" style="text-align:right;">state</th>
+          <th class="sticky" style="text-align:right;">sched</th>
           <th class="sticky" style="text-align:right;">cancelled</th>
-          <th class="sticky" style="text-align:right;">bytes</th>
           <th class="sticky" style="text-align:right;">created</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">queued</th>
@@ -132,6 +131,8 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">queried</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky" style="text-align:right;">finished</th>
+          <th class="sticky" style="text-align:right;">booted</th>
+          <th class="sticky" style="text-align:right;">&nbsp;</th>
           <th class="sticky" style="text-align:right;">MySQL thrd</th>
         </tr>    
       </thead>
@@ -315,12 +316,11 @@ function(CSSLoader,
   <td style="text-align:right;"><pre>${chunkId}</pre></td>
   <td style="text-align:right;"><pre>${task.subChunkId}</pre></td>
   <td style="text-align:right;"><pre>${task.attemptId}</pre></td>
-  <td style="text-align:right;"><pre>${task.fragmentId}</pre></td>
   <td style="text-align:right;"><pre>${task.templateId}</pre></td>
   <td style="text-align:right;"><pre>${task.sequenceId}</pre></td>
   <td style="text-align:right;"><pre>${QservWorkerTasks._state2str(task.state)}</pre></td>
+  <th style="text-align:right;"><pre>${QservWorkerTasks._scheduler2str(task.scheduler)}</pre></th>
   <td style="text-align:right;"><pre>${task.cancelled == "0" ? "no" : "yes"}</pre></td>
-  <td style="text-align:right;"><pre>${task.sizeSoFar}</pre></td>
   <td style="text-align:right;"><pre>${task.createTime_msec ? (new Date(task.createTime_msec)).toISOString() : ""}</pre></td>
   <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.createTime_msec, task.queueTime_msec, snapshotTime_msec)}</pre></th>
   <td style="text-align:right;"><pre>${task.queueTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.queueTime_msec) : ""}</pre></td>
@@ -332,6 +332,8 @@ function(CSSLoader,
   <td style="text-align:right;"><pre>${task.queryTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.queryTime_msec) : ""}</pre></td>
   <th style="text-align:right;"><pre>${QservWorkerTasks._timestamps_diff2str(task.queryTime_msec, task.finishTime_msec, snapshotTime_msec)}</pre></th>
   <td style="text-align:right;"><pre>${task.finishTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.finishTime_msec) : ""}</pre></td>
+  <th style="text-align:right;"><pre>${task.bootedTime_msec ? QservWorkerTasks._timestamp2hhmmss(task.bootedTime_msec) : ""}</pre></th>
+  <th style="text-align:right;">${task.booted == "0" ? "&nbsp;" : '<i class="bi bi-exclamation-triangle-fill"></i>'}</th>
   <td style="text-align:right;"><pre>${task.mysqlThreadId || "&nbsp;"}</pre></td>
 </tr>`;
                             rowspan++;
@@ -380,6 +382,10 @@ function(CSSLoader,
                 case 5: return 'FINISHED';
                 default: return 'UNKNOWN';
             }
+        }
+        static _scheduler2str(scheduler) {
+            if (scheduler === '') return scheduler;
+            return scheduler.substr('Sched'.length);
         }
         static _timestamps_diff2str(begin, end, snapshot) {
             if (!begin) return '';
