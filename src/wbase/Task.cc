@@ -489,6 +489,10 @@ nlohmann::json Task::getJson() const {
     js["finishTime_msec"] = util::TimeUtils::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;
     js["mysqlThreadId"] = _mysqlThreadId.load();
+    js["booted"] = _booted.load() ? 1 : 0;
+    js["bootedTime_msec"] = util::TimeUtils::tp2ms(_bootedTime);
+    auto const scheduler = getTaskScheduler();
+    js["scheduler"] = scheduler == nullptr ? "" : scheduler->getName();
     return js;
 }
 
