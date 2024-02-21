@@ -33,15 +33,19 @@
 #include "boost/range/iterator_range.hpp"
 
 // Qserv headers
+#include "global/LogContext.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
 #include "wpublish/QueriesAndChunks.h"
+#include "util/Bug.h"
+#include "util/Error.h"
 #include "util/MultiError.h"
 #include "util/ResultFileNameParser.h"
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
+#include "xrdsvc/StreamBuffer.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -107,6 +111,8 @@ size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
 }  // namespace
 
 namespace lsst::qserv::wbase {
+
+atomic<uint64_t> FileChannelShared::scsSeqId{0};
 
 mutex FileChannelShared::_resultsDirCleanupMtx;
 
@@ -252,27 +258,74 @@ json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned in
     return json::object({{"files", files}, {"num_selected", numSelected}, {"num_total", numTotal}});
 }
 
-FileChannelShared::Ptr FileChannelShared::create(shared_ptr<wbase::SendChannel> const& sendChannel,
-                                                 shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                                                 shared_ptr<proto::TaskMsg> const& taskMsg) {
+shared_ptr<FileChannelShared> FileChannelShared::create(shared_ptr<wbase::SendChannel> const& sendChannel,
+                                                        qmeta::CzarId czarId, string const& workerId) {
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
-    return shared_ptr<FileChannelShared>(new FileChannelShared(sendChannel, transmitMgr, taskMsg));
+    return shared_ptr<FileChannelShared>(new FileChannelShared(sendChannel, czarId, workerId));
 }
 
-FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel,
-                                     shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                                     shared_ptr<proto::TaskMsg> const& taskMsg)
-        : ChannelShared(sendChannel, transmitMgr, taskMsg->czarid()) {}
+FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
+                                     string const& workerId)
+        : _sendChannel(sendChannel),
+          _czarId(czarId),
+          _workerId(workerId),
+          _protobufArena(make_unique<google::protobuf::Arena>()),
+          _scsId(scsSeqId++) {
+    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created");
+    if (_sendChannel == nullptr) {
+        throw util::Bug(ERR_LOC, "FileChannelShared constructor given nullptr");
+    }
+}
 
 FileChannelShared::~FileChannelShared() {
-    // Normally, the channel should not be dead before the base class's d-tor
-    // gets called. If it's already dead it means there was a problem to process
-    // a query or send back a response to Czar. In either case, the file
-    // would be useless and it has to be deleted to avoid leaving unclaimed
-    // result files at the results folder.
+    // Normally, the channel should not be dead at this time. If it's already
+    // dead it means there was a problem to process a query or send back a response
+    // to Czar. In either case, the file would be useless and it has to be deleted
+    // in order to avoid leaving unclaimed result files within the results folder.
     if (isDead()) {
-        _removeFile(lock_guard<mutex>(tMtx));
+        _removeFile(lock_guard<mutex>(_tMtx));
     }
+    if (_sendChannel != nullptr) {
+        _sendChannel->setDestroying();
+        if (!_sendChannel->isDead()) {
+            _sendChannel->kill("~FileChannelShared()");
+        }
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared deleted");
+}
+
+void FileChannelShared::setTaskCount(int taskCount) { _taskCount = taskCount; }
+
+bool FileChannelShared::transmitTaskLast() {
+    lock_guard<mutex> const streamMutexLock(_streamMutex);
+    ++_lastCount;
+    bool lastTaskDone = _lastCount >= _taskCount;
+    return lastTaskDone;
+}
+
+bool FileChannelShared::kill(string const& note) {
+    lock_guard<mutex> const streamMutexLock(_streamMutex);
+    return _kill(streamMutexLock, note);
+}
+
+bool FileChannelShared::isDead() {
+    if (_sendChannel == nullptr) return true;
+    return _sendChannel->isDead();
+}
+
+string FileChannelShared::makeIdStr(int qId, int jId) {
+    string str("QID" + (qId == 0 ? "" : to_string(qId) + "#" + to_string(jId)));
+    return str;
+}
+
+bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
+                                              bool cancelled) {
+    lock_guard<mutex> const tMtxLock(_tMtx);
+    if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
+        LOGS(_log, LOG_LVL_ERROR, "Could not transmit the error message to Czar.");
+        return false;
+    }
+    return true;
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
@@ -294,37 +347,26 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     bool erred = false;
     bool hasMoreRows = true;
 
-    // This lock is to protect transmitData from having other Tasks mess with it
+    // This lock is to protect the stream from having other Tasks mess with it
     // while data is loading.
-    lock_guard<mutex> const tMtxLock(tMtx);
+    lock_guard<mutex> const tMtxLock(_tMtx);
 
     while (hasMoreRows && !cancelled) {
         util::Timer bufferFillT;
         bufferFillT.start();
 
-        // Initialize transmitData, if needed.
-        initTransmit(tMtxLock, *task);
-
-        // Transfer rows from a result set into the data buffer. Note that tSize
-        // is set by fillRows. A value of this variable is presently not used by
-        // the code.
-        size_t tSize = 0;
-        hasMoreRows = !transmitData->fillRows(mResult, tSize);
-
-        // Serialize the content of the data buffer into the Protobuf data message
-        // that will be writen into the output file.
-        transmitData->buildDataMsg(*task, multiErr);
-        _writeToFile(tMtxLock, task, transmitData->dataMsg());
-
-        bufferFillT.stop();
-        bufferFillSecs += bufferFillT.getElapsed();
-
-        int const bytes = transmitData->getResultSize();
-        int const rows = transmitData->getResultRowCount();
+        // Transfer as many rows as it's allowed by limitations of
+        // the Google Protobuf into the output file.
+        int bytes = 0;
+        int rows = 0;
+        hasMoreRows = _writeToFile(tMtxLock, task, mResult, bytes, rows, multiErr);
         bytesTransmitted += bytes;
         rowsTransmitted += rows;
         _rowcount += rows;
         _transmitsize += bytes;
+
+        bufferFillT.stop();
+        bufferFillSecs += bufferFillT.getElapsed();
 
         // Fail the operation if the amount of data in the result set exceeds the requested
         // "large result" limit (in case if the one was specified).
@@ -348,19 +390,13 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             _file.flush();
             _file.close();
 
-            // Only the last ("summary") message w/o any rows is sent to Czar to notify
-            // the about completion of the request.
-            transmitData->prepareResponse(*task, _rowcount, _transmitsize);
-            bool const lastIn = true;
-            if (!prepTransmit(tMtxLock, task, cancelled, lastIn)) {
-                LOGS(_log, LOG_LVL_ERROR, "Could not transmit the summary message to Czar.");
+            // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
+            // it about the completion of the request.
+            if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
+                LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
                 break;
             }
-        } else {
-            // Scrap the transmit buffer to be ready for processing the next set of rows
-            // of the current or the next task of the request.
-            transmitData.reset();
         }
     }
     transmitT.stop();
@@ -385,8 +421,31 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     return erred;
 }
 
-void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
-                                     string const& msg) {
+bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string const& note) {
+    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared::" << __func__ << " " << note);
+    return _sendChannel->kill(note);
+}
+
+bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
+                                     MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr) {
+    // Transfer rows from a result set into the response data object.
+    if (nullptr == _responseData) {
+        _responseData = google::protobuf::Arena::CreateMessage<proto::ResponseData>(_protobufArena.get());
+    } else {
+        _responseData->clear_row();
+    }
+    size_t tSize = 0;
+    bool const hasMoreRows = _fillRows(tMtxLock, mResult, rows, tSize);
+    _responseData->set_rowcount(rows);
+    _responseData->set_transmitsize(tSize);
+
+    // Serialize the content of the data buffer into the Protobuf data message
+    // that will be written into the output file.
+    std::string msg;
+    _responseData->SerializeToString(&msg);
+    bytes = msg.size();
+
+    // Create the file if not open.
     if (!_file.is_open()) {
         _fileName = task->resultFilePath();
         _file.open(_fileName, ios::out | ios::trunc | ios::binary);
@@ -395,6 +454,7 @@ void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
                                 " failed to create/truncate the file '" + _fileName + "'.");
         }
     }
+
     // Write 32-bit length of the subsequent message first before writing
     // the message itself.
     uint32_t const msgSizeBytes = msg.size();
@@ -404,6 +464,37 @@ void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
                             to_string(msg.size()) + " bytes into the file '" + _fileName + "'.");
     }
+    return hasMoreRows;
+}
+
+bool FileChannelShared::_fillRows(lock_guard<mutex> const& tMtxLock, MYSQL_RES* mResult, int& rows,
+                                  size_t& tSize) {
+    int const numFields = mysql_num_fields(mResult);
+    unsigned int szLimit = min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
+                               proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
+    rows = 0;
+    tSize = 0;
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(mResult))) {
+        auto lengths = mysql_fetch_lengths(mResult);
+        proto::RowBundle* rawRow = _responseData->add_row();
+        for (int i = 0; i < numFields; ++i) {
+            if (row[i]) {
+                rawRow->add_column(row[i], lengths[i]);
+                rawRow->add_isnull(false);
+            } else {
+                rawRow->add_column();
+                rawRow->add_isnull(true);
+            }
+        }
+        tSize += rawRow->ByteSizeLong();
+        ++rows;
+
+        // Each element needs to be mysql-sanitized
+        // Break the loop if the result is too big so this part can be transmitted.
+        if (tSize > szLimit) return true;
+    }
+    return false;
 }
 
 void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
@@ -417,6 +508,82 @@ void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
                                        << "', ec: " << ec << ".");
         }
     }
+}
+
+bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
+                                      bool cancelled, util::MultiError const& multiErr) {
+    auto const queryId = task->getQueryId();
+    auto const jobId = task->getJobId();
+    auto const idStr(makeIdStr(queryId, jobId));
+
+    // This lock is required for making consistent modifications and usage of the metadata
+    // and response buffers.
+    lock_guard<mutex> const streamMutexLock(_streamMutex);
+
+    // This will deallocate any memory managed by the Google Protobuf Arena
+    // to avoid unnecessary memory utilization by the application.
+    LOGS(_log, LOG_LVL_DEBUG,
+         __func__ << ": Google Protobuf Arena, 1:SpaceUsed=" << _protobufArena->SpaceUsed());
+    _protobufArena->Reset();
+    LOGS(_log, LOG_LVL_DEBUG,
+         __func__ << ": Google Protobuf Arena, 2:SpaceUsed=" << _protobufArena->SpaceUsed());
+
+    QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
+    LOGS(_log, LOG_LVL_DEBUG, __func__);
+    if (isDead()) {
+        LOGS(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");
+        return false;
+    }
+
+    // Prepare the response object and serialize in into a message that will
+    // be sent to Czar.
+
+    proto::ResponseSummary response;
+    response.set_wname(_workerId);
+    response.set_queryid(queryId);
+    response.set_jobid(jobId);
+    response.set_fileresource_xroot(task->resultFileXrootUrl());
+    response.set_fileresource_http(task->resultFileHttpUrl());
+    response.set_attemptcount(task->getAttemptCount());
+    response.set_rowcount(_rowcount);
+    response.set_transmitsize(_transmitsize);
+    string errorMsg;
+    int errorCode = 0;
+    if (!multiErr.empty()) {
+        errorMsg = multiErr.toOneLineString();
+        errorCode = multiErr.firstErrorCode();
+    } else if (cancelled) {
+        errorMsg = "cancelled";
+        errorCode = -1;
+    }
+    if (!errorMsg.empty() or (errorCode != 0)) {
+        errorMsg = "FileChannelShared::" + string(__func__) + " error(s) in result for chunk #" +
+                   to_string(task->getChunkId()) + ": " + errorMsg;
+        response.set_errormsg(errorMsg);
+        response.set_errorcode(errorCode);
+        LOGS(_log, LOG_LVL_ERROR, errorMsg);
+    }
+    response.SerializeToString(&_responseBuf);
+
+    LOGS(_log, LOG_LVL_DEBUG,
+         __func__ << " idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size());
+
+    // Send the message sent out-of-band within the SSI metadata.
+    if (!_sendChannel->setMetadata(_responseBuf.data(), _responseBuf.size())) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in setMetadata " << idStr);
+        _kill(streamMutexLock, "setMetadata");
+        return false;
+    }
+
+    // Send back the empty object since no info is expected by a caller
+    // for this type of requests beyond the usual error notifications (if any).
+    // Note that this call is needed to initiate the transaction.
+    if (!_sendChannel->sendData((char const*)0, 0)) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in sendData " << idStr);
+        _kill(streamMutexLock, "sendData");
+        return false;
+    }
+    return true;
 }
 
 }  // namespace lsst::qserv::wbase

@@ -62,9 +62,7 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
     }
     auto taskMsg = std::make_shared<proto::TaskMsg>();
     // shared
-    taskMsg->set_session(_session);
     taskMsg->set_db(chunkQuerySpec.db);
-    taskMsg->set_protocol(2);
     taskMsg->set_queryid(queryId);
     taskMsg->set_jobid(jobId);
     taskMsg->set_attemptcount(attemptCount);

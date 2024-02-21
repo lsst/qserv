@@ -5,7 +5,6 @@ target_sources(wcontrol PRIVATE
     Foreman.cc
     ResourceMonitor.cc
     SqlConnMgr.cc
-    TransmitMgr.cc
     WorkerStats.cc
 )
 

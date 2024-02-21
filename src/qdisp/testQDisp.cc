@@ -38,11 +38,9 @@
 // Qserv headers
 #include "ccontrol/MergingHandler.h"
 #include "global/ResourceUnit.h"
-#include "global/MsgReceiver.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/MessageStore.h"
-#include "qdisp/PseudoFifo.h"
 #include "qdisp/QueryRequest.h"
 #include "qdisp/SharedResources.h"
 #include "qdisp/XrdSsiMocks.h"
@@ -60,19 +58,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.testQDisp");
 typedef util::Sequential<int> SequentialInt;
 typedef std::vector<qdisp::ResponseHandler::Ptr> RequesterVector;
 
-class ChunkMsgReceiverMock : public MsgReceiver {
-public:
-    virtual void operator()(int code, std::string const& msg) {
-        LOGS_DEBUG("Mock::operator() chunkId=" << _chunkId << ", code=" << code << ", msg=" << msg);
-    }
-    static std::shared_ptr<ChunkMsgReceiverMock> newInstance(int chunkId) {
-        std::shared_ptr<ChunkMsgReceiverMock> r = std::make_shared<ChunkMsgReceiverMock>();
-        r->_chunkId = chunkId;
-        return r;
-    }
-    int _chunkId;
-};
-
 namespace lsst::qserv::qproc {
 
 // Normally, there's one TaskMsgFactory that all jobs in a user query share.
@@ -80,7 +65,7 @@ namespace lsst::qserv::qproc {
 // for that job.
 class MockTaskMsgFactory : public TaskMsgFactory {
 public:
-    MockTaskMsgFactory(std::string const& mockPayload_) : TaskMsgFactory(0), mockPayload(mockPayload_) {}
+    MockTaskMsgFactory(std::string const& mockPayload_) : TaskMsgFactory(), mockPayload(mockPayload_) {}
     void serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName, QueryId queryId, int jobId,
                       int attemptCount, qmeta::CzarId czarId, std::ostream& os) override {
         os << mockPayload;
@@ -131,9 +116,8 @@ std::shared_ptr<qdisp::JobQuery> executiveTest(qdisp::Executive::Ptr const& ex, 
     ResourceUnit ru;
     std::string chunkResultName = "mock";
     std::shared_ptr<rproc::InfileMerger> infileMerger;
-    std::shared_ptr<ChunkMsgReceiverMock> cmr = ChunkMsgReceiverMock::newInstance(chunkId);
     ccontrol::MergingHandler::Ptr mh =
-            std::make_shared<ccontrol::MergingHandler>(cmr, infileMerger, chunkResultName);
+            std::make_shared<ccontrol::MergingHandler>(infileMerger, chunkResultName);
     RequesterVector rv;
     for (int j = 0; j < copies; ++j) {
         rv.push_back(mh);
@@ -170,7 +154,6 @@ public:
     qdisp::ExecutiveConfig::Ptr conf;
     std::shared_ptr<qdisp::MessageStore> ms;
     qdisp::QdispPool::Ptr qdispPool;
-    qdisp::PseudoFifo::Ptr pseudoFifo;
     qdisp::SharedResources::Ptr sharedResources;
     qdisp::Executive::Ptr ex;
     std::shared_ptr<qdisp::JobQuery> jqTest;  // used only when needed
@@ -183,8 +166,7 @@ public:
         conf = std::make_shared<qdisp::ExecutiveConfig>(str, 0);  // No updating of QMeta.
         ms = std::make_shared<qdisp::MessageStore>();
         qdispPool = std::make_shared<qdisp::QdispPool>(true);
-        pseudoFifo = qdisp::PseudoFifo::Ptr(new qdisp::PseudoFifo(300));
-        sharedResources = qdisp::SharedResources::create(qdispPool, pseudoFifo);
+        sharedResources = qdisp::SharedResources::create(qdispPool);
 
         std::shared_ptr<qmeta::QStatus> qStatus;  // No updating QStatus, nullptr
         ex = qdisp::Executive::create(*conf, ms, sharedResources, qStatus, nullptr, asioIoService);

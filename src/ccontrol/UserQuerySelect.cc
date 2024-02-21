@@ -82,7 +82,6 @@
 #include "ccontrol/UserQueryError.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
-#include "global/MsgReceiver.h"
 #include "proto/worker.pb.h"
 #include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
@@ -120,25 +119,6 @@ public:
     ProtoPrinter() {}
     virtual void operator()(std::shared_ptr<proto::TaskMsg> m) { std::cout << "Got taskmsg ok"; }
     virtual ~ProtoPrinter() {}
-};
-
-/// Factory to create chunkid-specific MsgReceiver objs linked to the right
-/// messagestore
-class ChunkMsgReceiver : public MsgReceiver {
-public:
-    virtual void operator()(int code, std::string const& msg) {
-        messageStore->addMessage(chunkId, "CHUNK", code, msg);
-    }
-    static std::shared_ptr<ChunkMsgReceiver> newInstance(int chunkId,
-                                                         std::shared_ptr<qdisp::MessageStore> ms) {
-        std::shared_ptr<ChunkMsgReceiver> r = std::make_shared<ChunkMsgReceiver>();
-        r->chunkId = chunkId;
-        r->messageStore = ms;
-        return r;
-    }
-
-    int chunkId;
-    std::shared_ptr<qdisp::MessageStore> messageStore;
 };
 
 ////////////////////////////////////////////////////////////////////////
@@ -261,7 +241,7 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
     assert(_infileMerger);
 
-    auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>(_qMetaQueryId);
+    auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>();
     TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
     std::vector<int> chunks;
     std::mutex chunksMtx;
@@ -309,12 +289,11 @@ void UserQuerySelect::submit() {
             }
             std::string chunkResultName = ttn.make(cs->chunkId);
 
-            std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId, _messageStore);
             ResourceUnit ru;
             ru.setAsDbChunk(cs->db, cs->chunkId);
             qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
                     _qMetaCzarId, _executive->getId(), sequence, ru,
-                    std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName), taskMsgFactory, cs,
+                    std::make_shared<MergingHandler>(_infileMerger, chunkResultName), taskMsgFactory, cs,
                     chunkResultName);
             _executive->add(jobDesc);
         };

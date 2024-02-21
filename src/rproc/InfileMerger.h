@@ -24,7 +24,6 @@
 #define LSST_QSERV_RPROC_INFILEMERGER_H
 /// InfileMerger.h declares:
 ///
-/// struct InfileMergerError
 /// class InfileMergerConfig
 /// class InfileMerger
 /// (see individual class documentation for more information)
@@ -50,13 +49,13 @@ namespace mysql {
 class MysqlConfig;
 }
 namespace proto {
-class ProtoHeader;
-class Result;
-struct WorkerResponse;
+class ResponseData;
+class ResponseSummary;
 }  // namespace proto
 namespace qdisp {
+class JobQuery;
 class MessageStore;
-}
+}  // namespace qdisp
 namespace qproc {
 class DatabaseModels;
 }
@@ -71,15 +70,6 @@ class SqlResults;
 }  // namespace lsst::qserv
 
 namespace lsst::qserv::rproc {
-
-/** \typedef InfileMergerError Store InfileMerger error code.
- *
- * \note:
- * Keep this indirection to util::Error in case
- * InfileMergerError::resultTooBig() method might is needed in the future
- *
- * */
-typedef util::Error InfileMergerError;
 
 /// class InfileMergerConfig - value class for configuring a InfileMerger
 class InfileMergerConfig {
@@ -154,10 +144,7 @@ private:
 /// To use, construct a configured instance, then call merge() to kick off the
 /// merging process, and finalize() to wait for outstanding merging processes
 /// and perform the appropriate post-processing before returning.  merge() right
-/// now expects an entire message buffer, where a message buffer consists of:
-/// Byte 0: unsigned char size of ProtoHeader message
-/// Bytes 1 - size_ph : ProtoHeader message (containing size of result message)
-/// Bytes size_ph - size_ph + size_rm : Result message
+/// now expects a parsed ResponseData message.
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
@@ -172,18 +159,17 @@ public:
 
     std::string engineToStr(InfileMerger::DbEngine engine);
 
-    /// Merge a worker response, which contains:
-    /// Size of ProtoHeader message
-    /// ProtoHeader message
-    /// Result message
+    /// Merge a worker response, which contains a single ResponseData message
+    /// Using job query info for early termination of the merge if needed.
     /// @return true if merge was successfully imported.
-    bool merge(std::shared_ptr<proto::WorkerResponse> const& response);
+    bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
+               std::shared_ptr<qdisp::JobQuery> const& jq);
 
-    /// Indicate the the merge for all of the jobs in jobIds is complete.
-    void mergeCompleteFor(std::set<int> const& jobIds);
+    /// Indicate the merge for the job is complete.
+    void mergeCompleteFor(int jobId);
 
     /// @return error details if finalize() returns false
-    InfileMergerError const& getError() const { return _error; }
+    util::Error const& getError() const { return _error; }
     /// @return final target table name  storing results after post processing
     std::string getTargetTable() const { return _config.targetTable; }
 
@@ -234,7 +220,6 @@ public:
 private:
     bool _applyMysqlMyIsam(std::string const& query, size_t resultSize);
     bool _applyMysqlInnoDb(std::string const& query, size_t resultSize);
-    bool _merge(std::shared_ptr<proto::WorkerResponse>& response);
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results);
@@ -263,7 +248,7 @@ private:
     DbEngine _dbEngine = MYISAM;                   ///< ENGINE used for aggregating results.
     std::shared_ptr<sql::SqlConnection> _sqlConn;  ///< SQL connection
     std::string _mergeTable;                       ///< Table for result loading
-    InfileMergerError _error;                      ///< Error state
+    util::Error _error;                            ///< Error state
     bool _isFinished = false;                      ///< Completed?
     std::mutex _sqlMutex;                          ///< Protection for SQL connection
 

@@ -56,7 +56,7 @@ class TaskMsg;
 class TaskMsg_Fragment;
 }  // namespace lsst::qserv::proto
 namespace lsst::qserv::wbase {
-class ChannelShared;
+class FileChannelShared;
 }
 namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
@@ -156,7 +156,7 @@ public:
     };
 
     Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
-         size_t templateId, int subchunkId, std::shared_ptr<ChannelShared> const& sc,
+         size_t templateId, int subchunkId, std::shared_ptr<FileChannelShared> const& sc,
          uint16_t resultsHttpPort = 8080);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
@@ -164,7 +164,7 @@ public:
 
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                        std::shared_ptr<wbase::ChannelShared> const& sendChannel,
+                                        std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
                                         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                         mysql::MySqlConfig const& mySqlConfig,
                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
@@ -173,8 +173,8 @@ public:
 
     void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
-    std::shared_ptr<ChannelShared> getSendChannel() const { return _sendChannel; }
-    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for ChannelShared
+    std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
+    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for FileChannelShared
     std::string user;                                  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
 
@@ -274,8 +274,6 @@ public:
     /// Return a json object describing sdome details of this task.
     nlohmann::json getJson() const;
 
-    int64_t getSession() const { return _session; }
-    int getProtocol() const { return _protocol; }
     std::string getDb() const { return _db; }
     int getCzarId() const { return _czarId; }
     bool getFragmentHasSubchunks() const { return _fragmentHasSubchunks; }
@@ -296,8 +294,8 @@ public:
     void setMySqlThreadId(unsigned long id) { _mysqlThreadId.store(id); }
 
 private:
-    std::shared_ptr<UserQueryInfo> _userQueryInfo;  ///< Details common to Tasks in this UserQuery.
-    std::shared_ptr<ChannelShared> _sendChannel;    ///< Send channel.
+    std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
+    std::shared_ptr<FileChannelShared> _sendChannel;  ///< Send channel.
 
     uint64_t const _tSeq = 0;          ///< identifier for the specific task
     QueryId const _qId = 0;            ///< queryId from czar
@@ -309,10 +307,8 @@ private:
     int const _attemptCount = 0;       ///< attemptCount from czar
     int const _queryFragmentNum;       ///< The fragment number of the query in the task message.
     bool const _fragmentHasSubchunks;  ///< True if the fragment in this query has subchunks.
-    int64_t const _session;            ///< XrdSsi session.
     bool const _hasDb;                 ///< true if db was in message from czar.
     std::string _db;                   ///< Task database
-    int const _protocol;               ///< protocol expected by czar
     int const _czarId;                 ///< czar Id from the task message.
 
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.

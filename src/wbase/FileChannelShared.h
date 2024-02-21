@@ -24,7 +24,6 @@
 
 // System headers
 #include <atomic>
-#include <condition_variable>
 #include <fstream>
 #include <memory>
 #include <mutex>
@@ -37,24 +36,25 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "qmeta/types.h"
-#include "wbase/ChannelShared.h"
+#include "wbase/SendChannel.h"
+
+// Forward declarations
+
+namespace google::protobuf {
+class Arena;
+}  // namespace google::protobuf
 
 namespace lsst::qserv::proto {
-class TaskMsg;
-}
+class ResponseData;
+}  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::wbase {
-class SendChannel;
 class Task;
 }  // namespace lsst::qserv::wbase
 
-namespace lsst::qserv::wcontrol {
-class TransmitMgr;
-}
-
 namespace lsst::qserv::util {
 class MultiError;
-}
+}  // namespace lsst::qserv::util
 
 namespace lsst::qserv::wbase {
 
@@ -68,12 +68,14 @@ namespace lsst::qserv::wbase {
 ///
 /// When building messages for result rows, multiple tasks may add to the
 /// the output file before it gets closed and a reply is transmitted to the czar.
-/// All the tasks adding rows to the TransmitData object must be operating on
+/// All the tasks adding rows to the file must be operating on
 /// the same chunk. This only happens for near-neighbor queries, which
 /// have one task per subchunk.
-class FileChannelShared : public ChannelShared {
+class FileChannelShared {
 public:
     using Ptr = std::shared_ptr<FileChannelShared>;
+
+    static std::atomic<uint64_t> scsSeqId;  ///< Source for unique _scsId numbers
 
     /**
      * This method gets called upon receiving a notification from Czar about
@@ -114,39 +116,95 @@ public:
     static nlohmann::json filesToJson(std::vector<QueryId> const& queryIds, unsigned int maxFiles);
 
     /// The factory method for the channel class.
-    static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                      std::shared_ptr<proto::TaskMsg> const& taskMsg);
+    static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
+                      std::string const& workerId = std::string());
 
     FileChannelShared() = delete;
     FileChannelShared(FileChannelShared const&) = delete;
     FileChannelShared& operator=(FileChannelShared const&) = delete;
 
-    // Non-trivial d-tor is needed to garbage collect the file after failures.
-    virtual ~FileChannelShared() override;
+    /// Non-trivial d-tor is needed to close the channel and to garbage collect
+    /// the file after failures.
+    ~FileChannelShared();
 
-    /// @see ChannelShared::buildAndTransmitResult()
-    virtual bool buildAndTransmitResult(MYSQL_RES* mResult, std::shared_ptr<Task> const& task,
-                                        util::MultiError& multiErr, std::atomic<bool>& cancelled) override;
+    /// Set the number of Tasks that will be sent using this wbase::SendChannel.
+    /// This should not be changed once set.
+    void setTaskCount(int taskCount);
+    int getTaskCount() const { return _taskCount; }
+
+    /// @return true if this is the last task to call this
+    bool transmitTaskLast();
+
+    /// Return a normalized id string.
+    static std::string makeIdStr(int qId, int jId);
+
+    /// @return the sendChannelShared sequence number, which is always valid.
+    uint64_t getScsId() const { return _scsId; }
+
+    /// @return the current sql connection count
+    int getSqlConnectionCount() { return _sqlConnectionCount; }
+
+    /// @return the sql connection count after incrementing by 1.
+    int incrSqlConnectionCount() { return ++_sqlConnectionCount; }
+
+    /// @return true if this is the first time this function has been called.
+    bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
+
+    /// @return a transmit data object indicating the errors in 'multiErr'.
+    bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+
+    /// Extract the SQL results and write them into the file and notify Czar after the last
+    /// row of the result result set depending on theis channel has been processed.
+    /// @return true if there was an error.
+    bool buildAndTransmitResult(MYSQL_RES* mResult, std::shared_ptr<Task> const& task,
+                                util::MultiError& multiErr, std::atomic<bool>& cancelled);
+
+    /// @see wbase::SendChannel::kill
+    bool kill(std::string const& note);
+
+    /// @see wbase::SendChannel::isDead
+    bool isDead();
 
 private:
     /// Private constructor to protect shared pointer integrity.
-    FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel,
-                      std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr,
-                      std::shared_ptr<proto::TaskMsg> const& taskMsg);
+    FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
+                      std::string const& workerId);
+
+    /// @see wbase::SendChannel::kill
+    /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
+    bool _kill(std::lock_guard<std::mutex> const& streamMutexLock, std::string const& note);
 
     /**
-     * Write a message into the output file. The file will be created at the first call
-     * to the method.
-     * @param tMtxLock - a lock on the base class's mutex tMtx
+     * Transfer rows of the result set into into the output file.
+     * @note The file will be created at the first call to the method.
+     * @note The method may not extract all rows if the amount of data found
+     *   in the result set exceeded the maximum size allowed by the Google Protobuf
+     *   implementation. Also, the iterative approach to the data extraction allows
+     *   the driving code to be interrupted should the correponding query be cancelled
+     *   during the lengthy data processing phase.
+     * @param tMtxLock - a lock on the mutex tMtx
      * @param task - a task that produced the result set
-     * @param msg - data to be written
+     * @param mResult - MySQL result to be used as a source
+     * @param bytes - the number of bytes in the result message recorded into the file
+     * @param rows - the number of rows extracted from th eresult set
+     * @param multiErr - a collector of any errors that were captured during result set processing
+     * @return 'true' if the result set still has more rows to be extracted.
      * @throws std::runtime_error for problems encountered when attemting to create the file
      *   or write into the file.
      */
-    void _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
-                      std::string const& msg);
+    bool _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                      MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr);
 
+    /**
+     * Extract as many rows as allowed by the Google Protobuf implementation from
+     * from the input result set into the output result object.
+     * @param tMtxLock - a lock on the mutex tMtx
+     * @param mResult - MySQL result to be used as a source
+     * @param rows - the number of rows extracted from the result set
+     * @param tSize - the approximate amount of data extracted from the result set
+     * @return 'true' if there are more rows left in the result set.
+     */
+    bool _fillRows(std::lock_guard<std::mutex> const& tMtxLock, MYSQL_RES* mResult, int& rows, size_t& tSize);
     /**
      * Unconditionaly close and remove (potentially - the partially written) file.
      * This method gets called in case of any failure detected while processing
@@ -155,9 +213,51 @@ private:
      *   upon special requests made explicitly by Czar after uploading and consuming
      *   result sets. Unclaimed files that might be still remaining at the results
      *   folder would need to be garbage collected at the startup time of the worker.
-     * @param tMtxLock - a lock on the base class's mutex tMtx
+     * @param tMtxLock - a lock on the mutex tMtx
      */
     void _removeFile(std::lock_guard<std::mutex> const& tMtxLock);
+
+    /**
+     * Send the summary message to Czar upon complation or failure of a request.
+     * @param tMtxLock - a lock on the mutex tMtx
+     * @param task - a task that produced the result set
+     * @param cancelled - request cancellaton flag (if any)
+     * @param multiErr - a collector of any errors that were captured during result set processing
+     * @return 'true' if the operation was successfull
+     */
+    bool _sendResponse(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                       bool cancelled, util::MultiError const& multiErr);
+
+    mutable std::mutex _tMtx;  ///< Protects data recording and Czar notification
+
+    std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
+    qmeta::CzarId const _czarId;                             ///< id of the czar that requested this task(s).
+    std::string const _workerId;                             ///< The unique identifier of the worker.
+
+    // Allocatons/deletion of the data messages are managed by Google Protobuf Arena.
+    std::unique_ptr<google::protobuf::Arena> _protobufArena;
+    proto::ResponseData* _responseData = 0;
+
+    uint64_t const _scsId;  ///< id number for this FileChannelShared
+
+    /// streamMutex is used to protect _lastCount and messages that are sent
+    /// using FileChannelShared.
+    std::mutex _streamMutex;
+
+    // Metadata and response buffers should persist for the lifetime of the stream.
+    std::string _metadataBuf;
+    std::string _responseBuf;
+
+    int _taskCount = 0;  ///< The number of tasks to be sent over this wbase::SendChannel.
+    int _lastCount = 0;  ///< The number of 'last' buffers received.
+
+    /// The number of sql connections opened to handle the Tasks using this FileChannelShared.
+    /// Once this is greater than 0, this object needs free access to sql connections to avoid
+    // system deadlock. @see SqlConnMgr::_take() and SqlConnMgr::_release().
+    std::atomic<int> _sqlConnectionCount{0};
+
+    /// true until getFirstChannelSqlConn() is called.
+    std::atomic<bool> _firstChannelSqlConn{true};
 
     /// The mutex is locked by the following static methods which require exclusive
     /// access to the results folder: create(), cleanUpResultsOnCzarRestart(),

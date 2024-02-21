@@ -32,13 +32,11 @@ package lsst.qserv.proto;
 // Query message sent to worker
 // One of these Task objects should be sent.
 message TaskMsg {
-    optional int64 session = 1;
     // Future: might have multiple db/chunk dependencies.
     optional string db = 2;
     optional int32 chunkid = 3;
     // repeated string scantables = 4;  // obsolete
     optional string user = 6;
-    optional int32 protocol = 7; // Null or 1: original mysqldump, 2: row-based result
     optional int32 scanpriority = 8;
     message Subchunk {
         optional string database = 1; // database (unused)
@@ -77,63 +75,44 @@ message TaskMsg {
     optional int32 maxtablesize_mb = 15 [default = 0];
 }
 
-// Result message received from worker
-// One of these headers is sent, if the czar requests result bundling.
-// If sent, an int64 size (network-byte-ordered) is always sent before
-// the ResultHeader message, indicating the size of the ResultHeader
-// object.
-// The Header message contains size information so each result can be
-// distinguished.
-// This message must be 255 characters or less, because its size is
-// transmitted as an unsigned char.
-message ProtoHeader {
-    optional fixed32 protocol = 1;
-    optional sfixed32 size = 2; // protobufs discourages messages > megabytes
-    optional bytes md5 = 3;
-    optional string wname = 4;
-    optional bool largeresult = 5; // DEPRECATED
-    optional bool endnodata = 6; // True if this header is the end, no more data. size should be 0.
-    optional uint32 seq = 7; // sequence number from SendChannel
-    optional int32 scsseq = 8; // sequence number from SendChannelShared, can be -1
-}
+// The file-based result delivery protocol has two kinds of messages.
+//
+// 1. The summary message sent back to Czar over the XROOTD/SSI protocol:
+//
+//   - The length in bytes of the serialized ResponseSummary object (32-bits)
+//   - The serialized ResponseSummary object
+//
+// 2. The response data messages serialized and written into the result file
+//
+//   - The length in bytes of the first serialized ResponseData object (32-bits)
+//   - The serialized first ResponseData object
+//   [ ... ]
+//   - The length in bytes of the last serialized ResponseData object (32-bits)
+//   - The serialized last ResponseData object
 
-// DEPRECATED
-message ColumnSchema {
-    optional string name = 1; // Optional to allow type-only transmission
-    optional string sqltype = 2;
-    optional int32 mysqltype = 3;
-}
-
-// DEPRECATED
-message RowSchema {
-    repeated ColumnSchema columnschema = 1;
+message ResponseSummary {
+    required string wname = 1;
+    optional int32 errorcode = 2 [default = 0];
+    optional string errormsg = 3 [default = ""];
+    required uint64 queryid = 4;
+    required int32 jobid = 5;
+    optional uint32 rowcount = 6 [default = 0];
+    optional uint64 transmitsize = 7 [default = 0];
+    optional int32 attemptcount = 8 [default = 0];
+    optional string fileresource_xroot = 9 [default = ""];
+    optional string fileresource_http = 10 [default = ""];
 }
 
 message RowBundle {
-    repeated bytes column = 1; // bytes to allow BLOB encoding
-    repeated bool isnull = 2; // Flag to allow sending nulls.
+    repeated bytes column = 1;  // bytes to allow BLOB encoding
+    repeated bool isnull = 2;   // Flag to allow sending nulls.
 }
 
-message Result {
-    optional int64 session = 1;
-    optional RowSchema rowschema = 2; // DEPRECATED
-    optional int32 errorcode = 3;
-    optional string errormsg = 4;
-    repeated RowBundle row = 5;
-    optional uint64 queryid = 6;
-    optional int32 jobid = 7;
-    optional uint32 rowcount = 8;
-    optional uint64 transmitsize = 9;
-    optional int32 attemptcount = 10;
-    optional string fileresource_xroot = 11;    /// XROOTD url for the result file
-    optional string fileresource_http = 12;     /// HTTP url for the result file
+message ResponseData {
+    repeated RowBundle row = 1;
+    required uint32 rowcount = 2;
+    required uint64 transmitsize = 3;
 }
-
-// Result protocol 2:
-// Byte 0: N = unsigned char size of ProtoHeader
-// Byte 1-N: ProtoHeader message
-// Byte N+1, extent = ProtoHeader.size, Result msg
-// (successive Result msgs indicated by size markers in previous Result msgs)
 
 /////////////////////////////////////////////////////////////////
 // Protocol definition for the query management requests. These

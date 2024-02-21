@@ -58,19 +58,18 @@ public:
     virtual bool send(char const* buf, int bufLen);
     virtual bool sendError(std::string const& msg, int code);
 
-    /// Send the bytes from a POSIX file handle
-    virtual bool sendFile(int fd, Size fSize);
-
     /// Send a bucket of bytes.
     /// @param last true if no more sendStream calls will be invoked.
-    /// @param scsSeq - is the ChannelShared sequence number, if there is one.
-    virtual bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq = -1);
+    virtual bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last);
+
+    /// Send the data.
+    virtual bool sendData(char const* buf, int bufLen);
 
     ///
     /// ******************************************************************
 
     /// Set a function to be called when a resources from a deferred send*
-    /// operation may be released. This allows a sendFile() caller to be
+    /// operation may be released. This allows a caller to be
     /// notified when the file descriptor may be closed and perhaps reclaimed.
     void setReleaseFunc(std::function<void(void)> const& r) { _release = r; }
     void release() { _release(); }

@@ -56,9 +56,11 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
-#include "proto/WorkerResponse.h"
 #include "proto/ProtoImporter.h"
+#include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
+#include "qdisp/Executive.h"
+#include "qdisp/JobQuery.h"
 #include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
@@ -70,27 +72,23 @@
 #include "sql/SqlErrorObject.h"
 #include "sql/statement.h"
 #include "util/Bug.h"
+#include "util/Error.h"
 #include "util/IterableFormatter.h"
-#include "util/StringHash.h"
 #include "util/Timer.h"
 
-namespace {  // File-scope helpers
+using namespace std;
+namespace util = lsst::qserv::util;
+
+namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.InfileMerger");
-
-using namespace std;
-
-using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::rproc::InfileMergerConfig;
-using lsst::qserv::rproc::InfileMergerError;
-using lsst::qserv::util::ErrorCode;
 
 /// @return a timestamp id for use in generating temporary result table names.
 std::string getTimeStampId() {
     struct timeval now;
     int rc = gettimeofday(&now, nullptr);
     if (rc != 0) {
-        throw InfileMergerError(ErrorCode::INTERNAL, "Failed to get timestamp.");
+        throw util::Error(util::ErrorCode::INTERNAL, "Failed to get timestamp.");
     }
     std::ostringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
@@ -133,7 +131,8 @@ namespace lsst::qserv::rproc {
 ////////////////////////////////////////////////////////////////////////
 // InfileMerger public
 ////////////////////////////////////////////////////////////////////////
-InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm,
+InfileMerger::InfileMerger(rproc::InfileMergerConfig const& c,
+                           std::shared_ptr<qproc::DatabaseModels> const& dm,
                            util::SemaMgr::Ptr const& semaMgrConn)
         : _config(c),
           _mysqlConn(_config.mySqlConfig),
@@ -147,7 +146,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::D
     if (_dbEngine == MYISAM) {
         LOGS(_log, LOG_LVL_INFO, "Engine is MYISAM, serial");
         if (!_setupConnectionMyIsam()) {
-            throw InfileMergerError(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
+            throw util::Error(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
         }
     } else {
         if (_dbEngine == INNODB) {
@@ -155,8 +154,7 @@ InfileMerger::InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::D
         } else if (_dbEngine == MEMORY) {
             LOGS(_log, LOG_LVL_INFO, "Engine is MEMORY, parallel, semaMgrConn=" << *_semaMgrConn);
         } else {
-            throw InfileMergerError(util::ErrorCode::INTERNAL,
-                                    "SQL engine is unknown" + std::to_string(_dbEngine));
+            throw util::Error(util::ErrorCode::INTERNAL, "SQL engine is unknown" + std::to_string(_dbEngine));
         }
         // Shared connection not used for parallel inserts.
         _mysqlConn.closeMySqlConn();
@@ -217,54 +215,31 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
     _queryIdStrSet = true;
 }
 
-void InfileMerger::mergeCompleteFor(std::set<int> const& jobIds) {
+void InfileMerger::mergeCompleteFor(int jobId) {
     std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-    for (int jobId : jobIds) {
-        _totalResultSize += _perJobResultSize[jobId];
-    }
+    _totalResultSize += _perJobResultSize[jobId];
 }
 
-bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response) {
-    if (!response) {
-        LOGS(_log, LOG_LVL_ERROR, "merge response unset");
-        return false;
-    }
-    // TODO: Check session id (once session id mgmt is implemented)
-    if (not(response->result.has_jobid() && response->result.has_rowcount() &&
-            response->result.has_transmitsize() && response->result.has_attemptcount())) {
-        LOGS(_log, LOG_LVL_ERROR,
-             "merge response missing required field"
-                     << " jobid:" << response->result.has_jobid()
-                     << " rowcount:" << response->result.has_rowcount()
-                     << " transmitsize:" << response->result.has_transmitsize()
-                     << " attemptcount:" << response->result.has_attemptcount());
-        return false;
-    }
-    int const jobId = response->result.jobid();
-    std::string queryIdJobStr = QueryIdHelper::makeIdStr(response->result.queryid(), jobId);
+bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
+                         proto::ResponseData const& responseData,
+                         std::shared_ptr<qdisp::JobQuery> const& jq) {
+    int const jobId = responseSummary.jobid();
+    std::string queryIdJobStr = QueryIdHelper::makeIdStr(responseSummary.queryid(), jobId);
     if (!_queryIdStrSet) {
-        _setQueryIdStr(QueryIdHelper::makeIdStr(response->result.queryid()));
-    }
-    size_t resultSize = response->result.transmitsize();
-    LOGS(_log, LOG_LVL_TRACE,
-         "Executing InfileMerger::merge("
-                 << " sizes=" << static_cast<short>(response->headerSize) << ", "
-                 << response->protoHeader.size() << ", resultSize=" << resultSize << ", rowCount="
-                 << response->result.rowcount() << ", row_size=" << response->result.row_size()
-                 << ", attemptCount=" << response->result.attemptcount()
-                 << ", errCode=" << response->result.has_errorcode()
-                 << " hasErMsg=" << response->result.has_errormsg() << ")");
-
-    if (response->result.has_errorcode() || response->result.has_errormsg()) {
-        _error = util::Error(response->result.errorcode(), response->result.errormsg(),
-                             util::ErrorCode::MYSQLEXEC);
-        LOGS(_log, LOG_LVL_ERROR,
-             "Error from worker:" << response->protoHeader.wname() << " in response data: " << _error);
-        return false;
+        _setQueryIdStr(QueryIdHelper::makeIdStr(responseSummary.queryid()));
     }
 
     // Nothing to do if size is zero.
-    if (response->result.row_size() == 0) {
+    if (responseData.row_size() == 0) {
+        return true;
+    }
+
+    // Do nothing if the query got cancelled for any reason.
+    if (jq->isQueryCancelled()) {
+        return true;
+    }
+    auto executive = jq->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
         return true;
     }
 
@@ -287,9 +262,9 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
     virtFileT.start();
-    int resultJobId = makeJobIdAttempt(response->result.jobid(), response->result.attemptcount());
+    int resultJobId = makeJobIdAttempt(responseSummary.jobid(), responseSummary.attemptcount());
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(
-            response->result, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
+            responseData, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
@@ -300,6 +275,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
         return true;
     }
 
+    size_t const resultSize = responseData.transmitsize();
     size_t tResultSize;
     {
         std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
@@ -321,7 +297,7 @@ bool InfileMerger::merge(std::shared_ptr<proto::WorkerResponse> const& response)
     tct.reset();  // stop transmit recieve timer before merging happens.
 
     qdisp::CzarStats::get()->addTotalBytesRecv(resultSize);
-    qdisp::CzarStats::get()->addTotalRowsRecv(response->result.rowcount());
+    qdisp::CzarStats::get()->addTotalRowsRecv(responseData.rowcount());
 
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.
@@ -558,15 +534,14 @@ bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::
     bool ok = _databaseModels->applySql(query, results, getSchemaErrObj);
     if (not ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
-        _error = InfileMergerError(util::ErrorCode::INTERNAL,
-                                   "Failed to get schema: " + getSchemaErrObj.errMsg());
+        _error = util::Error(util::ErrorCode::INTERNAL, "Failed to get schema: " + getSchemaErrObj.errMsg());
         return false;
     }
     sql::SqlErrorObject errObj;
     if (errObj.isSet()) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract schema from result: " << errObj.errMsg());
-        _error = InfileMergerError(util::ErrorCode::INTERNAL,
-                                   "Failed to extract schema from result: " + errObj.errMsg());
+        _error = util::Error(util::ErrorCode::INTERNAL,
+                             "Failed to extract schema from result: " + errObj.errMsg());
         return false;
     }
     schema = results.makeSchema(errObj);
@@ -597,8 +572,8 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     }
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
-        _error = InfileMergerError(util::ErrorCode::CREATE_TABLE,
-                                   "Error creating table:" + _mergeTable + ": " + _error.getMsg());
+        _error = util::Error(util::ErrorCode::CREATE_TABLE,
+                             "Error creating table:" + _mergeTable + ": " + _error.getMsg());
         _isFinished = true;  // Cannot continue.
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
         return false;

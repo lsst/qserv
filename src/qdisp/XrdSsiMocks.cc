@@ -40,9 +40,7 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
-#include "proto/ProtoHeaderWrap.h"
 #include "proto/worker.pb.h"
-#include "util/StringHash.h"
 #include "util/threadSafe.h"
 
 // Qserv headers
@@ -136,16 +134,13 @@ public:
               _active(true) {
         // Initialize a null message we will return as a response
         //
-        _protoHeader = google::protobuf::Arena::CreateMessage<lsst::qserv::proto::ProtoHeader>(_arena.get());
-        lsst::qserv::proto::ProtoHeader* ph = _protoHeader;
-        ph->set_protocol(2);
-        ph->set_size(0);
-        ph->set_md5(std::string("d41d8cd98f00b204e9800998ecf8427"));
-        ph->set_wname("localhost");
-        ph->set_endnodata(true);
-        std::string pHdrString;
-        ph->SerializeToString(&pHdrString);
-        _msgBuf = lsst::qserv::proto::ProtoHeaderWrap::wrap(pHdrString);
+        _responseSummary =
+                google::protobuf::Arena::CreateMessage<lsst::qserv::proto::ResponseSummary>(_arena.get());
+        lsst::qserv::proto::ResponseSummary* responseSummary = _responseSummary;
+        responseSummary->set_wname("localhost");
+        std::string str;
+        responseSummary->SerializeToString(&str);
+        _msgBuf = str;
         _bOff = 0;
         _bLen = _msgBuf.size();
     }
@@ -214,11 +209,9 @@ private:
     }
 
     Status _setMetaData(size_t sz) {
-        string protoHeaderString;
-        _protoHeader->set_size(sz);
-        _protoHeader->set_endnodata(sz == 0);
-        _protoHeader->SerializeToString(&protoHeaderString);
-        _metadata = lsst::qserv::proto::ProtoHeaderWrap::wrap(protoHeaderString);
+        string str;
+        _responseSummary->SerializeToString(&str);
+        _metadata = str;
         return SetMetadata(_metadata.data(), _metadata.size());
     }
 
@@ -234,7 +227,7 @@ private:
     bool _isFIN;
     bool _active;
     std::string _metadata;
-    lsst::qserv::proto::ProtoHeader* _protoHeader;
+    lsst::qserv::proto::ResponseSummary* _responseSummary;
     std::unique_ptr<google::protobuf::Arena> _arena{make_unique<google::protobuf::Arena>()};
 };
 }  // namespace

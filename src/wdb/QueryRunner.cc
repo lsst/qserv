@@ -61,11 +61,10 @@
 #include "util/IterableFormatter.h"
 #include "util/HoldTrack.h"
 #include "util/MultiError.h"
-#include "util/StringHash.h"
 #include "util/Timer.h"
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
-#include "wbase/ChannelShared.h"
+#include "wbase/FileChannelShared.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
@@ -222,21 +221,12 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    switch (_task->getProtocol()) {
-        case 2:
-            // Run the query and send the results back.
-            if (!_dispatchChannel()) {
-                LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
-                return false;
-            }
-            return true;
-        case 1:
-            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Expected protocol > 1 in TaskMsg");
-        default:
-            throw UnsupportedError(_task->getIdStr() + " QueryRunner: Invalid protocol in TaskMsg");
+    // Run the query and send the results back.
+    if (!_dispatchChannel()) {
+        LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
+        return false;
     }
-
-    return false;
+    return true;
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
@@ -311,26 +301,6 @@ bool QueryRunner::_dispatchChannel() {
             double subchunkRunTimeSeconds = subChunkT.getElapsed();
             auto qStats = _task->getQueryStats();
             if (qStats != nullptr) qStats->addTaskRunQuery(runTimeSeconds, subchunkRunTimeSeconds);
-
-            // This thread may have already been removed from the pool for
-            // other reasons, such as taking too long.
-            bool const streamingProtocol = wconfig::WorkerConfig::instance()->resultDeliveryProtocol() ==
-                                           wconfig::WorkerConfig::ResultDeliveryProtocol::SSI;
-            if (streamingProtocol && !_removedFromThreadPool) {
-                // This query has been answered by the database and the
-                // scheduler for this worker should stop waiting for it.
-                // leavePool() will tell the scheduler this task is finished
-                // and create a new thread in the pool to replace this one.
-                // This thread will wait for the czar to read all of the
-                // results of the query and then die.
-                auto pet = _task->getAndNullPoolEventThread();
-                _removedFromThreadPool = true;
-                if (pet != nullptr) {
-                    pet->leavePool();
-                } else {
-                    LOGS(_log, LOG_LVL_WARN, "Result PoolEventThread was null. Probably already moved.");
-                }
-            }
 
             // Transition task's state to the next one (reading data from MySQL and sending them to Czar).
             _task->queried();

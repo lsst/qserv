@@ -51,7 +51,6 @@
 #include "http/Method.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
-#include "qdisp/PseudoFifo.h"
 #include "qdisp/QdispPool.h"
 #include "qdisp/SharedResources.h"
 #include "qproc/DatabaseModels.h"
@@ -188,9 +187,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
             make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
     qdisp::CzarStats::setup(qdispPool);
 
-    int qReqPseudoMaxRunning = _czarConfig->getQReqPseudoFifoMaxRunning();
-    qdisp::PseudoFifo::Ptr queryRequestPseudoFifo = make_shared<qdisp::PseudoFifo>(qReqPseudoMaxRunning);
-    _qdispSharedResources = qdisp::SharedResources::create(qdispPool, queryRequestPseudoFifo);
+    _qdispSharedResources = qdisp::SharedResources::create(qdispPool);
 
     int xrootdCBThreadsMax = _czarConfig->getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig->getXrootdCBThreadsInit();

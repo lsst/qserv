@@ -67,11 +67,7 @@ public:
         cout << "NopChannel sendError(\"" << msg << "\", " << code << ");\n";
         return true;
     }
-    bool sendFile(int fd, Size fSize) override {
-        cout << "NopChannel sendFile(" << fd << ", " << fSize << ");\n";
-        return !isDead();
-    }
-    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) override {
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
         cout << "NopChannel sendStream(" << (void*)sBuf.get() << ", " << (last ? "true" : "false") << ");\n";
         return !isDead();
     }
@@ -99,31 +95,7 @@ public:
         return true;
     }
 
-    bool sendFile(int fd, Size fSize) override {
-        if (isDead()) return false;
-        vector<char> buf(fSize);
-        Size remain = fSize;
-        while (remain > 0) {
-            Size frag = ::read(fd, buf.data(), remain);
-            if (frag < 0) {
-                cout << "ERROR reading from fd during "
-                     << "StringChannel::sendFile("
-                     << "," << fSize << ")";
-                return false;
-            } else if (frag == 0) {
-                cout << "ERROR unexpected 0==read() during "
-                     << "StringChannel::sendFile("
-                     << "," << fSize << ")";
-                return false;
-            }
-            _dest.append(buf.data(), frag);
-            remain -= frag;
-        }
-        release();
-        return true;
-    }
-
-    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) override {
+    bool sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) override {
         if (isDead()) return false;
         char const* buf = sBuf->data;
         size_t bufLen = sBuf->getSize();
@@ -157,15 +129,6 @@ bool SendChannel::sendError(string const& msg, int code) {
     return false;
 }
 
-bool SendChannel::sendFile(int fd, Size fSize) {
-    if (!isDead()) {
-        if (_ssiRequest->replyFile(fSize, fd)) return true;
-    }
-    kill("SendChannel::sendFile");
-    release();
-    return false;
-}
-
 bool SendChannel::kill(std::string const& note) {
     bool oldVal = _dead.exchange(true);
     if (!oldVal && !_destroying) {
@@ -181,11 +144,19 @@ bool SendChannel::isDead() {
     return _dead;
 }
 
-bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) {
+bool SendChannel::sendStream(xrdsvc::StreamBuffer::Ptr const& sBuf, bool last) {
     if (isDead()) return false;
-    if (_ssiRequest->replyStream(sBuf, last, scsSeq)) return true;
+    if (_ssiRequest->replyStream(sBuf, last)) return true;
     LOGS(_log, LOG_LVL_ERROR, "_ssiRequest->replyStream failed, killing.");
     kill("SendChannel::sendStream");
+    return false;
+}
+
+bool SendChannel::sendData(char const* buf, int bufLen) {
+    if (isDead()) return false;
+    if (_ssiRequest->reply(buf, bufLen)) return true;
+    LOGS(_log, LOG_LVL_ERROR, "_ssiRequest->reply failed, killing.");
+    kill("SendChannel::sendData");
     return false;
 }
 

@@ -34,23 +34,12 @@
 // System headers
 #include <memory>
 
-// Qserv headers
-#include "proto/ProtoImporter.h"
-#include "proto/WorkerResponse.h"
-
 namespace lsst::qserv::proto {
 
 class ProtoHeaderWrap {
 public:
-    static const size_t PROTO_HEADER_SIZE;
     static const size_t PROTOBUFFER_HARD_LIMIT;
     static const size_t PROTOBUFFER_DESIRED_LIMIT;
-    ProtoHeaderWrap(){};
-    virtual ~ProtoHeaderWrap(){};
-
-    static std::string wrap(std::string const& protoHeaderString);
-    static bool unwrap(std::shared_ptr<WorkerResponse>& response, std::vector<char>& buffer);
-    static size_t getProtoHeaderSize();
 };
 
 }  // namespace lsst::qserv::proto

@@ -12,7 +12,6 @@ target_sources(proto PRIVATE
     FrameBuffer.cc
     ProtoHeaderWrap.cc
     ScanTableInfo.cc
-    TaskMsgDigest.cc
 )
 
 target_link_libraries(proto PUBLIC

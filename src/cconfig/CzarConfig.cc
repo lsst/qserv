@@ -91,6 +91,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
           _maxSqlConnectionAttempts(configStore.getInt("resultdb.maxsqlconnectionattempts", 10)),
           _resultEngine(configStore.get("resultdb.engine", "myisam")),
           _resultMaxConnections(configStore.getInt("resultdb.maxconnections", 40)),
+          _resultMaxHttpConnections(configStore.getInt("resultdb.maxhttpconnections", 8192)),
           _oldestResultKeptDays(configStore.getInt("resultdb.oldestResultKeptDays", 30)),
           _cssConfigMap(configStore.getSectionConfigMap("css")),
           _mySqlQmetaConfig(configStore.get("qmeta.user", "qsmaster"), configStore.get("qmeta.passwd"),
@@ -114,7 +115,6 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
           _qdispMaxPriority(configStore.getInt("qdisppool.largestPriority", 2)),
           _qdispVectRunSizes(configStore.get("qdisppool.vectRunSizes", "50:50:50:50")),
           _qdispVectMinRunningSizes(configStore.get("qdisppool.vectMinRunningSizes", "0:1:3:3")),
-          _qReqPseudoFifoMaxRunning(configStore.getInt("qdisppool.qReqPseudoFifoMaxRunning", 300)),
           _notifyWorkersOnQueryFinish(configStore.getInt("tuning.notifyWorkersOnQueryFinish", 1)),
           _notifyWorkersOnCzarRestart(configStore.getInt("tuning.notifyWorkersOnCzarRestart", 1)),
           _czarStatsUpdateIvalSec(configStore.getInt("tuning.czarStatsUpdateIvalSec", 1)),
@@ -166,6 +166,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
                                     {"maxsqlconnectionattempts", std::to_string(_maxSqlConnectionAttempts)},
                                     {"engine", _resultEngine},
                                     {"maxconnections", std::to_string(_resultMaxConnections)},
+                                    {"maxhttpconnections", std::to_string(_resultMaxHttpConnections)},
                                     {"oldestResultKeptDays", std::to_string(_oldestResultKeptDays)}});
     actualJsonConfig["css"] = _cssConfigMap;
     actualJsonConfig["qmeta"] =
@@ -197,13 +198,11 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
              {"notifyWorkersOnCzarRestart", std::to_string(_notifyWorkersOnCzarRestart)},
              {"czarStatsUpdateIvalSec", std::to_string(_czarStatsUpdateIvalSec)},
              {"czarStatsRetainPeriodSec", std::to_string(_czarStatsRetainPeriodSec)}});
-    actualJsonConfig["qdisppool"] = nlohmann::json::object({
-            {"poolSize", std::to_string(_qdispPoolSize)},
-            {"largestPriority", std::to_string(_qdispMaxPriority)},
-            {"vectRunSizes", _qdispVectRunSizes},
-            {"vectMinRunningSizes", _qdispVectMinRunningSizes},
-            {"qReqPseudoFifoMaxRunning", std::to_string(_qReqPseudoFifoMaxRunning)},
-    });
+    actualJsonConfig["qdisppool"] =
+            nlohmann::json::object({{"poolSize", std::to_string(_qdispPoolSize)},
+                                    {"largestPriority", std::to_string(_qdispMaxPriority)},
+                                    {"vectRunSizes", _qdispVectRunSizes},
+                                    {"vectMinRunningSizes", _qdispVectMinRunningSizes}});
     actualJsonConfig["replication"] = nlohmann::json::object(
             {{"instance_id", _replicationInstanceId},
              {"auth_key", "xxxxx"},

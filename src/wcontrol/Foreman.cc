@@ -81,14 +81,12 @@ namespace lsst::qserv::wcontrol {
 Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
                  mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
                  std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                 std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                 std::shared_ptr<wcontrol::TransmitMgr> const& transmitMgr)
+                 std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr)
         : _scheduler(scheduler),
           _mySqlConfig(mySqlConfig),
           _queries(queries),
           _chunkInventory(chunkInventory),
           _sqlConnMgr(sqlConnMgr),
-          _transmitMgr(transmitMgr),
           _resourceMonitor(make_shared<ResourceMonitor>()),
           _io_service(),
           _httpServer(qhttp::Server::create(_io_service, 0 /* grab the first available port */)) {

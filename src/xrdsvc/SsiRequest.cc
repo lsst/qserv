@@ -45,7 +45,6 @@
 #include "util/HoldTrack.h"
 #include "util/Timer.h"
 #include "wbase/FileChannelShared.h"
-#include "wbase/SendChannelShared.h"
 #include "wbase/TaskState.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
@@ -156,22 +155,17 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
-            std::shared_ptr<wbase::ChannelShared> channelShared;
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
-                case wconfig::WorkerConfig::ResultDeliveryProtocol::SSI:
-                    channelShared = wbase::SendChannelShared::create(sendChannel, _foreman->transmitMgr(),
-                                                                     taskMsg->czarid());
-                    break;
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
-                    channelShared =
-                            wbase::FileChannelShared::create(sendChannel, _foreman->transmitMgr(), taskMsg);
+                    _channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
+                                                                      _foreman->chunkInventory()->id());
                     break;
                 default:
                     throw std::runtime_error("SsiRequest::" + std::string(__func__) +
                                              " unsupported result delivery protocol");
             }
-            auto const tasks = wbase::Task::createTasks(taskMsg, channelShared, _foreman->chunkResourceMgr(),
+            auto const tasks = wbase::Task::createTasks(taskMsg, _channelShared, _foreman->chunkResourceMgr(),
                                                         _foreman->mySqlConfig(), _foreman->sqlConnMgr(),
                                                         _foreman->queriesAndChunks(), _foreman->httpPort());
             for (auto const& task : tasks) {
@@ -210,10 +204,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                                         << " query_id=" << request.query_id());
 
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
-                case wconfig::WorkerConfig::ResultDeliveryProtocol::SSI:
-                    // TODO: locate and cancel the coresponding tasks, remove the tasks
-                    //       from the scheduler queues.
-                    break;
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
                 case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
                     switch (request.op()) {
@@ -286,6 +276,13 @@ void SsiRequest::Finished(XrdSsiRequest& req, XrdSsiRespInfo const& rinfo, bool 
         }
     }
 
+    // This will clear the cyclic dependency:
+    //   FileChannelShared -> ChannelStream -> SsiRequest -> FileChannelShared
+    //
+    // TODO: Eliminate xrdsvc::ChannelStream sinve this class seems to be useless
+    // in the file-based result delivery protocol.
+    _channelShared.reset();
+
     auto keepAlive = freeSelfKeepAlive();
 
     // No buffers allocated, so don't need to free.
@@ -345,31 +342,8 @@ bool SsiRequest::replyError(std::string const& msg, int code) {
     return true;
 }
 
-bool SsiRequest::replyFile(int fd, long long fSize) {
-    util::Timer t;
-    t.start();
-    Status s = SetResponse(fSize, fd);
-    if (s == XrdSsiResponder::wasPosted) {
-        LOGS(_log, LOG_LVL_DEBUG, "file posted ok");
-    } else {
-        if (s == XrdSsiResponder::notActive) {
-            LOGS(_log, LOG_LVL_ERROR,
-                 "DANGER: Couldn't post response file of length=" << fSize << ", responder not active.");
-        } else {
-            LOGS(_log, LOG_LVL_ERROR, "DANGER: Couldn't post response file of length=" << fSize);
-        }
-        replyError("Internal error posting response file", 1);
-        t.stop();
-        return false;  // call must handle everything else.
-    }
-    t.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "replyFile took " << t.getElapsed() << " seconds");
-    return true;
-}
-
-bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last, int scsSeq) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last << " scsseq=" << scsSeq);
+bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last) {
+    LOGS(_log, LOG_LVL_DEBUG, "replyStream, checking stream size=" << sBuf->getSize() << " last=" << last);
 
     // Normally, XrdSsi would call Recycle() when it is done with sBuf, but if this function
     // returns false, then it must call Recycle(). Otherwise, the scheduler will likely
@@ -397,8 +371,8 @@ bool SsiRequest::replyStream(StreamBuffer::Ptr const& sBuf, bool last, int scsSe
         return false;
     }
     // XrdSsi or Finished() will call Recycle().
-    LOGS(_log, LOG_LVL_INFO, "SsiRequest::replyStream seq=" << getSeq() << " scsseq=" << scsSeq);
-    _stream->append(sBuf, last, scsSeq);
+    LOGS(_log, LOG_LVL_INFO, "SsiRequest::replyStream seq=" << getSeq());
+    _stream->append(sBuf, last);
     return true;
 }
 
@@ -408,13 +382,13 @@ bool SsiRequest::sendMetadata(const char* buf, int blen) {
         case XrdSsiResponder::wasPosted:
             return true;
         case XrdSsiResponder::notActive:
-            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notActive");
+            LOGS(_log, LOG_LVL_ERROR, "failed to " << __func__ << " notActive");
             break;
         case XrdSsiResponder::notPosted:
-            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata notPosted blen=" << blen);
+            LOGS(_log, LOG_LVL_ERROR, "failed to " << __func__ << " notPosted blen=" << blen);
             break;
         default:
-            LOGS(_log, LOG_LVL_ERROR, "failed to setMetadata unkown state blen=" << blen);
+            LOGS(_log, LOG_LVL_ERROR, "failed to " << __func__ << " unkown state blen=" << blen);
     }
     return false;
 }

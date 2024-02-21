@@ -29,35 +29,34 @@
 #include <cassert>
 #include <chrono>
 #include <cstring>
+#include <vector>
 
 // Third-party headers
+#include "curl/curl.h"
 #include "XrdCl/XrdClFile.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/msgCode.h"
 #include "global/clock_defs.h"
 #include "global/debugUtil.h"
-#include "global/MsgReceiver.h"
 #include "http/Client.h"
+#include "http/ClientConnPool.h"
 #include "http/Method.h"
 #include "proto/ProtoHeaderWrap.h"
-#include "proto/ProtoImporter.h"
-#include "proto/WorkerResponse.h"
+#include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
 #include "rproc/InfileMerger.h"
 #include "util/Bug.h"
 #include "util/common.h"
-#include "util/StringHash.h"
 
-using lsst::qserv::proto::ProtoHeader;
 using lsst::qserv::proto::ProtoHeaderWrap;
-using lsst::qserv::proto::ProtoImporter;
-using lsst::qserv::proto::Result;
-using lsst::qserv::proto::WorkerResponse;
+using lsst::qserv::proto::ResponseData;
+using lsst::qserv::proto::ResponseSummary;
 namespace http = lsst::qserv::http;
 
 using namespace std;
@@ -115,12 +114,11 @@ lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
             }
         };
 
-bool readXrootFileResourceAndMerge(lsst::qserv::proto::Result const& result,
-                                   function<bool(char const*, uint32_t)> const& messageIsReady) {
+bool readXrootFileResourceAndMerge(string const& xrootUrl,
+                                   function<bool(char const*, uint32_t, bool&)> const& messageIsReady) {
     string const context = "MergingHandler::" + string(__func__) + " ";
 
-    // Extract data from the input result object before modifying the one.
-    string const xrootUrl = result.fileresource_xroot();
+    LOGS(_log, LOG_LVL_DEBUG, context << "xrootUrl=" << xrootUrl);
 
     // Track the file while the control flow is staying within the function.
     ResultFileTracker const resultFileTracker;
@@ -136,6 +134,10 @@ bool readXrootFileResourceAndMerge(lsst::qserv::proto::Result const& result,
         return false;
     }
 
+    // A value of the flag is set by the message processor when it's time to finish
+    // or abort reading  the file.
+    bool last = false;
+
     // Temporary buffer for messages read from the file. The buffer will be (re-)allocated
     // as needed to get the largest message. Note that a size of the messages won't exceed
     // a limit set in ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT.
@@ -145,7 +147,7 @@ bool readXrootFileResourceAndMerge(lsst::qserv::proto::Result const& result,
     uint64_t offset = 0;  // A location of the next byte to be read from the input file.
     bool success = true;
     try {
-        while (true) {
+        while (!last) {
             // This starts a timer of the data transmit rate tracker.
             auto transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
 
@@ -209,7 +211,7 @@ bool readXrootFileResourceAndMerge(lsst::qserv::proto::Result const& result,
             transmitRateTracker.reset();
 
             // Proceed to the result merge
-            success = messageIsReady(buf.get(), msgSizeBytes);
+            success = messageIsReady(buf.get(), msgSizeBytes, last);
             if (!success) break;
         }
     } catch (exception const& ex) {
@@ -233,12 +235,12 @@ bool readXrootFileResourceAndMerge(lsst::qserv::proto::Result const& result,
     return success;
 }
 
-bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
-                          function<bool(char const*, uint32_t)> const& messageIsReady) {
+bool readHttpFileAndMerge(string const& httpUrl,
+                          function<bool(char const*, uint32_t, bool&)> const& messageIsReady,
+                          shared_ptr<http::ClientConnPool> const& httpConnPool) {
     string const context = "MergingHandler::" + string(__func__) + " ";
 
-    // Extract data from the input result object before modifying the one.
-    string const httpUrl = result.fileresource_http();
+    LOGS(_log, LOG_LVL_DEBUG, context << "httpUrl=" << httpUrl);
 
     // Track the file while the control flow is staying within the function.
     ResultFileTracker const resultFileTracker;
@@ -266,11 +268,23 @@ bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
     uint32_t msgSizeBytes = 0;
     bool success = true;
     try {
-        http::Client reader(http::Method::GET, httpUrl);
+        string const noClientData;
+        vector<string> const noClientHeaders;
+        http::ClientConfig clientConfig;
+        clientConfig.httpVersion = CURL_HTTP_VERSION_1_1;  // same as in qhttp
+        clientConfig.bufferSize = CURL_MAX_READ_SIZE;      // 10 MB in the current version of libcurl
+        clientConfig.tcpKeepAlive = true;
+        clientConfig.tcpKeepIdle = 5;   // the default is 60 sec
+        clientConfig.tcpKeepIntvl = 5;  // the default is 60 sec
+        http::Client reader(http::Method::GET, httpUrl, noClientData, noClientHeaders, clientConfig,
+                            httpConnPool);
         reader.read([&](char const* inBuf, size_t inBufSize) {
+            // A value of the flag is set by the message processor when it's time to finish
+            // or abort reading  the file.
+            bool last = false;
             char const* next = inBuf;
             char const* const end = inBuf + inBufSize;
-            while (next < end) {
+            while ((next < end) && !last) {
                 if (msgSizeBytes == 0) {
                     // Continue or finish reading the frame header.
                     size_t const bytes2read =
@@ -326,7 +340,7 @@ bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
                         }
 
                         // Parse and evaluate the message.
-                        bool const success = messageIsReady(msgBuf.get(), msgSizeBytes);
+                        bool const success = messageIsReady(msgBuf.get(), msgSizeBytes, last);
                         if (!success) {
                             throw runtime_error(context + "message processing failed at offset " +
                                                 to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
@@ -365,171 +379,84 @@ bool readHttpFileAndMerge(lsst::qserv::proto::Result const& result,
 
 namespace lsst::qserv::ccontrol {
 
-////////////////////////////////////////////////////////////////////////
-// MergingHandler public
-////////////////////////////////////////////////////////////////////////
-MergingHandler::MergingHandler(std::shared_ptr<MsgReceiver> msgReceiver,
-                               std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
-        : _msgReceiver{msgReceiver},
-          _infileMerger{merger},
-          _tableName{tableName},
-          _response{new WorkerResponse()} {
+shared_ptr<http::ClientConnPool> MergingHandler::_httpConnPool;
+mutex MergingHandler::_httpConnPoolMutex;
+
+shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
+    lock_guard<mutex> const lock(_httpConnPoolMutex);
+    if (nullptr == _httpConnPool) {
+        _httpConnPool = make_shared<http::ClientConnPool>(
+                cconfig::CzarConfig::instance()->getResultMaxHttpConnections());
+    }
+    return _httpConnPool;
+}
+
+MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
+        : _infileMerger{merger}, _tableName{tableName} {
     _initState();
 }
 
-MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, "~MergingHandler()"); }
+MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__); }
 
-const char* MergingHandler::getStateStr(MsgState const& state) {
-    switch (state) {
-        case MsgState::HEADER_WAIT:
-            return "HEADER_WAIT";
-        case MsgState::RESULT_WAIT:
-            return "RESULT_WAIT";
-        case MsgState::RESULT_RECV:
-            return "RESULT_RECV";
-        case MsgState::HEADER_ERR:
-            return "HEADER_ERR";
-        case MsgState::RESULT_ERR:
-            return "RESULT_ERR";
+bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) {
+    _wName = responseSummary.wname();
+
+    // This is needed to ensure the job query would be staying alive for the duration
+    // of the operation to prevent inconsistency witin the application.
+    auto const jobQuery = getJobQuery().lock();
+    if (jobQuery == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobQuery was NULL");
+        return false;
     }
-    return "unknown";
-}
+    LOGS(_log, LOG_LVL_TRACE,
+         "MergingHandler::" << __func__ << " jobid=" << responseSummary.jobid()
+                            << " transmitsize=" << responseSummary.transmitsize()
+                            << " rowcount=" << responseSummary.rowcount() << " rowSize="
+                            << " attemptcount=" << responseSummary.attemptcount() << " errorcode="
+                            << responseSummary.errorcode() << " errormsg=" << responseSummary.errormsg());
 
-bool MergingHandler::flush(int bLen, BufPtr const& bufPtr, bool& last, int& nextBufSize, int& resultRows) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         "From:" << _wName << " flush state=" << getStateStr(_state) << " blen=" << bLen << " last=" << last);
-    resultRows = 0;
-
-    if (bLen < 0) {
-        throw util::Bug(ERR_LOC, "MergingHandler invalid blen=" + to_string(bLen) + " from " + _wName);
+    if (responseSummary.errorcode() != 0 || !responseSummary.errormsg().empty()) {
+        _error = util::Error(responseSummary.errorcode(), responseSummary.errormsg(),
+                             util::ErrorCode::MYSQLEXEC);
+        _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());
+        LOGS(_log, LOG_LVL_ERROR,
+             "MergingHandler::" << __func__ << " error from worker:" << responseSummary.wname()
+                                << " error: " << _error);
+        return false;
     }
 
-    switch (_state) {
-        case MsgState::HEADER_WAIT:
-            _response->headerSize = static_cast<unsigned char>((*bufPtr)[0]);
-            if (!proto::ProtoHeaderWrap::unwrap(_response, *bufPtr)) {
-                std::string sErr =
-                        "From:" + _wName + "Error decoding proto header for " + getStateStr(_state);
-                _setError(ccontrol::MSG_RESULT_DECODE, sErr);
-                _state = MsgState::HEADER_ERR;
-                return false;
-            }
-            if (_wName == "~") {
-                _wName = _response->protoHeader.wname();
-            }
-
-            {
-                nextBufSize = _response->protoHeader.size();
-                bool endNoData = _response->protoHeader.endnodata();
-                int seq = -1;
-                int scsSeq = -1;
-                if (_response->protoHeader.has_seq()) {
-                    seq = _response->protoHeader.seq();
-                }
-                if (_response->protoHeader.has_scsseq()) {
-                    scsSeq = _response->protoHeader.scsseq();
-                }
-                LOGS(_log, LOG_LVL_DEBUG,
-                     "HEADER_WAIT: From:" << _wName << " nextBufSize=" << nextBufSize << " endNoData="
-                                          << endNoData << " seq=" << seq << " scsseq=" << scsSeq);
-
-                _state = MsgState::RESULT_WAIT;
-                if (endNoData || nextBufSize == 0) {
-                    if (!endNoData || nextBufSize != 0) {
-                        throw util::Bug(ERR_LOC, "inconsistent msg termination endNoData=" +
-                                                         std::to_string(endNoData) +
-                                                         " nextBufSize=" + std::to_string(nextBufSize));
-                    }
-                    // Nothing to merge, but some bookkeeping needs to be done.
-                    _infileMerger->mergeCompleteFor(_jobIds);
-                    last = true;
-                    _state = MsgState::RESULT_RECV;
-                }
-            }
-            return true;
-        case MsgState::RESULT_WAIT: {
-            nextBufSize = proto::ProtoHeaderWrap::getProtoHeaderSize();
-            auto jobQuery = getJobQuery().lock();
-            if (!_verifyResult(bufPtr, bLen)) {
-                return false;
-            }
-            if (!_setResult(bufPtr, bLen)) {  // This sets _response->result
-                LOGS(_log, LOG_LVL_WARN, "setResult failure " << _wName);
-                return false;
-            }
-            LOGS(_log, LOG_LVL_DEBUG, "From:" << _wName << " _mBuf " << util::prettyCharList(*bufPtr, 5));
-            _state = MsgState::HEADER_WAIT;
-
-            int jobId = _response->result.jobid();
-            _jobIds.insert(jobId);
-            LOGS(_log, LOG_LVL_DEBUG, "Flushed last=" << last << " for tableName=" << _tableName);
-
-            // Dispatch result processing to the corresponidng method which depends on
-            // the result delivery protocol configured at the worker.
-            auto const mergeCurrentResult = [this, &resultRows]() {
-                resultRows += _response->result.row_size();
-                bool const success = _merge();
-                // A fresh instance may be needed to process the next message of the results stream.
-                // Note that _merge() resets the object.
-                _response.reset(new WorkerResponse());
-                return success;
-            };
-            bool success = false;
-            if (!_response->result.fileresource_xroot().empty()) {
-                success = _noErrorsInResult() &&
-                          ::readXrootFileResourceAndMerge(
-                                  _response->result, [&](char const* buf, uint32_t messageLength) -> bool {
-                                      if (_response->result.ParseFromArray(buf, messageLength) &&
-                                          _response->result.IsInitialized()) {
-                                          return mergeCurrentResult();
-                                      }
-                                      throw runtime_error(
-                                              "MergingHandler::flush ** message deserialization failed **");
-                                  });
-            } else if (!_response->result.fileresource_http().empty()) {
-                success = _noErrorsInResult() &&
-                          ::readHttpFileAndMerge(
-                                  _response->result, [&](char const* buf, uint32_t messageLength) -> bool {
-                                      if (_response->result.ParseFromArray(buf, messageLength) &&
-                                          _response->result.IsInitialized()) {
-                                          return mergeCurrentResult();
-                                      }
-                                      throw runtime_error(
-                                              "MergingHandler::flush ** message deserialization failed **");
-                                  });
-            } else {
-                success = mergeCurrentResult();
+    // Dispatch result processing to the corresponidng method which depends on
+    // the result delivery protocol configured at the worker.
+    // Notify the file reader when all rows have been read by setting 'last = true'.
+    auto const dataMerger = [&](char const* buf, uint32_t size, bool& last) {
+        last = true;
+        proto::ResponseData responseData;
+        if (responseData.ParseFromArray(buf, size) && responseData.IsInitialized()) {
+            bool const success = _merge(responseSummary, responseData, jobQuery);
+            if (success) {
+                resultRows += responseData.row_size();
+                last = resultRows >= responseSummary.rowcount();
             }
             return success;
         }
-        case MsgState::RESULT_RECV:
-            // We shouldn't wind up here. _buffer.size(0) and last=true should end communication.
-            [[fallthrough]];
-        case MsgState::HEADER_ERR:
-            [[fallthrough]];
-        case MsgState::RESULT_ERR: {
-            std::ostringstream eos;
-            eos << "Unexpected message From:" << _wName << " flush state=" << getStateStr(_state)
-                << " last=" << last;
-            LOGS(_log, LOG_LVL_ERROR, eos.str());
-            _setError(ccontrol::MSG_RESULT_ERROR, eos.str());
-        }
-            return false;
-        default:
-            break;
-    }
-    _setError(ccontrol::MSG_RESULT_ERROR, "Unexpected message (invalid)");
-    return false;
-}
+        throw runtime_error("MergingHandler::flush ** message deserialization failed **");
+    };
 
-bool MergingHandler::_noErrorsInResult() {
-    if (_response->result.has_errorcode() || _response->result.has_errormsg()) {
-        _setError(_response->result.errorcode(), _response->result.errormsg());
-        LOGS(_log, LOG_LVL_ERROR,
-             "Error from worker:" << _response->protoHeader.wname() << " in response data: " << _error);
-        return false;
+    bool success = false;
+    if (!responseSummary.fileresource_xroot().empty()) {
+        success = ::readXrootFileResourceAndMerge(responseSummary.fileresource_xroot(), dataMerger);
+    } else if (!responseSummary.fileresource_http().empty()) {
+        success = ::readHttpFileAndMerge(responseSummary.fileresource_http(), dataMerger,
+                                         MergingHandler::_getHttpConnPool());
+    } else {
+        string const err = "Unexpected result delivery protocol";
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
+        throw util::Bug(ERR_LOC, err);
     }
-    return true;
+    if (success) {
+        _infileMerger->mergeCompleteFor(responseSummary.jobid());
+    }
+    return success;
 }
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
@@ -563,66 +490,28 @@ void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
 std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
 }
-////////////////////////////////////////////////////////////////////////
-// MergingRequester private
-////////////////////////////////////////////////////////////////////////
 
-void MergingHandler::_initState() {
-    _state = MsgState::HEADER_WAIT;
-    _setError(0, "");
-}
+void MergingHandler::_initState() { _setError(0, ""); }
 
-bool MergingHandler::_merge() {
-    if (auto job = getJobQuery().lock()) {
-        if (_flushed) {
-            throw util::Bug(ERR_LOC, "MergingRequester::_merge : already flushed");
-        }
-        bool success = _infileMerger->merge(_response);
-        if (!success) {
-            LOGS(_log, LOG_LVL_WARN, "_merge() failed");
-            rproc::InfileMergerError const& err = _infileMerger->getError();
-            _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
-            _state = MsgState::RESULT_ERR;
-        }
-        _response.reset();
-
-        return success;
+bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
+                            proto::ResponseData const& responseData,
+                            shared_ptr<qdisp::JobQuery> const& jobQuery) {
+    if (_flushed) {
+        throw util::Bug(ERR_LOC, "already flushed");
     }
-    LOGS(_log, LOG_LVL_ERROR, "MergingHandler::_merge() failed, jobQuery was NULL");
-    return false;
+    bool success = _infileMerger->merge(responseSummary, responseData, jobQuery);
+    if (!success) {
+        LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
+        util::Error const& err = _infileMerger->getError();
+        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
+    }
+    return success;
 }
 
 void MergingHandler::_setError(int code, std::string const& msg) {
     LOGS(_log, LOG_LVL_DEBUG, "_setErr: code: " << code << ", message: " << msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
     _error = Error(code, msg);
-}
-
-bool MergingHandler::_setResult(BufPtr const& bufPtr, int blen) {
-    auto start = std::chrono::system_clock::now();
-    std::lock_guard<std::mutex> lg(_setResultMtx);
-    auto& buf = *bufPtr;
-    if (!ProtoImporter<proto::Result>::setMsgFrom(_response->result, &(buf[0]), blen)) {
-        LOGS(_log, LOG_LVL_ERROR, "_setResult decoding error");
-        _setError(ccontrol::MSG_RESULT_DECODE, "Error decoding result msg");
-        _state = MsgState::RESULT_ERR;
-        return false;
-    }
-    auto protoEnd = std::chrono::system_clock::now();
-    auto protoDur = std::chrono::duration_cast<std::chrono::milliseconds>(protoEnd - start);
-    LOGS(_log, LOG_LVL_DEBUG, "protoDur=" << protoDur.count());
-    return true;
-}
-
-bool MergingHandler::_verifyResult(BufPtr const& bufPtr, int blen) {
-    auto& buf = *bufPtr;
-    if (_response->protoHeader.md5() != util::StringHash::getMd5(&(buf[0]), blen)) {
-        LOGS(_log, LOG_LVL_ERROR, "_verifyResult MD5 mismatch");
-        _setError(ccontrol::MSG_RESULT_MD5, "Result message MD5 mismatch");
-        _state = MsgState::RESULT_ERR;
-        return false;
-    }
-    return true;
 }
 
 }  // namespace lsst::qserv::ccontrol
