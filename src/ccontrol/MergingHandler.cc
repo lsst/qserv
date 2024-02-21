@@ -39,6 +39,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/msgCode.h"
 #include "global/clock_defs.h"
 #include "global/debugUtil.h"
@@ -374,17 +375,21 @@ bool readHttpFileAndMerge(string const& httpUrl,
     return success;
 }
 
-/// The size of the TCP connection pool witin the client API that is used
-/// by the merger to pool result files from workers via the HTTP protocol.
-/// TODO: Consider moving this parameter into CzarConfig.
-long const maxHttpConnections = 8192;
-
 }  // namespace
 
 namespace lsst::qserv::ccontrol {
 
-shared_ptr<http::ClientConnPool> const MergingHandler::_httpConnPool(
-        new http::ClientConnPool(::maxHttpConnections));
+shared_ptr<http::ClientConnPool> MergingHandler::_httpConnPool;
+mutex MergingHandler::_httpConnPoolMutex;
+
+shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
+    lock_guard<mutex> const lock(_httpConnPoolMutex);
+    if (nullptr == _httpConnPool) {
+        _httpConnPool = make_shared<http::ClientConnPool>(
+                cconfig::CzarConfig::instance()->getResultMaxHttpConnections());
+    }
+    return _httpConnPool;
+}
 
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
         : _infileMerger{merger}, _tableName{tableName} {
@@ -396,10 +401,13 @@ MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__); }
 bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) {
     _wName = responseSummary.wname();
 
-    // Why this is needed to ensure the job query would be staying alive for the duration
-    // of the operation?
+    // This is needed to ensure the job query would be staying alive for the duration
+    // of the operation to prevent inconsistency witin the application.
     auto const jobQuery = getJobQuery().lock();
-
+    if (jobQuery == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobQuery was NULL");
+        return false;
+    }
     LOGS(_log, LOG_LVL_TRACE,
          "MergingHandler::" << __func__ << " jobid=" << responseSummary.jobid()
                             << " transmitsize=" << responseSummary.transmitsize()
@@ -419,14 +427,12 @@ bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, uint32
 
     // Dispatch result processing to the corresponidng method which depends on
     // the result delivery protocol configured at the worker.
-    // Dispatch result processing to the corresponidng method which depends on
-    // the result delivery protocol configured at the worker.
     // Notify the file reader when all rows have been read by setting 'last = true'.
     auto const dataMerger = [&](char const* buf, uint32_t size, bool& last) {
         last = true;
         proto::ResponseData responseData;
         if (responseData.ParseFromArray(buf, size) && responseData.IsInitialized()) {
-            bool const success = _merge(responseSummary, responseData);
+            bool const success = _merge(responseSummary, responseData, jobQuery);
             if (success) {
                 resultRows += responseData.row_size();
                 last = resultRows >= responseSummary.rowcount();
@@ -441,7 +447,7 @@ bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, uint32
         success = ::readXrootFileResourceAndMerge(responseSummary.fileresource_xroot(), dataMerger);
     } else if (!responseSummary.fileresource_http().empty()) {
         success = ::readHttpFileAndMerge(responseSummary.fileresource_http(), dataMerger,
-                                         MergingHandler::_httpConnPool);
+                                         MergingHandler::_getHttpConnPool());
     } else {
         string const err = "Unexpected result delivery protocol";
         LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
@@ -488,21 +494,18 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
 void MergingHandler::_initState() { _setError(0, ""); }
 
 bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
-                            proto::ResponseData const& responseData) {
-    if (auto job = getJobQuery().lock()) {
-        if (_flushed) {
-            throw util::Bug(ERR_LOC, "already flushed");
-        }
-        bool success = _infileMerger->merge(responseSummary, responseData, job);
-        if (!success) {
-            LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
-            util::Error const& err = _infileMerger->getError();
-            _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
-        }
-        return success;
+                            proto::ResponseData const& responseData,
+                            shared_ptr<qdisp::JobQuery> const& jobQuery) {
+    if (_flushed) {
+        throw util::Bug(ERR_LOC, "already flushed");
     }
-    LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobQuery was NULL");
-    return false;
+    bool success = _infileMerger->merge(responseSummary, responseData, jobQuery);
+    if (!success) {
+        LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
+        util::Error const& err = _infileMerger->getError();
+        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
+    }
+    return success;
 }
 
 void MergingHandler::_setError(int code, std::string const& msg) {

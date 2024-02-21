@@ -169,6 +169,10 @@ public:
     std::string getResultEngine() const { return _resultEngine; }
     int getResultMaxConnections() const { return _resultMaxConnections; }
 
+    /// The size of the TCP connection pool witin the client API that is used
+    /// by the merger to pool result files from workers via the HTTP protocol.
+    int getResultMaxHttpConnections() const { return _resultMaxHttpConnections; }
+
     /// Getters for QdispPool configuration
     /// @return the number of threads to create for the pool.
     int getQdispPoolSize() const { return _qdispPoolSize; }
@@ -271,6 +275,8 @@ private:
     int const _maxSqlConnectionAttempts;
     std::string const _resultEngine;
     int const _resultMaxConnections;
+    int const _resultMaxHttpConnections;
+
     /// Any table in the result table not updated in this many days will be deleted.
     int const _oldestResultKeptDays;
 

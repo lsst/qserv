@@ -635,7 +635,7 @@ void Executive::_setupLimit() {
     _limitSquashApplies = hasLimit && !(groupBy || orderBy || allChunksRequired);
 }
 
-void Executive::addResultRows(uint32_t rowCount) { _totalResultRows += rowCount; }
+void Executive::addResultRows(int64_t rowCount) { _totalResultRows += rowCount; }
 
 void Executive::checkLimitRowComplete() {
     if (!_limitSquashApplies) return;

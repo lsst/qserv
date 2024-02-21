@@ -148,7 +148,7 @@ public:
     bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
     /// Add 'rowCount' to the total number of rows in the result table.
-    void addResultRows(uint32_t rowCount);
+    void addResultRows(int64_t rowCount);
 
     int64_t getTotalResultRows() const { return _totalResultRows; }
 

@@ -91,6 +91,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
           _maxSqlConnectionAttempts(configStore.getInt("resultdb.maxsqlconnectionattempts", 10)),
           _resultEngine(configStore.get("resultdb.engine", "myisam")),
           _resultMaxConnections(configStore.getInt("resultdb.maxconnections", 40)),
+          _resultMaxHttpConnections(configStore.getInt("resultdb.maxhttpconnections", 8192)),
           _oldestResultKeptDays(configStore.getInt("resultdb.oldestResultKeptDays", 30)),
           _cssConfigMap(configStore.getSectionConfigMap("css")),
           _mySqlQmetaConfig(configStore.get("qmeta.user", "qsmaster"), configStore.get("qmeta.passwd"),
@@ -165,6 +166,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
                                     {"maxsqlconnectionattempts", std::to_string(_maxSqlConnectionAttempts)},
                                     {"engine", _resultEngine},
                                     {"maxconnections", std::to_string(_resultMaxConnections)},
+                                    {"maxhttpconnections", std::to_string(_resultMaxHttpConnections)},
                                     {"oldestResultKeptDays", std::to_string(_oldestResultKeptDays)}});
     actualJsonConfig["css"] = _cssConfigMap;
     actualJsonConfig["qmeta"] =

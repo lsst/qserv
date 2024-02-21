@@ -390,8 +390,8 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             _file.flush();
             _file.close();
 
-            // Only the last ("summary") message w/o any rows is sent to Czar to notify
-            // the one about completion of the request.
+            // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
+            // it about the completion of the request.
             if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;

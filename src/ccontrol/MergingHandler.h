@@ -42,6 +42,10 @@ class ResponseData;
 class ResponseSummary;
 }  // namespace lsst::qserv::proto
 
+namespace lsst::qserv::qdisp {
+class JobQuery;
+}  // namespace lsst::qserv::qdisp
+
 namespace lsst::qserv::rproc {
 class InfileMerger;
 }  // namespace lsst::qserv::rproc
@@ -91,18 +95,22 @@ public:
     void prepScrubResults(int jobId, int attempt) override;
 
 private:
-    ///< Prepare for first call to flush()
+    /// Prepare for first call to flush().
     void _initState();
 
-    bool _merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData);
+    bool _merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
+                std::shared_ptr<qdisp::JobQuery> const& jobQuery);
 
-    ///< Set error code and string
+    /// Set error code and string.
     void _setError(int code, std::string const& msg);
 
-    /// All instances of the HTTP client class are members of the same pool.
-    /// This allows connection reuse and a significant reduction of
-    /// the kernel memory pressure.
-    static std::shared_ptr<http::ClientConnPool> const _httpConnPool;
+    // All instances of the HTTP client class are members of the same pool. This allows
+    // connection reuse and a significant reduction of the kernel memory pressure.
+    // Note that the pool gets instantiated at the very first call to method _getHttpConnPool()
+    // because the instantiation depends on the availability of the Czar configuration.
+    static std::shared_ptr<http::ClientConnPool> const& _getHttpConnPool();
+    static std::shared_ptr<http::ClientConnPool> _httpConnPool;
+    static std::mutex _httpConnPoolMutex;
 
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
     std::string _tableName;                              ///< Target table name
