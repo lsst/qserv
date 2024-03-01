@@ -85,6 +85,7 @@ public:
 
     CommandForThreadPool() = default;
     explicit CommandForThreadPool(std::function<void(CmdData*)> func) : CommandTracked{func} {}
+    virtual ~CommandForThreadPool();
 
     /// Return true if the number of threads created and still existing is
     /// greater than the max.

@@ -212,6 +212,7 @@ public:
 BOOST_AUTO_TEST_CASE(Grouping) {
     SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
 
+    LOGS(_log, LOG_LVL_WARN, "&&& a");
     // Test grouping by chunkId. Max entries added to a single group set to 3.
     wsched::GroupScheduler gs{"GroupSchedA", 100, 0, 3, 0};
     // chunk Ids
@@ -293,6 +294,7 @@ BOOST_AUTO_TEST_CASE(Grouping) {
 
 BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     // Test that maxThreads is meaningful.
+    LOGS(_log, LOG_LVL_WARN, "&&& b");
     bool resetForTesting = true;
     auto queries =
             QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
@@ -325,6 +327,7 @@ BOOST_AUTO_TEST_CASE(GroupMaxThread) {
 }
 
 BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
+    LOGS(_log, LOG_LVL_WARN, "&&& c");
     bool resetForTesting = true;
     auto queries =
             QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
@@ -388,6 +391,7 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
+    LOGS(_log, LOG_LVL_WARN, "&&& d");
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
@@ -430,6 +434,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(f.blend->getSize() == 5);
     BOOST_CHECK(f.blend->calcAvailableTheads() == 5);
 
+    LOGS(_log, LOG_LVL_WARN, "&&& e");
     // Start all the Tasks.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 start all tasks");
     // Tasks should come out in order of scheduler priority.
@@ -525,6 +530,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(f.blend->getSize() == 4);
     BOOST_CHECK(f.blend->ready() == false);  // all threads in use
 
+    LOGS(_log, LOG_LVL_WARN, "&&& f");
     // Finishing a fast Task should allow the last fast Task to go.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 call commandFinish");
     f.blend->commandFinish(osF3);
@@ -588,6 +594,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
+    LOGS(_log, LOG_LVL_WARN, "&&& g");
     SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 check thread limiting");
     // Test that only 6 threads can be started on a single ScanScheduler
@@ -658,6 +665,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
+    LOGS(_log, LOG_LVL_WARN, "&&& h");
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
@@ -718,6 +726,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
+    LOGS(_log, LOG_LVL_WARN, "&&& i");
     // Test if a task is removed if it takes takes too long.
     // Give the user query 0.1 seconds to run and run it for a second, it should get removed.
     double tenthOfSecInMinutes = 1.0 / 600.0;  // task
@@ -741,7 +750,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
         queriesAndChunks->finishedTask(task);
         running = true;
     };
-    task->setFunc(fastFunc);
+    //&&&task->setFunc(fastFunc);
+    task->setUnitTest(fastFunc);
     f.queries->addTask(task);
     f.blend->queCmd(task);
     while (!running) {
@@ -765,7 +775,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
         queriesAndChunks->finishedTask(task);
         LOGS(_log, LOG_LVL_DEBUG, "slowFunc end");
     };
-    task->setFunc(slowFunc);
+    //&&&task->setFunc(slowFunc);
+    task->setUnitTest(slowFunc);
     f.queries->addTask(task);
     auto queryStats = f.queries->getStats(qid);
     BOOST_CHECK(queryStats != nullptr);
@@ -802,6 +813,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
 }
 
 BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
+    LOGS(_log, LOG_LVL_WARN, "&&& j");
     LOGS(_log, LOG_LVL_DEBUG, "SlowTableHeapTest start");
     bool resetForTesting = true;
     auto queries =
@@ -838,6 +850,7 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
 }
 
 BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
+    LOGS(_log, LOG_LVL_WARN, "&&& k");
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksTest start");
     bool resetForTesting = true;
     auto queries =
@@ -912,6 +925,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
 }
 
 BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
+    LOGS(_log, LOG_LVL_WARN, "&&& l");
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest start");
     bool resetForTesting = true;
     auto queries =

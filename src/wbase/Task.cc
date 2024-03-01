@@ -211,6 +211,9 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
                               << " subChunks=" << util::printable(subchunksVect_));
     }
     _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
+    if (_sendChannel == nullptr) {
+        throw util::Bug(ERR_LOC, "Task::Task _sendChannel==null " + getIdStr());
+    }
 }
 
 Task::~Task() {
@@ -263,32 +266,49 @@ vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
         }
     }
     for (auto task : vect) {
-        /// Set the function called when it is time to process the task.
-        auto func = [task, chunkResourceMgr, mySqlConfig, sqlConnMgr, queriesAndChunks](util::CmdData*) {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr,
-                                                       queriesAndChunks);
-            bool success = false;
-            try {
-                success = qr->runQuery();
-            } catch (UnsupportedError const& e) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
-            }
-            if (not success) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-                if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
-                    LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
-                }
-            }
-            // Transmission is done, but 'task' contains statistics that are still useful.
-            // However, the resources used by sendChannel need to be freed quickly.
-            // The QueryRunner class access to sendChannel for results is over by this point.
-            task->resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
-        };
-        task->setFunc(func);
+        // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
+        task->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig,
+                                                                  sqlConnMgr, queriesAndChunks));
     }
     sendChannel->setTaskCount(vect.size());
 
     return vect;
+}
+
+void Task::action(util::CmdData* data) {
+    string tIdStr = getIdStr();
+    if (_queryStarted.exchange(true)) {
+        LOGS(_log, LOG_LVL_INFO, "task was already started " << tIdStr);
+        return;
+    }
+
+    if (_unitTest) {
+        LOGS(_log, LOG_LVL_ERROR,
+             __func__ << " Command::_func has been set, this should only happen in unit tests.");
+        _func(data);
+        return;
+    }
+
+    // Get a local copy for safety.
+    auto qr = _taskQueryRunner;
+    bool success = false;
+    try {
+        success = qr->runQuery();
+    } catch (UnsupportedError const& e) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " runQuery threw UnsupportedError " << e.what() << tIdStr);
+    }
+    if (not success) {
+        LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << tIdStr);
+        if (not getSendChannel()->kill("Foreman::_setRunFunc")) {
+            LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed " << tIdStr);
+        }
+    }
+
+    // The QueryRunner class access to sendChannel for results is over by this point.
+    // 'task' contains statistics that are still useful. However, the resources used
+    // by sendChannel need to be freed quickly.
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " resetSendChannel() for " << tIdStr);
+    resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
 }
 
 string Task::getQueryString() const {

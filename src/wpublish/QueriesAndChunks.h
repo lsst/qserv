@@ -102,7 +102,6 @@ private:
     double _weightSum = _weightAvg + _weightNew;  ///< denominator
 };
 
-
 /// Statistics for one chunk, including scan table statistics.
 class ChunkStatistics {
 public:
@@ -252,6 +251,8 @@ private:
     /// scheduler in an attempt to keep a single user query from jamming up a scheduler.
     void _bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                    std::shared_ptr<wsched::SchedulerBase> const& sched);
+
+    void _bootUserQueries();  // &&& doc
     ScanTableSumsMap _calcScanTableSums();
     void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
 

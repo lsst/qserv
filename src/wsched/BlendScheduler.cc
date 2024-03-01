@@ -218,7 +218,6 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                     LOGS_WARN("Task had unexpected scanRating=" << scanPriority << " adding to scanSnail");
                     targSched = _scanSnail;
                 }
-
             }
         }
         task->setOnInteractive(onInteractive);
@@ -488,9 +487,9 @@ int BlendScheduler::moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& 
 int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
                                   SchedulerBase::Ptr const& destination) {
     LOGS(_log, LOG_LVL_DEBUG,
-         "moveUserQuery " << QueryIdHelper::makeIdStr(qId)
-                          << " source=" << ((source == nullptr) ? "NULL" : source->getName())
-                          << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
+         "&&& moveUserQuery " << QueryIdHelper::makeIdStr(qId)  // &&& remove "&&&"
+                              << " source=" << ((source == nullptr) ? "NULL" : source->getName())
+                              << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
     int count = 0;  // Number of Tasks that were moved.
     if (destination == nullptr) {
         LOGS(_log, LOG_LVL_WARN,
@@ -503,7 +502,9 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
     // not tasks that were running.
     for (auto const& task : taskList) {
         // Change the scheduler to the new scheduler as normally this is done in BlendScheduler::queCmd
-        LOGS(_log, LOG_LVL_DEBUG, "moving to " << destination->getName());
+        LOGS(_log, LOG_LVL_INFO,
+             __func__ << " task=" << task->getIdStr() << " moving from "
+                      << task->getTaskScheduler()->getName() << " to " << destination->getName());
         task->setTaskScheduler(destination);
         destination->queCmd(task);
         ++count;

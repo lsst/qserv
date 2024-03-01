@@ -179,6 +179,11 @@ public:
     std::string user;                                  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
 
+    /// This is the function the scheduler will run, overriden from the util::Command class.
+    /// This will check if it has already been called and then call QueryRunner::runQuery().
+    /// @param data - is ignored by this class.
+    void action(util::CmdData* data) override;
+
     /// Cancel the query in progress and set _cancelled.
     /// Query cancellation on the worker is fairly complicated. This
     /// function usually called by `SsiRequest::Finished` when xrootd
@@ -296,10 +301,16 @@ public:
 
     /// Return true if this task was already booted.
     bool setBooted();
-    //&&&bool setBooted() { return _booted.exchange(true); }
 
     /// Return true if the task was booted.
     bool isBooted() { return _booted; }
+
+    /// Only to be used in unit tests, use this to set a lambda function
+    /// to use in a unit test.
+    void setUnitTest(std::function<void(util::CmdData*)> func) {
+        _unitTest = true;
+        setFunc(func);
+    }
 
 private:
     std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
@@ -332,6 +343,7 @@ private:
     /// The HTTP URL for the result file: "http://<host>:<http-port>" + _resultFilePath
     std::string _resultFileHttpUrl;
 
+    std::atomic<bool> _queryStarted{false};  ///< Set to true when the query is about to be run.
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
     TaskQueryRunner::Ptr _taskQueryRunner;
@@ -364,6 +376,8 @@ private:
 
     /// Time stamp for when `_booted` is set to true, otherwise meaningless.
     TIMEPOINT _bootedTime;
+
+    bool _unitTest = false;  ///<
 };
 
 }  // namespace lsst::qserv::wbase
