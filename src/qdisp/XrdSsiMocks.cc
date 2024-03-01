@@ -97,18 +97,14 @@ public:
                 _ReplyData();
                 break;
             case RESP_ERRNR:
-                _reqP->doNotRetry();
-                // Fallthrough
             case RESP_ERROR:
                 _ReplyError();
                 break;
             case RESP_STRERR:
                 _noData = true;
-                _reqP->doNotRetry();  // Kill retries on stream errors
                 _ReplyStream();
                 break;
             default:
-                _reqP->doNotRetry();
                 _ReplyError("Bad mock request!", 13);
                 break;
         }

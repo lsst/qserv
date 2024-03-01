@@ -143,7 +143,19 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
             } else if (rInfo.blen == 0) {
                 // Metadata-only responses for the file-based protocol should not have any data
                 jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
-                return _importResultFile(jq);
+                int messageSize = 0;
+                const char* message = GetMetadata(messageSize);
+                LOGS(_log, LOG_LVL_DEBUG,
+                     __func__ << " _jobIdStr=" << _jobIdStr << ", messageSize=" << messageSize);
+                proto::ResponseSummary responseSummary;
+                if (!(responseSummary.ParseFromArray(message, messageSize) &&
+                      responseSummary.IsInitialized())) {
+                    string const err =
+                            "failed to parse the response summary, messageSize=" + to_string(messageSize);
+                    LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
+                    throw util::Bug(ERR_LOC, err);
+                }
+                return _importResultFile(jq, responseSummary);
             }
             responseTypeName = "isData";
             break;
@@ -165,7 +177,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
 
 /// Retrieve and process a result file using the file-based protocol
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
-bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
+bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq, proto::ResponseSummary const& responseSummary) {
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (jq->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
@@ -188,24 +200,15 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
         return false;
     }
 
-    int messageSize = 0;
-    const char* message = GetMetadata(messageSize);
-
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << " _jobIdStr=" << _jobIdStr << ", messageSize=" << messageSize);
-
-    proto::ResponseSummary responseSummary;
-    if (!(responseSummary.ParseFromArray(message, messageSize) && responseSummary.IsInitialized())) {
-        string const err = "failed to parse the response summary, messageSize=" + to_string(messageSize);
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
-        throw util::Bug(ERR_LOC, err);
-    }
     uint32_t resultRows = 0;
     if (!jq->getDescription()->respHandler()->flush(responseSummary, resultRows)) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " not flushOk");
-        _flushError(jq);
+        ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
+        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, "MERGE", err.getCode(), err.getMsg(),
+                                    MSG_ERROR);
+        _errorFinish(true);
         return false;
     }
-    _totalRows += resultRows;
 
     // At this point all data for this job have been read, there's no point in
     // having XrdSsi wait for anything.
@@ -214,7 +217,7 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
 
     // If the query meets the limit row complete complete criteria, it will start
     // squashing superfluous results so the answer can be returned quickly.
-    executive->addResultRows(_totalRows);
+    executive->addResultRows(resultRows);
     executive->checkLimitRowComplete();
 
     return true;
@@ -240,13 +243,6 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo, char* buff, i
     string const err = "the method has no use in this implementation of Qserv";
     LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
     throw util::Bug(ERR_LOC, err);
-}
-
-void QueryRequest::_flushError(JobQuery::Ptr const& jq) {
-    ResponseHandler::Error err = jq->getDescription()->respHandler()->getError();
-    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, "MERGE", err.getCode(), err.getMsg(),
-                                MSG_ERROR);
-    _errorFinish(true);
 }
 
 /// @return true if QueryRequest cancelled successfully.

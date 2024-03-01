@@ -39,6 +39,12 @@
 #include "qdisp/JobQuery.h"
 #include "qdisp/QdispPool.h"
 
+// Forward declarations
+namespace lsst::qserv::proto {
+class ResponseSummary;
+}
+
+// This header declarations
 namespace lsst::qserv::qdisp {
 
 /// Bad response received from SSI API
@@ -109,7 +115,6 @@ public:
     bool cancel();
     bool isQueryCancelled();
     bool isQueryRequestCancelled();
-    void doNotRetry() { _retried.store(true); }
     std::string getSsiErr(XrdSsiErrInfo const& eInfo, int* eCode);
     void cleanup();  ///< Must be called when this object is no longer needed.
 
@@ -120,11 +125,10 @@ private:
     QueryRequest(std::shared_ptr<JobQuery> const& jobQuery);
 
     void _callMarkComplete(bool success);
-    bool _importResultFile(JobQuery::Ptr const& jq);
+    bool _importResultFile(JobQuery::Ptr const& jq, proto::ResponseSummary const& responseSummary);
     bool _importError(std::string const& msg, int code);
     bool _errorFinish(bool stopTrying = false);
     void _finish();
-    void _flushError(JobQuery::Ptr const& jq);
 
     /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with
     /// it. A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with
@@ -148,8 +152,6 @@ private:
     std::atomic<bool> _finishedCalled{false};
 
     QdispPool::Ptr _qdispPool;
-
-    int64_t _totalRows = 0;  ///< number of rows in query added to the result table.
 
     std::atomic<int> _rowsIgnored{0};  ///< Limit log messages about rows being ignored.
     std::atomic<uint> _respCount{0};   ///< number of responses created
