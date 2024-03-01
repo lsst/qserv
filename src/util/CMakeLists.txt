@@ -63,4 +63,5 @@ util_tests(
     testMutex
     testString
     testTablePrinter
+    testMultiIndex
 )
