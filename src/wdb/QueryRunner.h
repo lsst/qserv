@@ -37,6 +37,9 @@
 #include <atomic>
 #include <memory>
 
+// Third-party headers
+#include <mysql/mysql.h>
+
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
@@ -45,9 +48,9 @@
 #include "wbase/Task.h"
 #include "wdb/ChunkResource.h"
 
-namespace lsst::qserv::xrdsvc {
-class StreamBuffer;
-}  // namespace lsst::qserv::xrdsvc
+namespace lsst::qserv::proto {
+class ResponseData;
+}  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
@@ -56,6 +59,10 @@ class SqlConnMgr;
 namespace lsst::qserv::wpublish {
 class QueriesAndChunks;
 }  // namespace lsst::qserv::wpublish
+
+namespace lsst::qserv::xrdsvc {
+class StreamBuffer;
+}  // namespace lsst::qserv::xrdsvc
 
 namespace lsst::qserv::wdb {
 
@@ -96,6 +103,8 @@ private:
     /// Dispatch with output sent through a SendChannel
     bool _dispatchChannel();
     MYSQL_RES* _primeResult(std::string const& query);  ///< Obtain a result handle for a query.
+
+    bool _fillRows(proto::ResponseData& responseData, MYSQL_RES* mResult, int& rows, std::size_t& tSize);
 
     static size_t _getDesiredLimit();
 

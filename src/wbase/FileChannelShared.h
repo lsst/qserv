@@ -30,7 +30,6 @@
 #include <vector>
 
 // Third-party headers
-#include <mysql/mysql.h>
 #include "nlohmann/json.hpp"
 
 // Qserv headers
@@ -39,14 +38,6 @@
 #include "wbase/SendChannel.h"
 
 // Forward declarations
-
-namespace google::protobuf {
-class Arena;
-}  // namespace google::protobuf
-
-namespace lsst::qserv::proto {
-class ResponseData;
-}  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::wbase {
 class Task;
@@ -153,11 +144,19 @@ public:
     /// @return a transmit data object indicating the errors in 'multiErr'.
     bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
-    /// Extract the SQL results and write them into the file and notify Czar after the last
-    /// row of the result result set depending on theis channel has been processed.
-    /// @return true if there was an error.
-    bool buildAndTransmitResult(MYSQL_RES* mResult, std::shared_ptr<Task> const& task,
-                                util::MultiError& multiErr, std::atomic<bool>& cancelled);
+    /**
+     * Write the serialized message representing a subset of rows of the task's partial
+     * result into the file. Notify Czar after the last row of the last task has been processed.
+     * @param task - a task that has a resultset to be recorded
+     * @param cancelled - a flag indicating if the task got cancelled
+     * @param msg - a serialized Protobuf message to be recorded
+     * @param rows - the number of rows in the serialized message
+     * @param hasMoreRows - a flag indicating of the task still has nore rows
+     * @param multiErr - an object for error reporting
+     * @return true if there was an error.
+     */
+    bool buildAndTransmitResult(std::shared_ptr<Task> const& task, bool cancelled, std::string const& msg,
+                                int rows, bool hasMoreRows, util::MultiError& multiErr);
 
     /// @see wbase::SendChannel::kill
     bool kill(std::string const& note);
@@ -177,34 +176,15 @@ private:
     /**
      * Transfer rows of the result set into into the output file.
      * @note The file will be created at the first call to the method.
-     * @note The method may not extract all rows if the amount of data found
-     *   in the result set exceeded the maximum size allowed by the Google Protobuf
-     *   implementation. Also, the iterative approach to the data extraction allows
-     *   the driving code to be interrupted should the correponding query be cancelled
-     *   during the lengthy data processing phase.
      * @param tMtxLock - a lock on the mutex tMtx
      * @param task - a task that produced the result set
-     * @param mResult - MySQL result to be used as a source
-     * @param bytes - the number of bytes in the result message recorded into the file
-     * @param rows - the number of rows extracted from th eresult set
-     * @param multiErr - a collector of any errors that were captured during result set processing
-     * @return 'true' if the result set still has more rows to be extracted.
+     * @param msg - a serialized Protobuf message to be recorded
      * @throws std::runtime_error for problems encountered when attemting to create the file
      *   or write into the file.
      */
-    bool _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
-                      MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr);
+    void _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                      std::string const& msg);
 
-    /**
-     * Extract as many rows as allowed by the Google Protobuf implementation from
-     * from the input result set into the output result object.
-     * @param tMtxLock - a lock on the mutex tMtx
-     * @param mResult - MySQL result to be used as a source
-     * @param rows - the number of rows extracted from the result set
-     * @param tSize - the approximate amount of data extracted from the result set
-     * @return 'true' if there are more rows left in the result set.
-     */
-    bool _fillRows(std::lock_guard<std::mutex> const& tMtxLock, MYSQL_RES* mResult, int& rows, size_t& tSize);
     /**
      * Unconditionaly close and remove (potentially - the partially written) file.
      * This method gets called in case of any failure detected while processing
@@ -233,12 +213,7 @@ private:
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
     qmeta::CzarId const _czarId;                             ///< id of the czar that requested this task(s).
     std::string const _workerId;                             ///< The unique identifier of the worker.
-
-    // Allocatons/deletion of the data messages are managed by Google Protobuf Arena.
-    std::unique_ptr<google::protobuf::Arena> _protobufArena;
-    proto::ResponseData* _responseData = 0;
-
-    uint64_t const _scsId;  ///< id number for this FileChannelShared
+    uint64_t const _scsId;                                   ///< id number for this FileChannelShared
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using FileChannelShared.

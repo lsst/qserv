@@ -30,19 +30,15 @@
  * @author Daniel L. Wang, SLAC; John Gates, SLAC
  */
 
+// Class header
+#include "wdb/QueryRunner.h"
+
 // System headers
 #include <algorithm>
 #include <cstddef>
 #include <iostream>
 #include <memory>
 #include <thread>
-
-// Third-party headers
-#include <google/protobuf/arena.h>
-#include <mysql/mysql.h>
-
-// Class header
-#include "wdb/QueryRunner.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -304,9 +300,32 @@ bool QueryRunner::_dispatchChannel() {
 
             // Transition task's state to the next one (reading data from MySQL and sending them to Czar).
             _task->queried();
-            // Pass all information on to the shared object to add on to
-            // an existing message or build a new one as needed.
-            erred = _task->getSendChannel()->buildAndTransmitResult(res, _task, _multiError, _cancelled);
+
+            // Extract the resultset into a series of the serialzied Protobuf
+            // messages and hand them over one after another to the result reporting
+            // channel.
+            proto::ResponseData responseData;
+            bool hasMoreRows = true;
+            while (!erred && hasMoreRows && !_cancelled) {
+                // Transfer as many rows as it's allowed by limitations of the Google Protobuf into
+                // the response data object.
+                int rows = 0;
+                size_t tSize = 0;
+                responseData.clear_row();
+                hasMoreRows = _fillRows(responseData, res, rows, tSize);
+                responseData.set_rowcount(rows);
+                responseData.set_transmitsize(tSize);
+
+                // Serialize the content of the data buffer into the Protobuf data message
+                // that will be written into the output file.
+                std::string msg;
+                responseData.SerializeToString(&msg);
+
+                // Hand the serialized message along with the relevant context
+                // to the result reporting channel.
+                erred = _task->getSendChannel()->buildAndTransmitResult(_task, _cancelled, msg, rows,
+                                                                        hasMoreRows, _multiError);
+            }
         }
     } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
@@ -333,6 +352,35 @@ bool QueryRunner::_dispatchChannel() {
         }
     }
     return !erred;
+}
+
+bool QueryRunner::_fillRows(proto::ResponseData& responseData, MYSQL_RES* mResult, int& rows, size_t& tSize) {
+    int const numFields = mysql_num_fields(mResult);
+    unsigned int szLimit = min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
+                               proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
+    rows = 0;
+    tSize = 0;
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(mResult))) {
+        auto lengths = mysql_fetch_lengths(mResult);
+        proto::RowBundle* rawRow = responseData.add_row();
+        for (int i = 0; i < numFields; ++i) {
+            if (row[i]) {
+                rawRow->add_column(row[i], lengths[i]);
+                rawRow->add_isnull(false);
+            } else {
+                rawRow->add_column();
+                rawRow->add_isnull(true);
+            }
+        }
+        tSize += rawRow->ByteSizeLong();
+        ++rows;
+
+        // Each element needs to be mysql-sanitized
+        // Break the loop if the result is too big so this part can be transmitted.
+        if (tSize > szLimit) return true;
+    }
+    return false;
 }
 
 void QueryRunner::cancel() {

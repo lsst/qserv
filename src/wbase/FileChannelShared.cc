@@ -34,8 +34,6 @@
 
 // Qserv headers
 #include "global/LogContext.h"
-#include "proto/ProtoHeaderWrap.h"
-#include "proto/worker.pb.h"
 #include "wbase/Task.h"
 #include "wconfig/WorkerConfig.h"
 #include "wpublish/QueriesAndChunks.h"
@@ -266,11 +264,7 @@ shared_ptr<FileChannelShared> FileChannelShared::create(shared_ptr<wbase::SendCh
 
 FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                                      string const& workerId)
-        : _sendChannel(sendChannel),
-          _czarId(czarId),
-          _workerId(workerId),
-          _protobufArena(make_unique<google::protobuf::Arena>()),
-          _scsId(scsSeqId++) {
+        : _sendChannel(sendChannel), _czarId(czarId), _workerId(workerId), _scsId(scsSeqId++) {
     LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created");
     if (_sendChannel == nullptr) {
         throw util::Bug(ERR_LOC, "FileChannelShared constructor given nullptr");
@@ -328,64 +322,64 @@ bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared
     return true;
 }
 
-bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
-                                               util::MultiError& multiErr, atomic<bool>& cancelled) {
-    // Operation stats. Note that "buffer fill time" included the amount
-    // of time needed to write the result set to disk.
-    util::Timer transmitT;
-    transmitT.start();
+bool FileChannelShared::buildAndTransmitResult(shared_ptr<Task> const& task, bool cancelled,
+                                               string const& msg, int rows, bool hasMoreRows,
+                                               util::MultiError& multiErr) {
+    // Operation stats. Note that the metric only includes the amount of time
+    // needed to write the result set to disk. The amount of time to post a short
+    // reponse messagen to Czar over XROOTD/SSI should be negligible.
+    //
+    // TODO: Revisit TaskTransmit metrics to see what's actually needed
+    //       to be monitored in this context, and if there is still any
+    //       use for this metrics in the file-based result delivery protocol.
+    util::Timer fileWriteT;
+    fileWriteT.start();
 
-    double bufferFillSecs = 0.0;
-    int64_t bytesTransmitted = 0;
-    int rowsTransmitted = 0;
+    // These metrics are updated only if the message is actually recorded into a file.
+    double fileWriteSecs = 0.0;
+    int64_t bytesWritten = 0;
+    int rowsWritten = 0;
 
-    // Keep reading rows and converting those into messages while any
-    // are still left in the result set. The row processing method
-    // will write rows into the output file. The final "summary" message
-    // will be sant back to Czar after processing the very last set of rows
+    // Transfer the message into the output file. The final "summary" message
+    // will be sent back to Czar after processing the very last set of rows
     // of the last task of a request.
     bool erred = false;
-    bool hasMoreRows = true;
 
-    // This lock is to protect the stream from having other Tasks mess with it
-    // while data is loading.
+    // This lock is to protect the stream from having other tasks messing with it
+    // while data is being recorded into the file.
     lock_guard<mutex> const tMtxLock(_tMtx);
 
-    while (hasMoreRows && !cancelled) {
+    if (!cancelled) {
         util::Timer bufferFillT;
         bufferFillT.start();
 
-        // Transfer as many rows as it's allowed by limitations of
-        // the Google Protobuf into the output file.
-        int bytes = 0;
-        int rows = 0;
-        hasMoreRows = _writeToFile(tMtxLock, task, mResult, bytes, rows, multiErr);
-        bytesTransmitted += bytes;
-        rowsTransmitted += rows;
-        _rowcount += rows;
-        _transmitsize += bytes;
+        // Transfer the message into the output file.
+        _writeToFile(tMtxLock, task, msg);
+        bytesWritten = msg.size();
+        rowsWritten = rows;
+        _transmitsize += bytesWritten;
+        _rowcount += rowsWritten;
 
         bufferFillT.stop();
-        bufferFillSecs += bufferFillT.getElapsed();
+        fileWriteSecs = bufferFillT.getElapsed();
 
         // Fail the operation if the amount of data in the result set exceeds the requested
         // "large result" limit (in case if the one was specified).
         if (int64_t const maxTableSize = task->getMaxTableSize();
-            maxTableSize > 0 && bytesTransmitted > maxTableSize) {
-            string const err = "The result set size " + to_string(bytesTransmitted) +
+            maxTableSize > 0 && bytesWritten > maxTableSize) {
+            string const err = "The result set size " + to_string(bytesWritten) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
                                " bytes, task: " + task->getIdStr();
             multiErr.push_back(util::Error(util::ErrorCode::WORKER_RESULT_TOO_LARGE, err));
             LOGS(_log, LOG_LVL_ERROR, err);
             erred = true;
-            break;
         }
 
         // If no more rows are left in the task's result set then we need to check
         // if this is last task in a logical group of ones created for processing
         // the current request (note that certain classes of requests may require
         // more than one task for processing).
-        if (!hasMoreRows && transmitTaskLast()) {
+        if (!erred && !hasMoreRows && transmitTaskLast()) {
             // Make sure the file is sync to disk before notifying Czar.
             _file.flush();
             _file.close();
@@ -395,19 +389,17 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
-                break;
             }
         }
     }
-    transmitT.stop();
-    double timeSeconds = transmitT.getElapsed();
+    fileWriteT.stop();
+    double timeSeconds = fileWriteT.getElapsed();
     auto qStats = task->getQueryStats();
     if (qStats == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "No statistics for " << task->getIdStr());
     } else {
-        qStats->addTaskTransmit(timeSeconds, bytesTransmitted, rowsTransmitted, bufferFillSecs);
-        LOGS(_log, LOG_LVL_TRACE,
-             "TaskTransmit time=" << timeSeconds << " bufferFillSecs=" << bufferFillSecs);
+        qStats->addTaskTransmit(timeSeconds, bytesWritten, rowsWritten, fileWriteSecs);
+        LOGS(_log, LOG_LVL_TRACE, "TaskTransmit time=" << timeSeconds << " fileWriteSecs=" << fileWriteSecs);
     }
 
     // No reason to keep the file after a failure (hit while processing a query,
@@ -426,25 +418,8 @@ bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string c
     return _sendChannel->kill(note);
 }
 
-bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
-                                     MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr) {
-    // Transfer rows from a result set into the response data object.
-    if (nullptr == _responseData) {
-        _responseData = google::protobuf::Arena::CreateMessage<proto::ResponseData>(_protobufArena.get());
-    } else {
-        _responseData->clear_row();
-    }
-    size_t tSize = 0;
-    bool const hasMoreRows = _fillRows(tMtxLock, mResult, rows, tSize);
-    _responseData->set_rowcount(rows);
-    _responseData->set_transmitsize(tSize);
-
-    // Serialize the content of the data buffer into the Protobuf data message
-    // that will be written into the output file.
-    std::string msg;
-    _responseData->SerializeToString(&msg);
-    bytes = msg.size();
-
+void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
+                                     string const& msg) {
     // Create the file if not open.
     if (!_file.is_open()) {
         _fileName = task->resultFilePath();
@@ -464,37 +439,6 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
                             to_string(msg.size()) + " bytes into the file '" + _fileName + "'.");
     }
-    return hasMoreRows;
-}
-
-bool FileChannelShared::_fillRows(lock_guard<mutex> const& tMtxLock, MYSQL_RES* mResult, int& rows,
-                                  size_t& tSize) {
-    int const numFields = mysql_num_fields(mResult);
-    unsigned int szLimit = min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
-                               proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
-    rows = 0;
-    tSize = 0;
-    MYSQL_ROW row;
-    while ((row = mysql_fetch_row(mResult))) {
-        auto lengths = mysql_fetch_lengths(mResult);
-        proto::RowBundle* rawRow = _responseData->add_row();
-        for (int i = 0; i < numFields; ++i) {
-            if (row[i]) {
-                rawRow->add_column(row[i], lengths[i]);
-                rawRow->add_isnull(false);
-            } else {
-                rawRow->add_column();
-                rawRow->add_isnull(true);
-            }
-        }
-        tSize += rawRow->ByteSizeLong();
-        ++rows;
-
-        // Each element needs to be mysql-sanitized
-        // Break the loop if the result is too big so this part can be transmitted.
-        if (tSize > szLimit) return true;
-    }
-    return false;
 }
 
 void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
@@ -520,14 +464,6 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     // and response buffers.
     lock_guard<mutex> const streamMutexLock(_streamMutex);
 
-    // This will deallocate any memory managed by the Google Protobuf Arena
-    // to avoid unnecessary memory utilization by the application.
-    LOGS(_log, LOG_LVL_DEBUG,
-         __func__ << ": Google Protobuf Arena, 1:SpaceUsed=" << _protobufArena->SpaceUsed());
-    _protobufArena->Reset();
-    LOGS(_log, LOG_LVL_DEBUG,
-         __func__ << ": Google Protobuf Arena, 2:SpaceUsed=" << _protobufArena->SpaceUsed());
-
     QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
     LOGS(_log, LOG_LVL_DEBUG, __func__);
     if (isDead()) {
@@ -537,7 +473,6 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
 
     // Prepare the response object and serialize in into a message that will
     // be sent to Czar.
-
     proto::ResponseSummary response;
     response.set_wname(_workerId);
     response.set_queryid(queryId);
