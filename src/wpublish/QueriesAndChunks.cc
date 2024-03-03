@@ -517,8 +517,6 @@ void QueriesAndChunks::_bootUserQueries() {
         for (auto const& countQId : countQIdVect) {
             // If enough UserQueries have been booted to get under the Task limit,
             // stop booting UserQueries.
-            LOGS(_log, LOG_LVL_ERROR,
-                 "&&& bTaskCount=" << bootedTaskCount << " uqBootedTasksSum=" << uqBootedTasksSum);
             if ((bootedTaskCount - uqBootedTasksSum) <= _maxTasksBooted / 2) {
                 break;
             }
@@ -569,7 +567,6 @@ void QueriesAndChunks::_bootUserQueries() {
 vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
                                                            wsched::SchedulerBase::Ptr const& sched) {
     vector<wbase::Task::Ptr> removedList;  // Return value;
-    LOGS(_log, LOG_LVL_INFO, __func__ << "&&& QueriesAndChunks::removeQueryFrom" << qId);
 
     // Find the user query.
     auto query = getStats(qId);
@@ -711,17 +708,9 @@ pair<int, vector<BootedTaskTracker::CountQId>> BootedTaskTracker::getTotalBooted
         auto sz = mapOfTasks.size();
         taskCount += sz;
         countQId.emplace_back(sz, key);
-        LOGS(_log, LOG_LVL_ERROR, "&&& sz=" << sz << " key=" << key);
     }
     // Sort to descending order of booted `Task`s per UserQuery.
     sort(countQId.begin(), countQId.end(), greater<CountQId>());
-    {  // &&& block del
-        string lMsg;
-        for (auto const& cid : countQId) {
-            lMsg += "(qid=" + to_string(cid.qId) + ",cnt=" + to_string(cid.count) + "),";
-        }
-        LOGS(_log, LOG_LVL_ERROR, "&&& taskCount=" << taskCount << " countQId=" << lMsg);
-    }
     return {taskCount, countQId};
 }
 

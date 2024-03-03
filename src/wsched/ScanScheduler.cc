@@ -91,8 +91,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
 
     QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-    LOGS(_log, LOG_LVL_INFO,
-         __func__ << " &&&ScanScheduler::commandFinish " << getName() << " task=" << task->getIdStr());
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << getName() << " task=" << task->getIdStr());
 
     _taskQueue->taskComplete(task);  // does not need _mx protection.
     {
@@ -275,7 +274,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
 bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning) {
     QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
 
-    LOGS(_log, LOG_LVL_INFO, __func__ << "&&& ScanScheduler::removeTask " << getName());
+    LOGS(_log, LOG_LVL_INFO, __func__ << " " << getName());
     // Check if task is in the queue.
     // _taskQueue has its own mutex to protect this.
     auto rmTask = _taskQueue->removeTask(task);

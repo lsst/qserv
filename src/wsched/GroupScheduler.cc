@@ -156,9 +156,6 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait) {
     _incrChunkTaskCount(task->getChunkId());
     LOGS(_log, LOG_LVL_DEBUG,
          "GroupSched tskStart task=" << task->getIdStr() << " chunk=" << task->getChunkId());
-    LOGS(_log, LOG_LVL_INFO,
-         "&&&tsk GroupSched tskStart task=" << task->getIdStr() << " chunk=" << task->getChunkId()
-                                            << " inFlight=" << _inFlight);
     return task;
 }
 
@@ -168,9 +165,6 @@ void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
     LOGS(_log, LOG_LVL_DEBUG, "GroupSched tskEnd task=" << t->getIdStr() << " chunk=" << t->getChunkId());
-    LOGS(_log, LOG_LVL_INFO,
-         "&&&tsk GroupSched tskEnd task=" << t->getIdStr() << " chunk=" << t->getChunkId()
-                                          << " inFlight=" << _inFlight);
 }
 
 /// MaxActiveChunks and resource limitations (aside from available threads) are ignored by the GroupScheduler.

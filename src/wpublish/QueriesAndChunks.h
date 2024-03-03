@@ -244,7 +244,7 @@ private:
     /// _queryStatsMtx must be locked before calling.
     QueryStatistics::Ptr _getStats(QueryId const& qId) const;
 
-    // Remove the running 'task' from a scheduler and possibly move all Tasks that belong to its user query
+    /// Remove the running 'task' from a scheduler and possibly move all Tasks that belong to its user query
     /// to the snail scheduler. 'task' continues to run in its thread, but the scheduler is told 'task' is
     /// finished, which allows the scheduler to move on to another Task.
     /// If too many Tasks from the same user query are booted, all remaining tasks are moved to the snail
@@ -252,7 +252,13 @@ private:
     void _bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                    std::shared_ptr<wsched::SchedulerBase> const& sched);
 
-    void _bootUserQueries();  // &&& doc
+    /// Examine the UserQueries in `_bootedTaskTracker` and try to boot the biggest offending
+    /// UserQueries.
+    /// If there are too many booted tasks running without a scheduler, this keeps booting
+    /// the UserQuery with the most booted `Task`s until the number of remaining
+    /// booted tasks is well below the limit.
+    void _bootUserQueries();
+
     ScanTableSumsMap _calcScanTableSums();
     void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
 

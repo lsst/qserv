@@ -487,9 +487,9 @@ int BlendScheduler::moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& 
 int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
                                   SchedulerBase::Ptr const& destination) {
     LOGS(_log, LOG_LVL_DEBUG,
-         "&&& moveUserQuery " << QueryIdHelper::makeIdStr(qId)  // &&& remove "&&&"
-                              << " source=" << ((source == nullptr) ? "NULL" : source->getName())
-                              << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
+         __func__ << " " << QueryIdHelper::makeIdStr(qId)
+                  << " source=" << ((source == nullptr) ? "NULL" : source->getName())
+                  << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
     int count = 0;  // Number of Tasks that were moved.
     if (destination == nullptr) {
         LOGS(_log, LOG_LVL_WARN,

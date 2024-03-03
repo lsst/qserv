@@ -151,14 +151,12 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
         }
         if (iter == _activeChunk) {
             // All chunks have been checked, give up.
-            LOGS(_log, LOG_LVL_INFO, "&&& _ready loop empty");
             return false;
         }
         // Limit the number of chunks being queried on this scheduler.
         if (_scheduler != nullptr && _scheduler->getActiveChunkCount() >= _scheduler->getMaxActiveChunks()) {
             int newChunkId = iter->second->getChunkId();
             if (!_scheduler->chunkAlreadyActive(newChunkId)) {
-                LOGS(_log, LOG_LVL_INFO, "&&& _ready loop at max active chunks");
                 return false;
             }
         }
@@ -214,7 +212,7 @@ int ChunkTasksQueue::getActiveChunkId() {
 }
 
 wbase::Task::Ptr ChunkTasksQueue::removeTask(wbase::Task::Ptr const& task) {
-    LOGS(_log, LOG_LVL_INFO, __func__ << " &&& ChunkTasksQueue::removeTask " << task->getIdStr());
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << task->getIdStr());
     // Find the correct chunk
     auto chunkId = task->getChunkId();
     std::lock_guard<std::mutex> lock(_mapMx);
