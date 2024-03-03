@@ -149,16 +149,21 @@ void CzarStats::untrackQueryProgress(QueryId qid) {
     uint64_t const minTimestampMs = util::TimeUtils::now() - 1000 * lastSeconds;
     std::lock_guard<util::Mutex> const lock(_queryProgressMtx);
     if (lastSeconds == 0) {
-        // The query gets removed instantaniously if archiving is not enabled.
+        // The query gets removed instantaneously if archiving is not enabled.
         if (auto itr = _queryNumIncompleteJobs.find(qid); itr != _queryNumIncompleteJobs.end()) {
-            _queryNumIncompleteJobs.erase(qid);
+            _queryNumIncompleteJobs.erase(itr);
         }
     } else {
         // Erase queries with the last recorded timestamp that's older
         // than the specified cut-off time.
-        for (auto&& [qid, history] : _queryNumIncompleteJobs) {
-            if (history.empty()) continue;
-            if (history.back().timestampMs < minTimestampMs) _queryNumIncompleteJobs.erase(qid);
+        for (auto iter = _queryNumIncompleteJobs.begin(); iter != _queryNumIncompleteJobs.end();) {
+            auto const& history = iter->second;
+            // It's critical that `iter` is only advanced once.
+            if (!history.empty() && history.back().timestampMs < minTimestampMs) {
+                iter = _queryNumIncompleteJobs.erase(iter);
+            } else {
+                ++iter;
+            }
         }
     }
 }
