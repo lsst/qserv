@@ -38,7 +38,6 @@ from .options import (
     case_option,
     cmd_option,
     cmsd_manager_name_option,
-    cmsd_manager_count_option,
     compare_results_option,
     czar_connection_option,
     db_uri_option,
@@ -530,7 +529,6 @@ def cmsd_manager(ctx: click.Context, **kwargs: Any) -> None:
 @entrypoint.command()
 @pass_context
 @cmsd_manager_name_option()
-@cmsd_manager_count_option()
 @click.option(
     "--xrootd_manager-cfg-file",
     help="Path to the xrootd manager config file.",
@@ -573,7 +571,6 @@ def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
 @results_dirname_option()
 @results_protocol_option()
 @cmsd_manager_name_option()
-@cmsd_manager_count_option()
 @debug_option()
 @cmsd_worker_cfg_file_option()
 @cmsd_worker_cfg_path_option()
@@ -613,7 +610,6 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 @results_dirname_option()
 @results_protocol_option()
 @cmsd_manager_name_option()
-@cmsd_manager_count_option()
 @mysql_monitor_password_option()
 @db_qserv_user_option()
 @cmsd_worker_cfg_file_option()

@@ -48,18 +48,7 @@ class OptionGroup:
 cmsd_manager_name_option = partial(
     click.option,
     "--cmsd-manager-name",
-    help="""The domain name of the cmsd manager node(s).
-Will be used to create a domain name like "name-i.name", where "name" is the
-name specified here and i is an int 0 < i < --cmsd-manager-count.
-""",
-)
-
-
-cmsd_manager_count_option = partial(
-    click.option,
-    "--cmsd-manager-count",
-    help="The number of cmsd manager node(s).",
-    type=int,
+    help="""The domain name of the cmsd manager node(s).""",
 )
 
 
