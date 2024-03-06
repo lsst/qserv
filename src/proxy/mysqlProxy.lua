@@ -201,6 +201,7 @@ function queryType()
            string.find(qU, "^DESCRIBE ") or
            string.find(qU, "^DESC ") or
            string.find(qU, "^ROLLBACK") or
+           string.find(qU, "^COMMIT") or
            (string.find(qU, "^SELECT ") and not string.find(qU, "^SELECT .* FROM ")) then
             return true
         end

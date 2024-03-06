@@ -30,6 +30,8 @@ mysql --port=4040 --protocol=TCP -e "show databases"
 mysql --port=4040 --protocol=TCP proxyTest -e "show tables"
 mysql --port=4040 --protocol=TCP proxyTest -e "describe Obj"
 mysql --port=4040 --protocol=TCP proxyTest -e "desc Obj"
+mysql --port=4040 --protocol=TCP proxyTest -e "rollback"
+mysql --port=4040 --protocol=TCP proxyTest -e "commit"
 
 # these all should fail
 mysql --port=4040 --protocol=TCP proxyTest -e "insert into Obj values(1, 2)"
