@@ -60,6 +60,7 @@ volumes:
     czar_0_cfg:
     czar_0_home:
     czar_0_mariadb_lib:
+    czar_0_mariadb_log:
     czar_0_mariadb_run:
     repl_mgr_data:
     repl_mgr_home:
@@ -335,6 +336,9 @@ services:
             - type: volume
               source: czar_0_mariadb_lib
               target: /var/lib/mysql
+            - type: volume
+              source: czar_0_mariadb_log
+              target: /var/log/mysql
             - type: volume
               source: czar_0_mariadb_run
               target: /var/run/mysqld
