@@ -399,18 +399,21 @@ bool Task::isRunning() const {
 }
 
 void Task::started(chrono::system_clock::time_point const& now) {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << getIdStr() << " started");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::STARTED;
     _startTime = now;
 }
 
 void Task::queryExecutionStarted() {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << getIdStr() << " executing");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::EXECUTING_QUERY;
     _queryExecTime = chrono::system_clock::now();
 }
 
 void Task::queried() {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << getIdStr() << " reading");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::READING_DATA;
     _queryTime = chrono::system_clock::now();
@@ -422,6 +425,7 @@ void Task::queried() {
 /// Set values associated with the Task being finished.
 /// @return milliseconds to complete the Task, system clock time.
 chrono::milliseconds Task::finished(chrono::system_clock::time_point const& now) {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << getIdStr() << " finished");
     chrono::milliseconds duration;
     {
         lock_guard<mutex> guard(_stateMtx);

@@ -151,8 +151,7 @@ bool QueryRunner::runQuery() {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_INFO,
-         "QueryRunner::runQuery() tid=" << _task->getIdStr()
-                                        << " scsId=" << _task->getSendChannel()->getScsId());
+         __func__ << " tid=" << _task->getIdStr() << " scsId=" << _task->getSendChannel()->getScsId());
 
     // Start tracking the task.
     _queriesAndChunks->startedTask(_task);

@@ -787,22 +787,22 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
 
     // By now the slowFunc query has taken a second, far longer than the 0.1 seconds it was allowed.
     // examineAll() should boot the query.
-    LOGS(_log, LOG_LVL_DEBUG, "Chunks after slowFunc " << *f.queries);
+    LOGS(_log, LOG_LVL_INFO, "Chunks after slowFunc " << *f.queries);
     f.queries->examineAll();
     running = false;  // allow slowFunc to exit its loop and finish.
-    LOGS(_log, LOG_LVL_DEBUG, "Chunks after examineAll " << *f.queries);
+    LOGS(_log, LOG_LVL_INFO, "Chunks after examineAll " << *f.queries);
 
     // Check if the tasks booted value for qid has gone up.
     queryStats = f.queries->getStats(qid);
     BOOST_CHECK(queryStats != nullptr);
     if (queryStats != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "taskBooted=" << queryStats->getTasksBooted());
+        LOGS(_log, LOG_LVL_INFO, "taskBooted=" << queryStats->getTasksBooted());
         BOOST_CHECK(queryStats->getTasksBooted() == 1);
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest waiting for pool to finish.");
+    LOGS(_log, LOG_LVL_INFO, "BlendScheduleQueryBootTaskTest waiting for pool to finish.");
     pool->shutdownPool();
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest done");
+    LOGS(_log, LOG_LVL_INFO, "BlendScheduleQueryBootTaskTest done");
 }
 
 BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {

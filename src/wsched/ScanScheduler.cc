@@ -98,7 +98,8 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         lock_guard<mutex> guard(util::CommandQueue::_mx);
         --_inFlight;
         ++_recentlyCompleted;
-        LOGS(_log, LOG_LVL_DEBUG, "commandFinish " << getName() << " inFlight=" << _inFlight);
+        LOGS(_log, LOG_LVL_DEBUG,
+             "commandFinish " << getName() << " inFlight=" << _inFlight << " " << task->getIdStr());
 
         // If there's an old _memManHandleToUnlock, it needs to be unlocked before a new value is assigned.
         if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
@@ -122,7 +123,7 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
 
         _decrChunkTaskCount(task->getChunkId());
     }
-    LOGS(_log, LOG_LVL_DEBUG, "tskEnd chunk=" << task->getChunkId());
+    LOGS(_log, LOG_LVL_DEBUG, "tskEnd chunk=" << task->getChunkId() << " " << task->getIdStr());
     // Whenever a Task finishes, sleeping threads need to check if resources
     // are available to run new Tasks.
     _cv.notify_one();

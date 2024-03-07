@@ -259,6 +259,14 @@ private:
     /// booted tasks is well below the limit.
     void _bootUserQueries();
 
+    /// Remove all the `Task`s from `queryToBoot` from their current scheduler and place
+    /// them on the `SnailSched`.
+    /// @param `queryToBoot` - The UserQuery to boot.
+    /// @param `bSched` - a pointer to the `BlendScheduler`.
+    /// @return - Return true if the UserQuery was successfully booted.
+    bool _bootUserQuery(QueryStatistics::Ptr queryToBoot,
+                        std::shared_ptr<wsched::BlendScheduler> const& bSched);
+
     ScanTableSumsMap _calcScanTableSums();
     void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
 
@@ -293,7 +301,7 @@ private:
     std::chrono::seconds _examineAfter = std::chrono::minutes(5);
 
     /// Maximum number of tasks that can be booted until entire UserQuery is put on snailScan.
-    int _maxTasksBooted = 25;
+    int _maxTasksBooted = 15;
 
     /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
     /// considered valid enough to boot a Task.

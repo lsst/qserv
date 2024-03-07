@@ -347,14 +347,6 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     bool erred = false;
     bool hasMoreRows = true;
 
-    /* Locking this mutex here can result in it being held for extremely long periods of time.
-     * so it was relocated to being inside the loop and another at the end.
-     * search for tMtxLock and tMtxLockA
-    // This lock is to protect the stream from having other Tasks mess with it
-    // while data is loading.
-    lock_guard<mutex> const tMtxLock(_tMtx);
-    */
-
     while (hasMoreRows && !cancelled) {
         // This lock is to protect the stream from having other Tasks mess with it
         // while data is loading.

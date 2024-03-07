@@ -76,6 +76,7 @@ std::string const SUBCHUNKDB_PREFIX_STR = SUBCHUNKDB_PREFIX;
 // %3% subchunk column name (e.g. x_subChunkId)
 // %4% chunkId (e.g. 2523)
 // %5% subChunkId (e.g., 34)
+
 std::string const CREATE_SUBCHUNK_SCRIPT = "CREATE DATABASE IF NOT EXISTS " + SUBCHUNKDB_PREFIX_STR +
                                            "%1%_%4%;"
                                            "CREATE TABLE IF NOT EXISTS " +
