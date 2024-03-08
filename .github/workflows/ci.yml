@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Install python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -47,7 +47,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -74,7 +74,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -84,12 +84,12 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
@@ -132,7 +132,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -142,12 +142,12 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
@@ -173,7 +173,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -183,13 +183,13 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0  # 0 is "all history and branch tags"
 
       - name: Check for changes
-        uses: dorny/paths-filter@v2
+        uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
@@ -230,7 +230,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -240,7 +240,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -249,7 +249,7 @@ jobs:
           git submodule update --init
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
@@ -282,7 +282,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
@@ -292,12 +292,12 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
       - name: Login to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
