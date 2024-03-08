@@ -92,7 +92,10 @@ void log(string const& loggerName, string const& level, string const& fileName, 
     auto logger = lsst::log::Log::getLogger(loggerName);
     auto levelPtr = log4cxx::Level::toLevel(level);
     if (logger.isEnabledFor(levelPtr->toInt())) {
-        logger.logMsg(levelPtr, log4cxx::spi::LocationInfo(fileName.data(), funcName.data(), lineNo),
+        logger.logMsg(levelPtr,
+                      log4cxx::spi::LocationInfo(
+                              fileName.data(), log4cxx::spi::LocationInfo::calcShortFileName(fileName.data()),
+                              funcName.data(), lineNo),
                       message);
     }
 }

@@ -73,9 +73,10 @@ RUN curl -s "https://cmake.org/files/v3.17/cmake-3.17.2-Linux-x86_64.tar.gz" \
 RUN cd /tmp \
     && git clone https://github.com/apache/logging-log4cxx \
     && cd logging-log4cxx \
-    && git checkout a7d562806f0512683d9f32b3c3f95300d4c62fbe \
-    && ./autogen.sh \
-    && ./configure --disable-doxygen \
+    && git checkout rel/v1.1.0 \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
     && make -j8 \
     && make install \
     && cd /tmp \
@@ -230,7 +231,7 @@ RUN mkdir -p /qserv/data && \
 RUN alternatives --install /usr/bin/python python /usr/bin/python3.9 1
 ENV PYTHONPATH "${PYTHONPATH}:/usr/local/python"
 
-COPY --from=lite-build /usr/local/lib/liblog4cxx.so /usr/local/lib/
+COPY --from=lite-build /usr/local/lib64/liblog4cxx.so /usr/local/lib64/
 COPY --from=lite-build /usr/local/lib/libantlr4-runtime.so /usr/local/lib/
 COPY --from=lite-build /usr/local/bin/mysql-proxy /usr/local/bin/
 COPY --from=lite-build /usr/local/lib/libmysql-*.so /usr/local/lib/

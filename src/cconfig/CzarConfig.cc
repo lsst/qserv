@@ -43,7 +43,8 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.cconfig.CzarConfig");
 
 void QservLogger(struct timeval const& mtime, unsigned long tID, const char* msg, int mlen) {
-    static log4cxx::spi::LocationInfo xrdLoc("client", "<xrdssi>", 0);
+    static log4cxx::spi::LocationInfo xrdLoc(
+            "client", log4cxx::spi::LocationInfo::calcShortFileName("client"), "<xrdssi>", 0);
     static LOG_LOGGER myLog = LOG_GET("lsst.qserv.xrdssi.msgs");
 
     if (myLog.isInfoEnabled()) {

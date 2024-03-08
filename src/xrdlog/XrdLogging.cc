@@ -45,7 +45,8 @@ namespace {
 const char* origin;
 
 void QservLogger(struct timeval const& mtime, unsigned long tID, const char* msg, int mlen) {
-    static log4cxx::spi::LocationInfo xrdLoc(origin, "<xrdssi>", 0);
+    static log4cxx::spi::LocationInfo xrdLoc(origin, log4cxx::spi::LocationInfo::calcShortFileName(origin),
+                                             "<xrdssi>", 0);
     static LOG_LOGGER myLog = LOG_GET("lsst.qserv.xrdssi.msgs");
 
     if (myLog.isInfoEnabled()) {
