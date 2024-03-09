@@ -103,6 +103,9 @@ public:
     /// @return maximum number of tasks that can be booted from a single user query
     unsigned int getMaxTasksBootedPerUserQuery() const { return _maxTasksBootedPerUserQuery; }
 
+    /// @return maximum number of tasks that can be booted from a single user query
+    unsigned int getMaxConcurrentBootedTasks() const { return _maxConcurrentBootedTasks; }
+
     /// @return maximum time for a user query to complete  all tasks on the fast scan
     unsigned int getScanMaxMinutesFast() const { return _scanMaxMinutesFast; }
 
@@ -283,6 +286,7 @@ private:
     unsigned int const _scanMaxMinutesSlow;
     unsigned int const _scanMaxMinutesSnail;
     unsigned int const _maxTasksBootedPerUserQuery;
+    unsigned int const _maxConcurrentBootedTasks;
 
     unsigned int const _maxSqlConnections;
     unsigned int const _ReservedInteractiveSqlConnections;

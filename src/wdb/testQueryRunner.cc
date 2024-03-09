@@ -93,7 +93,10 @@ struct Fixture {
     }
     shared_ptr<QueriesAndChunks> queriesAndChunks() {
         bool resetForTesting = true;
-        return QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+        int maxTasksBooted = 5;
+        int maxDarkTasks = 25;
+        return QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(120), maxTasksBooted,
+                                             maxDarkTasks, resetForTesting);
     }
 };
 

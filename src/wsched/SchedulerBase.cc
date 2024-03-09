@@ -106,7 +106,7 @@ std::string SchedulerBase::chunkStatusStr() {
     return os.str();
 }
 
-nlohmann::json SchedulerBase::statusToJson() {
+nlohmann::json SchedulerBase::statusToJsonBase() {
     nlohmann::json status;
     status["name"] = getName();
     status["priority"] = getPriority();

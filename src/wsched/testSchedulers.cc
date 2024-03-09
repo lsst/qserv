@@ -72,6 +72,10 @@ using lsst::qserv::wpublish::QueriesAndChunks;
 
 double const oneHr = 60.0;
 
+bool const resetForTestingC = true;
+int const maxBootedC = 5;
+int const maxDarkTasksC = 25;
+
 shared_ptr<ChunkResourceMgr> crm;  // not used in this test, required by Task::createTasks
 MySqlConfig mySqlConfig;           // not used in this test, required by Task::createTasks
 SqlConnMgr::Ptr sqlConnMgr;        // not used in this test, required by Task::createTasks
@@ -164,9 +168,9 @@ struct SchedFixture {
     ~SchedFixture() {}
 
     void setupQueriesBlend() {
-        bool resetForTesting = true;
         queries = lsst::qserv::wpublish::QueriesAndChunks::setupGlobal(
-                std::chrono::seconds(1), std::chrono::seconds(_examineAllSleep), 5, resetForTesting);
+                std::chrono::seconds(1), std::chrono::seconds(_examineAllSleep), maxBootedC, maxDarkTasksC,
+                resetForTestingC);
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads, group, scanSlow,
                                                          scanSchedulers);
         group->setDefaultPosition(0);
@@ -212,6 +216,7 @@ public:
 BOOST_AUTO_TEST_CASE(Grouping) {
     SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
 
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case grouping");
     // Test grouping by chunkId. Max entries added to a single group set to 3.
     wsched::GroupScheduler gs{"GroupSchedA", 100, 0, 3, 0};
     // chunk Ids
@@ -293,9 +298,9 @@ BOOST_AUTO_TEST_CASE(Grouping) {
 
 BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     // Test that maxThreads is meaningful.
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    LOGS(_log, LOG_LVL_WARN, "Test_case GroupMaxThread");
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     wsched::GroupScheduler gs{"GroupSchedB", 3, 0, 100, 0};
     lsst::qserv::QueryId qIdInc = 1;
     int a = 42;
@@ -325,9 +330,9 @@ BOOST_AUTO_TEST_CASE(GroupMaxThread) {
 }
 
 BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case ScanScheduleTest");
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, false);
     wsched::ScanScheduler sched{"ScanSchedA", 2, 1, 0, 20, memMan, 0, 100, oneHr};
 
@@ -388,6 +393,7 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case BlendScheduleTest");
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
@@ -588,8 +594,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case BlendScheduleThreadLimitingTest");
     SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 check thread limiting");
     // Test that only 6 threads can be started on a single ScanScheduler
     // This leaves 3 threads available, 1 for each other scheduler.
     BOOST_CHECK(f.blend->ready() == false);
@@ -662,7 +668,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
     SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryRemovalTest");
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case BlendScheduleQueryRemovalTest");
     // Add two queries to scanFast scheduler and then move one query to scanSlow.
     int startChunk = 70;
     unsigned int jobs = 11;
@@ -722,7 +728,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     // Give the user query 0.1 seconds to run and run it for a second, it should get removed.
     double tenthOfSecInMinutes = 1.0 / 600.0;  // task
     SchedFixture f(tenthOfSecInMinutes, 1);    // sleep 1 second then check if tasks took too long
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest");
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case BlendScheduleQueryBootTaskTest");
 
     // Create a thread pool to run task
     auto pool = lsst::qserv::util::ThreadPool::newThreadPool(20, 1000, f.blend);
@@ -741,7 +747,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
         queriesAndChunks->finishedTask(task);
         running = true;
     };
-    task->setFunc(fastFunc);
+    task->setUnitTest(fastFunc);
     f.queries->addTask(task);
     f.blend->queCmd(task);
     while (!running) {
@@ -765,7 +771,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
         queriesAndChunks->finishedTask(task);
         LOGS(_log, LOG_LVL_DEBUG, "slowFunc end");
     };
-    task->setFunc(slowFunc);
+    task->setUnitTest(slowFunc);
     f.queries->addTask(task);
     auto queryStats = f.queries->getStats(qid);
     BOOST_CHECK(queryStats != nullptr);
@@ -783,29 +789,28 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
 
     // By now the slowFunc query has taken a second, far longer than the 0.1 seconds it was allowed.
     // examineAll() should boot the query.
-    LOGS(_log, LOG_LVL_DEBUG, "Chunks after slowFunc " << *f.queries);
+    LOGS(_log, LOG_LVL_INFO, "Chunks after slowFunc " << *f.queries);
     f.queries->examineAll();
     running = false;  // allow slowFunc to exit its loop and finish.
-    LOGS(_log, LOG_LVL_DEBUG, "Chunks after examineAll " << *f.queries);
+    LOGS(_log, LOG_LVL_INFO, "Chunks after examineAll " << *f.queries);
 
     // Check if the tasks booted value for qid has gone up.
     queryStats = f.queries->getStats(qid);
     BOOST_CHECK(queryStats != nullptr);
     if (queryStats != nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "taskBooted=" << queryStats->getTasksBooted());
+        LOGS(_log, LOG_LVL_INFO, "taskBooted=" << queryStats->getTasksBooted());
         BOOST_CHECK(queryStats->getTasksBooted() == 1);
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest waiting for pool to finish.");
+    LOGS(_log, LOG_LVL_INFO, "BlendScheduleQueryBootTaskTest waiting for pool to finish.");
     pool->shutdownPool();
-    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleQueryBootTaskTest done");
+    LOGS(_log, LOG_LVL_INFO, "BlendScheduleQueryBootTaskTest done");
 }
 
 BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
-    LOGS(_log, LOG_LVL_DEBUG, "SlowTableHeapTest start");
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case SlowTableHeapTest start");
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     wsched::ChunkTasks::SlowTableHeap heap{};
     lsst::qserv::QueryId qIdInc = 1;
 
@@ -838,10 +843,9 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
 }
 
 BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksTest start");
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksTest start");
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     // MemManNone always returns that memory is available.
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int chunkId = 7;
@@ -912,10 +916,9 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
 }
 
 BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest start");
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksQueueTest start");
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     // MemManNone always returns that memory is available.
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int firstChunkId = 100;

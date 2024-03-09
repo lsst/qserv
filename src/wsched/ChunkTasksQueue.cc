@@ -212,6 +212,7 @@ int ChunkTasksQueue::getActiveChunkId() {
 }
 
 wbase::Task::Ptr ChunkTasksQueue::removeTask(wbase::Task::Ptr const& task) {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << task->getIdStr());
     // Find the correct chunk
     auto chunkId = task->getChunkId();
     std::lock_guard<std::mutex> lock(_mapMx);

@@ -91,7 +91,8 @@ public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     TaskScheduler();
     virtual ~TaskScheduler() {}
-    virtual void taskCancelled(Task*) = 0;  ///< Repeated calls must be harmless.
+    virtual std::string getName() const = 0;  //< @return the name of the scheduler.
+    virtual void taskCancelled(Task*) = 0;    ///< Repeated calls must be harmless.
     virtual bool removeTask(std::shared_ptr<Task> const& task, bool removeRunning) = 0;
 
     util::HistogramRolling::Ptr histTimeOfRunningTasks;       ///< Store information about running tasks
@@ -178,6 +179,11 @@ public:
     std::string user;                                  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
 
+    /// This is the function the scheduler will run, overriden from the util::Command class.
+    /// This will check if it has already been called and then call QueryRunner::runQuery().
+    /// @param data - is ignored by this class.
+    void action(util::CmdData* data) override;
+
     /// Cancel the query in progress and set _cancelled.
     /// Query cancellation on the worker is fairly complicated. This
     /// function usually called by `SsiRequest::Finished` when xrootd
@@ -208,7 +214,7 @@ public:
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner* tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
-    TaskScheduler::Ptr getTaskScheduler() { return _taskScheduler.lock(); }
+    TaskScheduler::Ptr getTaskScheduler() const { return _taskScheduler.lock(); }
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
     // Shared scan information
@@ -264,7 +270,7 @@ public:
 
     uint64_t getTSeq() const { return _tSeq; }
 
-    /// The returned string is only usefult for logging purposes.
+    /// The returned string is only useful for logging purposes.
     std::string getIdStr(bool invalid = false) const {
         return QueryIdHelper::makeIdStr(_qId, _jId, invalid) + std::to_string(_tSeq) + ":";
     }
@@ -292,6 +298,19 @@ public:
     /// task's queries. The identifier is sampled by the worker tasks monitoring
     /// system in order to see what MySQL queries are being executed by tasks.
     void setMySqlThreadId(unsigned long id) { _mysqlThreadId.store(id); }
+
+    /// Return true if this task was already booted.
+    bool setBooted();
+
+    /// Return true if the task was booted.
+    bool isBooted() const { return _booted; }
+
+    /// Only to be used in unit tests, use this to set a lambda function
+    /// to use in a unit test.
+    void setUnitTest(std::function<void(util::CmdData*)> func) {
+        _unitTest = true;
+        setFunc(func);
+    }
 
 private:
     std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
@@ -324,6 +343,7 @@ private:
     /// The HTTP URL for the result file: "http://<host>:<http-port>" + _resultFilePath
     std::string _resultFileHttpUrl;
 
+    std::atomic<bool> _queryStarted{false};  ///< Set to true when the query is about to be run.
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
     TaskQueryRunner::Ptr _taskQueryRunner;
@@ -351,6 +371,13 @@ private:
     std::weak_ptr<wpublish::QueryStatistics> _queryStats;
 
     std::atomic<unsigned long> _mysqlThreadId{0};  ///< 0 if not connected to MySQL
+
+    std::atomic<bool> _booted{false};  ///< Set to true if this task takes too long and is booted.
+
+    /// Time stamp for when `_booted` is set to true, otherwise meaningless.
+    TIMEPOINT _bootedTime;
+
+    bool _unitTest = false;  ///<
 };
 
 }  // namespace lsst::qserv::wbase

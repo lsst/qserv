@@ -111,7 +111,7 @@ TaskScheduler::TaskScheduler() {
             "TransmittingTaskTime", {0.1, 1.0, 10.0, 60.0, 600.0, 1200.0}, hour, 10'000));
 }
 
-atomic<uint32_t> taskSequence{0};
+atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
@@ -211,6 +211,9 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
                               << " subChunks=" << util::printable(subchunksVect_));
     }
     _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
+    if (_sendChannel == nullptr) {
+        throw util::Bug(ERR_LOC, "Task::Task _sendChannel==null " + getIdStr());
+    }
 }
 
 Task::~Task() {
@@ -263,32 +266,49 @@ vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
         }
     }
     for (auto task : vect) {
-        /// Set the function called when it is time to process the task.
-        auto func = [task, chunkResourceMgr, mySqlConfig, sqlConnMgr, queriesAndChunks](util::CmdData*) {
-            auto qr = wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr,
-                                                       queriesAndChunks);
-            bool success = false;
-            try {
-                success = qr->runQuery();
-            } catch (UnsupportedError const& e) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery threw UnsupportedError " << e.what() << *task);
-            }
-            if (not success) {
-                LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << *task);
-                if (not task->getSendChannel()->kill("Foreman::_setRunFunc")) {
-                    LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed");
-                }
-            }
-            // Transmission is done, but 'task' contains statistics that are still useful.
-            // However, the resources used by sendChannel need to be freed quickly.
-            // The QueryRunner class access to sendChannel for results is over by this point.
-            task->resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
-        };
-        task->setFunc(func);
+        // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
+        task->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig,
+                                                                  sqlConnMgr, queriesAndChunks));
     }
     sendChannel->setTaskCount(vect.size());
 
     return vect;
+}
+
+void Task::action(util::CmdData* data) {
+    string tIdStr = getIdStr();
+    if (_queryStarted.exchange(true)) {
+        LOGS(_log, LOG_LVL_WARN, "task was already started " << tIdStr);
+        return;
+    }
+
+    if (_unitTest) {
+        LOGS(_log, LOG_LVL_ERROR,
+             __func__ << " Command::_func has been set, this should only happen in unit tests.");
+        _func(data);
+        return;
+    }
+
+    // Get a local copy for safety.
+    auto qr = _taskQueryRunner;
+    bool success = false;
+    try {
+        success = qr->runQuery();
+    } catch (UnsupportedError const& e) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " runQuery threw UnsupportedError " << e.what() << tIdStr);
+    }
+    if (not success) {
+        LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << tIdStr);
+        if (not getSendChannel()->kill("Foreman::_setRunFunc")) {
+            LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel already killed " << tIdStr);
+        }
+    }
+
+    // The QueryRunner class access to sendChannel for results is over by this point.
+    // 'task' contains statistics that are still useful. However, the resources used
+    // by sendChannel need to be freed quickly.
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " calling resetSendChannel() for " << tIdStr);
+    resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
 }
 
 string Task::getQueryString() const {
@@ -379,18 +399,21 @@ bool Task::isRunning() const {
 }
 
 void Task::started(chrono::system_clock::time_point const& now) {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << getIdStr() << " started");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::STARTED;
     _startTime = now;
 }
 
 void Task::queryExecutionStarted() {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << getIdStr() << " executing");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::EXECUTING_QUERY;
     _queryExecTime = chrono::system_clock::now();
 }
 
 void Task::queried() {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << getIdStr() << " reading");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::READING_DATA;
     _queryTime = chrono::system_clock::now();
@@ -402,6 +425,7 @@ void Task::queried() {
 /// Set values associated with the Task being finished.
 /// @return milliseconds to complete the Task, system clock time.
 chrono::milliseconds Task::finished(chrono::system_clock::time_point const& now) {
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << getIdStr() << " finished");
     chrono::milliseconds duration;
     {
         lock_guard<mutex> guard(_stateMtx);
@@ -447,7 +471,7 @@ void Task::waitForMemMan() {
              "waitForMemMan " << _memMan->getStatistics().logString() << " "
                               << _memMan->getStatus(_memHandle).logString());
     }
-    _safeToMoveRunning = true;
+    setSafeToMoveRunning(true);
 }
 
 memman::MemMan::Status Task::getMemHandleStatus() {
@@ -455,6 +479,14 @@ memman::MemMan::Status Task::getMemHandleStatus() {
         return memman::MemMan::Status();
     }
     return _memMan->getStatus(_memHandle);
+}
+
+bool Task::setBooted() {
+    bool alreadyBooted = _booted.exchange(true);
+    if (!alreadyBooted) {
+        _bootedTime = CLOCK::now();
+    }
+    return alreadyBooted;
 }
 
 nlohmann::json Task::getJson() const {
@@ -481,6 +513,10 @@ nlohmann::json Task::getJson() const {
     js["finishTime_msec"] = util::TimeUtils::tp2ms(_finishTime);
     js["sizeSoFar"] = _totalSize;
     js["mysqlThreadId"] = _mysqlThreadId.load();
+    js["booted"] = _booted.load() ? 1 : 0;
+    js["bootedTime_msec"] = util::TimeUtils::tp2ms(_bootedTime);
+    auto const scheduler = getTaskScheduler();
+    js["scheduler"] = scheduler == nullptr ? "" : scheduler->getName();
     return js;
 }
 

@@ -78,26 +78,28 @@ void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
         return;
     }
     QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-    LOGS(_log, LOG_LVL_DEBUG, "commandStart " << getName());
+    LOGS(_log, LOG_LVL_DEBUG, "commandStart " << getName() << " task=" << task->getIdStr());
     // task was registered Inflight when getCmd() was called.
 }
 
 void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
-    wbase::Task::Ptr t = dynamic_pointer_cast<wbase::Task>(cmd);
+    wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
-    if (t == nullptr) {
+    if (task == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion " << getName());
         return;
     }
 
-    QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
+    QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << getName() << " task=" << task->getIdStr());
 
-    _taskQueue->taskComplete(t);  // does not need _mx protection.
+    _taskQueue->taskComplete(task);  // does not need _mx protection.
     {
         lock_guard<mutex> guard(util::CommandQueue::_mx);
         --_inFlight;
         ++_recentlyCompleted;
-        LOGS(_log, LOG_LVL_DEBUG, "commandFinish " << getName() << " inFlight=" << _inFlight);
+        LOGS(_log, LOG_LVL_DEBUG,
+             "commandFinish " << getName() << " inFlight=" << _inFlight << " " << task->getIdStr());
 
         // If there's an old _memManHandleToUnlock, it needs to be unlocked before a new value is assigned.
         if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
@@ -111,16 +113,17 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         // This is done in case only one thread is running on this scheduler as
         // we don't want to release the tables in case the next Task wants some of them.
         if (!_taskQueue->empty()) {
-            _memManHandleToUnlock = t->getMemHandle();
+            _memManHandleToUnlock = task->getMemHandle();
             LOGS(_log, LOG_LVL_DEBUG, "setting handleToUnlock handle=" << _memManHandleToUnlock);
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, "ScanScheduler::commandFinish unlocking handle=" << t->getMemHandle());
-            _memMan->unlock(t->getMemHandle());  // Nothing on the queue, no reason to wait.
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "ScanScheduler::commandFinish unlocking handle=" << task->getMemHandle());
+            _memMan->unlock(task->getMemHandle());  // Nothing on the queue, no reason to wait.
         }
 
-        _decrChunkTaskCount(t->getChunkId());
+        _decrChunkTaskCount(task->getChunkId());
     }
-    LOGS(_log, LOG_LVL_DEBUG, "tskEnd chunk=" << t->getChunkId());
+    LOGS(_log, LOG_LVL_DEBUG, "tskEnd chunk=" << task->getChunkId() << " " << task->getIdStr());
     // Whenever a Task finishes, sleeping threads need to check if resources
     // are available to run new Tasks.
     _cv.notify_one();
@@ -271,6 +274,8 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
 /// from the thread pool (the thread pool creates a new thread to replace it).
 bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning) {
     QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
+
+    LOGS(_log, LOG_LVL_INFO, __func__ << " " << getName());
     // Check if task is in the queue.
     // _taskQueue has its own mutex to protect this.
     auto rmTask = _taskQueue->removeTask(task);
@@ -278,6 +283,7 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
     LOGS(_log, LOG_LVL_DEBUG, "removeTask inQueue=" << inQueue);
     if (inQueue) {
         LOGS(_log, LOG_LVL_INFO, "removeTask moving task on queue");
+        _decrCountForUserQuery(task->getQueryId());
         return true;
     }
 

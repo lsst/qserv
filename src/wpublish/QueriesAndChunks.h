@@ -1,7 +1,5 @@
-// -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -20,6 +18,7 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+
 #ifndef LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 #define LSST_QSERV_WPUBLISH_QUERIESANDCHUNKS_H
 
@@ -41,6 +40,7 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "wbase/Task.h"
+#include "wpublish/QueryStatistics.h"
 
 // Forward declarations
 namespace lsst::qserv::wbase {
@@ -59,80 +59,6 @@ class QueriesAndChunks;
 
 // This header declarations
 namespace lsst::qserv::wpublish {
-
-/// Statistics for a single user query.
-/// This class stores some statistics for each Task in the user query on this worker.
-class QueryStatistics {
-public:
-    using Ptr = std::shared_ptr<QueryStatistics>;
-
-    void addTask(wbase::Task::Ptr const& task);
-    bool isDead(std::chrono::seconds deadTime, TIMEPOINT now);
-    int getTasksBooted();
-    bool getQueryBooted() { return _queryBooted; }
-
-    /// Add statistics related to the running of the query in the task.
-    /// If there are subchunks in the user query, several Tasks may be needed for one chunk.
-    /// @param runTimeSeconds - How long it took to run the query.
-    /// @param subchunkRunTimeSeconds - How long the query spent waiting for the
-    ///                         subchunk temporary tables to be made. It's important to
-    ///                         remember that it's very common for several tasks to be waiting
-    ///                         on the same subchunk tables at the same time.
-    void addTaskRunQuery(double runTimeSeconds, double subchunkRunTimeSeconds);
-
-    /// Add statistics related to transmitting results back to the czar.
-    /// If there are subchunks in the user query, several Tasks may be needed for one chunk.
-    /// @param timeSeconds - time to transmit data back to the czar for one Task
-    /// @param bytesTransmitted - number of bytes transmitted to the czar for one Task.
-    /// @param rowsTransmitted - number of rows transmitted to the czar for one Task.
-    /// @param bufferFillSecs - time spent filling the buffer from the sql result.
-    void addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted,
-                         double bufferFillSecs);
-
-    TIMEPOINT const creationTime;
-    QueryId const queryId;
-
-    /// Return a json object containing high level data, such as histograms.
-    nlohmann::json getJsonHist() const;
-
-    /**
-     * Retreive a status of the tasks as defined by the query selector.
-     * @note If no restrictors are specified in the task selector then the method
-     * can return a very large object. So it should be used sparingly.
-     * @param taskSelector Task selection criterias.
-     * @return a json object containing information about tasks in the requested scope.
-     */
-    nlohmann::json getJsonTasks(wbase::TaskSelector const& taskSelector) const;
-
-    friend class QueriesAndChunks;
-    friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
-
-private:
-    explicit QueryStatistics(QueryId const& queryId);
-    bool _isMostlyDead() const;
-
-    mutable std::mutex _qStatsMtx;
-
-    std::chrono::system_clock::time_point _touched = std::chrono::system_clock::now();
-
-    int _size = 0;
-    int _tasksCompleted = 0;
-    int _tasksRunning = 0;
-    int _tasksBooted = 0;                   ///< Number of Tasks booted for being too slow.
-    std::atomic<bool> _queryBooted{false};  ///< True when the entire query booted.
-
-    double _totalTimeMinutes = 0.0;
-
-    std::vector<wbase::Task::Ptr> _tasks;  ///< A collection of all tasks of the query
-
-    util::Histogram::Ptr _histTimeRunningPerTask;  ///< Histogram of SQL query run times.
-    util::Histogram::Ptr
-            _histTimeSubchunkPerTask;  ///< Histogram of time waiting for temporary table generation.
-    util::Histogram::Ptr _histTimeTransmittingPerTask;  ///< Histogram of time spent transmitting.
-    util::Histogram::Ptr _histTimeBufferFillPerTask;    ///< Histogram of time filling buffers.
-    util::Histogram::Ptr _histSizePerTask;              ///< Histogram of bytes per Task.
-    util::Histogram::Ptr _histRowsPerTask;              ///< Histogram of rows per Task.
-};
 
 /// Statistics for a table in a chunk. Statistics are based on the slowest table in a query,
 /// so this most likely includes values for queries on _scanTableName and queries that join
@@ -196,6 +122,47 @@ private:
     std::map<std::string, ChunkTableStats::Ptr> _tableStats;
 };
 
+/// This class tracks the tasks that have been booted from their scheduler and are
+/// still running. The tasks are grouped by their related QueryId.
+class BootedTaskTracker {
+public:
+    /// Map of weak Task pointers organized by Task::_tSeq.
+    using MapOfTasks = std::map<uint64_t, std::weak_ptr<wbase::Task>>;
+
+    /// Class to sort UserQueries by number of booted `Task`s.
+    class CountQId {
+    public:
+        CountQId() = delete;
+        CountQId(size_t count_, QueryId qId_) : count(count_), qId(qId_) {}
+        bool operator<(CountQId const& other) const {
+            if (count == other.count) {
+                return qId < other.qId;
+            }
+            return count < other.count;
+        }
+        bool operator>(CountQId const& other) const { return other < *this; }
+        size_t count;
+        QueryId qId;
+    };
+
+    BootedTaskTracker() = default;
+    BootedTaskTracker(BootedTaskTracker const&) = default;
+
+    void addTask(wbase::Task::Ptr const& task);
+    void removeTask(wbase::Task::Ptr const& task);
+    void removeQuery(QueryId qId);  ///< Remove a `QueryId` and all associated `Task`s from `_bootedMap`.
+
+    /// Return a count of all tasks booted from all queries in `_bootedMap` and
+    /// a vector of `QueryId`s that is sorted to have the UserQueries with the
+    /// most booted `Task`s at the front.
+    std::pair<int, std::vector<CountQId>> getTotalBootedTaskCount() const;
+
+private:
+    /// Map of booted tasks that are still running organized by `QueryId`, `Task::_tSeq`.
+    std::map<QueryId, MapOfTasks> _bootedMap;
+    mutable std::mutex _bootedMapMtx;  ///< protects `_bootedMap`.
+};
+
 class QueriesAndChunks {
 public:
     using Ptr = std::shared_ptr<QueriesAndChunks>;
@@ -208,7 +175,7 @@ public:
     ///                 moved to the snail scheduler.
     /// @param resetForTesting - set this to true ONLY if the class needs to be reset for unit testing.
     static Ptr setupGlobal(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter,
-                           int maxTasksBooted, bool resetForTesting = false);
+                           int maxTasksBooted, int maxDarkQueries, bool resetForTesting);
 
     /// Return the pointer to the global object.
     /// @param noThrow - if true, this will not throw an exception when called and
@@ -226,6 +193,7 @@ public:
     void removeDead();
     void removeDead(QueryStatistics::Ptr const& queryStats);
 
+    /// Return the statistics for a user query.
     QueryStatistics::Ptr getStats(QueryId const& qId) const;
 
     void addTask(wbase::Task::Ptr const& task);
@@ -233,6 +201,9 @@ public:
     void startedTask(wbase::Task::Ptr const& task);
     void finishedTask(wbase::Task::Ptr const& task);
 
+    /// Examine all running Tasks and boot Tasks that are taking too long and
+    /// move user queries that are too slow to the snail scan.
+    /// This is expected to be called maybe once every 5 minutes.
     void examineAll();
 
     /**
@@ -267,15 +238,41 @@ public:
 
 private:
     static Ptr _globalQueriesAndChunks;
-    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter, int maxTasksBooted);
+    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter, int maxTasksBooted,
+                     int maxDarkQueries);
 
+    /// @return the statistics for a user query.
+    /// _queryStatsMtx must be locked before calling.
+    QueryStatistics::Ptr _getStats(QueryId const& qId) const;
+
+    /// Remove the running 'task' from a scheduler and possibly move all Tasks that belong to its user query
+    /// to the snail scheduler. 'task' continues to run in its thread, but the scheduler is told 'task' is
+    /// finished, which allows the scheduler to move on to another Task.
+    /// If too many Tasks from the same user query are booted, all remaining tasks are moved to the snail
+    /// scheduler in an attempt to keep a single user query from jamming up a scheduler.
     void _bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                    std::shared_ptr<wsched::SchedulerBase> const& sched);
+
+    /// Examine the UserQueries in `_bootedTaskTracker` and try to boot the biggest offending
+    /// UserQueries.
+    /// If there are too many booted tasks running without a scheduler, this keeps booting
+    /// the UserQuery with the most booted `Task`s until the number of remaining
+    /// booted tasks is well below the limit.
+    void _bootUserQueries();
+
+    /// Remove all the `Task`s from `queryToBoot` from their current scheduler and place
+    /// them on the `SnailSched`.
+    /// @param `queryToBoot` - The UserQuery to boot.
+    /// @param `bSched` - a pointer to the `BlendScheduler`.
+    /// @return - Return true if the UserQuery was successfully booted.
+    bool _bootUserQuery(QueryStatistics::Ptr queryToBoot,
+                        std::shared_ptr<wsched::BlendScheduler> const& bSched);
+
     ScanTableSumsMap _calcScanTableSums();
     void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
 
-    mutable std::mutex _queryStatsMtx;                    ///< protects _queryStats;
-    std::map<QueryId, QueryStatistics::Ptr> _queryStats;  ///< Map of Query stats indexed by QueryId.
+    mutable std::mutex _queryStatsMapMtx;                    ///< protects _queryStats;
+    std::map<QueryId, QueryStatistics::Ptr> _queryStatsMap;  ///< Map of Query stats indexed by QueryId.
 
     mutable std::mutex _chunkMtx;
     std::map<int, ChunkStatistics::Ptr> _chunkStats;  ///< Map of Chunk stats indexed by chunk id.
@@ -305,11 +302,21 @@ private:
     std::chrono::seconds _examineAfter = std::chrono::minutes(5);
 
     /// Maximum number of tasks that can be booted until entire UserQuery is put on snailScan.
-    int _maxTasksBooted = 25;
+    /// This should be set by the config with "scheduler.maxtasksbootedperuserquery"
+    int _maxTasksBooted = 5;
+
+    /// Maximum number of booted `Task`s allowed to be running at a given time.
+    /// This should be set by the config with "scheduler.maxconcurrentbootedtasks"
+    int _maxDarkTasks = 25;
 
     /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
     /// considered valid enough to boot a Task.
     unsigned int _requiredTasksCompleted = 50;
+    // TODO: remove _requiredTasksCompleted when real chunk and scan info is available.
+
+    BootedTaskTracker _bootedTaskTracker;  ///< Keeps track of booted Tasks.
+
+    std::atomic<bool> _runningExamineAll{false};  ///< Latch to only allow one call to `examineAll` at a time.
 };
 
 }  // namespace lsst::qserv::wpublish

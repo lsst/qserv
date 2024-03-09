@@ -117,7 +117,6 @@ private:
     /// Used to limit the number of open MySQL connections.
     std::shared_ptr<wcontrol::SqlConnMgr> const _sqlConnMgr;
     std::shared_ptr<wpublish::QueriesAndChunks> const _queriesAndChunks;
-    std::atomic<bool> _runQueryCalled{false};  ///< If runQuery gets called twice, the scheduler messed up.
 };
 
 }  // namespace lsst::qserv::wdb

@@ -145,6 +145,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     // should be added to. All tasks in 'cmds' must belong to the same
     // user query and will go to the same scheduler.
     bool first = true;
+    wpublish::QueryStatistics::Ptr queryStats;
     std::vector<util::Command::Ptr> taskCmds;
     SchedulerBase::Ptr targSched = nullptr;
     bool onInteractive = false;
@@ -207,7 +208,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                     }
                 }
                 // If the user query for this task has been booted, put this task on the snail scheduler.
-                auto queryStats = _queries->getStats(task->getQueryId());
+                queryStats = _queries->getStats(task->getQueryId());
                 if (queryStats && queryStats->getQueryBooted()) {
                     targSched = _scanSnail;
                 }
@@ -233,6 +234,9 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
     if (!taskCmds.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Blend queCmd");
         targSched->queCmd(taskCmds);
+        if (queryStats) {
+            queryStats->tasksAddedToScheduler(targSched, taskCmds.size());
+        }
         _infoChanged = true;
         notify(true);  // notify all=true
     }
@@ -451,7 +455,7 @@ void BlendScheduler::_logChunkStatus() {
     }
 }
 
-nlohmann::json BlendScheduler::statusToJson() {
+nlohmann::json BlendScheduler::statusToJsonBlend() {
     nlohmann::json status;
     status["name"] = getName();
     status["priority"] = getPriority();
@@ -461,7 +465,7 @@ nlohmann::json BlendScheduler::statusToJson() {
     {
         lock_guard<mutex> lg(_schedMtx);
         for (auto&& sched : _schedulers) {
-            schedulers.push_back(sched->statusToJson());
+            schedulers.push_back(sched->statusToJsonBase());
         }
     }
     status["schedulers"] = schedulers;
@@ -483,9 +487,9 @@ int BlendScheduler::moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& 
 int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
                                   SchedulerBase::Ptr const& destination) {
     LOGS(_log, LOG_LVL_DEBUG,
-         "moveUserQuery " << QueryIdHelper::makeIdStr(qId)
-                          << " source=" << ((source == nullptr) ? "NULL" : source->getName())
-                          << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
+         __func__ << " " << QueryIdHelper::makeIdStr(qId)
+                  << " source=" << ((source == nullptr) ? "NULL" : source->getName())
+                  << " dest=" << ((destination == nullptr) ? "NULL" : destination->getName()));
     int count = 0;  // Number of Tasks that were moved.
     if (destination == nullptr) {
         LOGS(_log, LOG_LVL_WARN,
@@ -498,7 +502,9 @@ int BlendScheduler::moveUserQuery(QueryId qId, SchedulerBase::Ptr const& source,
     // not tasks that were running.
     for (auto const& task : taskList) {
         // Change the scheduler to the new scheduler as normally this is done in BlendScheduler::queCmd
-        LOGS(_log, LOG_LVL_DEBUG, "moving to " << destination->getName());
+        LOGS(_log, LOG_LVL_INFO,
+             __func__ << " task=" << task->getIdStr() << " moving from "
+                      << task->getTaskScheduler()->getName() << " to " << destination->getName());
         task->setTaskScheduler(destination);
         destination->queCmd(task);
         ++count;

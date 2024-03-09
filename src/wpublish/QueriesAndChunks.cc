@@ -50,65 +50,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueriesAndChunks");
 
 namespace lsst::qserv::wpublish {
 
-QueryStatistics::QueryStatistics(QueryId const& qId_) : creationTime(CLOCK::now()), queryId(qId_) {
-    /// For all of the histograms, all entries should be kept at least until the work is finished.
-    string qidStr = to_string(queryId);
-    _histSizePerTask = util::Histogram::Ptr(new util::Histogram(
-            string("SizePerTask_") + qidStr, {1'000, 10'0000, 1'000'000, 10'000'000, 100'000'000}));
-    _histRowsPerTask = util::Histogram::Ptr(new util::Histogram(string("RowsPerChunk_") + qidStr,
-                                                                {1, 100, 1'000, 10'000, 100'000, 1'000'000}));
-    _histTimeRunningPerTask = util::Histogram::Ptr(new util::Histogram(
-            string("TimeRunningPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
-    _histTimeSubchunkPerTask = util::Histogram::Ptr(new util::Histogram(
-            string("TimeSubchunkPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
-    _histTimeTransmittingPerTask = util::Histogram::Ptr(new util::Histogram(
-            string("TimeTransmittingPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
-    _histTimeBufferFillPerTask = util::Histogram::Ptr(new util::Histogram(
-            string("TimeFillingBuffersPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
-}
-
-/// Return a json object containing high level data, such as histograms.
-nlohmann::json QueryStatistics::getJsonHist() const {
-    nlohmann::json js = nlohmann::json::object();
-    js["timeRunningPerTask"] = _histTimeRunningPerTask->getJson();
-    js["timeSubchunkPerTask"] = _histTimeSubchunkPerTask->getJson();
-    js["timeTransmittingPerTask"] = _histTimeTransmittingPerTask->getJson();
-    js["timeBufferFillPerTask"] = _histTimeBufferFillPerTask->getJson();
-    js["sizePerTask"] = _histSizePerTask->getJson();
-    js["rowsPerTask"] = _histRowsPerTask->getJson();
-    return js;
-}
-
-nlohmann::json QueryStatistics::getJsonTasks(wbase::TaskSelector const& taskSelector) const {
-    lock_guard<mutex> const guard(_qStatsMtx);
-    nlohmann::json result = nlohmann::json::object();
-    result["snapshotTime_msec"] = util::TimeUtils::now();
-    result["entries"] = nlohmann::json::array();
-    auto& taskEntriesJson = result["entries"];
-    uint32_t numTasksSelected = 0;
-    if (taskSelector.includeTasks) {
-        auto const& ids = taskSelector.queryIds;
-        auto const& states = taskSelector.taskStates;
-        for (auto&& task : _tasks) {
-            bool const selectedByQueryId =
-                    ids.empty() || find(ids.begin(), ids.end(), task->getQueryId()) != ids.end();
-            bool const selectedByTaskState =
-                    states.empty() || find(states.begin(), states.end(), task->state()) != states.end();
-            if (selectedByQueryId && selectedByTaskState) {
-                ++numTasksSelected;
-                // Stop reporting tasks if the limit has been reached. Just keep
-                // counting the number of tasks selected by the filter.
-                if ((taskSelector.maxTasks == 0) || (numTasksSelected < taskSelector.maxTasks)) {
-                    taskEntriesJson.push_back(task->getJson());
-                }
-            }
-        }
-    }
-    result["total"] = _tasks.size();
-    result["selected"] = numTasksSelected;
-    return result;
-}
-
 QueriesAndChunks::Ptr QueriesAndChunks::_globalQueriesAndChunks;
 
 QueriesAndChunks::Ptr QueriesAndChunks::get(bool noThrow) {
@@ -119,20 +60,25 @@ QueriesAndChunks::Ptr QueriesAndChunks::get(bool noThrow) {
 }
 
 QueriesAndChunks::Ptr QueriesAndChunks::setupGlobal(chrono::seconds deadAfter, chrono::seconds examineAfter,
-                                                    int maxTasksBooted, bool resetForTesting) {
+                                                    int maxTasksBooted, int maxDarkTasks,
+                                                    bool resetForTesting) {
     if (resetForTesting) {
         _globalQueriesAndChunks.reset();
     }
     if (_globalQueriesAndChunks != nullptr) {
         throw util::Bug(ERR_LOC, "QueriesAndChunks::setupGlobal called twice");
     }
-    _globalQueriesAndChunks = Ptr(new QueriesAndChunks(deadAfter, examineAfter, maxTasksBooted));
+    _globalQueriesAndChunks =
+            Ptr(new QueriesAndChunks(deadAfter, examineAfter, maxTasksBooted, maxDarkTasks));
     return _globalQueriesAndChunks;
 }
 
 QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds examineAfter,
-                                   int maxTasksBooted)
-        : _deadAfter{deadAfter}, _examineAfter{examineAfter}, _maxTasksBooted{maxTasksBooted} {
+                                   int maxTasksBooted, int maxDarkTasks)
+        : _deadAfter{deadAfter},
+          _examineAfter{examineAfter},
+          _maxTasksBooted{maxTasksBooted},
+          _maxDarkTasks{maxDarkTasks} {
     auto rDead = [this]() {
         while (_loopRemoval) {
             removeDead();
@@ -177,12 +123,12 @@ void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) { _required
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
-    unique_lock<mutex> guardStats(_queryStatsMtx);
-    auto itr = _queryStats.find(qid);
+    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+    auto itr = _queryStatsMap.find(qid);
     QueryStatistics::Ptr stats;
-    if (_queryStats.end() == itr) {
-        stats = QueryStatistics::Ptr(new QueryStatistics(qid));
-        _queryStats[qid] = stats;
+    if (_queryStatsMap.end() == itr) {
+        stats = QueryStatistics::create(qid);
+        _queryStatsMap[qid] = stats;
     } else {
         stats = itr->second;
     }
@@ -198,9 +144,7 @@ void QueriesAndChunks::queuedTask(wbase::Task::Ptr const& task) {
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        lock_guard<mutex>(stats->_qStatsMtx);
-        stats->_touched = now;
-        stats->_size += 1;
+        stats->addTask(now);
     }
 }
 
@@ -211,9 +155,9 @@ void QueriesAndChunks::startedTask(wbase::Task::Ptr const& task) {
 
     QueryStatistics::Ptr stats = getStats(task->getQueryId());
     if (stats != nullptr) {
-        lock_guard<mutex>(stats->_qStatsMtx);
-        stats->_touched = now;
-        stats->_tasksRunning += 1;
+        stats->addTaskRunning(now);
+    } else {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " stats was nullptr");
     }
 }
 
@@ -226,19 +170,17 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
     QueryId qId = task->getQueryId();
     QueryStatistics::Ptr stats = getStats(qId);
     if (stats != nullptr) {
-        bool mostlyDead = false;
-        {
-            lock_guard<mutex> gs(stats->_qStatsMtx);
-            stats->_touched = now;
-            stats->_tasksRunning -= 1;
-            stats->_tasksCompleted += 1;
-            stats->_totalTimeMinutes += taskDuration;
-            mostlyDead = stats->_isMostlyDead();
-        }
+        bool mostlyDead = stats->addTaskCompleted(now, taskDuration);
         if (mostlyDead) {
             lock_guard<mutex> gd(_newlyDeadMtx);
             (*_newlyDeadQueries)[qId] = stats;
         }
+    }
+    if (task->isBooted()) {
+        // _bootedTaskTracker is only interested in system load.
+        // Once a task has finished running, it has little effect
+        // on system load and needs to be removed from the tracker.
+        _bootedTaskTracker.removeTask(task);
     }
 
     _finishedTaskForChunk(task, taskDuration);
@@ -308,63 +250,72 @@ void QueriesAndChunks::removeDead() {
 /// Query Ids should be unique for the life of the system, so erasing
 /// a qId multiple times from _queryStats should be harmless.
 void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
-    unique_lock<mutex> gS(queryStats->_qStatsMtx);
-    QueryId qId = queryStats->queryId;
-    gS.unlock();
-    LOGS(_log, LOG_LVL_TRACE, "Queries::removeDead");
+    QueryId qId = queryStats->getQueryId();
+    LOGS(_log, LOG_LVL_TRACE, "Queries::removeDead " << qId);
 
-    lock_guard<mutex> gQ(_queryStatsMtx);
-    _queryStats.erase(qId);
+    _bootedTaskTracker.removeQuery(qId);
+    lock_guard<mutex> gQ(_queryStatsMapMtx);
+    _queryStatsMap.erase(qId);
+}
+
+QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
+    lock_guard<mutex> lockG(_queryStatsMapMtx);
+    return _getStats(qId);
 }
 
 /// @return the statistics for a user query.
-QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
-    lock_guard<mutex> g(_queryStatsMtx);
-    auto iter = _queryStats.find(qId);
-    if (iter != _queryStats.end()) {
+QueryStatistics::Ptr QueriesAndChunks::_getStats(QueryId const& qId) const {
+    auto iter = _queryStatsMap.find(qId);
+    if (iter != _queryStatsMap.end()) {
         return iter->second;
     }
     LOGS(_log, LOG_LVL_WARN, "QueriesAndChunks::getStats could not find qId=" << qId);
     return nullptr;
 }
 
-/// Examine all running Tasks and boot Tasks that are taking too long and
-/// move user queries that are too slow to the snail scan.
-/// This is expected to be called maybe once every 5 minutes.
 void QueriesAndChunks::examineAll() {
+    // Make sure only one `examineAll()` is running at any given time.
+    if (_runningExamineAll.exchange(true) == true) {
+        // Already running this function.
+        return;
+    }
+
+    /// Ensure that `_runningExamineAll` gets set to false.
+    class SetExamineAllRunningFalse {
+    public:
+        SetExamineAllRunningFalse(std::atomic<bool>& runningExAll_) : _runningExAll(runningExAll_) {}
+        ~SetExamineAllRunningFalse() { _runningExAll = false; }
+
+    private:
+        std::atomic<bool>& _runningExAll;
+    };
+    SetExamineAllRunningFalse setExamineAllRunningFalse(_runningExamineAll);
+
     // Need to know how long it takes to complete tasks on each table
     // in each chunk, and their percentage total of the whole.
     auto scanTblSums = _calcScanTableSums();
 
     // Copy a vector of the Queries in the map and work with the copy
     // to free up the mutex.
-    vector<QueryStatistics::Ptr> uqs;
+    vector<QueryStatistics::Ptr> uqStatList;
     {
-        lock_guard<mutex> g(_queryStatsMtx);
-        for (auto const& ele : _queryStats) {
-            auto const q = ele.second;
-            uqs.push_back(q);
+        lock_guard<mutex> g(_queryStatsMapMtx);
+        for (auto const& [statsQId, qStatsPtr] : _queryStatsMap) {
+            uqStatList.push_back(qStatsPtr);
+            LOGS(_log, LOG_LVL_TRACE, __func__ << " read stats for " << statsQId);
         }
     }
+
+    /// Set of user queries that may be worth booting.
+    set<QueryId> qIdsBootCandidates;
 
     // Go through all Tasks in each query and examine the running ones.
     // If a running Task is taking longer than its percent of total time, boot it.
     // Booting a Task may result in the entire user query it belongs to being moved
     // to the snail scan.
-    for (auto const& uq : uqs) {
+    for (auto const& uqStatElem : uqStatList) {
         // Copy all the running tasks that are on ScanSchedulers.
-        vector<wbase::Task::Ptr> runningTasks;
-        {
-            lock_guard<mutex> lock(uq->_qStatsMtx);
-            for (auto&& task : uq->_tasks) {
-                if (task->isRunning()) {
-                    auto const& sched = dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
-                    if (sched != nullptr) {
-                        runningTasks.push_back(task);
-                    }
-                }
-            };
-        }
+        vector<wbase::Task::Ptr> runningTasks = uqStatElem->getRunningTasks();
 
         // For each running task, check if it is taking too long, or if the query is taking too long.
         for (auto const& task : runningTasks) {
@@ -381,30 +332,56 @@ void QueriesAndChunks::examineAll() {
             string const& slowestTable = begin->db + ":" + begin->table;
             auto iterTbl = scanTblSums.find(slowestTable);
             if (iterTbl != scanTblSums.end()) {
-                LOGS(_log, LOG_LVL_DEBUG, "examineAll " << slowestTable << " chunkId=" << task->getChunkId());
+                LOGS(_log, LOG_LVL_DEBUG,
+                     "examineAll a " << slowestTable << " chunkId=" << task->getChunkId() << " "
+                                     << task->getIdStr());
                 ScanTableSums& tblSums = iterTbl->second;
+
+                // TODO: The size and expected percentage of chunks needs to be gathered from
+                // replicator data and/or the czar.
+                // This code pre-dates the replicator, so it constructs
+                // the tables as they are used by tasks. This causes serious issues
+                // with analyzing queries the first time the table is seen. Skipping analysis
+                // for slow tasks on large tables is particularly brutal, so this assumes
+                // that the table for the first chunk in the list is a close enough
+                // approximation for the percentage.
+                // Use the correct chunk id, if it can be found. Otherwise, use the first
+                // chunk in the list as a reference. Use whatever value is found.
                 auto iterChunk = tblSums.chunkPercentages.find(task->getChunkId());
+                if (iterChunk == tblSums.chunkPercentages.end()) {
+                    iterChunk = tblSums.chunkPercentages.begin();
+                }
                 if (iterChunk != tblSums.chunkPercentages.end()) {
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         "examineAll c " << slowestTable << " chunkId=" << task->getChunkId() << " "
+                                         << task->getIdStr());
                     // We can only make the check if there's data on past chunks/tables.
                     double percent = iterChunk->second.percent;
                     bool valid = iterChunk->second.valid;
-                    double maxTimeChunk = percent * schedMaxTime;
+                    // Allow for some variation in time, also need twice as much time for 2 replicas.
+                    double leeway = 2.25;
+                    double maxTimeChunk = percent * schedMaxTime * leeway;
                     auto runTimeMilli = task->getRunTime();
                     double runTimeMinutes = (double)runTimeMilli.count() / 60000.0;
                     bool booting = runTimeMinutes > maxTimeChunk && valid;
-                    auto lvl = booting ? LOG_LVL_INFO : LOG_LVL_DEBUG;
+                    auto lvl = booting ? LOG_LVL_WARN : LOG_LVL_DEBUG;
                     LOGS(_log, lvl,
                          "examineAll " << (booting ? "booting" : "keeping") << " task " << task->getIdStr()
                                        << "maxTimeChunk(" << maxTimeChunk << ")=percent(" << percent
                                        << ")*schedMaxTime(" << schedMaxTime << ")"
                                        << " runTimeMinutes=" << runTimeMinutes << " valid=" << valid);
                     if (booting && !task->atMaxThreadCount()) {
-                        _bootTask(uq, task, sched);
+                        LOGS(_log, lvl,
+                             __func__ << " booting runtime=" << runTimeMinutes << " max=" << maxTimeChunk
+                                      << " " << task->getIdStr());
+                        _bootTask(uqStatElem, task, sched);
                     }
                 }
             }
         }
     }
+
+    _bootUserQueries();
 
     LOGS(_log, LOG_LVL_WARN, util::HoldTrack::CheckKeySet());
     LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
@@ -418,12 +395,12 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
             LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
             status["blend_scheduler"] = nlohmann::json::object();
         } else {
-            status["blend_scheduler"] = bSched->statusToJson();
+            status["blend_scheduler"] = bSched->statusToJsonBlend();
         }
     }
     status["query_stats"] = nlohmann::json::object();
-    lock_guard<mutex> g(_queryStatsMtx);
-    for (auto&& itr : _queryStats) {
+    lock_guard<mutex> g(_queryStatsMapMtx);
+    for (auto&& itr : _queryStatsMap) {
         string const qId = to_string(itr.first);  // forcing string type for the json object key
         QueryStatistics::Ptr const& qStats = itr.second;
         status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
@@ -434,23 +411,10 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
 
 nlohmann::json QueriesAndChunks::mySqlThread2task(set<unsigned long> const& activeMySqlThreadIds) const {
     nlohmann::json result = nlohmann::json::object();
-    lock_guard<mutex> g(_queryStatsMtx);
-    for (auto&& itr : _queryStats) {
+    lock_guard<mutex> g(_queryStatsMapMtx);
+    for (auto&& itr : _queryStatsMap) {
         QueryStatistics::Ptr const& qStats = itr.second;
-        for (auto&& task : qStats->_tasks) {
-            auto const threadId = task->getMySqlThreadId();
-            if ((threadId != 0) && activeMySqlThreadIds.contains(threadId)) {
-                // Force the identifier to be converted into a string because the JSON library
-                // doesn't support numeric keys in its dictionary class.
-                result[to_string(threadId)] =
-                        nlohmann::json::object({{"query_id", task->getQueryId()},
-                                                {"job_id", task->getJobId()},
-                                                {"chunk_id", task->getChunkId()},
-                                                {"subchunk_id", task->getSubchunkId()},
-                                                {"template_id", task->getTemplateId()},
-                                                {"state", wbase::taskState2str(task->state())}});
-            }
-        }
+        qStats->mySqlThread2task(activeMySqlThreadIds, result);
     }
     return result;
 }
@@ -462,6 +426,8 @@ nlohmann::json QueriesAndChunks::mySqlThread2task(set<unsigned long> const& acti
 /// for tasks on each chunk.
 /// The table names are based on the slowest scan table in each task.
 QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
+    QueriesAndChunks::ScanTableSumsMap scanTblSums;
+
     // Copy a vector of all the chunks in the map;
     vector<ChunkStatistics::Ptr> chks;
     {
@@ -472,7 +438,10 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
         }
     }
 
-    QueriesAndChunks::ScanTableSumsMap scanTblSums;
+    bool useTimeStatisticsForBoot = false;
+    // Sum up the total time for handling the slowest table (aka largest table)
+    // in this chunk. The slowest table values will be used for all other tables
+    // in this chunk.
     for (auto const& chunkStats : chks) {
         auto chunkId = chunkStats->_chunkId;
         lock_guard<mutex> lock(chunkStats->_tStatsMtx);
@@ -481,6 +450,9 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
             if (!tblName.empty()) {
                 auto& sTSums = scanTblSums[tblName];
                 auto data = ele.second->getData();
+
+                // Total time for `tblName` to run on all chunks used on this worker.
+                // `tblName` is the biggest table in its chunk.
                 sTSums.totalTime += data.avgCompletionTime;
                 ChunkTimePercent& ctp = sTSums.chunkPercentages[chunkId];
                 ctp.shardTime = data.avgCompletionTime;
@@ -489,105 +461,168 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
         }
     }
 
-    // Calculate percentage totals.
+    int numberOfChunks = chks.size();
+    double percentPerChunk = 1.0 / numberOfChunks;
+
+    // Calculate percentages of time for the slowest table to finish
+    // the current chunk, compared to the totalTime to run that table
+    // on all chunks.
     for (auto& eleTbl : scanTblSums) {
         auto& scanTbl = eleTbl.second;
+
+        // totalTime calculated above.
         auto totalTime = scanTbl.totalTime;
         for (auto& eleChunk : scanTbl.chunkPercentages) {
             auto& tPercent = eleChunk.second;
-            tPercent.percent = tPercent.shardTime / totalTime;
+            if (useTimeStatisticsForBoot) {
+                tPercent.percent = tPercent.shardTime / totalTime;
+            } else {
+                tPercent.percent = percentPerChunk;
+                tPercent.valid = true;
+            }
         }
     }
+
     return scanTblSums;
 }
 
-/// Remove the running 'task' from a scheduler and possibly move all Tasks that belong to its user query
-/// to the snail scheduler. 'task' continues to run in its thread, but the scheduler is told 'task' is
-/// finished, which allows the scheduler to move on to another Task.
-/// If too many Tasks from the same user query are booted, all remaining tasks are moved to the snail
-/// scheduler in an attempt to keep a single user query from jamming up a scheduler.
 void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                                  wsched::SchedulerBase::Ptr const& sched) {
     LOGS(_log, LOG_LVL_INFO, "taking too long, booting from " << sched->getName());
+    auto bSched = _blendSched.lock();
+    if (bSched == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, __func__ << " blendSched==null, can't boot task=" << task->getIdStr());
+        return;
+    }
+    if (bSched->isScanSnail(sched)) {
+        LOGS(_log, LOG_LVL_WARN, __func__ << " can't boot task, already on snail " << task->getIdStr());
+        return;
+    }
     sched->removeTask(task, true);
-    uq->_tasksBooted += 1;
+    bool alreadyBooted = task->setBooted();
+    if (alreadyBooted) {
+        LOGS(_log, LOG_LVL_WARN, __func__ << task->getIdStr() << " was already booted");
+        return;
+    }
+    uq->addTaskBooted();
+    _bootedTaskTracker.addTask(task);
+    return;
+}
 
+void QueriesAndChunks::_bootUserQueries() {
     auto bSched = _blendSched.lock();
     if (bSched == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
         return;
     }
-    if (bSched->isScanSnail(sched)) {
-        // If it's already on the snail scan, it has already been booted from another scan.
-        if (uq->_tasksBooted > _maxTasksBooted + 1) {
-            LOGS(_log, LOG_LVL_WARN,
-                 "User Query taking excessive amount of time on snail scan and should be cancelled");
-            // TODO: Add code to send message back to czar to cancel this user query.
-        }
-    } else {
-        // Disabled as too aggressive and vulnerable to bad statistics. DM-11526
-        if (false && uq->_tasksBooted > _maxTasksBooted) {
-            LOGS(_log, LOG_LVL_INFO,
-                 "entire UserQuery booting from " << sched->getName() << " tasksBooted=" << uq->_tasksBooted
-                                                  << " maxTasksBooted=" << _maxTasksBooted);
-            uq->_queryBooted = true;
-            bSched->moveUserQueryToSnail(uq->queryId, sched);
-        }
-    }
-}
+    // Track the total number of Tasks that are running while booted
+    // and move the worst offenders to the snailScan. The worst offender is the UserQuery with
+    // the most `Task`s running that are taking too long.
+    // The following function only counts booted `Task`s that are still EXECUTING,
+    // and `countQIdVect` is order by worst offender to least worst offender.
+    auto [bootedTaskCount, countQIdVect] = _bootedTaskTracker.getTotalBootedTaskCount();
+    // Sum of Tasks in
+    int uqBootedTasksSum = 0;
+    if (bootedTaskCount > _maxDarkTasks) {
+        for (auto const& countQId : countQIdVect) {
+            // If enough UserQueries have been booted to get under the Task limit,
+            // stop booting UserQueries.
+            bool enoughTasksBooted = (bootedTaskCount - uqBootedTasksSum) <= _maxDarkTasks;
+            LOGS(_log, LOG_LVL_DEBUG,
+                 __func__ << " a uq=" << countQId.qId << " enough=" << enoughTasksBooted
+                          << " bootedTaskCount=" << bootedTaskCount
+                          << " uqBootedTasksSum=" << uqBootedTasksSum
+                          << " sub=" << (bootedTaskCount - uqBootedTasksSum) << " max=" << _maxDarkTasks);
+            if (enoughTasksBooted) {
+                break;
+            }
 
-/// Add a Task to the user query statistics.
-void QueryStatistics::addTask(wbase::Task::Ptr const& task) {
-    lock_guard<mutex> guard(_qStatsMtx);
-    if (queryId != task->getQueryId()) {
-        string const msg = "QueryStatistics::" + string(__func__) +
-                           ": the task has queryId=" + to_string(task->getQueryId()) +
-                           " where queryId=" + to_string(queryId) + " was expected.";
-        throw util::Bug(ERR_LOC, msg);
-    }
-    _tasks.push_back(task);
-}
-
-/// @return the number of Tasks that have been booted for this user query.
-int QueryStatistics::getTasksBooted() {
-    lock_guard<mutex> guard(_qStatsMtx);
-    return _tasksBooted;
-}
-
-/// @return true if this query is done and has not been touched for deadTime.
-bool QueryStatistics::isDead(chrono::seconds deadTime, chrono::system_clock::time_point now) {
-    lock_guard<mutex> guard(_qStatsMtx);
-    if (_isMostlyDead()) {
-        if (now - _touched > deadTime) {
-            return true;
+            // Get query info
+            QueryId qIdToBoot = countQId.qId;
+            QueryStatistics::Ptr queryToBoot = getStats(qIdToBoot);
+            if (queryToBoot != nullptr) {
+                if (_bootUserQuery(queryToBoot, bSched)) {
+                    uqBootedTasksSum += countQId.count;
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         __func__ << " a booted uq=" << countQId.qId << ":count=" << countQId.count
+                                  << " uqBootedTasksSum=" << uqBootedTasksSum);
+                }
+            } else {
+                // This really should never happen.
+                LOGS(_log, LOG_LVL_ERROR, __func__ << " queryToBoot is nullptr qIdToBoot=" << countQId.qId);
+            }
         }
     }
-    return false;
+
+    // Last check, if any of the queries have several booted `Task`s but have not been booted,
+    // they should be booted now.
+    for (auto const& countQId : countQIdVect) {
+        QueryId qIdToCheck = countQId.qId;
+        // Get query info
+        QueryStatistics::Ptr queryToCheck = getStats(qIdToCheck);
+        if (queryToCheck == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " Couldn't locate qIdToCheck=" << qIdToCheck);
+            // Probably never happens, but may be a possibility during query cancellation.
+            // Try to boot the next query in the list.
+            continue;
+        }
+
+        if (!queryToCheck->getQueryBooted()) {
+            auto tasksBooted = queryToCheck->getTasksBooted();
+            LOGS(_log, LOG_LVL_DEBUG,
+                 __func__ << " b check uq=" << countQId.qId << " tasksBooted=" << tasksBooted
+                          << " max=" << (_maxTasksBooted));
+            if (tasksBooted > _maxTasksBooted) {
+                QueryStatistics::Ptr queryToBoot = getStats(qIdToCheck);
+                if (_bootUserQuery(queryToBoot, bSched)) {
+                    uqBootedTasksSum += countQId.count;
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         __func__ << " b booted uq=" << countQId.qId << ":count=" << countQId.count
+                                  << " tasksBooted=" << tasksBooted
+                                  << " uqBootedTasksSum=" << uqBootedTasksSum);
+                }
+            }
+        }
+    }
+    return;
 }
 
-/// @return true if all Tasks for this query are complete.
-/// Precondition, _qStatsMtx must be locked.
-bool QueryStatistics::_isMostlyDead() const { return _tasksCompleted >= _size; }
+bool QueriesAndChunks::_bootUserQuery(QueryStatistics::Ptr queryToBoot,
+                                      wsched::BlendScheduler::Ptr const& bSched) {
+    // Get query info
+    if (queryToBoot == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " queryToBoot is nullptr");
+        // Probably never happens, but may be a possibility during query cancellation.
+        return false;
+    }
 
-ostream& operator<<(ostream& os, QueryStatistics const& q) {
-    lock_guard<mutex> gd(q._qStatsMtx);
-    os << QueryIdHelper::makeIdStr(q.queryId) << " time=" << q._totalTimeMinutes << " size=" << q._size
-       << " tasksCompleted=" << q._tasksCompleted << " tasksRunning=" << q._tasksRunning
-       << " tasksBooted=" << q._tasksBooted;
-    return os;
-}
+    bool queryWasBooted = queryToBoot->getQueryBooted();
 
-void QueryStatistics::addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted,
-                                      double bufferFillSecs) {
-    _histTimeTransmittingPerTask->addEntry(timeSeconds);
-    _histRowsPerTask->addEntry(rowsTransmitted);
-    _histSizePerTask->addEntry(bytesTransmitted);
-    _histTimeBufferFillPerTask->addEntry(bufferFillSecs);
-}
+    // If the UserQuery was already booted, just add its booted `Task`s to the sum.
+    if (queryWasBooted) {
+        return true;
+    }
 
-void QueryStatistics::addTaskRunQuery(double runTimeSeconds, double subchunkRunTimeSeconds) {
-    _histTimeRunningPerTask->addEntry(runTimeSeconds);
-    _histTimeSubchunkPerTask->addEntry(subchunkRunTimeSeconds);
+    // It may be possible for Tasks associated with a QueryId to be on more than 1 scheduler.
+    QueryStatistics::SchedTasksInfoMap schedTaskMap = queryToBoot->getSchedulerTasksInfoMap();
+    for (auto const& [key, schedInfo] : schedTaskMap) {
+        wsched::SchedulerBase::Ptr schedTarget = schedInfo.scheduler.lock();
+        if (schedTarget == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " schedTarg was nullptr for key=" << key);
+            continue;
+        }
+        if (bSched->isScanSnail(schedTarget)) {
+            LOGS(_log, LOG_LVL_DEBUG, __func__ << " schedTarg was snailScan for key=" << key);
+            continue;
+        }
+
+        LOGS(_log, LOG_LVL_INFO, "Booting uq queryId=" << queryToBoot->queryId);
+        queryToBoot->setQueryBooted(true, CLOCK::now());
+        bSched->moveUserQueryToSnail(queryToBoot->queryId, schedTarget);
+        queryWasBooted = true;
+        LOGS(_log, LOG_LVL_DEBUG, __func__ << " uq=" << queryToBoot->queryId);
+    }
+    return queryWasBooted;
 }
 
 /// Remove all Tasks belonging to the user query 'qId' from the queue of 'sched'.
@@ -601,21 +636,17 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
     vector<wbase::Task::Ptr> removedList;  // Return value;
 
     // Find the user query.
-    unique_lock<mutex> lock(_queryStatsMtx);
-    auto query = _queryStats.find(qId);
-    if (query == _queryStats.end()) {
+    auto query = getStats(qId);
+    if (query == nullptr) {
         LOGS(_log, LOG_LVL_DEBUG, "was not found by removeQueryFrom");
         return removedList;
     }
-    lock.unlock();
 
     // Remove Tasks from their scheduler put them on 'removedList', but only if their Scheduler is the same
     // as 'sched' or if sched == nullptr.
-    vector<wbase::Task::Ptr> taskList;
-    {
-        lock_guard<mutex> taskLock(query->second->_qStatsMtx);
-        taskList = query->second->_tasks;
-    }
+    vector<wbase::Task::Ptr> taskList = query->getTaskList();
+
+    // Lambda function to do the work of moving tasks.
     auto moveTasks = [&sched, &taskList, &removedList](bool moveRunning) {
         vector<wbase::Task::Ptr> taskListNotRemoved;
         for (auto const& task : taskList) {
@@ -637,7 +668,7 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
     // tasks are pulled off the scheduler queue every time a running one is removed.
     moveTasks(false);
 
-    // Remove all remaining tasks. Most likely, all will be running.
+    // Remove all remaining tasks. Most likely all will be running.
     moveTasks(true);
 
     return removedList;
@@ -708,6 +739,52 @@ ostream& operator<<(ostream& os, ChunkTableStats const& cts) {
        << " tasks(completed=" << cts._data.tasksCompleted << ",avgTime=" << cts._data.avgCompletionTime
        << ",booted=" << cts._data.tasksBooted << "))";
     return os;
+}
+
+void BootedTaskTracker::addTask(wbase::Task::Ptr const& task) {
+    lock_guard<mutex> lockG(_bootedMapMtx);
+    QueryId qId = task->getQueryId();
+    MapOfTasks& mapOfTasks = _bootedMap[qId];
+    mapOfTasks[task->getTSeq()] = task;
+}
+
+void BootedTaskTracker::removeTask(wbase::Task::Ptr const& task) {
+    lock_guard<mutex> lockG(_bootedMapMtx);
+    QueryId qId = task->getQueryId();
+    auto iter = _bootedMap.find(qId);
+    if (iter != _bootedMap.end()) {
+        MapOfTasks& setOfTasks = iter->second;
+        setOfTasks.erase(task->getTSeq());
+    }
+}
+
+void BootedTaskTracker::removeQuery(QueryId qId) {
+    lock_guard<mutex> lockG(_bootedMapMtx);
+    _bootedMap.erase(qId);
+}
+
+pair<int, vector<BootedTaskTracker::CountQId>> BootedTaskTracker::getTotalBootedTaskCount() const {
+    lock_guard<mutex> lockG(_bootedMapMtx);
+    int taskCount = 0;
+    vector<CountQId> countQId;
+    for (auto const& [key, mapOfTasks] : _bootedMap) {
+        auto sz = mapOfTasks.size();
+        if (sz > 0) {
+            taskCount += sz;
+            countQId.emplace_back(sz, key);
+        }
+    }
+    // Sort to descending order of booted `Task`s per UserQuery.
+    sort(countQId.begin(), countQId.end(), greater<CountQId>());
+
+    if (LOG_CHECK_DEBUG()) {
+        string msg;
+        for (auto const& cQId : countQId) {
+            msg += " (qId=" + to_string(cQId.qId) + " count=" + to_string(cQId.count) + ")";
+        }
+        LOGS(_log, LOG_LVL_DEBUG, __func__ << " total=" << taskCount << " order " << msg);
+    }
+    return {taskCount, countQId};
 }
 
 }  // namespace lsst::qserv::wpublish

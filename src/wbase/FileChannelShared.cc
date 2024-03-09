@@ -347,11 +347,11 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     bool erred = false;
     bool hasMoreRows = true;
 
-    // This lock is to protect the stream from having other Tasks mess with it
-    // while data is loading.
-    lock_guard<mutex> const tMtxLock(_tMtx);
-
     while (hasMoreRows && !cancelled) {
+        // This lock is to protect the stream from having other Tasks mess with it
+        // while data is loading.
+        lock_guard<mutex> const tMtxLockA(_tMtx);
+
         util::Timer bufferFillT;
         bufferFillT.start();
 
@@ -359,19 +359,22 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         // the Google Protobuf into the output file.
         int bytes = 0;
         int rows = 0;
-        hasMoreRows = _writeToFile(tMtxLock, task, mResult, bytes, rows, multiErr);
+        hasMoreRows = _writeToFile(tMtxLockA, task, mResult, bytes, rows, multiErr);
         bytesTransmitted += bytes;
         rowsTransmitted += rows;
         _rowcount += rows;
         _transmitsize += bytes;
+        LOGS(_log, LOG_LVL_TRACE,
+             __func__ << " " << task->getIdStr() << " bytesT=" << bytesTransmitted
+                      << " _tsz=" << _transmitsize);
 
         bufferFillT.stop();
         bufferFillSecs += bufferFillT.getElapsed();
 
+        int64_t const maxTableSize = task->getMaxTableSize();
         // Fail the operation if the amount of data in the result set exceeds the requested
         // "large result" limit (in case if the one was specified).
-        if (int64_t const maxTableSize = task->getMaxTableSize();
-            maxTableSize > 0 && bytesTransmitted > maxTableSize) {
+        if (maxTableSize > 0 && bytesTransmitted > maxTableSize) {
             string const err = "The result set size " + to_string(bytesTransmitted) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
                                " bytes, task: " + task->getIdStr();
@@ -392,11 +395,12 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
-            if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
+            if (!_sendResponse(tMtxLockA, task, cancelled, multiErr)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
                 break;
             }
+            LOGS(_log, LOG_LVL_TRACE, __func__ << " " << task->getIdStr() << " sending done!!!");
         }
     }
     transmitT.stop();
@@ -413,10 +417,11 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     // No reason to keep the file after a failure (hit while processing a query,
     // extracting a result set into the file) or query cancellation. This also
     // includes problems encountered while sending a response back to Czar after
-    // sucesufully processing the query and writing all results into the file.
+    // successfully processing the query and writing all results into the file.
     // The file is not going to be used by Czar in either of these scenarios.
     if (cancelled || erred || isDead()) {
-        _removeFile(tMtxLock);
+        lock_guard<mutex> const tMtxLockA(_tMtx);
+        _removeFile(tMtxLockA);
     }
     return erred;
 }
@@ -435,7 +440,9 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
         _responseData->clear_row();
     }
     size_t tSize = 0;
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " _fillRows " << task->getIdStr() << " start");
     bool const hasMoreRows = _fillRows(tMtxLock, mResult, rows, tSize);
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " _fillRows " << task->getIdStr() << " end");
     _responseData->set_rowcount(rows);
     _responseData->set_transmitsize(tSize);
 
@@ -445,6 +452,7 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
     _responseData->SerializeToString(&msg);
     bytes = msg.size();
 
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " file write " << task->getIdStr() << " start");
     // Create the file if not open.
     if (!_file.is_open()) {
         _fileName = task->resultFilePath();
@@ -454,12 +462,14 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
                                 " failed to create/truncate the file '" + _fileName + "'.");
         }
     }
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " file write " << task->getIdStr() << " end file=" << _fileName);
 
     // Write 32-bit length of the subsequent message first before writing
     // the message itself.
     uint32_t const msgSizeBytes = msg.size();
     _file.write(reinterpret_cast<char const*>(&msgSizeBytes), sizeof msgSizeBytes);
     _file.write(msg.data(), msgSizeBytes);
+
     if (!(_file.is_open() && _file.good())) {
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
                             to_string(msg.size()) + " bytes into the file '" + _fileName + "'.");

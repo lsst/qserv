@@ -86,12 +86,6 @@ QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
                                              shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
     Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr,
                            queriesAndChunks));  // Private constructor.
-    // Let the Task know this is its QueryRunner.
-    bool cancelled = qr->_task->setTaskQueryRunner(qr);
-    if (cancelled) {
-        qr->_cancelled = true;
-        // runQuery will return quickly if the Task has been cancelled.
-    }
     return qr;
 }
 
@@ -156,18 +150,12 @@ bool QueryRunner::runQuery() {
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_INFO,
-         "QueryRunner::runQuery() tid=" << _task->getIdStr()
-                                        << " scsId=" << _task->getSendChannel()->getScsId());
-    if (_runQueryCalled.exchange(true)) {
-        LOGS(_log, LOG_LVL_ERROR,
-             "QueryRunner::runQuery already called for task=" << _task->getQueryId()
-                                                              << " job=" << _task->getJobId());
-        throw util::Bug(ERR_LOC, "runQuery called twice");
-    }
+    LOGS(_log, LOG_LVL_TRACE,
+         __func__ << " tid=" << _task->getIdStr() << " scsId=" << _task->getSendChannel()->getScsId());
 
     // Start tracking the task.
-    _queriesAndChunks->startedTask(_task);
+    auto now = chrono::system_clock::now();
+    _task->started(now);
 
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
@@ -188,7 +176,7 @@ bool QueryRunner::runQuery() {
     Release release(_task, this, _queriesAndChunks);
 
     if (_task->checkCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started.");
+        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started." << _task->getIdStr());
         return false;
     }
 
@@ -223,7 +211,6 @@ bool QueryRunner::runQuery() {
 
     // Run the query and send the results back.
     if (!_dispatchChannel()) {
-        LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed.");
         return false;
     }
     return true;
@@ -306,10 +293,16 @@ bool QueryRunner::_dispatchChannel() {
             _task->queried();
             // Pass all information on to the shared object to add on to
             // an existing message or build a new one as needed.
-            erred = _task->getSendChannel()->buildAndTransmitResult(res, _task, _multiError, _cancelled);
+            {
+                auto sendChan = _task->getSendChannel();
+                if (sendChan == nullptr) {
+                    throw util::Bug(ERR_LOC, "QueryRunner::_dispatchChannel() sendChan==null");
+                }
+                erred = sendChan->buildAndTransmitResult(res, _task, _multiError, _cancelled);
+            }
         }
     } catch (sql::SqlErrorObject const& e) {
-        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg());
+        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg() << " " << _task->getIdStr());
         util::Error worker_err(e.errNo(), e.errMsg());
         _multiError.push_back(worker_err);
         erred = true;
@@ -329,7 +322,8 @@ bool QueryRunner::_dispatchChannel() {
         // Send results. This needs to happen after the error check.
         // If any errors were found, send an error back.
         if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
-            LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
+            LOGS(_log, LOG_LVL_WARN,
+                 " Could not report error to czar as sendChannel not accepting msgs." << _task->getIdStr());
         }
     }
     return !erred;
