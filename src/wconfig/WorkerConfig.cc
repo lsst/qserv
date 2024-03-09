@@ -121,6 +121,7 @@ WorkerConfig::WorkerConfig()
           _scanMaxMinutesSlow(60 * 12),
           _scanMaxMinutesSnail(60 * 24),
           _maxTasksBootedPerUserQuery(5),
+          _maxConcurrentBootedTasks(25),
           _maxSqlConnections(800),
           _ReservedInteractiveSqlConnections(50),
           _bufferMaxTotalGB(41),
@@ -173,6 +174,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
           _scanMaxMinutesSlow(configStore.getInt("scheduler.scanmaxminutes_slow", 60 * 12)),
           _scanMaxMinutesSnail(configStore.getInt("scheduler.scanmaxminutes_snail", 60 * 24)),
           _maxTasksBootedPerUserQuery(configStore.getInt("scheduler.maxtasksbootedperuserquery", 5)),
+          _maxConcurrentBootedTasks(configStore.getInt("scheduler.maxconcurrentbootedtasks", 25)),
           _maxSqlConnections(configStore.getInt("sqlconnections.maxsqlconn", 800)),
           _ReservedInteractiveSqlConnections(
                   configStore.getInt("sqlconnections.reservedinteractivesqlconn", 50)),

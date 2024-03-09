@@ -55,10 +55,25 @@ class QueryStatistics {
 public:
     using Ptr = std::shared_ptr<QueryStatistics>;
 
+    /// Force shared_ptr creation for data integrity.
+    static Ptr create(QueryId const& queryId) {
+        return std::shared_ptr<QueryStatistics>(new QueryStatistics(queryId));
+    }
+
+    QueryStatistics() = delete;
+    QueryStatistics(QueryStatistics const&) = delete;
+    QueryStatistics& operator=(QueryStatistics const&) = delete;
+    ~QueryStatistics() = default;
+
     void addTask(wbase::Task::Ptr const& task);
     bool isDead(std::chrono::seconds deadTime, TIMEPOINT now);
     int getTasksBooted();
-    bool getQueryBooted() { return _queryBooted; }
+    bool getQueryBooted() const {
+        std::lock_guard<std::mutex> lock(_qStatsMtx);
+        return _queryBooted;
+    }
+
+    void setQueryBooted(bool booted, TIMEPOINT now);
 
     /// Add statistics related to the running of the query in the task.
     /// If there are subchunks in the user query, several Tasks may be needed for one chunk.
@@ -77,6 +92,30 @@ public:
     /// @param bufferFillSecs - time spent filling the buffer from the sql result.
     void addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted,
                          double bufferFillSecs);
+
+    void addTask(TIMEPOINT const now);
+    void addTaskRunning(TIMEPOINT const now);
+    bool addTaskCompleted(TIMEPOINT const now, double const taskDuration);
+    void addTaskBooted() {
+        std::lock_guard<std::mutex> guard(_qStatsMtx);
+        _tasksBooted += 1;
+    }
+
+    QueryId getQueryId() {
+        std::lock_guard<std::mutex> lg(_qStatsMtx);
+        return queryId;
+    }
+
+    /// Return a vector of all tasks considered running.
+    std::vector<wbase::Task::Ptr> getRunningTasks() const;
+
+    /// Return a vector of all tasks.
+    std::vector<wbase::Task::Ptr> getTaskList() const;
+
+    /// Place `Task` information about the relevant threads in `result`.
+    /// @param activeMySqlThreadIds A collection of the MySQL threads.
+    /// @param result a JSON object to which the task information will be added.
+    void mySqlThread2task(std::set<unsigned long> const& activeMySqlThreadIds, nlohmann::json& result) const;
 
     /// This class tracks how many `Task`s a particular query has placed on
     /// particular schedulers and the time window during which they were added.
@@ -125,7 +164,6 @@ public:
     /// @return a json object containing information about tasks in the requested scope.
     nlohmann::json getJsonTasks(wbase::TaskSelector const& taskSelector) const;
 
-    friend class QueriesAndChunks;
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
 
 private:
@@ -139,9 +177,9 @@ private:
     int _size = 0;
     int _tasksCompleted = 0;
     int _tasksRunning = 0;
-    int _tasksBooted = 0;                   ///< Number of Tasks booted for being too slow.
-    std::atomic<bool> _queryBooted{false};  ///< True when the entire query booted.
-    TIMEPOINT _queryBootedTime;             ///< Set when `_queryBooted` is set to true.
+    int _tasksBooted = 0;        ///< Number of Tasks booted for being too slow.
+    bool _queryBooted = false;   ///< True when the entire query booted.
+    TIMEPOINT _queryBootedTime;  ///< Set when `_queryBooted` is set to true.
 
     double _totalTimeMinutes = 0.0;
 

@@ -175,7 +175,7 @@ public:
     ///                 moved to the snail scheduler.
     /// @param resetForTesting - set this to true ONLY if the class needs to be reset for unit testing.
     static Ptr setupGlobal(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter,
-                           int maxTasksBooted, bool resetForTesting = false);
+                           int maxTasksBooted, int maxDarkQueries, bool resetForTesting);
 
     /// Return the pointer to the global object.
     /// @param noThrow - if true, this will not throw an exception when called and
@@ -238,7 +238,8 @@ public:
 
 private:
     static Ptr _globalQueriesAndChunks;
-    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter, int maxTasksBooted);
+    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter, int maxTasksBooted,
+                     int maxDarkQueries);
 
     /// @return the statistics for a user query.
     /// _queryStatsMtx must be locked before calling.
@@ -270,8 +271,8 @@ private:
     ScanTableSumsMap _calcScanTableSums();
     void _finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes);
 
-    mutable std::mutex _queryStatsMtx;                    ///< protects _queryStats;
-    std::map<QueryId, QueryStatistics::Ptr> _queryStats;  ///< Map of Query stats indexed by QueryId.
+    mutable std::mutex _queryStatsMapMtx;                    ///< protects _queryStats;
+    std::map<QueryId, QueryStatistics::Ptr> _queryStatsMap;  ///< Map of Query stats indexed by QueryId.
 
     mutable std::mutex _chunkMtx;
     std::map<int, ChunkStatistics::Ptr> _chunkStats;  ///< Map of Chunk stats indexed by chunk id.
@@ -301,11 +302,17 @@ private:
     std::chrono::seconds _examineAfter = std::chrono::minutes(5);
 
     /// Maximum number of tasks that can be booted until entire UserQuery is put on snailScan.
-    int _maxTasksBooted = 15;
+    /// This should be set by the config with "scheduler.maxtasksbootedperuserquery"
+    int _maxTasksBooted = 5;
+
+    /// Maximum number of booted `Task`s allowed to be running at a given time.
+    /// This should be set by the config with "scheduler.maxconcurrentbootedtasks"
+    int _maxDarkTasks = 25;
 
     /// Number of completed Tasks needed before ChunkTableStats::_avgCompletionTime can be
     /// considered valid enough to boot a Task.
     unsigned int _requiredTasksCompleted = 50;
+    // TODO: remove _requiredTasksCompleted when real chunk and scan info is available.
 
     BootedTaskTracker _bootedTaskTracker;  ///< Keeps track of booted Tasks.
 

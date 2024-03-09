@@ -303,7 +303,7 @@ public:
     bool setBooted();
 
     /// Return true if the task was booted.
-    bool isBooted() { return _booted; }
+    bool isBooted() const { return _booted; }
 
     /// Only to be used in unit tests, use this to set a lambda function
     /// to use in a unit test.

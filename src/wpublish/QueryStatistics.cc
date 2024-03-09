@@ -186,4 +186,73 @@ QueryStatistics::SchedTasksInfoMap QueryStatistics::getSchedulerTasksInfoMap() {
     return _taskSchedInfoMap;
 }
 
+void QueryStatistics::addTask(TIMEPOINT const now) {
+    lock_guard<mutex> lock(_qStatsMtx);
+    _touched = now;
+    _size += 1;
+}
+
+void QueryStatistics::addTaskRunning(TIMEPOINT const now) {
+    lock_guard<mutex> lock(_qStatsMtx);
+    _touched = now;
+    _tasksRunning += 1;
+}
+
+void QueryStatistics::setQueryBooted(bool booted, TIMEPOINT now) {
+    lock_guard<mutex> lock(_qStatsMtx);
+    _queryBooted = booted;
+    _queryBootedTime = now;
+}
+
+bool QueryStatistics::addTaskCompleted(TIMEPOINT const now, double const taskDuration) {
+    lock_guard<mutex> gs(_qStatsMtx);
+    _touched = now;
+    _tasksRunning -= 1;
+    _tasksCompleted += 1;
+    _totalTimeMinutes += taskDuration;
+    return _isMostlyDead();
+}
+
+vector<wbase::Task::Ptr> QueryStatistics::getRunningTasks() const {
+    vector<wbase::Task::Ptr> runningTasks;
+    {
+        lock_guard<mutex> lock(_qStatsMtx);
+        for (auto&& task : _tasks) {
+            if (task->isRunning()) {
+                auto const& tSched = dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
+                if (tSched != nullptr) {
+                    runningTasks.push_back(task);
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         __func__ << " task=" << task->getIdStr() << " running=" << task->isRunning());
+                }
+            }
+        };
+    }
+    return runningTasks;
+}
+
+vector<wbase::Task::Ptr> QueryStatistics::getTaskList() const {
+    lock_guard<mutex> lock(_qStatsMtx);
+    vector<wbase::Task::Ptr> taskList = _tasks;
+    return taskList;
+}
+
+void QueryStatistics::mySqlThread2task(set<unsigned long> const& activeMySqlThreadIds,
+                                       nlohmann::json& result) const {
+    for (auto&& task : _tasks) {
+        auto const threadId = task->getMySqlThreadId();
+        if ((threadId != 0) && activeMySqlThreadIds.contains(threadId)) {
+            // Force the identifier to be converted into a string because the JSON library
+            // doesn't support numeric keys in its dictionary class.
+            result[to_string(threadId)] =
+                    nlohmann::json::object({{"query_id", task->getQueryId()},
+                                            {"job_id", task->getJobId()},
+                                            {"chunk_id", task->getChunkId()},
+                                            {"subchunk_id", task->getSubchunkId()},
+                                            {"template_id", task->getTemplateId()},
+                                            {"state", wbase::taskState2str(task->state())}});
+        }
+    }
+}
+
 }  // namespace lsst::qserv::wpublish

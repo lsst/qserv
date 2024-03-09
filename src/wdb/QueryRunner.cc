@@ -150,11 +150,12 @@ bool QueryRunner::runQuery() {
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_INFO,
+    LOGS(_log, LOG_LVL_TRACE,
          __func__ << " tid=" << _task->getIdStr() << " scsId=" << _task->getSendChannel()->getScsId());
 
     // Start tracking the task.
-    _queriesAndChunks->startedTask(_task);
+    auto now = chrono::system_clock::now();
+    _task->started(now);
 
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
@@ -210,7 +211,6 @@ bool QueryRunner::runQuery() {
 
     // Run the query and send the results back.
     if (!_dispatchChannel()) {
-        LOGS(_log, LOG_LVL_WARN, "_dispatchChannel failed. " << _task->getIdStr());
         return false;
     }
     return true;
@@ -296,7 +296,6 @@ bool QueryRunner::_dispatchChannel() {
             {
                 auto sendChan = _task->getSendChannel();
                 if (sendChan == nullptr) {
-                    LOGS(_log, LOG_LVL_ERROR, "QueryRunner::_dispatchChannel() sendChan==null " << *_task);
                     throw util::Bug(ERR_LOC, "QueryRunner::_dispatchChannel() sendChan==null");
                 }
                 erred = sendChan->buildAndTransmitResult(res, _task, _multiError, _cancelled);

@@ -199,6 +199,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     double slowScanMaxMinutes = (double)workerConfig->getScanMaxMinutesSlow();
     double snailScanMaxMinutes = (double)workerConfig->getScanMaxMinutesSnail();
     int maxTasksBootedPerUserQuery = workerConfig->getMaxTasksBootedPerUserQuery();
+    int maxConcurrentBootedTasks = workerConfig->getMaxConcurrentBootedTasks();
     vector<wsched::ScanScheduler::Ptr> scanSchedulers{
             make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, workerConfig->getMaxReserveSlow(),
                                                workerConfig->getPrioritySlow(),
@@ -218,7 +219,8 @@ SsiService::SsiService(XrdSsiLogger* log) {
             workerConfig->getMaxActiveChunksSnail(), memMan, slow + 1, slowest, snailScanMaxMinutes);
 
     wpublish::QueriesAndChunks::Ptr queries = wpublish::QueriesAndChunks::setupGlobal(
-            chrono::minutes(5), chrono::minutes(5), maxTasksBootedPerUserQuery);
+            chrono::minutes(5), chrono::minutes(2), maxTasksBootedPerUserQuery, maxConcurrentBootedTasks,
+            false);
     wsched::BlendScheduler::Ptr blendSched = make_shared<wsched::BlendScheduler>(
             "BlendSched", queries, maxThread, group, snail, scanSchedulers);
     blendSched->setPrioritizeByInFlight(false);  // TODO: set in configuration file.

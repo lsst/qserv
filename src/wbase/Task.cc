@@ -111,7 +111,7 @@ TaskScheduler::TaskScheduler() {
             "TransmittingTaskTime", {0.1, 1.0, 10.0, 60.0, 600.0, 1200.0}, hour, 10'000));
 }
 
-std::atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
+atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
@@ -278,7 +278,7 @@ vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
 void Task::action(util::CmdData* data) {
     string tIdStr = getIdStr();
     if (_queryStarted.exchange(true)) {
-        LOGS(_log, LOG_LVL_INFO, "task was already started " << tIdStr);
+        LOGS(_log, LOG_LVL_WARN, "task was already started " << tIdStr);
         return;
     }
 
@@ -300,14 +300,14 @@ void Task::action(util::CmdData* data) {
     if (not success) {
         LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << tIdStr);
         if (not getSendChannel()->kill("Foreman::_setRunFunc")) {
-            LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel killed " << tIdStr);
+            LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel already killed " << tIdStr);
         }
     }
 
     // The QueryRunner class access to sendChannel for results is over by this point.
     // 'task' contains statistics that are still useful. However, the resources used
     // by sendChannel need to be freed quickly.
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << " resetSendChannel() for " << tIdStr);
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " calling resetSendChannel() for " << tIdStr);
     resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
 }
 

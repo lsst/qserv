@@ -118,7 +118,7 @@ void PoolEventThread::finishup() {
 }
 
 CommandForThreadPool::~CommandForThreadPool() {
-    LOGS(_log, LOG_LVL_DEBUG, "~CommandForThreadPool::CommandForThreadPool()");
+    LOGS(_log, LOG_LVL_TRACE, "~CommandForThreadPool::CommandForThreadPool()");
 }
 
 /// Set _poolEventThread pointer to the thread running this command.

@@ -72,6 +72,10 @@ using lsst::qserv::wpublish::QueriesAndChunks;
 
 double const oneHr = 60.0;
 
+bool const resetForTestingC = true;
+int const maxBootedC = 5;
+int const maxDarkTasksC = 25;
+
 shared_ptr<ChunkResourceMgr> crm;  // not used in this test, required by Task::createTasks
 MySqlConfig mySqlConfig;           // not used in this test, required by Task::createTasks
 SqlConnMgr::Ptr sqlConnMgr;        // not used in this test, required by Task::createTasks
@@ -164,9 +168,9 @@ struct SchedFixture {
     ~SchedFixture() {}
 
     void setupQueriesBlend() {
-        bool resetForTesting = true;
         queries = lsst::qserv::wpublish::QueriesAndChunks::setupGlobal(
-                std::chrono::seconds(1), std::chrono::seconds(_examineAllSleep), 5, resetForTesting);
+                std::chrono::seconds(1), std::chrono::seconds(_examineAllSleep), maxBootedC, maxDarkTasksC,
+                resetForTestingC);
         blend = std::make_shared<wsched::BlendScheduler>("blendSched", queries, maxThreads, group, scanSlow,
                                                          scanSchedulers);
         group->setDefaultPosition(0);
@@ -295,9 +299,8 @@ BOOST_AUTO_TEST_CASE(Grouping) {
 BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     // Test that maxThreads is meaningful.
     LOGS(_log, LOG_LVL_WARN, "Test_case GroupMaxThread");
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     wsched::GroupScheduler gs{"GroupSchedB", 3, 0, 100, 0};
     lsst::qserv::QueryId qIdInc = 1;
     int a = 42;
@@ -328,9 +331,8 @@ BOOST_AUTO_TEST_CASE(GroupMaxThread) {
 
 BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     LOGS(_log, LOG_LVL_DEBUG, "Test_case ScanScheduleTest");
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, false);
     wsched::ScanScheduler sched{"ScanSchedA", 2, 1, 0, 20, memMan, 0, 100, oneHr};
 
@@ -807,9 +809,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
 
 BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     LOGS(_log, LOG_LVL_DEBUG, "Test_case SlowTableHeapTest start");
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     wsched::ChunkTasks::SlowTableHeap heap{};
     lsst::qserv::QueryId qIdInc = 1;
 
@@ -843,9 +844,8 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
 
 BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksTest start");
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     // MemManNone always returns that memory is available.
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int chunkId = 7;
@@ -917,9 +917,8 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
 
 BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksQueueTest start");
-    bool resetForTesting = true;
-    auto queries =
-            QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), 5, resetForTesting);
+    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
+                                                 maxDarkTasksC, resetForTestingC);
     // MemManNone always returns that memory is available.
     auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int firstChunkId = 100;
