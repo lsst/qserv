@@ -165,13 +165,17 @@ void AsyncReq::start() {
     lock_guard<mutex> const lock(_mtx);
     _assertState(lock, CONTEXT_, {State::CREATED});
     try {
+        // The state transitions must happen before initiating any asynchronous operations
+        // in a scope of the request. Some of these operations may trigger callbacks
+        // checking for this state of the request in the lock-free contexts. Hence this state
+        // must be set as early as possible to ensure the correct behavior of the callbacks.
+        _state = State::IN_PROGRESS;
         _resolve(lock);
         if (_expirationIvalSec) {
             _expirationTimer.expires_from_now(boost::posix_time::seconds(_expirationIvalSec));
             _expirationTimer.async_wait(
                     [self = shared_from_this()](boost::system::error_code const& ec) { self->_expired(ec); });
         }
-        _state = State::IN_PROGRESS;
     } catch (exception const& ex) {
         _finish(lock, State::FAILED, ex.what());
         throw;
