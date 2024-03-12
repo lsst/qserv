@@ -81,6 +81,7 @@ _log = logging.getLogger(__name__)
 template_dir = "/usr/local/qserv/templates/"
 mysql_proxy_cfg_template = os.path.join(template_dir, "proxy/etc/my-proxy.cnf.jinja")
 czar_cfg_template = os.path.join(template_dir, "proxy/etc/qserv-czar.cnf.jinja")
+czar_http_cfg_template = os.path.join(template_dir, "http/etc/qserv-czar.cnf.jinja")
 cmsd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-manager.cf.jinja")
 cmsd_worker_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-worker.cf.jinja")
 xrdssi_cfg_template = os.path.join(template_dir, "xrootd/etc/xrdssi.cf.jinja")
@@ -88,6 +89,7 @@ xrootd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/xrootd-mana
 
 mysql_proxy_cfg_path = "/config-etc/my-proxy.cnf"
 czar_cfg_path = "/config-etc/qserv-czar.cnf"
+czar_http_cfg_path = "/config-etc/qserv-czar.cnf"
 cmsd_manager_cfg_path = "/config-etc/cmsd-manager.cnf"
 cmsd_worker_cfg_path = "/config-etc/cmsd-worker.cf"
 xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
@@ -133,6 +135,9 @@ commands = OrderedDict((
     ("proxy", CommandInfo(
         "mysql-proxy --proxy-lua-script=/usr/local/lua/qserv/scripts/mysqlProxy.lua "
         "--lua-cpath=/usr/local/lua/qserv/lib/czarProxy.so --defaults-file={{proxy_cfg_path}}",
+    )),
+    ("czar-http", CommandInfo(
+        "qserv-czar-http http {{czar_cfg_path}} {{http_frontend_port}} {{http_frontend_threads}} ",
     )),
     ("cmsd-manager", CommandInfo(
         "cmsd -c {{cmsd_manager_cfg_path}} -n manager -I v4",
@@ -485,6 +490,66 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
         proxy_backend_address=targs["proxy_backend_address"],
         proxy_cfg_file=targs["proxy_cfg_file"],
         proxy_cfg_path=targs["proxy_cfg_path"],
+        czar_cfg_file=targs["czar_cfg_file"],
+        czar_cfg_path=targs["czar_cfg_path"],
+        cmd=targs["cmd"],
+        log_cfg_file=targs["log_cfg_file"],
+    )
+
+
+
+@entrypoint.command(help=f"Start as a qserv http Czar node.\n\n{socket_option_description}")
+@pass_context
+@db_uri_option(
+    help="The non-admin URI to the Czar's database, used for non-smig purposes. " + socket_option_help,
+    required=True,
+)
+@mysql_monitor_password_option()
+@xrootd_manager_option(required=True)
+@click.option(
+    "--http-frontend-port",
+    default="4048",
+    show_default=True,
+    help="The HTTP port of the frontend. The value of http_frontend_port is passed as a command-line"
+         " parameter to the application."
+)
+@click.option(
+    "--http-frontend-threads",
+    default="2",
+    show_default=True,
+    help="The number of threads for the HTTP server of the frontend. The value of http_frontend_threads is passed"
+         " as a command-line parameter to the application."
+)
+@click.option(
+    "--czar-cfg-file",
+    help="Path to the czar config file.",
+    default=czar_http_cfg_template,
+    show_default=True,
+)
+@click.option(
+    "--czar-cfg-path",
+    help="Location to render the czar config file.",
+    default=czar_cfg_path,
+    show_default=True,
+)
+@log_cfg_file_option()
+@repl_instance_id_option(required=True)
+@repl_auth_key_option(required=True)
+@repl_admin_auth_key_option(required=True)
+@repl_registry_host_option(required=True)
+@repl_registry_port_option(required=True)
+@repl_http_port_option(required=True)
+@targs_options()
+@cmd_options()
+@options_file_option()
+def czar_http(ctx: click.Context, **kwargs: Any) -> None:
+    """Start as a http-czar node.
+    """
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
+    script.enter_czar_http(
+        targs=targs,
+        db_uri=targs["db_uri"],
         czar_cfg_file=targs["czar_cfg_file"],
         czar_cfg_path=targs["czar_cfg_path"],
         cmd=targs["cmd"],

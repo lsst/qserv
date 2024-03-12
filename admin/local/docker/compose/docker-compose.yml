@@ -43,6 +43,7 @@ x-repl-worker:
 volumes:
     volume_czar_xrootd:
     volume_czar_home:
+    volume_czar_cfg:
 
     volume_czar_mariadb_data:
     volume_czar_mariadb_cfg:
@@ -389,6 +390,33 @@ services:
                     - czar_mariadb
         # ports:
         #     - "127.0.0.1:4040:4040"
+    czar_http:
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        command: >
+          entrypoint --log-level DEBUG czar-http
+          --db-uri mysql://qsmaster@czar_mariadb:3306/
+          --xrootd-manager czar_xrootd
+          --http-frontend-port 4048
+          --http-frontend-threads 4
+          --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
+          --repl-instance-id qserv_proj
+          --repl-auth-key replauthkey
+          --repl-admin-auth-key=repladminauthkey
+          --repl-registry-host repl_registry
+          --repl-registry-port 25082
+        volumes:
+            - type: volume
+              source: volume_czar_cfg
+              target: /config-etc
+            - type: volume
+              source: volume_czar_home
+              target: /home/qserv
+            - << : *log-volume
+        expose:
+            - "4048"
+        ports:
+            - "0.0.0.0:4048:4048"
     repl_mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
