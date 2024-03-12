@@ -80,6 +80,8 @@ shared_ptr<ChunkResourceMgr> crm;  // not used in this test, required by Task::c
 MySqlConfig mySqlConfig;           // not used in this test, required by Task::createTasks
 SqlConnMgr::Ptr sqlConnMgr;        // not used in this test, required by Task::createTasks
 
+auto workerCfg = lsst::qserv::wconfig::WorkerConfig::create();
+
 std::vector<FileChannelShared::Ptr> locSendSharedPtrs;
 
 Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm, shared_ptr<QueriesAndChunks> const& queries) {

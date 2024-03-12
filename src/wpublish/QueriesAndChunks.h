@@ -238,8 +238,7 @@ public:
 
 private:
     static Ptr _globalQueriesAndChunks;
-    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter, int maxTasksBooted,
-                     int maxDarkQueries);
+    QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter);
 
     /// @return the statistics for a user query.
     /// _queryStatsMtx must be locked before calling.

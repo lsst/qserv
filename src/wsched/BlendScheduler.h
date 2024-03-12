@@ -93,7 +93,7 @@ public:
     using Ptr = std::shared_ptr<BlendScheduler>;
 
     // This scheduler will have difficulty with less than 11 threads.
-    static int getMinPoolSize() { return 11; }
+    static unsigned int getMinPoolSize() { return 11; }
 
     BlendScheduler(std::string const& name, wpublish::QueriesAndChunks::Ptr const& queries,
                    int subSchedMaxThreads, std::shared_ptr<GroupScheduler> const& group,
