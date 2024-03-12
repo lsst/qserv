@@ -233,8 +233,7 @@ vector<wbase::Task::Ptr> QueryStatistics::getRunningTasks() const {
 
 vector<wbase::Task::Ptr> QueryStatistics::getTaskList() const {
     lock_guard<mutex> lock(_qStatsMtx);
-    vector<wbase::Task::Ptr> taskList = _tasks;
-    return taskList;
+    return _tasks;
 }
 
 void QueryStatistics::mySqlThread2task(set<unsigned long> const& activeMySqlThreadIds,

@@ -156,8 +156,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                 return;
             }
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
-                case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
-                case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
+                case wconfig::ConfigValResultDeliveryProtocol::XROOT:
+                case wconfig::ConfigValResultDeliveryProtocol::HTTP:
                     _channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
                                                                       _foreman->chunkInventory()->id());
                     break;
@@ -204,8 +204,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                                         << " query_id=" << request.query_id());
 
             switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
-                case wconfig::WorkerConfig::ResultDeliveryProtocol::XROOT:
-                case wconfig::WorkerConfig::ResultDeliveryProtocol::HTTP:
+                case wconfig::ConfigValResultDeliveryProtocol::XROOT:
+                case wconfig::ConfigValResultDeliveryProtocol::HTTP:
                     switch (request.op()) {
                         case proto::QueryManagement::CANCEL_AFTER_RESTART:
                             // TODO: locate and cancel the coresponding tasks, remove the tasks

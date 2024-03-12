@@ -173,7 +173,8 @@ void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId) {
 json FileChannelShared::statusToJson() {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     auto const config = wconfig::WorkerConfig::instance();
-    string const protocol = wconfig::WorkerConfig::protocol2str(config->resultDeliveryProtocol());
+    string const protocol =
+            wconfig::ConfigValResultDeliveryProtocol::toString(config->resultDeliveryProtocol());
     fs::path const dirPath = config->resultsDirname();
     json result = json::object({{"protocol", protocol},
                                 {"folder", dirPath.string()},
