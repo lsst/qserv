@@ -650,6 +650,67 @@ def enter_proxy(
     sys.exit(_run(args=None, cmd=cmd, env=env))
 
 
+
+def enter_czar_http(
+    targs: Targs,
+    db_uri: str,
+    czar_cfg_file: str,
+    czar_cfg_path: str,
+    log_cfg_file: str,
+    cmd: str,
+) -> None:
+    """Entrypoint script for the proxy container.
+
+    Parameters
+    ----------
+    targs : Targs
+        The arguments for template expansion.
+    db_uri : str
+        The non-admin URI to the Czar's database.
+    czar_cfg_file : `str`
+        Path to the czar config file.
+    czar_cfg_path : `str`
+        Location to render the czar config file.
+    log_cfg_file : `str`
+        Location of the log4cxx config file.
+    cmd : `str`
+        The jinja2 template for the command for this function to execute.
+    """
+    url = _process_uri(
+        uri=db_uri,
+        query_keys=("socket",),
+        option=options.db_uri_option.args[0],
+        block=True,
+    )
+
+    _log.info("Using log4cxx config file at %s", log_cfg_file)
+
+    save_template_cfg(targs)
+    save_template_cfg(
+        {
+            "mysqld_user_qserv": url.username,
+            "czar_db_host": url.host or "",
+            "czar_db_port": url.port or "",
+            "czar_db_socket": url.query.get("socket", ""),
+        }
+    )
+
+    # uses vars: czar_db_host, czar_db_port, czar_db_socket,
+    apply_template_cfg_file(czar_cfg_file, czar_cfg_path)
+
+    _do_smig_block(qmeta_smig_dir, "qmeta", db_uri)
+
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+        LSST_LOG_CONFIG=log_cfg_file,
+        QSERV_CONFIG=czar_cfg_path,
+    )
+
+    sys.exit(_run(args=None, cmd=cmd, env=env))
+
+
+
 def enter_replication_controller(
     db_uri: str,
     db_admin_uri: str,
