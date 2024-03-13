@@ -164,7 +164,7 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
         std::shared_ptr<qproc::DatabaseModels> const& dbModels, std::string const& czarName) {
     auto const czarConfig = cconfig::CzarConfig::instance();
     return std::make_shared<UserQuerySharedResources>(
-            css::CssAccess::createFromConfig(czarConfig->getCssConfigMap(), czarConfig->getEmptyChunkPath()),
+            css::CssAccess::createFromConfig(czarConfig->getCssConfigMap()),
             czarConfig->getMySqlResultConfig(),
             std::make_shared<qproc::SecondaryIndex>(czarConfig->getMySqlQmetaConfig()),
             std::make_shared<qmeta::QMetaMysql>(czarConfig->getMySqlQmetaConfig(),

@@ -111,14 +111,6 @@ public:
      */
     std::map<std::string, std::string> const& getCssConfigMap() const { return _cssConfigMap; }
 
-    /* Get path to directory where the empty chunk files resides
-     *
-     * Each empty chunk file is related to one cosmic dataset
-     *
-     * @return path to directory where the empty chunk files resides
-     */
-    std::string const& getEmptyChunkPath() const { return _emptyChunkPath; }
-
     /* Get the maximum number of chunks that can be in an interactive query.
      * Queries that are not limited in area to a small number of chunks must
      * be part of a full table scan.
@@ -285,7 +277,6 @@ private:
     mysql::MySqlConfig const _mySqlQmetaConfig;
     mysql::MySqlConfig const _mySqlQstatusDataConfig;
     std::string const _xrootdFrontendUrl;
-    std::string const _emptyChunkPath;
     int const _interactiveChunkLimit;
     int const _xrootdCBThreadsMax;
     int const _xrootdCBThreadsInit;

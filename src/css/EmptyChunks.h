@@ -37,10 +37,8 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
-
-// Qserv headers
-#include "global/intTypes.h"
 
 namespace lsst::qserv::css {
 
@@ -54,9 +52,11 @@ class DbInterfaceMySql;
 class EmptyChunks {
 public:
     /// Doing anything with _css inside the constructor would be dangerous.
-    EmptyChunks(std::shared_ptr<DbInterfaceMySql> const& dbI, std::string const& path = ".",
-                std::string const& fallbackFile = "emptyChunks.txt")
-            : _dbI(dbI), _path(path), _fallbackFile(fallbackFile) {}
+    EmptyChunks(std::shared_ptr<DbInterfaceMySql> const& databaseInterface)
+            : _databaseInterface(databaseInterface) {}
+
+    // This form of construction is used for unit testing of the class API.
+    EmptyChunks(std::map<std::string, std::set<int>> const& database2chunks);
 
     EmptyChunks() = delete;
     EmptyChunks(EmptyChunks const&) = delete;
@@ -65,33 +65,29 @@ public:
 
     ~EmptyChunks() = default;
 
-    // accessors
-
     /// @return set of empty chunks for this db
-    std::shared_ptr<IntSet const> getEmpty(std::string const& db);
+    std::shared_ptr<std::set<int> const> getEmpty(std::string const& db);
 
     /// @return true if db/chunk is empty
     bool isEmpty(std::string const& db, int chunk);
 
     /// Clear cache for empty chunk list so that on next call to above methods
     /// empty chunk list is re-populated. If database name is empty then cache
-    // for all databases is cleared.
-    void clearCache(std::string const& db = std::string()) const;
+    /// for all databases is cleared.
+    void clearCache(std::string const& db = std::string());
 
 private:
-    // Convenience types
-    typedef std::shared_ptr<IntSet> IntSetPtr;
-    typedef std::shared_ptr<IntSet const> IntSetConstPtr;
-
     /// @return all the empty chunks for database 'db'.
-    IntSet _populate(std::string const& db);
+    std::set<int> _populate(std::string const& db);
 
-    typedef std::map<std::string, IntSetPtr> IntSetMap;
-    std::shared_ptr<DbInterfaceMySql> const _dbI;  ///< allow access to empty chunks table.
-    std::string _path;                             ///< Search path for empty chunks files
-    std::string _fallbackFile;                     ///< Fallback path for empty chunks
-    mutable IntSetMap _sets;                       ///< Container for empty chunks sets (cache)
-    mutable std::mutex _setsMutex;
+    /// Allow access to the persistent store of the empty chunk sets
+    std::shared_ptr<DbInterfaceMySql> const _databaseInterface;
+
+    /// Container for on-per database empty chunks sets (cache)
+    std::map<std::string, std::shared_ptr<std::set<int>>> _sets;
+
+    /// The mutex for the thread-safe implementation of the synchronized methods
+    std::mutex _mtx;
 };
 
 }  // namespace lsst::qserv::css

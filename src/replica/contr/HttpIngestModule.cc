@@ -987,17 +987,15 @@ json HttpIngestModule::_tableStats() {
 
 json HttpIngestModule::_buildEmptyChunksList() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 31);
 
     string const databaseName = body().required<string>("database");
     bool const force = body().optional<int>("force", 0) != 0;
-    bool const tableImpl = body().optional<int>("table_impl", 0) != 0;
 
     debug(__func__, "database=" + databaseName);
     debug(__func__, "force=" + bool2str(force));
-    debug(__func__, "table_impl=" + bool2str(tableImpl));
 
-    return _buildEmptyChunksListImpl(databaseName, force, tableImpl);
+    return _buildEmptyChunksListImpl(databaseName, force);
 }
 
 json HttpIngestModule::_getRegular() {
@@ -1232,12 +1230,10 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
     }
 
     bool const forceRebuild = true;
-    bool const tableImpl = true;
-    _buildEmptyChunksListImpl(database.name, forceRebuild, tableImpl);
+    _buildEmptyChunksListImpl(database.name, forceRebuild);
 }
 
-json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, bool force,
-                                                 bool tableImpl) const {
+json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, bool force) const {
     debug(__func__);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -1265,54 +1261,26 @@ json HttpIngestModule::_buildEmptyChunksListImpl(string const& databaseName, boo
         for (auto chunk : chunks) ingestedChunks.insert(chunk);
     }
 
-    if (tableImpl) {
-        ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
-        QueryGenerator const g(h.conn);
-        string const tableName = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
-        vector<string> statements;
-        if (force) {
-            bool const ifExists = true;
-            statements.push_back(g.dropTable(tableName, ifExists));
-        }
-        statements.push_back(css::DbInterfaceMySql::getEmptyChunksSchema(database.name));
-        for (auto&& chunk : allChunks) {
-            if (!ingestedChunks.count(chunk)) {
-                statements.push_back(g.insert(tableName, chunk));
-            }
-        }
-        h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
-            for (auto const& query : statements) {
-                conn->execute(query);
-            }
-        });
-    } else {
-        auto const file = "empty_" + database.name + ".txt";
-        auto const filePath = fs::path(config->get<string>("controller", "empty-chunks-dir")) / file;
-
-        if (!force) {
-            boost::system::error_code ec;
-            fs::file_status const stat = fs::status(filePath, ec);
-            if (stat.type() == fs::status_error) {
-                throw runtime_error("failed to check the status of file: " + filePath.string());
-            }
-            if (fs::exists(stat)) {
-                throw runtime_error("'force' is required to overwrite existing file: " + filePath.string());
-            }
-        }
-
-        debug(__func__, "creating/opening file: " + filePath.string());
-        ofstream ofs(filePath.string());
-        if (!ofs.good()) {
-            throw runtime_error("failed to create/open file: " + filePath.string());
-        }
-        for (auto&& chunk : allChunks) {
-            if (!ingestedChunks.count(chunk)) {
-                ofs << chunk << "\n";
-            }
-        }
-        ofs.flush();
-        ofs.close();
+    // Populate the persistent state
+    ConnectionHandler const h(qservMasterDbConnection("qservCssData"));
+    QueryGenerator const g(h.conn);
+    string const tableName = css::DbInterfaceMySql::getEmptyChunksTableName(database.name);
+    vector<string> statements;
+    if (force) {
+        bool const ifExists = true;
+        statements.push_back(g.dropTable(tableName, ifExists));
     }
+    statements.push_back(css::DbInterfaceMySql::getEmptyChunksSchema(database.name));
+    for (auto&& chunk : allChunks) {
+        if (!ingestedChunks.count(chunk)) {
+            statements.push_back(g.insert(tableName, chunk));
+        }
+    }
+    h.conn->executeInOwnTransaction([&statements](decltype(h.conn) conn) {
+        for (auto const& query : statements) {
+            conn->execute(query);
+        }
+    });
     json result;
     result["num_chunks_ingested"] = ingestedChunks.size();
     result["num_chunks_all"] = allChunks.size();

@@ -137,10 +137,6 @@ json const ConfigurationSchema::_schemaJson = json::object(
               "The maximum length of the queue of pending connections sent to the controller's HTTP server."
               " Must be greater than 0."},
              {"default", max_listen_connections}}},
-           {"empty-chunks-dir",
-            {{"description",
-              "A path to a folder where Qserv master stores its empty chunk lists. Must be non-empty."},
-             {"default", "/qserv/data/qserv"}}},
            {"max-repl-level",
             {{"description",
               "The maximum replicaton level that applies to any database family. This"

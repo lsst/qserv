@@ -103,7 +103,6 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
                   configStore.get("qstatus.host"), configStore.getInt("qstatus.port", 3306),
                   configStore.get("qstatus.unix_socket"), configStore.get("qstatus.db", "qservStatusData")),
           _xrootdFrontendUrl(configStore.get("frontend.xrootd", "localhost:1094")),
-          _emptyChunkPath(configStore.get("partitioner.emptyChunkPath", ".")),
           _interactiveChunkLimit(configStore.getInt("tuning.interactiveChunkLimit", 10)),
           _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
           _xrootdCBThreadsInit(configStore.getInt("tuning.xrootdCBThreadsInit", 50)),
@@ -186,7 +185,6 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
                                     {"unix_socket", _mySqlQstatusDataConfig.socket},
                                     {"db", _mySqlQstatusDataConfig.dbName}});
     actualJsonConfig["frontend"] = nlohmann::json::object({{"xrootd", _xrootdFrontendUrl}});
-    actualJsonConfig["partitioner"] = nlohmann::json::object({{"emptyChunkPath", _emptyChunkPath}});
     actualJsonConfig["tuning"] = nlohmann::json::object(
             {{"interactiveChunkLimit", std::to_string(_interactiveChunkLimit)},
              {"xrootdCBThreadsMax", std::to_string(_xrootdCBThreadsMax)},
