@@ -62,25 +62,23 @@ std::string const _packedKeyName(".packed.json");
 
 namespace lsst::qserv::css {
 
-std::shared_ptr<CssAccess> CssAccess::createFromStream(std::istream& stream,
-                                                       std::string const& emptyChunkPath, bool readOnly) {
+std::shared_ptr<CssAccess> CssAccess::createFromStream(std::istream& stream, bool readOnly) {
     LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with memory store from data in stream");
-    return std::shared_ptr<CssAccess>(new CssAccess(std::make_shared<KvInterfaceImplMem>(stream, readOnly),
-                                                    nullptr, emptyChunkPath, std::string()));
+    return std::shared_ptr<CssAccess>(
+            new CssAccess(std::make_shared<KvInterfaceImplMem>(stream, readOnly), nullptr, std::string()));
 }
 
 // Create CssAccess instance from existing key-value data.
-std::shared_ptr<CssAccess> CssAccess::createFromData(std::string const& data,
-                                                     std::string const& emptyChunkPath, bool readOnly) {
+std::shared_ptr<CssAccess> CssAccess::createFromData(std::string const& data, bool readOnly) {
     LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with memory store from data in string");
     std::istringstream str(data);
-    return std::shared_ptr<CssAccess>(new CssAccess(std::make_shared<KvInterfaceImplMem>(str, readOnly),
-                                                    nullptr, emptyChunkPath, std::string()));
+    return std::shared_ptr<CssAccess>(
+            new CssAccess(std::make_shared<KvInterfaceImplMem>(str, readOnly), nullptr, std::string()));
 }
 
 // Create CssAccess instance from configuration dictionary.
 std::shared_ptr<CssAccess> CssAccess::createFromConfig(std::map<std::string, std::string> const& config,
-                                                       std::string const& emptyChunkPath, bool readOnly) {
+                                                       bool readOnly) {
     css::CssConfig cssConfig(config);
     LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance from config map");
     if (cssConfig.getTechnology() == "mem") {
@@ -89,7 +87,7 @@ std::shared_ptr<CssAccess> CssAccess::createFromConfig(std::map<std::string, std
         std::string iterFile = cssConfig.getFile();
         if (not cssConfig.getData().empty()) {
             // data is in a string
-            return createFromData(cssConfig.getData(), emptyChunkPath, readOnly);
+            return createFromData(cssConfig.getData(), readOnly);
         } else if (not cssConfig.getFile().empty()) {
             // read data from file
             std::ifstream f(cssConfig.getFile());
@@ -100,18 +98,18 @@ std::shared_ptr<CssAccess> CssAccess::createFromConfig(std::map<std::string, std
             LOGS(_log, LOG_LVL_DEBUG,
                  "Create CSS instance with memory store from data file " << cssConfig.getFile());
             auto kvi = std::make_shared<KvInterfaceImplMem>(f, readOnly);
-            return std::shared_ptr<CssAccess>(new CssAccess(kvi, nullptr, emptyChunkPath, std::string()));
+            return std::shared_ptr<CssAccess>(new CssAccess(kvi, nullptr, std::string()));
         } else {
             // no initial data
             LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with empty memory store");
             auto kvi = std::make_shared<KvInterfaceImplMem>(readOnly);
-            return std::shared_ptr<CssAccess>(new CssAccess(kvi, nullptr, emptyChunkPath, std::string()));
+            return std::shared_ptr<CssAccess>(new CssAccess(kvi, nullptr, std::string()));
         }
     } else if (cssConfig.getTechnology() == "mysql") {
         LOGS(_log, LOG_LVL_DEBUG, "Create CSS instance with mysql store " << cssConfig.getMySqlConfig());
         auto kvi = std::make_shared<KvInterfaceImplMySql>(cssConfig.getMySqlConfig(), readOnly);
         auto dvi = std::make_shared<DbInterfaceMySql>(cssConfig.getMySqlConfig());
-        return std::shared_ptr<CssAccess>(new CssAccess(kvi, dvi, emptyChunkPath, std::string()));
+        return std::shared_ptr<CssAccess>(new CssAccess(kvi, dvi, std::string()));
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "Unexpected value of \"technology\" key: " << cssConfig.getTechnology());
         throw ConfigError(ERR_LOC, "Unexpected value of \"technology\" key: " + cssConfig.getTechnology());
@@ -120,13 +118,12 @@ std::shared_ptr<CssAccess> CssAccess::createFromConfig(std::map<std::string, std
 
 // Construct from KvInterface instance and empty chunk list instance
 CssAccess::CssAccess(std::shared_ptr<KvInterface> const& kvInterface,
-                     std::shared_ptr<DbInterfaceMySql> const& dbI, std::string const& emptyChunkPath,
-                     std::string const& prefix)
+                     std::shared_ptr<DbInterfaceMySql> const& dbI, std::string const& prefix)
         : _kvI(kvInterface),
           _dbI(dbI),
           _prefix(prefix),
           _versionOk(false),
-          _emptyChunks(new EmptyChunks(dbI, emptyChunkPath)) {
+          _emptyChunks(new EmptyChunks(dbI)) {
     // Check CSS version defined in KV, or create key with version
     _checkVersion(false);
     if (not _versionOk) {

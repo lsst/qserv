@@ -25,9 +25,7 @@
 #include "css/EmptyChunks.h"
 
 // System headers
-#include <algorithm>
 #include <iterator>
-#include <fstream>
 #include <functional>
 #include <memory>
 
@@ -37,11 +35,6 @@
 // Qserv headers
 #include "css/CssError.h"
 #include "css/DbInterfaceMySql.h"
-#include "global/ConfigError.h"
-#include "global/stringUtil.h"
-
-using lsst::qserv::ConfigError;
-using lsst::qserv::IntSet;
 
 using namespace std;
 
@@ -49,31 +42,38 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.css.EmptyChunks");
 
-string makeFilename(string const& db) { return "empty_" + lsst::qserv::sanitizeName(db) + ".txt"; }
-
 }  // anonymous namespace
 
 namespace lsst::qserv::css {
 
-shared_ptr<IntSet const> EmptyChunks::getEmpty(string const& db) {
-    lock_guard<mutex> lock(_setsMutex);
-    IntSetMap::const_iterator i = _sets.find(db);
-    if (i != _sets.end()) {
-        IntSetConstPtr readOnly = i->second;
-        return readOnly;
+EmptyChunks::EmptyChunks(map<string, set<int>> const& database2chunks) {
+    for (auto const& [db, chunks] : database2chunks) {
+        auto newSet = make_shared<set<int>>();
+        *newSet = chunks;
+        _sets.insert({db, newSet});
     }
-    IntSetPtr newSet = make_shared<IntSet>();
-    *newSet = _populate(db);
-    _sets.insert(IntSetMap::value_type(db, newSet));
-    return IntSetConstPtr(newSet);
+}
+
+shared_ptr<set<int> const> EmptyChunks::getEmpty(string const& db) {
+    lock_guard<mutex> lock(_mtx);
+    if (auto itr = _sets.find(db); itr != _sets.end()) {
+        return itr->second;
+    }
+    auto newSet = make_shared<set<int>>();
+    if (_databaseInterface != nullptr) {
+        *newSet = _populate(db);
+        _sets.insert({db, newSet});
+    }
+    return shared_ptr<set<int> const>(newSet);
 }
 
 bool EmptyChunks::isEmpty(string const& db, int chunk) {
-    IntSetConstPtr s = getEmpty(db);
+    auto const s = getEmpty(db);
     return s->end() != s->find(chunk);
 }
 
-void EmptyChunks::clearCache(string const& db) const {
+void EmptyChunks::clearCache(string const& db) {
+    lock_guard<mutex> lock(_mtx);
     if (db.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for all databases");
         _sets.clear();
@@ -83,40 +83,15 @@ void EmptyChunks::clearCache(string const& db) const {
     }
 }
 
-IntSet EmptyChunks::_populate(string const& db) {
-    // Try to open database table
+set<int> EmptyChunks::_populate(string const& db) {
     LOGS(_log, LOG_LVL_DEBUG, "populate " << db);
-    IntSet s;
     try {
-        if (_dbI == nullptr) throw CssError(ERR_LOC, "database==nullptr");
-        s = _dbI->getEmptyChunks(db);
-        return s;
+        return _databaseInterface->getEmptyChunks(db);
     } catch (CssError const& e) {
-        LOGS(_log, LOG_LVL_WARN,
-             " failed to read empty chunks from table. Trying file. " + db + " " + e.what());
-    }
-
-    // Since the table wasn't found, use the empty chunks file
-    // TODO: Once everything is using the table, this should be deleted and the error above should be thrown.
-    string const best = _path + "/" + makeFilename(db);
-    LOGS(_log, LOG_LVL_WARN, "Trying path:" << _path << " emptyChunk file:" << best);
-    string fileName = best;
-    ifstream rawStream(best.c_str());
-    if (!rawStream.good()) {  // On error, try using default filename
-        rawStream.close();
-        rawStream.open(_fallbackFile.c_str());
-        fileName = _fallbackFile;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "Reading empty chunks for db " << db << " from file " << fileName);
-    if (!rawStream.good()) {
-        string eMsg(string("No such empty chunks file: ") + best + " or " + _fallbackFile);
+        string const eMsg("Failed to read empty chunks from table. Trying file. " + db + " " + e.what());
         LOGS(_log, LOG_LVL_ERROR, eMsg);
         throw CssError(ERR_LOC, eMsg);
     }
-    istream_iterator<int> chunkStream(rawStream);
-    istream_iterator<int> eos;
-    copy(chunkStream, eos, insert_iterator<IntSet>(s, s.begin()));
-    return s;
 }
 
 }  // namespace lsst::qserv::css

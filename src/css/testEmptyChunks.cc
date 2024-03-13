@@ -22,10 +22,9 @@
  */
 
 // System headers
-#include <cassert>
-#include <fstream>
-#include <iostream>
-#include <unistd.h>
+#include <map>
+#include <set>
+#include <string>
 
 // Third-party headers
 
@@ -40,70 +39,23 @@ namespace test = boost::test_tools;
 
 using lsst::qserv::css::EmptyChunks;
 
-struct DummyFile {
-    DummyFile() {
-        std::ostringstream os;
-        int pid = ::getpid();
-        assert(pid > 0);
-        os << "/tmp/testEC_" << pid;
-        _path = os.str();
-        _fallback = _path + "/" + "emptyChunks.txt";
-        // Construction:
-        // mkdir /tmp/testEC_<pid>
-        // cat > /tmp/testEC_<pid>/empty_TestOne.txt
-        // cat > /tmp/testEC_<pid>/empty_TestTwo.txt
-        // cat > /tmp/testEC_<pid>/emptyChunks.txt
-        // Destruction:
-        // rm -r /tmp/testEC_<pid>
-        mkDir();
-        writeFile("TestOne", 1, 20);
-        writeFile("TestTwo", 100, 200);
-        writeFile(NULL, 1000, 1010);
-    }
-    ~DummyFile() { rmDir(); }
-    void mkDir() {
-        // Slightly dangerous: invoke OS system interpreter
-        // Doesn't seem worth it to be more precise for a unit test.
-        assert(_path.find("/tmp/") == 0);
-        std::string c = "mkdir ";
-        c += _path;
-        [[maybe_unused]] int unused = ::system(c.c_str());
-    }
-    void rmDir() {
-        // Slightly dangerous: invoke OS system interpreter
-        // Doesn't seem worth it to be more precise for a unit test.
-        assert(_path.find("/tmp/") == 0);
-        std::string c = "rm -r ";
-        c += _path;
-        [[maybe_unused]] int unused = ::system(c.c_str());
-    }
-    void writeFile(char const* dbname, int begin, int end) {
-        std::string filename = _path;
-        if (dbname) {
-            filename = filename + "/empty_" + dbname + ".txt";
-        } else {
-            filename = _fallback;
-        }
-        std::ofstream os(filename.c_str());
-        for (int i = begin; i < end; ++i) {
-            os << i << std::endl;
-        }
-        os.close();
-    }
-    std::string _path;
-    std::string _fallback;
-};
-
 struct Fixture {
-    Fixture() {}
+    Fixture() {
+        for (int chunk = 1; chunk < 20; ++chunk) {
+            database2chunks["TestOne"].insert(chunk);
+        }
+        for (int chunk = 100; chunk < 200; ++chunk) {
+            database2chunks["TestTwo"].insert(chunk);
+        }
+    }
     ~Fixture() {}
-    DummyFile dummyFile;
+    std::map<std::string, std::set<int>> database2chunks;
 };
 
 BOOST_FIXTURE_TEST_SUITE(Suite, Fixture)
 
 BOOST_AUTO_TEST_CASE(Basic) {
-    EmptyChunks ec(nullptr, dummyFile._path, dummyFile._fallback);
+    EmptyChunks ec(database2chunks);
     auto s = ec.getEmpty("TestOne");
     BOOST_CHECK(s->find(3) != s->end());
     BOOST_CHECK(s->find(103) == s->end());
@@ -116,7 +68,6 @@ BOOST_AUTO_TEST_CASE(Basic) {
 
     BOOST_CHECK(ec.isEmpty("TestOne", 3));
     BOOST_CHECK(ec.isEmpty("TestTwo", 103));
-    BOOST_CHECK(ec.isEmpty("Default", 1003));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

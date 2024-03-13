@@ -145,8 +145,7 @@ shared_ptr<KvInterface> initKVI() {
 // Test fixure that instantiates a CSS with pre-loaded data
 class CssAccessFixture : public CssAccess {
 public:
-    CssAccessFixture() : CssAccess(initKVI(), nullptr, ".", "") {}
-
+    CssAccessFixture() : CssAccess(initKVI(), nullptr, "") {}
     ~CssAccessFixture() {}
 };
 
@@ -752,8 +751,8 @@ char const* testData = R"(
 BOOST_AUTO_TEST_SUITE(CssAccessFactoryTestSuite)
 
 BOOST_AUTO_TEST_CASE(testDataString) {
-    auto css1 = CssAccess::createFromData("{}", "");
-    auto css2 = CssAccess::createFromData(testData, "");
+    auto css1 = CssAccess::createFromData("{}");
+    auto css2 = CssAccess::createFromData(testData);
     auto names = css2->getDbNames();
     BOOST_CHECK_EQUAL(names.size(), 1U);
     BOOST_CHECK_EQUAL(names[0], "LSST");
@@ -763,17 +762,17 @@ BOOST_AUTO_TEST_CASE(testConfigMap) {
     typedef std::map<std::string, std::string> StringMap;
 
     // test with missing required keyword
-    BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(StringMap(), ""), ConfigError);
+    BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(StringMap()), ConfigError);
     {
         // test with incorrect keyword value
         // this test will fail when we have CSS implemented using monkeys
         StringMap config = {std::make_pair("technology", "monkeys")};
-        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config), ConfigError);
     }
     {
         // test with empty initial data
         StringMap config = {std::make_pair("technology", "mem")};
-        auto css = CssAccess::createFromConfig(config, "");
+        auto css = CssAccess::createFromConfig(config);
     }
     {
         // test with initial data from string
@@ -781,7 +780,7 @@ BOOST_AUTO_TEST_CASE(testConfigMap) {
                 std::make_pair("technology", "mem"),
                 std::make_pair("data", testData),
         };
-        auto css = CssAccess::createFromConfig(config, "");
+        auto css = CssAccess::createFromConfig(config);
         auto names = css->getDbNames();
         BOOST_CHECK_EQUAL(names.size(), 1U);
     }
@@ -791,7 +790,7 @@ BOOST_AUTO_TEST_CASE(testConfigMap) {
                 std::make_pair("technology", "mem"),
                 std::make_pair("file", "/~~~"),
         };
-        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config), ConfigError);
     }
     {
         // test badly-formatted port number for mysql
@@ -799,24 +798,24 @@ BOOST_AUTO_TEST_CASE(testConfigMap) {
                 std::make_pair("technology", "mysql"),
                 std::make_pair("port", "X"),
         };
-        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config), ConfigError);
 
         config["port"] = "12bad";
-        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config), ConfigError);
 
         config["port"] = "0xdead";
-        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config, ""), ConfigError);
+        BOOST_CHECK_THROW(auto css = CssAccess::createFromConfig(config), ConfigError);
     }
 }
 
 BOOST_AUTO_TEST_CASE(testReadOnly) {
     // read-write instance
-    auto css = CssAccess::createFromData(testData, "");
+    auto css = CssAccess::createFromData(testData);
     StripingParams params1;
     css->createDb("dbNew1", params1, "L2", "UNRELEASED");
 
     // read-only instance
-    css = CssAccess::createFromData(testData, "", true);
+    css = CssAccess::createFromData(testData, true);
     BOOST_CHECK_THROW(css->createDb("dbNew1", params1, "L2", "UNRELEASED"), ReadonlyCss);
 
     // same read-only from config map
@@ -825,14 +824,14 @@ BOOST_AUTO_TEST_CASE(testReadOnly) {
             std::make_pair("technology", "mem"),
             std::make_pair("data", testData),
     };
-    css = CssAccess::createFromConfig(config, "", true);
+    css = CssAccess::createFromConfig(config, true);
     BOOST_CHECK_THROW(css->createDb("dbNew1", params1, "L2", "UNRELEASED"), ReadonlyCss);
 }
 
 BOOST_AUTO_TEST_CASE(testCssVersion) {
     // version mismatch
     testData = R"({"/": "", "/css_meta": "", "/css_meta/version": "1000000"})";
-    BOOST_CHECK_THROW(CssAccess::createFromData(testData, ""), VersionMismatchError);
+    BOOST_CHECK_THROW(CssAccess::createFromData(testData), VersionMismatchError);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

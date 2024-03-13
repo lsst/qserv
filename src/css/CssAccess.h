@@ -79,13 +79,10 @@ public:
      *  Neither keys nor values can contain newline or TAB.
      *
      *  @param stream:  stream with initial data
-     *  @param emptyChunkPath:  path to empty chunk list file
      *  @param readOnly:  if true then KV storage will be set read-only
      *                    after loading initial data.
      */
-    static std::shared_ptr<CssAccess> createFromStream(std::istream& stream,
-                                                       std::string const& emptyChunkPath,
-                                                       bool readOnly = false);
+    static std::shared_ptr<CssAccess> createFromStream(std::istream& stream, bool readOnly = false);
 
     /**
      *  Create CssAccess instance from existing key-value data.
@@ -96,13 +93,10 @@ public:
      *  Neither keys nor values can contain newline or TAB.
      *
      *  @param data:  initial data to load into KV store
-     *  @param emptyChunkPath:  path to empty chunk list file
      *  @param readOnly:  if true then KV storage will be set read-only
      *                    after loading initial data.
      */
-    static std::shared_ptr<CssAccess> createFromData(std::string const& data,
-                                                     std::string const& emptyChunkPath,
-                                                     bool readOnly = false);
+    static std::shared_ptr<CssAccess> createFromData(std::string const& data, bool readOnly = false);
 
     /**
      *  Create CssAccess instance from configuration dictionary.
@@ -122,7 +116,6 @@ public:
      *       'database': database name
      *
      *  @param config:  configuration map
-     *  @param emptyChunkPath:  path to empty chunk list file
      *  @param readOnly:  if true then KV storage will be set read-only
      *                    after loading initial data.
      *
@@ -130,7 +123,6 @@ public:
      * @throws CssError: for all CSS errors
      */
     static std::shared_ptr<CssAccess> createFromConfig(std::map<std::string, std::string> const& config,
-                                                       std::string const& emptyChunkPath,
                                                        bool readOnly = false);
 
     /**
@@ -504,7 +496,7 @@ public:
 protected:
     // Construct from Key-value and database instances.
     CssAccess(std::shared_ptr<KvInterface> const& kvInterface, std::shared_ptr<DbInterfaceMySql> const& dbI,
-              std::string const& emptyChunkPath, std::string const& prefix);
+              std::string const& prefix);
 
     // Methods below are protected only for testing purposes so that one can
     // subclass CssAccess and expose these methods for testing
