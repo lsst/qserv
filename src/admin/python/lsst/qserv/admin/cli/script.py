@@ -63,8 +63,6 @@ replication_controller_smig_dir = "replica/schema"
 
 mysqld_user_qserv = "qsmaster"
 
-proxy_empty_chunk_path = "/qserv/data/qserv"
-
 ld_preload = "libjemalloc.so.2"
 
 _log = logging.getLogger(__name__)
@@ -624,7 +622,6 @@ def enter_proxy(
         {
             "proxy_backend_address": proxy_backend_address,
             "mysqld_user_qserv": url.username,
-            "empty_chunk_path": "/qserv/data/qserv",
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
             "czar_db_socket": url.query.get("socket", ""),
@@ -633,7 +630,7 @@ def enter_proxy(
 
     # uses vars: proxy_backend_address
     apply_template_cfg_file(proxy_cfg_file, proxy_cfg_path)
-    # uses vars: czar_db_host, czar_db_port, czar_db_socket, empty_chunk_path,
+    # uses vars: czar_db_host, czar_db_port, czar_db_socket,
     apply_template_cfg_file(czar_cfg_file, czar_cfg_path)
 
     # czar smigs these modules, that have templated values:

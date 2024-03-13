@@ -54,14 +54,6 @@ user = qsmaster
 host = {{ czar_db_host }}
 port = {{ czar_db_port }}
 
-[partitioner]
-# emptyChunkPath is used to check existence of empty_$DBNAME.txt
-emptyChunkPath = {{ empty_chunk_path }}
-
-# If emptyChunkPath isn't defined or emptyChunkPath/empty_$DBNAME.txt
-# doesn't exist then emptyChunkListFile is used for queries on $DBNAME
-emptyChunkListFile = {{ empty_chunk_path }}/emptyChunks.txt
-
 [tuning]
 #memoryEngine = yes
 #largeResultConcurrentMerges = 3
