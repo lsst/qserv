@@ -238,12 +238,10 @@ private:
      *
      * @param databaseName The name of a database.
      * @param force Rebuild the list if 'true'.
-     * @param tableImpl Create/update the table-based list implementation if 'true'.
      * @return An object representing a result of the operation (empty chunk list
      *   file/table name, number of chunks) in case of successful completion.
      */
-    nlohmann::json _buildEmptyChunksListImpl(std::string const& databaseName, bool force,
-                                             bool tableImpl) const;
+    nlohmann::json _buildEmptyChunksListImpl(std::string const& databaseName, bool force) const;
 
     /**
      * Create an empty "director" index table partitioned using MySQL partitions.

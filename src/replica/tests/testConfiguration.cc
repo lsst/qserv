@@ -126,7 +126,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<unsigned int>("controller", "http-max-listen-conn") == 256);
     BOOST_CHECK(config->get<size_t>("controller", "http-server-threads") == 3);
     BOOST_CHECK(config->get<unsigned int>("controller", "request-timeout-sec") == 100);
-    BOOST_CHECK(config->get<string>("controller", "empty-chunks-dir") == "/qserv/data/qserv");
     BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 200);
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 300);
     BOOST_CHECK(config->get<unsigned int>("controller", "max-repl-level") == 2);

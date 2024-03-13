@@ -63,7 +63,6 @@ database::mysql::Connection::Ptr HttpModule::qservMasterDbConnection(string cons
 }
 
 shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
-    auto const config = controller()->serviceProvider()->config();
     // Use all parmeters of the connection from the czar's MySQL connection parameters object.
     auto const connectionParams = Configuration::qservCzarDbParams("qservCssData");
     map<string, string> cssConfig;
@@ -75,7 +74,7 @@ shared_ptr<css::CssAccess> HttpModule::qservCssAccess(bool readOnly) const {
     cssConfig["username"] = connectionParams.user;
     cssConfig["password"] = connectionParams.password;
     cssConfig["database"] = connectionParams.database;
-    return css::CssAccess::createFromConfig(cssConfig, config->get<string>("controller", "empty-chunks-dir"));
+    return css::CssAccess::createFromConfig(cssConfig);
 }
 
 string HttpModule::reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
