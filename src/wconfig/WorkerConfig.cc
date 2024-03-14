@@ -28,9 +28,6 @@
 #include <sstream>
 #include <stdexcept>
 
-// Third party headers
-#include <boost/algorithm/string/predicate.hpp>
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -52,32 +49,27 @@ mutex WorkerConfig::_mtxOnInstance;
 
 shared_ptr<WorkerConfig> WorkerConfig::_instance;
 
+void ConfigVal::addToMapBase(ConfigValMap& configValMap, Ptr const& newPtr) { configValMap.addEntry(newPtr); }
+
 void ConfigVal::logValSet(std::string const& msg) {
     LOGS(_log, LOG_LVL_INFO, "ConfigVal " << getSectionName() << " set to " << getValStr() + " " + msg);
 }
 
-ConfigValResultDeliveryProtocol::TEnum ConfigValResultDeliveryProtocol::parse(string const& str) {
-    // Using BOOST's 'iequals' for case-insensitive comparisons.
-    if (str.empty() || boost::iequals(str, "HTTP")) {
-        return HTTP;
-    } else if (boost::iequals(str, "HTTP")) {
-        return HTTP;
-    } else if (boost::iequals(str, "XROOT")) {
-        return XROOT;
+void ConfigVal::setValFromConfigStore(util::ConfigStore const& configStore) {
+    try {
+        setValFromConfigStoreChild(configStore);
+        setValSetFromFile(true);
+    } catch (util::KeyNotFoundError const& e) {
+        LOGS(_log, LOG_LVL_WARN,
+             " ConfigVal no entry for " << getSectionName() << " using default=" << getValStr());
     }
-    throw ConfigException(ERR_LOC,
-                          "WorkerConfig::" + string(__func__) + " unsupported method '" + str + "'.");
 }
 
-string ConfigValResultDeliveryProtocol::toString(TEnum protocol) {
-    switch (protocol) {
-        case HTTP:
-            return "HTTP";
-        case XROOT:
-            return "XROOT";
+string ConfigValTBool::toString(bool val) {
+    if (val == 0) {
+        return string("false");
     }
-    throw ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) + ": unknown protocol " +
-                                           to_string(static_cast<int>(protocol)));
+    return string("true");
 }
 
 void ConfigValMap::addEntry(ConfigVal::Ptr const& newVal) {
@@ -108,25 +100,7 @@ void ConfigValMap::readConfigStore(util::ConfigStore const& configStore) {
     for (auto&& [section, nameMap] : _sectionMap) {
         for (auto&& [name, cfgVal] : nameMap) {
             try {
-                if (auto cInt = dynamic_pointer_cast<ConfigValTInt>(cfgVal); cInt != nullptr) {
-                    int64_t intVal = configStore.getIntRequired(cfgVal->getSectionName());
-                    cInt->setVal(intVal);
-                } else if (auto cUInt = dynamic_pointer_cast<ConfigValTUInt>(cfgVal); cUInt != nullptr) {
-                    uint64_t uintVal = configStore.getIntRequired(cfgVal->getSectionName());
-                    cUInt->setVal(uintVal);
-                } else if (auto cStr = dynamic_pointer_cast<ConfigValTStr>(cfgVal); cStr != nullptr) {
-                    string strVal = configStore.getRequired(cfgVal->getSectionName());
-                    cStr->setVal(strVal);
-                } else if (auto cCvrdp = dynamic_pointer_cast<ConfigValResultDeliveryProtocol>(cfgVal);
-                           cCvrdp != nullptr) {
-                    string strVal = configStore.getRequired(cfgVal->getSectionName());
-                    auto cvrdpVal = ConfigValResultDeliveryProtocol::parse(strVal);
-                    cCvrdp->setVal(cvrdpVal);
-                } else {
-                    throw ConfigException(
-                            ERR_LOC, string(__func__) + " un-handled type for " + cfgVal->getSectionName());
-                }
-                cfgVal->setValSetFromFile(true);
+                cfgVal->setValFromConfigStore(configStore);
             } catch (util::KeyNotFoundError const& e) {
                 LOGS(_log, LOG_LVL_WARN,
                      " ConfigVal " << cfgVal->getSectionName() << " using default=" << cfgVal->getValStr());
@@ -148,6 +122,42 @@ std::tuple<bool, std::string> ConfigValMap::checkRequired() const {
         }
     }
     return {errorFound, eMsg};
+}
+
+ConfigValResultDeliveryProtocol::TEnum ConfigValResultDeliveryProtocol::parse(string const& str) {
+    // Convert to upper case for case-insensitive comparisons.
+    string strUp;
+    for (auto ch : str) {
+        strUp += toupper(ch);
+    }
+    if (str.empty() || strUp == "HTTP") {
+        return HTTP;
+    } else if (strUp == "XROOT") {
+        return XROOT;
+    }
+    throw ConfigException(ERR_LOC, string("ConfigValResultDeliveryProtocol::") + __func__ +
+                                           " could not parse '" + str + "'.");
+}
+
+void ConfigValResultDeliveryProtocol::setValFromConfigStoreChild(util::ConfigStore const& configStore) {
+    std::string str = configStore.getRequired(getSectionName());
+    try {
+        setVal(parse(str));
+    } catch (ConfigException const& exc) {
+        // Throw a similar exception with additional information.
+        throw ConfigException(ERR_LOC, getSectionName() + " " + exc.what());
+    }
+}
+
+string ConfigValResultDeliveryProtocol::toString(TEnum protocol) {
+    switch (protocol) {
+        case HTTP:
+            return "HTTP";
+        case XROOT:
+            return "XROOT";
+    }
+    throw ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) + ": unknown protocol " +
+                                           to_string(static_cast<int>(protocol)));
 }
 
 shared_ptr<WorkerConfig> WorkerConfig::create(string const& configFileName) {
@@ -234,122 +244,21 @@ void WorkerConfig::setReplicationHttpPort(uint16_t port) {
     _jsonConfig["actual"]["replication"]["http_port"] = _replicationHttpPort->getValStr();
 }
 
-void WorkerConfig::_populateJsonConfig(string const& coll) {  //&&&
-    nlohmann::json& jsonConfigCollection = _jsonConfig[coll];
-    jsonConfigCollection["memman"] = nlohmann::json::object({{"class", _memManClass->getValStr()},
-                                                             {"memory", _memManSizeMb->getValStr()},
-                                                             {"location", _memManLocation->getValStr()}});
-    jsonConfigCollection["scheduler"] =
-            nlohmann::json::object({{"thread_pool_size", _threadPoolSize->getValStr()},
-                                    {"max_pool_threads", _maxPoolThreads->getValStr()},
-                                    {"group_size", _maxGroupSize->getValStr()},
-                                    {"required_tasks_completed", _requiredTasksCompleted->getValStr()},
-                                    {"priority_slow", _prioritySlow->getValStr()},
-                                    {"priority_snail", _prioritySnail->getValStr()},
-                                    {"priority_med", _priorityMed->getValStr()},
-                                    {"priority_fast", _priorityFast->getValStr()},
-                                    {"reserve_slow", _maxReserveSlow->getValStr()},
-                                    {"reserve_snail", _maxReserveSnail->getValStr()},
-                                    {"reserve_med", _maxReserveMed->getValStr()},
-                                    {"reserve_fast", _maxReserveFast->getValStr()},
-                                    {"maxactivechunks_slow", _maxActiveChunksSlow->getValStr()},
-                                    {"maxactivechunks_snail", _maxActiveChunksSnail->getValStr()},
-                                    {"maxactivechunks_med", _maxActiveChunksMed->getValStr()},
-                                    {"maxactivechunks_fast", _maxActiveChunksFast->getValStr()},
-                                    {"scanmaxminutes_fast", _scanMaxMinutesFast->getValStr()},
-                                    {"scanmaxminutes_med", _scanMaxMinutesMed->getValStr()},
-                                    {"scanmaxminutes_slow", _scanMaxMinutesSlow->getValStr()},
-                                    {"scanmaxminutes_snail", _scanMaxMinutesSnail->getValStr()},
-                                    {"maxtasksbootedperuserquery", _maxTasksBootedPerUserQuery->getValStr()},
-                                    {"maxConcurrentBootedTasks", _maxConcurrentBootedTasks->getValStr()}});
-    jsonConfigCollection["sqlconnections"] = nlohmann::json::object(
-            {{"maxsqlconn", _maxSqlConnections->getValStr()},
-             {"reservedinteractivesqlconn", _ReservedInteractiveSqlConnections->getValStr()}});
-    jsonConfigCollection["transmit"] =
-            nlohmann::json::object({{"buffermaxtotalgb", _bufferMaxTotalGB->getValStr()},
-                                    {"maxtransmits", _maxTransmits->getValStr()},
-                                    {"maxperqid", _maxPerQid->getValStr()}});
-    jsonConfigCollection["results"] =
-            nlohmann::json::object({{"dirname", _resultsDirname->getValStr()},
-                                    {"xrootd_port", _resultsXrootdPort->getValStr()},
-                                    {"num_http_threads", _resultsNumHttpThreads->getValStr()},
-                                    {"protocol", _resultDeliveryProtocol->getValStr()},
-                                    {"clean_up_on_start", _resultsCleanUpOnStart->getVal() ? "1" : "0"}});
-    jsonConfigCollection["mysql"] = nlohmann::json::object({{"username", _mySqlConfig.username},
-                                                            {"password", "xxxxx"},
-                                                            {"hostname", _mySqlConfig.hostname},
-                                                            {"port", to_string(_mySqlConfig.port)},
-                                                            {"socket", _mySqlConfig.socket},
-                                                            {"db", _mySqlConfig.dbName}});
-    jsonConfigCollection["replication"] = nlohmann::json::object(
-            {{"instance_id", _replicationInstanceId->getValStr()},
-             {"auth_key", _replicationAuthKey->getValStr()},
-             {"admin_auth_key", _replicationAdminAuthKey->getValStr()},
-             {"registry_host", _replicationRegistryHost->getValStr()},
-             {"registry_port", _replicationRegistryPort->getValStr()},
-             {"registry_heartbeat_ival_sec", _replicationRegistryHearbeatIvalSec->getValStr()},
-             {"http_port", _replicationHttpPort->getValStr()},
-             {"num_http_threads", _replicationNumHttpThreads->getValStr()}});
+void ConfigValMap::populateJson(nlohmann::json& js, string const& coll) {
+    for (auto const& [section, nMap] : _sectionMap) {
+        nlohmann::json jsNames;
+        for (auto const& [name, cfgPtr] : nMap) {
+            jsNames[cfgPtr->getName()] = cfgPtr->getValStr();
+        }
+        js[section] = jsNames;
+    }
 }
 
-void ConfigValMap::populateJson(nlohmann::json& js, string const& coll) {}
-
-void WorkerConfig::_populateJsonConfigNew(string const& coll) {  //&&&
-    nlohmann::json& jsonConfigCollection = _jsonConfig[coll];
-    jsonConfigCollection["memman"] = nlohmann::json::object({{"class", _memManClass->getValStr()},
-                                                             {"memory", _memManSizeMb->getValStr()},
-                                                             {"location", _memManLocation->getValStr()}});
-    jsonConfigCollection["scheduler"] =
-            nlohmann::json::object({{"thread_pool_size", _threadPoolSize->getValStr()},
-                                    {"max_pool_threads", _maxPoolThreads->getValStr()},
-                                    {"group_size", _maxGroupSize->getValStr()},
-                                    {"required_tasks_completed", _requiredTasksCompleted->getValStr()},
-                                    {"priority_slow", _prioritySlow->getValStr()},
-                                    {"priority_snail", _prioritySnail->getValStr()},
-                                    {"priority_med", _priorityMed->getValStr()},
-                                    {"priority_fast", _priorityFast->getValStr()},
-                                    {"reserve_slow", _maxReserveSlow->getValStr()},
-                                    {"reserve_snail", _maxReserveSnail->getValStr()},
-                                    {"reserve_med", _maxReserveMed->getValStr()},
-                                    {"reserve_fast", _maxReserveFast->getValStr()},
-                                    {"maxactivechunks_slow", _maxActiveChunksSlow->getValStr()},
-                                    {"maxactivechunks_snail", _maxActiveChunksSnail->getValStr()},
-                                    {"maxactivechunks_med", _maxActiveChunksMed->getValStr()},
-                                    {"maxactivechunks_fast", _maxActiveChunksFast->getValStr()},
-                                    {"scanmaxminutes_fast", _scanMaxMinutesFast->getValStr()},
-                                    {"scanmaxminutes_med", _scanMaxMinutesMed->getValStr()},
-                                    {"scanmaxminutes_slow", _scanMaxMinutesSlow->getValStr()},
-                                    {"scanmaxminutes_snail", _scanMaxMinutesSnail->getValStr()},
-                                    {"maxtasksbootedperuserquery", _maxTasksBootedPerUserQuery->getValStr()},
-                                    {"maxConcurrentBootedTasks", _maxConcurrentBootedTasks->getValStr()}});
-    jsonConfigCollection["sqlconnections"] = nlohmann::json::object(
-            {{"maxsqlconn", _maxSqlConnections->getValStr()},
-             {"reservedinteractivesqlconn", _ReservedInteractiveSqlConnections->getValStr()}});
-    jsonConfigCollection["transmit"] =
-            nlohmann::json::object({{"buffermaxtotalgb", _bufferMaxTotalGB->getValStr()},
-                                    {"maxtransmits", _maxTransmits->getValStr()},
-                                    {"maxperqid", _maxPerQid->getValStr()}});
-    jsonConfigCollection["results"] =
-            nlohmann::json::object({{"dirname", _resultsDirname->getValStr()},
-                                    {"xrootd_port", _resultsXrootdPort->getValStr()},
-                                    {"num_http_threads", _resultsNumHttpThreads->getValStr()},
-                                    {"protocol", _resultDeliveryProtocol->getValStr()},
-                                    {"clean_up_on_start", _resultsCleanUpOnStart->getVal() ? "1" : "0"}});
-    jsonConfigCollection["mysql"] = nlohmann::json::object({{"username", _mySqlConfig.username},
-                                                            {"password", "xxxxx"},
-                                                            {"hostname", _mySqlConfig.hostname},
-                                                            {"port", to_string(_mySqlConfig.port)},
-                                                            {"socket", _mySqlConfig.socket},
-                                                            {"db", _mySqlConfig.dbName}});
-    jsonConfigCollection["replication"] = nlohmann::json::object(
-            {{"instance_id", _replicationInstanceId->getValStr()},
-             {"auth_key", _replicationAuthKey->getValStr()},
-             {"admin_auth_key", _replicationAdminAuthKey->getValStr()},
-             {"registry_host", _replicationRegistryHost->getValStr()},
-             {"registry_port", _replicationRegistryPort->getValStr()},
-             {"registry_heartbeat_ival_sec", _replicationRegistryHearbeatIvalSec->getValStr()},
-             {"http_port", _replicationHttpPort->getValStr()},
-             {"num_http_threads", _replicationNumHttpThreads->getValStr()}});
+void WorkerConfig::_populateJsonConfig(string const& coll) {
+    nlohmann::json& js = _jsonConfig[coll];
+    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& _populateJsonConfigNew b" << js);
+    _configValMap.populateJson(js, coll);
+    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& _populateJsonConfigNew b" << js);
 }
 
 ostream& operator<<(ostream& out, WorkerConfig const& workerConfig) {
