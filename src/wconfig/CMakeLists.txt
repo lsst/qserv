@@ -7,6 +7,7 @@ target_sources(wconfig PRIVATE
 
 target_link_libraries(wconfig PUBLIC
     log
+    proto
 )
 
 add_executable(testSanityCheck testSanityCheck.cc)
@@ -17,3 +18,7 @@ target_link_libraries(testSanityCheck
 )
 
 add_test(NAME testSanityCheck COMMAND testSanityCheck)
+
+install(
+    TARGETS wconfig
+)
