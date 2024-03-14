@@ -48,6 +48,8 @@ public:
     ConfigException(Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {}
 };
 
+class ConfigValMap;
+
 class ConfigVal {
 public:
     using Ptr = std::shared_ptr<ConfigVal>;
@@ -73,14 +75,30 @@ public:
     /// Return true if this value should not be seen by users or logs.
     bool isHidden() const { return _hidden; }
 
-    void setValSetFromFile(bool setFromFile) { _valSetFromFile = setFromFile; }
     bool isValSetFromFile() const { return _valSetFromFile; }
 
     /// All child classes should be able to return a valid string version of their value,
     /// but this function will hide values of `_hidden` `ConfigVal`.
-    /// If the string value of something that is hidden is needed, dynamic cast and use
-    /// to_string(configVal->getVal)).
-    virtual std::string getValStr() const = 0;
+    /// If the string value of something that is hidden is needed, call getValStrDanger().
+    virtual std::string getValStr() const final {
+        if (!isHidden()) {
+            return getValStrDanger();
+        }
+        return "*****";
+    }
+
+    /// All child classes should be able to return a valid string version of their value,
+    /// this function will show `_hidden` values.
+    virtual std::string getValStrDanger() const = 0;
+
+    /// &&& doc
+    virtual void setValFromConfigStore(util::ConfigStore const& configStore) final;
+
+    /// &&& doc
+    virtual void setValFromConfigStoreChild(util::ConfigStore const& configStore) = 0;
+
+    /// @throws ConfigException if the value is invalid or already in the map.
+    static void addToMapBase(ConfigValMap& configValMap, Ptr const&);
 
 private:
     std::string const _section;
@@ -91,6 +109,7 @@ private:
     bool _valSetFromFile = false;  ///< set to true if value was set from configuration file.
 
 protected:
+    void setValSetFromFile(bool setFromFile) { _valSetFromFile = setFromFile; }
     /// &&& doc
     void logValSet(std::string const& msg = std::string());
 };
@@ -100,20 +119,18 @@ template <typename T>
 class ConfigValT : public ConfigVal {
 public:
     static std::shared_ptr<ConfigValT<T>> create(std::string const& section, std::string const& name,
-                                                 bool required, T defVal) {
-        return std::shared_ptr<ConfigValT<T>>(new ConfigValT<T>(section, name, required, defVal));
+                                                 bool required, T defVal, ConfigValMap& configValMap) {
+        auto newPtr = std::shared_ptr<ConfigValT<T>>(new ConfigValT<T>(section, name, required, defVal));
+        addToMapBase(configValMap, newPtr);
+        return newPtr;
     }
 
     virtual ~ConfigValT() = default;
 
     /// Return the string value of non-hidden config values. (setH
-    std::string getValStr() const override {
+    std::string getValStrDanger() const override {
         std::stringstream os;
-        if (!isHidden()) {
-            os << _val;
-        } else {
-            os << "*****";
-        }
+        os << _val;
         return os.str();
     }
     T const& getVal() const { return _val; }
@@ -123,21 +140,119 @@ public:
         logValSet();
     }
 
-private:
+protected:
     ConfigValT(std::string const& section, std::string const& name, bool required, T defVal)
             : ConfigVal(section, name, required), _val(defVal), _defVal(defVal) {}
-    T _val;
-    T _defVal;
+
+private:
+    T _val;     ///< &&& doc
+    T _defVal;  ///< &&& doc
 };
 
-using ConfigValTInt = ConfigValT<int64_t>;
-using ConfigValTIntPtr = std::shared_ptr<ConfigValTInt>;
-using ConfigValTUInt = ConfigValT<uint64_t>;
-using ConfigValTUIntPtr = std::shared_ptr<ConfigValTUInt>;
-using ConfigValTDbl = ConfigValT<double>;
-using ConfigValTDblPtr = std::shared_ptr<ConfigValTDbl>;  // &&& unused?
-using ConfigValTStr = ConfigValT<std::string>;
-using ConfigValTStrPtr = std::shared_ptr<ConfigValTStr>;
+/// Bool is special case for json as the value should be "true" or "false" but
+/// ConfigStore has it as '0' or '1'.
+class ConfigValTBool : public ConfigValT<bool> {
+public:
+    using BoolPtr = std::shared_ptr<ConfigValTBool>;
+
+    ConfigValTBool() = delete;
+    virtual ~ConfigValTBool() = default;
+
+    static BoolPtr create(std::string const& section, std::string const& name, bool required, bool defVal,
+                          ConfigValMap& configValMap) {
+        auto newPtr = BoolPtr(new ConfigValTBool(section, name, required, defVal));
+        addToMapBase(configValMap, newPtr);
+        return newPtr;
+    }
+
+    /// &&& doc
+    static std::string toString(bool bVal);
+
+    /// Return the string value of non-hidden config values. (setH
+    std::string getValStrDanger() const override { return toString(getVal()); }
+
+    void setValFromConfigStoreChild(util::ConfigStore const& configStore) override {
+        setVal(configStore.getIntRequired(getSectionName()));
+    }
+
+private:
+    ConfigValTBool(std::string const& section, std::string const& name, bool required, bool defVal)
+            : ConfigValT<bool>(section, name, required, defVal) {}
+};
+
+/// &&& doc
+class ConfigValTStr : public ConfigValT<std::string> {
+public:
+    using StrPtr = std::shared_ptr<ConfigValTStr>;
+
+    ConfigValTStr() = delete;
+    virtual ~ConfigValTStr() = default;
+
+    static StrPtr create(std::string const& section, std::string const& name, bool required,
+                         std::string const& defVal, ConfigValMap& configValMap) {
+        auto newPtr = StrPtr(new ConfigValTStr(section, name, required, defVal));
+        addToMapBase(configValMap, newPtr);
+        return newPtr;
+    }
+
+    void setValFromConfigStoreChild(util::ConfigStore const& configStore) override {
+        setVal(configStore.getRequired(getSectionName()));
+    }
+
+private:
+    ConfigValTStr(std::string const& section, std::string const& name, bool required,
+                  std::string const& defVal)
+            : ConfigValT<std::string>(section, name, required, defVal) {}
+};
+
+// &&& doc
+class ConfigValTInt : public ConfigValT<int64_t> {
+public:
+    using IntPtr = std::shared_ptr<ConfigValTInt>;
+
+    ConfigValTInt() = delete;
+    virtual ~ConfigValTInt() = default;
+
+    static IntPtr create(std::string const& section, std::string const& name, bool required, int64_t defVal,
+                         ConfigValMap& configValMap) {
+        auto newPtr = IntPtr(new ConfigValTInt(section, name, required, defVal));
+        addToMapBase(configValMap, newPtr);
+        return newPtr;
+    }
+
+    void setValFromConfigStoreChild(util::ConfigStore const& configStore) override {
+        setVal(configStore.getIntRequired(getSectionName()));
+    }
+
+private:
+    ConfigValTInt(std::string const& section, std::string const& name, bool required, int64_t defVal)
+            : ConfigValT<int64_t>(section, name, required, defVal) {}
+};
+
+// &&& doc
+class ConfigValTUInt : public ConfigValT<uint64_t> {
+public:
+    using UIntPtr = std::shared_ptr<ConfigValTUInt>;
+
+    ConfigValTUInt() = delete;
+    virtual ~ConfigValTUInt() = default;
+
+    static UIntPtr create(std::string const& section, std::string const& name, bool required, uint64_t defVal,
+                          ConfigValMap& configValMap) {
+        auto newPtr = UIntPtr(new ConfigValTUInt(section, name, required, defVal));
+        addToMapBase(configValMap, newPtr);
+        return newPtr;
+    }
+
+    void setValFromConfigStoreChild(util::ConfigStore const& configStore) override {
+        /// &&& check for negative val
+        setVal(configStore.getIntRequired(getSectionName()));
+    }
+
+private:
+    ConfigValTUInt(std::string const& section, std::string const& name, bool required, uint64_t defVal)
+            : ConfigValT<uint64_t>(section, name, required, defVal) {}
+};
 
 class ConfigValResultDeliveryProtocol : public ConfigVal {
 public:
@@ -151,24 +266,23 @@ public:
     virtual ~ConfigValResultDeliveryProtocol() = default;
 
     static CvrdpPtr create(std::string const& section, std::string const& name, bool required,
-                           std::string const& defVal) {
-        return CvrdpPtr(new ConfigValResultDeliveryProtocol(section, name, required, defVal));
+                           std::string const& defVal, ConfigValMap& configValMap) {
+        auto newPtr = CvrdpPtr(new ConfigValResultDeliveryProtocol(section, name, required, defVal));
+        addToMapBase(configValMap, newPtr);
+        return newPtr;
     }
 
     /// &&& doc
+    /// @throws ConfigException
     static TEnum parse(std::string const& str);
 
     /// &&& doc
     static std::string toString(TEnum protocol);
 
     /// Return the string value of non-hidden config values. (setH
-    std::string getValStr() const override {
-        if (!isHidden()) {
-            return toString(_val);
-        }
-        return "*****";
-    }
+    std::string getValStrDanger() const override { return toString(_val); }
 
+    void setValFromConfigStoreChild(util::ConfigStore const& configStore) override;
     TEnum getVal() const { return _val; }
     TEnum getDefVal() const { return _defVal; }
 
@@ -404,8 +518,7 @@ private:
     /// This method is called by both c-tors to populate the JSON configuration with actual
     /// parameters of the object.
     /// @param coll The name of a collection to be populated.
-    void _populateJsonConfigNew(std::string const& coll);
-    void _populateJsonConfig(std::string const& coll);  //&&& del
+    void _populateJsonConfig(std::string const& coll);
 
     /// This mutex protects the static member _instance.
     static std::mutex _mtxOnInstance;
@@ -419,110 +532,101 @@ private:
 
     ConfigValMap _configValMap;  ///< Map of all configuration entries
 
-    /// &&& doc
-    /// @throws ConfigException if the value is invalid or already in the map.
-    ConfigVal::Ptr _addToMapBase(ConfigVal::Ptr const& configVal) {
-        _configValMap.addEntry(configVal);
-        return configVal;
-    }
+    using CVTIntPtr = ConfigValTInt::IntPtr const;
+    using CVTUIntPtr = ConfigValTUInt::UIntPtr const;
+    using CVTBoolPtr = ConfigValTBool::BoolPtr const;
+    using CVTStrPtr = ConfigValTStr::StrPtr const;
 
-    ConfigValTIntPtr _addToMapInt(std::string const& section, std::string const& name, bool required,
-                                  int defVal) {
-        auto ptr = ConfigValTInt::create(section, name, required, defVal);
-        _addToMapBase(ptr);
-        return ptr;
-    }
-    ConfigValTUIntPtr _addToMapUInt(std::string const& section, std::string const& name, bool required,
-                                    unsigned int defVal) {
-        auto ptr = ConfigValTUInt::create(section, name, required, defVal);
-        _addToMapBase(ptr);
-        return ptr;
-    }
-    ConfigValTDblPtr _addToMapDbl(std::string const& section, std::string const& name, bool required,
-                                  double defVal) {
-        auto ptr = ConfigValTDbl::create(section, name, required, defVal);
-        _addToMapBase(ptr);
-        return ptr;
-    }
-    ConfigValTStrPtr _addToMapStr(std::string const& section, std::string const& name, bool required,
-                                  std::string const& defVal) {
-        auto ptr = ConfigValTStr::create(section, name, required, defVal);
-        _addToMapBase(ptr);
-        return ptr;
-    }
+    bool const required = true;
+    bool const notReq = false;
 
-    ConfigValResultDeliveryProtocol::CvrdpPtr _addToMapCvrdp(std::string const& section,
-                                                             std::string const& name, bool required,
-                                                             std::string const& defVal) {
-        auto ptr = ConfigValResultDeliveryProtocol::create(section, name, required, defVal);
-        _addToMapBase(ptr);
-        return ptr;
-    }
-
-    bool const Required = true;  //&&& ???
-    bool const NotReq = false;   //&&& ???
-
-    ConfigValTStrPtr _memManClass = _addToMapStr("memman", "class", NotReq, "MemManReal");
-    ConfigValTUIntPtr _memManSizeMb = _addToMapUInt("memman", "memory", NotReq, 1000);
-    ConfigValTStrPtr _memManLocation = _addToMapStr("memman", "location", Required, "/qserv/data/mysql");
-    ConfigValTUIntPtr _threadPoolSize = _addToMapUInt("scheduler", "thread_pool_size", NotReq, 0);
-    ConfigValTUIntPtr _maxPoolThreads = _addToMapUInt("scheduler", "max_pool_threads", NotReq, 5000);
-    ConfigValTUIntPtr _maxGroupSize = _addToMapUInt("scheduler", "group_size", NotReq, 1);
-    ConfigValTUIntPtr _requiredTasksCompleted =
-            _addToMapUInt("scheduler", "required_tasks_completed", NotReq, 25);
-    ConfigValTUIntPtr _prioritySlow = _addToMapUInt("scheduler", "priority_slow", NotReq, 2);
-    ConfigValTUIntPtr _prioritySnail = _addToMapUInt("scheduler", "priority_snail", NotReq, 1);
-    ConfigValTUIntPtr _priorityMed = _addToMapUInt("scheduler", "priority_med", NotReq, 3);
-    ConfigValTUIntPtr _priorityFast = _addToMapUInt("scheduler", "priority_fast", NotReq, 4);
-    ConfigValTUIntPtr _maxReserveSlow = _addToMapUInt("scheduler", "reserve_slow", NotReq, 2);
-    ConfigValTUIntPtr _maxReserveSnail = _addToMapUInt("scheduler", "reserve_snail", NotReq, 2);
-    ConfigValTUIntPtr _maxReserveMed = _addToMapUInt("scheduler", "reserve_med", NotReq, 2);
-    ConfigValTUIntPtr _maxReserveFast = _addToMapUInt("scheduler", "reserve_fast", NotReq, 2);
-    ConfigValTUIntPtr _maxActiveChunksSlow = _addToMapUInt("scheduler", "maxactivechunks_slow", NotReq, 2);
-    ConfigValTUIntPtr _maxActiveChunksSnail = _addToMapUInt("scheduler", "maxactivechunks_snail", NotReq, 1);
-    ConfigValTUIntPtr _maxActiveChunksMed = _addToMapUInt("scheduler", "maxactivechunks_med", NotReq, 4);
-    ConfigValTUIntPtr _maxActiveChunksFast = _addToMapUInt("scheduler", "maxactivechunks_fast", NotReq, 4);
-    ConfigValTUIntPtr _scanMaxMinutesFast = _addToMapUInt("scheduler", "scanmaxminutes_fast", NotReq, 60);
-    ConfigValTUIntPtr _scanMaxMinutesMed = _addToMapUInt("scheduler", "scanmaxminutes_med", NotReq, 60 * 8);
-    ConfigValTUIntPtr _scanMaxMinutesSlow =
-            _addToMapUInt("scheduler", "scanmaxminutes_slow", NotReq, 60 * 12);
-    ConfigValTUIntPtr _scanMaxMinutesSnail =
-            _addToMapUInt("scheduler", "scanmaxminutes_snail", NotReq, 60 * 24);
-    ConfigValTUIntPtr _maxTasksBootedPerUserQuery =
-            _addToMapUInt("scheduler", "maxtasksbootedperuserquery", NotReq, 5);
-    ConfigValTUIntPtr _maxConcurrentBootedTasks =
-            _addToMapUInt("scheduler", "maxconcurrentbootedtasks", NotReq, 25);
-    ConfigValTUIntPtr _maxSqlConnections = _addToMapUInt("sqlconnections", "maxsqlconn", NotReq, 800);
-    ConfigValTUIntPtr _ReservedInteractiveSqlConnections =
-            _addToMapUInt("sqlconnections", "reservedinteractivesqlconn", NotReq, 50);
-    ConfigValTUIntPtr _bufferMaxTotalGB = _addToMapUInt("transmit", "buffermaxtotalgb", NotReq, 41);
-    ConfigValTUIntPtr _maxTransmits = _addToMapUInt("transmit", "maxtransmits", NotReq, 40);
-    ConfigValTIntPtr _maxPerQid = _addToMapInt("transmit", "maxperqid", NotReq, 3);
-    ConfigValTStrPtr _resultsDirname = _addToMapStr("results", "dirname", NotReq, "/qserv/data/results");
-    ConfigValTUIntPtr _resultsXrootdPort = _addToMapUInt("results", "xrootd_port", NotReq, 1094);
-    ConfigValTUIntPtr _resultsNumHttpThreads = _addToMapUInt("results", "num_http_threads", NotReq, 1);
+    CVTStrPtr _memManClass = ConfigValTStr::create("memman", "class", notReq, "MemManReal", _configValMap);
+    CVTUIntPtr _memManSizeMb = ConfigValTUInt::create("memman", "memory", notReq, 1000, _configValMap);
+    CVTStrPtr _memManLocation =
+            ConfigValTStr::create("memman", "location", required, "/qserv/data/mysql", _configValMap);
+    CVTUIntPtr _threadPoolSize =
+            ConfigValTUInt::create("scheduler", "thread_pool_size", notReq, 0, _configValMap);
+    CVTUIntPtr _maxPoolThreads =
+            ConfigValTUInt::create("scheduler", "max_pool_threads", notReq, 5000, _configValMap);
+    CVTUIntPtr _maxGroupSize = ConfigValTUInt::create("scheduler", "group_size", notReq, 1, _configValMap);
+    CVTUIntPtr _requiredTasksCompleted =
+            ConfigValTUInt::create("scheduler", "required_tasks_completed", notReq, 25, _configValMap);
+    CVTUIntPtr _prioritySlow = ConfigValTUInt::create("scheduler", "priority_slow", notReq, 2, _configValMap);
+    CVTUIntPtr _prioritySnail =
+            ConfigValTUInt::create("scheduler", "priority_snail", notReq, 1, _configValMap);
+    CVTUIntPtr _priorityMed = ConfigValTUInt::create("scheduler", "priority_med", notReq, 3, _configValMap);
+    CVTUIntPtr _priorityFast = ConfigValTUInt::create("scheduler", "priority_fast", notReq, 4, _configValMap);
+    CVTUIntPtr _maxReserveSlow =
+            ConfigValTUInt::create("scheduler", "reserve_slow", notReq, 2, _configValMap);
+    CVTUIntPtr _maxReserveSnail =
+            ConfigValTUInt::create("scheduler", "reserve_snail", notReq, 2, _configValMap);
+    CVTUIntPtr _maxReserveMed = ConfigValTUInt::create("scheduler", "reserve_med", notReq, 2, _configValMap);
+    CVTUIntPtr _maxReserveFast =
+            ConfigValTUInt::create("scheduler", "reserve_fast", notReq, 2, _configValMap);
+    CVTUIntPtr _maxActiveChunksSlow =
+            ConfigValTUInt::create("scheduler", "maxactivechunks_slow", notReq, 2, _configValMap);
+    CVTUIntPtr _maxActiveChunksSnail =
+            ConfigValTUInt::create("scheduler", "maxactivechunks_snail", notReq, 1, _configValMap);
+    CVTUIntPtr _maxActiveChunksMed =
+            ConfigValTUInt::create("scheduler", "maxactivechunks_med", notReq, 4, _configValMap);
+    CVTUIntPtr _maxActiveChunksFast =
+            ConfigValTUInt::create("scheduler", "maxactivechunks_fast", notReq, 4, _configValMap);
+    CVTUIntPtr _scanMaxMinutesFast =
+            ConfigValTUInt::create("scheduler", "scanmaxminutes_fast", notReq, 60, _configValMap);
+    CVTUIntPtr _scanMaxMinutesMed =
+            ConfigValTUInt::create("scheduler", "scanmaxminutes_med", notReq, 60 * 8, _configValMap);
+    CVTUIntPtr _scanMaxMinutesSlow =
+            ConfigValTUInt::create("scheduler", "scanmaxminutes_slow", notReq, 60 * 12, _configValMap);
+    CVTUIntPtr _scanMaxMinutesSnail =
+            ConfigValTUInt::create("scheduler", "scanmaxminutes_snail", notReq, 60 * 24, _configValMap);
+    CVTUIntPtr _maxTasksBootedPerUserQuery =
+            ConfigValTUInt::create("scheduler", "maxtasksbootedperuserquery", notReq, 5, _configValMap);
+    CVTUIntPtr _maxConcurrentBootedTasks =
+            ConfigValTUInt::create("scheduler", "maxconcurrentbootedtasks", notReq, 25, _configValMap);
+    CVTUIntPtr _maxSqlConnections =
+            ConfigValTUInt::create("sqlconnections", "maxsqlconn", notReq, 800, _configValMap);
+    CVTUIntPtr _ReservedInteractiveSqlConnections =
+            ConfigValTUInt::create("sqlconnections", "reservedinteractivesqlconn", notReq, 50, _configValMap);
+    CVTUIntPtr _bufferMaxTotalGB =
+            ConfigValTUInt::create("transmit", "buffermaxtotalgb", notReq, 41, _configValMap);
+    CVTUIntPtr _maxTransmits = ConfigValTUInt::create("transmit", "maxtransmits", notReq, 40, _configValMap);
+    CVTIntPtr _maxPerQid = ConfigValTInt::create("transmit", "maxperqid", notReq, 3, _configValMap);
+    CVTStrPtr _resultsDirname =
+            ConfigValTStr::create("results", "dirname", notReq, "/qserv/data/results", _configValMap);
+    CVTUIntPtr _resultsXrootdPort =
+            ConfigValTUInt::create("results", "xrootd_port", notReq, 1094, _configValMap);
+    CVTUIntPtr _resultsNumHttpThreads =
+            ConfigValTUInt::create("results", "num_http_threads", notReq, 1, _configValMap);
     ConfigValResultDeliveryProtocol::CvrdpPtr _resultDeliveryProtocol =
-            _addToMapCvrdp("results", "protocol", NotReq, "HTTP");
-    ConfigValTIntPtr _resultsCleanUpOnStart =
-            _addToMapInt("results", "clean_up_on_start", NotReq, 1);  //&&& boolean
-    ConfigValTStrPtr _replicationInstanceId = _addToMapStr("replication", "instance_id", NotReq, "");
-    ConfigValTStrPtr _replicationAuthKey = _addToMapStr("replication", "auth_key", NotReq, "");
+            ConfigValResultDeliveryProtocol::create("results", "protocol", notReq, "HTTP", _configValMap);
+    CVTBoolPtr _resultsCleanUpOnStart =
+            ConfigValTBool::create("results", "clean_up_on_start", notReq, true, _configValMap);
 
-    ConfigValTStrPtr _replicationAdminAuthKey = _addToMapStr("replication", "admin_auth_key", NotReq, "");
+    CVTStrPtr _replicationInstanceId =
+            ConfigValTStr::create("replication", "instance_id", notReq, "", _configValMap);
+    CVTStrPtr _replicationAuthKey =
+            ConfigValTStr::create("replication", "auth_key", notReq, "", _configValMap);
+    CVTStrPtr _replicationAdminAuthKey =
+            ConfigValTStr::create("replication", "admin_auth_key", notReq, "", _configValMap);
+    CVTStrPtr _replicationRegistryHost =
+            ConfigValTStr::create("replication", "registry_host", required, "", _configValMap);
+    CVTUIntPtr _replicationRegistryPort =
+            ConfigValTUInt::create("replication", "registry_port", required, 0, _configValMap);
+    CVTUIntPtr _replicationRegistryHearbeatIvalSec =
+            ConfigValTUInt::create("replication", "registry_heartbeat_ival_sec", notReq, 1, _configValMap);
+    CVTUIntPtr _replicationHttpPort =
+            ConfigValTUInt::create("replication", "http_port", required, 0, _configValMap);
+    CVTUIntPtr _replicationNumHttpThreads =
+            ConfigValTUInt::create("replication", "num_http_threads", notReq, 2, _configValMap);
 
-    ConfigValTStrPtr _replicationRegistryHost = _addToMapStr("replication", "registry_host", Required, "");
-    ConfigValTUIntPtr _replicationRegistryPort = _addToMapUInt("replication", "registry_port", Required, 0);
-    ConfigValTUIntPtr _replicationRegistryHearbeatIvalSec =
-            _addToMapUInt("replication", "registry_heartbeat_ival_sec", NotReq, 1);
-    ConfigValTUIntPtr _replicationHttpPort = _addToMapUInt("replication", "http_port", Required, 0);
-    ConfigValTUIntPtr _replicationNumHttpThreads =
-            _addToMapUInt("replication", "num_http_threads", NotReq, 2);
-    ConfigValTUIntPtr _mysqlPort = _addToMapUInt("mysql", "port", NotReq, 4048);
-    ConfigValTStrPtr _mysqlSocket = _addToMapStr("mysql", "socket", NotReq, "");
-    ConfigValTStrPtr _mysqlUsername = _addToMapStr("mysql", "username", Required, "qsmaster");
-    ConfigValTStrPtr _mysqlPassword = _addToMapStr("mysql", "password", Required, "not_the_password");
-
-    ConfigValTStrPtr _mysqlHostname = _addToMapStr("mysql", "hostname", Required, "none");
+    CVTUIntPtr _mysqlPort = ConfigValTUInt::create("mysql", "port", notReq, 4048, _configValMap);
+    CVTStrPtr _mysqlSocket = ConfigValTStr::create("mysql", "socket", notReq, "", _configValMap);
+    CVTStrPtr _mysqlUsername =
+            ConfigValTStr::create("mysql", "username", required, "qsmaster", _configValMap);
+    CVTStrPtr _mysqlPassword =
+            ConfigValTStr::create("mysql", "password", required, "not_the_password", _configValMap);
+    CVTStrPtr _mysqlHostname = ConfigValTStr::create("mysql", "hostname", required, "none", _configValMap);
+    CVTStrPtr _mysqlDb = ConfigValTStr::create("mysql", "db", notReq, "", _configValMap);
 };
 
 }  // namespace lsst::qserv::wconfig
