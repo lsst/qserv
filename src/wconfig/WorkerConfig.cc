@@ -1,7 +1,6 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2016 AURA/LSST.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -49,81 +48,6 @@ mutex WorkerConfig::_mtxOnInstance;
 
 shared_ptr<WorkerConfig> WorkerConfig::_instance;
 
-void ConfigVal::addToMapBase(ConfigValMap& configValMap, Ptr const& newPtr) { configValMap.addEntry(newPtr); }
-
-void ConfigVal::logValSet(std::string const& msg) {
-    LOGS(_log, LOG_LVL_INFO, "ConfigVal " << getSectionName() << " set to " << getValStr() + " " + msg);
-}
-
-void ConfigVal::setValFromConfigStore(util::ConfigStore const& configStore) {
-    try {
-        setValFromConfigStoreChild(configStore);
-        setValSetFromFile(true);
-    } catch (util::KeyNotFoundError const& e) {
-        LOGS(_log, LOG_LVL_WARN,
-             " ConfigVal no entry for " << getSectionName() << " using default=" << getValStr());
-    }
-}
-
-string ConfigValTBool::toString(bool val) {
-    if (val == 0) {
-        return string("false");
-    }
-    return string("true");
-}
-
-void ConfigValMap::addEntry(ConfigVal::Ptr const& newVal) {
-    std::string section = newVal->getSection();
-    std::string name = newVal->getName();
-    auto& nameMap = _sectionMap[section];
-    auto iter = nameMap.find(name);
-    if (iter != nameMap.end()) {
-        throw ConfigException(ERR_LOC, "ConfigValMap already has entry for " + newVal->getSectionName());
-    }
-    nameMap[name] = newVal;
-}
-
-ConfigVal::Ptr ConfigValMap::getEntry(std::string const& section, std::string const& name) {
-    auto iterSec = _sectionMap.find(section);
-    if (iterSec == _sectionMap.end()) {
-        return nullptr;
-    }
-    NameMap& nMap = iterSec->second;
-    auto iterName = nMap.find(name);
-    if (iterName == nMap.end()) {
-        return nullptr;
-    }
-    return iterName->second;
-}
-
-void ConfigValMap::readConfigStore(util::ConfigStore const& configStore) {
-    for (auto&& [section, nameMap] : _sectionMap) {
-        for (auto&& [name, cfgVal] : nameMap) {
-            try {
-                cfgVal->setValFromConfigStore(configStore);
-            } catch (util::KeyNotFoundError const& e) {
-                LOGS(_log, LOG_LVL_WARN,
-                     " ConfigVal " << cfgVal->getSectionName() << " using default=" << cfgVal->getValStr());
-            }
-        }
-    }
-}
-
-std::tuple<bool, std::string> ConfigValMap::checkRequired() const {
-    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& ConfigValMap::checkRequired() a");
-    bool errorFound = false;
-    string eMsg;
-    for (auto&& [section, nameMap] : _sectionMap) {
-        for (auto&& [name, cfgVal] : nameMap) {
-            if (cfgVal->isRequired() && !cfgVal->isValSetFromFile()) {
-                errorFound = true;
-                eMsg += " " + cfgVal->getSectionName();
-            }
-        }
-    }
-    return {errorFound, eMsg};
-}
-
 ConfigValResultDeliveryProtocol::TEnum ConfigValResultDeliveryProtocol::parse(string const& str) {
     // Convert to upper case for case-insensitive comparisons.
     string strUp;
@@ -135,17 +59,17 @@ ConfigValResultDeliveryProtocol::TEnum ConfigValResultDeliveryProtocol::parse(st
     } else if (strUp == "XROOT") {
         return XROOT;
     }
-    throw ConfigException(ERR_LOC, string("ConfigValResultDeliveryProtocol::") + __func__ +
-                                           " could not parse '" + str + "'.");
+    throw util::ConfigException(ERR_LOC, string("ConfigValResultDeliveryProtocol::") + __func__ +
+                                                 " could not parse '" + str + "'.");
 }
 
 void ConfigValResultDeliveryProtocol::setValFromConfigStoreChild(util::ConfigStore const& configStore) {
     std::string str = configStore.getRequired(getSectionName());
     try {
         setVal(parse(str));
-    } catch (ConfigException const& exc) {
+    } catch (util::ConfigException const& exc) {
         // Throw a similar exception with additional information.
-        throw ConfigException(ERR_LOC, getSectionName() + " " + exc.what());
+        throw util::ConfigException(ERR_LOC, getSectionName() + " " + exc.what());
     }
 }
 
@@ -156,8 +80,8 @@ string ConfigValResultDeliveryProtocol::toString(TEnum protocol) {
         case XROOT:
             return "XROOT";
     }
-    throw ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) + ": unknown protocol " +
-                                           to_string(static_cast<int>(protocol)));
+    throw util::ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) + ": unknown protocol " +
+                                                 to_string(static_cast<int>(protocol)));
 }
 
 shared_ptr<WorkerConfig> WorkerConfig::create(string const& configFileName) {
@@ -197,11 +121,11 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
     _configValMap.readConfigStore(configStore);
     auto [errorFound, eMsg] = _configValMap.checkRequired();
     if (errorFound) {
-        throw ConfigException(ERR_LOC, "worker config missing required value(s) " + eMsg);
+        throw util::ConfigException(ERR_LOC, "worker config missing required value(s) " + eMsg);
     }
 
     if (_mysqlPort->getVal() == 0 && _mysqlSocket->getVal().empty()) {
-        throw ConfigException(
+        throw util::ConfigException(
                 ERR_LOC, "At least one of mysql.port or mysql.socket is required in the configuration file.");
     }
 
@@ -214,20 +138,21 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
     _mysqlPassword->setHidden();
 
     if (_replicationRegistryHost->getVal().empty()) {
-        throw ConfigException(
+        throw util::ConfigException(
                 ERR_LOC, "WorkerConfig::" + string(__func__) + ": 'replication.registry_host' is not set.");
     }
     if (_replicationRegistryPort->getVal() == 0) {
-        throw ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) +
-                                               ": 'replication.registry_port' number can't be 0.");
+        throw util::ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) +
+                                                     ": 'replication.registry_port' number can't be 0.");
     }
     if (_replicationRegistryHearbeatIvalSec->getVal() == 0) {
-        throw ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) +
-                                               ": 'replication.registry_heartbeat_ival_sec' can't be 0.");
+        throw util::ConfigException(ERR_LOC,
+                                    "WorkerConfig::" + string(__func__) +
+                                            ": 'replication.registry_heartbeat_ival_sec' can't be 0.");
     }
     if (_replicationNumHttpThreads->getVal() == 0) {
-        throw ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) +
-                                               ": 'replication.num_http_threads' can't be 0.");
+        throw util::ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) +
+                                                     ": 'replication.num_http_threads' can't be 0.");
     }
 
     // Note that actual collection may contain parameters not mentioned in
@@ -244,16 +169,6 @@ void WorkerConfig::setReplicationHttpPort(uint16_t port) {
     _jsonConfig["actual"]["replication"]["http_port"] = _replicationHttpPort->getValStr();
 }
 
-void ConfigValMap::populateJson(nlohmann::json& js, string const& coll) {
-    for (auto const& [section, nMap] : _sectionMap) {
-        nlohmann::json jsNames;
-        for (auto const& [name, cfgPtr] : nMap) {
-            jsNames[cfgPtr->getName()] = cfgPtr->getValStr();
-        }
-        js[section] = jsNames;
-    }
-}
-
 void WorkerConfig::_populateJsonConfig(string const& coll) {
     nlohmann::json& js = _jsonConfig[coll];
     LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& _populateJsonConfigNew b" << js);
@@ -262,7 +177,7 @@ void WorkerConfig::_populateJsonConfig(string const& coll) {
 }
 
 ostream& operator<<(ostream& out, WorkerConfig const& workerConfig) {
-    out << workerConfig._jsonConfig.dump();
+    out << workerConfig._jsonConfig.dump();  // &&& check this
     return out;
 }
 
