@@ -24,7 +24,6 @@
 #define LSST_QSERV_UTIL_CONFIGVALMAP_H
 
 // System headers
-//&&&#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -35,7 +34,6 @@
 #include <nlohmann/json.hpp>
 
 // Qserv headers
-//&&&#include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 #include "util/Issue.h"
 
@@ -49,13 +47,16 @@ public:
 
 class ConfigValMap;
 
+/// Base class for storing values, usually from configuration files, that have
+/// identifiers consisting of a `section` and a `name`.
+/// This class is meant to be used with ConfigValMap.
 class ConfigVal {
 public:
     using Ptr = std::shared_ptr<ConfigVal>;
 
     ConfigVal() = delete;
-    ConfigVal(std::string const& section, std::string const& name, bool required)
-            : _section(section), _name(name), _required(required) {}
+    ConfigVal(std::string const& section, std::string const& name, bool required, bool hidden)
+            : _section(section), _name(name), _required(required), _hidden(hidden) {}
     virtual ~ConfigVal() = default;
 
     ConfigVal(ConfigVal const&) = delete;
@@ -63,13 +64,10 @@ public:
 
     std::string getSection() const { return _section; }
     std::string getName() const { return _name; }
-    std::string getSectionName() const { return _section + "." + _name; }
+    std::string getSectionDotName() const { return _section + "." + _name; }
 
     /// Return true if the value is required to be from a file.
     bool isRequired() const { return _required; }
-
-    /// Calling this indicates this value should not be shown to users or put in logs.
-    void setHidden() { _hidden = true; }
 
     /// Return true if this value should not be seen by users or logs.
     bool isHidden() const { return _hidden; }
@@ -87,65 +85,71 @@ public:
     }
 
     /// All child classes should be able to return a valid string version of their value,
-    /// this function will show `_hidden` values.
+    /// this function will show `_hidden` values, which is dangerous.
     virtual std::string getValStrDanger() const = 0;
 
-    /// &&& doc
+    /// If possible, get the value (`_val` and `_defVal`) for this item from `configStore`.
+    /// If the value cannot be set, the default value remains unchanged.
     virtual void setValFromConfigStore(util::ConfigStore const& configStore) final;
 
-    /// &&& doc
+    /// Version of `setValFromConfigStore` used by derived classes to get the
+    /// correct type when querying `configStore`.
     virtual void setValFromConfigStoreChild(util::ConfigStore const& configStore) = 0;
 
     /// @throws ConfigException if the value is invalid or already in the map.
     static void addToMapBase(ConfigValMap& configValMap, Ptr const&);
 
 private:
-    std::string const _section;
-    std::string const _name;
-    bool const _required;          ///< &&& doc
-    bool _hidden = false;          ///< &&& doc
-    std::string _strFromCfg;       ///< Original string read from the configuration file.
+    std::string const _section;    ///< section name that this item belongs to.
+    std::string const _name;       ///< name of this item within its section.
+    bool const _required;          ///< Set to true if this value must be found in the file.
+    bool const _hidden;            ///< Set to true if the value should be hidden from users and logs.
     bool _valSetFromFile = false;  ///< set to true if value was set from configuration file.
 
 protected:
+    /// Set to true if the value is set from a file. This is used with _required to verify that
+    /// all required values were found in a file. See ConfigValMap::checkRequired()
     void setValSetFromFile(bool setFromFile) { _valSetFromFile = setFromFile; }
-    /// &&& doc
+
+    /// Used to log when values are set, particularly from the template classes.
     void logValSet(std::string const& msg = std::string());
 };
 
-/// &&& doc
+/// A template child of ConfigVal that can actually store the value.
 template <typename T>
 class ConfigValT : public ConfigVal {
 public:
-    static std::shared_ptr<ConfigValT<T>> create(std::string const& section, std::string const& name,
-                                                 bool required, T defVal, ConfigValMap& configValMap) {
-        auto newPtr = std::shared_ptr<ConfigValT<T>>(new ConfigValT<T>(section, name, required, defVal));
+    /// Provide a shared_ptr to a new ConfigValT<T> object and adds it to `configValMap`.
+    /// @throws ConfigException if there are problems.
+    static std::shared_ptr<ConfigValT<T>> create(ConfigValMap& configValMap, std::string const& section,
+                                                 std::string const& name, bool required, T defVal,
+                                                 bool hidden = false) {
+        auto newPtr =
+                std::shared_ptr<ConfigValT<T>>(new ConfigValT<T>(section, name, required, defVal, hidden));
         addToMapBase(configValMap, newPtr);
         return newPtr;
     }
 
     virtual ~ConfigValT() = default;
 
-    /// Return the string value of non-hidden config values. (setH
+    /// @see `ConfigVal::getValStrDanger()`
     std::string getValStrDanger() const override {
         std::stringstream os;
         os << _val;
         return os.str();
     }
     T const& getVal() const { return _val; }
-    T const& getDefVal() const { return _defVal; }
     void setVal(T val) {
         _val = val;
         logValSet();
     }
 
 protected:
-    ConfigValT(std::string const& section, std::string const& name, bool required, T defVal)
-            : ConfigVal(section, name, required), _val(defVal), _defVal(defVal) {}
+    ConfigValT(std::string const& section, std::string const& name, bool required, T defVal, bool hidden)
+            : ConfigVal(section, name, required, hidden), _val(defVal) {}
 
 private:
-    T _val;     ///< &&& doc
-    T _defVal;  ///< &&& doc
+    T _val;  ///< Value for the item this class is storing.
 };
 
 /// Bool is special case for json as the value should be "true" or "false" but
@@ -157,29 +161,31 @@ public:
     ConfigValTBool() = delete;
     virtual ~ConfigValTBool() = default;
 
-    static BoolPtr create(std::string const& section, std::string const& name, bool required, bool defVal,
-                          ConfigValMap& configValMap) {
-        auto newPtr = BoolPtr(new ConfigValTBool(section, name, required, defVal));
+    static BoolPtr create(ConfigValMap& configValMap, std::string const& section, std::string const& name,
+                          bool required, bool defVal, bool hidden = false) {
+        auto newPtr = BoolPtr(new ConfigValTBool(section, name, required, defVal, hidden));
         addToMapBase(configValMap, newPtr);
         return newPtr;
     }
 
-    /// &&& doc
+    /// Return "false" if `bVal` is '0', otherwise "true".
     static std::string toString(bool bVal);
 
-    /// Return the string value of non-hidden config values. (setH
+    /// @see `ConfigVal::getValStrDanger()`
     std::string getValStrDanger() const override { return toString(getVal()); }
 
+    /// @see `ConfigVal::setValFromConfigStoreChild()`
     void setValFromConfigStoreChild(util::ConfigStore const& configStore) override {
-        setVal(configStore.getIntRequired(getSectionName()));
+        setVal(configStore.getIntRequired(getSectionDotName()));
     }
 
 private:
-    ConfigValTBool(std::string const& section, std::string const& name, bool required, bool defVal)
-            : ConfigValT<bool>(section, name, required, defVal) {}
+    ConfigValTBool(std::string const& section, std::string const& name, bool required, bool defVal,
+                   bool hidden)
+            : ConfigValT<bool>(section, name, required, defVal, hidden) {}
 };
 
-/// &&& doc
+/// This class reads and stores string values.
 class ConfigValTStr : public ConfigValT<std::string> {
 public:
     using StrPtr = std::shared_ptr<ConfigValTStr>;
@@ -187,24 +193,24 @@ public:
     ConfigValTStr() = delete;
     virtual ~ConfigValTStr() = default;
 
-    static StrPtr create(std::string const& section, std::string const& name, bool required,
-                         std::string const& defVal, ConfigValMap& configValMap) {
-        auto newPtr = StrPtr(new ConfigValTStr(section, name, required, defVal));
+    static StrPtr create(ConfigValMap& configValMap, std::string const& section, std::string const& name,
+                         bool required, std::string const& defVal, bool hidden = false) {
+        auto newPtr = StrPtr(new ConfigValTStr(section, name, required, defVal, hidden));
         addToMapBase(configValMap, newPtr);
         return newPtr;
     }
 
     void setValFromConfigStoreChild(util::ConfigStore const& configStore) override {
-        setVal(configStore.getRequired(getSectionName()));
+        setVal(configStore.getRequired(getSectionDotName()));
     }
 
 private:
     ConfigValTStr(std::string const& section, std::string const& name, bool required,
-                  std::string const& defVal)
-            : ConfigValT<std::string>(section, name, required, defVal) {}
+                  std::string const& defVal, bool hidden)
+            : ConfigValT<std::string>(section, name, required, defVal, hidden) {}
 };
 
-// &&& doc
+// This class reads and stores integer values.
 class ConfigValTInt : public ConfigValT<int64_t> {
 public:
     using IntPtr = std::shared_ptr<ConfigValTInt>;
@@ -212,23 +218,24 @@ public:
     ConfigValTInt() = delete;
     virtual ~ConfigValTInt() = default;
 
-    static IntPtr create(std::string const& section, std::string const& name, bool required, int64_t defVal,
-                         ConfigValMap& configValMap) {
-        auto newPtr = IntPtr(new ConfigValTInt(section, name, required, defVal));
+    static IntPtr create(ConfigValMap& configValMap, std::string const& section, std::string const& name,
+                         bool required, int64_t defVal, bool hidden = false) {
+        auto newPtr = IntPtr(new ConfigValTInt(section, name, required, defVal, hidden));
         addToMapBase(configValMap, newPtr);
         return newPtr;
     }
 
     void setValFromConfigStoreChild(util::ConfigStore const& configStore) override {
-        setVal(configStore.getIntRequired(getSectionName()));
+        setVal(configStore.getIntRequired(getSectionDotName()));
     }
 
 private:
-    ConfigValTInt(std::string const& section, std::string const& name, bool required, int64_t defVal)
-            : ConfigValT<int64_t>(section, name, required, defVal) {}
+    ConfigValTInt(std::string const& section, std::string const& name, bool required, int64_t defVal,
+                  bool hidden)
+            : ConfigValT<int64_t>(section, name, required, defVal, hidden) {}
 };
 
-// &&& doc
+/// This class reads and stores unsigned integer values.
 class ConfigValTUInt : public ConfigValT<uint64_t> {
 public:
     using UIntPtr = std::shared_ptr<ConfigValTUInt>;
@@ -236,43 +243,57 @@ public:
     ConfigValTUInt() = delete;
     virtual ~ConfigValTUInt() = default;
 
-    static UIntPtr create(std::string const& section, std::string const& name, bool required, uint64_t defVal,
-                          ConfigValMap& configValMap) {
-        auto newPtr = UIntPtr(new ConfigValTUInt(section, name, required, defVal));
+    static UIntPtr create(ConfigValMap& configValMap, std::string const& section, std::string const& name,
+                          bool required, uint64_t defVal, bool hidden = false) {
+        auto newPtr = UIntPtr(new ConfigValTUInt(section, name, required, defVal, hidden));
         addToMapBase(configValMap, newPtr);
         return newPtr;
     }
 
     void setValFromConfigStoreChild(util::ConfigStore const& configStore) override {
-        /// &&& check for negative val
-        setVal(configStore.getIntRequired(getSectionName()));
+        int64_t vInt = configStore.getIntRequired(getSectionDotName());
+        if (vInt < 0) {
+            throw ConfigException(ERR_LOC, "ConfigValUInt " + getSectionDotName() + " was negative " +
+                                                   std::to_string(vInt));
+        }
+        setVal(configStore.getIntRequired(getSectionDotName()));
     }
 
 private:
-    ConfigValTUInt(std::string const& section, std::string const& name, bool required, uint64_t defVal)
-            : ConfigValT<uint64_t>(section, name, required, defVal) {}
+    ConfigValTUInt(std::string const& section, std::string const& name, bool required, uint64_t defVal,
+                   bool hidden)
+            : ConfigValT<uint64_t>(section, name, required, defVal, hidden) {}
 };
 
+/// &&& doc
 class ConfigValMap {
 public:
     using NameMap = std::map<std::string, ConfigVal::Ptr>;  ///< key is ConfigVal::_name
     using SectionMap = std::map<std::string, NameMap>;      ///< key is ConfigVal::_section
 
-    /// &&& doc
+    /// Insert `newVal` into the map at a location determined by section and name.
+    /// @throw ConfigException if the entry already exists.
     void addEntry(ConfigVal::Ptr const& newVal);
 
-    /// &&& doc
+    /// Return a pointer to the entry for `section` and `name`, returning
+    /// nullptr if the entry cannot be found.
     ConfigVal::Ptr getEntry(std::string const& section, std::string const& name);
 
-    /// &&& doc
+    /// Read the configuration values for all items in the map from `configStore`.
+    /// All values that are found will have `_valSetFromFile` set to true.
     /// @throws ConfigException if there are problems.
     void readConfigStore(util::ConfigStore const& configStore);
 
-    /// &&& doc
+    /// Returns false and an empty string if all `_required` values were set from the file,
+    /// otherwise, it returns true and a string listing the problem entries.
     std::tuple<bool, std::string> checkRequired() const;
 
+    /// This function fills the supplied `js` object with entries from all values
+    /// in `_sectionMap` given by section and then all names in that section.
+    void populateJson(nlohmann::json& js) const;
+
     /// &&& doc
-    void populateJson(nlohmann::json& js, std::string const& coll);  // &&& add const
+    std::map<std::string, std::string> getSectionMapStr(std::string const& sectionName) const;
 
 private:
     SectionMap _sectionMap;

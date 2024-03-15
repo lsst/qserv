@@ -42,6 +42,9 @@
 
 namespace lsst::qserv::wconfig {
 
+/// This class handles the special case for the configuration value representing
+/// the communications protocol used which can have a text value of "HTTP" or "
+/// "XROOTD", case-insenitive.
 class ConfigValResultDeliveryProtocol : public util::ConfigVal {
 public:
     using CvrdpPtr = std::shared_ptr<ConfigValResultDeliveryProtocol>;
@@ -53,18 +56,19 @@ public:
     ConfigValResultDeliveryProtocol() = delete;
     virtual ~ConfigValResultDeliveryProtocol() = default;
 
-    static CvrdpPtr create(std::string const& section, std::string const& name, bool required,
-                           std::string const& defVal, util::ConfigValMap& configValMap) {
-        auto newPtr = CvrdpPtr(new ConfigValResultDeliveryProtocol(section, name, required, defVal));
+    static CvrdpPtr create(util::ConfigValMap& configValMap, std::string const& section,
+                           std::string const& name, bool required, std::string const& defVal,
+                           bool hidden = false) {
+        auto newPtr = CvrdpPtr(new ConfigValResultDeliveryProtocol(section, name, required, defVal, hidden));
         addToMapBase(configValMap, newPtr);
         return newPtr;
     }
 
-    /// &&& doc
+    /// Return the appropriate TEnum for the given `str`, where "" returns HTTP.
     /// @throws ConfigException
     static TEnum parse(std::string const& str);
 
-    /// &&& doc
+    /// Convert the TEnum `protocol` to the appropriate string.
     static std::string toString(TEnum protocol);
 
     /// Return the string value of non-hidden config values. (setH
@@ -81,24 +85,21 @@ public:
 
 private:
     ConfigValResultDeliveryProtocol(std::string const& section, std::string const& name, bool required,
-                                    std::string const& defVal)
-            : ConfigVal(section, name, required), _val(parse(defVal)), _defVal(_val) {}
+                                    std::string const& defVal, bool hidden)
+            : ConfigVal(section, name, required, hidden), _val(parse(defVal)), _defVal(_val) {}
     TEnum _val;
     TEnum _defVal;
 };
 
-/**
- * Provide all configuration parameters for a Qserv worker instance.
- * Parse an INI configuration file, identify required parameters and ignore
- * others, analyze and store them inside private member variables, use default
- * values for missing parameters, provide accessor for each of these variable.
- * This class hides configuration complexity
- * from other part of the code. All private member variables are related to INI
- * parameters and are immutables.
- *
- * @note the class has a thread-safe API.
- */
-
+/// Provide all configuration parameters for a Qserv worker instance.
+/// Parse an INI configuration file, identify required parameters and ignore
+/// others, analyze and store them inside private member variables, use default
+/// values for missing parameters, provide accessor for each of these variable.
+/// This class hides configuration complexity
+/// from other part of the code. All private member variables are related to INI
+/// parameters and are immutables.
+///
+/// @note the class has a thread-safe API.
 class WorkerConfig {
 public:
     /// Create an instance of WorkerConfig and if a configuration file is provided then
@@ -302,102 +303,103 @@ private:
 
     bool const required = true;
     bool const notReq = false;
+    bool const hidden = true;
 
     CVTStrPtr _memManClass =
-            util::ConfigValTStr::create("memman", "class", notReq, "MemManReal", _configValMap);
-    CVTUIntPtr _memManSizeMb = util::ConfigValTUInt::create("memman", "memory", notReq, 1000, _configValMap);
+            util::ConfigValTStr::create(_configValMap, "memman", "class", notReq, "MemManReal");
+    CVTUIntPtr _memManSizeMb = util::ConfigValTUInt::create(_configValMap, "memman", "memory", notReq, 1000);
     CVTStrPtr _memManLocation =
-            util::ConfigValTStr::create("memman", "location", required, "/qserv/data/mysql", _configValMap);
+            util::ConfigValTStr::create(_configValMap, "memman", "location", required, "/qserv/data/mysql");
     CVTUIntPtr _threadPoolSize =
-            util::ConfigValTUInt::create("scheduler", "thread_pool_size", notReq, 0, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "thread_pool_size", notReq, 0);
     CVTUIntPtr _maxPoolThreads =
-            util::ConfigValTUInt::create("scheduler", "max_pool_threads", notReq, 5000, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "max_pool_threads", notReq, 5000);
     CVTUIntPtr _maxGroupSize =
-            util::ConfigValTUInt::create("scheduler", "group_size", notReq, 1, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "group_size", notReq, 1);
     CVTUIntPtr _requiredTasksCompleted =
-            util::ConfigValTUInt::create("scheduler", "required_tasks_completed", notReq, 25, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "required_tasks_completed", notReq, 25);
     CVTUIntPtr _prioritySlow =
-            util::ConfigValTUInt::create("scheduler", "priority_slow", notReq, 2, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_slow", notReq, 2);
     CVTUIntPtr _prioritySnail =
-            util::ConfigValTUInt::create("scheduler", "priority_snail", notReq, 1, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_snail", notReq, 1);
     CVTUIntPtr _priorityMed =
-            util::ConfigValTUInt::create("scheduler", "priority_med", notReq, 3, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_med", notReq, 3);
     CVTUIntPtr _priorityFast =
-            util::ConfigValTUInt::create("scheduler", "priority_fast", notReq, 4, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_fast", notReq, 4);
     CVTUIntPtr _maxReserveSlow =
-            util::ConfigValTUInt::create("scheduler", "reserve_slow", notReq, 2, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_slow", notReq, 2);
     CVTUIntPtr _maxReserveSnail =
-            util::ConfigValTUInt::create("scheduler", "reserve_snail", notReq, 2, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_snail", notReq, 2);
     CVTUIntPtr _maxReserveMed =
-            util::ConfigValTUInt::create("scheduler", "reserve_med", notReq, 2, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_med", notReq, 2);
     CVTUIntPtr _maxReserveFast =
-            util::ConfigValTUInt::create("scheduler", "reserve_fast", notReq, 2, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_fast", notReq, 2);
     CVTUIntPtr _maxActiveChunksSlow =
-            util::ConfigValTUInt::create("scheduler", "maxactivechunks_slow", notReq, 2, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxactivechunks_slow", notReq, 2);
     CVTUIntPtr _maxActiveChunksSnail =
-            util::ConfigValTUInt::create("scheduler", "maxactivechunks_snail", notReq, 1, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxactivechunks_snail", notReq, 1);
     CVTUIntPtr _maxActiveChunksMed =
-            util::ConfigValTUInt::create("scheduler", "maxactivechunks_med", notReq, 4, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxactivechunks_med", notReq, 4);
     CVTUIntPtr _maxActiveChunksFast =
-            util::ConfigValTUInt::create("scheduler", "maxactivechunks_fast", notReq, 4, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxactivechunks_fast", notReq, 4);
     CVTUIntPtr _scanMaxMinutesFast =
-            util::ConfigValTUInt::create("scheduler", "scanmaxminutes_fast", notReq, 60, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "scanmaxminutes_fast", notReq, 60);
     CVTUIntPtr _scanMaxMinutesMed =
-            util::ConfigValTUInt::create("scheduler", "scanmaxminutes_med", notReq, 60 * 8, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "scanmaxminutes_med", notReq, 60 * 8);
     CVTUIntPtr _scanMaxMinutesSlow =
-            util::ConfigValTUInt::create("scheduler", "scanmaxminutes_slow", notReq, 60 * 12, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "scanmaxminutes_slow", notReq, 60 * 12);
     CVTUIntPtr _scanMaxMinutesSnail =
-            util::ConfigValTUInt::create("scheduler", "scanmaxminutes_snail", notReq, 60 * 24, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "scanmaxminutes_snail", notReq, 60 * 24);
     CVTUIntPtr _maxTasksBootedPerUserQuery =
-            util::ConfigValTUInt::create("scheduler", "maxtasksbootedperuserquery", notReq, 5, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxtasksbootedperuserquery", notReq, 5);
     CVTUIntPtr _maxConcurrentBootedTasks =
-            util::ConfigValTUInt::create("scheduler", "maxconcurrentbootedtasks", notReq, 25, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxconcurrentbootedtasks", notReq, 25);
     CVTUIntPtr _maxSqlConnections =
-            util::ConfigValTUInt::create("sqlconnections", "maxsqlconn", notReq, 800, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "sqlconnections", "maxsqlconn", notReq, 800);
     CVTUIntPtr _ReservedInteractiveSqlConnections = util::ConfigValTUInt::create(
-            "sqlconnections", "reservedinteractivesqlconn", notReq, 50, _configValMap);
+            _configValMap, "sqlconnections", "reservedinteractivesqlconn", notReq, 50);
     CVTUIntPtr _bufferMaxTotalGB =
-            util::ConfigValTUInt::create("transmit", "buffermaxtotalgb", notReq, 41, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "transmit", "buffermaxtotalgb", notReq, 41);
     CVTUIntPtr _maxTransmits =
-            util::ConfigValTUInt::create("transmit", "maxtransmits", notReq, 40, _configValMap);
-    CVTIntPtr _maxPerQid = util::ConfigValTInt::create("transmit", "maxperqid", notReq, 3, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "transmit", "maxtransmits", notReq, 40);
+    CVTIntPtr _maxPerQid = util::ConfigValTInt::create(_configValMap, "transmit", "maxperqid", notReq, 3);
     CVTStrPtr _resultsDirname =
-            util::ConfigValTStr::create("results", "dirname", notReq, "/qserv/data/results", _configValMap);
+            util::ConfigValTStr::create(_configValMap, "results", "dirname", notReq, "/qserv/data/results");
     CVTUIntPtr _resultsXrootdPort =
-            util::ConfigValTUInt::create("results", "xrootd_port", notReq, 1094, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "results", "xrootd_port", notReq, 1094);
     CVTUIntPtr _resultsNumHttpThreads =
-            util::ConfigValTUInt::create("results", "num_http_threads", notReq, 1, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "results", "num_http_threads", notReq, 1);
     ConfigValResultDeliveryProtocol::CvrdpPtr _resultDeliveryProtocol =
-            ConfigValResultDeliveryProtocol::create("results", "protocol", notReq, "HTTP", _configValMap);
+            ConfigValResultDeliveryProtocol::create(_configValMap, "results", "protocol", notReq, "HTTP");
     CVTBoolPtr _resultsCleanUpOnStart =
-            util::ConfigValTBool::create("results", "clean_up_on_start", notReq, true, _configValMap);
+            util::ConfigValTBool::create(_configValMap, "results", "clean_up_on_start", notReq, true);
 
     CVTStrPtr _replicationInstanceId =
-            util::ConfigValTStr::create("replication", "instance_id", notReq, "", _configValMap);
+            util::ConfigValTStr::create(_configValMap, "replication", "instance_id", notReq, "");
     CVTStrPtr _replicationAuthKey =
-            util::ConfigValTStr::create("replication", "auth_key", notReq, "", _configValMap);
+            util::ConfigValTStr::create(_configValMap, "replication", "auth_key", notReq, "", hidden);
     CVTStrPtr _replicationAdminAuthKey =
-            util::ConfigValTStr::create("replication", "admin_auth_key", notReq, "", _configValMap);
+            util::ConfigValTStr::create(_configValMap, "replication", "admin_auth_key", notReq, "", hidden);
     CVTStrPtr _replicationRegistryHost =
-            util::ConfigValTStr::create("replication", "registry_host", required, "", _configValMap);
+            util::ConfigValTStr::create(_configValMap, "replication", "registry_host", required, "");
     CVTUIntPtr _replicationRegistryPort =
-            util::ConfigValTUInt::create("replication", "registry_port", required, 0, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "replication", "registry_port", required, 0);
     CVTUIntPtr _replicationRegistryHearbeatIvalSec = util::ConfigValTUInt::create(
-            "replication", "registry_heartbeat_ival_sec", notReq, 1, _configValMap);
+            _configValMap, "replication", "registry_heartbeat_ival_sec", notReq, 1);
     CVTUIntPtr _replicationHttpPort =
-            util::ConfigValTUInt::create("replication", "http_port", required, 0, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "replication", "http_port", required, 0);
     CVTUIntPtr _replicationNumHttpThreads =
-            util::ConfigValTUInt::create("replication", "num_http_threads", notReq, 2, _configValMap);
+            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
 
-    CVTUIntPtr _mysqlPort = util::ConfigValTUInt::create("mysql", "port", notReq, 4048, _configValMap);
-    CVTStrPtr _mysqlSocket = util::ConfigValTStr::create("mysql", "socket", notReq, "", _configValMap);
+    CVTUIntPtr _mysqlPort = util::ConfigValTUInt::create(_configValMap, "mysql", "port", notReq, 4048);
+    CVTStrPtr _mysqlSocket = util::ConfigValTStr::create(_configValMap, "mysql", "socket", notReq, "");
     CVTStrPtr _mysqlUsername =
-            util::ConfigValTStr::create("mysql", "username", required, "qsmaster", _configValMap);
-    CVTStrPtr _mysqlPassword =
-            util::ConfigValTStr::create("mysql", "password", required, "not_the_password", _configValMap);
+            util::ConfigValTStr::create(_configValMap, "mysql", "username", required, "qsmaster");
+    CVTStrPtr _mysqlPassword = util::ConfigValTStr::create(_configValMap, "mysql", "password", required,
+                                                           "not_the_password", hidden);
     CVTStrPtr _mysqlHostname =
-            util::ConfigValTStr::create("mysql", "hostname", required, "none", _configValMap);
-    CVTStrPtr _mysqlDb = util::ConfigValTStr::create("mysql", "db", notReq, "", _configValMap);
+            util::ConfigValTStr::create(_configValMap, "mysql", "hostname", required, "none");
+    CVTStrPtr _mysqlDb = util::ConfigValTStr::create(_configValMap, "mysql", "db", notReq, "");
 };
 
 }  // namespace lsst::qserv::wconfig

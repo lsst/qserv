@@ -82,6 +82,7 @@ std::shared_ptr<CzarConfig> CzarConfig::instance() {
 }
 
 CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& czarName)
+#if 0 //&&&
         : _czarName(czarName),
           _mySqlResultConfig(configStore.get("resultdb.user", "qsmaster"),
                              configStore.getRequired("resultdb.passwd"),
@@ -129,18 +130,23 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
           _replicationHttpPort(configStore.getInt("replication.http_port", 0)),
           _replicationNumHttpThreads(configStore.getInt("replication.num_http_threads", 2)) {
     if (_replicationRegistryHost.empty()) {
+#endif //&&&
+        : _czarName(czarName) {
+    _configValMap.readConfigStore(configStore);
+
+    if (_replicationRegistryHost->getVal().empty()) {
         throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
                                     ": 'replication.registry_host' is not set.");
     }
-    if (_replicationRegistryPort == 0) {
+    if (_replicationRegistryPort->getVal() == 0) {
         throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
                                     ": 'replication.registry_port' number can't be 0.");
     }
-    if (_replicationRegistryHearbeatIvalSec == 0) {
+    if (_replicationRegistryHearbeatIvalSec->getVal() == 0) {
         throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
                                     ": 'replication.registry_heartbeat_ival_sec' can't be 0.");
     }
-    if (_replicationNumHttpThreads == 0) {
+    if (_replicationNumHttpThreads->getVal() == 0) {
         throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
                                     ": 'replication.num_http_threads' can't be 0.");
     }
@@ -155,6 +161,7 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
     // Note that actual collection may contain parameters not mentioned in
     // the input configuration.
     nlohmann::json& actualJsonConfig = _jsonConfig["actual"];
+#if 0 //&&&
     actualJsonConfig["resultdb"] =
             nlohmann::json::object({{"user", _mySqlResultConfig.username},
                                     {"passwd", "xxxxx"},
@@ -211,6 +218,9 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
              {"registry_heartbeat_ival_sec", std::to_string(_replicationRegistryHearbeatIvalSec)},
              {"http_port", std::to_string(_replicationHttpPort)},
              {"num_http_threads", std::to_string(_replicationNumHttpThreads)}});
+#endif //&&&
+    _configValMap.populateJson(actualJsonConfig);
+
     actualJsonConfig["identity"] =
             nlohmann::json::object({{"name", _czarName}, {"id", std::to_string(_czarId)}});
 }
@@ -219,15 +229,35 @@ void CzarConfig::setReplicationHttpPort(uint16_t port) {
     if (port == 0) {
         throw std::invalid_argument("CzarConfig::" + std::string(__func__) + ": port number can't be 0.");
     }
-    _replicationHttpPort = port;
+    _replicationHttpPort->setVal(port);
     // Update the relevant section of the JSON-ified configuration.
-    _jsonConfig["actual"]["replication"]["http_port"] = std::to_string(_replicationHttpPort);
+    _jsonConfig["actual"][_replicationHttpPort->getSection()][_replicationHttpPort->getName()] =
+            _replicationHttpPort->getValStr();
 }
 
 void CzarConfig::setId(qmeta::CzarId id) {
     _czarId = id;
     // Update the relevant section of the JSON-ified configuration.
     _jsonConfig["actual"]["identity"]["id"] = std::to_string(_czarId);
+}
+
+mysql::MySqlConfig CzarConfig::getMySqlResultConfig() const {
+    return mysql::MySqlConfig(_resultDbUser->getVal(), _resultDbPasswd->getVal(), _resultDbHost->getVal(),
+                              _resultDbPort->getVal(), _resultDbUnixSocket->getVal(), _resultDbDb->getVal());
+}
+
+mysql::MySqlConfig CzarConfig::getMySqlQmetaConfig() const {
+    return mysql::MySqlConfig(_qmetaUser->getVal(), _qmetaPasswd->getVal(), _qmetaHost->getVal(),
+                              _qmetaPort->getVal(), _qmetaUnixSocket->getVal(), _qmetaDb->getVal());
+}
+
+mysql::MySqlConfig CzarConfig::getMySqlQStatusDataConfig() const {
+    return mysql::MySqlConfig(_qstatusUser->getVal(), _qstatusPasswd->getVal(), _qstatusHost->getVal(),
+                              _qstatusPort->getVal(), _qstatusUnixSocket->getVal(), _qstatusDb->getVal());
+}
+
+std::map<std::string, std::string> CzarConfig::getCssConfigMap() const {
+    return _configValMap.getSectionMapStr("css");
 }
 
 std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig) {

@@ -46,7 +46,7 @@ namespace lsst::qserv::util {
 void ConfigVal::addToMapBase(ConfigValMap& configValMap, Ptr const& newPtr) { configValMap.addEntry(newPtr); }
 
 void ConfigVal::logValSet(std::string const& msg) {
-    LOGS(_log, LOG_LVL_INFO, "ConfigVal " << getSectionName() << " set to " << getValStr() + " " + msg);
+    LOGS(_log, LOG_LVL_INFO, "ConfigVal " << getSectionDotName() << " set to " << getValStr() + " " + msg);
 }
 
 void ConfigVal::setValFromConfigStore(util::ConfigStore const& configStore) {
@@ -55,7 +55,7 @@ void ConfigVal::setValFromConfigStore(util::ConfigStore const& configStore) {
         setValSetFromFile(true);
     } catch (util::KeyNotFoundError const& e) {
         LOGS(_log, LOG_LVL_WARN,
-             " ConfigVal no entry for " << getSectionName() << " using default=" << getValStr());
+             " ConfigVal no entry for " << getSectionDotName() << " using default=" << getValStr());
     }
 }
 
@@ -72,7 +72,7 @@ void ConfigValMap::addEntry(ConfigVal::Ptr const& newVal) {
     auto& nameMap = _sectionMap[section];
     auto iter = nameMap.find(name);
     if (iter != nameMap.end()) {
-        throw ConfigException(ERR_LOC, "ConfigValMap already has entry for " + newVal->getSectionName());
+        throw ConfigException(ERR_LOC, "ConfigValMap already has entry for " + newVal->getSectionDotName());
     }
     nameMap[name] = newVal;
 }
@@ -97,7 +97,8 @@ void ConfigValMap::readConfigStore(util::ConfigStore const& configStore) {
                 cfgVal->setValFromConfigStore(configStore);
             } catch (util::KeyNotFoundError const& e) {
                 LOGS(_log, LOG_LVL_WARN,
-                     " ConfigVal " << cfgVal->getSectionName() << " using default=" << cfgVal->getValStr());
+                     " ConfigVal " << cfgVal->getSectionDotName()
+                                   << " using default=" << cfgVal->getValStr());
             }
         }
     }
@@ -111,14 +112,14 @@ std::tuple<bool, std::string> ConfigValMap::checkRequired() const {
         for (auto&& [name, cfgVal] : nameMap) {
             if (cfgVal->isRequired() && !cfgVal->isValSetFromFile()) {
                 errorFound = true;
-                eMsg += " " + cfgVal->getSectionName();
+                eMsg += " " + cfgVal->getSectionDotName();
             }
         }
     }
     return {errorFound, eMsg};
 }
 
-void ConfigValMap::populateJson(nlohmann::json& js, string const& coll) {
+void ConfigValMap::populateJson(nlohmann::json& js) const {
     for (auto const& [section, nMap] : _sectionMap) {
         nlohmann::json jsNames;
         for (auto const& [name, cfgPtr] : nMap) {
@@ -126,6 +127,17 @@ void ConfigValMap::populateJson(nlohmann::json& js, string const& coll) {
         }
         js[section] = jsNames;
     }
+}
+
+map<string, string> ConfigValMap::getSectionMapStr(string const& section) const {
+    map<string, string> sMap;
+    auto iter = _sectionMap.find(section);
+    if (iter != _sectionMap.end()) {
+        for (auto const& [key, val] : iter->second) {
+            sMap[key] = val->getValStrDanger();
+        }
+    }
+    return sMap;
 }
 
 }  // namespace lsst::qserv::util
