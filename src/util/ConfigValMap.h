@@ -81,7 +81,7 @@ public:
         if (!isHidden()) {
             return getValStrDanger();
         }
-        return "*****";
+        return "xxxxx";
     }
 
     /// All child classes should be able to return a valid string version of their value,
@@ -104,6 +104,7 @@ private:
     std::string const _name;       ///< name of this item within its section.
     bool const _required;          ///< Set to true if this value must be found in the file.
     bool const _hidden;            ///< Set to true if the value should be hidden from users and logs.
+    std::string _description;      ///< description of this configuration value, if available.
     bool _valSetFromFile = false;  ///< set to true if value was set from configuration file.
 
 protected:
@@ -115,7 +116,9 @@ protected:
     void logValSet(std::string const& msg = std::string());
 };
 
-/// A template child of ConfigVal that can actually store the value.
+/// A template child of ConfigVal that can actually store the value. Unfortunately
+/// reliably reading values from ConfigStore requires derived classes for specific
+/// types.
 template <typename T>
 class ConfigValT : public ConfigVal {
 public:
@@ -265,7 +268,7 @@ private:
             : ConfigValT<uint64_t>(section, name, required, defVal, hidden) {}
 };
 
-/// &&& doc
+/// Read values from a configuration source, such as util::ConfigStore
 class ConfigValMap {
 public:
     using NameMap = std::map<std::string, ConfigVal::Ptr>;  ///< key is ConfigVal::_name
@@ -292,8 +295,8 @@ public:
     /// in `_sectionMap` given by section and then all names in that section.
     void populateJson(nlohmann::json& js) const;
 
-    /// &&& doc
-    std::map<std::string, std::string> getSectionMapStr(std::string const& sectionName) const;
+    /// Return a map of name, value for all entries in `section`.
+    std::map<std::string, std::string> getSectionMapStr(std::string const& section) const;
 
 private:
     SectionMap _sectionMap;
