@@ -85,7 +85,6 @@ string ConfigValResultDeliveryProtocol::toString(TEnum protocol) {
 }
 
 shared_ptr<WorkerConfig> WorkerConfig::create(string const& configFileName) {
-    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& WorkerConfig::create a " << configFileName);
     lock_guard<mutex> const lock(_mtxOnInstance);
     if (_instance == nullptr) {
         _instance = shared_ptr<WorkerConfig>(configFileName.empty()
@@ -106,18 +105,16 @@ shared_ptr<WorkerConfig> WorkerConfig::instance() {
 WorkerConfig::WorkerConfig()
         : _jsonConfig(nlohmann::json::object(
                   {{"input", nlohmann::json::object()}, {"actual", nlohmann::json::object()}})) {
-    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& WorkerConfig::WorkerConfig() a1 ");
     // Both collections are the same since we don't have any external configuration
     // source passed into this c-tor.
     _populateJsonConfig("input");
     _populateJsonConfig("actual");
+    LOGS(_log, LOG_LVL_INFO, "WorkerConfig::" << __func__ << *this);
 }
 
 WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
         : _jsonConfig(nlohmann::json::object(
                   {{"input", configStore.toJson()}, {"actual", nlohmann::json::object()}})) {
-    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& WorkerConfig::WorkerConfig() a2 ");
-
     _configValMap.readConfigStore(configStore);
     auto [errorFound, eMsg] = _configValMap.checkRequired();
     if (errorFound) {
@@ -154,6 +151,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
     // Note that actual collection may contain parameters not mentioned in
     // the input configuration.
     _populateJsonConfig("actual");
+    LOGS(_log, LOG_LVL_INFO, "WorkerConfig::" << __func__ << *this);
 }
 
 void WorkerConfig::setReplicationHttpPort(uint16_t port) {
@@ -167,13 +165,11 @@ void WorkerConfig::setReplicationHttpPort(uint16_t port) {
 
 void WorkerConfig::_populateJsonConfig(string const& coll) {
     nlohmann::json& js = _jsonConfig[coll];
-    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& _populateJsonConfigNew b" << js);
     _configValMap.populateJson(js);
-    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& _populateJsonConfigNew b" << js);
 }
 
 ostream& operator<<(ostream& out, WorkerConfig const& workerConfig) {
-    out << workerConfig._jsonConfig.dump();  // &&& check this
+    out << workerConfig._jsonConfig.dump();
     return out;
 }
 

@@ -248,7 +248,7 @@ public:
     /// parameters may be phased out while still being present in the configuration
     /// files. Or, new actual parameters (with some reasonable defaults) might be
     /// introduced while not being set in the configuration file.
-    nlohmann::json toJson() const { return _jsonConfig; }  // &&& check this (values may change?)
+    nlohmann::json toJson() const { return _jsonConfig; }
 
 private:
     CzarConfig(util::ConfigStore const& ConfigStore, std::string const& czarName);
@@ -327,15 +327,14 @@ private:
             util::ConfigValTStr::create(_configValMap, "css", "technology", notReq, "mysql");
     CVTStrPtr _cssHostname =
             util::ConfigValTStr::create(_configValMap, "css", "hostname", required, "127.0.0.1");
-    // &&& need _cssPort or _cssSocket
-    CVTUIntPtr _cssPort = util::ConfigValTUInt::create(_configValMap, "css", "port", required, 0);
+    CVTUIntPtr _cssPort = util::ConfigValTUInt::create(_configValMap, "css", "port", notReq, 0);
     CVTStrPtr _cssUsername =
             util::ConfigValTStr::create(_configValMap, "css", "username", notReq, "qsmaster");
     CVTStrPtr _cssPassword =
             util::ConfigValTStr::create(_configValMap, "css", "password", notReq, "", hidden);
     CVTStrPtr _cssDatabase =
             util::ConfigValTStr::create(_configValMap, "css", "database", notReq, "qservCssData");
-    CVTStrPtr _cssSocket = util::ConfigValTStr::create(_configValMap, "css", "socket", required, "");
+    CVTStrPtr _cssSocket = util::ConfigValTStr::create(_configValMap, "css", "socket", notReq, "");
 
     // _mySqlQmetaConfig values
     CVTStrPtr _qmetaUser = util::ConfigValTStr::create(_configValMap, "qmeta", "user", notReq, "qsmaster");
@@ -379,7 +378,6 @@ private:
             _configValMap, "tuning", "qMetaSecsBetweenChunkCompletionUpdates", notReq, 60);
     CVTIntPtr _interactiveChunkLimit =
             util::ConfigValTInt::create(_configValMap, "tuning", "interactiveChunkLimit", notReq, 10);
-    // &&&    _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
     CVTIntPtr _xrootdCBThreadsMax =
             util::ConfigValTInt::create(_configValMap, "tuning", "xrootdCBThreadsMax", notReq, 500);
     CVTIntPtr _xrootdCBThreadsInit =
