@@ -23,11 +23,15 @@
 #define LSST_QSERV_QMETA_QMETA_H
 
 // System headers
+#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
+// Third party headers
+#include "nlohmann/json.hpp"
 
 // Qserv headers
 #include "global/intTypes.h"
@@ -46,7 +50,6 @@ namespace lsst::qserv::qmeta {
 
 /**
  *  @ingroup qmeta
- *
  *  @brief Interface for query metadata.
  */
 
@@ -57,6 +60,36 @@ public:
      *  database name, second is table name.
      */
     typedef std::vector<std::pair<std::string, std::string> > TableNames;
+
+    /**
+     * The structure ChunkMap encapsulates a disposition of chunks at Qserv workers
+     * along with a time when the map was updated.
+     *
+     * The schema of the JSON object is presented below:
+     * @code
+     *   {<worker>:{
+     *     <database>:{
+     *       <table>:[
+     *         [<chunk>,<size>],
+     *          ...
+     *       ]
+     *     }
+     *  }
+     * @code
+     * Where:
+     *   <worker>   - the unique identifier of a worker
+     *   <database> - the name of a database
+     *   <table>    - the name of a table
+     *   <chunk>    - the chunk number
+     *   <size>     - the number of bytes in the chunk table
+     */
+    struct ChunkMap {
+        /// The chunk disposition map.
+        nlohmann::json chunks;
+
+        /// The last time the map was updated (since UNIX Epoch).
+        std::chrono::time_point<std::chrono::system_clock> updateTime;
+    };
 
     /**
      *  Create QMeta instance from configuration dictionary.
@@ -286,6 +319,11 @@ public:
 
     /// Write messages/errors generated during the query to the QMessages table.
     virtual void addQueryMessages(QueryId queryId, std::shared_ptr<qdisp::MessageStore> const& msgStore) = 0;
+
+    /// @return Return the most current chunk disposition
+    /// @throws EmptyTableError if the corresponding metadata table doesn't have any record
+    /// @throws SqlError for any other error related to MySQL
+    virtual ChunkMap getChunkMap() = 0;
 
 protected:
     // Default constructor
