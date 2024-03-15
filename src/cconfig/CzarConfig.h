@@ -1,7 +1,6 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2008-2015 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -38,6 +37,7 @@
 #include "mysql/MySqlConfig.h"
 #include "qmeta/types.h"
 #include "util/ConfigStore.h"
+#include "util/ConfigValMap.h"
 
 namespace lsst::qserv::cconfig {
 
@@ -85,37 +85,38 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& out, CzarConfig const& czarConfig);
 
-    /* Get MySQL configuration for czar MySQL result database
-     *
-     * @return a structure containing MySQL parameters
-     */
-    mysql::MySqlConfig const& getMySqlResultConfig() const { return _mySqlResultConfig; }
+    /// Get MySQL configuration for czar MySQL result database.
+    /// @return a structure containing MySQL parameters.
+    mysql::MySqlConfig getMySqlResultConfig() const;
 
-    /* Get MySQL configuration for czar MySQL qmeta database
-     *
-     * @return a structure containing MySQL parameters
-     */
-    mysql::MySqlConfig const& getMySqlQmetaConfig() const { return _mySqlQmetaConfig; }
+    /// Get MySQL configuration for czar MySQL qmeta database
+    /// @return a structure containing MySQL parameters
+    mysql::MySqlConfig getMySqlQmetaConfig() const;
 
-    /* Get MySQL configuration for czar MySQL QStatusData
-     *
-     * @return a structure containing MySQL parameters
-     */
-    mysql::MySqlConfig const& getMySqlQStatusDataConfig() const { return _mySqlQstatusDataConfig; }
+    /// Get MySQL configuration for czar MySQL QStatusData
+    /// @return a structure containing MySQL parameters
+    mysql::MySqlConfig getMySqlQStatusDataConfig() const;
 
-    /* Get CSS parameters as a collection of key-value
-     *
-     * Do not check CSS parameters consistency
-     *
-     * @return a structure containing CSS parameters
-     */
-    std::map<std::string, std::string> const& getCssConfigMap() const { return _cssConfigMap; }
+    /// Get CSS parameters as a collection of key-value
+    /// Do not check CSS parameters consistency
+    /// @return a structure containing CSS parameters
+    std::map<std::string, std::string> getCssConfigMap() const;
 
+#if 0 // &&&
+    /* Get path to directory where the empty chunk files resides
+     *
+     * Each empty chunk file is related to one cosmic dataset
+     *
+     * @return path to directory where the empty chunk files resides
+     */
+    std::string const& getEmptyChunkPath() const { return _emptyChunkPath->getVal(); }
+
+#endif // &&&
     /* Get the maximum number of chunks that can be in an interactive query.
      * Queries that are not limited in area to a small number of chunks must
      * be part of a full table scan.
      */
-    int getInteractiveChunkLimit() const { return _interactiveChunkLimit; }
+    int getInteractiveChunkLimit() const { return _interactiveChunkLimit->getVal(); }
 
     /* Get hostname and port for xrootd manager
      *
@@ -124,97 +125,101 @@ public:
      *
      * @return a string containing "<hostname>:<port>"
      */
-    std::string const& getXrootdFrontendUrl() const { return _xrootdFrontendUrl; }
+    std::string const& getXrootdFrontendUrl() const { return _xrootdFrontendUrl->getVal(); }
 
     /* Get the maximum number of threads for xrootd to use.
      *
      * @return the maximum number of threads for xrootd to use.
      */
-    int getXrootdCBThreadsMax() const { return _xrootdCBThreadsMax; }
+    int getXrootdCBThreadsMax() const { return _xrootdCBThreadsMax->getVal(); }
 
     /* Get the initial number of threads for xrootd to create and maintain.
      *
      * @return the initial number of threads for xrootd to use.
      */
-    int getXrootdCBThreadsInit() const { return _xrootdCBThreadsInit; }
+    int getXrootdCBThreadsInit() const { return _xrootdCBThreadsInit->getVal(); }
 
-    bool getQueryDistributionTestVer() const { return _queryDistributionTestVer; }
+    bool getQueryDistributionTestVer() const { return _queryDistributionTestVer->getVal(); }
 
     /*
      * @return A value of the "spread" parameter. This may improve a performance
      * of xrootd for catalogs with the large number of chunks. The default value
      * of this parameter in xrootd is 4.
      */
-    int getXrootdSpread() const { return _xrootdSpread; }
+    int getXrootdSpread() const { return _xrootdSpread->getVal(); }
 
     /* Get minimum number of seconds between QMeta chunk completion updates.
      *
      * @return seconds between QMeta chunk completion updates.
      */
-    int getQMetaSecondsBetweenChunkUpdates() const { return _qMetaSecsBetweenChunkCompletionUpdates; }
+    int getQMetaSecondsBetweenChunkUpdates() const {
+        return _qMetaSecsBetweenChunkCompletionUpdates->getVal();
+    }
 
-    int getMaxMsgSourceStore() const { return _maxMsgSourceStore; }
+    int getMaxMsgSourceStore() const { return _maxMsgSourceStore->getVal(); }
 
     /// Getters for result aggregation options.
-    int getMaxTableSizeMB() const { return _maxTableSizeMB; }
-    int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts; }
-    std::string getResultEngine() const { return _resultEngine; }
-    int getResultMaxConnections() const { return _resultMaxConnections; }
+    int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
+    int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
+    std::string getResultEngine() const { return _resultEngine->getVal(); }
+    int getResultMaxConnections() const { return _resultMaxConnections->getVal(); }
 
     /// The size of the TCP connection pool witin the client API that is used
     /// by the merger to pool result files from workers via the HTTP protocol.
-    int getResultMaxHttpConnections() const { return _resultMaxHttpConnections; }
+    int getResultMaxHttpConnections() const { return _resultMaxHttpConnections->getVal(); }
 
     /// Getters for QdispPool configuration
     /// @return the number of threads to create for the pool.
-    int getQdispPoolSize() const { return _qdispPoolSize; }
+    int getQdispPoolSize() const { return _qdispPoolSize->getVal(); }
     /// @return the maximum priority for a queue. The number of queues
     ///    equals this value +1.
-    int getQdispMaxPriority() const { return _qdispMaxPriority; }
+    int getQdispMaxPriority() const { return _qdispMaxPriority->getVal(); }
     /// @return a string with substrings separated by ':' like "2:45:32:9"
     ///      The values indicate the maximum number of commands for each
     ///      priority that can be running concurrently.
-    std::string getQdispVectRunSizes() const { return _qdispVectRunSizes; }
+    std::string getQdispVectRunSizes() const { return _qdispVectRunSizes->getVal(); }
     /// @return a string with substrings separated by ':' like "2:45:32:9"
     ///      The values indicate the minimum number of commands for each
     ///      priority that should be running concurrently
-    std::string getQdispVectMinRunningSizes() const { return _qdispVectMinRunningSizes; }
+    std::string getQdispVectMinRunningSizes() const { return _qdispVectMinRunningSizes->getVal(); }
 
-    int getOldestResultKeptDays() const { return _oldestResultKeptDays; }
+    int getOldestResultKeptDays() const { return _oldestResultKeptDays->getVal(); }
 
     /// @return 'true' to allow broadcasting query completion/cancellation events
     /// to all workers so that they would do proper garbage collection and resource recycling.
-    bool notifyWorkersOnQueryFinish() const { return _notifyWorkersOnQueryFinish != 0; }
+    bool notifyWorkersOnQueryFinish() const { return _notifyWorkersOnQueryFinish->getVal(); }
 
     /// @return 'true' to allow broadcasting this event to all workers to let them cancel
     /// any older that were submitted before the restart. The first query identifier in the new
     /// series will be reported to the workers. The identifier will be used as
     /// a high watermark for diffirentiating between the older (to be cancelled)
     /// and the newer queries.
-    bool notifyWorkersOnCzarRestart() const { return _notifyWorkersOnCzarRestart != 0; }
+    bool notifyWorkersOnCzarRestart() const { return _notifyWorkersOnCzarRestart->getVal(); }
 
     /// @return The desired sampling frequency of the Czar monitoring which is
     /// based on tracking state changes in various entities. If 0 is returned by
     /// the method then the monitoring will be disabled.
-    unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec; }
+    unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec->getVal(); }
 
     /// @return The maximum retain period for keeping in memory the relevant metrics
     /// captured by the Czar monitoring system. If 0 is returned by the method then
     /// query history archiving will be disabled.
     /// @note Setting the limit too high may be potentially result in runing onto
     /// the OOM situation.
-    unsigned int czarStatsRetainPeriodSec() const { return _czarStatsRetainPeriodSec; }
+    unsigned int czarStatsRetainPeriodSec() const { return _czarStatsRetainPeriodSec->getVal(); }
 
     // Parameters of the Czar management service
 
-    std::string const& replicationInstanceId() const { return _replicationInstanceId; }
-    std::string const& replicationAuthKey() const { return _replicationAuthKey; }
-    std::string const& replicationAdminAuthKey() const { return _replicationAdminAuthKey; }
-    std::string const& replicationRegistryHost() const { return _replicationRegistryHost; }
-    uint16_t replicationRegistryPort() const { return _replicationRegistryPort; }
-    unsigned int replicationRegistryHearbeatIvalSec() const { return _replicationRegistryHearbeatIvalSec; }
-    uint16_t replicationHttpPort() const { return _replicationHttpPort; }
-    size_t replicationNumHttpThreads() const { return _replicationNumHttpThreads; }
+    std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
+    std::string const& replicationAuthKey() const { return _replicationAuthKey->getVal(); }
+    std::string const& replicationAdminAuthKey() const { return _replicationAdminAuthKey->getVal(); }
+    std::string const& replicationRegistryHost() const { return _replicationRegistryHost->getVal(); }
+    uint16_t replicationRegistryPort() const { return _replicationRegistryPort->getVal(); }
+    unsigned int replicationRegistryHearbeatIvalSec() const {
+        return _replicationRegistryHearbeatIvalSec->getVal();
+    }
+    uint16_t replicationHttpPort() const { return _replicationHttpPort->getVal(); }
+    size_t replicationNumHttpThreads() const { return _replicationNumHttpThreads->getVal(); }
 
     /// The actual port number is set at run time after starting the service on
     /// the dynamically allocated port (in case when the port number was set
@@ -243,7 +248,7 @@ public:
     /// parameters may be phased out while still being present in the configuration
     /// files. Or, new actual parameters (with some reasonable defaults) might be
     /// introduced while not being set in the configuration file.
-    nlohmann::json toJson() const { return _jsonConfig; }
+    nlohmann::json toJson() const { return _jsonConfig; }  // &&& check this (values may change?)
 
 private:
     CzarConfig(util::ConfigStore const& ConfigStore, std::string const& czarName);
@@ -255,23 +260,26 @@ private:
     static std::shared_ptr<CzarConfig> _instance;
 
     std::string const _czarName;  ///< The unique name of the Czar instance
-    qmeta::CzarId _czarId;        ///< The unique identifier of the Czar instance
+
+    /// The unique identifier of the Czar instance, the real vale cannot be
+    /// acquired until later. Using a crazy initial value in hopes of highlighting
+    /// issues.
+    /// TODO: Maybe also use a flag to indicate it's been set?
+    /// TODO: Is this really the right place for this? (previously undefined)
+    qmeta::CzarId _czarId = 4'123'456'789;
 
     nlohmann::json _jsonConfig;  ///< JSON-ified configuration
 
     // Parameters below used in czar::Czar
-    mysql::MySqlConfig const _mySqlResultConfig;
 
-    // Parameters used to affect result aggregation in rproc.
-    int const _maxTableSizeMB;
-    int const _maxSqlConnectionAttempts;
-    std::string const _resultEngine;
-    int const _resultMaxConnections;
-    int const _resultMaxHttpConnections;
+    util::ConfigValMap _configValMap;  ///< Map of all configuration entries
 
-    /// Any table in the result table not updated in this many days will be deleted.
-    int const _oldestResultKeptDays;
+    using CVTIntPtr = util::ConfigValTInt::IntPtr const;
+    using CVTUIntPtr = util::ConfigValTUInt::UIntPtr const;
+    using CVTBoolPtr = util::ConfigValTBool::BoolPtr const;
+    using CVTStrPtr = util::ConfigValTStr::StrPtr const;
 
+/* &&&
     // Parameters below used in ccontrol::UserQueryFactory
     std::map<std::string, std::string> const _cssConfigMap;
     mysql::MySqlConfig const _mySqlQmetaConfig;
@@ -284,31 +292,126 @@ private:
     int const _qMetaSecsBetweenChunkCompletionUpdates;
     int const _maxMsgSourceStore;  ///< Maximum number of messages to store per msgSource.
     int const _queryDistributionTestVer;
+*/
+    bool const required = true;
+    bool const notReq = false;
+    bool const hidden = true;
 
-    // Parameters for QdispPool configuration
-    int const _qdispPoolSize;
-    int const _qdispMaxPriority;
-    std::string const _qdispVectRunSizes;         // No spaces, values separated by ':'
-    std::string const _qdispVectMinRunningSizes;  // No spaces, values separated by ':'
+    /// mySqlResultConfig values
+    CVTStrPtr _resultDbUser =
+            util::ConfigValTStr::create(_configValMap, "resultdb", "user", notReq, "qsmaster");
+    CVTStrPtr _resultDbPasswd =
+            util::ConfigValTStr::create(_configValMap, "resultdb", "passwd", required, "", hidden);
+    CVTStrPtr _resultDbHost = util::ConfigValTStr::create(_configValMap, "resultdb", "host", required, "");
+    CVTUIntPtr _resultDbPort = util::ConfigValTUInt::create(_configValMap, "resultdb", "port", notReq, 0);
+    CVTStrPtr _resultDbUnixSocket =
+            util::ConfigValTStr::create(_configValMap, "resultdb", "unix_socket", required, "");
+    CVTStrPtr _resultDbDb =
+            util::ConfigValTStr::create(_configValMap, "resultdb", "db", notReq, "qservResult");
 
-    // Events sent to workers
-    int const _notifyWorkersOnQueryFinish;  ///< Sent by cccontrol::UserQuerySelect
-    int const _notifyWorkersOnCzarRestart;  ///< Sent by czar::Czar
+    CVTIntPtr _maxTableSizeMB =
+            util::ConfigValTInt::create(_configValMap, "resultdb", "maxtablesize_mb", notReq, 5001);
+    CVTIntPtr _maxSqlConnectionAttempts =
+            util::ConfigValTInt::create(_configValMap, "resultdb", "maxsqlconnectionattempts", notReq, 10);
+    CVTStrPtr _resultEngine =
+            util::ConfigValTStr::create(_configValMap, "resultdb", "engine", notReq, "myisam");
+    CVTIntPtr _resultMaxConnections =
+            util::ConfigValTInt::create(_configValMap, "resultdb", "maxconnections", notReq, 40);
+    CVTIntPtr _resultMaxHttpConnections =
+            util::ConfigValTInt::create(_configValMap, "resultdb", "maxhttpconnections", notReq, 8192);
+    CVTIntPtr _oldestResultKeptDays =
+            util::ConfigValTInt::create(_configValMap, "resultdb", "oldestResultKeptDays", notReq, 30);
 
-    // Parameters used for monitoring Czar
-    unsigned int const _czarStatsUpdateIvalSec;    ///< Used by qdisp::Executive
-    unsigned int const _czarStatsRetainPeriodSec;  ///< Used by qdisp::CzarStats
+    /// Get all the elements in the css section.
+    CVTStrPtr _cssTechnology =
+            util::ConfigValTStr::create(_configValMap, "css", "technology", notReq, "mysql");
+    CVTStrPtr _cssHostname =
+            util::ConfigValTStr::create(_configValMap, "css", "hostname", required, "127.0.0.1");
+    // &&& need _cssPort or _cssSocket
+    CVTUIntPtr _cssPort = util::ConfigValTUInt::create(_configValMap, "css", "port", required, 0);
+    CVTStrPtr _cssUsername =
+            util::ConfigValTStr::create(_configValMap, "css", "username", notReq, "qsmaster");
+    CVTStrPtr _cssPassword =
+            util::ConfigValTStr::create(_configValMap, "css", "password", notReq, "", hidden);
+    CVTStrPtr _cssDatabase =
+            util::ConfigValTStr::create(_configValMap, "css", "database", notReq, "qservCssData");
+    CVTStrPtr _cssSocket = util::ConfigValTStr::create(_configValMap, "css", "socket", required, "");
 
-    std::string const _replicationInstanceId;
-    std::string const _replicationAuthKey;
-    std::string const _replicationAdminAuthKey;
-    std::string const _replicationRegistryHost;
-    uint16_t const _replicationRegistryPort;
-    unsigned int const _replicationRegistryHearbeatIvalSec;
-    /// An actual value of the port is set by setReplicationHttpPort()
-    /// at run time later if the parameter was initialized by 0.
-    uint16_t _replicationHttpPort;
-    size_t const _replicationNumHttpThreads;
+    // _mySqlQmetaConfig values
+    CVTStrPtr _qmetaUser = util::ConfigValTStr::create(_configValMap, "qmeta", "user", notReq, "qsmaster");
+    CVTStrPtr _qmetaPasswd =
+            util::ConfigValTStr::create(_configValMap, "qmeta", "passwd", notReq, "", hidden);
+    CVTStrPtr _qmetaHost = util::ConfigValTStr::create(_configValMap, "qmeta", "host", notReq, "");
+    CVTUIntPtr _qmetaPort = util::ConfigValTUInt::create(_configValMap, "qmeta", "port", notReq, 3306);
+    CVTStrPtr _qmetaUnixSocket =
+            util::ConfigValTStr::create(_configValMap, "qmeta", "unix_socket", notReq, "");
+    CVTStrPtr _qmetaDb = util::ConfigValTStr::create(_configValMap, "qmeta", "db", notReq, "qservMeta");
+
+    // mySqlQstatusDataConfig values
+    CVTStrPtr _qstatusUser =
+            util::ConfigValTStr::create(_configValMap, "qstatus", "user", notReq, "qsmaster");
+    CVTStrPtr _qstatusPasswd = util::ConfigValTStr::create(_configValMap, "qstatus", "passwd", notReq, "");
+    CVTStrPtr _qstatusHost = util::ConfigValTStr::create(_configValMap, "qstatus", "host", notReq, "");
+    CVTUIntPtr _qstatusPort = util::ConfigValTUInt::create(_configValMap, "qstatus", "port", notReq, 3306);
+    CVTStrPtr _qstatusUnixSocket =
+            util::ConfigValTStr::create(_configValMap, "qstatus", "unix_socket", notReq, "");
+    CVTStrPtr _qstatusDb =
+            util::ConfigValTStr::create(_configValMap, "qstatus", "db", notReq, "qservStatusData");
+
+    CVTStrPtr _xrootdFrontendUrl =
+            util::ConfigValTStr::create(_configValMap, "frontend", "xrootd", notReq, "localhost:1094");
+    CVTStrPtr _emptyChunkPath =
+            util::ConfigValTStr::create(_configValMap, "partitioner", "emptyChunkPath", notReq, ".");
+    CVTIntPtr _maxMsgSourceStore =
+            util::ConfigValTInt::create(_configValMap, "qmeta", "maxMsgSourceStore", notReq, 3);
+
+    CVTIntPtr _qdispPoolSize =
+            util::ConfigValTInt::create(_configValMap, "qdisppool", "poolSize", notReq, 1000);
+    CVTIntPtr _qdispMaxPriority =
+            util::ConfigValTInt::create(_configValMap, "qdisppool", "largestPriority", notReq, 2);
+    CVTStrPtr _qdispVectRunSizes =
+            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectRunSizes", notReq, "50:50:50:50");
+    CVTStrPtr _qdispVectMinRunningSizes =
+            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectMinRunningSizes", notReq, "0:1:3:3");
+
+    CVTIntPtr _xrootdSpread = util::ConfigValTInt::create(_configValMap, "tuning", "xrootdSpread", notReq, 4);
+    CVTIntPtr _qMetaSecsBetweenChunkCompletionUpdates = util::ConfigValTInt::create(
+            _configValMap, "tuning", "qMetaSecsBetweenChunkCompletionUpdates", notReq, 60);
+    CVTIntPtr _interactiveChunkLimit =
+            util::ConfigValTInt::create(_configValMap, "tuning", "interactiveChunkLimit", notReq, 10);
+    // &&&    _xrootdCBThreadsMax(configStore.getInt("tuning.xrootdCBThreadsMax", 500)),
+    CVTIntPtr _xrootdCBThreadsMax =
+            util::ConfigValTInt::create(_configValMap, "tuning", "xrootdCBThreadsMax", notReq, 500);
+    CVTIntPtr _xrootdCBThreadsInit =
+            util::ConfigValTInt::create(_configValMap, "tuning", "xrootdCBThreadsInit", notReq, 50);
+    CVTIntPtr _queryDistributionTestVer =
+            util::ConfigValTInt::create(_configValMap, "tuning", "queryDistributionTestVer", notReq, 0);
+    CVTBoolPtr _notifyWorkersOnQueryFinish =
+            util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnQueryFinish", notReq, 1);
+    CVTBoolPtr _notifyWorkersOnCzarRestart =
+            util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnCzarRestart", notReq, 1);
+    CVTIntPtr _czarStatsUpdateIvalSec =
+            util::ConfigValTInt::create(_configValMap, "tuning", "czarStatsUpdateIvalSec", notReq, 1);
+    CVTIntPtr _czarStatsRetainPeriodSec = util::ConfigValTInt::create(
+            _configValMap, "tuning", "czarStatsRetainPeriodSec", notReq, 24 * 3600);
+
+    // Replicator
+    CVTStrPtr _replicationInstanceId =
+            util::ConfigValTStr::create(_configValMap, "replication", "instance_id", notReq, "");
+    CVTStrPtr _replicationAuthKey =
+            util::ConfigValTStr::create(_configValMap, "replication", "auth_key", notReq, "", hidden);
+    CVTStrPtr _replicationAdminAuthKey =
+            util::ConfigValTStr::create(_configValMap, "replication", "admin_auth_key", notReq, "", hidden);
+    CVTStrPtr _replicationRegistryHost =
+            util::ConfigValTStr::create(_configValMap, "replication", "registry_host", notReq, "");
+    CVTUIntPtr _replicationRegistryPort =
+            util::ConfigValTUInt::create(_configValMap, "replication", "registry_port", notReq, 0);
+    CVTIntPtr _replicationRegistryHearbeatIvalSec = util::ConfigValTInt::create(
+            _configValMap, "replication", "registry_heartbeat_ival_sec", notReq, 1);
+    CVTIntPtr _replicationHttpPort =
+            util::ConfigValTInt::create(_configValMap, "replication", "http_port", notReq, 0);
+    CVTUIntPtr _replicationNumHttpThreads =
+            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
 };
 
 }  // namespace lsst::qserv::cconfig
