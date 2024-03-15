@@ -551,7 +551,7 @@ qserv_default_vals = DefaultValues(
 bind_choices = ["all", "python", "bin", "lib64", "lua", "qserv", "etc"]
 
 
-qserv_image_option = partial(
+option_qserv_image = partial(
     click.option,
     qserv_image_ev.opt,
     help=qserv_image_ev.help("The name of the qserv image."),
@@ -559,14 +559,14 @@ qserv_image_option = partial(
 )
 
 
-build_image_option = partial(
+option_build_image = partial(
     click.option,
     build_image_ev.opt,
     help=build_image_ev.help("The name of the qserv build image."),
     default=build_image_ev.val(),
 )
 
-user_build_image_option = partial(
+option_user_build_image = partial(
     click.option,
     user_build_image_ev.opt,
     help=user_build_image_ev.help("The name of the qserv user build image."),
@@ -574,7 +574,7 @@ user_build_image_option = partial(
 )
 
 
-user_option = partial(
+option_user = partial(
     click.option,
     "--user",
     help="The user name to use when running the build container. "
@@ -583,7 +583,7 @@ user_option = partial(
 )
 
 
-push_image_option = partial(
+option_push_image = partial(
     click.option,
     "--push-image",
     help="Push the image to dockerhub if it does not exist. Requires login to dockerhub first.",
@@ -591,7 +591,7 @@ push_image_option = partial(
 )
 
 
-pull_image_option = partial(
+option_pull_image = partial(
     click.option,
     "--pull-image",
     help="Pull the image from dockerhub if it exists.",
@@ -599,7 +599,7 @@ pull_image_option = partial(
 )
 
 
-run_base_image_option = partial(
+option_run_base_image = partial(
     click.option,
     run_base_image_ev.opt,
     help=run_base_image_ev.help("The name of the run base image."),
@@ -607,7 +607,7 @@ run_base_image_option = partial(
 )
 
 
-mariadb_image_option = partial(
+option_mariadb_image = partial(
     click.option,
     mariadb_image_ev.opt,
     help=mariadb_image_ev.help("The name of the mariadb image."),
@@ -615,7 +615,7 @@ mariadb_image_option = partial(
 )
 
 
-qserv_root_option = partial(
+option_qserv_root = partial(
     click.option,
     qserv_root_ev.opt,
     help=qserv_root_ev.help(
@@ -628,14 +628,14 @@ qserv_root_option = partial(
 )
 
 
-qserv_build_root_option = partial(
+option_qserv_build_root = partial(
     click.option,
     qserv_build_root_ev.opt,
     help=qserv_build_root_ev.help("Location of the qserv sources folder inside the build container."),
     default=qserv_build_root_ev.default,
 )
 
-outdir_option = partial(
+option_outdir = partial(
     click.option,
     outdir_ev.opt,
     help=outdir_ev.help("Location of the folder that will contain unzipped and partitioned integration test datasets"),
@@ -644,14 +644,14 @@ outdir_option = partial(
 )
 
 
-qserv_group_option = partial(
+option_qserv_group = partial(
     click.option,
     "--group",
     help="The name of the user's primary group.",
 )
 
 
-dashboard_port_option = partial(
+option_dashboard_port = partial(
     click.option,
     dashboard_port_ev.opt,
     help=dashboard_port_ev.help("The host port to use for the qserv dashboard."),
@@ -659,7 +659,7 @@ dashboard_port_option = partial(
 )
 
 
-unit_test_option = partial(
+option_unit_test = partial(
     click.option,
     "--unit-test/--no-unit-test",
     help="Run unit tests. Default: --unit-test",
@@ -668,7 +668,7 @@ unit_test_option = partial(
 )
 
 
-dry_option = partial(
+option_dry = partial(
     click.option,
     "-d",
     "--dry",
@@ -677,7 +677,7 @@ dry_option = partial(
 )
 
 
-jobs_option = partial(
+option_jobs = partial(
     click.option,
     "-j",
     "--jobs",
@@ -686,7 +686,7 @@ jobs_option = partial(
 )
 
 
-project_option = partial(
+option_project = partial(
     click.option,
     project_ev.opt,
     help=project_ev.help("The project name for the qserv docker-compose instance."),
@@ -695,7 +695,7 @@ project_option = partial(
 )
 
 
-compose_file_option = partial(
+option_compose_file = partial(
     click.option,
     *compose_file_default.opt,
     help=compose_file_default.help("The location of the yaml file that describes the compose cluster."),
@@ -704,7 +704,7 @@ compose_file_option = partial(
 )
 
 
-itest_container_name_option = partial(
+option_itest_container_name = partial(
     click.option,
     *itest_container_default.opt,
     help=itest_container_default.help("The name to give the integration test container."),
@@ -713,7 +713,7 @@ itest_container_name_option = partial(
 )
 
 
-itest_ref_container_name_option = partial(
+option_itest_ref_container_name = partial(
     click.option,
     *itest_ref_container_default.opt,
     help=itest_ref_container_default.help("The name to give the integration test reference db container."),
@@ -722,7 +722,7 @@ itest_ref_container_name_option = partial(
 )
 
 
-itest_file_option = partial(
+option_itest_file = partial(
     click.option,
     *itest_default.opt,
     help=itest_default.help("Path to an yaml file that describes how to run the integration tests."),
@@ -731,7 +731,7 @@ itest_file_option = partial(
 )
 
 
-test_container_name_option = partial(
+option_test_container_name = partial(
     click.option,
     *test_container_default.opt,
     help=test_container_default.help("The name to give the test container."),
@@ -740,7 +740,7 @@ test_container_name_option = partial(
 )
 
 
-bind_option = partial(
+option_bind = partial(
     click.option,
     "-b",
     "--bind",
@@ -752,7 +752,7 @@ bind_option = partial(
 )
 
 
-cmake_option = partial(
+option_cmake = partial(
     click.option,
     "--cmake/--no-cmake",
     "run_cmake",
@@ -762,7 +762,7 @@ cmake_option = partial(
 )
 
 
-make_option = partial(
+option_make = partial(
     click.option,
     "--make/--no-make",
     "run_make",
@@ -772,7 +772,7 @@ make_option = partial(
 )
 
 
-do_build_image_option = partial(
+option_do_build_image = partial(
     click.option,
     "--do-build-image/--no-build-image",
     help="Build the run image after running cmake and make. Default: --do-build-image",
@@ -781,7 +781,7 @@ do_build_image_option = partial(
 )
 
 
-build_container_name_option = partial(
+option_build_container_name = partial(
     click.option,
     *build_container_default.opt,
     help=build_container_default.help("The name to give the build container."),
@@ -789,7 +789,7 @@ build_container_name_option = partial(
 )
 
 
-remove_option = partial(
+option_remove = partial(
     click.option,
     "--remove/--no-remove",
     help="Remove docker container(s) after execution.",
@@ -797,7 +797,7 @@ remove_option = partial(
 )
 
 
-mypy_option = partial(
+option_mypy = partial(
     click.option,
     "--mypy/--no-mypy",
     "run_mypy",
@@ -806,7 +806,7 @@ mypy_option = partial(
 )
 
 
-clang_format_option = partial(
+option_clang_format = partial(
     click.option,
     "--clang-format",
     "clang_format_mode",
@@ -819,7 +819,7 @@ clang_format_option = partial(
 )
 
 
-debuggable_option = partial(
+option_debuggable = partial(
     click.option,
     "--debuggable/--no-debuggable",
     help="Run the container with permissions to enable debugging.",
