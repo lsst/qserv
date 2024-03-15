@@ -32,7 +32,7 @@ import unittest
 import yaml
 
 from lsst.qserv.admin.cli import utils
-from lsst.qserv.admin.cli.options import targs_option, targs_file_option
+from lsst.qserv.admin.cli.options import options_targs, option_targs_file
 
 
 class SplitKvTestCase(unittest.TestCase):
@@ -57,8 +57,8 @@ targs_result = None
 @click.option("--test-option1")
 @click.option("--test-option2")
 @click.option("--test-option3")
-@targs_option()
-@targs_file_option()
+@options_targs()
+@option_targs_file()
 def testFunc(
     ctx: click.Context,
     test_option1: str,

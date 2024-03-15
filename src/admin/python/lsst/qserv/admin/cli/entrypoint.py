@@ -35,39 +35,39 @@ from typing import Any, Callable, Dict, List, Optional
 from click.decorators import pass_context
 
 from .options import (
-    case_option,
-    cmd_option,
-    cmsd_manager_name_option,
-    compare_results_option,
-    czar_connection_option,
-    db_uri_option,
-    db_admin_uri_option,
-    db_qserv_user_option,
-    debug_option,
-    load_option,
-    log_cfg_file_option,
-    log_level_option,
+    option_case,
+    option_cmd,
+    option_cmsd_manager_name,
+    option_compare_results,
+    option_czar_connection,
+    option_db_uri,
+    option_db_admin_uri,
+    option_db_qserv_user,
+    option_debug,
+    option_load,
+    option_log_cfg_file,
+    option_log_level,
     OptionGroup,
-    options_file_option,
-    mysql_monitor_password_option,
-    reload_option,
-    repl_auth_key_option,
-    repl_admin_auth_key_option,
-    repl_connection_option,
-    repl_instance_id_option,
-    repl_registry_host_option,
-    repl_registry_port_option,
-    repl_http_port_option,
-    results_dirname_option,
-    results_protocol_option,
-    run_option,
-    run_tests_option,
-    targs_options,
-    tests_yaml_option,
-    unload_option,
-    vnid_config_option,
-    worker_connection_option,
-    xrootd_manager_option,
+    option_options_file,
+    option_mysql_monitor_password,
+    option_reload,
+    option_repl_auth_key,
+    option_repl_admin_auth_key,
+    option_repl_connection,
+    option_repl_instance_id,
+    option_repl_registry_host,
+    option_repl_registry_port,
+    option_repl_http_port,
+    option_results_dirname,
+    option_results_protocol,
+    option_run,
+    option_run_tests,
+    options_targs,
+    option_tests_yaml,
+    option_unload,
+    option_vnid_config,
+    option_worker_connection,
+    option_xrootd_manager,
 )
 from . import utils
 from .render_targs import render_targs
@@ -176,7 +176,7 @@ commands = OrderedDict((
 ))
 
 
-cmsd_worker_cfg_file_option = partial(
+option_cmsd_worker_cfg_file = partial(
     click.option,
     "--cmsd-worker-cfg-file",
     help="Path to the cmsd worker config file.",
@@ -185,7 +185,7 @@ cmsd_worker_cfg_file_option = partial(
 )
 
 
-cmsd_worker_cfg_path_option = partial(
+option_cmsd_worker_cfg_path = partial(
     click.option,
     "--cmsd-worker-cfg-path",
     help="Location to render cmsd_worker_cfg_file.",
@@ -194,7 +194,7 @@ cmsd_worker_cfg_path_option = partial(
 )
 
 
-xrdssi_cfg_file_option = partial(
+option_xrdssi_cfg_file = partial(
     click.option,
     "--xrdssi-cfg-file",
     help="Path to the xrdssi config file.",
@@ -203,7 +203,7 @@ xrdssi_cfg_file_option = partial(
 )
 
 
-xrdssi_cfg_path_option = partial(
+option_xrdssi_cfg_path = partial(
     click.option,
     "--xrdssi-cfg-path",
     help="Location to render xrdssi-cfg-file.",
@@ -282,8 +282,8 @@ def cmd_default(ctx: click.Context, param: click.core.Option, value: str) -> Non
     ctx.default_map.update({"cmd": default_cmd})
 
 
-# cmd_default_option updates the default_map to have the default value for the --cmd option.
-cmd_default_option = partial(
+# option_cmd_default updates the default_map to have the default value for the --cmd option.
+option_cmd_default = partial(
     click.option,
     "--cmd-default",
     callback=cmd_default,
@@ -293,21 +293,21 @@ cmd_default_option = partial(
 )
 
 
-class cmd_options(OptionGroup):  # noqa: N801
-    """Applies the cmd_option and the cmd_default_option decorators to a
+class options_cms(OptionGroup):  # noqa: N801
+    """Applies the option_cmd and the option_cmd_default decorators to a
     click.command function.
     """
 
     @property
     def decorators(self) -> List[Callable]:
         return [
-            cmd_option(),
-            cmd_default_option(),
+            option_cmd(),
+            option_cmd_default(),
         ]
 
 
 @click.group(cls=EntrypointCommandGroup)
-@log_level_option()
+@option_log_level()
 def entrypoint(log_level: str) -> None:
     logging.basicConfig(
         level=log_level,
@@ -317,7 +317,7 @@ def entrypoint(log_level: str) -> None:
 
 
 @entrypoint.command()
-@repl_auth_key_option()
+@option_repl_auth_key()
 @click.argument("repl_ctrl_uri")
 def load_simple(repl_ctrl_uri: str, repl_auth_key: str) -> None:
     """Load a small test dataset into qserv.
@@ -328,17 +328,17 @@ def load_simple(repl_ctrl_uri: str, repl_auth_key: str) -> None:
 
 
 @entrypoint.command()
-@repl_connection_option(
-    help=repl_connection_option.keywords["help"]
+@option_repl_connection(
+    help=option_repl_connection.keywords["help"]
     + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
 )
-@unload_option()
-@load_option()
-@reload_option()
-@case_option()
-@run_tests_option()
-@tests_yaml_option()
-@compare_results_option()
+@option_unload()
+@option_load()
+@option_reload()
+@option_case()
+@option_run_tests()
+@option_tests_yaml()
+@option_compare_results()
 def integration_test(
     repl_connection: str,
     unload: bool,
@@ -369,7 +369,7 @@ def integration_test(
 
 
 @entrypoint.command()
-@tests_yaml_option()
+@option_tests_yaml()
 def prepare_data(
     tests_yaml: str,
 ) -> None:
@@ -392,8 +392,8 @@ def prepare_data(
     help="Use the admin insetad of user auth key.",
     is_flag=True,
 )
-@repl_auth_key_option()
-@repl_admin_auth_key_option()
+@option_repl_auth_key()
+@option_repl_admin_auth_key()
 def delete_database(
     repl_ctrl_uri: str,
     database: str,
@@ -427,16 +427,16 @@ def delete_database(
 
 @entrypoint.command(help=f"Start as a qserv proxy node.\n\n{socket_option_description}")
 @pass_context
-@db_uri_option(
+@option_db_uri(
     help="The non-admin URI to the proxy's database, used for non-smig purposes. " + socket_option_help,
     required=True,
 )
-@db_admin_uri_option(
+@option_db_admin_uri(
     help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
     required=True,
 )
-@mysql_monitor_password_option()
-@xrootd_manager_option(required=True)
+@option_mysql_monitor_password()
+@option_xrootd_manager(required=True)
 @click.option(
     "--proxy-backend-address",
     default="127.0.0.1:3306",
@@ -468,16 +468,16 @@ def delete_database(
     default=czar_cfg_path,
     show_default=True,
 )
-@log_cfg_file_option()
-@repl_instance_id_option(required=True)
-@repl_auth_key_option(required=True)
-@repl_admin_auth_key_option(required=True)
-@repl_registry_host_option(required=True)
-@repl_registry_port_option(required=True)
-@repl_http_port_option(required=True)
-@targs_options()
-@cmd_options()
-@options_file_option()
+@option_log_cfg_file()
+@option_repl_instance_id(required=True)
+@option_repl_auth_key(required=True)
+@option_repl_admin_auth_key(required=True)
+@option_repl_registry_host(required=True)
+@option_repl_registry_port(required=True)
+@option_repl_http_port(required=True)
+@options_targs()
+@options_cms()
+@option_options_file()
 def proxy(ctx: click.Context, **kwargs: Any) -> None:
     """Start as a qserv-proxy node.
     """
@@ -500,12 +500,12 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
 
 @entrypoint.command(help=f"Start as a qserv http Czar node.\n\n{socket_option_description}")
 @pass_context
-@db_uri_option(
+@option_db_uri(
     help="The non-admin URI to the Czar's database, used for non-smig purposes. " + socket_option_help,
     required=True,
 )
-@mysql_monitor_password_option()
-@xrootd_manager_option(required=True)
+@option_mysql_monitor_password()
+@option_xrootd_manager(required=True)
 @click.option(
     "--http-frontend-port",
     default="4048",
@@ -532,16 +532,16 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
     default=czar_cfg_path,
     show_default=True,
 )
-@log_cfg_file_option()
-@repl_instance_id_option(required=True)
-@repl_auth_key_option(required=True)
-@repl_admin_auth_key_option(required=True)
-@repl_registry_host_option(required=True)
-@repl_registry_port_option(required=True)
-@repl_http_port_option(required=True)
-@targs_options()
-@cmd_options()
-@options_file_option()
+@option_log_cfg_file()
+@option_repl_instance_id(required=True)
+@option_repl_auth_key(required=True)
+@option_repl_admin_auth_key(required=True)
+@option_repl_registry_host(required=True)
+@option_repl_registry_port(required=True)
+@option_repl_http_port(required=True)
+@options_targs()
+@options_cms()
+@option_options_file()
 def czar_http(ctx: click.Context, **kwargs: Any) -> None:
     """Start as a http-czar node.
     """
@@ -575,9 +575,9 @@ def czar_http(ctx: click.Context, **kwargs: Any) -> None:
     default=cmsd_manager_cfg_path,
     show_default=True,
 )
-@targs_options()
-@cmd_options()
-@options_file_option()
+@options_targs()
+@options_cms()
+@option_options_file()
 def cmsd_manager(ctx: click.Context, **kwargs: Any) -> None:
     """Start as a cmsd manager node.
     """
@@ -593,7 +593,7 @@ def cmsd_manager(ctx: click.Context, **kwargs: Any) -> None:
 
 @entrypoint.command()
 @pass_context
-@cmsd_manager_name_option()
+@option_cmsd_manager_name()
 @click.option(
     "--xrootd_manager-cfg-file",
     help="Path to the xrootd manager config file.",
@@ -606,9 +606,9 @@ def cmsd_manager(ctx: click.Context, **kwargs: Any) -> None:
     default=xrootd_manager_cfg_path,
     show_default=True,
 )
-@targs_options()
-@cmd_options()
-@options_file_option()
+@options_targs()
+@options_cms()
+@option_options_file()
 def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
     """Start as an xrootd manager node.
     """
@@ -624,27 +624,27 @@ def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
 
 @entrypoint.command(help=f"Start as a worker cmsd node.\n\n{socket_option_description}")
 @pass_context
-@db_uri_option(help=worker_db_help)
-@vnid_config_option(required=True)
-@vnid_config_option(required=True)
-@repl_instance_id_option(required=True)
-@repl_auth_key_option(required=True)
-@repl_admin_auth_key_option(required=True)
-@repl_registry_host_option(required=True)
-@repl_registry_port_option(required=True)
-@repl_http_port_option(required=True)
-@results_dirname_option()
-@results_protocol_option()
-@cmsd_manager_name_option()
-@debug_option()
-@cmsd_worker_cfg_file_option()
-@cmsd_worker_cfg_path_option()
-@xrdssi_cfg_file_option()
-@xrdssi_cfg_path_option()
-@log_cfg_file_option()
-@targs_options()
-@cmd_options()
-@options_file_option()
+@option_db_uri(help=worker_db_help)
+@option_vnid_config(required=True)
+@option_vnid_config(required=True)
+@option_repl_instance_id(required=True)
+@option_repl_auth_key(required=True)
+@option_repl_admin_auth_key(required=True)
+@option_repl_registry_host(required=True)
+@option_repl_registry_port(required=True)
+@option_repl_http_port(required=True)
+@option_results_dirname()
+@option_results_protocol()
+@option_cmsd_manager_name()
+@option_debug()
+@option_cmsd_worker_cfg_file()
+@option_cmsd_worker_cfg_path()
+@option_xrdssi_cfg_file()
+@option_xrdssi_cfg_path()
+@option_log_cfg_file()
+@options_targs()
+@options_cms()
+@option_options_file()
 def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
     targs = utils.targs(ctx)
     targs = render_targs(targs)
@@ -662,29 +662,29 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 
 @entrypoint.command(help=f"Start as a worker xrootd node.\n\n{socket_option_description}")
 @pass_context
-@debug_option()
-@db_uri_option(help=worker_db_help)
-@db_admin_uri_option(help=admin_worker_db_help)
-@vnid_config_option(required=True)
-@repl_instance_id_option(required=True)
-@repl_auth_key_option(required=True)
-@repl_admin_auth_key_option(required=True)
-@repl_registry_host_option(required=True)
-@repl_registry_port_option(required=True)
-@repl_http_port_option(required=True)
-@results_dirname_option()
-@results_protocol_option()
-@cmsd_manager_name_option()
-@mysql_monitor_password_option()
-@db_qserv_user_option()
-@cmsd_worker_cfg_file_option()
-@cmsd_worker_cfg_path_option()
-@xrdssi_cfg_file_option()
-@xrdssi_cfg_path_option()
-@log_cfg_file_option()
-@targs_options()
-@cmd_options()
-@options_file_option()
+@option_debug()
+@option_db_uri(help=worker_db_help)
+@option_db_admin_uri(help=admin_worker_db_help)
+@option_vnid_config(required=True)
+@option_repl_instance_id(required=True)
+@option_repl_auth_key(required=True)
+@option_repl_admin_auth_key(required=True)
+@option_repl_registry_host(required=True)
+@option_repl_registry_port(required=True)
+@option_repl_http_port(required=True)
+@option_results_dirname()
+@option_results_protocol()
+@option_cmsd_manager_name()
+@option_mysql_monitor_password()
+@option_db_qserv_user()
+@option_cmsd_worker_cfg_file()
+@option_cmsd_worker_cfg_path()
+@option_xrdssi_cfg_file()
+@option_xrdssi_cfg_path()
+@option_log_cfg_file()
+@options_targs()
+@options_cms()
+@option_options_file()
 def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
     targs = utils.targs(ctx)
     targs = render_targs(targs)
@@ -708,22 +708,22 @@ def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
     cls=EntrypointCommandExArgs,
 )
 @pass_context
-@db_admin_uri_option(help="The admin URI to the worker's database, used for replication and ingest. " + socket_option_help)
-@repl_connection_option(
-    help=f"{repl_connection_option.keywords['help']} {socket_option_help}"
+@option_db_admin_uri(help="The admin URI to the worker's database, used for replication and ingest. " + socket_option_help)
+@option_repl_connection(
+    help=f"{option_repl_connection.keywords['help']} {socket_option_help}"
 )
-@debug_option()
-@cmd_options()
+@option_debug()
+@options_cms()
 @click.option(
     "--config",
     help="The path to the configuration database for qserv-replica-worker.",
     default="{{repl_connection}}",
     show_default=True,
 )
-@log_cfg_file_option()
-@targs_options()
-@run_option()
-@options_file_option()
+@option_log_cfg_file()
+@options_targs()
+@option_run()
+@option_options_file()
 def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     targs = utils.targs(ctx)
     targs = render_targs(targs)
@@ -742,11 +742,11 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     cls=EntrypointCommandExArgs,
 )
 @pass_context
-@db_uri_option(
+@option_db_uri(
     help="The non-admin URI to the replication controller's database, used for non-smig purposes.",
     required=True,
 )
-@db_admin_uri_option(
+@option_db_admin_uri(
     help="The admin URI to the replication controller's database, used for schema initialization. " + socket_option_help,
     required=True,
 )
@@ -754,8 +754,8 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     "--xrootd-manager",
     help="The host name of the xrootd manager node.",
 )
-@log_cfg_file_option()
-@cmd_options()
+@option_log_cfg_file()
+@options_cms()
 @click.option(
     "--http-root",
     help="The root folder for the static content to be served by the built-in HTTP service.",
@@ -766,9 +766,9 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
     "--qserv-czar-db",
     help="The connection URL to the MySQL server of the Qserv master database."
 )
-@targs_options()
-@run_option()
-@options_file_option()
+@options_targs()
+@option_run()
+@option_options_file()
 def replication_controller(ctx: click.Context, **kwargs: Any) -> None:
     """Start as a replication controller node."""
     targs = utils.targs(ctx)
@@ -788,19 +788,19 @@ def replication_controller(ctx: click.Context, **kwargs: Any) -> None:
     cls=EntrypointCommandExArgs,
 )
 @pass_context
-@db_uri_option(
+@option_db_uri(
     help="The non-admin URI to the replication systems's database, used for non-smig purposes.",
     required=True,
 )
-@db_admin_uri_option(
+@option_db_admin_uri(
     help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
     required=True,
 )
-@log_cfg_file_option()
-@cmd_options()
-@targs_options()
-@run_option()
-@options_file_option()
+@option_log_cfg_file()
+@options_cms()
+@options_targs()
+@option_run()
+@option_options_file()
 def replication_registry(ctx: click.Context, **kwargs: Any) -> None:
     """Start as a replication registry node."""
     targs = utils.targs(ctx)
@@ -870,10 +870,10 @@ def watcher(
 
 
 @entrypoint.command()
-@czar_connection_option()
-@worker_connection_option()
-@repl_connection_option()
-@options_file_option()
+@option_czar_connection()
+@option_worker_connection()
+@option_repl_connection()
+@option_options_file()
 def smig_update(czar_connection: str, worker_connections: List[str], repl_connection: str) -> None:
     """Run schema update on nodes."""
     script.smig_update(

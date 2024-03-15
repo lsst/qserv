@@ -377,7 +377,7 @@ def enter_worker_cmsd(
     url = _process_uri(
         uri=db_uri,
         query_keys=("socket",),
-        option=options.db_uri_option.args[0],
+        option=options.option_db_uri.args[0],
         block=True,
     )
     targs["db_host"] = url.host
@@ -451,13 +451,13 @@ def enter_worker_xrootd(
     url = _process_uri(
         uri=db_uri,
         query_keys=("socket",),
-        option=options.db_uri_option.args[0],
+        option=options.option_db_uri.args[0],
         block=True,
     )
     _ = _process_uri(
         uri=db_admin_uri,
         query_keys=("socket",),
-        option=options.db_admin_uri_option.args[0],
+        option=options.option_db_admin_uri.args[0],
         block=False,
     )
 
@@ -523,13 +523,13 @@ def enter_worker_repl(
     _ = _process_uri(
         uri=db_admin_uri,
         query_keys=(),
-        option=options.db_admin_uri_option.args[0],
+        option=options.option_db_admin_uri.args[0],
         block=True,
     )
     _ = _process_uri(
         uri=repl_connection,
         query_keys=(),
-        option=options.db_admin_uri_option.args[0],
+        option=options.option_db_admin_uri.args[0],
         block=True,
     )
 
@@ -605,13 +605,13 @@ def enter_proxy(
     url = _process_uri(
         uri=db_uri,
         query_keys=("socket",),
-        option=options.db_uri_option.args[0],
+        option=options.option_db_uri.args[0],
         block=True,
     )
     _ = _process_uri(
         uri=db_admin_uri,
         query_keys=("socket",),
-        option=options.db_admin_uri_option.args[0],
+        option=options.option_db_admin_uri.args[0],
         block=True,
     )
 
@@ -679,7 +679,7 @@ def enter_czar_http(
     url = _process_uri(
         uri=db_uri,
         query_keys=("socket",),
-        option=options.db_uri_option.args[0],
+        option=options.option_db_uri.args[0],
         block=True,
     )
 
@@ -741,13 +741,13 @@ def enter_replication_controller(
     _ = _process_uri(
         uri=db_uri,
         query_keys=(),
-        option=options.db_uri_option.args[0],
+        option=options.option_db_uri.args[0],
         block=True,
     )
     _ = _process_uri(
         uri=db_admin_uri,
         query_keys=("socket",),
-        option=options.db_admin_uri_option.args[0],
+        option=options.option_db_admin_uri.args[0],
         block=True,
     )
     if run:
@@ -796,13 +796,13 @@ def enter_replication_registry(
     _ = _process_uri(
         uri=db_uri,
         query_keys=(),
-        option=options.db_uri_option.args[0],
+        option=options.option_db_uri.args[0],
         block=True,
     )
     _ = _process_uri(
         uri=db_admin_uri,
         query_keys=("socket",),
-        option=options.db_admin_uri_option.args[0],
+        option=options.option_db_admin_uri.args[0],
         block=True,
     )
 
