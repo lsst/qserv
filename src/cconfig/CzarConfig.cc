@@ -134,21 +134,30 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
         : _czarName(czarName) {
     _configValMap.readConfigStore(configStore);
 
+    if (_cssPort->getVal() == 0 && _cssSocket->getVal().empty()) {
+        throw util::ConfigException(ERR_LOC, " CzarConfig::" + std::string(__func__) + " Neither _cssPort " +
+                                                     _cssPort->getSectionDotName() + "=" +
+                                                     _cssPort->getValStr() + " nor _cssSocket " +
+                                                     _cssSocket->getSectionDotName() + "=" +
+                                                     _cssSocket->getValStr() + " have valid values.");
+    }
+
     if (_replicationRegistryHost->getVal().empty()) {
-        throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
-                                    ": 'replication.registry_host' is not set.");
+        throw util::ConfigException(ERR_LOC, " CzarConfig::" + std::string(__func__) +
+                                                     ": 'replication.registry_host' is not set.");
     }
     if (_replicationRegistryPort->getVal() == 0) {
-        throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
-                                    ": 'replication.registry_port' number can't be 0.");
+        throw util::ConfigException(ERR_LOC, " CzarConfig::" + std::string(__func__) +
+                                                     ": 'replication.registry_port' number can't be 0.");
     }
     if (_replicationRegistryHearbeatIvalSec->getVal() == 0) {
-        throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
-                                    ": 'replication.registry_heartbeat_ival_sec' can't be 0.");
+        throw util::ConfigException(ERR_LOC,
+                                    " CzarConfig::" + std::string(__func__) +
+                                            ": 'replication.registry_heartbeat_ival_sec' can't be 0.");
     }
     if (_replicationNumHttpThreads->getVal() == 0) {
-        throw std::invalid_argument("CzarConfig::" + std::string(__func__) +
-                                    ": 'replication.num_http_threads' can't be 0.");
+        throw util::ConfigException(ERR_LOC, " CzarConfig::" + std::string(__func__) +
+                                                     ": 'replication.num_http_threads' can't be 0.");
     }
 
     // Cache the cached version of the configuration in the JSON format. The JSON object
@@ -257,6 +266,8 @@ mysql::MySqlConfig CzarConfig::getMySqlQStatusDataConfig() const {
 }
 
 std::map<std::string, std::string> CzarConfig::getCssConfigMap() const {
+    // TODO: The way CssConfig uses this is not ideal and probably should be changed.
+    //       Maybe to return a map of copies of the related util::ConfigVal objects.
     return _configValMap.getSectionMapStr("css");
 }
 

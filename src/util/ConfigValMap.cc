@@ -105,7 +105,6 @@ void ConfigValMap::readConfigStore(util::ConfigStore const& configStore) {
 }
 
 std::tuple<bool, std::string> ConfigValMap::checkRequired() const {
-    LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& ConfigValMap::checkRequired() a");
     bool errorFound = false;
     string eMsg;
     for (auto&& [section, nameMap] : _sectionMap) {

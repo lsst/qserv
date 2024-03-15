@@ -76,7 +76,6 @@ public:
 
     void setValFromConfigStoreChild(util::ConfigStore const& configStore) override;
     TEnum getVal() const { return _val; }
-    TEnum getDefVal() const { return _defVal; }
 
     void setVal(TEnum val) {
         _val = val;
@@ -86,9 +85,8 @@ public:
 private:
     ConfigValResultDeliveryProtocol(std::string const& section, std::string const& name, bool required,
                                     std::string const& defVal, bool hidden)
-            : ConfigVal(section, name, required, hidden), _val(parse(defVal)), _defVal(_val) {}
+            : ConfigVal(section, name, required, hidden), _val(parse(defVal)) {}
     TEnum _val;
-    TEnum _defVal;
 };
 
 /// Provide all configuration parameters for a Qserv worker instance.
