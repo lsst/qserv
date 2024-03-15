@@ -50,29 +50,28 @@ from . import images, launch
 from .opt import (
     option_bind,
     option_build_container_name,
-    build_image_ev,
+    env_build_image,
     option_build_image,
     option_clang_format,
     option_cmake,
     option_compose_file,
     option_dashboard_port,
     option_debuggable,
-    dh_user_ev,
-    dh_token_ev,
+    env_dh_user,
+    env_dh_token,
     option_do_build_image,
     option_dry,
-    gh_event_name_ev,
-    gh_head_ref_ev,
-    gh_ref_ev,
-    ImageName,
+    env_gh_event_name,
+    env_gh_head_ref,
+    env_gh_ref,
     option_itest_container_name,
     option_itest_ref_container_name,
     option_itest_file,
     option_jobs,
-    ltd_password_ev,
-    ltd_user_ev,
+    env_ltd_password,
+    env_ltd_user,
     option_make,
-    mariadb_image_ev,
+    env_mariadb_image,
     option_mariadb_image,
     option_mypy,
     option_outdir,
@@ -84,14 +83,14 @@ from .opt import (
     option_qserv_root,
     option_qserv_build_root,
     qserv_env_vals,
-    qserv_image_ev,
+    env_qserv_image,
     option_qserv_image,
     option_remove,
-    user_build_image_ev,
+    env_user_build_image,
     option_user_build_image,
     option_user,
     option_run_base_image,
-    run_base_image_ev,
+    env_run_base_image,
     option_test_container_name,
     option_unit_test,
 )
@@ -144,11 +143,11 @@ def qserv() -> None:
 
 
 @qserv.command("env")
-@click.option(qserv_image_ev.opt, is_flag=True)
-@click.option(build_image_ev.opt, is_flag=True)
-@click.option(user_build_image_ev.opt, is_flag=True)
-@click.option(run_base_image_ev.opt, is_flag=True)
-@click.option(mariadb_image_ev.opt, is_flag=True)
+@click.option(env_qserv_image.opt, is_flag=True)
+@click.option(env_build_image.opt, is_flag=True)
+@click.option(env_user_build_image.opt, is_flag=True)
+@click.option(env_run_base_image.opt, is_flag=True)
+@click.option(env_mariadb_image.opt, is_flag=True)
 def show_qserv_environment(
     qserv_image: bool,
     build_image: bool,
@@ -163,15 +162,15 @@ def show_qserv_environment(
     actions or other scripted tools.
     """
     if qserv_image:
-        click.echo(qserv_image_ev.val())
+        click.echo(env_qserv_image.val())
     if build_image:
-        click.echo(build_image_ev.val())
+        click.echo(env_build_image.val())
     if user_build_image:
-        click.echo(user_build_image_ev.val())
+        click.echo(env_user_build_image.val())
     if run_base_image:
-        click.echo(run_base_image_ev.val())
+        click.echo(env_run_base_image.val())
     if mariadb_image:
-        click.echo(mariadb_image_ev.val())
+        click.echo(env_mariadb_image.val())
     if any((qserv_image, build_image, user_build_image, run_base_image, mariadb_image)):
         return
     click.echo("Environment variables used for options:")
@@ -181,11 +180,11 @@ def show_qserv_environment(
 
 
 @qserv.command()
-@option_qserv_image(help=qserv_image_ev.help("The name and tag of the qserv run image to be built."))
+@option_qserv_image(help=env_qserv_image.help("The name and tag of the qserv run image to be built."))
 @option_qserv_root()
 @option_qserv_build_root()
 @option_run_base_image(
-    help=run_base_image_ev.help(
+    help=env_run_base_image.help(
         "The name of the lite-run-base image to use as the FROM image for the lite-run image. "
         "Overrides the default lite-run-base image name in the Dockerfile."
     )
@@ -248,15 +247,15 @@ def build(
 
     If using --upload, the following environment variables must be set:
 
-    * {ltd_user_ev.env_var} - {ltd_user_ev.used_for}
+    * {env_ltd_user.env_var} - {env_ltd_user.used_for}
 
-    * {ltd_password_ev.env_var} - {ltd_password_ev.used_for}
+    * {env_ltd_password.env_var} - {env_ltd_password.used_for}
 
-    * {gh_event_name_ev.env_var} - {gh_event_name_ev.used_for}
+    * {env_gh_event_name.env_var} - {env_gh_event_name.used_for}
 
-    * {gh_head_ref_ev.env_var} - {gh_head_ref_ev.used_for}
+    * {env_gh_head_ref.env_var} - {env_gh_head_ref.used_for}
 
-    * {gh_ref_ev.env_var} - {gh_ref_ev.used_for}
+    * {env_gh_ref.env_var} - {env_gh_ref.used_for}
 
     See the LSST The Docs Conveyor help about the LTD_* environment variables,
     at https://ltd-conveyor.lsst.io.
@@ -294,11 +293,11 @@ def build_docs(
 ) -> None:
     launch.build_docs(
         upload=upload,
-        ltd_user=ltd_user_ev.val(),
-        ltd_password=ltd_password_ev.val(),
-        gh_event=gh_event_name_ev.val(),
-        gh_head_ref=gh_head_ref_ev.val(),
-        gh_ref=gh_ref_ev.val(),
+        ltd_user=env_ltd_user.val(),
+        ltd_password=env_ltd_password.val(),
+        gh_event=env_gh_event_name.val(),
+        gh_head_ref=env_gh_head_ref.val(),
+        gh_ref=env_gh_ref.val(),
         qserv_root=qserv_root,
         qserv_build_root=qserv_build_root,
         build_image=user_build_image,
@@ -310,7 +309,7 @@ def build_docs(
 
 
 @qserv.command()
-@option_build_image(help=build_image_ev.help("The name of the build base image to create."))
+@option_build_image(help=env_build_image.help("The name of the build base image to create."))
 @option_push_image()
 @option_pull_image()
 @option_qserv_root()
@@ -342,7 +341,7 @@ def build_user_build_image(
 
 
 @qserv.command()
-@option_run_base_image(help=run_base_image_ev.help("The name of the lite-run-base image to create."))
+@option_run_base_image(help=env_run_base_image.help("The name of the lite-run-base image to create."))
 @option_push_image()
 @option_pull_image()
 @option_qserv_root()
@@ -355,7 +354,7 @@ def build_run_base_image(
 
 
 @qserv.command()
-@option_mariadb_image(help=mariadb_image_ev.help("The name of the mariadb image to create."))
+@option_mariadb_image(help=env_mariadb_image.help("The name of the mariadb image to create."))
 @option_push_image()
 @option_pull_image()
 @option_qserv_root()
@@ -374,11 +373,11 @@ def build_mariadb_image(
 
 
 @qserv.command()
-@option_build_image(help=build_image_ev.help("The name of the build base image to create."))
-@option_user_build_image(help=run_base_image_ev.help("The name of the lite-run-base image to create."))
+@option_build_image(help=env_build_image.help("The name of the build base image to create."))
+@option_user_build_image(help=env_run_base_image.help("The name of the lite-run-base image to create."))
 @option_qserv_group()
-@option_run_base_image(help=run_base_image_ev.help("The name of the lite-run-base image to create."))
-@option_mariadb_image(help=mariadb_image_ev.help("The name of the mariadb image to create."))
+@option_run_base_image(help=env_run_base_image.help("The name of the lite-run-base image to create."))
+@option_mariadb_image(help=env_mariadb_image.help("The name of the mariadb image to create."))
 @option_push_image(help="Push base images to dockerhub if they do not exist. Requires login to dockerhub first.")
 @option_pull_image(help="Pull images from dockerhub if they exist.")
 @option_qserv_root()
@@ -495,7 +494,7 @@ def run_debug(
 @qserv.command()
 @option_qserv_image()
 @option_mariadb_image(
-    help=mariadb_image_ev.help("The name of the database image to use for the reference database.")
+    help=env_mariadb_image.help("The name of the database image to use for the reference database.")
 )
 @option_qserv_root()
 @option_project()
@@ -772,8 +771,8 @@ def entrypoint_help(
 )
 @click.argument("IMAGE")
 def dh_image_exists(image: str) -> None:
-    user = dh_user_ev.val()
-    token = dh_token_ev.val()
+    user = env_dh_user.val()
+    token = env_dh_token.val()
     if not (user and token):
         click.echo("QSERV_DH_USER and QSERV_DH_TOKEN must be set to use this command.")
         return

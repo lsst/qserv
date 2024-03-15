@@ -32,11 +32,11 @@ import yaml
 from typing import Dict, List, Optional
 
 from .opt import (
-    dashboard_port_ev,
-    mariadb_image_ev,
-    qserv_image_ev,
-    dh_user_ev,
-    dh_token_ev,
+    env_dashboard_port,
+    env_mariadb_image,
+    env_qserv_image,
+    env_dh_user,
+    env_dh_token,
 )
 from ..constants import tmp_data_dir
 from . import images
@@ -464,7 +464,7 @@ def build(
     user : `str`
         The name of the user to run the build container as.
     """
-    if pull_image and do_pull_image(qserv_image, dh_user_ev.val(), dh_token_ev.val(), dry):
+    if pull_image and do_pull_image(qserv_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
 
     if clang_format_mode != "off":
@@ -595,7 +595,7 @@ def build_build_image(
     pull_image: `bool`
         Pull the lite-qserv image from dockerhub if it exists there.
     """
-    if pull_image and do_pull_image(build_image, dh_user_ev.val(), dh_token_ev.val(), dry):
+    if pull_image and do_pull_image(build_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
     images.build_image(
         image_name=build_image,
@@ -640,7 +640,7 @@ def build_run_base_image(
     run_base_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
     """Build the qserv lite-run-base image."""
-    if pull_image and do_pull_image(run_base_image, dh_user_ev.val(), dh_token_ev.val(), dry):
+    if pull_image and do_pull_image(run_base_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
     images.build_image(
         image_name=run_base_image,
@@ -656,7 +656,7 @@ def build_mariadb_image(
     mariadb_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
     """Build the mariadb image."""
-    if pull_image and do_pull_image(mariadb_image, dh_user_ev.val(), dh_token_ev.val(), dry):
+    if pull_image and do_pull_image(mariadb_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
     images.build_image(
         image_name=mariadb_image,
@@ -1306,11 +1306,11 @@ def up(
         args.extend(["-p", project])
     args.extend(["up", "-d"])
     env_override = {
-        qserv_image_ev.env_var: qserv_image,
-        mariadb_image_ev.env_var: mariadb_image,
+        env_qserv_image.env_var: qserv_image,
+        env_mariadb_image.env_var: mariadb_image,
     }
     if dashboard_port:
-        env_override[dashboard_port_ev.env_var] = str(dashboard_port)
+        env_override[env_dashboard_port.env_var] = str(dashboard_port)
     if dry:
         env_str = " ".join([f"{k}={v}" for k, v in env_override.items()])
         print(f"{env_str} {' '.join(args)}")
@@ -1361,8 +1361,8 @@ def down(
     _log.debug('Running "%s"', " ".join(args))
     env = get_env(
         {
-            qserv_image_ev.env_var: qserv_image,
-            mariadb_image_ev.env_var: mariadb_image,
+            env_qserv_image.env_var: qserv_image,
+            env_mariadb_image.env_var: mariadb_image,
         }
     )
     subproc.run(args, env=env)
