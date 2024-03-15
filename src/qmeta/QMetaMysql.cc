@@ -25,6 +25,7 @@
 
 // System headers
 #include <algorithm>
+#include <stdexcept>
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
@@ -47,7 +48,7 @@ using namespace std;
 namespace {
 
 // Current version of QMeta schema
-char const VERSION_STR[] = "9";
+char const VERSION_STR[] = "10";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
@@ -838,6 +839,46 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
             _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
         }
     }
+}
+
+QMeta::ChunkMap QMetaMysql::getChunkMap() {
+    lock_guard<mutex> sync(_dbMutex);
+
+    auto trans = QMetaTransaction::create(*_conn);
+
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    string const tableName = "chunkMap";
+    string const query =
+            "SELECT `chunks`,`update_time` FROM `" + tableName + "` ORDER BY `update_time` DESC LIMIT 1";
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (!_conn->runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+    vector<string> chunks;
+    vector<string> upateTime;
+    if (!results.extractFirst2Columns(chunks, upateTime, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract result set of query " + query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+    trans->commit();
+
+    if (chunks.empty()) {
+        throw EmptyTableError(ERR_LOC, tableName);
+    } else if (chunks.size() > 1) {
+        throw ConsistencyError(ERR_LOC, "Too many rows in result set of query " + query);
+    }
+    QMeta::ChunkMap chunkMap;
+    try {
+        chunkMap.chunks = nlohmann::json::parse(chunks[0]);
+        chunkMap.updateTime =
+                chrono::time_point<chrono::system_clock>() + chrono::seconds(stol(upateTime[0]));
+    } catch (exception const& ex) {
+        string const msg = "Failed to parse result set of query " + query + ", ex: " + string(ex.what());
+        throw ConsistencyError(ERR_LOC, msg);
+    }
+    return chunkMap;
 }
 
 void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
