@@ -102,16 +102,6 @@ public:
     /// @return a structure containing CSS parameters
     std::map<std::string, std::string> getCssConfigMap() const;
 
-#if 0 // &&&
-    /* Get path to directory where the empty chunk files resides
-     *
-     * Each empty chunk file is related to one cosmic dataset
-     *
-     * @return path to directory where the empty chunk files resides
-     */
-    std::string const& getEmptyChunkPath() const { return _emptyChunkPath->getVal(); }
-
-#endif // &&&
     /* Get the maximum number of chunks that can be in an interactive query.
      * Queries that are not limited in area to a small number of chunks must
      * be part of a full table scan.
@@ -279,20 +269,6 @@ private:
     using CVTBoolPtr = util::ConfigValTBool::BoolPtr const;
     using CVTStrPtr = util::ConfigValTStr::StrPtr const;
 
-/* &&&
-    // Parameters below used in ccontrol::UserQueryFactory
-    std::map<std::string, std::string> const _cssConfigMap;
-    mysql::MySqlConfig const _mySqlQmetaConfig;
-    mysql::MySqlConfig const _mySqlQstatusDataConfig;
-    std::string const _xrootdFrontendUrl;
-    int const _interactiveChunkLimit;
-    int const _xrootdCBThreadsMax;
-    int const _xrootdCBThreadsInit;
-    int const _xrootdSpread;
-    int const _qMetaSecsBetweenChunkCompletionUpdates;
-    int const _maxMsgSourceStore;  ///< Maximum number of messages to store per msgSource.
-    int const _queryDistributionTestVer;
-*/
     bool const required = true;
     bool const notReq = false;
     bool const hidden = true;
@@ -336,7 +312,7 @@ private:
             util::ConfigValTStr::create(_configValMap, "css", "database", notReq, "qservCssData");
     CVTStrPtr _cssSocket = util::ConfigValTStr::create(_configValMap, "css", "socket", notReq, "");
 
-    // _mySqlQmetaConfig values
+    // mySqlQmetaConfig values
     CVTStrPtr _qmetaUser = util::ConfigValTStr::create(_configValMap, "qmeta", "user", notReq, "qsmaster");
     CVTStrPtr _qmetaPasswd =
             util::ConfigValTStr::create(_configValMap, "qmeta", "passwd", notReq, "", hidden);
