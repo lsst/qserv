@@ -268,9 +268,9 @@ private:
             : ConfigValT<uint64_t>(section, name, required, defVal, hidden) {}
 };
 
-/// Read values from a configuration source, such as util::ConfigStore, and providing
-/// reasonably possible verification and output as a json object. util::ConfigStore
-/// is limited in its capabilities.
+/// Read values from a configuration source, such as util::ConfigStore or yaml,
+/// enabling reasonably possible verification, and output as a json object.
+/// util::ConfigStore is limited in its capabilities.
 class ConfigValMap {
 public:
     using NameMap = std::map<std::string, ConfigVal::Ptr>;  ///< key is ConfigVal::_name
