@@ -64,12 +64,12 @@ ConfigValResultDeliveryProtocol::TEnum ConfigValResultDeliveryProtocol::parse(st
 }
 
 void ConfigValResultDeliveryProtocol::setValFromConfigStoreChild(util::ConfigStore const& configStore) {
-    std::string str = configStore.getRequired(getSectionName());
+    std::string str = configStore.getRequired(getSectionDotName());
     try {
         setVal(parse(str));
     } catch (util::ConfigException const& exc) {
         // Throw a similar exception with additional information.
-        throw util::ConfigException(ERR_LOC, getSectionName() + " " + exc.what());
+        throw util::ConfigException(ERR_LOC, getSectionDotName() + " " + exc.what());
     }
 }
 
@@ -133,10 +133,6 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
                                       _mysqlHostname->getVal(), _mysqlPort->getVal(), _mysqlSocket->getVal(),
                                       "");  // dbname
 
-    _replicationAuthKey->setHidden();
-    _replicationAdminAuthKey->setHidden();
-    _mysqlPassword->setHidden();
-
     if (_replicationRegistryHost->getVal().empty()) {
         throw util::ConfigException(
                 ERR_LOC, "WorkerConfig::" + string(__func__) + ": 'replication.registry_host' is not set.");
@@ -172,7 +168,7 @@ void WorkerConfig::setReplicationHttpPort(uint16_t port) {
 void WorkerConfig::_populateJsonConfig(string const& coll) {
     nlohmann::json& js = _jsonConfig[coll];
     LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& _populateJsonConfigNew b" << js);
-    _configValMap.populateJson(js, coll);
+    _configValMap.populateJson(js);
     LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& _populateJsonConfigNew b" << js);
 }
 
