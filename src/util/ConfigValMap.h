@@ -238,7 +238,7 @@ private:
             : ConfigValT<int64_t>(section, name, required, defVal, hidden) {}
 };
 
-/// This class reads and stores unsigned integer values.
+/// This class reads and stores unsigned unsigned integer values.
 class ConfigValTUInt : public ConfigValT<uint64_t> {
 public:
     using UIntPtr = std::shared_ptr<ConfigValTUInt>;
@@ -268,7 +268,9 @@ private:
             : ConfigValT<uint64_t>(section, name, required, defVal, hidden) {}
 };
 
-/// Read values from a configuration source, such as util::ConfigStore
+/// Read values from a configuration source, such as util::ConfigStore, and providing
+/// reasonably possible verification and output as a json object. util::ConfigStore
+/// is limited in its capabilities.
 class ConfigValMap {
 public:
     using NameMap = std::map<std::string, ConfigVal::Ptr>;  ///< key is ConfigVal::_name
