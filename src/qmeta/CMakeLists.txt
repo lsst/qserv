@@ -33,19 +33,4 @@ target_link_libraries(testQMeta
 
 #-----------------------------------------------------------------------------
 
-pybind11_add_module(qmetaLib MODULE)
-
-target_include_directories(qmetaLib PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
-)
-
-target_sources(qmetaLib PRIVATE
-    qmetaPythonWrapper.cc
-)
-
-target_link_libraries(qmetaLib PRIVATE
-    qserv_meta
-)
-
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/qmeta)
-install(TARGETS qmetaLib DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/qmeta)

@@ -41,19 +41,4 @@ css_tests(
 
 #-----------------------------------------------------------------------------
 
-pybind11_add_module(cssLib MODULE)
-
-target_include_directories(cssLib PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/..
-)
-
-target_sources(cssLib PRIVATE
-    cssPythonWrapper.cc
-)
-
-target_link_libraries(cssLib PRIVATE
-    qserv_css
-)
-
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
-install(TARGETS cssLib DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
