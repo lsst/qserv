@@ -31,9 +31,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "mysql/MySqlConfig.h"
 #include "util/ConfigStoreError.h"
-#include "wsched/BlendScheduler.h"
 
 using namespace std;
 

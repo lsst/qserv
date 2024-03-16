@@ -71,8 +71,11 @@ public:
     /// Convert the TEnum `protocol` to the appropriate string.
     static std::string toString(TEnum protocol);
 
-    /// Return the string value of non-hidden config values. (setH
+    /// Return the string value of this object.
     std::string getValStrDanger() const override { return toString(_val); }
+
+    /// Return the string default value of this object.
+    std::string getDefValStrDanger() const override { return toString(_defVal); }
 
     void setValFromConfigStoreChild(util::ConfigStore const& configStore) override;
     TEnum getVal() const { return _val; }
@@ -87,6 +90,7 @@ private:
                                     std::string const& defVal, bool hidden)
             : ConfigVal(section, name, required, hidden), _val(parse(defVal)) {}
     TEnum _val;
+    TEnum _defVal;
 };
 
 /// Provide all configuration parameters for a Qserv worker instance.
