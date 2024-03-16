@@ -84,9 +84,24 @@ public:
         return "xxxxx";
     }
 
+    /// All child classes should be able to return a valid string version of their default
+    /// value, but this function will hide values of `_hidden` `ConfigVal`.
+    /// If the string value of something that is hidden is needed, call getValStrDanger().
+    virtual std::string getDefValStr() const final {
+        if (!isHidden()) {
+            return getDefValStrDanger();
+        }
+        return "xxxxx";
+    }
+
     /// All child classes should be able to return a valid string version of their value,
-    /// this function will show `_hidden` values, which is dangerous.
+    /// and this function will show `_hidden` values, which is dangerous.
     virtual std::string getValStrDanger() const = 0;
+
+    /// All child classes should be able to return a valid string version of their
+    /// default value, and this function will show `_hidden` values, which is dangerous.
+    virtual std::string getDefValStrDanger() const = 0;
+
 
     /// If possible, get the value (`_val` and `_defVal`) for this item from `configStore`.
     /// If the value cannot be set, the default value remains unchanged.
@@ -141,7 +156,16 @@ public:
         os << _val;
         return os.str();
     }
+
+    /// @see `ConfigVal::getValStrDanger()`
+    std::string getDefValStrDanger() const override {
+        std::stringstream os;
+        os << _defVal;
+        return os.str();
+    }
+
     T const& getVal() const { return _val; }
+    T const& getDefVal() const { return _defVal; }
     void setVal(T val) {
         _val = val;
         logValSet();
@@ -153,6 +177,7 @@ protected:
 
 private:
     T _val;  ///< Value for the item this class is storing.
+    T _defVal; ///< Default value for the item this class is storing.
 };
 
 /// Bool is special case for json as the value should be "true" or "false" but
