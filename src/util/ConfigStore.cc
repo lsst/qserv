@@ -136,6 +136,7 @@ std::map<std::string, std::string> ConfigStore::getSectionConfigMap(std::string 
 }
 
 nlohmann::json ConfigStore::toJson(bool scramblePasswords) const {
+    // &&& this should scramble anything that contains "auth_key" or "passw"
     std::string const passwordBegin = "passw";
     nlohmann::json result = nlohmann::json::object();
     for (auto&& sect : this->getSections()) {
