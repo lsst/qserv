@@ -90,6 +90,11 @@ public:
 
     /// @param sqlId Preprocessed identifier of a column to be selected. The identifier
     ///  is expected to be made using id([table,]column).
+    /// @return an object representing the function "MAX_(<column>)"
+    static Sql MAX_(SqlId const& sqlId);
+
+    /// @param sqlId Preprocessed identifier of a column to be selected. The identifier
+    ///  is expected to be made using id([table,]column).
     /// @return an object representing the function "UNIX_TIMESTAMP(<column>)"
     static Sql UNIX_TIMESTAMP(SqlId const& sqlId);
 

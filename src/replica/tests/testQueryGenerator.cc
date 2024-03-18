@@ -122,6 +122,8 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {"*", Sql::STAR.str},
             {"DATABASE()", Sql::DATABASE.str},
             {"NOW()", Sql::NOW.str},
+            {"MAX(`time`)", Sql::MAX_(g.id("time")).str},
+            {"MAX(`table`.`time`)", Sql::MAX_(g.id("table", "time")).str},
             {"UNIX_TIMESTAMP(`time`)", Sql::UNIX_TIMESTAMP(g.id("time")).str},
             {"UNIX_TIMESTAMP(`time`)", g.UNIX_TIMESTAMP("time").str},
             {"UNIX_TIMESTAMP(`table`.`column`)", g.UNIX_TIMESTAMP(g.id("table", "column")).str},

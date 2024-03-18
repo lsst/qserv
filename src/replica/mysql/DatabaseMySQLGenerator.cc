@@ -52,6 +52,8 @@ Sql const Sql::DATABASE{"DATABASE()"};
 
 Sql const Sql::NOW{"NOW()"};
 
+Sql Sql::MAX_(SqlId const& sqlId) { return Sql("MAX(" + sqlId.str + ")"); }
+
 Sql Sql::UNIX_TIMESTAMP(SqlId const& sqlId) { return Sql("UNIX_TIMESTAMP(" + sqlId.str + ")"); }
 
 Sql Sql::TIMESTAMPDIFF(string const& resolution, SqlId const& lhs, SqlId const& rhs) {
