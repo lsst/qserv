@@ -29,6 +29,7 @@
 #include <cassert>
 #include <chrono>
 #include <iostream>
+#include <ranges>
 #include <string>
 #include <stdexcept>
 #include <stdlib.h>
@@ -179,9 +180,9 @@ SsiService::SsiService(XrdSsiLogger* log) {
     StreamBuffer::setMaxTotalBytes(bufferMaxTotalBytes);
 
     // Set thread pool size.
-    unsigned int poolSize =
-            std::max(wsched::BlendScheduler::getMinPoolSize(),
-                     std::max(workerConfig->getThreadPoolSize(), thread::hardware_concurrency()));
+    unsigned int poolSize = ranges::max({wsched::BlendScheduler::getMinPoolSize(),
+                                         workerConfig->getThreadPoolSize(), thread::hardware_concurrency()});
+
     unsigned int maxPoolThreads = max(workerConfig->getMaxPoolThreads(), poolSize);
 
     // poolSize should be greater than either GroupScheduler::maxThreads or ScanScheduler::maxThreads
