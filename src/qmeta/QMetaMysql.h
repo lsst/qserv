@@ -44,7 +44,6 @@ namespace lsst::qserv::qmeta {
 
 /**
  *  @ingroup qmeta
- *
  *  @brief Mysql-based implementation of qserv metadata.
  */
 
@@ -262,6 +261,9 @@ public:
 
     /// @see QMeta::addQueryMessages()
     void addQueryMessages(QueryId queryId, std::shared_ptr<qdisp::MessageStore> const& msgStore) override;
+
+    /// @see QMeta::getChunkMap
+    QMeta::ChunkMap getChunkMap() override;
 
 protected:
     ///  Check that all necessary tables exist
