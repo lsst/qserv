@@ -168,6 +168,7 @@ commands = OrderedDict((
     )),
     ("smig-update", CommandInfo()),
     ("integration-test", CommandInfo()),
+    ("integration-test-http", CommandInfo()),
     ("delete-database", CommandInfo()),
     ("load-simple", CommandInfo()),
     ("watcher", CommandInfo()),
@@ -366,6 +367,48 @@ def integration_test(
     )
     click.echo(str(results))
     sys.exit(0 if results.passed else 1)
+
+
+@entrypoint.command()
+@option_repl_connection(
+    help=option_repl_connection.keywords["help"]
+    + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
+)
+@option_unload()
+@option_load()
+@option_reload()
+@option_case()
+@option_run_tests()
+@option_tests_yaml()
+@option_compare_results()
+def integration_test_http(
+    repl_connection: str,
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+) -> None:
+    """Run integration tests of the HTTP frontend using catalogs loaded into Qserv.
+
+    TESTS_YAML is the yaml file path that contains connection information and describes tests to load and run.
+    """
+
+    results = script.integration_test_http(
+        repl_connection=repl_connection,
+        unload=unload,
+        load=load,
+        reload=reload,
+        cases=cases,
+        run_tests=run_tests,
+        tests_yaml=tests_yaml,
+        compare_results=compare_results,
+    )
+    click.echo(str(results))
+    sys.exit(0 if results.passed else 1)
+
 
 
 @entrypoint.command()

@@ -1026,6 +1026,31 @@ def integration_test(
     )
 
 
+def integration_test_http(
+    repl_connection: str,
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+) -> ITestResults:
+    if repl_connection is not None:
+        _do_smig_block(admin_smig_dir, "replica", repl_connection)
+
+    return _integration_test.run_integration_tests_http(
+        unload=unload,
+        load=load,
+        reload=reload,
+        cases=cases,
+        run_tests=run_tests,
+        tests_yaml=tests_yaml,
+        compare_results=compare_results,
+        mysqld_user=mysqld_user_qserv,
+    )
+
+
 def prepare_data(
     tests_yaml: str,
 ) -> bool:
