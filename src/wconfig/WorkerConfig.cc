@@ -151,6 +151,8 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
     // Note that actual collection may contain parameters not mentioned in
     // the input configuration.
     _populateJsonConfig("actual");
+    bool const useDefault = true;
+    _populateJsonConfig("default", useDefault);
     LOGS(_log, LOG_LVL_INFO, "WorkerConfig::" << __func__ << *this);
 }
 
@@ -163,9 +165,9 @@ void WorkerConfig::setReplicationHttpPort(uint16_t port) {
     _jsonConfig["actual"]["replication"]["http_port"] = _replicationHttpPort->getValStr();
 }
 
-void WorkerConfig::_populateJsonConfig(string const& coll) {
+void WorkerConfig::_populateJsonConfig(string const& coll, bool useDefault) {
     nlohmann::json& js = _jsonConfig[coll];
-    _configValMap.populateJson(js);
+    _configValMap.populateJson(js, useDefault);
 }
 
 ostream& operator<<(ostream& out, WorkerConfig const& workerConfig) {
