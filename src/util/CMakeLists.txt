@@ -8,6 +8,7 @@ target_sources(util PRIVATE
     Command.cc
     common.cc
     ConfigStore.cc
+    ConfigValMap.cc
     DynamicWorkQueue.cc
     Error.cc
     EventThread.cc

@@ -33,6 +33,7 @@
 #include "util/TimeUtils.h"
 #include "wbase/TaskState.h"
 #include "wbase/UserQueryInfo.h"
+#include "wconfig/WorkerConfig.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/SchedulerBase.h"
 #include "wsched/ScanScheduler.h"
@@ -68,17 +69,15 @@ QueriesAndChunks::Ptr QueriesAndChunks::setupGlobal(chrono::seconds deadAfter, c
     if (_globalQueriesAndChunks != nullptr) {
         throw util::Bug(ERR_LOC, "QueriesAndChunks::setupGlobal called twice");
     }
-    _globalQueriesAndChunks =
-            Ptr(new QueriesAndChunks(deadAfter, examineAfter, maxTasksBooted, maxDarkTasks));
+    _globalQueriesAndChunks = Ptr(new QueriesAndChunks(deadAfter, examineAfter));
     return _globalQueriesAndChunks;
 }
 
-QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds examineAfter,
-                                   int maxTasksBooted, int maxDarkTasks)
-        : _deadAfter{deadAfter},
-          _examineAfter{examineAfter},
-          _maxTasksBooted{maxTasksBooted},
-          _maxDarkTasks{maxDarkTasks} {
+QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds examineAfter)
+        : _deadAfter(deadAfter),
+          _examineAfter(examineAfter),
+          _maxTasksBooted(wconfig::WorkerConfig::instance()->getMaxTasksBootedPerUserQuery()),
+          _maxDarkTasks(wconfig::WorkerConfig::instance()->getMaxConcurrentBootedTasks()) {
     auto rDead = [this]() {
         while (_loopRemoval) {
             removeDead();
@@ -412,8 +411,7 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
 nlohmann::json QueriesAndChunks::mySqlThread2task(set<unsigned long> const& activeMySqlThreadIds) const {
     nlohmann::json result = nlohmann::json::object();
     lock_guard<mutex> g(_queryStatsMapMtx);
-    for (auto&& itr : _queryStatsMap) {
-        QueryStatistics::Ptr const& qStats = itr.second;
+    for (auto const& [key, qStats] : _queryStatsMap) {
         qStats->mySqlThread2task(activeMySqlThreadIds, result);
     }
     return result;

@@ -1,7 +1,6 @@
 // -*- LSST-C++ -*-
 /*
  * LSST Data Management System
- * Copyright 2016 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -30,6 +29,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <sstream>
 
 // Third party headers
 #include <nlohmann/json.hpp>
@@ -37,178 +37,217 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
+#include "util/ConfigValMap.h"
+#include "util/Issue.h"
 
 namespace lsst::qserv::wconfig {
 
-/**
- * Provide all configuration parameters for a Qserv worker instance.
- * Parse an INI configuration file, identify required parameters and ignore
- * others, analyze and store them inside private member variables, use default
- * values for missing parameters, provide accessor for each of these variable.
- * This class hides configuration complexity
- * from other part of the code. All private member variables are related to INI
- * parameters and are immutables.
- *
- * @note the class has a thread-safe API.
- */
-class WorkerConfig {
+/// This class handles the special case for the configuration value representing
+/// the communications protocol used which can have a text value of "HTTP" or "
+/// "XROOTD", case-insenitive.
+class ConfigValResultDeliveryProtocol : public util::ConfigVal {
 public:
-    /**
-     * The enumeration type representing available methods for pulling query results
-     * from workers.
-     * @note The default method, if none was found in the configuration, would be HTTP.
-     */
-    enum class ResultDeliveryProtocol : int {
+    using CvrdpPtr = std::shared_ptr<ConfigValResultDeliveryProtocol>;
+    enum TEnum {
         HTTP = 0,  ///< Use HTTP protocol
         XROOT = 1  ///< Use XROOTD file protocol
     };
 
-    /// @return the string representation of the protocol
-    /// @throw std::invalid_argument if the protocol is unknown
-    static std::string protocol2str(ResultDeliveryProtocol const& p);
+    ConfigValResultDeliveryProtocol() = delete;
+    virtual ~ConfigValResultDeliveryProtocol() = default;
 
-    /**
-     * Create an instance of WorkerConfig and if a configuration file is provided then
-     * load parameters from the file. Otherwise create an object with default values
-     * of the parameters.
-     * @note One has to call this method at least once before trying to obtain
-     *   a pointer of the instance by calling 'instnce()'. The method 'create()'
-     *   can be called many times. A new instance would be created each time and
-     *   stored witin the class.
-     * @param configFileName - (optional) path to worker INI configuration file
-     * @return the shared pointer to the configuration object
-     */
+    static CvrdpPtr create(util::ConfigValMap& configValMap, std::string const& section,
+                           std::string const& name, bool required, std::string const& defVal,
+                           bool hidden = false) {
+        auto newPtr = CvrdpPtr(new ConfigValResultDeliveryProtocol(section, name, required, defVal, hidden));
+        addToMapBase(configValMap, newPtr);
+        return newPtr;
+    }
+
+    /// Return the appropriate TEnum for the given `str`, where "" returns HTTP.
+    /// @throws ConfigException
+    static TEnum parse(std::string const& str);
+
+    /// Convert the TEnum `protocol` to the appropriate string.
+    static std::string toString(TEnum protocol);
+
+    /// Return the string value of this object.
+    std::string getValStrDanger() const override { return toString(_val); }
+
+    /// Return the string default value of this object.
+    std::string getDefValStrDanger() const override { return toString(_defVal); }
+
+    void setValFromConfigStoreChild(util::ConfigStore const& configStore) override;
+    TEnum getVal() const { return _val; }
+
+    void setVal(TEnum val) {
+        _val = val;
+        logValSet();
+    }
+
+private:
+    ConfigValResultDeliveryProtocol(std::string const& section, std::string const& name, bool required,
+                                    std::string const& defVal, bool hidden)
+            : ConfigVal(section, name, required, hidden), _val(parse(defVal)) {}
+    TEnum _val;
+    TEnum _defVal;
+};
+
+/// Provide all configuration parameters for a Qserv worker instance.
+/// Parse an INI configuration file, identify required parameters and ignore
+/// others, analyze and store them inside private member variables, use default
+/// values for missing parameters, provide accessor for each of these variable.
+/// This class hides configuration complexity
+/// from other part of the code. All private member variables are related to INI
+/// parameters and are immutables.
+///
+/// @note the class has a thread-safe API.
+class WorkerConfig {
+public:
+    /// Create an instance of WorkerConfig and if a configuration file is provided then
+    /// load parameters from the file. Otherwise create an object with default values
+    /// of the parameters.
+    /// @note One has to call this method at least once before trying to obtain
+    ///  a pointer of the instance by calling 'instnce()'. The method 'create()'
+    ///  can be called many times. A new instance would be created each time and
+    ///  stored witin the class.
+    /// @param configFileName - (optional) path to worker INI configuration file
+    /// @return the shared pointer to the configuration object
     static std::shared_ptr<WorkerConfig> create(std::string const& configFileName = std::string());
 
-    /**
-     * Get a pointer to an instance that was created by a last call to
-     * the method 'create'.
-     * @return the shared pointer to the configuration object
-     * @throws std::logic_error when attempting to call the bethod before creating an instance.
-     */
+    /// Get a pointer to an instance that was created by a last call to
+    /// the method 'create'.
+    /// @return the shared pointer to the configuration object
+    /// @throws std::logic_error when attempting to call the bethod before creating an instance.
     static std::shared_ptr<WorkerConfig> instance();
 
     WorkerConfig(WorkerConfig const&) = delete;
     WorkerConfig& operator=(WorkerConfig const&) = delete;
 
     /// @return thread pool size for shared scans
-    unsigned int getThreadPoolSize() const { return _threadPoolSize; }
+    unsigned int getThreadPoolSize() const { return _threadPoolSize->getVal(); }
 
     /// @return maximum number of threads the pool can have in existence at any given time
-    unsigned int getMaxPoolThreads() const { return _maxPoolThreads; }
+    unsigned int getMaxPoolThreads() const { return _maxPoolThreads->getVal(); }
 
     /// @return required number of tasks for table in a chunk for the average to be valid
-    unsigned int getRequiredTasksCompleted() const { return _requiredTasksCompleted; }
+    unsigned int getRequiredTasksCompleted() const { return _requiredTasksCompleted->getVal(); }
 
     /// @return maximum number of tasks that can be booted from a single user query
-    unsigned int getMaxTasksBootedPerUserQuery() const { return _maxTasksBootedPerUserQuery; }
+    unsigned int getMaxTasksBootedPerUserQuery() const { return _maxTasksBootedPerUserQuery->getVal(); }
 
     /// @return maximum number of tasks that can be booted from a single user query
-    unsigned int getMaxConcurrentBootedTasks() const { return _maxConcurrentBootedTasks; }
+    unsigned int getMaxConcurrentBootedTasks() const { return _maxConcurrentBootedTasks->getVal(); }
 
     /// @return maximum time for a user query to complete  all tasks on the fast scan
-    unsigned int getScanMaxMinutesFast() const { return _scanMaxMinutesFast; }
+    unsigned int getScanMaxMinutesFast() const { return _scanMaxMinutesFast->getVal(); }
 
     /// @return maximum time for a user query to complete all tasks on the medium scan
-    unsigned int getScanMaxMinutesMed() const { return _scanMaxMinutesMed; }
+    unsigned int getScanMaxMinutesMed() const { return _scanMaxMinutesMed->getVal(); }
 
     /// @return maximum time for a user query to complete all tasks on the slow scan
-    unsigned int getScanMaxMinutesSlow() const { return _scanMaxMinutesSlow; }
+    unsigned int getScanMaxMinutesSlow() const { return _scanMaxMinutesSlow->getVal(); }
 
     /// @return maximum time for a user query to complete all tasks on the snail scan
-    unsigned int getScanMaxMinutesSnail() const { return _scanMaxMinutesSnail; }
+    unsigned int getScanMaxMinutesSnail() const { return _scanMaxMinutesSnail->getVal(); }
 
     /// @return maximum number of task accepted in a group queue
-    unsigned int getMaxGroupSize() const { return _maxGroupSize; }
+    unsigned int getMaxGroupSize() const { return _maxGroupSize->getVal(); }
 
     /// @return max thread reserve for fast shared scan
-    unsigned int getMaxReserveFast() const { return _maxReserveFast; }
+    unsigned int getMaxReserveFast() const { return _maxReserveFast->getVal(); }
 
     /// @return max thread reserve for medium shared scan
-    unsigned int getMaxReserveMed() const { return _maxReserveMed; }
+    unsigned int getMaxReserveMed() const { return _maxReserveMed->getVal(); }
 
     /// @return max thread reserve for slow shared scan
-    unsigned int getMaxReserveSlow() const { return _maxReserveSlow; }
+    unsigned int getMaxReserveSlow() const { return _maxReserveSlow->getVal(); }
 
     /// @return max thread reserve for snail shared scan
-    unsigned int getMaxReserveSnail() const { return _maxReserveSnail; }
+    unsigned int getMaxReserveSnail() const { return _maxReserveSnail->getVal(); }
 
     /// @return class name implementing selected memory management
-    std::string const& getMemManClass() const { return _memManClass; }
+    std::string const getMemManClass() const { return _memManClass->getVal(); }
 
     /// @return path to directory where the Memory Manager database resides
-    std::string const& getMemManLocation() const { return _memManLocation; }
+    std::string const getMemManLocation() const { return _memManLocation->getVal(); }
 
     /// @return maximum amount of memory that can be used by Memory Manager
-    uint64_t getMemManSizeMb() const { return _memManSizeMb; }
+    uint64_t getMemManSizeMb() const { return _memManSizeMb->getVal(); }
 
     /// @return a configuration for worker MySQL instance.
     mysql::MySqlConfig const& getMySqlConfig() const { return _mySqlConfig; }
 
     /// @return fast shared scan priority
-    unsigned int getPriorityFast() const { return _priorityFast; }
+    unsigned int getPriorityFast() const { return _priorityFast->getVal(); }
 
     /// @return medium shared scan priority
-    unsigned int getPriorityMed() const { return _priorityMed; }
+    unsigned int getPriorityMed() const { return _priorityMed->getVal(); }
 
     /// @return slow shared scan priority
-    unsigned int getPrioritySlow() const { return _prioritySlow; }
+    unsigned int getPrioritySlow() const { return _prioritySlow->getVal(); }
 
     /// @return slow shared scan priority
-    unsigned int getPrioritySnail() const { return _prioritySnail; }
+    unsigned int getPrioritySnail() const { return _prioritySnail->getVal(); }
 
     /// @return maximum concurrent chunks for fast shared scan
-    unsigned int getMaxActiveChunksFast() const { return _maxActiveChunksFast; }
+    unsigned int getMaxActiveChunksFast() const { return _maxActiveChunksFast->getVal(); }
 
     /// @return maximum concurrent chunks for medium shared scan
-    unsigned int getMaxActiveChunksMed() const { return _maxActiveChunksMed; }
+    unsigned int getMaxActiveChunksMed() const { return _maxActiveChunksMed->getVal(); }
 
     /// @return maximum concurrent chunks for slow shared scan
-    unsigned int getMaxActiveChunksSlow() const { return _maxActiveChunksSlow; }
+    unsigned int getMaxActiveChunksSlow() const { return _maxActiveChunksSlow->getVal(); }
 
     /// @return maximum concurrent chunks for snail shared scan
-    unsigned int getMaxActiveChunksSnail() const { return _maxActiveChunksSnail; }
+    unsigned int getMaxActiveChunksSnail() const { return _maxActiveChunksSnail->getVal(); }
 
     /// @return the maximum number of SQL connections for tasks
-    unsigned int getMaxSqlConnections() const { return _maxSqlConnections; }
+    unsigned int getMaxSqlConnections() const { return _maxSqlConnections->getVal(); }
 
     /// @return the number of SQL connections reserved for interactive tasks
-    unsigned int getReservedInteractiveSqlConnections() const { return _ReservedInteractiveSqlConnections; }
+    unsigned int getReservedInteractiveSqlConnections() const {
+        return _ReservedInteractiveSqlConnections->getVal();
+    }
 
     /// @return the maximum number of gigabytes that can be used by StreamBuffers
-    unsigned int getBufferMaxTotalGB() const { return _bufferMaxTotalGB; }
+    unsigned int getBufferMaxTotalGB() const { return _bufferMaxTotalGB->getVal(); }
 
     /// @return the maximum number of concurrent transmits to a czar
-    unsigned int getMaxTransmits() const { return _maxTransmits; }
+    unsigned int getMaxTransmits() const { return _maxTransmits->getVal(); }
 
-    int getMaxPerQid() const { return _maxPerQid; }
+    int getMaxPerQid() const { return _maxPerQid->getVal(); }
 
     /// @return the name of a folder where query results will be stored
-    std::string const& resultsDirname() const { return _resultsDirname; }
+    std::string const resultsDirname() const { return _resultsDirname->getVal(); }
 
     /// @return the port number of the worker XROOTD service for serving result files
-    uint16_t resultsXrootdPort() const { return _resultsXrootdPort; }
+    uint16_t resultsXrootdPort() const { return _resultsXrootdPort->getVal(); }
 
     /// @return the number of the BOOST ASIO threads for servicing HTGTP requests
-    size_t resultsNumHttpThreads() const { return _resultsNumHttpThreads; }
+    size_t resultsNumHttpThreads() const { return _resultsNumHttpThreads->getVal(); }
 
     /// @return the result delivery method
-    ResultDeliveryProtocol resultDeliveryProtocol() const { return _resultDeliveryProtocol; }
+    ConfigValResultDeliveryProtocol::TEnum resultDeliveryProtocol() const {
+        return _resultDeliveryProtocol->getVal();
+    }
 
     /// @return 'true' if result files (if any) left after the previous run of the worker
     /// had to be deleted from the corresponding folder.
-    bool resultsCleanUpOnStart() const { return _resultsCleanUpOnStart; }
+    bool resultsCleanUpOnStart() const { return _resultsCleanUpOnStart->getVal(); }
 
     // Parameters of the worker management service
 
-    std::string const& replicationInstanceId() const { return _replicationInstanceId; }
-    std::string const& replicationAuthKey() const { return _replicationAuthKey; }
-    std::string const& replicationAdminAuthKey() const { return _replicationAdminAuthKey; }
-    std::string const& replicationRegistryHost() const { return _replicationRegistryHost; }
-    uint16_t replicationRegistryPort() const { return _replicationRegistryPort; }
-    unsigned int replicationRegistryHearbeatIvalSec() const { return _replicationRegistryHearbeatIvalSec; }
-    uint16_t replicationHttpPort() const { return _replicationHttpPort; }
-    size_t replicationNumHttpThreads() const { return _replicationNumHttpThreads; }
+    std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
+    std::string const& replicationAuthKey() const { return _replicationAuthKey->getVal(); }
+    std::string const& replicationAdminAuthKey() const { return _replicationAdminAuthKey->getVal(); }
+    std::string const& replicationRegistryHost() const { return _replicationRegistryHost->getVal(); }
+    uint16_t replicationRegistryPort() const { return _replicationRegistryPort->getVal(); }
+    unsigned int replicationRegistryHearbeatIvalSec() const {
+        return _replicationRegistryHearbeatIvalSec->getVal();
+    }
+    uint16_t replicationHttpPort() const { return _replicationHttpPort->getVal(); }
+    size_t replicationNumHttpThreads() const { return _replicationNumHttpThreads->getVal(); }
 
     /// The actual port number is set at run time after starting the service on
     /// the dynamically allocated port (in case when the port number was set
@@ -245,7 +284,9 @@ private:
     /// This method is called by both c-tors to populate the JSON configuration with actual
     /// parameters of the object.
     /// @param coll The name of a collection to be populated.
-    void _populateJsonConfig(std::string const& coll);
+    /// @param useDefault Set to true to populate the collection with default values instead
+    ///        of actual values.
+    void _populateJsonConfig(std::string const& coll, bool useDefault = false);
 
     /// This mutex protects the static member _instance.
     static std::mutex _mtxOnInstance;
@@ -257,58 +298,112 @@ private:
 
     mysql::MySqlConfig _mySqlConfig;
 
-    std::string const _memManClass;
-    uint64_t const _memManSizeMb;
-    std::string const _memManLocation;
+    util::ConfigValMap _configValMap;  ///< Map of all configuration entries
 
-    unsigned int const _threadPoolSize;
-    unsigned int const _maxPoolThreads;
-    unsigned int const _maxGroupSize;
-    unsigned int const _requiredTasksCompleted;
+    using CVTIntPtr = util::ConfigValTInt::IntPtr const;
+    using CVTUIntPtr = util::ConfigValTUInt::UIntPtr const;
+    using CVTBoolPtr = util::ConfigValTBool::BoolPtr const;
+    using CVTStrPtr = util::ConfigValTStr::StrPtr const;
 
-    unsigned int const _prioritySlow;
-    unsigned int const _prioritySnail;
-    unsigned int const _priorityMed;
-    unsigned int const _priorityFast;
+    bool const required = true;
+    bool const notReq = false;
+    bool const hidden = true;
 
-    unsigned int const _maxReserveSlow;
-    unsigned int const _maxReserveSnail;
-    unsigned int const _maxReserveMed;
-    unsigned int const _maxReserveFast;
+    CVTStrPtr _memManClass =
+            util::ConfigValTStr::create(_configValMap, "memman", "class", notReq, "MemManReal");
+    CVTUIntPtr _memManSizeMb = util::ConfigValTUInt::create(_configValMap, "memman", "memory", notReq, 1000);
+    CVTStrPtr _memManLocation =
+            util::ConfigValTStr::create(_configValMap, "memman", "location", required, "/qserv/data/mysql");
+    CVTUIntPtr _threadPoolSize =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "thread_pool_size", notReq, 0);
+    CVTUIntPtr _maxPoolThreads =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "max_pool_threads", notReq, 5000);
+    CVTUIntPtr _maxGroupSize =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "group_size", notReq, 1);
+    CVTUIntPtr _requiredTasksCompleted =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "required_tasks_completed", notReq, 25);
+    CVTUIntPtr _prioritySlow =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_slow", notReq, 2);
+    CVTUIntPtr _prioritySnail =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_snail", notReq, 1);
+    CVTUIntPtr _priorityMed =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_med", notReq, 3);
+    CVTUIntPtr _priorityFast =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_fast", notReq, 4);
+    CVTUIntPtr _maxReserveSlow =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_slow", notReq, 2);
+    CVTUIntPtr _maxReserveSnail =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_snail", notReq, 2);
+    CVTUIntPtr _maxReserveMed =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_med", notReq, 2);
+    CVTUIntPtr _maxReserveFast =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_fast", notReq, 2);
+    CVTUIntPtr _maxActiveChunksSlow =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxactivechunks_slow", notReq, 2);
+    CVTUIntPtr _maxActiveChunksSnail =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxactivechunks_snail", notReq, 1);
+    CVTUIntPtr _maxActiveChunksMed =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxactivechunks_med", notReq, 4);
+    CVTUIntPtr _maxActiveChunksFast =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxactivechunks_fast", notReq, 4);
+    CVTUIntPtr _scanMaxMinutesFast =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "scanmaxminutes_fast", notReq, 60);
+    CVTUIntPtr _scanMaxMinutesMed =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "scanmaxminutes_med", notReq, 60 * 8);
+    CVTUIntPtr _scanMaxMinutesSlow =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "scanmaxminutes_slow", notReq, 60 * 12);
+    CVTUIntPtr _scanMaxMinutesSnail =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "scanmaxminutes_snail", notReq, 60 * 24);
+    CVTUIntPtr _maxTasksBootedPerUserQuery =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxtasksbootedperuserquery", notReq, 5);
+    CVTUIntPtr _maxConcurrentBootedTasks =
+            util::ConfigValTUInt::create(_configValMap, "scheduler", "maxconcurrentbootedtasks", notReq, 25);
+    CVTUIntPtr _maxSqlConnections =
+            util::ConfigValTUInt::create(_configValMap, "sqlconnections", "maxsqlconn", notReq, 800);
+    CVTUIntPtr _ReservedInteractiveSqlConnections = util::ConfigValTUInt::create(
+            _configValMap, "sqlconnections", "reservedinteractivesqlconn", notReq, 50);
+    CVTUIntPtr _bufferMaxTotalGB =
+            util::ConfigValTUInt::create(_configValMap, "transmit", "buffermaxtotalgb", notReq, 41);
+    CVTUIntPtr _maxTransmits =
+            util::ConfigValTUInt::create(_configValMap, "transmit", "maxtransmits", notReq, 40);
+    CVTIntPtr _maxPerQid = util::ConfigValTInt::create(_configValMap, "transmit", "maxperqid", notReq, 3);
+    CVTStrPtr _resultsDirname =
+            util::ConfigValTStr::create(_configValMap, "results", "dirname", notReq, "/qserv/data/results");
+    CVTUIntPtr _resultsXrootdPort =
+            util::ConfigValTUInt::create(_configValMap, "results", "xrootd_port", notReq, 1094);
+    CVTUIntPtr _resultsNumHttpThreads =
+            util::ConfigValTUInt::create(_configValMap, "results", "num_http_threads", notReq, 1);
+    ConfigValResultDeliveryProtocol::CvrdpPtr _resultDeliveryProtocol =
+            ConfigValResultDeliveryProtocol::create(_configValMap, "results", "protocol", notReq, "HTTP");
+    CVTBoolPtr _resultsCleanUpOnStart =
+            util::ConfigValTBool::create(_configValMap, "results", "clean_up_on_start", notReq, true);
 
-    unsigned int const _maxActiveChunksSlow;
-    unsigned int const _maxActiveChunksSnail;
-    unsigned int const _maxActiveChunksMed;
-    unsigned int const _maxActiveChunksFast;
+    CVTStrPtr _replicationInstanceId =
+            util::ConfigValTStr::create(_configValMap, "replication", "instance_id", notReq, "");
+    CVTStrPtr _replicationAuthKey =
+            util::ConfigValTStr::create(_configValMap, "replication", "auth_key", notReq, "", hidden);
+    CVTStrPtr _replicationAdminAuthKey =
+            util::ConfigValTStr::create(_configValMap, "replication", "admin_auth_key", notReq, "", hidden);
+    CVTStrPtr _replicationRegistryHost =
+            util::ConfigValTStr::create(_configValMap, "replication", "registry_host", required, "");
+    CVTUIntPtr _replicationRegistryPort =
+            util::ConfigValTUInt::create(_configValMap, "replication", "registry_port", required, 0);
+    CVTUIntPtr _replicationRegistryHearbeatIvalSec = util::ConfigValTUInt::create(
+            _configValMap, "replication", "registry_heartbeat_ival_sec", notReq, 1);
+    CVTUIntPtr _replicationHttpPort =
+            util::ConfigValTUInt::create(_configValMap, "replication", "http_port", required, 0);
+    CVTUIntPtr _replicationNumHttpThreads =
+            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
 
-    unsigned int const _scanMaxMinutesFast;
-    unsigned int const _scanMaxMinutesMed;
-    unsigned int const _scanMaxMinutesSlow;
-    unsigned int const _scanMaxMinutesSnail;
-    unsigned int const _maxTasksBootedPerUserQuery;
-    unsigned int const _maxConcurrentBootedTasks;
-
-    unsigned int const _maxSqlConnections;
-    unsigned int const _ReservedInteractiveSqlConnections;
-    unsigned int const _bufferMaxTotalGB;
-    unsigned int const _maxTransmits;
-    int const _maxPerQid;
-    std::string const _resultsDirname;
-    uint16_t const _resultsXrootdPort;
-    size_t const _resultsNumHttpThreads;
-    ResultDeliveryProtocol const _resultDeliveryProtocol;
-    bool const _resultsCleanUpOnStart;
-
-    std::string const _replicationInstanceId;
-    std::string const _replicationAuthKey;
-    std::string const _replicationAdminAuthKey;
-    std::string const _replicationRegistryHost;
-    uint16_t const _replicationRegistryPort;
-    unsigned int const _replicationRegistryHearbeatIvalSec;
-    /// An actual value of the port is set by setReplicationHttpPort()
-    /// at run time later if the parameter was initialized by 0.
-    uint16_t _replicationHttpPort;
-    size_t const _replicationNumHttpThreads;
+    CVTUIntPtr _mysqlPort = util::ConfigValTUInt::create(_configValMap, "mysql", "port", notReq, 4048);
+    CVTStrPtr _mysqlSocket = util::ConfigValTStr::create(_configValMap, "mysql", "socket", notReq, "");
+    CVTStrPtr _mysqlUsername =
+            util::ConfigValTStr::create(_configValMap, "mysql", "username", required, "qsmaster");
+    CVTStrPtr _mysqlPassword = util::ConfigValTStr::create(_configValMap, "mysql", "password", required,
+                                                           "not_the_password", hidden);
+    CVTStrPtr _mysqlHostname =
+            util::ConfigValTStr::create(_configValMap, "mysql", "hostname", required, "none");
+    CVTStrPtr _mysqlDb = util::ConfigValTStr::create(_configValMap, "mysql", "db", notReq, "");
 };
 
 }  // namespace lsst::qserv::wconfig
