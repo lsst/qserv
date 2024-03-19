@@ -221,6 +221,117 @@ def run_integration_tests(
     )
 
 
+def run_integration_tests_http(
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+    mysqld_user: str,
+) -> itest.ITestResults:
+    """Top level script to run the integration tests of the HTTP frontend.
+
+    Parameters
+    ----------
+    unload : `bool`
+        Remove test databases from the databases.
+    load : `bool` or `None`
+        True if the database should be loaded, False if not. If `None`, and
+        unload == True then will not load the database, otherwise if `None` will
+        load the database if it is not yet loaded into qserv (assumes the ref
+        database matches the qserv database.)
+    reload : `bool`
+        Remove test databases and re-add them.
+    cases : `list` [`str`]
+        Run (and load/reload data if those flags are set) these test cases only.
+    run_tests : `bool`
+        True if the tests should be run. (False can be used to compare
+        previously generated test outputs.)
+    tests_yaml : `str`
+        Path to the yaml file that contains the details about running the
+        tests. The files will be merged, higher index files get priority.
+    compare_resutls : `bool`
+        If True run query output comparison, if False do not.
+    mysqld_user : `str`
+        The name of the qserv user.
+
+    Returns
+    -------
+    success : `bool`
+        `True` if all query outputs were the same, otherwise `False`.
+    """
+    save_template_cfg(
+        dict(
+            mysqld_user_qserv=mysqld_user,
+        )
+    )
+
+    with open(tests_yaml) as f:
+        tests_data = yaml.safe_load(f.read())
+
+    qserv_testdata_dir = tests_data["qserv-testdata-dir"]
+    qserv_testdata_test_case_dir = tests_data["qserv-testdata-test-case-dir"]
+    testdata_output = tests_data["testdata-output"]
+
+    if not os.path.exists(qserv_testdata_dir):
+        raise RuntimeError("qserv_testdata sources are not present.")
+
+    if unload or load != False or reload or run_tests:
+        wait_for_czar(tests_data["czar-db-admin-uri"])
+        wait_for_replication_system(tests_data["replication-controller-uri"])
+
+    # If unload is True, and load is not specified (default is `None`, means
+    # "load if not loaded") then change load to False; do not reload.
+    if unload and load is None:
+        load = False
+
+    if unload or reload:
+        itest_load.remove(
+            repl_ctrl_uri=tests_data["replication-controller-uri"],
+            ref_db_uri=tests_data["reference-db-uri"],
+            test_cases_data=tests_data["test_cases"],
+            ref_db_admin=tests_data["reference-db-admin-uri"],
+            auth_key=tests_data["repl-auth-key"],
+            admin_auth_key=tests_data["repl-admin-auth-key"],
+            cases=cases,
+        )
+
+    if load != False or reload:
+        itest_load.load(
+            repl_ctrl_uri=tests_data["replication-controller-uri"],
+            ref_db_uri=tests_data["reference-db-uri"],
+            test_cases_data=tests_data["test_cases"],
+            ref_db_admin=tests_data["reference-db-admin-uri"],
+            auth_key=tests_data["repl-auth-key"],
+            admin_auth_key=tests_data["repl-admin-auth-key"],
+            cases=cases,
+            load=load,
+        )
+
+    if run_tests:
+        itest.run_queries_http(
+            source=os.path.join(qserv_testdata_dir, qserv_testdata_test_case_dir),
+            output=testdata_output,
+            mysql=tests_data["reference-db-uri"],
+            http=tests_data["qserv-http-uri"],
+            run_cases=cases,
+            test_cases_data=tests_data["test_cases"],
+        )
+
+    if compare_results:
+        test_case_results = itest.compareQueryResults(run_cases=cases, outputs_dir=testdata_output)
+    else:
+        test_case_results = []
+
+    return itest.ITestResults(
+        test_case_results=test_case_results,
+        ran_tests=run_tests,
+        compared_results=compare_results,
+    )
+
+
 def prepare_data(
     tests_yaml: str
 ) -> bool:

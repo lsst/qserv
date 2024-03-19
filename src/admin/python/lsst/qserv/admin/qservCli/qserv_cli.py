@@ -67,6 +67,7 @@ from .opt import (
     option_itest_container_name,
     option_itest_ref_container_name,
     option_itest_file,
+    option_itest_http_container_name,
     option_jobs,
     env_ltd_password,
     env_ltd_user,
@@ -112,6 +113,7 @@ help_order = [
     "down",
     "update-schema",
     "itest",
+    "itest-http",
     "itest-rm",
     "prepare-data",
     "run-dev",
@@ -563,6 +565,80 @@ def itest(
         remove=remove,
     )
     sys.exit(returncode)
+
+@qserv.command()
+@option_qserv_image()
+@option_mariadb_image(
+    help=env_mariadb_image.help("The name of the database image to use for the reference database.")
+)
+@option_qserv_root()
+@option_project()
+@option_itest_http_container_name()
+@option_itest_ref_container_name()
+@option_bind()
+@option_itest_file()
+@option_load()
+@option_unload()
+@option_reload()
+@option_run_tests()
+@option_compare_results()
+@option_case()
+@option_tests_yaml()
+@click.option(
+    "--wait",
+    help="How many seconds to wait before running load and test. "
+    "This is useful for allowing qserv to boot if the qserv containers "
+    "are started at the same time as this container. "
+    f"Default is {click.style('0', fg='green', bold=True)}.",
+    default=0,
+)
+@option_remove()
+@option_dry()
+def itest_http(
+    qserv_root: str,
+    mariadb_image: str,
+    itest_http_container: str,
+    itest_ref_container: str,
+    qserv_image: str,
+    bind: List[str],
+    itest_file: str,
+    dry: bool,
+    project: str,
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+    wait: int,
+    remove: bool,
+) -> None:
+    """Run integration tests for the HTTP frontend.
+
+    Launches a lite-qserv container and uses it to run integration tests."""
+    returncode = launch.itest_http(
+        qserv_root=qserv_root,
+        mariadb_image=mariadb_image,
+        itest_http_container=itest_http_container,
+        itest_ref_container=itest_ref_container,
+        qserv_image=qserv_image,
+        bind=bind,
+        itest_file=itest_file,
+        dry=dry,
+        project=project,
+        unload=unload,
+        load=load,
+        reload=reload,
+        cases=cases,
+        run_tests=run_tests,
+        tests_yaml=tests_yaml,
+        compare_results=compare_results,
+        wait=wait,
+        remove=remove,
+    )
+    sys.exit(returncode)
+
 
 
 @qserv.command()

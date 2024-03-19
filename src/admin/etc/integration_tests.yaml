@@ -3,6 +3,7 @@ reference-db-uri: mysql://qsmaster@integration-test-reference:3306
 reference-db-admin-uri: mysql://root:CHANGEME@integration-test-reference:3306
 replication-controller-uri: repl://@repl_controller:25081
 qserv-uri: qserv://qsmaster@czar_proxy:4040
+qserv-http-uri: http://czar_http:4048
 czar-db-admin-uri: mysql://root:CHANGEME@czar_mariadb:3306
 # The folder where the itest sources will be mounted in the container:
 qserv-testdata-dir: /tmp/qserv/itest_src
