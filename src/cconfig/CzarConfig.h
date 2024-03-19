@@ -254,9 +254,8 @@ private:
     /// The unique identifier of the Czar instance, the real vale cannot be
     /// acquired until later. Using a crazy initial value in hopes of highlighting
     /// issues.
-    /// TODO: Maybe also use a flag to indicate it's been set?
     /// TODO: Is this really the right place for this? (previously undefined)
-    qmeta::CzarId _czarId = 4'123'456'789;
+    qmeta::CzarId _czarId = std::numeric_limits<qmeta::CzarId>::max();
 
     nlohmann::json _jsonConfig;  ///< JSON-ified configuration
 
