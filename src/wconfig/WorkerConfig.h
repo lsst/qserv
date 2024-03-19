@@ -284,7 +284,9 @@ private:
     /// This method is called by both c-tors to populate the JSON configuration with actual
     /// parameters of the object.
     /// @param coll The name of a collection to be populated.
-    void _populateJsonConfig(std::string const& coll);
+    /// @param useDefault Set to true to populate the collection with default values instead
+    ///        of actual values.
+    void _populateJsonConfig(std::string const& coll, bool useDefault = false);
 
     /// This mutex protects the static member _instance.
     static std::mutex _mtxOnInstance;

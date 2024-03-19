@@ -116,11 +116,15 @@ std::tuple<bool, std::string> ConfigValMap::checkRequired() const {
     return {errorFound, eMsg};
 }
 
-void ConfigValMap::populateJson(nlohmann::json& js) const {
+void ConfigValMap::populateJson(nlohmann::json& js, bool useDefault) const {
     for (auto const& [section, nMap] : _sectionMap) {
         nlohmann::json jsNames;
         for (auto const& [name, cfgPtr] : nMap) {
-            jsNames[cfgPtr->getName()] = cfgPtr->getValStr();
+            if (useDefault) {
+                jsNames[cfgPtr->getName()] = cfgPtr->getDefValStr();
+            } else {
+                jsNames[cfgPtr->getName()] = cfgPtr->getValStr();
+            }
         }
         js[section] = jsNames;
     }

@@ -77,22 +77,12 @@ public:
     /// All child classes should be able to return a valid string version of their value,
     /// but this function will hide values of `_hidden` `ConfigVal`.
     /// If the string value of something that is hidden is needed, call getValStrDanger().
-    virtual std::string getValStr() const final {
-        if (!isHidden()) {
-            return getValStrDanger();
-        }
-        return "xxxxx";
-    }
+    virtual std::string getValStr() const final { return (isHidden()) ? "*****" : getValStrDanger(); }
 
     /// All child classes should be able to return a valid string version of their default
     /// value, but this function will hide values of `_hidden` `ConfigVal`.
     /// If the string value of something that is hidden is needed, call getValStrDanger().
-    virtual std::string getDefValStr() const final {
-        if (!isHidden()) {
-            return getDefValStrDanger();
-        }
-        return "xxxxx";
-    }
+    virtual std::string getDefValStr() const final { return (isHidden()) ? "*****" : getDefValStrDanger(); }
 
     /// All child classes should be able to return a valid string version of their value,
     /// and this function will show `_hidden` values, which is dangerous.
@@ -101,7 +91,6 @@ public:
     /// All child classes should be able to return a valid string version of their
     /// default value, and this function will show `_hidden` values, which is dangerous.
     virtual std::string getDefValStrDanger() const = 0;
-
 
     /// If possible, get the value (`_val` and `_defVal`) for this item from `configStore`.
     /// If the value cannot be set, the default value remains unchanged.
@@ -176,8 +165,8 @@ protected:
             : ConfigVal(section, name, required, hidden), _val(defVal) {}
 
 private:
-    T _val;  ///< Value for the item this class is storing.
-    T _defVal; ///< Default value for the item this class is storing.
+    T _val;     ///< Value for the item this class is storing.
+    T _defVal;  ///< Default value for the item this class is storing.
 };
 
 /// Bool is special case for json as the value should be "true" or "false" but
@@ -320,7 +309,10 @@ public:
 
     /// This function fills the supplied `js` object with entries from all values
     /// in `_sectionMap` given by section and then all names in that section.
-    void populateJson(nlohmann::json& js) const;
+    /// @param `js` json object to populate.
+    /// @param `useDefault` set to true to populate `js` with default values instead of
+    ///        actual values.
+    void populateJson(nlohmann::json& js, bool useDefault = false) const;
 
     /// Return a map of name, value for all entries in `section`.
     std::map<std::string, std::string> getSectionMapStr(std::string const& section) const;

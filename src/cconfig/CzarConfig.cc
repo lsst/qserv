@@ -115,14 +115,17 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
     // contains two collections of parameters: the "input" ones that were passed into
     // the contructor, and the "actual" ones that were expected by the current implementation
     // of Czar.
-    _jsonConfig =
-            nlohmann::json::object({{"input", configStore.toJson()}, {"actual", nlohmann::json::object()}});
+    _jsonConfig = nlohmann::json::object({{"input", configStore.toJson()},
+                                          {"actual", nlohmann::json::object()},
+                                          {"default", nlohmann::json::object()}});
 
     // Note that actual collection may contain parameters not mentioned in
     // the input configuration.
     nlohmann::json& actualJsonConfig = _jsonConfig["actual"];
 
     _configValMap.populateJson(actualJsonConfig);
+    bool const useDefault = true;
+    _configValMap.populateJson(_jsonConfig["default"], useDefault);
 
     actualJsonConfig["identity"] =
             nlohmann::json::object({{"name", _czarName}, {"id", std::to_string(_czarId)}});
