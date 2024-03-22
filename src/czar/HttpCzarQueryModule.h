@@ -90,6 +90,7 @@ private:
     nlohmann::json _status();
     nlohmann::json _result();
 
+    SubmitResult _getRequestParamsAndSubmit(std::string const& func, bool async);
     SubmitResult _getQueryInfo() const;
     QueryId _getQueryId() const;
     nlohmann::json _waitAndExtractResult(SubmitResult const& submitResult) const;
