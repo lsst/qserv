@@ -3,6 +3,7 @@ add_library(czar OBJECT)
 target_sources(czar PRIVATE
     ChttpModule.cc
     Czar.cc
+    CzarChunkMap.cc
     HttpCzarIngestCsvModule.cc
     HttpCzarIngestModuleBase.cc
     HttpCzarIngestModule.cc
