@@ -75,35 +75,31 @@ json HttpCzarQueryModule::executeImpl(string const& subModuleName) {
 
 json HttpCzarQueryModule::_submit() {
     debug(__func__);
-    checkApiVersion(__func__, 30);
-
-    string const userQuery = body().required<string>("query");
-    debug(__func__, "query=" + userQuery);
-
-    map<string, string> const hints;
-    SubmitResult const submitResult = Czar::getCzar()->submitQuery(userQuery, hints);
-    if (!submitResult.errorMessage.empty()) {
-        _dropTable(submitResult.messageTable);
-        throw http::Error(context() + __func__, submitResult.errorMessage);
-    }
+    checkApiVersion(__func__, 32);
+    SubmitResult const submitResult = _getRequestParamsAndSubmit(__func__, false);
     return _waitAndExtractResult(submitResult);
 }
 
 json HttpCzarQueryModule::_submitAsync() {
     debug(__func__);
-    checkApiVersion(__func__, 30);
+    checkApiVersion(__func__, 32);
+    SubmitResult const submitResult = _getRequestParamsAndSubmit(__func__, true);
+    return json::object({{"queryId", submitResult.queryId}});
+}
 
+SubmitResult HttpCzarQueryModule::_getRequestParamsAndSubmit(string const& func, bool async) {
     string const userQuery = body().required<string>("query");
+    string const defaultDatabase = body().optional<string>("database", string());
     debug(__func__, "query=" + userQuery);
-
-    string const asyncSubmitQuery = "SUBMIT " + userQuery;
-    map<string, string> const hints;
-    SubmitResult const submitResult = Czar::getCzar()->submitQuery(asyncSubmitQuery, hints);
+    debug(__func__, "database=" + defaultDatabase);
+    string const query = async ? "SUBMIT " + userQuery : userQuery;
+    map<string, string> const hints{{"db", defaultDatabase}};
+    SubmitResult const submitResult = Czar::getCzar()->submitQuery(query, hints);
     if (!submitResult.errorMessage.empty()) {
         _dropTable(submitResult.messageTable);
         throw http::Error(context() + __func__, submitResult.errorMessage);
     }
-    return json::object({{"queryId", submitResult.queryId}});
+    return submitResult;
 }
 
 json HttpCzarQueryModule::_cancel() {
