@@ -51,6 +51,7 @@ public:
     ChunkMapException(Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {}
 };
 
+#if 1 //&&&
 /// The czar is expected to heavily use the
 ///    `getMaps() -> WorkerChunkMap -> getSharedScanChunkMap()`
 /// to send jobs to workers, as that gets an ordered list of all chunks
@@ -85,10 +86,25 @@ public:
 
     /// Essentially a structure for storing data about which tables and workers are associated with this
     /// chunk.
+#else //&&&
+class CzarChunkMap {
+public:
+    using Ptr = std::shared_ptr<CzarChunkMap>;
+
+    CzarChunkMap() = delete;
+
+    static Ptr create(std::shared_ptr<qmeta::QMeta> const& qmeta) {
+        return Ptr(new CzarChunkMap(qmeta));
+    }
+
+    class WorkerChunksData;
+
+#endif //&&&
     class ChunkData {
     public:
         using Ptr = std::shared_ptr<ChunkData>;
         ChunkData(int chunkId_) : _chunkId(chunkId_) {}
+#if 0 //&&&
 
         std::string cName(const char* func) {
             return std::string("ChunkData::") + func + " " + std::to_string(_chunkId);
@@ -117,10 +133,25 @@ public:
 
         /// Key is databaseName+tableName, value is size in bytes.
         std::map<std::pair<std::string, std::string>, SizeT> _dbTableMap;
+#else //&&&
+        int64_t const _chunkId;
+        int64_t _totalBytes = 0;
+        std::weak_ptr<WorkerChunksData> _primaryScanWorker;
+
+        /// &&& doc
+        void calcTotalBytes();
+
+        /// &&& doc
+        void addToWorkerHasThis(std::shared_ptr<WorkerChunksData> const& worker);
+
+        /// Key is databaseName+tableName, value is size in bytes.
+        std::map<std::pair<std::string, std::string>, int64_t> _dbTableMap;
+#endif //&&&
 
         /// Map of workers that have this chunk
         std::map<std::string, std::weak_ptr<WorkerChunksData>> _workerHasThisMap;
 
+#if 1 // &&&
         /// Add up the bytes in each table for this chunk to get `_totalBytes`
         void _calcTotalBytes();
     };
@@ -174,12 +205,33 @@ public:
         /// Used to determine if this worker is alive and set
         /// when the test is made.
         std::shared_ptr<ActiveWorker> _activeWorker;
+#else //&&&
+        std::string dump() const;
+    };
+
+    class WorkerChunksData {
+    public:
+        using Ptr = std::shared_ptr<WorkerChunksData>;
+        WorkerChunksData(std::string const& wId) : _workerId(wId) {}
+
+        std::string dump() const;
+
+        std::string const _workerId;
+
+        /// Map of all chunks found on the worker
+        std::map<int, ChunkData::Ptr> _chunkDataMap; ///< key is chunkId // &&& needed?
+
+        /// Map of chunks this worker will handle during shared scans.
+        std::map<int, ChunkData::Ptr> _sharedScanChunkMap;
+        int64_t _sharedScanTotalSize = 0;
+#endif //&&&
     };
 
     using WorkerChunkMap = std::map<std::string, WorkerChunksData::Ptr>;
     using ChunkMap = std::map<int, ChunkData::Ptr>;
     using ChunkVector = std::vector<ChunkData::Ptr>;
 
+#if 1 //&&&
     /// Sort the chunks in `chunksSortedBySize` in descending order by total size in bytes.
     static void sortChunks(ChunkVector& chunksSortedBySize);
 
@@ -191,11 +243,20 @@ public:
     /// scans.
     /// @throws ChunkMapException
     void verify();
+#else //&&&
+    /// &&& doc
+    static void sortChunks(ChunkVector& chunksSortedBySize);
+
+    /// &&& doc
+    /// @throws ChunkMapException
+    static void verify(ChunkMap const& chunkMap, WorkerChunkMap const& wcMap);
+#endif //&&&
 
     static std::string dumpChunkMap(ChunkMap const& chunkMap);
 
     static std::string dumpWorkerChunkMap(WorkerChunkMap const& wcMap);
 
+#if 1 //&&&
     /// Return shared pointers to `_chunkMap` and `_workerChunkMap`, which should be held until
     /// finished with the data.
     std::pair<std::shared_ptr<CzarChunkMap::ChunkMap const>,
@@ -342,6 +403,35 @@ private:
     std::shared_ptr<FamilyMapType const> _familyMap{new FamilyMapType()};
     mutable std::mutex _familyMapMtx;  ///< protects _familyMap, _timeStamp, and _qmeta.
 };
+#else //&&&
+private:
+    /// Try to retrieve
+    CzarChunkMap(std::shared_ptr<qmeta::QMeta> const& qmeta);
+
+    /// &&& doc
+    /// @throws `qmeta::QMetaError`
+    void _read();
+
+    /// &&& doc
+    void _insertIntoChunkMap(WorkerChunkMap& wcMap, ChunkMap& chunkMap, std::string const& workerId, std::string const& dbName, std::string const& tableName, int64_t chunkIdNum, int64_t sz);
+
+    /// &&& doc
+    void _calcChunkMap(ChunkMap& chunkMap, ChunkVector& chunksSortedBySize);
+
+    std::shared_ptr<qmeta::QMeta> _qmeta; ///< Database connection to collect json work list.
+
+    /// &&& doc
+    std::shared_ptr<WorkerChunkMap> _workerChunksMap;
+
+    /// &&& doc
+    std::shared_ptr<ChunkMap> _ChunksMap;
+
+    /// List of chunks sorted by the total size of all tables in the chunk.
+    std::shared_ptr<ChunkVector> _chunksSortedBySize;
+
+};
+
+#endif //&&&
 
 }  // namespace lsst::qserv::czar
 
