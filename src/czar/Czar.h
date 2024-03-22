@@ -61,6 +61,8 @@ class FileMonitor;
 
 namespace lsst::qserv::czar {
 
+class CzarChunkMap;
+
 /// @addtogroup czar
 
 /**
@@ -179,6 +181,9 @@ private:
 
     /// The HTTP server processing Czar management requests.
     std::shared_ptr<HttpSvc> _controlHttpSvc;
+
+    /// Map of which chunks on which workers and shared scan order.
+    std::shared_ptr<CzarChunkMap> _czarChunkMap;
 };
 
 }  // namespace lsst::qserv::czar
