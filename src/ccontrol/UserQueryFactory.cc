@@ -271,6 +271,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     // First check for SUBMIT and strip it
     std::string query = aQuery;
 
+    // &&& need to have WorkerChunkMap info at this point
+
     std::string stripped;
     bool async = false;
     if (UserQueryType::isSubmit(query, stripped)) {
