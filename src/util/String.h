@@ -97,6 +97,20 @@ public:
         }
         return ss.str();
     }
+
+    /**
+     * Encode the input sequence of bytes into the hexadecimal representation packaged
+     * into a string.
+     * For example, the method will convert a sequence of bytes as shown below:
+     * @code
+     *   {10,17,255,210} -> "0A11FFD2"
+     * @code
+     * @param ptr A pointer to the byte sequence.
+     * @param length The number of bytes to translate.
+     * @return The encoded sequence of bytes or the empty string if the length=0.
+     * @throw std::invalid_argument If the pointer is nullptr.
+     */
+    static std::string toHex(char const* ptr, std::size_t length);
 };
 
 }  // namespace lsst::qserv::util
