@@ -62,6 +62,9 @@ vector<T> getNumericVectFromStr(string const& func, vector<string> const& string
     }
     return result;
 }
+
+char const hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+
 }  // namespace
 
 namespace lsst::qserv::util {
@@ -105,6 +108,22 @@ vector<uint64_t> String::parseToVectUInt64(string const& str, string const& deli
     auto const parseNumber = [](string const& str, size_t& sz) -> uint64_t { return stoull(str, &sz); };
     return ::getNumericVectFromStr<uint64_t>(__func__, split(str, delimiter, greedy), parseNumber,
                                              throwOnError, defaultVal);
+}
+
+string String::toHex(char const* ptr, size_t length) {
+    if (ptr == nullptr) {
+        throw invalid_argument(CONTEXT_(__func__) + "sequnce pointer is nullptr");
+    }
+    if (length == 0) return string();
+    string out;
+    out.resize(2 * length);
+    char* outPtr = &out[0];
+    for (char const* inPtr = ptr; inPtr < ptr + length; ++inPtr) {
+        char const& byte = *inPtr;
+        *(outPtr++) = ::hexChars[(byte & 0xF0) >> 4];
+        *(outPtr++) = ::hexChars[(byte & 0x0F) >> 0];
+    }
+    return out;
 }
 
 }  // namespace lsst::qserv::util
