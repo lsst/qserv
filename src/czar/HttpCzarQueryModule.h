@@ -84,6 +84,19 @@ private:
     HttpCzarQueryModule(std::string const& context, std::shared_ptr<qhttp::Request> const& req,
                         std::shared_ptr<qhttp::Response> const& resp);
 
+    /// Options for encoding data of the binary columns in the JSON result.
+    enum BinaryEncodingMode {
+        BINARY_ENCODE_HEX,   ///< The hexadecimal representation stored as a string
+        BINARY_ENCODE_ARRAY  ///< JSON array of 8-bit unsigned integers in a range of 0 .. 255.
+    };
+
+    /**
+     * @param str The string to parse.,
+     * @return The parsed and validated representation of the encoding.
+     * @throw std::invalid_argument If the input can't be translated into a valid mode.
+     */
+    BinaryEncodingMode _parseBinaryEncoding(std::string const& str);
+
     nlohmann::json _submit();
     nlohmann::json _submitAsync();
     nlohmann::json _cancel();
@@ -93,11 +106,12 @@ private:
     SubmitResult _getRequestParamsAndSubmit(std::string const& func, bool async);
     SubmitResult _getQueryInfo() const;
     QueryId _getQueryId() const;
-    nlohmann::json _waitAndExtractResult(SubmitResult const& submitResult) const;
-
+    nlohmann::json _waitAndExtractResult(SubmitResult const& submitResult,
+                                         BinaryEncodingMode binaryEncoding) const;
     void _dropTable(std::string const& tableName) const;
     nlohmann::json _schemaToJson(sql::Schema const& schema) const;
-    nlohmann::json _rowsToJson(sql::SqlResults& results) const;
+    nlohmann::json _rowsToJson(sql::SqlResults& results, nlohmann::json const& schemaJson,
+                               BinaryEncodingMode binaryEncoding) const;
 };
 
 }  // namespace lsst::qserv::czar
