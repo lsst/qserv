@@ -317,6 +317,12 @@ jobs:
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
           --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
 
+      - name: Run integration tests of the HTTP frontend
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG itest-http \
+          --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
+          --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
+  
       - name: Check Qserv containers
         if: always()
         run: docker ps -a
