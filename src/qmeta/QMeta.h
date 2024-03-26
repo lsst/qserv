@@ -141,7 +141,7 @@ public:
         Workers workers;
 
         /// The last time the map was updated (since UNIX Epoch).
-        std::chrono::time_point<std::chrono::system_clock> updateTime;
+        TIMEPOINT updateTime;
     };
 
     /**

@@ -20,7 +20,6 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-
 // Class header
 #include "czar/CzarChunkMap.h"
 
@@ -31,7 +30,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#if 0 //&&&
 #include "qmeta/QMeta.h"
 #include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
@@ -39,11 +37,6 @@
 #include "qmeta/Exceptions.h"
 #include "util/Bug.h"
 #include "util/TimeUtils.h"
-#else //&&&
-#include "qmeta/Exceptions.h"
-#include "qmeta/QMeta.h"
-#include "util/Bug.h"
-#endif //&&&
 
 using namespace std;
 
@@ -53,7 +46,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarChunkMap");
 
 namespace lsst::qserv::czar {
 
-#if 1 //&&&
 CzarChunkMap::CzarChunkMap() {}
 
 CzarChunkMap::~CzarChunkMap() { LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap::~CzarChunkMap()"); }
@@ -62,145 +54,6 @@ void CzarChunkMap::calcChunkMap(ChunkMap const& chunkMap, ChunkVector& chunksSor
     // Calculate total bytes for all chunks.
     for (auto&& [chunkIdNum, chunkData] : chunkMap) {
         chunkData->_calcTotalBytes();
-#else //&&&
-CzarChunkMap::CzarChunkMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(qmeta){
-    try {
-        _read();
-    } catch (qmeta::QMetaError const& qExc) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " CzarChunkMap could not read DB " << qExc.what());
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " &&& CzarChunkMap could not read DB " << qExc.what());
-        // &&& maybe flag invalid
-        throw ChunkMapException(ERR_LOC, string(" CzarChunkMap constructor failed read ") + qExc.what());
-    }
-}
-
-void CzarChunkMap::_read() {
-    LOGS(_log, LOG_LVL_WARN, "&&& CzarChunkMap::_read() start");
-    qmeta::QMeta::ChunkMap chunkMap = _qmeta->getChunkMap();
-    auto const& jsChunks = chunkMap.chunks;
-    LOGS(_log, LOG_LVL_WARN, "&&& chunkMap=" << jsChunks);
-
-    // Create new maps.
-    auto wcMapPtr = make_shared<WorkerChunkMap>();
-    auto chunkMapPtr = make_shared<ChunkMap>();
-
-    for (auto const& [workerId, dbs] : jsChunks.items()) {
-        for (auto const& [dbName, tables] : dbs.items()) {
-            for (auto const& [tableName, chunks] : tables.items()) {
-                for (auto const& [index, chunkNumNSz] : chunks.items()) {
-                    LOGS(_log, LOG_LVL_WARN, "&&& CzarChunkMap::_read() " << index);
-                    try {
-                        int64_t chunkNum = chunkNumNSz.at(0);
-                        int64_t sz = chunkNumNSz.at(1);
-                    LOGS(_log, LOG_LVL_WARN, "&&& workerdId=" << workerId << " db=" << dbName << " table=" << tableName << " chunk=" << chunkNum << " sz=" << sz);
-                    _insertIntoChunkMap(*wcMapPtr, *chunkMapPtr, workerId, dbName, tableName, chunkNum, sz);
-                    } catch (invalid_argument const& exc) {
-                        // &&& better option? Cancel mapping and inform the replicator that the table is bad?
-                        throw ChunkMapException(ERR_LOC, string(__func__) + " invalid_argument workerdId=" + workerId + " db=" + dbName + " table=" + tableName + " chunk=" + to_string(chunkNumNSz) + " " + exc.what());
-                    } catch (out_of_range const& exc) {
-                        // &&& better option?
-                        throw ChunkMapException(ERR_LOC, string(__func__) + " out_of_range workerdId=" + workerId + " db=" + dbName + " table=" + tableName + " chunk=" + to_string(chunkNumNSz) + " " + exc.what());
-                    }
-                    LOGS(_log, LOG_LVL_WARN, "&&& CzarChunkMap::_read() e1");
-                }
-            }
-        }
-    }
-
-    auto chunksSortedBySize = make_shared<ChunkVector>();
-    _calcChunkMap(*chunkMapPtr, *chunksSortedBySize);
-
-    // At this point we have
-    //  - wcMapPtr has a map of workerData by worker id with each worker having a map of ChunkData
-    //  - chunkMapPtr has a map of all chunkData by chunk id
-    //  - chunksSortedBySize a list of chunks sorted with largest first.
-    // From here need to assign shared scan chunk priority
-    // Go through the chunksSortedBySize list and assign each chunk to worker that has it with the smallest
-    // totalScanSize.
-    for (auto&& chunkData : *chunksSortedBySize) {
-        int64_t smallest = std::numeric_limits<int64_t>::max();
-        WorkerChunksData::Ptr smallestWkr = nullptr;
-        for (auto&& [wkrId, wkrDataWeak] : chunkData->_workerHasThisMap) {
-            auto wkrData = wkrDataWeak.lock();
-            if (wkrData == nullptr) {
-                LOGS(_log, LOG_LVL_ERROR, __func__ << " unexpected null weak ptr for " << wkrId);
-                continue; // maybe the next one will be ok.
-            }
-            LOGS(_log, LOG_LVL_INFO, " &&& wkrId=" << wkrData << " tsz=" << wkrData->_sharedScanTotalSize << " smallest=" << smallest);
-            if (wkrData->_sharedScanTotalSize < smallest) {
-                smallestWkr = wkrData;
-                smallest = smallestWkr->_sharedScanTotalSize;
-            }
-        }
-        if (smallestWkr == nullptr) {
-            throw ChunkMapException(ERR_LOC, string(__func__) + " no smallesWkr found for chunk=" + to_string(chunkData->_chunkId));
-        }
-        smallestWkr->_sharedScanChunkMap[chunkData->_chunkId] = chunkData;
-        smallestWkr->_sharedScanTotalSize += chunkData->_totalBytes;
-        chunkData->_primaryScanWorker = smallestWkr;
-        LOGS(_log, LOG_LVL_DEBUG, " chunk=" << chunkData->_chunkId << " assigned to scan on " << smallestWkr->_workerId);
-    }
-
-    verify(*chunkMapPtr, *wcMapPtr);
-    LOGS(_log, LOG_LVL_DEBUG, " chunkMap=" << dumpChunkMap(*chunkMapPtr));
-    LOGS(_log, LOG_LVL_DEBUG, " workerChunkMap=" << dumpWorkerChunkMap(*wcMapPtr));
-
-    LOGS(_log, LOG_LVL_WARN, "&&& CzarChunkMap::_read() end");
-}
-
-void CzarChunkMap::_insertIntoChunkMap(WorkerChunkMap& wcMap, ChunkMap& chunkMap, string const& workerId, string const& dbName, string const& tableName, int64_t chunkIdNum, int64_t sz) {
-    // Get or make the worker entry
-    LOGS(_log, LOG_LVL_WARN, "&&& CzarChunkMap::_insertIntoChunkMap start");
-    WorkerChunksData::Ptr workerChunksData;
-    auto iterWC = wcMap.find(workerId);
-    if (iterWC == wcMap.end()) {
-        workerChunksData = WorkerChunksData::Ptr(new WorkerChunksData(workerId));
-        wcMap[workerId] = workerChunksData;
-    } else {
-        workerChunksData = iterWC->second;
-    }
-
-    // Get or make the ChunkData entry in chunkMap
-    ChunkData::Ptr chunkData;
-    auto iterChunkData = chunkMap.find(chunkIdNum);
-    if (iterChunkData == chunkMap.end()) {
-        chunkData = ChunkData::Ptr(new ChunkData(chunkIdNum));
-        chunkMap[chunkIdNum] = chunkData;
-    } else {
-        chunkData = iterChunkData->second;
-    }
-
-    // Set or verify the table information
-    auto iterDT = chunkData->_dbTableMap.find({dbName, tableName});
-    if (iterDT == chunkData->_dbTableMap.end()) {
-        // doesn't exist so set it up
-        chunkData->_dbTableMap[{dbName, tableName}] = sz;
-    } else {
-        // Verify that it matches other data
-        auto const& dbTbl = iterDT->first;
-        auto tblSz = iterDT->second;
-        auto const& dbN = dbTbl.first;
-        auto const& tblN = dbTbl.second;
-        if (dbName != dbN || tblN != tableName || tblSz != sz) {
-            LOGS(_log, LOG_LVL_ERROR, __func__ << " data mismatch for "
-                    << dbName << "." << tableName << "=" << sz << " vs "
-                    << dbN << "." << tblN << "=" << tblSz);
-        }
-    }
-
-    // Link WorkerData the single chunkData instance for the chunkId
-    workerChunksData->_chunkDataMap[chunkIdNum] = chunkData;
-
-    // Add worker to the list of workers containing the chunk.
-    chunkData->addToWorkerHasThis(workerChunksData);
-    LOGS(_log, LOG_LVL_WARN, "&&& CzarChunkMap::_insertIntoChunkMap end");
-}
-
-void CzarChunkMap::_calcChunkMap(ChunkMap& chunkMap, ChunkVector& chunksSortedBySize) {
-    // Calculate total bytes for all chunks.
-    for (auto&& [chunkIdNum, chunkData] : chunkMap) {
-        chunkData->calcTotalBytes();
-#endif //&&&
         chunksSortedBySize.push_back(chunkData);
     }
 
@@ -218,14 +71,10 @@ void CzarChunkMap::sortChunks(std::vector<ChunkData::Ptr>& chunksSortedBySize) {
     std::sort(chunksSortedBySize.begin(), chunksSortedBySize.end(), sortBySizeDesc);
 }
 
-#if 1 //&&&
 void CzarChunkMap::verify() {
     auto&& wcMap = *_workerChunkMap;
     auto&& chunkMap = *_chunkMap;
     // Use a set to prevent duplicate ids caused by replication levels > 1.
-#else //&&&
-void CzarChunkMap::verify(ChunkMap const& chunkMap, WorkerChunkMap const& wcMap) {
-#endif //&&&
     set<int64_t> allChunkIds;
     int errorCount = 0;
     for (auto const& [wkr, wkrData] : wcMap) {
@@ -438,6 +287,7 @@ string CzarChunkMap::WorkerChunksData::dump() const {
     os << "}}";
     return os.str();
 }
+
 
 CzarFamilyMap::Ptr CzarFamilyMap::create(std::shared_ptr<qmeta::QMeta> const& qmeta) {
     // There's nothing the czar can do until with user queries until there's been at least
