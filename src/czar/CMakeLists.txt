@@ -1,4 +1,5 @@
 add_library(czar OBJECT)
+add_dependencies(czar proto)
 
 target_sources(czar PRIVATE
     ChttpModule.cc
@@ -56,3 +57,31 @@ endfunction()
 czar_utils(
     qserv-czar-http
 )
+
+function(czar_tests)
+    foreach(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            cconfig
+            ccontrol
+            czar
+            global
+            mysql
+            parser
+            qana
+            qdisp
+            qproc
+            qserv_meta
+            query
+            rproc
+            sql
+            Boost::unit_test_framework
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    endforeach()
+endfunction()
+
+czar_tests(
+    testCzar
+)
+
