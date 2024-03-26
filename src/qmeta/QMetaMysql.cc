@@ -842,15 +842,11 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     }
 }
 
+//&&&  HEAD
 QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> const& prevUpdateTime) {
     lock_guard<mutex> lock(_dbMutex);
 
     QMeta::ChunkMap chunkMap;
-/* &&&
-QMeta::ChunkMap QMetaMysql::getChunkMap() { // &&&
-    lock_guard<mutex> sync(_dbMutex);
->>>>>>> 07d082050 (Added code to read chunk disposition map and organize for czar use.)
-*/
 
     auto trans = QMetaTransaction::create(*_conn);
 
