@@ -841,7 +841,7 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     }
 }
 
-QMeta::ChunkMap QMetaMysql::getChunkMap() { // &&&
+QMeta::ChunkMap QMetaMysql::getChunkMap() {
     lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
