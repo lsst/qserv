@@ -45,32 +45,21 @@ class OptionGroup:
         return f
 
 
-cmsd_manager_name_option = partial(
+option_cmsd_manager_name = partial(
     click.option,
     "--cmsd-manager-name",
-    help="""The domain name of the cmsd manager node(s).
-Will be used to create a domain name like "name-i.name", where "name" is the
-name specified here and i is an int 0 < i < --cmsd-manager-count.
-""",
+    help="""The domain name of the cmsd manager node(s).""",
 )
 
 
-cmsd_manager_count_option = partial(
-    click.option,
-    "--cmsd-manager-count",
-    help="The number of cmsd manager node(s).",
-    type=int,
-)
-
-
-czar_connection_option = partial(
+option_czar_connection = partial(
     click.option,
     "--czar-connection",
     help="The czar db connection in format mysql://user:pass@host:port/database.",
 )
 
 
-worker_connection_option = partial(
+option_worker_connection = partial(
     click.option,
     "--worker-connection",
     "worker_connections",
@@ -79,7 +68,7 @@ worker_connection_option = partial(
 )
 
 
-db_qserv_user_option = partial(
+option_db_qserv_user = partial(
     click.option,
     "--db-qserv-user",
     default="qsmaster",
@@ -87,7 +76,7 @@ db_qserv_user_option = partial(
 )
 
 
-debug_option = partial(
+option_debug = partial(
     click.option,
     "--debug",
     "debug_port",
@@ -95,7 +84,7 @@ debug_option = partial(
 )
 
 
-instance_id_option = partial(
+option_instance_id = partial(
     click.option,
     "--instance-id",
     help="The unique identifier of a Qserv instance served by the Replication System.",
@@ -104,7 +93,7 @@ instance_id_option = partial(
 
 
 logLevelChoices = ["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"]
-log_level_option = partial(
+option_log_level = partial(
     click.option,
     "--log-level",
     default="INFO",
@@ -114,21 +103,21 @@ log_level_option = partial(
 )
 
 
-mysql_monitor_password_option = partial(
+option_mysql_monitor_password = partial(
     click.option,
     "--mysql-monitor-password",
     help="The password for monitoring applications.",
 )
 
 
-repl_connection_option = partial(
+option_repl_connection = partial(
     click.option,
     "--repl-connection",
     help="The connection string for the replication database in format mysql://user:pass@host:port/database",
 )
 
 
-repl_instance_id_option = partial(
+option_repl_instance_id = partial(
     click.option,
     "--repl-instance-id",
     help="The unique identifier of the current Replication System's domain. "
@@ -139,7 +128,7 @@ repl_instance_id_option = partial(
 )
 
 
-repl_auth_key_option = partial(
+option_repl_auth_key = partial(
     click.option,
     "--repl-auth-key",
     help="The authorization key. The key is a part of the security context "
@@ -149,7 +138,7 @@ repl_auth_key_option = partial(
     show_default=True,
 )
 
-repl_admin_auth_key_option = partial(
+option_repl_admin_auth_key = partial(
     click.option,
     "--repl-admin-auth-key",
     help="The admin authorizaiton key for the replication-ingest system.",
@@ -158,14 +147,14 @@ repl_admin_auth_key_option = partial(
 )
 
 
-repl_registry_host_option = partial(
+option_repl_registry_host = partial(
     click.option,
     "--repl-registry-host",
     help="The FQDN of a host where the Replication System's Registry service is run.",
 )
 
 
-repl_registry_port_option = partial(
+option_repl_registry_port = partial(
     click.option,
     "--repl-registry-port",
     help="The port number of the Replication System's Registry service.",
@@ -174,7 +163,7 @@ repl_registry_port_option = partial(
 )
 
 
-repl_http_port_option = partial(
+option_repl_http_port = partial(
     click.option,
     "--repl-http-port",
     help="The port number of the of the worker control service used by the Replication System "
@@ -184,7 +173,7 @@ repl_http_port_option = partial(
 )
 
 
-results_dirname_option = partial(
+option_results_dirname = partial(
     click.option,
     "--results-dirname",
     help="Path to a folder where worker stores result sets of queries.",
@@ -194,7 +183,7 @@ results_dirname_option = partial(
 
 
 resultProtocolChoices = ["XROOT", "HTTP"]
-results_protocol_option = partial(
+option_results_protocol = partial(
     click.option,
     "--results-protocol",
     help=f"Result delivery protocol. Allowed options are [{'|'.join(resultProtocolChoices)}]",
@@ -204,7 +193,7 @@ results_protocol_option = partial(
 )
 
 
-run_option = partial(
+option_run = partial(
     click.option,
     "--run/--no-run",
     is_flag=True,
@@ -215,7 +204,7 @@ run_option = partial(
 )
 
 
-vnid_config_option = partial(
+option_vnid_config = partial(
     click.option,
     "--vnid-config",
     help="The config parameters used by the qserv cmsd to get the vnid from the specified "
@@ -223,14 +212,14 @@ vnid_config_option = partial(
 )
 
 
-xrootd_manager_option = partial(
+option_xrootd_manager = partial(
     click.option,
     "--xrootd-manager",
     help="The host name of the xrootd manager.",
 )
 
 
-tests_yaml_option = partial(
+option_tests_yaml = partial(
     click.option,
     "--tests-yaml",
     help="Path to the yaml that contains settings for integration test execution.",
@@ -239,7 +228,7 @@ tests_yaml_option = partial(
 )
 
 
-case_option = partial(
+option_case = partial(
     click.option,
     "--case",
     "cases",
@@ -248,7 +237,7 @@ case_option = partial(
 )
 
 
-load_option = partial(
+option_load = partial(
     click.option,
     "--load/--no-load",
     help=(
@@ -262,7 +251,7 @@ load_option = partial(
 )
 
 
-unload_option = partial(
+option_unload = partial(
     click.option,
     "--unload",
     help="Unload qserv_testdata from qserv and the reference database. Will be handled before --load.",
@@ -270,7 +259,7 @@ unload_option = partial(
 )
 
 
-reload_option = partial(
+option_reload = partial(
     click.option,
     "--reload",
     help="Remove and reload testdata. Same as passing --unload --load.",
@@ -278,7 +267,7 @@ reload_option = partial(
 )
 
 
-run_tests_option = partial(
+option_run_tests = partial(
     click.option,
     "--run-tests/--no-run-tests",
     help="Run or skip test execution. Defaults to --run-tests.",
@@ -286,7 +275,7 @@ run_tests_option = partial(
 )
 
 
-compare_results_option = partial(
+option_compare_results = partial(
     click.option,
     "--compare-results/--no-compare-results",
     help="Run or skip query output comparison. Defaults to --compare-results",
@@ -295,21 +284,21 @@ compare_results_option = partial(
 )
 
 
-db_uri_option = partial(
+option_db_uri = partial(
     click.option,
     "--db-uri",
     help="The URI to the database."
 )
 
 
-db_admin_uri_option = partial(
+option_db_admin_uri = partial(
     click.option,
     "--db-admin-uri",
     help="The admin URI to the database."
 )
 
 
-options_file_option = partial(
+option_options_file = partial(
     click.option,
     "--options-file", "-@",
     expose_value=False,  # This option should not be forwarded
@@ -321,7 +310,7 @@ below. The option name should NOT include prefix dashes.""",
 )
 
 
-cmd_option = partial(
+option_cmd = partial(
     click.option,
     "--cmd",
     help="""The command template (in jinja2 format) that will be used to call
@@ -330,7 +319,7 @@ cmd_option = partial(
 )
 
 
-targs_option = partial(
+option_targs = partial(
     click.option,
     "--targs",
     help="""Key=value pairs to be applied to templates. Value may be a comma-separated list.""",
@@ -339,24 +328,24 @@ targs_option = partial(
 )
 
 
-targs_file_option = partial(
+option_targs_file = partial(
     click.option,
     "--targs-file",
     help="""Path to a yaml file that contains key-value pairs to apply to templates.""",
 )
 
 
-class targs_options(OptionGroup):  # noqa: N801
+class options_targs(OptionGroup):  # noqa: N801
 
     @property
     def decorators(self) -> List[Callable]:
         return [
-            targs_option(),
-            targs_file_option(),
+            option_targs(),
+            option_targs_file(),
         ]
 
 
-log_cfg_file_option = partial(
+option_log_cfg_file = partial(
     click.option,
     "--log-cfg-file",
     help="Path to the log4cxx config file.",
