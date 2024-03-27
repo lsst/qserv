@@ -44,6 +44,12 @@
 using namespace std;
 using json = nlohmann::json;
 
+namespace {
+// NOTE: values of the MySQL type B(N) are too reported as binary strings where
+// the number of characters is equal to CEIL(N/8).
+vector<string> const binTypes = {"BIT", "BINARY", "VARBINARY", "TINYBLOB", "BLOB", "MEDIUMBLOB", "LONGBLOB"};
+}  // namespace
+
 namespace lsst::qserv::czar {
 
 void HttpCzarQueryModule::process(string const& context, shared_ptr<qhttp::Request> const& req,
@@ -73,11 +79,24 @@ json HttpCzarQueryModule::executeImpl(string const& subModuleName) {
     throw invalid_argument(context() + func + " unsupported sub-module");
 }
 
+HttpCzarQueryModule::BinaryEncodingMode HttpCzarQueryModule::_parseBinaryEncoding(string const& str) {
+    if (str == "hex")
+        return BinaryEncodingMode::BINARY_ENCODE_HEX;
+    else if (str == "array")
+        return BinaryEncodingMode::BINARY_ENCODE_ARRAY;
+    throw invalid_argument(context() + string(__func__) + " unsupported binary encoding '" + str + "'");
+}
+
 json HttpCzarQueryModule::_submit() {
     debug(__func__);
-    checkApiVersion(__func__, 32);
+    checkApiVersion(__func__, 33);
+
+    string const binaryEncodingStr = body().optional<string>("binary_encoding", "hex");
+    BinaryEncodingMode const binaryEncoding = _parseBinaryEncoding(binaryEncodingStr);
+    debug(__func__, "binary_encoding=" + binaryEncodingStr);
+
     SubmitResult const submitResult = _getRequestParamsAndSubmit(__func__, false);
-    return _waitAndExtractResult(submitResult);
+    return _waitAndExtractResult(submitResult, binaryEncoding);
 }
 
 json HttpCzarQueryModule::_submitAsync() {
@@ -127,8 +146,11 @@ json HttpCzarQueryModule::_status() {
 
 json HttpCzarQueryModule::_result() {
     debug(__func__);
-    checkApiVersion(__func__, 30);
-    return _waitAndExtractResult(_getQueryInfo());
+    checkApiVersion(__func__, 33);
+    string const binaryEncodingStr = query().optionalString("binary_encoding", "hex");
+    BinaryEncodingMode const binaryEncoding = _parseBinaryEncoding(binaryEncodingStr);
+    debug(__func__, "binary_encoding=" + binaryEncodingStr);
+    return _waitAndExtractResult(_getQueryInfo(), binaryEncoding);
 }
 
 QueryId HttpCzarQueryModule::_getQueryId() const {
@@ -156,7 +178,8 @@ SubmitResult HttpCzarQueryModule::_getQueryInfo() const {
     return submitResult;
 }
 
-json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult) const {
+json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult,
+                                                BinaryEncodingMode binaryEncoding) const {
     // Block the current thread before the query will finish or fail.
     string const messageSelectQuery =
             "SELECT chunkId, code, message, severity+0, timeStamp FROM " + submitResult.messageTable;
@@ -226,7 +249,7 @@ json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult
         error(__func__, msg);
         throw http::Error(context() + __func__, msg);
     }
-    json rowsJson = _rowsToJson(resultQueryResults);
+    json rowsJson = _rowsToJson(resultQueryResults, schemaJson, binaryEncoding);
     resultQueryResults.freeResults();
     _dropTable(submitResult.resultTable);
     return json::object({{"schema", schemaJson}, {"rows", rowsJson}});
@@ -251,18 +274,67 @@ json HttpCzarQueryModule::_schemaToJson(sql::Schema const& schema) const {
         columnJson["table"] = colDef.table;
         columnJson["column"] = colDef.name;
         columnJson["type"] = colDef.colType.sqlType;
+        int isBinary = 0;
+        for (size_t binTypeIdx = 0; binTypeIdx < ::binTypes.size(); ++binTypeIdx) {
+            string const& binType = ::binTypes[binTypeIdx];
+            if (colDef.colType.sqlType.substr(0, binType.size()) == binType) {
+                isBinary = 1;
+                break;
+            }
+        }
+        columnJson["is_binary"] = isBinary;
         schemaJson.push_back(columnJson);
     }
     return schemaJson;
 }
 
-json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results) const {
+json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results, json const& schemaJson,
+                                      BinaryEncodingMode binaryEncoding) const {
+    // Extract the column binary attributes into the vector. Checkimg column type
+    // status in the vector should work significantly faster comparing with JSON.
+    size_t const numColumns = schemaJson.size();
+    vector<int> isBinary(numColumns, false);
+    for (size_t colIdx = 0; colIdx < numColumns; ++colIdx) {
+        isBinary[colIdx] = schemaJson[colIdx].at("is_binary");
+    }
     json rowsJson = json::array();
     for (sql::SqlResults::iterator itr = results.begin(); itr != results.end(); ++itr) {
         sql::SqlResults::value_type const& row = *itr;
         json rowJson = json::array();
         for (size_t i = 0; i < row.size(); ++i) {
-            rowJson.push_back(string(row[i].first ? row[i].first : "NULL"));
+            if (row[i].first == nullptr) {
+                rowJson.push_back("NULL");
+            } else {
+                if (isBinary[i]) {
+                    switch (binaryEncoding) {
+                        case BinaryEncodingMode::BINARY_ENCODE_HEX:
+                            rowJson.push_back(util::String::toHex(row[i].first, row[i].second));
+                            break;
+                        case BinaryEncodingMode::BINARY_ENCODE_ARRAY:
+                            // Notes on the std::u8string type and constructor:
+                            // 1. This string type is required for encoding binary data which is only possible
+                            //    with the 8-bit encoding and not possible with the 7-bit ASCII
+                            //    representation.
+                            // 2. This from of string construction allows the line termination symbols \0
+                            //    within the binary data.
+                            //
+                            // ATTENTION: formally this way of type casting is wrong as it breaks strict
+                            // aliasing.
+                            //   However, for all practical purposes, char8_t is basically a unsigned char
+                            //   which makes such operation possible. The problem could be addressed either by
+                            //   redesigning Qserv's SQL library to report data as char8_t, or by explicitly
+                            //   copying and translating each byte from char to char8_t representation (which
+                            //   would not be terribly efficient for the large result sets).
+                            rowJson.push_back(
+                                    u8string(reinterpret_cast<char8_t const*>(row[i].first), row[i].second));
+                            break;
+                        default:
+                            throw http::Error(context() + __func__, "unsupported binary encoding");
+                    }
+                } else {
+                    rowJson.push_back(string(row[i].first, row[i].second));
+                }
+            }
         }
         rowsJson.push_back(rowJson);
     }
