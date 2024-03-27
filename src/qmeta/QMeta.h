@@ -34,6 +34,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "global/clock_defs.h"
 #include "global/intTypes.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/QStats.h"
@@ -88,7 +89,7 @@ public:
         nlohmann::json chunks;
 
         /// The last time the map was updated (since UNIX Epoch).
-        std::chrono::time_point<std::chrono::system_clock> updateTime;
+        TIMEPOINT updateTime;
     };
 
     /**
