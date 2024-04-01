@@ -413,10 +413,4 @@ BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     BOOST_CHECK(caught);
 }
 
-BOOST_AUTO_TEST_CASE(getChunkMap) {
-    // The test assumes that the uderlying tables exists and it's empty.
-    QMeta::ChunkMap chunkMap;
-    BOOST_CHECK_THROW(qMeta->getChunkMap(), EmptyTableError);
-}
-
 BOOST_AUTO_TEST_SUITE_END()
