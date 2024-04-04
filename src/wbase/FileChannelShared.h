@@ -274,6 +274,10 @@ private:
 
     uint32_t _rowcount = 0;      ///< The total numnber of rows in all result sets of a query.
     uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
+
+    /// This should be set to true if there were any issues that invalidate the file, such as errors
+    /// or cancellation.
+    std::atomic<bool> _issueRequiresFileRemoval{false};
 };
 
 }  // namespace lsst::qserv::wbase
