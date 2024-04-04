@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_DATABASEMYSQLGENERATOR_H
 
 // System headers
+#include <list>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -401,6 +402,33 @@ public:
      */
     std::string insertPacked(std::string const& tableName, std::string const& packedColumns,
                              std::vector<std::string> const& packedValues) const;
+
+    /**
+     * Generate a collection of complete INSERT statements for the given input, where
+     * the maximum size of each query string is determined by a value of
+     * the parameter 'maxQueryLength'.
+     *
+     * Here is an example:
+     * @code
+     *   std::size_t const maxQueryLength = 1024*1024;
+     *   QueryGenerator const g(conn);
+     *   std::vector<std::string> const queries =
+     *       g.insertPacked("table",
+     *                      g.packIds("id", "timestamp", "name"),
+     *                      {g.packVals(Sql::NULL_, Sql::NOW, "John Smith"),
+     *                       g.packVals(Sql::NULL_, Sql::NOW, "Vera Rubin"),
+     *                       g.packVals(Sql::NULL_, Sql::NOW, "Igor Gaponenko")});
+     * @endcode
+     * @param tableName The name of a table where the rows will be insert.
+     * @param packedColumns A collection of column names packed into a string.
+     * @param packedValues A collection of the packed rows.
+     * @return A collection of the generated queries
+     * @throws std::invalid_argument If the collection of rows is empty, or if it has
+     *   rows which are too large for generating queries constrained by the given limit.
+     */
+    std::vector<std::string> insertPacked(std::string const& tableName, std::string const& packedColumns,
+                                          std::vector<std::string> const& packedValues,
+                                          std::size_t const maxQueryLength) const;
 
     /**
      * @brief Generate and return an SQL expression for a binary operator applied
@@ -1083,6 +1111,14 @@ public:
     std::string call(DoNotProcess const& packedProcAndArgs) const;
 
 private:
+    /**
+     * Check if the specified collection is not empty.
+     * @param func A scope from which the check was requested.
+     * @param coll A collection to be evaluated.
+     * @throws std::invalid_argument If the input collection is empty.
+     */
+    static void _assertNotEmpty(std::string const& func, std::vector<std::string> const& coll);
+
     /// @return A string that's ready to be included into the queries.
     template <typename... Targs>
     std::string _values(Targs... Fargs) const {
@@ -1151,8 +1187,8 @@ private:
     /// @param scope The scope of the variable (SESSION, GLOBAL, etc.)
     /// @param packedVars Partial SQL for setting values of the variables.
     /// @return The well-formed SQL for setting the variables
-    /// @throws std::invalid_argument If a value of \param packedVars is empty,
-    ///   or in case if the specified value of \param scope is not supported.
+    /// @throws std::invalid_argument If a value of the parameter 'packedVars' is empty,
+    ///   or in case if the specified value of  the parameter 'scope' is not supported.
     std::string _setVars(SqlVarScope scope, std::string const& packedVars) const;
 
     std::string _createIndex(SqlId const& tableId, std::string const& indexName, std::string const& spec,

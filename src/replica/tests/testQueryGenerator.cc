@@ -23,7 +23,9 @@
 #include "lsst/log/Log.h"
 
 // System headers
+#include <algorithm>
 #include <list>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -435,6 +437,46 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
         BOOST_CHECK_EQUAL(test.first, test.second);
     }
 
+    // Test bulk insert of many rows
+    vector<string> const expectedInsertQueries1 = {"INSERT INTO `Table` (`num`,`str`) VALUES (1,'a')",
+                                                   "INSERT INTO `Table` (`num`,`str`) VALUES (2,'b')",
+                                                   "INSERT INTO `Table` (`num`,`str`) VALUES (3,'c')",
+                                                   "INSERT INTO `Table` (`num`,`str`) VALUES (4,'d')"};
+    vector<string> const expectedInsertQueries2 = {
+            "INSERT INTO `Table` (`num`,`str`) VALUES (1,'a'),(2,'b')",
+            "INSERT INTO `Table` (`num`,`str`) VALUES (3,'c'),(4,'d')"};
+    vector<string> const expectedInsertQueries3 = {
+            "INSERT INTO `Table` (`num`,`str`) VALUES (1,'a'),(2,'b'),(3,'c')",
+            "INSERT INTO `Table` (`num`,`str`) VALUES (4,'d')"};
+    vector<string> const expectedInsertQueries4 = {
+            "INSERT INTO `Table` (`num`,`str`) VALUES (1,'a'),(2,'b'),(3,'c'),(4,'d')"};
+
+    // The test should throw because the collection of rows is empty
+    auto const packedIds = g.packIds("num", "str");
+    vector<string> const emptyInsertData;
+    size_t maxQueryLength = expectedInsertQueries4[0].size();
+    BOOST_CHECK_THROW(g.insertPacked("Table", packedIds, emptyInsertData, maxQueryLength), invalid_argument);
+
+    // The test should throw because the generated statements would exceed a limit.
+    vector<string> const insertData = {g.packVals(1, "a"), g.packVals(2, "b"), g.packVals(3, "c"),
+                                       g.packVals(4, "d")};
+    maxQueryLength = expectedInsertQueries1[0].size() - 1;
+    BOOST_CHECK_THROW(g.insertPacked("Table", packedIds, insertData, maxQueryLength), invalid_argument);
+    LOGS_INFO("QueryGenerator #1");
+
+    // None of the following tests should throw
+    vector<vector<string>> const expectedInsertQueries = {expectedInsertQueries1, expectedInsertQueries2,
+                                                          expectedInsertQueries3, expectedInsertQueries4};
+    for (auto const& expectedQueries : expectedInsertQueries) {
+        LOGS_INFO("QueryGenerator #2");
+        size_t const maxQueryLength = expectedQueries[0].size();
+        vector<string> const generatedQueries =
+                g.insertPacked("Table", packedIds, insertData, maxQueryLength);
+        BOOST_CHECK_EQUAL(generatedQueries.size(), expectedQueries.size());
+        for (size_t i = 0; i < min(generatedQueries.size(), expectedQueries.size()); ++i) {
+            BOOST_CHECK_EQUAL(generatedQueries[i], expectedQueries[i]);
+        }
+    }
     LOGS_INFO("QueryGenerator test ends");
 }
 
