@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "global/clock_defs.h"
+// #include "qmeta/QMeta.h" &&&
 #include "util/Issue.h"
 
 namespace lsst::qserv::qmeta {
@@ -51,6 +52,20 @@ public:
     ChunkMapException(Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {}
 };
 
+
+/// This class is used to organize worker chunk table information so that it
+/// can be used to send jobs to the appropriate worker and inform workers
+/// what chunks they can expect to handle in shared scans.
+/// The data for the maps is provided by the Replicator and stored in the
+/// QMeta database.
+/// When the data is changed, there is a timestamp that is updated, which
+/// will cause new maps to be made by this class.
+///
+/// The maps generated are constant objects stored with shared pointers. As
+/// such, it should be possible for numerous threads to use each map
+/// simultaneously provided they have their own pointers to the maps.
+/// The pointers to the maps are mutex protected to safely allow map updates.
+///
 /// The czar is expected to heavily use the
 ///    `getMaps() -> WorkerChunkMap -> getSharedScanChunkMap()`
 /// to send jobs to workers, as that gets an ordered list of all chunks
@@ -78,6 +93,8 @@ public:
     CzarChunkMap& operator=(CzarChunkMap const&) = delete;
 
     static Ptr create() { return Ptr(new CzarChunkMap()); }
+
+    ~CzarChunkMap();
 
     ~CzarChunkMap();
 
