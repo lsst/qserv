@@ -454,6 +454,7 @@ services:
           --registry-host=repl_registry
           --controller-auto-register-workers=1
           --qserv-sync-force
+          --qserv-chunk-map-update
           --debug
         expose:
             - "25081"
