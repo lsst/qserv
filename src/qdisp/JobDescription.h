@@ -90,6 +90,8 @@ public:
 
     void resetJsForWorker() { _jsForWorker.reset(); }
 
+    bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
+
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
 private:

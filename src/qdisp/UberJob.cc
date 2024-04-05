@@ -516,3 +516,4 @@ std::string UberJob::dump() const {
 std::ostream& operator<<(std::ostream& os, UberJob const& uj) { return uj.dumpOS(os); }
 
 }  // namespace lsst::qserv::qdisp
+
