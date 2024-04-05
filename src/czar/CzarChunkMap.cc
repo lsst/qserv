@@ -25,6 +25,7 @@
 
 // System headers
 #include <sstream>
+#include <iostream>  // &&& del
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -287,6 +288,7 @@ string CzarChunkMap::WorkerChunksData::dump() const {
     os << "}}";
     return os.str();
 }
+
 
 CzarFamilyMap::Ptr CzarFamilyMap::create(std::shared_ptr<qmeta::QMeta> const& qmeta) {
     // There's nothing the czar can do until with user queries until there's been at least
