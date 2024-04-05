@@ -182,7 +182,8 @@ private:
      *   implementation. Also, the iterative approach to the data extraction allows
      *   the driving code to be interrupted should the correponding query be cancelled
      *   during the lengthy data processing phase.
-     * @param tMtxLock - a lock on the mutex tMtx
+     * @param responseData - proto buffer to hold the response being constructed.
+     * @param protobufArena - proto buffer memory management control.
      * @param task - a task that produced the result set
      * @param mResult - MySQL result to be used as a source
      * @param bytes - the number of bytes in the result message recorded into the file
@@ -192,7 +193,6 @@ private:
      * @throws std::runtime_error for problems encountered when attemting to create the file
      *   or write into the file.
      */
-    // &&& fix doc tMtxLock  responseData  protobufArena
     bool _writeToFile(proto::ResponseData* responseData,
                       std::unique_ptr<google::protobuf::Arena> const& protobufArena,
                       std::shared_ptr<Task> const& task, MYSQL_RES* mResult, int& bytes, int& rows,
@@ -201,13 +201,13 @@ private:
     /**
      * Extract as many rows as allowed by the Google Protobuf implementation from
      * from the input result set into the output result object.
-     * @param tMtxLock - a lock on the mutex tMtx
+     * @param responseData - proto buffer to hold the response being constructed.
+     * @param protobufArena - proto buffer memory management control.
      * @param mResult - MySQL result to be used as a source
      * @param rows - the number of rows extracted from the result set
      * @param tSize - the approximate amount of data extracted from the result set
      * @return 'true' if there are more rows left in the result set.
      */
-    //&&& fix doc
     static bool _fillRows(proto::ResponseData* responseData, MYSQL_RES* mResult, int& rows, size_t& tSize);
 
     /**

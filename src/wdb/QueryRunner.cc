@@ -147,7 +147,6 @@ size_t QueryRunner::_getDesiredLimit() {
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
-    LOGS(_log, LOG_LVL_WARN, "&&& runQuery start");
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
@@ -255,7 +254,6 @@ private:
 };
 
 bool QueryRunner::_dispatchChannel() {
-    LOGS(_log, LOG_LVL_WARN, "&&& dispatch start");
     bool erred = false;
     bool needToFreeRes = false;  // set to true once there are results to be freed.
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
@@ -300,9 +298,7 @@ bool QueryRunner::_dispatchChannel() {
                 if (sendChan == nullptr) {
                     throw util::Bug(ERR_LOC, "QueryRunner::_dispatchChannel() sendChan==null");
                 }
-                LOGS(_log, LOG_LVL_WARN, "&&& dispatch calling buildAndTransmitResult a");
                 erred = sendChan->buildAndTransmitResult(res, _task, _multiError, _cancelled);
-                LOGS(_log, LOG_LVL_WARN, "&&& dispatch calling buildAndTransmitResult a1");
             }
         }
     } catch (sql::SqlErrorObject const& e) {
@@ -325,12 +321,10 @@ bool QueryRunner::_dispatchChannel() {
         erred = true;
         // Send results. This needs to happen after the error check.
         // If any errors were found, send an error back.
-        LOGS(_log, LOG_LVL_WARN, "&&& dispatch calling buildAndTransmiError b");
         if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
             LOGS(_log, LOG_LVL_WARN,
                  " Could not report error to czar as sendChannel not accepting msgs." << _task->getIdStr());
         }
-        LOGS(_log, LOG_LVL_WARN, "&&& dispatch calling buildAndTransmiError b1");
     }
     return !erred;
 }

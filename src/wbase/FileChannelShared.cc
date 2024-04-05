@@ -317,7 +317,6 @@ string FileChannelShared::makeIdStr(int qId, int jId) {
 
 bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
-    // &&& Arena may not really be needed.
     std::unique_ptr<google::protobuf::Arena> protobufArena = make_unique<google::protobuf::Arena>();
     lock_guard<mutex> const tMtxLock(_tMtx);
     if (!_sendResponse(tMtxLock, protobufArena, task, cancelled, multiErr)) {
@@ -329,7 +328,6 @@ bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
                                                util::MultiError& multiErr, atomic<bool>& cancelled) {
-    LOGS(_log, LOG_LVL_WARN, "&&& FileChannelShared::buildAndTransmitResult start");
     // Operation stats. Note that "buffer fill time" included the amount
     // of time needed to write the result set to disk.
     util::Timer transmitT;
@@ -347,7 +345,6 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     bool erred = false;
     bool hasMoreRows = true;
 
-    // &&& Arena may not really be needed.
     std::unique_ptr<google::protobuf::Arena> protobufArena = make_unique<google::protobuf::Arena>();
     proto::ResponseData* responseData = nullptr;
 
@@ -389,9 +386,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         // the current request (note that certain classes of requests may require
         // more than one task for processing).
         if (!hasMoreRows && transmitTaskLast()) {
-            LOGS(_log, LOG_LVL_WARN, "&&& FileChannelShared::buildAndTransmitResult e");
             lock_guard<mutex> const tMtxLock(_tMtx);
-            LOGS(_log, LOG_LVL_WARN, "&&& FileChannelShared::buildAndTransmitResult e1");
 
             // Make sure the file is sync to disk before notifying Czar.
             _file.flush();
@@ -424,11 +419,6 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     // successfully processing the query and writing all results into the file.
     // The file is not going to be used by Czar in either of these scenarios.
     if (cancelled || erred || isDead()) {
-        /* &&&
-        //&&& it may be better to set a flag and call _removeFile in the destructor.
-        lock_guard<mutex> const tMtxLockA(_tMtx);
-        _removeFile(tMtxLockA);
-        */
         // Set a flag to delete the file in the destructor. That should prevent any
         // possible race conditions with other threads expecting the file to exist.
         _issueRequiresFileRemoval = true;
@@ -446,7 +436,6 @@ bool FileChannelShared::_writeToFile(proto::ResponseData* responseData,
                                      shared_ptr<Task> const& task, MYSQL_RES* mResult, int& bytes, int& rows,
                                      util::MultiError& multiErr) {
     // Transfer rows from a result set into the response data object.
-    LOGS(_log, LOG_LVL_WARN, "&&& _writeToFile start");
     if (nullptr == responseData) {
         responseData = google::protobuf::Arena::CreateMessage<proto::ResponseData>(protobufArena.get());
     } else {
@@ -464,9 +453,7 @@ bool FileChannelShared::_writeToFile(proto::ResponseData* responseData,
     bytes = msg.size();
 
     LOGS(_log, LOG_LVL_TRACE, __func__ << " file write " << task->getIdStr() << " start");
-    LOGS(_log, LOG_LVL_WARN, "&&& _writeToFile d");
     lock_guard<mutex> const tMtxLock(_tMtx);
-    LOGS(_log, LOG_LVL_WARN, "&&& _writeToFile d1");
     // Create the file if not open.
     if (!_file.is_open()) {
         _fileName = task->resultFilePath();
@@ -488,7 +475,6 @@ bool FileChannelShared::_writeToFile(proto::ResponseData* responseData,
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
                             to_string(msg.size()) + " bytes into the file '" + _fileName + "'.");
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& _writeToFile end");
     return hasMoreRows;
 }
 
