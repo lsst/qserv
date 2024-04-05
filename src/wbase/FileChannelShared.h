@@ -49,6 +49,7 @@ class MultiError;
 }  // namespace lsst::qserv::util
 
 namespace lsst::qserv::wbase {
+class UberJobData;
 
 /// The class is responsible for writing mysql result rows as Protobuf
 /// serialized messages into an output file. Once a task (or all sub-chunk
@@ -109,6 +110,11 @@ public:
     static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                       std::string const& workerId = std::string());
 
+    /// The factory method for handling UberJob over http.
+    static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
+                      std::string const& czarHostName, int czarPort,
+                      std::string const& workerId);  // TODO:UJ delete all params except uberJob
+
     FileChannelShared() = delete;
     FileChannelShared(FileChannelShared const&) = delete;
     FileChannelShared& operator=(FileChannelShared const&) = delete;
@@ -153,9 +159,13 @@ public:
     bool isDead();
 
 private:
-    /// Private constructor to protect shared pointer integrity.
+    /// TODO:UJ delete sendchannel version of constructor when possible.
     FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                       std::string const& workerId);
+
+    /// Private constructor to protect shared pointer integrity.
+    FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
+                      std::string const& czarHostName, int czarPort, std::string const& workerId);
 
     /// @see wbase::SendChannel::kill
     /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
@@ -215,9 +225,16 @@ private:
 
     mutable std::mutex _tMtx;  ///< Protects data recording and Czar notification
 
+    bool _isUberJob;  ///< true if this is using UberJob http. To be removed when _sendChannel goes away.
+
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
-    qmeta::CzarId const _czarId;                             ///< id of the czar that requested this task(s).
-    std::string const _workerId;                             ///< The unique identifier of the worker.
+    std::weak_ptr<UberJobData> _uberJobData;                 ///< Pointer to UberJobData
+
+    UberJobId const _uberJobId;       ///< The UberJobId
+    qmeta::CzarId const _czarId;      ///< id of the czar that requested this task(s). TODO:UJ delete
+    std::string const _czarHostName;  ///< Name of the czar host. TODO:UJ delete
+    int const _czarPort;              ///< port for the czar. TODO:UJ delete
+    std::string const _workerId;      ///< The unique identifier of the worker. TODO:UJ delete
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using FileChannelShared.
@@ -251,6 +268,10 @@ private:
 
     uint32_t _rowcount = 0;      ///< The total numnber of rows in all result sets of a query.
     uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
+    uint64_t _headerCount = 0;   ///< Count of headers received.
+
+    bool const _useHttp = false;     ///< to be eliminated when xrootd is no longer used.
+    std::atomic<bool> _dead{false};  ///< Set to true when the contents of the file are no longer useful.
 };
 
 }  // namespace lsst::qserv::wbase

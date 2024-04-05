@@ -34,12 +34,10 @@
 
 // Forward decl
 namespace lsst::qserv {
-namespace qdisp {
-class MessageStore;
-}
 namespace qmeta {
+class MessageStore;
 class QMetaSelect;
-}
+}  // namespace qmeta
 namespace query {
 class SelectStmt;
 }
@@ -79,7 +77,7 @@ public:
     void discard() override {}
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
+    std::shared_ptr<qmeta::MessageStore> getMessageStore() override { return _messageStore; }
 
     /// This method should disappear when we start supporting results
     /// in locations other than MySQL tables. We'll switch to getResultLocation()
@@ -118,9 +116,10 @@ private:
 
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
     std::shared_ptr<qmeta::QMeta> const& _queryMetadata;
-    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::shared_ptr<qmeta::MessageStore> _messageStore;
     std::string _resultTable;
     std::string _resultLoc;  ///< Result location
+    std::string _resultTableName;
     std::string _userQueryId;
     std::string _rowsTable;
     std::string _resultDb;
