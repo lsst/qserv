@@ -185,6 +185,7 @@ UberJob::Ptr Executive::findUberJob(UberJobId ujId) {
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
 JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::add start");
     JobQuery::Ptr jobQuery;
     {
         // Create the JobQuery and put it in the map.
@@ -253,10 +254,21 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     } else {
         _qdispPool->queCmd(cmd, 1);
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueJobStart end");
+}
+
+void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob start");
+    bool started = uberJob->runUberJob();
+    if (!started && isLimitRowComplete()) {
+        uberJob->callMarkCompleteFunc(false);
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob end");
 }
 
 void Executive::waitForAllJobsToStart() {
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart");
+    LOGS(_log, LOG_LVL_WARN, "&&& waitForAllJobsToStart  start");
     // Wait for each command to start.
     while (true) {
         bool empty = _jobStartCmdList.empty();
@@ -266,6 +278,7 @@ void Executive::waitForAllJobsToStart() {
         cmd->waitComplete();
     }
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart done");
+    LOGS(_log, LOG_LVL_WARN, "&&& waitForAllJobsToStart  end");
 }
 
 Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
@@ -314,6 +327,60 @@ void Executive::addMultiError(int errorCode, std::string const& errorMsg, int er
         LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
     }
+}
+
+Executive::ChunkIdJobMapType& Executive::getChunkJobMapAndInvalidate() {  // &&&
+    lock_guard<mutex> lck(_chunkToJobMapMtx);
+    if (_chunkToJobMapInvalid.exchange(true)) {
+        throw util::Bug(ERR_LOC, "getChunkJobMapInvalidate called when map already invalid");
+    }
+    return _chunkToJobMap;
+}
+
+void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {  // &&&
+    lock_guard<mutex> lck(_uberJobsMtx);
+    for (auto const& uJob : uJobsToAdd) {
+        _uberJobs.push_back(uJob);
+    }
+}
+
+bool Executive::startUberJob(UberJob::Ptr const& uJob) {  // &&&
+
+    lock_guard<recursive_mutex> lock(_cancelled.getMutex());
+
+    // If this has been cancelled, then return false.
+    //
+    if (_cancelled) return false;
+
+    // Construct a temporary resource object to pass to ProcessRequest().
+    // Affinity should be meaningless here as there should only be one instance of each worker.
+    XrdSsiResource::Affinity affinity = XrdSsiResource::Affinity::Default;
+    LOGS(_log, LOG_LVL_INFO, "&&& startUberJob uJob->workerResource=" << uJob->getWorkerResource());
+    XrdSsiResource uJobResource(uJob->getWorkerResource(), "", uJob->getIdStr(), "", 0, affinity);
+
+    // Now construct the actual query request and tie it to the jobQuery. The
+    // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
+    // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
+    //
+    QueryRequest::Ptr qr = QueryRequest::create(uJob);
+    uJob->setQueryRequest(qr);
+
+    // Start the query. The rest is magically done in the background.
+    //
+    getXrdSsiService()->ProcessRequest(*(qr.get()), uJobResource);
+    return true;
+}
+
+JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {  //&&&
+    assert(jqRaw != nullptr);
+    int jobId = jqRaw->getIdInt();
+    lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+    auto iter = _jobMap.find(jobId);
+    if (iter == _jobMap.end()) {
+        throw util::Bug(ERR_LOC, "Could not find the entry for jobId=" + to_string(jobId));
+    }
+    JobQuery::Ptr jq = iter->second;
+    return jq;
 }
 
 /// Add a JobQuery to this Executive.

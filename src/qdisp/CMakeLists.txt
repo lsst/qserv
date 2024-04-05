@@ -5,6 +5,7 @@ target_sources(qdisp PRIVATE
     ChunkMeta.cc
     CzarStats.cc
     Executive.cc
+    JobBase.cc
     JobDescription.cc
     JobQuery.cc
     UberJob.cc
