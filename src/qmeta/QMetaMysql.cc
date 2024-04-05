@@ -25,6 +25,7 @@
 
 // System headers
 #include <algorithm>
+#include <stdexcept>
 
 // Third-party headers
 #include "boost/lexical_cast.hpp"
@@ -34,6 +35,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "global/stringUtil.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/Exceptions.h"
@@ -837,6 +839,84 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
             qdisp::QueryMessage qm(-1, source, 0, desc, qdisp::JobStatus::getNow(), elem.second.severity);
             _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
         }
+    }
+}
+
+QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> const& prevUpdateTime) {
+    lock_guard<mutex> lock(_dbMutex);
+
+    QMeta::ChunkMap chunkMap;
+
+    auto trans = QMetaTransaction::create(*_conn);
+
+    // Check if the table needs to be read. Note that the default value of
+    // the previous update timestamp always forces an attempt to read the map.
+    auto const updateTime = _getChunkMapUpdateTime(lock);
+    bool const force =
+            (prevUpdateTime == chrono::time_point<chrono::system_clock>()) || (prevUpdateTime < updateTime);
+    if (!force) {
+        trans->commit();
+        return QMeta::ChunkMap();
+    }
+
+    // Read the map itself
+
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+
+    string const tableName = "chunkMap";
+    string const query = "SELECT `worker`,`database`,`table`,`chunk`,`size` FROM `" + tableName + "`";
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (!_conn->runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+    vector<vector<string>> const rows = results.extractFirstNColumns(5);
+    trans->commit();
+
+    if (rows.empty()) throw EmptyTableError(ERR_LOC, tableName);
+    try {
+        for (auto const& row : rows) {
+            string const& worker = row[0];
+            string const& database = row[1];
+            string const& table = row[2];
+            unsigned int chunk = lsst::qserv::stoui(row[3]);
+            size_t const size = stoull(row[4]);
+            chunkMap.workers[worker][database][table].push_back(ChunkMap::ChunkInfo{chunk, size});
+        }
+        chunkMap.updateTime = updateTime;
+    } catch (exception const& ex) {
+        string const msg = "Failed to parse result set of query " + query + ", ex: " + string(ex.what());
+        throw ConsistencyError(ERR_LOC, msg);
+    }
+    return chunkMap;
+}
+
+chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock_guard<mutex> const& lock) {
+    sql::SqlErrorObject errObj;
+    sql::SqlResults results;
+    string const tableName = "chunkMapStatus";
+    string const query = "SELECT `update_time` FROM `" + tableName + "` ORDER BY `update_time` DESC LIMIT 1";
+    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    if (!_conn->runQuery(query, results, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+    vector<string> updateTime;
+    if (!results.extractFirstColumn(updateTime, errObj)) {
+        LOGS(_log, LOG_LVL_ERROR, "Failed to extract result set of query " + query);
+        throw SqlError(ERR_LOC, errObj);
+    }
+    if (updateTime.empty()) {
+        throw EmptyTableError(ERR_LOC, tableName);
+    } else if (updateTime.size() > 1) {
+        throw ConsistencyError(ERR_LOC, "Too many rows in result set of query " + query);
+    }
+    try {
+        return chrono::time_point<chrono::system_clock>() + chrono::seconds(stol(updateTime[0]));
+    } catch (exception const& ex) {
+        string const msg = "Failed to parse result set of query " + query + ", ex: " + string(ex.what());
+        throw ConsistencyError(ERR_LOC, msg);
     }
 }
 
