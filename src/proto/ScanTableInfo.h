@@ -38,6 +38,7 @@ namespace lsst::qserv::proto {
 struct ScanTableInfo {
     using ListOf = std::vector<ScanTableInfo>;
 
+    ScanTableInfo() = default;
     ScanTableInfo(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
     ScanTableInfo(std::string const& db_, std::string const& table_, bool lockInMemory_, int scanRating_)
             : db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanRating{scanRating_} {}
@@ -46,6 +47,8 @@ struct ScanTableInfo {
               table{scanTbl.table()},
               lockInMemory{scanTbl.lockinmemory()},
               scanRating{scanTbl.scanrating()} {}
+
+    ScanTableInfo(ScanTableInfo const&) = default;
 
     /// Copy contents of this object into a TaskMsg_ScanTable object.
     void copyToScanTable(TaskMsg_ScanTable* msgScanTbl) const {
@@ -66,6 +69,9 @@ struct ScanTableInfo {
 struct ScanInfo {
     /// Threshold priority values. Scan priorities are not limited to these values.
     enum Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
+
+    ScanInfo() = default;
+    ScanInfo(ScanInfo const&) = default;
 
     void sortTablesSlowestFirst();
     int compareTables(ScanInfo const& rhs);
