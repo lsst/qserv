@@ -38,10 +38,6 @@ namespace lsst::qserv::wbase {
  * @note This class and the relevant functions are put into this header to
  * allow the complile-time (only) dependency onto this type from other modules
  * without needing to link against the current module's library.
- * Also note a choice of the underlying type which is meant to allow sending
- * values of the type as numeric attribites in the Protobuf messages w/o
- * introducing an additional (Protobuf) representation for those, or converting
- * the values to strings and vs.
  */
 enum class TaskState : std::uint64_t {
     CREATED = 0,

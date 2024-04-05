@@ -27,7 +27,7 @@
  *
  * @brief Provide common configuration management framework
  *
- * Manage czar and worker (xrdssi plugin) configuration files
+ * Manage czar and worker configuration files
  *
  * @author Fabrice Jammes, IN2P3/SLAC
  */

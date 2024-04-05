@@ -30,6 +30,7 @@
 #include "cconfig/EventService.h"
 #include "czar/HttpManagementModule.h"
 #include "czar/HttpMonitorModule.h"
+#include "czar/HttpCzarWorkerModule.h"
 #include "http/MetaModule.h"
 #include "qhttp/Server.h"
 
@@ -100,6 +101,21 @@ uint16_t HttpSvc::start() {
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
                   HttpManagementModule::process(::serviceName, req, resp, self->_eventService, "EVENT",
                                                 http::AuthType::REQUIRED);
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/queryjob-error",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarWorkerModule::process(::serviceName, req, resp, "QUERYJOB-ERROR");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/queryjob-ready",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarWorkerModule::process(::serviceName, req, resp, "QUERYJOB-READY");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/workerczarcomissue",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarWorkerModule::process(::serviceName, req, resp, "WORKERCZARCOMISSUE");
               }}});
     _httpServerPtr->start();
 

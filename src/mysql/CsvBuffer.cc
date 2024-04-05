@@ -33,11 +33,15 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "mysql/LocalInfileError.h"
 #include "mysql/MySqlUtils.h"
 
 namespace {
+
 std::string const mysqlNull("\\N");
 int const largeRowThreshold = 500 * 1024;  // should be less than 0.5 * infileBufferSize
 
@@ -259,6 +263,7 @@ CsvStream::CsvStream(std::size_t maxRecords) : _maxRecords(maxRecords) {
 bool CsvStream::push(char const* data, std::size_t size) {
     std::unique_lock<std::mutex> lock(_mtx);
     _cv.wait(lock, [this] { return _records.size() < _maxRecords || _closed; });
+
     if (_closed) return false;
     if (data != nullptr && size != 0) {
         _records.emplace_back(std::make_shared<std::string>(data, size));
@@ -272,8 +277,20 @@ bool CsvStream::push(char const* data, std::size_t size) {
 
 std::shared_ptr<std::string> CsvStream::pop() {
     std::unique_lock<std::mutex> lock(_mtx);
-    _cv.wait(lock, [this] { return !_records.empty() || _closed; });
-    if (_closed && _records.empty()) return std::make_shared<std::string>();
+    _cv.wait(lock, [this]() { return (!_records.empty() || _closed); });
+
+    if (_records.empty()) {
+        // _closed must be true.
+        // The hope is that this never happens, but to keep the system
+        // from locking up, send out illegal characters to force fail
+        // the merge. Need to keep sending characters until the
+        // database stops asking for them.
+        // See CsvStream::cancel()
+        _contaminated = true;
+        auto pstr = std::make_shared<std::string>("$");
+        _cv.notify_one();
+        return pstr;
+    }
     std::shared_ptr<std::string> front = _records.front();
     _records.pop_front();
     _cv.notify_one();
@@ -304,6 +321,8 @@ class CsvStreamBuffer : public CsvBuffer {
 public:
     explicit CsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) : _csvStream(csvStream) {}
 
+    ~CsvStreamBuffer() override = default;
+
     unsigned fetch(char* buffer, unsigned bufLen) override {
         if (bufLen == 0) {
             throw LocalInfileError("CsvStreamBuffer::fetch Can't fetch non-positive bytes");
@@ -321,6 +340,7 @@ public:
         unsigned const bytesToCopy = std::min(bufLen, static_cast<unsigned>(_str->size() - _offset));
         ::memcpy(buffer, _str->data() + _offset, bytesToCopy);
         _offset += bytesToCopy;
+        _csvStream->increaseBytesWrittenBy(bytesToCopy);
         return bytesToCopy;
     }
 

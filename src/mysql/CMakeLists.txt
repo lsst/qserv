@@ -1,18 +1,19 @@
 add_library(mysql SHARED)
-add_dependencies(mysql proto)
 
 target_sources(mysql PRIVATE
+    CsvBuffer.cc
+    CsvMemDisk.cc
     LocalInfile.cc
     MySqlConfig.cc
     MySqlConnection.cc
     MySqlUtils.cc
-    CsvBuffer.cc
     SchemaFactory.cc
 )
 
 target_link_libraries(mysql PUBLIC
     log
     mysqlclient_r
+    util
 )
 
 install(
@@ -23,6 +24,7 @@ add_executable(testLocalInfile testLocalInfile.cc)
 
 target_link_libraries(testLocalInfile
     mysql
+    util
     Boost::unit_test_framework
 )
 

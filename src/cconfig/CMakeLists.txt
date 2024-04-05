@@ -6,13 +6,9 @@ target_sources(cconfig PRIVATE
     EventService.cc
 )
 
-target_include_directories(cconfig PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
 
 target_link_libraries(cconfig PUBLIC
     log
-    XrdSsiLib
     boost_system
     util
 )

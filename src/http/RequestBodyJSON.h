@@ -32,6 +32,8 @@
 // This header declarations
 namespace lsst::qserv::http {
 
+// TODO:UJ This should be renamed RequestBodyJson, coding standards.
+
 /**
  * Class RequestBodyJSON represents the request body parsed into a JSON object.
  * This type of an object is only available for requests that have the following
@@ -41,6 +43,17 @@ class RequestBodyJSON {
 public:
     /// parsed body of the request
     nlohmann::json objJson = nlohmann::json::object();
+
+    RequestBodyJSON() = default;
+    RequestBodyJSON(RequestBodyJSON const&) = default;
+    RequestBodyJSON& operator=(RequestBodyJSON const&) = default;
+
+    ~RequestBodyJSON() = default;
+
+    /// Make a new RequestBody based on `js`
+    /// TODO:UJ This would be much more efficient if this class had objJson defined as
+    ///   a const reference or pointer to const, but implementation is likely ugly.
+    RequestBodyJSON(nlohmann::json const& js) : objJson(js) {}
 
     /**
      * Check if the specified parameter is present in the input JSON object.

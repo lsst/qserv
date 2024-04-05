@@ -42,7 +42,7 @@
 
 // Local headers
 #include "global/stringTypes.h"
-#include "qdisp/SharedResources.h"
+#include "util/QdispPool.h"
 
 namespace lsst::qserv::ccontrol {
 class UserQuery;
@@ -82,7 +82,7 @@ public:
     /// @param msgTableName: Name of the message table without database name.
     /// @return new UserQuery object
     std::shared_ptr<UserQuery> newUserQuery(std::string const& query, std::string const& defaultDb,
-                                            qdisp::SharedResources::Ptr const& qdispSharedResources,
+                                            std::shared_ptr<util::QdispPool> const& qdispPool,
                                             std::string const& userQueryId, std::string const& msgTableName,
                                             std::string const& resultDb);
 
@@ -92,7 +92,7 @@ public:
 
 private:
     std::shared_ptr<UserQuerySharedResources> _userQuerySharedResources;
-    std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;
+    int _qmetaSecondsBetweenUpdates;  ///< Seconds between qmeta updates.
     bool _useQservRowCounterOptimization;
     bool _debugNoMerge = false;
     // BOOST ASIO service is started to process asynchronous timer requests
@@ -103,6 +103,13 @@ private:
     boost::asio::io_service _asioIoService;
     std::unique_ptr<boost::asio::io_service::work> _asioWork;
     std::unique_ptr<std::thread> _asioTimerThread;
+
+    /// This protects the CSS calls inside qs->analyzeQuery(query, stmt); as well
+    /// as some changes UserQueries may be making to databases.
+    /// TODO: It would be safer to have CSS be thread safe.
+    /// TODO: Go through all of the affected database interactions and make sure
+    ///       they are thread safe without this mutex.
+    std::mutex _factoryMtx;
 };
 
 }  // namespace lsst::qserv::ccontrol
