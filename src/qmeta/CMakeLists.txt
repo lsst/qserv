@@ -1,6 +1,8 @@
 add_library(qmeta SHARED)
 
-target_sources(qmeta PRIVATE
+target_sources(qserv_meta PRIVATE
+    JobStatus.cc
+    MessageStore.cc
     QMeta.cc
     QMetaMysql.cc
     QMetaSelect.cc
@@ -16,6 +18,8 @@ target_link_libraries(qmeta PUBLIC
     qdisp
     log
     util
+    mysqlclient_r
+    http 
 )
 
 install(TARGETS qmeta)
