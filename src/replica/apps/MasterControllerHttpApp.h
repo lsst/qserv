@@ -145,6 +145,7 @@ private:
 
     bool _purge;
     bool _forceQservSync;
+    bool _qservChunkMapUpdate;
     bool _permanentDelete;
 
     /// A connection URL for the MySQL service of the Qserv master database.
