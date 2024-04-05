@@ -61,13 +61,18 @@ CzarRegistry::CzarRegistry(cconfig::CzarConfig::Ptr const& czarConfig,
 }
 
 CzarRegistry::~CzarRegistry() {
+    cout << "&&& CzarRegistry::~CzarRegistry a" << endl;
     _loop = false;
     if (_czarHeartbeatThrd.joinable()) {
+        cout << "&&& CzarRegistry::~CzarRegistry a1" << endl;
         _czarHeartbeatThrd.join();
     }
+    cout << "&&& CzarRegistry::~CzarRegistry b" << endl;
     if (_czarWorkerInfoThrd.joinable()) {
+        cout << "&&& CzarRegistry::~CzarRegistry b1" << endl;
         _czarWorkerInfoThrd.join();
     }
+    cout << "&&& CzarRegistry::~CzarRegistry end" << endl;
 }
 
 protojson::WorkerContactInfo::WCMapPtr CzarRegistry::getWorkerContactMap() const {
@@ -75,7 +80,9 @@ protojson::WorkerContactInfo::WCMapPtr CzarRegistry::getWorkerContactMap() const
     return _contactMap;
 }
 
+
 void CzarRegistry::_registryUpdateLoop() {
+    cout << "&&& CzarRegistry::_registryUpdateLoop a" << endl;
     auto const method = http::Method::POST;
     string const url = "http://" + _czarConfig->replicationRegistryHost() + ":" +
                        to_string(_czarConfig->replicationRegistryPort()) + "/czar";
@@ -106,9 +113,11 @@ void CzarRegistry::_registryUpdateLoop() {
         }
         this_thread::sleep_for(chrono::seconds(max(1U, _czarConfig->replicationRegistryHearbeatIvalSec())));
     }
+    cout << "&&& CzarRegistry::_registryUpdateLoop end" << endl;
 }
 
 void CzarRegistry::_registryWorkerInfoLoop() {
+    cout << "&&& CzarRegistry::_registryWorkerInfoLoop a" << endl;
     // Get worker information from the registry
     string const replicationInstanceId = _czarConfig->replicationInstanceId();
     string const replicationAuthKey = _czarConfig->replicationAuthKey();
@@ -151,6 +160,7 @@ void CzarRegistry::_registryWorkerInfoLoop() {
         }
         this_thread::sleep_for(chrono::seconds(15));
     }
+    cout << "&&& CzarRegistry::_registryWorkerInfoLoop end" << endl;
 }
 
 protojson::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {
@@ -179,6 +189,7 @@ protojson::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann:
     }
     return wMap;
 }
+
 
 bool CzarRegistry::_compareMapContactInfo(protojson::WorkerContactInfo::WCMap const& other) const {
     VMUTEX_HELD(_cmapMtx);
