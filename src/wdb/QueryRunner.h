@@ -27,8 +27,7 @@
  * @file
  *
  * @brief QueryAction instances perform single-shot query execution with the
- * result reflected in the db state or returned via a SendChannel. Works with
- * new XrdSsi API.
+ * result reflected in the db state or returned via a SendChannel.
  *
  * @author Daniel L. Wang, SLAC
  */
@@ -55,9 +54,10 @@ class QueriesAndChunks;
 
 namespace lsst::qserv::wdb {
 
-/// On the worker, run a query related to a Task, writing the results to a table or supplied SendChannel.
+/// On the worker, run a query related to a Task, hold the resources needed to run the query,
+/// and write the results to the supplied SendChannel.
 ///
-class QueryRunner : public wbase::TaskQueryRunner, public std::enable_shared_from_this<QueryRunner> {
+class QueryRunner : public std::enable_shared_from_this<QueryRunner> {
 public:
     using Ptr = std::shared_ptr<QueryRunner>;
     static QueryRunner::Ptr newQueryRunner(
@@ -69,15 +69,14 @@ public:
     QueryRunner& operator=(QueryRunner const&) = delete;
     virtual ~QueryRunner() = default;
 
-    bool runQuery() override;
+    bool runQuery();
 
     /// Cancel the action (in-progress). This should only be called
     /// by Task::cancel(), so if this needs to be cancelled elsewhere,
     /// call Task::cancel().
     /// This should kill an in progress SQL command.
-    /// It also tries to unblock `_streamBuf` to keep the thread
-    /// from being blocked forever.
-    void cancel() override;
+    /// Repeated calls to cancel() must be harmless.
+    void cancel();
 
 protected:
     QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
@@ -87,6 +86,7 @@ protected:
 
 private:
     bool _initConnection();
+    void _setDb();
 
     /// Dispatch with output sent through a SendChannel
     bool _dispatchChannel();

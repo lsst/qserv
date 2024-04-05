@@ -24,10 +24,7 @@ target_link_libraries(replica PUBLIC
     replica_worker
     css
     cconfig
-    xrdreq
-    xrdsvc
-    XrdCl
-    XrdSsiLib
+    global
     http
     qhttp
     qmeta
@@ -124,3 +121,6 @@ add_subdirectory(requests)
 add_subdirectory(services)
 add_subdirectory(util)
 add_subdirectory(worker)
+
+# set_tests_properties(testIngestRequestMgr PROPERTIES WILL_FAIL 1)
+

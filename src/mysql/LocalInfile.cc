@@ -77,6 +77,7 @@ LocalInfile::LocalInfile(char const* filename, std::shared_ptr<CsvBuffer> csvBuf
 }
 
 LocalInfile::~LocalInfile() {
+    LOGS(_log, LOG_LVL_TRACE, "~LocalInfile");
     if (_buffer) {
         delete[] _buffer;
     }
@@ -153,7 +154,7 @@ std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<CsvBuffer> const& csvBu
 int LocalInfile::Mgr::local_infile_init(void** ptr, const char* filename, void* userdata) {
     assert(userdata);
     LocalInfile::Mgr* m = static_cast<LocalInfile::Mgr*>(userdata);
-    auto csvBuffer = m->get(std::string(filename));
+    auto csvBuffer = m->getCsv(std::string(filename));
     assert(csvBuffer);
     LocalInfile* lf = new LocalInfile(filename, csvBuffer);
     *ptr = lf;
@@ -187,10 +188,10 @@ void LocalInfile::Mgr::setBuffer(std::string const& filename, std::shared_ptr<Cs
     }
 }
 
-std::shared_ptr<CsvBuffer> LocalInfile::Mgr::get(std::string const& filename) {
+std::shared_ptr<CsvBuffer> LocalInfile::Mgr::getCsv(std::string const& filename) {
     std::lock_guard<std::mutex> lock(_mapMutex);
-    CsvBufferMap::iterator i = _map.find(filename);
-    if (i == _map.end()) {
+    auto i = _mapCsv.find(filename);
+    if (i == _mapCsv.end()) {
         return std::shared_ptr<CsvBuffer>();
     }
     return i->second;
@@ -206,7 +207,7 @@ std::string LocalInfile::Mgr::_nextFilename() {
 
 bool LocalInfile::Mgr::_set(std::string const& filename, std::shared_ptr<CsvBuffer> const& csvBuffer) {
     std::lock_guard<std::mutex> lock(_mapMutex);
-    auto res = _map.insert(std::pair<std::string, std::shared_ptr<CsvBuffer>>(filename, csvBuffer));
+    auto res = _mapCsv.insert(std::pair<std::string, std::shared_ptr<CsvBuffer>>(filename, csvBuffer));
     return res.second;
 }
 

@@ -28,6 +28,7 @@
 #include "cconfig/CzarConfig.h"
 #include "qmeta/QMeta.h"
 #include "qmeta/QProgress.h"
+
 namespace lsst::qserv::ccontrol {
 
 UserQuerySharedResources::UserQuerySharedResources(

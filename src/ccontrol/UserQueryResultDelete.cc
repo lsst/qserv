@@ -39,7 +39,7 @@
 #include "cconfig/CzarConfig.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMeta.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlErrorObject.h"
@@ -57,7 +57,7 @@ namespace lsst::qserv::ccontrol {
 
 UserQueryResultDelete::UserQueryResultDelete(shared_ptr<UserQueryResources> const& queryResources,
                                              string const& value)
-        : _value(value), _queryResources(queryResources), _messageStore(make_shared<qdisp::MessageStore>()) {}
+        : _value(value), _queryResources(queryResources), _messageStore(make_shared<qmeta::MessageStore>()) {}
 
 void UserQueryResultDelete::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQueryResultDelete::submit: " << _value);

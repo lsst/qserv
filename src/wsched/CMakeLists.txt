@@ -1,5 +1,4 @@
 add_library(wsched SHARED)
-add_dependencies(wsched proto)
 
 target_sources(wsched PRIVATE
     BlendScheduler.cc
@@ -7,6 +6,10 @@ target_sources(wsched PRIVATE
     GroupScheduler.cc
     ScanScheduler.cc
     SchedulerBase.cc
+)
+
+install(
+	TARGETS wsched
 )
 
 target_link_libraries(wsched PUBLIC
@@ -19,13 +22,19 @@ install(
 
 add_executable(testSchedulers testSchedulers.cc)
 
-target_include_directories(testSchedulers PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
-
 target_link_libraries(testSchedulers PUBLIC
+    global
+    http
+    mysql
+    protojson
+    sql
+    util
+    wbase
+    wconfig
+    wcontrol
+    wdb
+    wpublish
     wsched
-    xrdsvc
     Boost::unit_test_framework
     Threads::Threads
 )

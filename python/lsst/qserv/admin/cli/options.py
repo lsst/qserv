@@ -192,21 +192,6 @@ option_run = partial(
 )
 
 
-option_vnid_config = partial(
-    click.option,
-    "--vnid-config",
-    help="The config parameters used by the qserv cmsd to get the vnid from the specified "
-    " source (static string, a file or worker database).",
-)
-
-
-option_xrootd_manager = partial(
-    click.option,
-    "--xrootd-manager",
-    help="The host name of the xrootd manager.",
-)
-
-
 option_tests_yaml = partial(
     click.option,
     "--tests-yaml",

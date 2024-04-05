@@ -44,8 +44,6 @@
 #include "wbase/TaskState.h"
 
 // Forward declarations
-class XrdSsiService;
-
 namespace lsst::qserv::wbase {
 class TaskSelector;
 }  // namespace lsst::qserv::wbase

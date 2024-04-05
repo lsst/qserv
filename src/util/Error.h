@@ -61,8 +61,11 @@ struct ErrorCode {
         MYSQLCONNECT,
         MYSQLEXEC,
         INTERNAL,
+        CZAR_RESULT_TOO_LARGE,
+        JOB_CANCEL,
         // Worker errors:
-        WORKER_RESULT_TOO_LARGE
+        WORKER_RESULT_TOO_LARGE,
+        WORKER_ERROR
     };
 };
 
@@ -73,7 +76,12 @@ struct ErrorCode {
  */
 class Error {
 public:
-    Error(int code = ErrorCode::NONE, std::string const& msg = "", int status = ErrorCode::NONE);
+    explicit Error(int code, std::string const& msg = "", int status = ErrorCode::NONE,
+                   bool logLvLErr = true);
+
+    Error() = default;
+    Error(Error const&) = default;
+    Error& operator=(Error const&) = default;
 
     /** Overload output operator for current class
      *
@@ -99,9 +107,9 @@ public:
     bool isNone() { return (_code == util::ErrorCode::NONE); }
 
 private:
-    int _code;
+    int _code = ErrorCode::NONE;
     std::string _msg;
-    int _status;
+    int _status = ErrorCode::NONE;
 };
 
 }  // namespace lsst::qserv::util

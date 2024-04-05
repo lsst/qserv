@@ -39,7 +39,7 @@
 // Qserv headers
 #include "global/DbTable.h"
 #include "global/stringTypes.h"
-#include "proto/ScanTableInfo.h"
+#include "protojson/ScanTableInfo.h"
 
 namespace lsst::qserv::qproc {
 
@@ -52,7 +52,7 @@ public:
     using Ptr = std::shared_ptr<ChunkQuerySpec>;
 
     ChunkQuerySpec() {}
-    ChunkQuerySpec(std::string const& db_, int chunkId_, proto::ScanInfo const& scanInfo_,
+    ChunkQuerySpec(std::string const& db_, int chunkId_, protojson::ScanInfo::Ptr const& scanInfo_,
                    bool scanInteractive_)
             : db(db_), chunkId(chunkId_), scanInfo(scanInfo_), scanInteractive(scanInteractive_) {}
 
@@ -60,7 +60,7 @@ public:
     std::string db{
             ""};  ///< dominant db (any database if there are multiple databases referenced in the query)
     int chunkId{0};
-    proto::ScanInfo scanInfo;  ///< shared-scan candidates
+    protojson::ScanInfo::Ptr scanInfo;  ///< shared-scan candidates
     // Consider saving subChunkTable templates, and substituting the chunkIds
     // and subChunkIds into them on-the-fly.
     bool scanInteractive{false};
