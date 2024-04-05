@@ -23,6 +23,14 @@ target_link_libraries(qmeta PUBLIC
     mysqlclient_r
     http 
 )
+# &&& see if there's a way to remove some target_link_libraries
+# &&&   ccontrol
+# &&&    czar
+# &&&    parser
+# &&&    rproc
+# &&&    qana
+# &&&    qproc
+# &&&    query  
 
 install(TARGETS qmeta)
 
