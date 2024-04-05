@@ -97,11 +97,20 @@ public:
                               std::vector<std::string>&, std::vector<std::string>&, SqlErrorObject&);
     bool extractFirst4Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
                               std::vector<std::string>&, SqlErrorObject&);
+
     template <typename... Columns>
     bool extractFirstColumns(SqlErrorObject& err, Columns&... cols) {
         std::vector<std::reference_wrapper<std::vector<std::string>>> columns = {std::ref(cols)...};
         return _extractFirstColumnsImpl(err, columns);
     }
+
+    /**
+     * Extract a result set into the 2D array.
+     * @param numColumns The number of columns in the array.
+     * @return a 2D array, where the first index of the array represents rows
+     *   and the second index represents columns.
+     */
+    std::vector<std::vector<std::string>> extractFirstNColumns(size_t numColumns);
 
     void freeResults();
 
