@@ -58,21 +58,25 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
+#include "ccontrol/MergingHandler.h"
 #include "ccontrol/msgCode.h"
+#include "ccontrol/TmpTableName.h"
+#include "ccontrol/UserQuerySelect.h"
 #include "global/LogContext.h"
 #include "global/ResourceUnit.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
-#include "qdisp/MessageStore.h"
 #include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/XrdSsiMocks.h"
 #include "query/QueryContext.h"
 #include "qproc/QuerySession.h"
 #include "qmeta/Exceptions.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QProgress.h"
 #include "qmeta/QProgressHistory.h"
 #include "query/SelectStmt.h"
+#include "rproc/InfileMerger.h"
 #include "util/AsyncTimer.h"
 #include "util/Bug.h"
 #include "util/EventThread.h"
@@ -118,8 +122,13 @@ Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& m
 }
 
 Executive::~Executive() {
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::~Executive() " << getIdStr());
     qdisp::CzarStats::get()->deleteQuery();
     qdisp::CzarStats::get()->deleteJobs(_incompleteJobs.size());
+    // Remove this executive from the map.
+    if (czar::Czar::getCzar()->getExecutiveFromMap(getId()) != nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) + " pointer in map should be invalid QID=" << getId());
+    }
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock*>(_xrdSsiService);
     if (_asyncTimer != nullptr) {
@@ -134,7 +143,7 @@ Executive::~Executive() {
     }
 }
 
-Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
+Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
                                  shared_ptr<qmeta::QProgress> const& queryProgress,
                                  shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
@@ -154,17 +163,20 @@ Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageSto
     // stopping the timer.
     auto const czarStatsUpdateIvalSec = cconfig::CzarConfig::instance()->czarStatsUpdateIvalSec();
     if (czarStatsUpdateIvalSec > 0) {
+        // AsyncTimer has a 'self' keep alive in AsyncTimer::start() that keeps it safe when
+        // this Executive is deleted.
         ptr->_asyncTimer = util::AsyncTimer::create(
                 asioIoService, std::chrono::milliseconds(czarStatsUpdateIvalSec * 1000),
                 [self = std::weak_ptr<Executive>(ptr)](auto expirationIvalMs) -> bool {
                     auto ptr = self.lock();
-                    LOGS(_log, LOG_LVL_DEBUG,
-                         "Executive::" << __func__ << " expirationIvalMs: " << expirationIvalMs.count()
-                                       << " ms");
+                    string const msg = string("Executive::") + __func__ +
+                                       " expirationIvalMs: " + to_string(expirationIvalMs.count()) + " ms";
                     if (ptr != nullptr) {
                         ptr->_updateStats();
+                        LOGS(_log, LOG_LVL_DEBUG, msg + " " + ptr->getIdStr());
                         return true;
                     }
+                    LOGS(_log, LOG_LVL_DEBUG, msg);
                     return false;
                 });
         ptr->_asyncTimer->start();
@@ -183,6 +195,10 @@ void Executive::_updateStats() const {
 }
 
 void Executive::setQueryId(QueryId id) {
+    if (_queryIdSet.exchange(true) == true) {
+        throw util::Bug(ERR_LOC, "Executive::setQueryId called more than once _id=" + to_string(_id) +
+                                         " id=" + to_string(id));
+    }
     _id = id;
     _idStr = QueryIdHelper::makeIdStr(_id);
     if (_queryProgressHistory != nullptr) {
@@ -194,18 +210,27 @@ void Executive::setQueryId(QueryId id) {
     }
 }
 
+UberJob::Ptr Executive::findUberJob(UberJobId ujId) {
+    lock_guard<mutex> lgMap(_uberJobsMapMtx);
+    auto iter = _uberJobsMap.find(ujId);
+    if (iter == _uberJobsMap.end()) {
+        return nullptr;
+    }
+    return iter->second;
+}
+
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
 JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     JobQuery::Ptr jobQuery;
     {
         // Create the JobQuery and put it in the map.
-        JobStatus::Ptr jobStatus = make_shared<JobStatus>();
+        auto jobStatus = make_shared<qmeta::JobStatus>();
         Ptr thisPtr = shared_from_this();
         MarkCompleteFunc::Ptr mcf = make_shared<MarkCompleteFunc>(thisPtr, jobDesc->id());
         jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, mcf, _id);
 
-        QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
+        QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
 
         {
             lock_guard<recursive_mutex> lock(_cancelled.getMutex());
@@ -220,10 +245,12 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
                 return jobQuery;
             }
 
-            if (!_track(jobQuery->getIdInt(), jobQuery)) {
+            if (!_track(jobQuery->getJobId(), jobQuery)) {
                 LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add");
                 return jobQuery;
             }
+
+            _addToChunkJobMap(jobQuery);
         }
 
         if (_empty.exchange(false)) {
@@ -232,14 +259,16 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         ++_requestCount;
     }
 
-    QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
+    QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
 
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
+    return jobQuery;
+}
+
+void Executive::runJobQuery(JobQuery::Ptr const& jobQuery) {
     bool started = jobQuery->runJob();
     if (!started && isLimitRowComplete()) {
-        markCompleted(jobQuery->getIdInt(), false);
+        markCompleted(jobQuery->getJobId(), false);
     }
-    return jobQuery;
 }
 
 void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
@@ -248,6 +277,32 @@ void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
         _qdispPool->queCmd(cmd, 0);
     } else {
         _qdispPool->queCmd(cmd, 1);
+    }
+}
+
+void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
+    if (_scanInteractive) {
+        _qdispPool->queCmd(cmd, 3);
+    } else {
+        _qdispPool->queCmd(cmd, 4);
+    }
+}
+
+void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
+    /// TODO:UJ delete useqdisppool, only set to false if problems during testing
+    bool const useqdisppool = true;
+    if (useqdisppool) {
+        auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
+
+        auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(runUberJobFunc));
+        _jobStartCmdList.push_back(cmd);
+        if (_scanInteractive) {
+            _qdispPool->queCmd(cmd, 0);
+        } else {
+            _qdispPool->queCmd(cmd, 1);
+        }
+    } else {
+        uberJob->runUberJob();
     }
 }
 
@@ -266,12 +321,11 @@ void Executive::waitForAllJobsToStart() {
 
 // If the executive has not been cancelled, then we simply start the query.
 // @return true if query was actually started (i.e. we were not cancelled)
-//
+// // TODO:UJ  delete this function
 bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
     lock_guard<recursive_mutex> lock(_cancelled.getMutex());
 
-    // If we have been cancelled, then return false.
-    //
+    // If this has been cancelled, then return false.
     if (_cancelled) return false;
 
     // Construct a temporary resource object to pass to ProcessRequest().
@@ -294,11 +348,67 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
     return true;
 }
 
+Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
+    lock_guard<mutex> lck(_chunkToJobMapMtx);
+
+    ChunkIdJobMapType unassignedMap;
+    for (auto const& [key, jobPtr] : _chunkToJobMap) {
+        if (!jobPtr->isInUberJob()) {
+            unassignedMap[key] = jobPtr;
+        }
+    }
+    return unassignedMap;
+}
+
+void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {
+    lock_guard<mutex> lck(_uberJobsMapMtx);
+    for (auto const& uJob : uJobsToAdd) {
+        UberJobId ujId = uJob->getJobId();
+        _uberJobsMap[ujId] = uJob;
+    }
+}
+
+string Executive::dumpUberJobCounts() const {
+    stringstream os;
+    os << "exec=" << getIdStr();
+    int totalJobs = 0;
+    {
+        lock_guard<mutex> ujmLck(_uberJobsMapMtx);
+        for (auto const& [ujKey, ujPtr] : _uberJobsMap) {
+            int jobCount = ujPtr->getJobCount();
+            totalJobs += jobCount;
+            os << "{" << ujKey << ":" << ujPtr->getIdStr() << " jobCount=" << jobCount << "}";
+        }
+    }
+    {
+        lock_guard<recursive_mutex> jmLck(_jobMapMtx);
+        os << " ujTotalJobs=" << totalJobs << " execJobs=" << _jobMap.size();
+    }
+    return os.str();
+}
+
+void Executive::assignJobsToUberJobs() {
+    auto uqs = _userQuerySelect.lock();
+    if (uqs != nullptr) {
+        uqs->buildAndSendUberJobs();
+    }
+}
+
+void Executive::addMultiError(int errorCode, std::string const& errorMsg, int errorState) {
+    util::Error err(errorCode, errorMsg, errorState);
+    {
+        lock_guard<mutex> lock(_errorsMutex);
+        _multiError.push_back(err);
+        LOGS(_log, LOG_LVL_DEBUG,
+             cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
+    }
+}
+
 /// Add a JobQuery to this Executive.
 /// Return true if it was successfully added to the map.
 ///
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
-    auto entry = pair<int, JobQuery::Ptr>(job->getIdInt(), job);
+    auto entry = pair<int, JobQuery::Ptr>(job->getJobId(), job);
     lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
     bool res = _jobMap.insert(entry).second;
     _totalJobs = _jobMap.size();
@@ -312,9 +422,10 @@ bool Executive::join() {
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
         static bool func(Executive::JobMap::value_type const& entry) {
-            JobStatus::Info const& esI = entry.second->getStatus()->getInfo();
+            qmeta::JobStatus::Info const& esI = entry.second->getStatus()->getInfo();
             LOGS(_log, LOG_LVL_TRACE, "entry state:" << (void*)entry.second.get() << " " << esI);
-            return (esI.state == JobStatus::RESPONSE_DONE) || (esI.state == JobStatus::COMPLETE);
+            return (esI.state == qmeta::JobStatus::RESPONSE_DONE) ||
+                   (esI.state == qmeta::JobStatus::COMPLETE);
         }
     };
 
@@ -341,7 +452,7 @@ bool Executive::join() {
     return _empty || isLimitRowComplete();
 }
 
-void Executive::markCompleted(int jobId, bool success) {
+void Executive::markCompleted(JobId jobId, bool success) {
     ResponseHandler::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
@@ -372,13 +483,10 @@ void Executive::markCompleted(int jobId, bool success) {
             lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
             string id = job->getIdStr() + "<>" + idStr;
-            auto jState = job->getStatus()->getInfo().state;
+
             // Don't overwrite existing error states.
-            if (jState != JobStatus::CANCEL && jState != JobStatus::RESPONSE_ERROR &&
-                jState != JobStatus::RESULT_ERROR && jState != JobStatus::MERGE_ERROR) {
-                job->getStatus()->updateInfo(id, JobStatus::RESULT_ERROR, "EXECFAIL", err.getCode(),
-                                             err.getMsg());
-            }
+            job->getStatus()->updateInfoNoErrorOverwrite(id, qmeta::JobStatus::RESULT_ERROR, "EXECFAIL",
+                                                         err.getCode(), err.getMsg());
         }
         {
             lock_guard<mutex> lock(_errorsMutex);
@@ -399,11 +507,11 @@ void Executive::markCompleted(int jobId, bool success) {
 void Executive::squash() {
     bool alreadyCancelled = _cancelled.exchange(true);
     if (alreadyCancelled) {
-        LOGS(_log, LOG_LVL_DEBUG, "Executive::squash() already cancelled! refusing.");
+        LOGS(_log, LOG_LVL_DEBUG, "Executive::squash() already cancelled! refusing. qid=" << getId());
         return;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "Executive::squash Trying to cancel all queries...");
+    LOGS(_log, LOG_LVL_INFO, "Executive::squash Trying to cancel all queries... qid=" << getId());
     deque<JobQuery::Ptr> jobsToCancel;
     {
         lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
@@ -415,6 +523,13 @@ void Executive::squash() {
     for (auto const& job : jobsToCancel) {
         job->cancel();
     }
+
+    // TODO:UJ - Send a message to all workers saying this czarId + queryId is cancelled.
+    //           The workers will just mark all associated tasks as cancelled, and that should be it.
+    //           Any message to this czar about this query should result in an error sent back to
+    //           the worker as soon it can't locate an executive or the executive says cancelled.
+    bool const deleteResults = true;
+    sendWorkerCancelMsg(deleteResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
 }
 
@@ -432,7 +547,8 @@ void Executive::_squashSuperfluous() {
             JobQuery::Ptr jq = jobEntry.second;
             // It's important that none of the cancelled queries
             // try to remove their rows from the result.
-            if (jq->getStatus()->getInfo().state != JobStatus::COMPLETE) {
+            if (jq->getStatus()->getInfo().state != qmeta::JobStatus::COMPLETE &&
+                jq->getStatus()->getInfo().state != qmeta::JobStatus::CANCEL) {
                 jobsToCancel.push_back(jobEntry.second);
             }
         }
@@ -441,7 +557,20 @@ void Executive::_squashSuperfluous() {
     for (auto const& job : jobsToCancel) {
         job->cancel(true);
     }
+
+    bool const keepResults = false;
+    sendWorkerCancelMsg(keepResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done");
+}
+
+void Executive::sendWorkerCancelMsg(bool deleteResults) {
+    // TODO:UJ need to send a message to the worker that the query is cancelled and all result files
+    //    should be delete
+    LOGS(_log, LOG_LVL_ERROR,
+         "TODO:UJ NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId "
+         "+ "
+         "queryId. "
+                 << deleteResults);
 }
 
 int Executive::getNumInflight() const {
@@ -640,6 +769,16 @@ void Executive::_waitAllUntilEmpty() {
     }
 }
 
+void Executive::_addToChunkJobMap(JobQuery::Ptr const& job) {
+    int chunkId = job->getDescription()->resource().chunk();
+    auto entry = pair<ChunkIdType, JobQuery::Ptr>(chunkId, job);
+    lock_guard<mutex> lck(_chunkToJobMapMtx);
+    bool inserted = _chunkToJobMap.insert(entry).second;
+    if (!inserted) {
+        throw util::Bug(ERR_LOC, "map insert FAILED ChunkId=" + to_string(chunkId) + " already existed");
+    }
+}
+
 void Executive::_setupLimit() {
     // Figure out the limit situation.
     auto qSession = _querySession.lock();
@@ -675,12 +814,12 @@ void Executive::checkLimitRowComplete() {
 }
 
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
-    JobStatus::Ptr status = v.second->getStatus();
+    auto const& status = v.second->getStatus();
     os << v.first << ": " << *status;
     return os;
 }
 
-/// precondition: _requestersMutex is held by current thread.
+/// precondition: _incompleteJobsMutex is held by current thread.
 void Executive::_printState(ostream& os) {
     for (auto const& entry : _incompleteJobs) {
         JobQuery::Ptr job = entry.second;
