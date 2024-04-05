@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "qdisp/Executive.h"
+#include "qdisp/JobBase.h"
 #include "qdisp/JobDescription.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/InstanceCount.h"
@@ -64,7 +65,7 @@ public:
     qmeta::JobStatus::Ptr getStatus() { return _jobStatus; }
 
     bool cancel(bool superfluous = false);
-    bool isQueryCancelled();
+    bool isQueryCancelled() override;
 
     std::shared_ptr<Executive> getExecutive() { return _executive.lock(); }
 
