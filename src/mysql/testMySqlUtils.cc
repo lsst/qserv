@@ -29,7 +29,6 @@
 #include <boost/test/unit_test.hpp>
 
 namespace test = boost::test_tools;
-// namespace gio = google::protobuf::io;
 
 struct Fixture {
     Fixture(void) {}
