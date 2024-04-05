@@ -23,6 +23,7 @@
 #define LSST_QSERV_GLOBAL_CLOCKDEFS_H
 
 // System headers
+#include <atomic>
 #include <chrono>
 #include <functional>
 #include <memory>
