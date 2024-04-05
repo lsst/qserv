@@ -46,6 +46,7 @@
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
+#include "http/RequestBody.h"
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
@@ -56,6 +57,7 @@
 #include "util/TimeUtils.h"
 #include "wbase/Base.h"
 #include "wbase/FileChannelShared.h"
+#include "wbase/UberJobData.h"
 #include "wbase/UserQueryInfo.h"
 #include "wconfig/WorkerConfig.h"
 #include "wdb/QueryRunner.h"
@@ -63,6 +65,7 @@
 
 using namespace std;
 using namespace std::chrono_literals;
+using namespace nlohmann;
 namespace fs = boost::filesystem;
 
 namespace {
@@ -79,6 +82,17 @@ string buildResultFileName(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMs
 string buildResultFilePath(string const& resultFileName, string const& resultsDirname) {
     if (resultsDirname.empty()) return resultsDirname;
     return fs::weakly_canonical(fs::path(resultsDirname) / resultFileName).string();
+}
+
+string buildUjResultFilePath(lsst::qserv::wbase::UberJobData::Ptr const& ujData,
+                             string const& resultsDirname) {
+    if (resultsDirname.empty()) return resultsDirname;
+    fs::path path(resultsDirname);
+    // UberJobs have multiple chunks which can each have different attempt numbers.
+    // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
+    path /= to_string(ujData->getCzarId()) + "-" + to_string(ujData->getQueryId()) + "-" +
+            to_string(ujData->getUberJobId()) + "-0" + ".proto";
+    return path.string();
 }
 
 size_t const MB_SIZE_BYTES = 1024 * 1024;
@@ -106,7 +120,6 @@ bool Task::ChunkIdGreater::operator()(Task::Ptr const& x, Task::Ptr const& y) {
 }
 
 string const Task::defaultUser = "qsmaster";
-IdSet Task::allIds{};
 
 TaskScheduler::TaskScheduler() {
     auto hour = chrono::milliseconds(1h);
@@ -137,7 +150,6 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
           _attemptCount(t->attemptcount()),
           _queryFragmentNum(fragmentNumber),
           _fragmentHasSubchunks(t->fragment(fragmentNumber).has_subchunks()),
-          _hasDb(t->has_db()),
           _db(t->has_db() ? t->db() : ""),
           _czarId(t->has_czarid() ? t->czarid() : -1) {
     // These attributes will be passed back to Czar in the Protobuf response
@@ -151,9 +163,6 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
     } else {
         user = defaultUser;
     }
-
-    allIds.add(to_string(_qId) + "_" + to_string(_jId));
-    LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << "this=" << this << " : " << allIds);
 
     // Determine which major tables this task will use.
     int const size = t->scantable_size();
@@ -208,10 +217,81 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
     }
 }
 
-Task::~Task() {
-    allIds.remove(to_string(_qId) + "_" + to_string(_jId));
-    LOGS(_log, LOG_LVL_TRACE, "~Task() : " << allIds);
+/// When the constructor is called, there is not enough information
+/// available to define the action to take when this task is run, so
+/// Command::setFunc() is used set the action later. This is why
+/// the util::CommandThreadPool is not called here.
+Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
+           shared_ptr<UserQueryInfo> const& userQueryInfo, size_t templateId, bool hasSubchunks,
+           int subchunkId, string const& db, proto::ScanInfo const& scanInfo, bool scanInteractive,
+           int maxTableSize, vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
+           shared_ptr<FileChannelShared> const& sc, uint16_t resultsHttpPort)
+        : _userQueryInfo(userQueryInfo),
+          _sendChannel(sc),
+          _tSeq(++taskSequence),
+          _qId(ujData->getQueryId()),
+          _templateId(templateId),
+          _hasChunkId((chunkId >= 0)),
+          _chunkId(chunkId),
+          _subchunkId(subchunkId),
+          _jId(jobId),
+          _attemptCount(attemptCount),
+          _queryFragmentNum(fragmentNumber),
+          _fragmentHasSubchunks(hasSubchunks),
+          _db(db),
+          _czarId(ujData->getCzarId()),
+          _scanInfo(scanInfo),
+          _scanInteractive(scanInteractive),
+          _maxTableSize(maxTableSize * ::MB_SIZE_BYTES) {
+    // These attributes will be passed back to Czar in the Protobuf response
+    // to advice which result delivery channel to use.
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
+    _resultFilePath = ::buildUjResultFilePath(ujData, workerConfig->resultsDirname());
+    auto const fqdn = util::get_current_host_fqdn();
+    if (resultDeliveryProtocol == wconfig::ConfigValResultDeliveryProtocol::HTTP) {
+        // TODO:UJ it seems like this should just be part of the FileChannelShared???
+        _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + _resultFilePath;
+    } else {
+        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
+                            wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
+    }
+    user = defaultUser;
 
+    // Create sets and vectors for 'aquiring' subchunk temporary tables.
+    // Fill in _dbTblsAndSubchunks
+    DbTableSet dbTbls_;
+    IntVector subchunksVect_;
+    if (!_fragmentHasSubchunks) {
+        /// FUTURE: Why acquire anything if there are no subchunks in the fragment?
+        ///   This branch never seems to happen, but this needs to be proven beyond any doubt.
+        for (auto const& scanTbl : scanInfo.infoTables) {
+            dbTbls_.emplace(scanTbl.db, scanTbl.table);
+            LOGS(_log, LOG_LVL_INFO,
+                 "Task::Task scanTbl.db=" << scanTbl.db << " scanTbl.table=" << scanTbl.table);
+        }
+        LOGS(_log, LOG_LVL_INFO,
+             "fragment a db=" << _db << ":" << _chunkId << " dbTbls=" << util::printable(dbTbls_));
+    } else {
+        for (TaskDbTbl const& fDbTbl : fragSubTables) {
+            /// Different subchunk fragments can require different tables.
+            /// FUTURE: It may save space to store these in UserQueryInfo as it seems
+            ///         database and table names are consistent across chunks.
+            dbTbls_.emplace(fDbTbl.db, fDbTbl.tbl);
+            LOGS(_log, LOG_LVL_TRACE,
+                 "Task::Task subchunk fDbTbl.db=" << fDbTbl.db << " fDbTbl.tbl=" << fDbTbl.tbl);
+        }
+        subchunksVect_ = fragSubchunkIds;
+
+        LOGS(_log, LOG_LVL_DEBUG,
+             "fragment b db=" << _db << ":" << _chunkId << " dbTableSet" << util::printable(dbTbls_)
+                              << " subChunks=" << util::printable(subchunksVect_));
+    }
+
+    _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
+}
+
+Task::~Task() {
     _userQueryInfo.reset();
     UserQueryInfo::uqMapErase(_qId);
     if (UserQueryInfo::uqMapGet(_qId) == nullptr) {
@@ -264,6 +344,110 @@ vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
     }
     sendChannel->setTaskCount(vect.size());
 
+    return vect;
+}
+
+std::vector<Task::Ptr> Task::createTasksForChunk(
+        std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
+        std::shared_ptr<wbase::FileChannelShared> const& sendChannel, proto::ScanInfo const& scanInfo,
+        bool scanInteractive, int maxTableSizeMb,
+        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr, mysql::MySqlConfig const& mySqlConfig,
+        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+        std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks, uint16_t resultsHttpPort) {
+    QueryId qId = ujData->getQueryId();
+    UberJobId ujId = ujData->getUberJobId();
+
+    UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
+
+    string funcN(__func__);
+    funcN += " QID=" + to_string(qId) + " ";
+
+    vector<Task::Ptr> vect;
+    for (auto const& job : jsJobs) {
+        json const& jsJobDesc = job["jobdesc"];
+        http::RequestBody rbJobDesc(jsJobDesc);
+        // See qproc::TaskMsgFactory::makeMsgJson for message construction.
+        auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
+        auto const jdQueryId = rbJobDesc.required<QueryId>("queryId");
+        if (jdQueryId != qId) {
+            throw TaskException(ERR_LOC, string("ujId=") + to_string(ujId) + " qId=" + to_string(qId) +
+                                                 " QueryId mismatch Job qId=" + to_string(jdQueryId));
+        }
+        auto const jdJobId = rbJobDesc.required<int>("jobId");
+        auto const jdAttemptCount = rbJobDesc.required<int>("attemptCount");
+        auto const jdQuerySpecDb = rbJobDesc.required<string>("querySpecDb");
+        auto const jdScanPriority = rbJobDesc.required<int>("scanPriority");
+        auto const jdScanInteractive = rbJobDesc.required<bool>("scanInteractive");
+        auto const jdMaxTableSizeMb = rbJobDesc.required<int>("maxTableSize");
+        auto const jdChunkId = rbJobDesc.required<int>("chunkId");
+        LOGS(_log, LOG_LVL_TRACE,
+             funcN << " jd cid=" << jdCzarId << " jdQId=" << jdQueryId << " jdJobId=" << jdJobId
+                   << " jdAtt=" << jdAttemptCount << " jdQDb=" << jdQuerySpecDb
+                   << " jdScanPri=" << jdScanPriority << " interactive=" << jdScanInteractive
+                   << " maxTblSz=" << jdMaxTableSizeMb << " chunkId=" << jdChunkId);
+
+        auto const jdQueryFragments = rbJobDesc.required<json>("queryFragments");
+        int fragmentNumber = 0;
+        for (auto const& frag : jdQueryFragments) {
+            vector<string> fragSubQueries;
+            vector<int> fragSubchunkIds;
+            vector<TaskDbTbl> fragSubTables;
+            LOGS(_log, LOG_LVL_DEBUG, funcN << " frag=" << frag);
+            http::RequestBody rbFrag(frag);
+            auto const& jsQueries = rbFrag.required<json>("queries");
+            // TODO:UJ move to uberjob???, these should be the same for all jobs
+            for (auto const& subQ : jsQueries) {
+                http::RequestBody rbSubQ(subQ);
+                auto const subQuery = rbSubQ.required<string>("subQuery");
+                LOGS(_log, LOG_LVL_DEBUG, funcN << " subQuery=" << subQuery);
+                fragSubQueries.push_back(subQuery);
+            }
+            auto const& resultTable = rbFrag.required<string>("resultTable");
+            auto const& jsSubIds = rbFrag.required<json>("subchunkIds");
+            for (auto const& scId : jsSubIds) {
+                fragSubchunkIds.push_back(scId);
+            }
+            auto const& jsSubTables = rbFrag.required<json>("subchunkTables");
+
+            for (auto const& scDbTable : jsSubTables) {  // TODO:UJ are these the same for all jobs?
+                http::RequestBody rbScDbTable(scDbTable);
+                string scDb = rbScDbTable.required<string>("scDb");
+                string scTable = rbScDbTable.required<string>("scTable");
+                TaskDbTbl scDbTbl(scDb, scTable);
+                fragSubTables.push_back(scDbTbl);
+            }
+
+            for (string const& fragSubQ : fragSubQueries) {
+                size_t templateId = userQueryInfo->addTemplate(fragSubQ);
+                if (fragSubchunkIds.empty()) {
+                    bool const noSubchunks = false;
+                    int const subchunkId = -1;
+                    auto task = Task::Ptr(new Task(
+                            ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, userQueryInfo,
+                            templateId, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive,
+                            maxTableSizeMb, fragSubTables, fragSubchunkIds, sendChannel, resultsHttpPort));
+                    vect.push_back(task);
+                } else {
+                    for (auto subchunkId : fragSubchunkIds) {
+                        bool const hasSubchunks = true;
+                        auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
+                                                       fragmentNumber, userQueryInfo, templateId,
+                                                       hasSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
+                                                       scanInteractive, maxTableSizeMb, fragSubTables,
+                                                       fragSubchunkIds, sendChannel, resultsHttpPort));
+                        vect.push_back(task);
+                    }
+                }
+            }
+            ++fragmentNumber;
+        }
+    }
+
+    for (auto taskPtr : vect) {
+        // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
+        taskPtr->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(taskPtr, chunkResourceMgr, mySqlConfig,
+                                                                     sqlConnMgr, queriesAndChunks));
+    }
     return vect;
 }
 

@@ -42,7 +42,7 @@ class ResponseSummary;
 
 namespace lsst::qserv::qdisp {
 
-class JobQuery;
+class JobBase;
 
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
@@ -57,13 +57,24 @@ public:
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
     ResponseHandler() {}
-    void setJobQuery(std::shared_ptr<JobQuery> const& jobQuery) { _jobQuery = jobQuery; }
+    void setJobQuery(std::shared_ptr<JobBase> const& jobBase) { _jobBase = jobBase; }
     virtual ~ResponseHandler() {}
 
     /// Process a request for pulling and merging a job result into the result table
     /// @param responseSummary - worker response to be analyzed and processed
     /// @return true if successful (no error)
     virtual bool flush(proto::ResponseSummary const& responseSummary) = 0;
+
+    /// Collect result data from the worker and merge it with the query result table.
+    /// @return success - true if the operation was successful
+    /// @return shouldCancel - if success was false, this being true indicates there
+    ///                   was an unrecoverable error in table writing and the query
+    ///                   should be cancelled.
+    virtual std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
+                                             uint64_t& resultRows) = 0;
+
+    /// Add the error to the error output if it is the first error.
+    virtual void flushHttpError(int errorCode, std::string const& errorMsg, int status) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
@@ -84,7 +95,7 @@ public:
     std::weak_ptr<JobQuery> getJobQuery() { return _jobQuery; }
 
 private:
-    std::weak_ptr<JobQuery> _jobQuery;
+    std::weak_ptr<JobBase> _jobBase;
 };
 
 inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) { return r.print(os); }

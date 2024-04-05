@@ -38,9 +38,9 @@
 #include "ccontrol/QueryState.h"
 #include "global/intTypes.h"
 
-namespace lsst::qserv::qdisp {
+namespace lsst::qserv::qmeta {
 class MessageStore;
-}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qmeta
 
 namespace lsst::qserv::ccontrol {
 
@@ -74,12 +74,13 @@ public:
     void discard() override {}
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
+    std::shared_ptr<qmeta::MessageStore> getMessageStore() override { return _messageStore; }
 
 private:
     std::string const _value;
     std::shared_ptr<UserQueryResources> const _queryResources;
-    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::string _resultTableName;
+    std::shared_ptr<qmeta::MessageStore> _messageStore;
     QueryState _qState{UNKNOWN};
 };
 
