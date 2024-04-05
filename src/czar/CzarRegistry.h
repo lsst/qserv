@@ -38,6 +38,7 @@
 #include "global/clock_defs.h"
 #include "util/Mutex.h"
 
+
 namespace lsst::qserv::cconfig {
 class CzarConfig;
 }  // namespace lsst::qserv::cconfig
@@ -88,10 +89,18 @@ public:
     /// `deleteWorkerResults` is true.
     void endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults);
 
+    /// Return _contactMap, the object that the returned pointer points to is
+    /// constant and no attempts should be made to change it.
+    WorkerContactMapPtr getWorkerContactMap() {
+        std::lock_guard<std::mutex> lockG(_mapMtx);
+        return _contactMap;
+    }
+
 private:
     CzarRegistry() = delete;
     CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
                  std::shared_ptr<ActiveWorkerMap> const& activeWorkerMap);
+
 
     /// This function will keep periodically updating Czar's info in the Replication System's Registry
     /// until _loop is set to false.
