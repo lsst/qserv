@@ -8,6 +8,10 @@ target_sources(global PRIVATE
     stringUtil.cc
 )
 
+install(
+	TARGETS global
+)
+
 target_link_libraries(global PUBLIC
     log
 )
@@ -28,6 +32,5 @@ FUNCTION(global_tests)
 ENDFUNCTION()
 
 global_tests(
-    testResourceUnit
     testStringUtil
 )
