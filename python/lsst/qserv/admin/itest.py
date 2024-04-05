@@ -1085,7 +1085,6 @@ def compare_query_results(run_cases: list[str], outputs_dir: str) -> list[ITestC
         if not os.path.exists(os.path.join(outputs_dir, case)):
             _log.warn("There are no query results to compare for %s", case)
             continue
-        
         comparisons = (
             (query_mode_mysql, query_mode_qserv_attached),
             (query_mode_mysql, query_mode_qserv_detached),

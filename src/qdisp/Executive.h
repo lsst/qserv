@@ -329,6 +329,15 @@ private:
     std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
     mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs.
 
+    // Add a job to the _chunkToJobMap //&&&uj
+    void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);  //&&&uj
+    /// _chunkToJobMap is created once and then destroyed when used.
+    std::atomic<bool> _chunkToJobMapInvalid{false};   ///< true indicates the map is no longer valid. //&&&uj
+    std::mutex _chunkToJobMapMtx;                     ///< protects _chunkToJobMap //&&&uj
+    ChunkIdJobMapType _chunkToJobMap;                 ///< Map of jobs ordered by chunkId  //&&&uj
+    std::vector<std::shared_ptr<UberJob>> _uberJobs;  ///< List of UberJobs //&&&uj
+    std::mutex _uberJobsMtx;                          ///< protects _uberJobs. //&&&uj
+
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
     std::atomic<bool> _rowLimitComplete{false};
