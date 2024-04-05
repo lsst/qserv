@@ -180,7 +180,7 @@ private:
      * @note The method may not extract all rows if the amount of data found
      *   in the result set exceeded the maximum size allowed by the Google Protobuf
      *   implementation. Also, the iterative approach to the data extraction allows
-     *   the driving code to be interrupted should the correponding query be cancelled
+     *   the driving code to be interrupted should the corresponding query be cancelled
      *   during the lengthy data processing phase.
      * @param responseData - proto buffer to hold the response being constructed.
      * @param protobufArena - proto buffer memory management control.
