@@ -31,7 +31,7 @@
 #include "qmeta/QInfo.h"
 #include "qmeta/types.h"
 
-namespace lsst::qserv::qdisp {
+namespace lsst::qserv::qmeta {
 class MessageStore;
 }
 
@@ -84,7 +84,7 @@ public:
     void discard() override;
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override;
+    std::shared_ptr<qmeta::MessageStore> getMessageStore() override;
 
     /// This method should disappear when we start supporting results
     /// in locations other than MySQL tables. We'll switch to getResultLocation()
@@ -106,7 +106,7 @@ private:
     qmeta::CzarId _czarId;
     std::shared_ptr<qmeta::QMeta> _qMeta;
     qmeta::QInfo _qInfo;
-    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::shared_ptr<qmeta::MessageStore> _messageStore;
     QueryState _qState = UNKNOWN;
 };
 
