@@ -59,7 +59,14 @@ namespace lsst::qserv::util {
 class FileMonitor;
 }  // namespace lsst::qserv::util
 
+namespace lsst::qserv::qdisp {
+class Executive;
+}  // namespace lsst::qserv::qdisp
+
 namespace lsst::qserv::czar {
+
+class CzarFamilyMap;
+class CzarRegistry;
 
 /// @addtogroup czar
 
@@ -74,6 +81,7 @@ public:
 
     Czar(Czar const&) = delete;
     Czar& operator=(Czar const&) = delete;
+    ~Czar();
 
     /**
      * Submit query for execution.
@@ -125,6 +133,16 @@ public:
     /// @return The reconstructed info for the query
     SubmitResult getQueryInfo(QueryId queryId) const;
 
+    std::shared_ptr<CzarFamilyMap> getCzarFamilyMap() const { return _czarFamilyMap; }
+
+    std::shared_ptr<CzarRegistry> getCzarRegistry() const { return _czarRegistry; }
+
+    /// Add an Executive to the map of executives.
+    void insertExecutive(QueryId qId, std::shared_ptr<qdisp::Executive> const& execPtr);
+
+    /// Get the executive associated with `qId`, this may be nullptr.
+    std::shared_ptr<qdisp::Executive> getExecutiveFromMap(QueryId qId);
+
 private:
     /// Private constructor for singleton.
     Czar(std::string const& configFilePath, std::string const& czarName);
@@ -143,6 +161,9 @@ private:
 
     /// @return An identifier of the last query that was recorded in the query metadata table
     QueryId _lastQueryIdBeforeRestart() const;
+
+    /// Periodically check for system changes and use those changes to try to finish queries.
+    void _monitor();
 
     static Ptr _czar;  ///< Pointer to single instance of the Czar.
 
@@ -179,6 +200,23 @@ private:
 
     /// The HTTP server processing Czar management requests.
     std::shared_ptr<HttpSvc> _controlHttpSvc;
+
+    /// Map of which chunks on which workers and shared scan order.
+    std::shared_ptr<CzarFamilyMap> _czarFamilyMap;
+
+    /// Connection to the registry to register the czar and get worker contact information.
+    std::shared_ptr<CzarRegistry> _czarRegistry;
+
+    std::mutex _executiveMapMtx;  ///< protects _executiveMap
+    std::map<QueryId, std::weak_ptr<qdisp::Executive>>
+            _executiveMap;  ///< Map of executives for queries in progress.
+
+    std::thread _monitorThrd;  ///< Thread to run the _monitor()
+
+    /// Set to false on system shutdown to stop _monitorThrd.
+    std::atomic<bool> _monitorLoop{true};
+    std::chrono::milliseconds _monitorSleepTime{
+            15000};  ///< Wait time between checks. TODO:UJ set from config
 };
 
 }  // namespace lsst::qserv::czar
