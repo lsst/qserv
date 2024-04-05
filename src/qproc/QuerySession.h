@@ -198,6 +198,8 @@ public:
     void setScanInteractive();
     bool getScanInteractive() const { return _scanInteractive; }
 
+    protojson::ScanInfo::Ptr getScanInfo() const;
+
     /**
      *  Print query session to stream.
      *

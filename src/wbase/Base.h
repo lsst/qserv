@@ -34,18 +34,10 @@
 #include "boost/format.hpp"
 
 // Forward declarations
-class XrdSysError;
-class XrdSysLogger;
-class XrdSfsAio;
-namespace lsst::qserv {
-namespace proto {
-class TaskMsg;
-}
-namespace wbase {
+namespace lsst::qserv::wbase {
 class StringBuffer;
 class StringBuffer2;
-}  // namespace wbase
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wbase
 
 namespace lsst::qserv::wbase {
 
