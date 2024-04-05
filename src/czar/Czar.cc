@@ -71,7 +71,6 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
 }  // anonymous namespace
 
@@ -174,6 +173,12 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->czarId);
 
+    try {
+        _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
+    } catch (ChunkMapException const& exc) {
+        LOGS(_log, LOG_LVL_WARN, string(__func__) + " failed to create CzarChunkMap " + exc.what());
+    }
+
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar databases before the restart.
     // The id will be used as the high-watermark for queries that need to be cancelled.
@@ -253,6 +258,11 @@ Czar::~Czar() {
     _monitorLoop = false;
     _monitorThrd.join();
     LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
+}
+
+Czar::~Czar() {
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
+    cout << "&&& Czar::~Czar()" << endl;
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {

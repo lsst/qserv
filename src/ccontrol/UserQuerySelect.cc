@@ -86,8 +86,7 @@
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
 #include "qdisp/Executive.h"
-#include "qdisp/JobQuery.h"
-#include "qmeta/MessageStore.h"
+#include "qdisp/MessageStore.h"
 #include "qmeta/QMeta.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMeta.h"
@@ -235,6 +234,7 @@ void UserQuerySelect::submit() {
         LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::submit() executive is null at start");
         return;
     }
+
     _qSession->finalize();
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
