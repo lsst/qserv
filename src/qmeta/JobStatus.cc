@@ -33,7 +33,7 @@
  */
 
 // Class header
-#include "qdisp/JobStatus.h"
+#include "qmeta/JobStatus.h"
 
 // System headers
 #include <chrono>
@@ -44,18 +44,43 @@
 #include "lsst/log/Log.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobStatus");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.JobStatus");
 }
 
-namespace lsst::qserv::qdisp {
+namespace lsst::qserv::qmeta {
 
 JobStatus::Info::Info() : state(UNKNOWN), stateCode(0) { stateTime = getNow(); }
 
 void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, std::string const& source, int code,
                            std::string const& desc, MessageSeverity severity) {
     std::lock_guard<std::mutex> lock(_mutex);
+    _updateInfo(idMsg, s, source, code, desc, severity);
+}
 
-    LOGS(_log, LOG_LVL_DEBUG, idMsg << " Updating state to: " << s << " code=" << code << " " << desc);
+void JobStatus::_updateInfo(std::string const& idMsg, JobStatus::State s, std::string const& source, int code,
+                            std::string const& desc, MessageSeverity severity) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         idMsg << " Updating state to: " << s << " code=" << code << " " << desc << " src=" << source);
+    _info.stateTime = getNow();
+    _info.state = s;
+    _info.stateCode = code;
+    _info.stateDesc = desc;
+    _info.source = source;
+    _info.severity = severity;
+}
+
+void JobStatus::updateInfoNoErrorOverwrite(std::string const& idMsg, JobStatus::State s,
+                                           std::string const& source, int code, std::string const& desc,
+                                           MessageSeverity severity) {
+    std::lock_guard<std::mutex> lock(_mutex);
+    auto jState = _info.state;
+    if (jState != qmeta::JobStatus::CANCEL && jState != qmeta::JobStatus::RESPONSE_ERROR &&
+        jState != qmeta::JobStatus::RESULT_ERROR && jState != qmeta::JobStatus::MERGE_ERROR) {
+        _updateInfo(idMsg, s, source, code, desc, severity);
+    }
+
+    LOGS(_log, LOG_LVL_DEBUG,
+         idMsg << " Updating state to: " << s << " code=" << code << " " << desc << " src=" << source);
     _info.stateTime = getNow();
     _info.state = s;
     _info.stateCode = code;
@@ -140,4 +165,4 @@ std::ostream& operator<<(std::ostream& os, JobStatus::Info const& info) {
     return os;
 }
 
-}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qmeta
