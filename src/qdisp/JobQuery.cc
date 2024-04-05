@@ -40,45 +40,52 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobQuery");
 }  // anonymous namespace
 
+using namespace std;
+
 namespace lsst::qserv::qdisp {
 
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                   JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-                   QueryId qid)
-        : _executive(executive),
+                   qmeta::JobStatus::Ptr const& jobStatus,
+                   shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid)
+        : JobBase(),
+          _executive(executive),
           _jobDescription(jobDescription),
           _markCompleteFunc(markCompleteFunc),
           _jobStatus(jobStatus),
           _qid(qid),
-          _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
+          _idStr(QueryIdHelper::makeIdStr(qid, getJobId())) {
     _qdispPool = executive->getQdispPool();
     LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
 
-JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_DEBUG, "~JobQuery"); }
+JobQuery::~JobQuery() {
+    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery");
+    LOGS(_log, LOG_LVL_WARN, "~JobQuery QID=" << _idStr);
+}
 
 /** Attempt to run the job on a worker.
  * @return - false if it can not setup the job or the maximum number of attempts has been reached.
  */
-bool JobQuery::runJob() {
-    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
+bool JobQuery::runJob() {  // TODO:UJ delete
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, " runJob " << *this);
     auto executive = _executive.lock();
     if (executive == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "runJob failed executive==nullptr");
+
         return false;
     }
     bool superfluous = executive->isLimitRowComplete();
     bool cancelled = executive->getCancelled();
     bool handlerReset = _jobDescription->respHandler()->reset();
     if (!(cancelled || superfluous) && handlerReset) {
-        auto criticalErr = [this, &executive](std::string const& msg) {
+        auto criticalErr = [this, &executive](string const& msg) {
             LOGS(_log, LOG_LVL_ERROR, msg << " " << _jobDescription << " Canceling user query!");
             executive->squash();  // This should kill all jobs in this user query.
         };
 
         LOGS(_log, LOG_LVL_DEBUG, "runJob checking attempt=" << _jobDescription->getAttemptCount());
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        lock_guard<recursive_mutex> lock(_rmutex);
         if (_jobDescription->getAttemptCount() < _getMaxAttempts()) {
             bool okCount = _jobDescription->incrAttemptCount();
             if (!okCount) {
@@ -101,10 +108,10 @@ bool JobQuery::runJob() {
         // whether or not we are in SSI as cancellation handling differs.
         //
         LOGS(_log, LOG_LVL_TRACE, "runJob calls StartQuery()");
-        std::shared_ptr<JobQuery> jq(shared_from_this());
+        JobQuery::Ptr jq(dynamic_pointer_cast<JobQuery>(shared_from_this()));
         _inSsi = true;
         if (executive->startQuery(jq)) {
-            _jobStatus->updateInfo(_idStr, JobStatus::REQUEST, "EXEC");
+            _jobStatus->updateInfo(_idStr, qmeta::JobStatus::REQUEST, "EXEC");
             return true;
         }
         _inSsi = false;
@@ -116,10 +123,10 @@ bool JobQuery::runJob() {
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel(bool superfluous) {
-    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        lock_guard<recursive_mutex> lock(_rmutex);
         // If _inSsi is true then this query request has been passed to SSI and
         // _queryRequestPtr cannot be a nullptr. Cancellation is complicated.
         bool cancelled = false;
@@ -133,7 +140,7 @@ bool JobQuery::cancel(bool superfluous) {
             }
         }
         if (!cancelled) {
-            std::ostringstream os;
+            ostringstream os;
             os << _idStr << " cancel QueryRequest=" << _queryRequestPtr;
             LOGS(_log, LOG_LVL_DEBUG, os.str());
             if (!superfluous) {
@@ -144,7 +151,7 @@ bool JobQuery::cancel(bool superfluous) {
                 LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
                 return false;
             }
-            executive->markCompleted(getIdInt(), false);
+            executive->markCompleted(getJobId(), false);
         }
         if (!superfluous) {
             _jobDescription->respHandler()->processCancel();
@@ -160,7 +167,7 @@ bool JobQuery::cancel(bool superfluous) {
 /// cancelling all the jobs that it makes a difference. If either the executive,
 /// or the job has cancelled, proceeding is probably not a good idea.
 bool JobQuery::isQueryCancelled() {
-    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "_executive == nullptr");
@@ -169,8 +176,48 @@ bool JobQuery::isQueryCancelled() {
     return exec->getCancelled();
 }
 
-std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {
-    return os << "{" << jq.getIdStr() << jq._jobDescription << " " << *jq._jobStatus << "}";
+bool JobQuery::_setUberJobId(UberJobId ujId) {
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
+    if (_uberJobId >= 0 && ujId != _uberJobId) {
+        LOGS(_log, LOG_LVL_DEBUG,
+             __func__ << " couldn't change UberJobId as ujId=" << ujId << " is owned by " << _uberJobId);
+        return false;
+    }
+    _uberJobId = ujId;
+    return true;
+}
+
+bool JobQuery::unassignFromUberJob(UberJobId ujId) {
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
+    std::lock_guard<std::recursive_mutex> lock(_rmutex);
+    if (_uberJobId < 0) {
+        LOGS(_log, LOG_LVL_INFO, __func__ << " UberJobId already unassigned. attempt by ujId=" << ujId);
+        return true;
+    }
+    if (_uberJobId != ujId) {
+        LOGS(_log, LOG_LVL_ERROR,
+             __func__ << " couldn't change UberJobId as ujId=" << ujId << " is owned by " << _uberJobId);
+        return false;
+    }
+    _uberJobId = -1;
+
+    auto exec = _executive.lock();
+    // Do not increase the count as it should have been increased when the job was started.
+    _jobDescription->incrAttemptCountScrubResultsJson(exec, false);
+    return true;
+}
+
+int JobQuery::getAttemptCount() const {
+    std::lock_guard<std::recursive_mutex> lock(_rmutex);
+    return _jobDescription->getAttemptCount();
+}
+
+string const& JobQuery::getPayload() const { return _jobDescription->payload(); }
+
+void JobQuery::callMarkCompleteFunc(bool success) { _markCompleteFunc->operator()(success); }
+
+ostream& JobQuery::dumpOS(ostream& os) const {
+    return os << "{" << getIdStr() << _jobDescription << " " << _jobStatus << "}";
 }
 
 }  // namespace lsst::qserv::qdisp

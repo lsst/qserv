@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "qdisp/Executive.h"
+#include "qdisp/JobBase.h"
 #include "qdisp/JobDescription.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/InstanceCount.h"
@@ -42,31 +43,37 @@ namespace lsst::qserv::qdisp {
 class QdispPool;
 class QueryRequest;
 
-/** This class is used to describe, monitor, and control a single query to a worker.
- *
- */
-class JobQuery : public std::enable_shared_from_this<JobQuery> {
+/// This class is used to describe, monitor, and control a single query to a worker.
+/// TODO:UJ once all Jobs are sent out as UberJobs, the purpose of this class is a bit
+///       vague. It's components should probably be split between UberJob and
+///       JobDescription.
+class JobQuery : public JobBase {
 public:
     typedef std::shared_ptr<JobQuery> Ptr;
 
     /// Factory function to make certain a shared_ptr is used and _setup is called.
     static JobQuery::Ptr create(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                                JobStatus::Ptr const& jobStatus,
+                                qmeta::JobStatus::Ptr const& jobStatus,
                                 std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid) {
-        Ptr jq = std::make_shared<JobQuery>(executive, jobDescription, jobStatus, markCompleteFunc, qid);
+        Ptr jq = Ptr(new JobQuery(executive, jobDescription, jobStatus, markCompleteFunc, qid));
         jq->_setup();
         return jq;
     }
 
     virtual ~JobQuery();
-    virtual bool runJob();
 
-    QueryId getQueryId() const { return _qid; }
-    int getIdInt() const { return _jobDescription->id(); }
-    std::string const& getIdStr() const { return _idStr; }
+    /// Run this job.
+    bool runJob();
+
+    QueryId getQueryId() const override { return _qid; }
+    JobId getJobId() const override { return _jobDescription->id(); }
+    std::string const& getPayload() const override;
+    std::string const& getIdStr() const override { return _idStr; }
+    std::shared_ptr<ResponseHandler> getRespHandler() override { return _jobDescription->respHandler(); }
+    bool getScanInteractive() const override { return _jobDescription->getScanInteractive(); }
     JobDescription::Ptr getDescription() { return _jobDescription; }
-    std::shared_ptr<ResponseHandler> getRespHandler() { return _jobDescription->respHandler(); }
-    JobStatus::Ptr getStatus() { return _jobStatus; }
+
+    qmeta::JobStatus::Ptr getStatus() override { return _jobStatus; }
 
     void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
@@ -77,34 +84,61 @@ public:
         return _queryRequestPtr;
     }
 
-    std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
+    void callMarkCompleteFunc(bool success) override;
 
     bool cancel(bool superfluous = false);
-    bool isQueryCancelled();
+    bool isQueryCancelled() override;
 
-    Executive::Ptr getExecutive() { return _executive.lock(); }
+    std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
-    std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
+    std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
 
-    friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
+    std::ostream& dumpOS(std::ostream& os) const override;
 
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     /// Do not call this directly, use create.
     JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-             JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-             QueryId qid);
+             qmeta::JobStatus::Ptr const& jobStatus,
+             std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid);
 
-    bool isCancelled() { return _cancelled; }
+    /// If the UberJob is unassigned, change the _uberJobId to ujId.
+    bool setUberJobId(UberJobId ujId) {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        return _setUberJobId(ujId);
+    }
+
+    UberJobId getUberJobId() const {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        return _getUberJobId();
+    }
+
+    bool isInUberJob() const {
+        std::lock_guard<std::recursive_mutex> lock(_rmutex);
+        return _isInUberJob();
+    }
+
+    int getAttemptCount() const;
+
+    /// If ujId is the current owner, clear ownership.
+    /// @return true if job is unassigned.
+    bool unassignFromUberJob(UberJobId ujId);
 
 protected:
-    void _setup() { _jobDescription->respHandler()->setJobQuery(shared_from_this()); }
-
-    int _getRunAttemptsCount() const {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _jobDescription->getAttemptCount();
+    void _setup() {
+        JobBase::Ptr jbPtr = shared_from_this();
+        _jobDescription->respHandler()->setJobQuery(jbPtr);
     }
-    int _getMaxAttempts() const { return 5; }  // Arbitrary value until solid value with reason determined.
-    int _getAttemptSleepSeconds() const { return 30; }  // As above or until added to config file.
+
+    /// @return true if _uberJobId was set, it can only be set if it is unassigned
+    ///         or by the current owner.
+    /// NOTE: _rmutex must be held before calling this
+    bool _setUberJobId(UberJobId ujId);
+
+    /// NOTE: _rmutex must be held before calling this
+    UberJobId _getUberJobId() const { return _uberJobId; }
+
+    /// NOTE: _rmutex must be held before calling this
+    bool _isInUberJob() const { return _uberJobId >= 0; }
 
     // Values that don't change once set.
     std::weak_ptr<Executive> _executive;
@@ -113,14 +147,16 @@ protected:
     std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
 
     // JobStatus has its own mutex.
-    JobStatus::Ptr _jobStatus;  ///< Points at status in Executive::_statusMap
+    qmeta::JobStatus::Ptr _jobStatus;  ///< Points at status in Executive::_statusMap
 
     QueryId const _qid;        // User query id
     std::string const _idStr;  ///< Identifier string for logging.
 
     // Values that need mutex protection
+    // TODO:UJ  recursive can probably go away with as well as _inSsi.
     mutable std::recursive_mutex _rmutex;  ///< protects _jobDescription,
-                                           ///< _queryRequestPtr, and _inSsi
+                                           ///< _queryRequestPtr, _uberJobId,
+                                           ///< and _inSsi
 
     // SSI items
     std::shared_ptr<QueryRequest> _queryRequestPtr;
@@ -130,6 +166,13 @@ protected:
     std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.
 
     std::shared_ptr<QdispPool> _qdispPool;
+
+    /// The UberJobId that this job is assigned to. Values less than zero
+    /// indicate this job is unassigned. To prevent race conditions,
+    /// an UberJob may only unassign a job if it has the same ID as
+    /// _uberJobId.
+    /// All jobs must be unassigned before they can be reassigned.
+    UberJobId _uberJobId = -1;
 };
 
 }  // namespace lsst::qserv::qdisp
