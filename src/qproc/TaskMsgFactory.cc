@@ -36,6 +36,7 @@
 #include <stdexcept>
 
 // Third-party headers
+#include "nlohmann/json.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -51,7 +52,69 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.TaskMsgFactory");
 }
 
+using namespace std;
+
 namespace lsst::qserv::qproc {
+
+// TODO:UJ - Probaly just delete this
+bool TaskMsgFactory::fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& chunkQuerySpec,
+                                 std::string const& chunkResultName, QueryId queryId, int jobId,
+                                 int attemptCount, qmeta::CzarId czarId) {
+    std::string resultTable("Asdfasfd");
+    if (!chunkResultName.empty()) {
+        resultTable = chunkResultName;
+    }
+    // shared
+    taskMsg->set_db(chunkQuerySpec.db);
+    taskMsg->set_queryid(queryId);
+    taskMsg->set_jobid(jobId);
+    taskMsg->set_attemptcount(attemptCount);
+    taskMsg->set_czarid(czarId);
+
+    //  scanTables (for shared scans)
+    //  check if more than 1 db in scanInfo
+    std::string db;
+    for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+        if (db.empty()) {
+            db = sTbl.db;
+        }
+    }
+
+    for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+        lsst::qserv::proto::TaskMsg_ScanTable* msgScanTbl = taskMsg->add_scantable();
+        sTbl.copyToScanTable(msgScanTbl);
+    }
+
+    taskMsg->set_scanpriority(chunkQuerySpec.scanInfo.scanRating);
+    taskMsg->set_scaninteractive(chunkQuerySpec.scanInteractive);
+
+    // per-chunk
+    taskMsg->set_chunkid(chunkQuerySpec.chunkId);
+    // per-fragment
+    // TODO refactor to simplify
+    if (chunkQuerySpec.nextFragment.get()) {
+        ChunkQuerySpec const* sPtr = &chunkQuerySpec;
+        while (sPtr) {
+            LOGS(_log, LOG_LVL_TRACE, "nextFragment");
+            for (unsigned int t = 0; t < (sPtr->queries).size(); t++) {
+                LOGS(_log, LOG_LVL_TRACE, (sPtr->queries).at(t));
+            }
+            // Linked fragments will not have valid subChunkTables vectors,
+            // So, we reuse the root fragment's vector.
+            _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
+                         sPtr->queries);
+            sPtr = sPtr->nextFragment.get();
+        }
+    } else {
+        LOGS(_log, LOG_LVL_TRACE, "no nextFragment");
+        for (unsigned int t = 0; t < (chunkQuerySpec.queries).size(); t++) {
+            LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
+        }
+        _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
+                     chunkQuerySpec.queries);
+    }
+    return true;
+}
 
 std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& chunkQuerySpec,
                                                          std::string const& chunkResultName, QueryId queryId,
@@ -145,6 +208,101 @@ void TaskMsgFactory::serializeMsg(ChunkQuerySpec const& s, std::string const& ch
                                   std::ostream& os) {
     std::shared_ptr<proto::TaskMsg> m = _makeMsg(s, chunkResultName, queryId, jobId, attemptCount, czarId);
     m->SerializeToOstream(&os);
+}
+
+std::shared_ptr<nlohmann::json> TaskMsgFactory::makeMsgJson(ChunkQuerySpec const& chunkQuerySpec,
+                                                            std::string const& chunkResultName,
+                                                            QueryId queryId, int jobId, int attemptCount,
+                                                            qmeta::CzarId czarId) {
+    std::string resultTable("Asdfasfd");
+    if (!chunkResultName.empty()) {
+        resultTable = chunkResultName;
+    }
+
+    // TODO:UJ verify that these can be put in the uberjob to reduce duplicates
+    //         and the size of the message.
+    auto jsJobMsgPtr = std::shared_ptr<nlohmann::json>(
+            new nlohmann::json({{"czarId", czarId},
+                                {"queryId", queryId},
+                                {"jobId", jobId},
+                                {"attemptCount", attemptCount},
+                                {"querySpecDb", chunkQuerySpec.db},
+                                {"scanPriority", chunkQuerySpec.scanInfo.scanRating},
+                                {"scanInteractive", chunkQuerySpec.scanInteractive},
+                                {"maxTableSize", (cconfig::CzarConfig::instance()->getMaxTableSizeMB())},
+                                {"chunkScanTables", nlohmann::json::array()},
+                                {"chunkId", chunkQuerySpec.chunkId},
+                                {"queryFragments", nlohmann::json::array()}}));
+
+    auto& jsJobMsg = *jsJobMsgPtr;
+
+    auto& chunkScanTables = jsJobMsg["chunkScanTables"];
+    for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+        nlohmann::json cst = {{"db", sTbl.db},
+                              {"table", sTbl.table},
+                              {"lockInMemory", sTbl.lockInMemory},
+                              {"tblScanRating", sTbl.scanRating}};
+        chunkScanTables.push_back(move(cst));
+    }
+
+    auto& jsFragments = jsJobMsg["queryFragments"];
+    if (chunkQuerySpec.nextFragment.get()) {
+        ChunkQuerySpec const* sPtr = &chunkQuerySpec;
+        while (sPtr) {
+            LOGS(_log, LOG_LVL_TRACE, "nextFragment");
+            for (unsigned int t = 0; t < (sPtr->queries).size(); t++) {
+                LOGS(_log, LOG_LVL_DEBUG, __func__ << " q=" << (sPtr->queries).at(t));
+            }
+            for (auto const& sbi : sPtr->subChunkIds) {
+                LOGS(_log, LOG_LVL_DEBUG, __func__ << " sbi=" << sbi);
+            }
+            // Linked fragments will not have valid subChunkTables vectors,
+            // So, we reuse the root fragment's vector.
+            _addFragmentJson(jsFragments, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
+                             sPtr->queries);
+            sPtr = sPtr->nextFragment.get();
+        }
+    } else {
+        LOGS(_log, LOG_LVL_TRACE, "no nextFragment");
+        for (unsigned int t = 0; t < (chunkQuerySpec.queries).size(); t++) {
+            LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
+        }
+        _addFragmentJson(jsFragments, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
+                         chunkQuerySpec.queries);
+    }
+
+    return jsJobMsgPtr;
+}
+
+void TaskMsgFactory::_addFragmentJson(nlohmann::json& jsFragments, std::string const& resultName,
+                                      DbTableSet const& subChunkTables, std::vector<int> const& subchunkIds,
+                                      std::vector<std::string> const& queries) {
+    nlohmann::json jsFrag = {{"resultTable", resultName},
+                             {"queries", nlohmann::json::array()},
+                             {"subchunkTables", nlohmann::json::array()},
+                             {"subchunkIds", nlohmann::json::array()}};
+
+    auto& jsQueries = jsFrag["queries"];
+    for (auto& qry : queries) {
+        nlohmann::json jsQry = {{"subQuery", qry}};
+        jsQueries.push_back(move(jsQry));
+    }
+
+    // Add the db+table pairs to the subchunk.
+    auto& jsSubchunkTables = jsFrag["subchunkTables"];
+    for (auto& tbl : subChunkTables) {
+        nlohmann::json jsSubchunkTbl = {{"scDb", tbl.db}, {"scTable", tbl.table}};
+        jsSubchunkTables.push_back(move(jsSubchunkTbl));
+        LOGS(_log, LOG_LVL_TRACE, "added dbtbl=" << tbl.db << "." << tbl.table);
+    }
+
+    // Add subchunk id numbers
+    auto& jsSubchunkIds = jsFrag["subchunkIds"];
+    for (auto& subchunkId : subchunkIds) {
+        jsSubchunkIds.push_back(subchunkId);
+    }
+
+    jsFragments.push_back(move(jsFrag));
 }
 
 }  // namespace lsst::qserv::qproc

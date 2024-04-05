@@ -33,9 +33,9 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "qmeta/Exceptions.h"
+#include "qmeta/JobStatus.h"
 #include "qmeta/QMeta.h"
-#include "qdisp/JobStatus.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
@@ -53,7 +53,7 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId
           _queryId(queryId),
           _czarId(czarId),
           _qMeta(qMeta),
-          _messageStore(std::make_shared<qdisp::MessageStore>()) {
+          _messageStore(std::make_shared<qmeta::MessageStore>()) {
     LOGS(_log, LOG_LVL_DEBUG, "UserQueryAsyncResult: QID=" << queryId);
 
     // get query info from QMeta
@@ -151,8 +151,8 @@ void UserQueryAsyncResult::submit() {
             std::string sevStr = row[3].first;
             int64_t timestampMilli = boost::lexical_cast<double>(row[4].first);
             MessageSeverity sev = sevStr == "INFO" ? MSG_INFO : MSG_ERROR;
-            qdisp::JobStatus::Clock::duration duration = std::chrono::milliseconds(timestampMilli);
-            qdisp::JobStatus::TimeType timestamp(duration);
+            qmeta::JobStatus::Clock::duration duration = std::chrono::milliseconds(timestampMilli);
+            qmeta::JobStatus::TimeType timestamp(duration);
             _messageStore->addMessage(chunkId, "DUPLICATE", code, message, sev, timestamp);
         } catch (std::exception const& exc) {
             LOGS(_log, LOG_LVL_ERROR, "Error reading message table data: " << exc.what());
@@ -186,7 +186,7 @@ void UserQueryAsyncResult::kill() {}
 
 void UserQueryAsyncResult::discard() {}
 
-std::shared_ptr<qdisp::MessageStore> UserQueryAsyncResult::getMessageStore() { return _messageStore; }
+std::shared_ptr<qmeta::MessageStore> UserQueryAsyncResult::getMessageStore() { return _messageStore; }
 
 std::string UserQueryAsyncResult::getResultTableName() const {
     if (_qInfo.resultLocation().compare(0, 6, "table:") == 0) {

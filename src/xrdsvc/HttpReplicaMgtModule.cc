@@ -28,6 +28,7 @@
 #include <vector>
 
 // Third party headers
+#include "lsst/log/Log.h"
 #include "XrdSsi/XrdSsiCluster.hh"
 
 // Qserv headers
@@ -47,6 +48,10 @@ extern XrdSsiProvider* XrdSsiProviderLookup;
 
 using namespace std;
 using json = nlohmann::json;
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.HttpReplicaMgt");
+}
 
 namespace {
 // These markers if reported in the extended error response object of the failed
@@ -80,7 +85,6 @@ HttpReplicaMgtModule::HttpReplicaMgtModule(string const& context,
 
 json HttpReplicaMgtModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
-    debug(func);
     enforceInstanceId(func, wconfig::WorkerConfig::instance()->replicationInstanceId());
     enforceWorkerId(func);
     if (subModuleName == "GET")
