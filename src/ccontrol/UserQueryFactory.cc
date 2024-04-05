@@ -51,10 +51,11 @@
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
+#include "czar/Czar.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "qdisp/Executive.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QMetaSelect.h"
 #include "qmeta/QProgress.h"
@@ -351,7 +352,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             sessionValid = false;
         }
 
-        auto messageStore = std::make_shared<qdisp::MessageStore>();
+        auto messageStore = std::make_shared<qmeta::MessageStore>();
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
@@ -375,6 +376,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupMerger();
             uq->saveResultQuery();
+            executive->setUserQuerySelect(uq);
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {

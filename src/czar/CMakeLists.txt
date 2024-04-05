@@ -3,12 +3,16 @@ add_library(czar SHARED)
 target_sources(czar PRIVATE
     ChttpModule.cc
     Czar.cc
+    CzarChunkMap.cc
+    CzarRegistry.cc
     CzarThreads.cc
     HttpCzarIngestCsvModule.cc
     HttpCzarIngestModuleBase.cc
     HttpCzarIngestModule.cc
     HttpCzarQueryModule.cc
     HttpCzarSvc.cc
+    HttpCzarWorkerModule.cc
+    HttpModule.cc
     HttpMonitorModule.cc
     HttpSvc.cc
     MessageTable.cc
@@ -63,3 +67,31 @@ endfunction()
 czar_utils(
     qserv-czar-http
 )
+
+function(czar_tests)
+    foreach(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            cconfig
+            ccontrol
+            czar
+            global
+            mysql
+            parser
+            qana
+            qdisp
+            qproc
+            qserv_meta
+            query
+            rproc
+            sql
+            Boost::unit_test_framework
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    endforeach()
+endfunction()
+
+czar_tests(
+    testCzar
+)
+
