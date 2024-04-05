@@ -35,10 +35,6 @@ namespace lsst::qserv::qhttp {
 class Server;
 }  // namespace lsst::qserv::qhttp
 
-namespace lsst::qserv::wcontrol {
-class Foreman;
-}  // namespace lsst::qserv::wcontrol
-
 // This header declarations
 namespace lsst::qserv::czar {
 
