@@ -40,6 +40,7 @@
 // Qserv headers
 #include "qmeta/QMeta.h"
 #include "czar/CzarChunkMap.h"
+#include "qmeta/QMeta.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
@@ -51,6 +52,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.testCzar");
 using namespace std;
 
 BOOST_AUTO_TEST_SUITE(Suite)
+
 
 void insertIntoQChunkMap(qmeta::QMetaChunkMap& qChunkMap, string const& workerId, string const& dbName,
                          string const& tableName, unsigned int chunkNum, size_t sz) {
