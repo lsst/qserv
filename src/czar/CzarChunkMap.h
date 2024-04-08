@@ -37,11 +37,8 @@
 
 // Qserv headers
 #include "global/clock_defs.h"
+#include "qmeta/QMeta.h"
 #include "util/Issue.h"
-
-namespace lsst::qserv::qmeta {
-class QMeta;
-}
 
 namespace lsst::qserv::czar {
 
@@ -177,9 +174,9 @@ public:
     /// descending.
     static void calcChunkMap(ChunkMap& chunkMap, ChunkVector& chunksSortedBySize);
 
-    /// Make new ChunkMap and WorkerChunkMap from the data in `jsChunks`.
+    /// Make new ChunkMap and WorkerChunkMap from the data in `qChunkMap`.
     static std::pair<std::shared_ptr<CzarChunkMap::ChunkMap>, std::shared_ptr<CzarChunkMap::WorkerChunkMap>>
-    makeNewMaps(nlohmann::json const& jsChunks);
+    makeNewMaps(qmeta::QMeta::ChunkMap const& qChunkMap);
 
     /// Verify that all chunks belong to at least one worker and that all chunks are represented in shared
     /// scans.
