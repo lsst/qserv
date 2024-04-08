@@ -37,6 +37,7 @@
 
 // Qserv headers
 #include "czar/CzarChunkMap.h"
+#include "qmeta/QMeta.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
@@ -48,6 +49,42 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.testCzar");
 using namespace std;
 
 BOOST_AUTO_TEST_SUITE(Suite)
+
+void insertIntoQChunkMap(qmeta::QMeta::ChunkMap& qChunkMap, string const& workerId, string const& dbName,
+                         string const& tableName, unsigned int chunkNum, size_t sz) {
+    qChunkMap.workers[workerId][dbName][tableName].push_back(qmeta::QMeta::ChunkMap::ChunkInfo{chunkNum, sz});
+}
+
+qmeta::QMeta::ChunkMap convertJsonToChunkMap(nlohmann::json const& jsChunks) {
+    qmeta::QMeta::ChunkMap qChunkMap;
+    for (auto const& [workerId, dbs] : jsChunks.items()) {
+        for (auto const& [dbName, tables] : dbs.items()) {
+            for (auto const& [tableName, chunks] : tables.items()) {
+                for (auto const& [index, chunkNumNSz] : chunks.items()) {
+                    try {
+                        int64_t chunkNum = chunkNumNSz.at(0);
+                        int64_t sz = chunkNumNSz.at(1);
+                        LOGS(_log, LOG_LVL_DEBUG,
+                             "workerdId=" << workerId << " db=" << dbName << " table=" << tableName
+                                          << " chunk=" << chunkNum << " sz=" << sz);
+                        insertIntoQChunkMap(qChunkMap, workerId, dbName, tableName, chunkNum, sz);
+                    } catch (invalid_argument const& exc) {
+                        throw czar::ChunkMapException(
+                                ERR_LOC, string(__func__) + " invalid_argument workerdId=" + workerId +
+                                                 " db=" + dbName + " table=" + tableName +
+                                                 " chunk=" + to_string(chunkNumNSz) + " " + exc.what());
+                    } catch (out_of_range const& exc) {
+                        throw czar::ChunkMapException(
+                                ERR_LOC, string(__func__) + " out_of_range workerdId=" + workerId +
+                                                 " db=" + dbName + " table=" + tableName +
+                                                 " chunk=" + to_string(chunkNumNSz) + " " + exc.what());
+                    }
+                }
+            }
+        }
+    }
+    return qChunkMap;
+}
 
 BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     // Each chunk only occurs on one worker
@@ -149,12 +186,14 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     )";
 
     auto jsTest1 = nlohmann::json::parse(test1);
-    auto [chunkMapPtr, wcMapPtr] = czar::CzarChunkMap::makeNewMaps(jsTest1);
+    qmeta::QMeta::ChunkMap qChunkMap1 = convertJsonToChunkMap(jsTest1);
+    auto [chunkMapPtr, wcMapPtr] = czar::CzarChunkMap::makeNewMaps(qChunkMap1);
     czar::CzarChunkMap::verify(*chunkMapPtr, *wcMapPtr);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap test 1 passed");
 
     auto jsTest2 = nlohmann::json::parse(test2);
-    tie(chunkMapPtr, wcMapPtr) = czar::CzarChunkMap::makeNewMaps(jsTest2);
+    qmeta::QMeta::ChunkMap qChunkMap2 = convertJsonToChunkMap(jsTest2);
+    tie(chunkMapPtr, wcMapPtr) = czar::CzarChunkMap::makeNewMaps(qChunkMap2);
     czar::CzarChunkMap::verify(*chunkMapPtr, *wcMapPtr);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap test 2 passed");
 }
