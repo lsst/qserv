@@ -412,16 +412,11 @@ BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     }
     BOOST_CHECK(caught);
 }
-/* &&&
-<<<<<<< HEAD
-=======
-*/
+
 BOOST_AUTO_TEST_CASE(getChunkMap) {
     // The test assumes that the underlying tables exists and it's empty.
     QMeta::ChunkMap chunkMap;
     BOOST_CHECK_THROW(qMeta->getChunkMap(), EmptyTableError);
 }
-/* &&&
->>>>>>> 07d082050 (Added code to read chunk disposition map and organize for czar use.)
-*/
+
 BOOST_AUTO_TEST_SUITE_END()

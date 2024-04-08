@@ -842,7 +842,6 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     }
 }
 
-//&&&  HEAD
 QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> const& prevUpdateTime) {
     lock_guard<mutex> lock(_dbMutex);
 

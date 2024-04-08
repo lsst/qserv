@@ -31,7 +31,6 @@
 
 // Qserv headers
 #include "qmeta/Exceptions.h"
-#include "qmeta/QMeta.h"
 #include "util/Bug.h"
 #include "util/TimeUtils.h"
 
@@ -69,11 +68,8 @@ bool CzarChunkMap::_read() {
         return false;
     }
 
-    auto const& jsChunks = qChunkMap.chunks;
-    LOGS(_log, LOG_LVL_DEBUG, "chunkMap=" << jsChunks);
-
     // Make the new maps.
-    auto [chunkMapPtr, wcMapPtr] = makeNewMaps(jsChunks);
+    auto [chunkMapPtr, wcMapPtr] = makeNewMaps(qChunkMap);
 
     verify(*chunkMapPtr, *wcMapPtr);
     LOGS(_log, LOG_LVL_DEBUG, " chunkMap=" << dumpChunkMap(*chunkMapPtr));
@@ -88,18 +84,22 @@ bool CzarChunkMap::_read() {
 }
 
 pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap>> CzarChunkMap::makeNewMaps(
-        nlohmann::json const& jsChunks) {
+        qmeta::QMeta::ChunkMap const& qChunkMap) {
     // Create new maps.
     auto wcMapPtr = make_shared<WorkerChunkMap>();
     auto chunkMapPtr = make_shared<ChunkMap>();
 
-    for (auto const& [workerId, dbs] : jsChunks.items()) {
-        for (auto const& [dbName, tables] : dbs.items()) {
-            for (auto const& [tableName, chunks] : tables.items()) {
-                for (auto const& [index, chunkNumNSz] : chunks.items()) {
+    // Workers -> Databases map
+    for (auto const& [workerId, dbs] : qChunkMap.workers) {
+        // Databases -> Tables map
+        for (auto const& [dbName, tables] : dbs) {
+            // Tables -> Chunks map
+            for (auto const& [tableName, chunks] : tables) {
+                // vector of ChunkInfo
+                for (qmeta::QMeta::ChunkMap::ChunkInfo const& chunkInfo : chunks) {
                     try {
-                        int64_t chunkNum = chunkNumNSz.at(0);
-                        int64_t sz = chunkNumNSz.at(1);
+                        int64_t chunkNum = chunkInfo.chunk;
+                        int64_t sz = chunkInfo.size;
                         LOGS(_log, LOG_LVL_DEBUG,
                              "workerdId=" << workerId << " db=" << dbName << " table=" << tableName
                                           << " chunk=" << chunkNum << " sz=" << sz);
@@ -109,12 +109,12 @@ pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap
                         throw ChunkMapException(
                                 ERR_LOC, string(__func__) + " invalid_argument workerdId=" + workerId +
                                                  " db=" + dbName + " table=" + tableName +
-                                                 " chunk=" + to_string(chunkNumNSz) + " " + exc.what());
+                                                 " chunk=" + to_string(chunkInfo.chunk) + " " + exc.what());
                     } catch (out_of_range const& exc) {
                         throw ChunkMapException(
                                 ERR_LOC, string(__func__) + " out_of_range workerdId=" + workerId +
                                                  " db=" + dbName + " table=" + tableName +
-                                                 " chunk=" + to_string(chunkNumNSz) + " " + exc.what());
+                                                 " chunk=" + to_string(chunkInfo.chunk) + " " + exc.what());
                     }
                 }
             }
