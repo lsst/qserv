@@ -99,7 +99,7 @@ pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap
                 for (qmeta::QMeta::ChunkMap::ChunkInfo const& chunkInfo : chunks) {
                     try {
                         int64_t chunkNum = chunkInfo.chunk;
-                        int64_t sz = chunkInfo.size;
+                        SizeT sz = chunkInfo.size;
                         LOGS(_log, LOG_LVL_DEBUG,
                              "workerdId=" << workerId << " db=" << dbName << " table=" << tableName
                                           << " chunk=" << chunkNum << " sz=" << sz);
@@ -132,7 +132,7 @@ pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap
     // Go through the chunksSortedBySize list and assign each chunk to worker that has it with the smallest
     // totalScanSize.
     for (auto&& chunkData : *chunksSortedBySize) {
-        int64_t smallest = std::numeric_limits<int64_t>::max();
+        SizeT smallest = std::numeric_limits<SizeT>::max();
         WorkerChunksData::Ptr smallestWkr = nullptr;
         for (auto&& [wkrId, wkrDataWeak] : chunkData->_workerHasThisMap) {
             auto wkrData = wkrDataWeak.lock();
@@ -166,7 +166,7 @@ pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap
 
 void CzarChunkMap::insertIntoChunkMap(WorkerChunkMap& wcMap, ChunkMap& chunkMap, string const& workerId,
                                       string const& dbName, string const& tableName, int64_t chunkIdNum,
-                                      int64_t sz) {
+                                      SizeT sz) {
     // Get or make the worker entry
     WorkerChunksData::Ptr workerChunksData;
     auto iterWC = wcMap.find(workerId);
@@ -215,7 +215,7 @@ void CzarChunkMap::insertIntoChunkMap(WorkerChunkMap& wcMap, ChunkMap& chunkMap,
 void CzarChunkMap::calcChunkMap(ChunkMap& chunkMap, ChunkVector& chunksSortedBySize) {
     // Calculate total bytes for all chunks.
     for (auto&& [chunkIdNum, chunkData] : chunkMap) {
-        chunkData->calcTotalBytes();
+        chunkData->_calcTotalBytes();
         chunksSortedBySize.push_back(chunkData);
     }
 
@@ -310,7 +310,7 @@ string CzarChunkMap::dumpWorkerChunkMap(WorkerChunkMap const& wcMap) {
     return os.str();
 }
 
-void CzarChunkMap::ChunkData::calcTotalBytes() {
+void CzarChunkMap::ChunkData::_calcTotalBytes() {
     _totalBytes = 0;
     for (auto const& [key, val] : _dbTableMap) {
         _totalBytes += val;

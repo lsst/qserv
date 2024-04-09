@@ -27,6 +27,7 @@
 
 // Third-party headers
 #include "boost/asio.hpp"
+#include "nlohmann/json.hpp"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE Czar_1
