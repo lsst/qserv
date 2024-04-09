@@ -29,7 +29,6 @@
 #include "boost/asio.hpp"
 #include "nlohmann/json.hpp"
 
-
 // Boost unit test header
 #define BOOST_TEST_MODULE Czar_1
 #include <boost/test/unit_test.hpp>
