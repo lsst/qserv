@@ -43,6 +43,7 @@
 #include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
+#include "czar/CzarChunkMap.h"
 #include "czar/CzarErrors.h"
 #include "czar/HttpSvc.h"
 #include "czar/MessageTable.h"
@@ -138,8 +139,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _czarConfig(cconfig::CzarConfig::create(configFilePath, czarName)),
           _idCounter(),
           _uqFactory(),
-          _clientToQuery(),
-          _mutex() {
+          _clientToQuery() {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -155,6 +155,12 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // NOTE: This steps should be done after constructing the query factory where
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
+
+    try {
+        _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
+    } catch (ChunkMapException const& exc) {
+        LOGS(_log, LOG_LVL_WARN, string(__func__) + " failed to create CzarChunkMap " + exc.what());
+    }
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar database before the restart.
