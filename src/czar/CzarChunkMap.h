@@ -32,9 +32,6 @@
 #include <string>
 #include <sstream>
 
-// Third party headers
-#include <nlohmann/json.hpp>
-
 // Qserv headers
 #include "global/clock_defs.h"
 #include "qmeta/QMeta.h"
@@ -68,8 +65,11 @@ public:
 class CzarChunkMap {
 public:
     using Ptr = std::shared_ptr<CzarChunkMap>;
+    using SizeT = uint64_t;
 
     CzarChunkMap() = delete;
+    CzarChunkMap(CzarChunkMap const&) = delete;
+    CzarChunkMap& operator=(CzarChunkMap const&) = delete;
 
     static Ptr create(std::shared_ptr<qmeta::QMeta> const& qmeta) { return Ptr(new CzarChunkMap(qmeta)); }
 
@@ -84,12 +84,9 @@ public:
 
         int64_t getChunkId() const { return _chunkId; }
 
-        int64_t getTotalBytes() const { return _totalBytes; }
+        SizeT getTotalBytes() const { return _totalBytes; }
 
         std::weak_ptr<WorkerChunksData> getPrimaryScanWorker() const { return _primaryScanWorker; }
-
-        /// Add up the bytes in each table for this chunk to get `_totalBytes`
-        void calcTotalBytes();
 
         /// Add `worker` to the `_workerHasThisMap` to indicate that worker has a copy
         /// of this chunk.
@@ -100,29 +97,32 @@ public:
         friend CzarChunkMap;
 
     private:
-        int64_t const _chunkId;   ///< The Id number for this chunk.
-        int64_t _totalBytes = 0;  ///< The total number of bytes used by all tables in this chunk.
+        int64_t const _chunkId;  ///< The Id number for this chunk.
+        SizeT _totalBytes = 0;   ///< The total number of bytes used by all tables in this chunk.
         std::weak_ptr<WorkerChunksData> _primaryScanWorker;  ///< The worker to be used to shared scans.
 
         /// Key is databaseName+tableName, value is size in bytes.
-        std::map<std::pair<std::string, std::string>, int64_t> _dbTableMap;
+        std::map<std::pair<std::string, std::string>, SizeT> _dbTableMap;
 
         /// Map of workers that have this chunk
         std::map<std::string, std::weak_ptr<WorkerChunksData>> _workerHasThisMap;
+
+        /// Add up the bytes in each table for this chunk to get `_totalBytes`
+        void _calcTotalBytes();
     };
 
     /// Essentially a structure for storing which chunks are associated with a worker.
     class WorkerChunksData {
     public:
         using Ptr = std::shared_ptr<WorkerChunksData>;
-        WorkerChunksData(std::string const& wId) : _workerId(wId) {}
+        WorkerChunksData(std::string const& workerId) : _workerId(workerId) {}
 
         /// Return the worker's id string.
         std::string const& getWorkerId() const { return _workerId; }
 
         /// Return the number of bytes contained in all chunks/tables to be
         /// accessed in a full table scan on this worker.
-        int64_t getSharedScanTotalSize() const { return _sharedScanTotalSize; }
+        SizeT getSharedScanTotalSize() const { return _sharedScanTotalSize; }
 
         /// Return a reference to `_sharedScanChunkMap`. A copy of the pointer
         /// to this class (or the containing map) should be held to ensure the reference.
@@ -147,7 +147,7 @@ public:
 
         /// The total size (in bytes) of all chunks on this worker that
         /// are to be used in shared scans.
-        int64_t _sharedScanTotalSize = 0;
+        SizeT _sharedScanTotalSize = 0;
     };
 
     using WorkerChunkMap = std::map<std::string, WorkerChunksData::Ptr>;
@@ -168,7 +168,7 @@ public:
     /// @param `sz` - size in bytes of the table being inserted.
     static void insertIntoChunkMap(WorkerChunkMap& wcMap, ChunkMap& chunkMap, std::string const& workerId,
                                    std::string const& dbName, std::string const& tableName,
-                                   int64_t chunkIdNum, int64_t sz);
+                                   int64_t chunkIdNum, SizeT sz);
 
     /// Calculate the total bytes in each chunk and then sort the resulting ChunkVector by chunk size,
     /// descending.
