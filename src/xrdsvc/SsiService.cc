@@ -111,7 +111,7 @@ std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(mysql::MySqlConfig 
  * Transient communication errors when attempting to connect or send requests to
  * the Registry will be posted into the log stream and ignored.
  */
-void registryUpdateLoop(string const& id) {
+void registryUpdateLoop(string const& id) { // &&& important?
     auto const workerConfig = wconfig::WorkerConfig::instance();
     auto const method = http::Method::POST;
     string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
@@ -266,7 +266,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     _controlHttpSvc = HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
                                       workerConfig->replicationNumHttpThreads());
     auto const port = _controlHttpSvc->start();
-    workerConfig->setReplicationHttpPort(port);
+    workerConfig->setReplicationHttpPort(port); // &&& important?
 
     // Begin periodically updating worker's status in the Replication System's registry
     // in the detached thread. This will continue before the application gets terminated.
