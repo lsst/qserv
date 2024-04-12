@@ -251,10 +251,10 @@ class ImageName:
         tag : `str`
             The image tag
         """
-        qserv_root = qserv_root_ev.val()
+        qserv_root = env_qserv_root.val()
         if qserv_root is None:
             raise RuntimeError("qserv root was unexpectedly None.")
-        return image_tag_ev.val_with_default(get_description(self.dockerfiles, qserv_root))
+        return env_image_tag.val_with_default(get_description(self.dockerfiles, qserv_root))
 
     @property
     def dockerfiles(self) -> Optional[List[str]]:
@@ -279,67 +279,67 @@ class ImageName:
         raise RuntimeError(f"Invalid image type: {self.image}")
 
 
-qserv_root_ev = FlagEnvVal(
+env_qserv_root = FlagEnvVal(
     "--qserv-root",
     "QSERV_ROOT",
     os.path.abspath(os.path.join(__file__, relative_qserv_root)),
 )
-image_tag_ev = EnvVal(env_var="QSERV_IMAGE_TAG", description="the tag of all qserv image names")
-qserv_image_ev = FlagEnvVal(
+env_image_tag = EnvVal(env_var="QSERV_IMAGE_TAG", description="the tag of all qserv image names")
+env_qserv_image = FlagEnvVal(
     "--qserv-image",
     "QSERV_IMAGE",
     ImageName("qserv").tagged_name,
 )
-run_base_image_ev = FlagEnvVal(
+env_run_base_image = FlagEnvVal(
     "--run-base-image",
     "QSERV_RUN_BASE_IMAGE",
     ImageName("run-base").tagged_name,
 )
-mariadb_image_ev = FlagEnvVal(
+env_mariadb_image = FlagEnvVal(
     "--mariadb-image",
     "QSERV_MARIADB_IMAGE",
     ImageName("mariadb").tagged_name,
 )
-build_image_ev = FlagEnvVal(
+env_build_image = FlagEnvVal(
     "--build-image",
     "QSERV_BUILD_IMAGE",
     ImageName("build-base").tagged_name,
 )
-user_build_image_ev = FlagEnvVal(
+env_user_build_image = FlagEnvVal(
     "--user-build-image",
     "QSERV_USER_BUILD_IMAGE",
     ImageName("build-user").tagged_name,
 )
 # qserv root default is derived by the relative path to the qserv folder from
 # the locaiton of this file.
-qserv_build_root_ev = FlagEnvVal("--qserv-build-root", "QSERV_BUILD_ROOT", "/home/{user}/code/qserv")
-project_ev = FlagEnvVal("--project", "QSERV_PROJECT", getpass.getuser())
-outdir_ev = FlagEnvVal("--outdir", "OUTDIR", "/tmp")
-dashboard_port_ev = FlagEnvVal("--dashboard-port", "QSERV_DASHBOARD_PORT", None)
-dh_user_ev = EnvVal("QSERV_DH_USER", "CI only; the dockerhub user for pushing and pulling images")
-dh_token_ev = EnvVal(
+env_qserv_build_root = FlagEnvVal("--qserv-build-root", "QSERV_BUILD_ROOT", "/home/{user}/code/qserv")
+env_project = FlagEnvVal("--project", "QSERV_PROJECT", getpass.getuser())
+env_outdir = FlagEnvVal("--outdir", "OUTDIR", "/tmp")
+env_dashboard_port = FlagEnvVal("--dashboard-port", "QSERV_DASHBOARD_PORT", None)
+env_dh_user = EnvVal("QSERV_DH_USER", "CI only; the dockerhub user for pushing and pulling images")
+env_dh_token = EnvVal(
     "QSERV_DH_TOKEN",
     "CI only; the dockerhub user token for pushing and pulling images",
     private=True,
 )
-ltd_user_ev = EnvVal(
+env_ltd_user = EnvVal(
     "QSERV_LTD_USERNAME",
     "CI only; the LSST The Docs user for pushing docs."
 )
-ltd_password_ev = EnvVal(
+env_ltd_password = EnvVal(
     "QSERV_LTD_PASSWORD",
     "CI only; the LSST The Docs password for pushing docs.",
     private=True
 )
-gh_event_name_ev = EnvVal(
+env_gh_event_name = EnvVal(
     "QSERV_GH_EVENT_NAME",
     "CI only; The name of the event that triggered the GHA workflow."
 )
-gh_head_ref_ev = EnvVal(
+env_gh_head_ref = EnvVal(
     "QSERV_GH_HEAD_REF",
     "CI only; The head ref or source branch of the pull request in a GHA workflow run."
 )
-gh_ref_ev = EnvVal(
+env_gh_ref = EnvVal(
     "QSERV_GH_REF",
     "CI only; The branch or tag ref that triggered the workflow run."
 )
@@ -420,37 +420,43 @@ class OptDefault:
 itest_default = OptDefault(
     opt=["--itest-file"],
     default=None,
-    ev=qserv_root_ev,
+    ev=env_qserv_root,
     val=lambda ev_val: os.path.join(ev_val, "src/admin/etc/integration_tests.yaml"),
 )
 itest_container_default = OptDefault(
     opt=["--itest-container"],
     default="itest",
-    ev=project_ev,
+    ev=env_project,
     val=lambda ev_val: f"{ev_val}_itest",
 )
 itest_ref_container_default = OptDefault(
     opt=["--itest-ref-container"],
     default="itest_ref",
-    ev=project_ev,
+    ev=env_project,
     val=lambda ev_val: f"{ev_val}_itest_ref",
+)
+itest_http_container_default = OptDefault(
+    opt=["--itest-http-container"],
+    default="itest_http",
+    ev=env_project,
+    val=lambda ev_val: f"{ev_val}_itest_http",
 )
 test_container_default = OptDefault(
     opt=["--test-container"],
     default="test",
-    ev=project_ev,
+    ev=env_project,
     val=lambda ev_val: f"{ev_val}_test",
 )
 compose_file_default = OptDefault(
     opt=["--file", "yaml_file"],
     default=None,
-    ev=qserv_root_ev,
+    ev=env_qserv_root,
     val=lambda ev_val: os.path.join(ev_val, "admin/local/docker/compose/docker-compose.yml"),
 )
 build_container_default = OptDefault(
     opt=["--build-container-name"],
     default=f"build_container",
-    ev=project_ev,
+    ev=env_project,
     val=lambda ev_val: f"{ev_val}_build",
 )
 
@@ -517,23 +523,23 @@ class DefaultValues:
 
 qserv_env_vals = FlagEnvVals(
     [
-        image_tag_ev,
-        qserv_image_ev,
-        build_image_ev,
-        user_build_image_ev,
-        run_base_image_ev,
-        mariadb_image_ev,
-        qserv_root_ev,
-        qserv_build_root_ev,
-        project_ev,
-        dashboard_port_ev,
-        dh_user_ev,
-        dh_token_ev,
-        ltd_user_ev,
-        ltd_password_ev,
-        gh_event_name_ev,
-        gh_head_ref_ev,
-        gh_ref_ev,
+        env_image_tag,
+        env_qserv_image,
+        env_build_image,
+        env_user_build_image,
+        env_run_base_image,
+        env_mariadb_image,
+        env_qserv_root,
+        env_qserv_build_root,
+        env_project,
+        env_dashboard_port,
+        env_dh_user,
+        env_dh_token,
+        env_ltd_user,
+        env_ltd_password,
+        env_gh_event_name,
+        env_gh_head_ref,
+        env_gh_ref,
     ]
 )
 
@@ -551,30 +557,30 @@ qserv_default_vals = DefaultValues(
 bind_choices = ["all", "python", "bin", "lib64", "lua", "qserv", "etc"]
 
 
-qserv_image_option = partial(
+option_qserv_image = partial(
     click.option,
-    qserv_image_ev.opt,
-    help=qserv_image_ev.help("The name of the qserv image."),
-    default=qserv_image_ev.val(),
+    env_qserv_image.opt,
+    help=env_qserv_image.help("The name of the qserv image."),
+    default=env_qserv_image.val(),
 )
 
 
-build_image_option = partial(
+option_build_image = partial(
     click.option,
-    build_image_ev.opt,
-    help=build_image_ev.help("The name of the qserv build image."),
-    default=build_image_ev.val(),
+    env_build_image.opt,
+    help=env_build_image.help("The name of the qserv build image."),
+    default=env_build_image.val(),
 )
 
-user_build_image_option = partial(
+option_user_build_image = partial(
     click.option,
-    user_build_image_ev.opt,
-    help=user_build_image_ev.help("The name of the qserv user build image."),
-    default=user_build_image_ev.val(),
+    env_user_build_image.opt,
+    help=env_user_build_image.help("The name of the qserv user build image."),
+    default=env_user_build_image.val(),
 )
 
 
-user_option = partial(
+option_user = partial(
     click.option,
     "--user",
     help="The user name to use when running the build container. "
@@ -583,7 +589,7 @@ user_option = partial(
 )
 
 
-push_image_option = partial(
+option_push_image = partial(
     click.option,
     "--push-image",
     help="Push the image to dockerhub if it does not exist. Requires login to dockerhub first.",
@@ -591,7 +597,7 @@ push_image_option = partial(
 )
 
 
-pull_image_option = partial(
+option_pull_image = partial(
     click.option,
     "--pull-image",
     help="Pull the image from dockerhub if it exists.",
@@ -599,67 +605,67 @@ pull_image_option = partial(
 )
 
 
-run_base_image_option = partial(
+option_run_base_image = partial(
     click.option,
-    run_base_image_ev.opt,
-    help=run_base_image_ev.help("The name of the run base image."),
-    default=run_base_image_ev.val(),
+    env_run_base_image.opt,
+    help=env_run_base_image.help("The name of the run base image."),
+    default=env_run_base_image.val(),
 )
 
 
-mariadb_image_option = partial(
+option_mariadb_image = partial(
     click.option,
-    mariadb_image_ev.opt,
-    help=mariadb_image_ev.help("The name of the mariadb image."),
-    default=mariadb_image_ev.val(),
+    env_mariadb_image.opt,
+    help=env_mariadb_image.help("The name of the mariadb image."),
+    default=env_mariadb_image.val(),
 )
 
 
-qserv_root_option = partial(
+option_qserv_root = partial(
     click.option,
-    qserv_root_ev.opt,
-    help=qserv_root_ev.help(
+    env_qserv_root.opt,
+    help=env_qserv_root.help(
         "Location of the qserv sources folder outside of the build container. "
         "Default location is relative to the qserv command file."
     ),
-    envvar=qserv_root_ev.env_var,
-    default=qserv_root_ev.default,
+    envvar=env_qserv_root.env_var,
+    default=env_qserv_root.default,
     required=True,
 )
 
 
-qserv_build_root_option = partial(
+option_qserv_build_root = partial(
     click.option,
-    qserv_build_root_ev.opt,
-    help=qserv_build_root_ev.help("Location of the qserv sources folder inside the build container."),
-    default=qserv_build_root_ev.default,
+    env_qserv_build_root.opt,
+    help=env_qserv_build_root.help("Location of the qserv sources folder inside the build container."),
+    default=env_qserv_build_root.default,
 )
 
-outdir_option = partial(
+option_outdir = partial(
     click.option,
-    outdir_ev.opt,
-    help=outdir_ev.help("Location of the folder that will contain unzipped and partitioned integration test datasets"),
-    envvar=outdir_ev.env_var,
-    default=outdir_ev.default,
+    env_outdir.opt,
+    help=env_outdir.help("Location of the folder that will contain unzipped and partitioned integration test datasets"),
+    envvar=env_outdir.env_var,
+    default=env_outdir.default,
 )
 
 
-qserv_group_option = partial(
+option_qserv_group = partial(
     click.option,
     "--group",
     help="The name of the user's primary group.",
 )
 
 
-dashboard_port_option = partial(
+option_dashboard_port = partial(
     click.option,
-    dashboard_port_ev.opt,
-    help=dashboard_port_ev.help("The host port to use for the qserv dashboard."),
-    default=dashboard_port_ev.val(),
+    env_dashboard_port.opt,
+    help=env_dashboard_port.help("The host port to use for the qserv dashboard."),
+    default=env_dashboard_port.val(),
 )
 
 
-unit_test_option = partial(
+option_unit_test = partial(
     click.option,
     "--unit-test/--no-unit-test",
     help="Run unit tests. Default: --unit-test",
@@ -668,7 +674,7 @@ unit_test_option = partial(
 )
 
 
-dry_option = partial(
+option_dry = partial(
     click.option,
     "-d",
     "--dry",
@@ -677,7 +683,7 @@ dry_option = partial(
 )
 
 
-jobs_option = partial(
+option_jobs = partial(
     click.option,
     "-j",
     "--jobs",
@@ -686,16 +692,16 @@ jobs_option = partial(
 )
 
 
-project_option = partial(
+option_project = partial(
     click.option,
-    project_ev.opt,
-    help=project_ev.help("The project name for the qserv docker-compose instance."),
-    default=project_ev.val(),
+    env_project.opt,
+    help=env_project.help("The project name for the qserv docker-compose instance."),
+    default=env_project.val(),
     callback=lambda ctx, par, val: None if val == "None" else val,
 )
 
 
-compose_file_option = partial(
+option_compose_file = partial(
     click.option,
     *compose_file_default.opt,
     help=compose_file_default.help("The location of the yaml file that describes the compose cluster."),
@@ -704,7 +710,7 @@ compose_file_option = partial(
 )
 
 
-itest_container_name_option = partial(
+option_itest_container_name = partial(
     click.option,
     *itest_container_default.opt,
     help=itest_container_default.help("The name to give the integration test container."),
@@ -713,7 +719,7 @@ itest_container_name_option = partial(
 )
 
 
-itest_ref_container_name_option = partial(
+option_itest_ref_container_name = partial(
     click.option,
     *itest_ref_container_default.opt,
     help=itest_ref_container_default.help("The name to give the integration test reference db container."),
@@ -722,7 +728,7 @@ itest_ref_container_name_option = partial(
 )
 
 
-itest_file_option = partial(
+option_itest_file = partial(
     click.option,
     *itest_default.opt,
     help=itest_default.help("Path to an yaml file that describes how to run the integration tests."),
@@ -730,8 +736,16 @@ itest_file_option = partial(
     required=True,
 )
 
+option_itest_http_container_name = partial(
+    click.option,
+    *itest_http_container_default.opt,
+    help=itest_http_container_default.help("The name to give the integration test container for HTTP frontend."),
+    default=itest_http_container_default.val(),
+    required=True,
+)
 
-test_container_name_option = partial(
+
+option_test_container_name = partial(
     click.option,
     *test_container_default.opt,
     help=test_container_default.help("The name to give the test container."),
@@ -740,7 +754,7 @@ test_container_name_option = partial(
 )
 
 
-bind_option = partial(
+option_bind = partial(
     click.option,
     "-b",
     "--bind",
@@ -752,7 +766,7 @@ bind_option = partial(
 )
 
 
-cmake_option = partial(
+option_cmake = partial(
     click.option,
     "--cmake/--no-cmake",
     "run_cmake",
@@ -762,7 +776,7 @@ cmake_option = partial(
 )
 
 
-make_option = partial(
+option_make = partial(
     click.option,
     "--make/--no-make",
     "run_make",
@@ -772,7 +786,7 @@ make_option = partial(
 )
 
 
-do_build_image_option = partial(
+option_do_build_image = partial(
     click.option,
     "--do-build-image/--no-build-image",
     help="Build the run image after running cmake and make. Default: --do-build-image",
@@ -781,7 +795,7 @@ do_build_image_option = partial(
 )
 
 
-build_container_name_option = partial(
+option_build_container_name = partial(
     click.option,
     *build_container_default.opt,
     help=build_container_default.help("The name to give the build container."),
@@ -789,7 +803,7 @@ build_container_name_option = partial(
 )
 
 
-remove_option = partial(
+option_remove = partial(
     click.option,
     "--remove/--no-remove",
     help="Remove docker container(s) after execution.",
@@ -797,7 +811,7 @@ remove_option = partial(
 )
 
 
-mypy_option = partial(
+option_mypy = partial(
     click.option,
     "--mypy/--no-mypy",
     "run_mypy",
@@ -806,7 +820,7 @@ mypy_option = partial(
 )
 
 
-clang_format_option = partial(
+option_clang_format = partial(
     click.option,
     "--clang-format",
     "clang_format_mode",
@@ -819,7 +833,7 @@ clang_format_option = partial(
 )
 
 
-debuggable_option = partial(
+option_debuggable = partial(
     click.option,
     "--debuggable/--no-debuggable",
     help="Run the container with permissions to enable debugging.",

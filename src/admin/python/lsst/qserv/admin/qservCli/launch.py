@@ -32,11 +32,11 @@ import yaml
 from typing import Dict, List, Optional
 
 from .opt import (
-    dashboard_port_ev,
-    mariadb_image_ev,
-    qserv_image_ev,
-    dh_user_ev,
-    dh_token_ev,
+    env_dashboard_port,
+    env_mariadb_image,
+    env_qserv_image,
+    env_dh_user,
+    env_dh_token,
 )
 from ..constants import tmp_data_dir
 from . import images
@@ -464,7 +464,7 @@ def build(
     user : `str`
         The name of the user to run the build container as.
     """
-    if pull_image and do_pull_image(qserv_image, dh_user_ev.val(), dh_token_ev.val(), dry):
+    if pull_image and do_pull_image(qserv_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
 
     if clang_format_mode != "off":
@@ -595,7 +595,7 @@ def build_build_image(
     pull_image: `bool`
         Pull the lite-qserv image from dockerhub if it exists there.
     """
-    if pull_image and do_pull_image(build_image, dh_user_ev.val(), dh_token_ev.val(), dry):
+    if pull_image and do_pull_image(build_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
     images.build_image(
         image_name=build_image,
@@ -640,7 +640,7 @@ def build_run_base_image(
     run_base_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
     """Build the qserv lite-run-base image."""
-    if pull_image and do_pull_image(run_base_image, dh_user_ev.val(), dh_token_ev.val(), dry):
+    if pull_image and do_pull_image(run_base_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
     images.build_image(
         image_name=run_base_image,
@@ -656,7 +656,7 @@ def build_mariadb_image(
     mariadb_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
     """Build the mariadb image."""
-    if pull_image and do_pull_image(mariadb_image, dh_user_ev.val(), dh_token_ev.val(), dry):
+    if pull_image and do_pull_image(mariadb_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
     images.build_image(
         image_name=mariadb_image,
@@ -1047,6 +1047,127 @@ def integration_test(
     return result.returncode
 
 
+def integration_test_http(
+    qserv_root: str,
+    itest_container_http: str,
+    itest_volume: str,
+    qserv_image: str,
+    bind: List[str],
+    itest_file: str,
+    dry: bool,
+    project: str,
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+    wait: int,
+    remove: bool,
+) -> int:
+    """Run integration tests of the HTTP frontend.
+
+    Parameters
+    ----------
+    qserv_root : `str`
+        The path to the qserv source folder.
+    itest_container_http : `str`
+        The name to give the container.
+    itest_volume : `str`
+        The name of the volume used to host integration test data.
+    qserv_image : `str`
+        The name of the image to run.
+    bind : `List[str]`
+        One of ["all", "python", "bin", "lib64", "lua", "qserv", "etc"].
+        If provided, selected build artifact directories will be bound into
+        their install locations in the container. If "all" is provided then all
+        the locations will be bound. Allows for local iterative build & test
+        without having to rebuild the docker image.
+    itest_file : `str`
+        The path to the yaml file that contains integration test execution data.
+    dry : `bool`
+        If True do not run the command; print what would have been run.
+    project : `str`
+        The name used for qserv instance customizations.
+    cases : List[str]
+        Run this/these test cases only. If list is empty list will run all the cases.
+    run_tests : bool
+        If False will skip test execution.
+    tests_yaml : str
+        Path to the yaml that contains settings for integration test execution.
+    compare_results : bool
+        If False will skip comparing test results.
+    wait : `int`
+        How many seconds to wait before launching the integration test container.
+    remove : `bool`
+        True if the containers should be removed after executing tests.
+
+    Returns
+    -------
+    returncode : `int`
+        The returncode of "entrypoint integration-test-http".
+    """
+    if wait:
+        _log.info(f"Waiting {wait} seconds for qserv to stabilize.")
+        time.sleep(wait)
+        _log.info("Continuing.")
+
+    with open(itest_file) as f:
+        tests_data = yaml.safe_load(f.read())
+
+    args = [
+        "docker",
+        "run",
+        "--init",
+        "--name",
+        itest_container_http,
+        "--mount",
+        f"src={itest_file},dst=/usr/local/etc/integration_tests.yaml,type=bind",
+        "--mount",
+        f"src={itest_volume},dst={tests_data['testdata-output']},type=volume",
+        "--mount",
+        f"src={os.path.join(qserv_root, testdata_subdir)},dst={tests_data['qserv-testdata-dir']},type=bind",
+    ]
+    if remove:
+        args.append("--rm")
+    if bind:
+        args.extend(bind_args(qserv_root=qserv_root, bind_names=bind))
+    add_network_option(args, project)
+    args.extend([qserv_image, "entrypoint", "--log-level", "DEBUG", "integration-test-http"])
+
+    for opt, var in (
+        ("--unload", unload),
+        ("--reload", reload),
+    ):
+        if var:
+            args.append(opt)
+
+    args.append("--run-tests" if run_tests else "--no-run-tests")
+    args.append("--compare-results" if compare_results else "--no-compare-results")
+
+    def add_flag_if(val: Optional[bool], true_flag: str, false_flag: str, args: List[str]) -> None:
+        """Add a do-or-do-not flag to `args` if `val` is `True` or `False`, do
+        not add if `val` is `None`."""
+        if val == True:
+            args.append(true_flag)
+        elif val == False:
+            args.append(false_flag)
+
+    add_flag_if(load, "--load", "--no-load", args)
+
+    if tests_yaml:
+        args.extend(["--tests-yaml", tests_yaml])
+    for case in cases:
+        args.extend(["--case", case])
+    if dry:
+        print(" ".join(args))
+        return 0
+    _log.debug(f"Running {' '.join(args)}")
+    result = subprocess.run(args)
+    return result.returncode
+
+
 def itest(
     qserv_root: str,
     mariadb_image: str,
@@ -1095,6 +1216,64 @@ def itest(
         returncode = integration_test(
             qserv_root,
             itest_container,
+            itest_volumes.exe,
+            qserv_image,
+            bind,
+            itest_file,
+            dry,
+            project,
+            unload,
+            load,
+            reload,
+            cases,
+            run_tests,
+            tests_yaml,
+            compare_results,
+            wait,
+            remove,
+        )
+    finally:
+        stop_db_returncode = stop_itest_ref(itest_ref_container, dry) if remove else 0
+    return returncode or stop_db_returncode
+
+
+def itest_http(
+    qserv_root: str,
+    mariadb_image: str,
+    itest_http_container: str,
+    itest_ref_container: str,
+    qserv_image: str,
+    bind: List[str],
+    itest_file: str,
+    dry: bool,
+    project: str,
+    unload: bool,
+    load: Optional[bool],
+    reload: bool,
+    cases: List[str],
+    run_tests: bool,
+    tests_yaml: str,
+    compare_results: bool,
+    wait: int,
+    remove: bool,
+) -> int:
+    """Run integration tests of the HTTP frontend.
+    """
+    itest_volumes = make_itest_volumes(project)
+    itest_ref(
+        qserv_root,
+        itest_file,
+        itest_volumes,
+        project,
+        itest_ref_container,
+        mariadb_image,
+        dry,
+    )
+    try:
+
+        returncode = integration_test_http(
+            qserv_root,
+            itest_http_container,
             itest_volumes.exe,
             qserv_image,
             bind,
@@ -1306,11 +1485,11 @@ def up(
         args.extend(["-p", project])
     args.extend(["up", "-d"])
     env_override = {
-        qserv_image_ev.env_var: qserv_image,
-        mariadb_image_ev.env_var: mariadb_image,
+        env_qserv_image.env_var: qserv_image,
+        env_mariadb_image.env_var: mariadb_image,
     }
     if dashboard_port:
-        env_override[dashboard_port_ev.env_var] = str(dashboard_port)
+        env_override[env_dashboard_port.env_var] = str(dashboard_port)
     if dry:
         env_str = " ".join([f"{k}={v}" for k, v in env_override.items()])
         print(f"{env_str} {' '.join(args)}")
@@ -1361,8 +1540,8 @@ def down(
     _log.debug('Running "%s"', " ".join(args))
     env = get_env(
         {
-            qserv_image_ev.env_var: qserv_image,
-            mariadb_image_ev.env_var: mariadb_image,
+            env_qserv_image.env_var: qserv_image,
+            env_mariadb_image.env_var: mariadb_image,
         }
     )
     subproc.run(args, env=env)

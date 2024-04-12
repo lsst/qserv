@@ -20,7 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-"""Unit tests for the options_file_option CLI option.
+"""Unit tests for the option_options_file CLI option.
 """
 
 import click
@@ -30,7 +30,7 @@ import tempfile
 import unittest
 import yaml
 
-from lsst.qserv.admin.cli.options import options_file_option
+from lsst.qserv.admin.cli.options import option_options_file
 
 defaultStrFoo = "bar"
 mock = MagicMock()
@@ -38,21 +38,21 @@ mock = MagicMock()
 
 @click.command()
 @click.option("--foo", default=defaultStrFoo)
-@options_file_option()
+@option_options_file()
 def cmd_str(foo):
     mock(foo)
 
 
 @click.command()
 @click.option("--foo", type=int)
-@options_file_option()
+@option_options_file()
 def cmd_int(foo):
     mock(foo)
 
 
 @click.command()
 @click.option("--foo", type=bool)
-@options_file_option()
+@option_options_file()
 def cmd_bool(foo):
     mock(foo)
 

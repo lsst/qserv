@@ -317,69 +317,75 @@ jobs:
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
           --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
 
+      - name: Run integration tests of the HTTP frontend
+        run: |
+          ./admin/local/cli/qserv --log-level DEBUG itest-http \
+          --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
+          --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
+  
       - name: Check Qserv containers
         if: always()
         run: docker ps -a
 
       - name: Replication Controller Log
         if: always()
-        run: docker logs ${USER}_repl-mgr-controller_1
+        run: docker logs ${USER}_repl_controller_1
 
       - name: Replication Registry Log
         if: always()
-        run: docker logs ${USER}_repl-mgr-registry_1
+        run: docker logs ${USER}_repl_registry_1
 
       - name: Replication Database Log
         if: always()
-        run: docker logs ${USER}_repl-mgr-db_1
+        run: docker logs ${USER}_repl_mariadb_1
 
       - name: Replication Worker 0 Log
         if: always()
-        run: docker logs ${USER}_worker-repl-0_1
+        run: docker logs ${USER}_repl_worker_0_1
 
       - name: Replication Worker 1 Log
         if: always()
-        run: docker logs ${USER}_worker-repl-1_1
+        run: docker logs ${USER}_repl_worker_1_1
 
       - name: Czar MySQL Proxy Log
         if: always()
-        run: docker logs ${USER}_czar-proxy_1
+        run: docker logs ${USER}_czar_proxy_1
 
       - name: Czar CMSD Log
         if: always()
-        run: docker logs ${USER}_manager-cmsd_1
+        run: docker logs ${USER}_czar_cmsd_1
 
       - name: Czar XROOTD Log
         if: always()
-        run: docker logs ${USER}_manager-xrootd-0.manager-xrootd_1
+        run: docker logs ${USER}_czar_xrootd_1
 
       - name: Czar MariaDB Log
         if: always()
-        run: docker logs ${USER}_czar-db_1
+        run: docker logs ${USER}_czar_mariadb_1
 
       - name: Qzerv Worker 0 CMSD Log
         if: always()
-        run: docker logs ${USER}_worker-cmsd-0_1
+        run: docker logs ${USER}_worker_cmsd_0_1
 
       - name: Qzerv Worker 0 XROOTD Log
         if: always()
-        run: docker logs ${USER}_worker-xrootd-0_1
+        run: docker logs ${USER}_worker_xrootd_0_1
 
       - name: Qzerv Worker 0 MariaDB Log
         if: always()
-        run: docker logs ${USER}_worker-db-0_1
+        run: docker logs ${USER}_worker_mariadb_0_1
 
       - name: Qzerv Worker 1 CMSD Log
         if: always()
-        run: docker logs ${USER}_worker-cmsd-1_1
+        run: docker logs ${USER}_worker_cmsd_1_1
 
       - name: Qzerv Worker 1 XROOTD Log
         if: always()
-        run: docker logs ${USER}_worker-xrootd-1_1
+        run: docker logs ${USER}_worker_xrootd_1_1
 
       - name: Qzerv Worker 1 MariaDB Log
         if: always()
-        run: docker logs ${USER}_worker-db-1_1
+        run: docker logs ${USER}_worker_mariadb_1_1
 
       - name: Remove integration test volumes
         run: |

@@ -54,9 +54,7 @@ xrd.network nodnr
 xrd.network dyndns
 xrd.network cache 0
 
-{% for itr in range(cmsd_manager_count) %}
-all.manager {{cmsd_manager_name}}-{{itr}}.{{cmsd_manager_name}}:2131
-{% endfor %}
+all.manager {{cmsd_manager_name}}:2131
 
 # - cmsd redirector runs on port 2131
 # - cmsd server does not open server socket
