@@ -34,7 +34,7 @@ namespace lsst::qserv::http {
 class Url {
 public:
     /// Types of resources
-    enum Scheme { FILE, HTTP, HTTPS };
+    enum Scheme { DATA_JSON, FILE, HTTP, HTTPS };
 
     // Default construction is prohibited to avoid extra complexity in managing
     // a "valid" state of the resource object.

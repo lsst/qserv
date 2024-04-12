@@ -45,6 +45,24 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
 
     // Resources which are too short to include anyting by the name of a scheme
     // aren't allowed.
+    BOOST_CHECK_THROW({ ptr.reset(new Url("data-json:")); }, invalid_argument);
+    BOOST_CHECK_THROW({ ptr.reset(new Url("data-json:/")); }, invalid_argument);
+    BOOST_CHECK_THROW({ ptr.reset(new Url("data-json://")); }, invalid_argument);
+    BOOST_CHECK_THROW({ ptr.reset(new Url("data-json:///")); }, invalid_argument);
+
+    // File pathes are not allowed
+    BOOST_CHECK_THROW({ ptr.reset(new Url("data-json://h/f")); }, invalid_argument);
+
+    // The well-formed URL
+    string dataUrl = "data-json://h/";
+    BOOST_REQUIRE_NO_THROW({ ptr.reset(new Url(dataUrl)); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->url(), dataUrl); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::DATA_JSON); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->fileHost(), "h"); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->filePath(), string()); });
+
+    // Resources which are too short to include anyting by the name of a scheme
+    // aren't allowed.
     BOOST_CHECK_THROW({ ptr.reset(new Url("file:///")); }, invalid_argument);
     BOOST_CHECK_THROW({ ptr.reset(new Url("file://h/")); }, invalid_argument);
     BOOST_CHECK_THROW({ ptr.reset(new Url("http://")); }, invalid_argument);
