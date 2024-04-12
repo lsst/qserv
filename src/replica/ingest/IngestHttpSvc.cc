@@ -30,6 +30,7 @@
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
 #include "replica/config/Configuration.h"
+#include "replica/ingest/IngestDataHttpSvcMod.h"
 #include "replica/ingest/IngestHttpSvcMod.h"
 #include "replica/ingest/IngestRequestMgr.h"
 
@@ -74,6 +75,11 @@ void IngestHttpSvc::registerServices() {
                                                   {"id", self->_workerName},
                                                   {"instance_id", self->serviceProvider()->instanceId()}});
                   http::MetaModule::process(::context_, info, req, resp, "VERSION");
+              }},
+             {"POST", "/ingest/data",
+              [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                  IngestDataHttpSvcMod::process(self->serviceProvider(), self->_workerName, req, resp,
+                                                "SYNC-PROCESS-DATA");
               }},
              {"POST", "/ingest/file",
               [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
