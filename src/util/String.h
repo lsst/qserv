@@ -101,16 +101,55 @@ public:
     /**
      * Encode the input sequence of bytes into the hexadecimal representation packaged
      * into a string.
+     *
      * For example, the method will convert a sequence of bytes as shown below:
      * @code
+     *   // (prefix="", lowerCase=false)
      *   {10,17,255,210} -> "0A11FFD2"
-     * @code
+     *
+     *   // (prefix="0x", lowerCase=false)
+     *   {10,17,255,210} -> "0x0A11FFD2"
+     *
+     *   // (prefix="", lowerCase=true)
+     *   {10,17,255,210} -> "0a11ffd2"
+     * @endcode
      * @param ptr A pointer to the byte sequence.
      * @param length The number of bytes to translate.
+     * @param prefix The optional prefix for non-empty input.
+     * @param lowerCase The optional flag indicating of the the lower case version
+     *   of the hexadecimal output is required.
      * @return The encoded sequence of bytes or the empty string if the length=0.
      * @throw std::invalid_argument If the pointer is nullptr.
      */
-    static std::string toHex(char const* ptr, std::size_t length);
+    static std::string toHex(char const* ptr, std::size_t length, std::string const& prefix = std::string(),
+                             bool lowerCase = false);
+
+    /**
+     * Decode the hexadecimal string that may have an optional prefix into a string.
+     *
+     * For example, the method will convert the  of bytes as shown below:
+     * @code
+     *   // (prefix="", upper case input)
+     *   "0A11FFD2" -> {10,17,255,210}
+     *
+     *   // (prefix="0x", upper case input)
+     *   "0x0A11FFD2" -> {10,17,255,210}
+     *
+     *   // (prefix="", lower case input)
+     *   "0a11ffd2" -> {10,17,255,210}
+     * @endcode
+     *
+     * @note The translator accepts mixed-case case characters in the input string.
+     * @param hex The string to be decoded.
+     * @param prefix The optional prefix to be ignored from the input.
+     * @return The decoded sequence of bytes or the empty string if the input has no significant
+     *   characters beyond the optonal prefix.
+     * @throw std::invalid_argument If the input doesn't start with the specified (if any)
+     *    prefix, or for an odd number of the significant (after the optional prefix) characters
+     *   in the input.
+     * @throw std::range_error For non-hexadecimal characters in the input.
+     */
+    static std::string fromHex(std::string const& hex, std::string const& prefix = std::string());
 };
 
 }  // namespace lsst::qserv::util
