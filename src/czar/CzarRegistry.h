@@ -81,7 +81,7 @@ public:
         TIMEPOINT const updateTime;         ///< "update-time-ms" entry.
 
         /// Return true if all members, aside from updateTime, are equal.
-        bool same(WorkerContactInfo const& other) const {
+        bool sameContactInfo(WorkerContactInfo const& other) const {
             return (wId == other.wId && wHost == other.wHost && wManagementHost == other.wManagementHost &&
                     wPort == other.wPort);
         }

@@ -128,9 +128,9 @@ public:
     /// @return The reconstructed info for the query
     SubmitResult getQueryInfo(QueryId queryId) const;
 
-    std::shared_ptr<CzarChunkMap> getCzarChunkMap() { return _czarChunkMap; }
+    std::shared_ptr<CzarChunkMap> getCzarChunkMap() const { return _czarChunkMap; }
 
-    std::shared_ptr<CzarRegistry> getCzarRegistry() { return _czarRegistry; }
+    std::shared_ptr<CzarRegistry> getCzarRegistry() const { return _czarRegistry; }
 
 private:
     /// Private constructor for singleton.
