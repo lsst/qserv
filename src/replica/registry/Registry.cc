@@ -60,7 +60,7 @@ Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
           _baseUrl("http://" + serviceProvider->config()->get<string>("registry", "host") + ":" +
                    to_string(serviceProvider->config()->get<uint16_t>("registry", "port"))) {}
 
-vector<ConfigWorker> Registry::workers() const { //&&& important?
+vector<ConfigWorker> Registry::workers() const {
     vector<ConfigWorker> coll;
     string const resource = "/services?instance_id=" + _serviceProvider->instanceId() +
                             "&version=" + to_string(http::MetaModule::version);

@@ -47,6 +47,7 @@
 #include "czar/CzarErrors.h"
 #include "czar/HttpSvc.h"
 #include "czar/MessageTable.h"
+#include "czar/CzarRegistry.h"
 #include "global/LogContext.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
@@ -268,13 +269,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     auto const port = _controlHttpSvc->start();
     _czarConfig->setReplicationHttpPort(port);
 
-    // Begin periodically updating worker's status in the Replication System's registry
-    // in the detached thread. This will continue before the application gets terminated.
-    thread registryUpdateThread(::registryUpdateLoop, _czarConfig);
-    registryUpdateThread.detach();
-
-    thread registryWorkerUpdateThread(::registryWorkerInfoLoop, _czarConfig); //&&&
-    registryWorkerUpdateThread.detach(); //&&&
+    _czarRegistry = CzarRegistry::create(_czarConfig);
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
