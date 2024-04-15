@@ -62,6 +62,7 @@ class FileMonitor;
 namespace lsst::qserv::czar {
 
 class CzarChunkMap;
+class CzarRegistry;
 
 /// @addtogroup czar
 
@@ -127,6 +128,10 @@ public:
     /// @return The reconstructed info for the query
     SubmitResult getQueryInfo(QueryId queryId) const;
 
+    std::shared_ptr<CzarChunkMap> getCzarChunkMap() const { return _czarChunkMap; }
+
+    std::shared_ptr<CzarRegistry> getCzarRegistry() const { return _czarRegistry; }
+
 private:
     /// Private constructor for singleton.
     Czar(std::string const& configFilePath, std::string const& czarName);
@@ -184,6 +189,9 @@ private:
 
     /// Map of which chunks on which workers and shared scan order.
     std::shared_ptr<CzarChunkMap> _czarChunkMap;
+
+    /// Connection to the registry to register the czar and get worker contact information.
+    std::shared_ptr<CzarRegistry> _czarRegistry;
 };
 
 }  // namespace lsst::qserv::czar

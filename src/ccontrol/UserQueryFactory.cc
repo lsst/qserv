@@ -52,6 +52,7 @@
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
+#include "czar/Czar.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "qdisp/Executive.h"

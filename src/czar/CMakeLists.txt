@@ -5,6 +5,7 @@ target_sources(czar PRIVATE
     ChttpModule.cc
     Czar.cc
     CzarChunkMap.cc
+    CzarRegistry.cc
     HttpCzarIngestModule.cc
     HttpCzarQueryModule.cc
     HttpCzarSvc.cc
