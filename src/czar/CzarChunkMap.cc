@@ -30,6 +30,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "czar/Czar.h"
+#include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
 #include "util/Bug.h"
 #include "util/TimeUtils.h"
@@ -72,6 +74,7 @@ bool CzarChunkMap::_read() {
     auto [chunkMapPtr, wcMapPtr] = makeNewMaps(qChunkMap);
 
     verify(*chunkMapPtr, *wcMapPtr);
+
     LOGS(_log, LOG_LVL_DEBUG, " chunkMap=" << dumpChunkMap(*chunkMapPtr));
     LOGS(_log, LOG_LVL_DEBUG, " workerChunkMap=" << dumpWorkerChunkMap(*wcMapPtr));
 
