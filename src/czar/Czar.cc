@@ -47,6 +47,7 @@
 #include "czar/CzarErrors.h"
 #include "czar/HttpSvc.h"
 #include "czar/MessageTable.h"
+#include "czar/CzarRegistry.h"
 #include "global/LogContext.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
@@ -108,6 +109,9 @@ void registryUpdateLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
                                          {"management-port", czarConfig->replicationHttpPort()},
                                          {"management-host-name", util::get_current_host_fqdn()}}}});
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
+    LOGS(_log, LOG_LVL_WARN, "&&&czarPost url=" << url);
+    LOGS(_log, LOG_LVL_WARN, "&&&czarPost request=" << request.dump());
+    LOGS(_log, LOG_LVL_WARN, "&&&czarPost headers=" << headers[0]);
     http::Client client(method, url, request.dump(), headers);
     while (true) {
         try {
@@ -121,6 +125,41 @@ void registryUpdateLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
             LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
         }
         this_thread::sleep_for(chrono::seconds(max(1U, czarConfig->replicationRegistryHearbeatIvalSec())));
+    }
+}
+
+
+// &&& doc
+void registryWorkerInfoLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
+    // Get worker information from the registry
+    auto const method = http::Method::GET;
+    string const url = "http://" + czarConfig->replicationRegistryHost() + ":" +
+                       to_string(czarConfig->replicationRegistryPort())
+                       + "/services?instance_id=" + czarConfig->replicationInstanceId(); // &&& what is this value supposed to be to get worker info?
+    vector<string> const headers = {"Content-Type: application/json"};
+    json request = nlohmann::json();
+    string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
+    LOGS(_log, LOG_LVL_WARN, "&&&czarGet url=" << url);
+    LOGS(_log, LOG_LVL_WARN, "&&&czarGet request=" << request.dump());
+    LOGS(_log, LOG_LVL_WARN, "&&&czarGet headers=" << headers[0]);
+    http::Client client(method, url, request.dump(), headers);
+    while (true) {
+        LOGS(_log, LOG_LVL_WARN, "&&&czarGet loop start");
+        try {
+            json const response = client.readAsJson();
+            /* &&&
+            if (0 == response.at("success").get<int>()) {
+                string const error = response.at("error").get<string>();
+                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                abort();
+            }
+            */
+            LOGS(_log, LOG_LVL_WARN, "&&&czarGet resp=" << response);
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+            LOGS(_log, LOG_LVL_WARN, requestContext + " &&& failed, ex: " + ex.what());
+        }
+        this_thread::sleep_for(chrono::seconds(15));
     }
 }
 
@@ -230,10 +269,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     auto const port = _controlHttpSvc->start();
     _czarConfig->setReplicationHttpPort(port);
 
-    // Begin periodically updating worker's status in the Replication System's registry
-    // in the detached thread. This will continue before the application gets terminated.
-    thread registryUpdateThread(::registryUpdateLoop, _czarConfig);
-    registryUpdateThread.detach();
+    _czarRegistry = CzarRegistry::create(_czarConfig);
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
