@@ -4,6 +4,7 @@ add_dependencies(czar proto)
 target_sources(czar PRIVATE
     Czar.cc
     CzarChunkMap.cc
+    CzarRegistry.cc
     HttpCzarSvc.cc
     HttpCzarQueryModule.cc
     HttpModule.cc
