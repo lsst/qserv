@@ -47,6 +47,7 @@
 #include "czar/CzarErrors.h"
 #include "czar/HttpSvc.h"
 #include "czar/MessageTable.h"
+#include "czar/CzarRegistry.h"
 #include "global/LogContext.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
@@ -84,6 +85,7 @@ string const createAsyncResultTmpl(
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
+<<<<<<< HEAD
 /**
  * This function will keep periodically updating Czar's info in the Replication
  * System's Registry.
@@ -162,6 +164,8 @@ void registryWorkerInfoLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
     }
 }
 
+=======
+>>>>>>> 0bb38abe0 (Added CzarRegistry.)
 }  // anonymous namespace
 
 namespace lsst::qserv::czar {
@@ -268,13 +272,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     auto const port = _controlHttpSvc->start();
     _czarConfig->setReplicationHttpPort(port);
 
-    // Begin periodically updating worker's status in the Replication System's registry
-    // in the detached thread. This will continue before the application gets terminated.
-    thread registryUpdateThread(::registryUpdateLoop, _czarConfig);
-    registryUpdateThread.detach();
-
-    thread registryWorkerUpdateThread(::registryWorkerInfoLoop, _czarConfig); //&&&
-    registryWorkerUpdateThread.detach(); //&&&
+    _czarRegistry = CzarRegistry::create(_czarConfig);
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
