@@ -51,11 +51,11 @@ namespace lsst::qserv::czar {
 CzarRegistry::CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig) : _czarConfig(czarConfig) {
     // Begin periodically updating worker's status in the Replication System's registry
     // in the detached thread. This will continue before the application gets terminated.
-    thread _registryUpdateThread(&CzarRegistry::_registryUpdateLoop, this);
-    _czarHeartbeatThrd = move(_registryUpdateThread);
+    thread registryUpdateThread(&CzarRegistry::_registryUpdateLoop, this);
+    _czarHeartbeatThrd = move(registryUpdateThread);
 
-    thread _registryWorkerUpdateThread(&CzarRegistry::_registryWorkerInfoLoop, this);
-    _czarWorkerInfoThrd = move(_registryWorkerUpdateThread);
+    thread registryWorkerUpdateThread(&CzarRegistry::_registryWorkerInfoLoop, this);
+    _czarWorkerInfoThrd = move(registryWorkerUpdateThread);
 }
 
 CzarRegistry::~CzarRegistry() {
