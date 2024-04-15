@@ -53,6 +53,7 @@
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
+#include "czar/Czar.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "qdisp/Executive.h"
@@ -272,6 +273,9 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     std::string query = aQuery;
 
     // TODO: DM-43386 need to have WorkerChunkMap info at this point
+    auto cz = czar::Czar::getCzar();
+    auto czarChunkMap = cz->getCzarChunkMap();
+    auto czarRegistry = cz->getCzarRegistry();
 
     std::string stripped;
     bool async = false;
