@@ -155,7 +155,7 @@ CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
         auto iter = wMap->find(key);
         if (iter != wMap->end()) {
             LOGS(_log, LOG_LVL_ERROR, __func__ << " duplicate key " << key << " in " << response);
-            if (!wInfo.same(iter->second)) {
+            if (!wInfo.sameContactInfo(iter->second)) {
                 LOGS(_log, LOG_LVL_ERROR, __func__ << " incongruent key " << key << " in " << response);
                 return nullptr;
             }
@@ -180,7 +180,7 @@ bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
         if (iter == other.end()) {
             return false;
         } else {
-            if (!(iter->second.same(wInfo))) {
+            if (!(iter->second.sameContactInfo(wInfo))) {
                 return false;
             }
         }
