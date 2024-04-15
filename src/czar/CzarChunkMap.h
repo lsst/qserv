@@ -47,7 +47,8 @@ public:
 /// This class is used to organize worker chunk table information so that it
 /// can be used to send jobs to the appropriate worker and inform workers
 /// what chunks they can expect to handle in shared scans.
-/// The data for the maps is provided by the Replicator and stored in QMeta.
+/// The data for the maps is provided by the Replicator and stored in the
+/// QMeta database.
 /// When the data is changed, there is a timestamp that is updated, which
 /// will cause new maps to be made by this class.
 ///
@@ -62,6 +63,16 @@ public:
 /// the worker should handle during a shared scan.
 ///    `getMaps() -> ChunkMap` is expected to be more useful if there is a
 ///  failure and a chunk query needs to go to a different worker.
+///
+/// Workers failing or new workers being added is expected to be a rare event.
+/// The current algorithm to split chunks between the workers tries to split
+/// the work evenly. However, if a new worker is added, it's likely that
+/// the new distribution of chunks for shared scans will put the chunks on
+/// different workers than previously, which in turn will result in the system
+/// being less efficient until all the old scans are complete. If workers
+/// being added or removed from the system becomes frequent, the algorithm should
+/// probably change to try to maintain some chunk location consistency once
+/// the system is up.
 class CzarChunkMap {
 public:
     using Ptr = std::shared_ptr<CzarChunkMap>;
