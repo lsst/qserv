@@ -66,7 +66,7 @@ void tracker(weak_ptr<Controller> const& controller, string const& context) {
                 config->get<unsigned int>("controller", "auto-register-workers") != 0;
         vector<ConfigWorker> workers;
         try {
-            workers = ptr->serviceProvider()->registry()->workers(); //&&& important?
+            workers = ptr->serviceProvider()->registry()->workers();
         } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_WARN,
                  context << "failed to pull worker info from the registry, ex: " << ex.what());
