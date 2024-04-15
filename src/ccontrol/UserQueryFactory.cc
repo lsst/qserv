@@ -226,9 +226,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     std::string query = aQuery;
 
     // TODO: DM-43386 need to have WorkerChunkMap info at this point
-    auto cz = czar::Czar::getCzar();
-    auto czarChunkMap = cz->getCzarChunkMap();
-    auto czarRegistry = cz->getCzarRegistry();
 
     std::string stripped;
     bool async = false;
