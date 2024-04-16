@@ -68,6 +68,20 @@ public:
      */
     void removeCzar(std::string const& name);
 
+    /**
+     * Add or update (if exists) the complete definition into the Controller entry.
+     * @param name A unique identifier of the controller.
+     * @param controllerInfo A payload to be added/updated.
+     * @throws std::invalid_argument If the definition of the controller is not a valid JSON object.
+     */
+    void updateController(std::string const& name, nlohmann::json const& controllerInfo);
+
+    /**
+     * Remove (if exists) a Controller entry.
+     * @param name A unique identifier of the controller.
+     */
+    void removeController(std::string const& name);
+
     /// @return nlohmann::json The whole collection of services.
     nlohmann::json toJson() const;
 
@@ -77,8 +91,9 @@ private:
     mutable replica::Mutex _mtx;
 
     /// The collection of the registered services.
-    nlohmann::json _services = nlohmann::json::object(
-            {{"workers", nlohmann::json::object()}, {"czars", nlohmann::json::object()}});
+    nlohmann::json _services = nlohmann::json::object({{"workers", nlohmann::json::object()},
+                                                       {"czars", nlohmann::json::object()},
+                                                       {"controllers", nlohmann::json::object()}});
 };
 
 }  // namespace lsst::qserv::replica

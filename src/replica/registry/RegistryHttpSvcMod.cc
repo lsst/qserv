@@ -93,12 +93,20 @@ json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
         return _addCzar();
     else if (subModuleName == "DELETE-CZAR")
         return _deleteCzar();
+    else if (subModuleName == "ADD-CONTROLLER")
+        return _addController();
+    else if (subModuleName == "DELETE-CONTROLLER")
+        return _deleteController();
     throw invalid_argument(context() + "unsupported sub-module: '" + subModuleName + "'");
 }
 
-json RegistryHttpSvcMod::_getServices() const { return json::object({{"services", _services.toJson()}}); }
+json RegistryHttpSvcMod::_getServices() const {
+    checkApiVersion(__func__, 34);
+    return json::object({{"services", _services.toJson()}});
+}
 
 json RegistryHttpSvcMod::_addWorker(string const& kind) {
+    checkApiVersion(__func__, 34);
     json const worker = body().required<json>("worker");
     string const name = worker.at("name").get<string>();
     string const hostAddr = ::senderIpAddr(req());
@@ -120,6 +128,7 @@ json RegistryHttpSvcMod::_addWorker(string const& kind) {
 }
 
 json RegistryHttpSvcMod::_deleteWorker() {
+    checkApiVersion(__func__, 34);
     string const name = params().at("name");
     debug(__func__, " name: " + name);
     _services.removeWorker(name);
@@ -127,6 +136,7 @@ json RegistryHttpSvcMod::_deleteWorker() {
 }
 
 json RegistryHttpSvcMod::_addCzar() {
+    checkApiVersion(__func__, 34);
     json const czar = body().required<json>("czar");
     string const name = czar.at("name");
     string const hostAddr = ::senderIpAddr(req());
@@ -147,9 +157,39 @@ json RegistryHttpSvcMod::_addCzar() {
 }
 
 json RegistryHttpSvcMod::_deleteCzar() {
+    checkApiVersion(__func__, 34);
     string const name = params().at("name");
     debug(__func__, " name: " + name);
     _services.removeCzar(name);
+    return json::object({{"services", _services.toJson()}});
+}
+
+json RegistryHttpSvcMod::_addController() {
+    checkApiVersion(__func__, 34);
+    json const controller = body().required<json>("controller");
+    string const name = controller.at("name");
+    string const hostAddr = ::senderIpAddr(req());
+    uint64_t const updateTimeMs = util::TimeUtils::now();
+
+    debug(__func__, "name:           " + name);
+    debug(__func__, "host-addr:      " + hostAddr);
+    debug(__func__, "update-time-ms: " + to_string(updateTimeMs));
+
+    // Prepare the payload to be merged into the Controller registration entry.
+    // Note that the merged payload is cleaned from any security-related contents.
+    json controllerEntry = json::object({{"host-addr", hostAddr}, {"update-time-ms", updateTimeMs}});
+    for (auto&& [key, val] : controller.items()) {
+        if (!::isSecurityContextKey(key)) controllerEntry[key] = val;
+    }
+    _services.updateController(name, controllerEntry);
+    return json::object({{"services", _services.toJson()}});
+}
+
+json RegistryHttpSvcMod::_deleteController() {
+    checkApiVersion(__func__, 34);
+    string const name = params().at("name");
+    debug(__func__, " name: " + name);
+    _services.removeController(name);
     return json::object({{"services", _services.toJson()}});
 }
 

@@ -93,6 +93,16 @@ void RegistryHttpSvc::registerServices() {
                                 [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
                                     RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
                                                                 req, resp, "DELETE-CZAR");
+                                }},
+                               {"POST", "/controller",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
+                                                                req, resp, "ADD-CONTROLLER");
+                                }},
+                               {"DELETE", "/controller/:name",
+                                [self](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                                    RegistryHttpSvcMod::process(self->serviceProvider(), *(self->_services),
+                                                                req, resp, "DELETE-CONTROLLER");
                                 }}});
 }
 

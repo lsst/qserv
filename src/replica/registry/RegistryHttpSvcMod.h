@@ -64,8 +64,10 @@ public:
      *   ADD-WORKER        worker registration request (Replicaton System)
      *   ADD-QSERV-WORKER  worker registration request (Qserv)
      *   DELETE-WORKER     remove a worker from the collection
-     *   ADD-CZAR          czar registration request (Replicaton System)
+     *   ADD-CZAR          czar registration request (Qserv)
      *   DELETE-CZAR       remove a czar from the collection
+     *   ADD-CONTROLLER    controller registration request (Replicaton System)
+     *   DELETE-CONTROLLER remove a controller from the collection
      *
      * @param serviceProvider The provider of services is needed to access
      *   the identity and the authorization keys of the instance.
@@ -108,6 +110,12 @@ private:
 
     /// Remove a Czar from the collection.
     nlohmann::json _deleteCzar();
+
+    /// Register/update a Controller.
+    nlohmann::json _addController();
+
+    /// Remove a Controller from the collection.
+    nlohmann::json _deleteController();
 
     // Input parameters
     ServiceProvider::Ptr const _serviceProvider;

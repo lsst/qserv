@@ -24,6 +24,7 @@
 
 // Qserv headers
 #include "http/Client.h"
+#include "http/MetaModule.h"
 #include "qmeta/types.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigWorker.h"
@@ -61,7 +62,8 @@ Registry::Registry(ServiceProvider::Ptr const& serviceProvider)
 
 vector<ConfigWorker> Registry::workers() const {
     vector<ConfigWorker> coll;
-    string const resource = "/services?instance_id=" + _serviceProvider->instanceId();
+    string const resource = "/services?instance_id=" + _serviceProvider->instanceId() +
+                            "&version=" + to_string(http::MetaModule::version);
     json const resultJson = _request(http::Method::GET, resource);
     for (auto const& [workerName, workerJson] : resultJson.at("services").at("workers").items()) {
         ConfigWorker worker;
@@ -109,7 +111,8 @@ void Registry::addWorker(string const& name) const {
     string const hostName = util::get_current_host_fqdn(all);
     auto const config = _serviceProvider->config();
     json const request =
-            json::object({{"instance_id", _serviceProvider->instanceId()},
+            json::object({{"version", http::MetaModule::version},
+                          {"instance_id", _serviceProvider->instanceId()},
                           {"auth_key", _serviceProvider->authKey()},
                           {"worker",
                            {{"name", name},

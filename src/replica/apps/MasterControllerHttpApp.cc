@@ -28,10 +28,20 @@
 #include <stdexcept>
 #include <thread>
 
+// Third-party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
+#include "http/Client.h"
+#include "http/MetaModule.h"
+#include "http/Method.h"
+#include "replica/config/Configuration.h"
+#include "replica/contr/HttpProcessor.h"
 #include "replica/contr/HttpProcessor.h"
 #include "replica/contr/HttpProcessorConfig.h"
 #include "replica/services/DatabaseServices.h"
+#include "replica/services/ServiceProvider.h"
+#include "util/common.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
@@ -39,6 +49,7 @@
 
 using namespace std;
 using namespace std::chrono_literals;
+using json = nlohmann::json;
 
 namespace {
 
@@ -105,6 +116,9 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
           _qservCzarDbUrl(Configuration::qservCzarDbUrl()) {
     // Configure the command line parser
 
+    parser().option("name",
+                    "The unique name of the controller as it's seen in the service discovery Registry.",
+                    _name);
     parser().option("health-probe-interval",
                     "Interval (seconds) between iterations of the health monitoring probes.",
                     _healthProbeIntervalSec);
@@ -215,10 +229,10 @@ int MasterControllerHttpApp::runImpl() {
             _healthMonitorTask);
     thread ingestHttpSvrThread([httpProcessor]() { httpProcessor->run(); });
 
-    // Keep running before a catastrophic failure is reported by any activity.
-    while (!_isFailed()) {
-        this_thread::sleep_for(chrono::seconds(1s));
-    }
+    // Keep sending periodic 'heartbeats' to the Registry service to report a configuration
+    // and a status of the current Controller before a catastrophic failure is reported by
+    // any activity.
+    _registryUpdateLoop();
 
     // Stop all threads if any are still running
     _healthMonitorTask->stop();
@@ -238,14 +252,12 @@ void MasterControllerHttpApp::_evict(string const& worker) {
 
     // This thread needs to be stopped to avoid any interference with
     // the worker exclusion protocol.
-
     _replicationTask->stop();
 
     // This thread will be allowed to run for as long as it's permitted by
     // the corresponding timeouts set for Requests and Jobs in the Configuration,
     // or until a catastrophic failure occurs within any control thread (including
     // this one).
-
     auto self = shared_from_base<MasterControllerHttpApp>();
 
     _deleteWorkerTask = DeleteWorkerTask::create(
@@ -259,7 +271,6 @@ void MasterControllerHttpApp::_evict(string const& worker) {
 
     // Resume the normal replication sequence unless a catastrophic failure
     // in the system has been detected
-
     if (not _isFailed()) _replicationTask->start();
 
     _logWorkerEvictionFinishedEvent(worker);
@@ -267,7 +278,6 @@ void MasterControllerHttpApp::_evict(string const& worker) {
 
 void MasterControllerHttpApp::_logControllerStartedEvent() const {
     _assertIsStarted(__func__);
-
     ControllerEvent event;
     event.status = "STARTED";
     event.kvInfo.emplace_back("host", _controller->identity().host);
@@ -282,13 +292,11 @@ void MasterControllerHttpApp::_logControllerStartedEvent() const {
     event.kvInfo.emplace_back("worker-config-timeout", to_string(_workerReconfigTimeoutSec));
     event.kvInfo.emplace_back("purge", bool2str(_purge));
     event.kvInfo.emplace_back("permanent-worker-delete", bool2str(_permanentDelete));
-
     _logEvent(event);
 }
 
 void MasterControllerHttpApp::_logControllerStoppedEvent() const {
     _assertIsStarted(__func__);
-
     ControllerEvent event;
     event.status = "STOPPED";
     _logEvent(event);
@@ -296,46 +304,72 @@ void MasterControllerHttpApp::_logControllerStoppedEvent() const {
 
 void MasterControllerHttpApp::_logWorkerEvictionStartedEvent(string const& worker) const {
     _assertIsStarted(__func__);
-
     ControllerEvent event;
     event.operation = "worker eviction";
     event.status = "STARTED";
     event.kvInfo.emplace_back("worker", worker);
-
     _logEvent(event);
 }
 
 void MasterControllerHttpApp::_logWorkerEvictionFinishedEvent(string const& worker) const {
     _assertIsStarted(__func__);
-
     ControllerEvent event;
     event.operation = "worker eviction";
     event.status = "FINISHED";
     event.kvInfo.emplace_back("worker", worker);
-
     _logEvent(event);
 }
 
 void MasterControllerHttpApp::_logEvent(ControllerEvent& event) const {
-    // Finish filling the common fields
-
     event.controllerId = _controller->identity().id;
     event.timeStamp = util::TimeUtils::now();
-    event.task = _name();
+    event.task = _controllerName4log();
 
     // For now ignore exceptions when logging events. Just report errors.
     try {
         serviceProvider()->databaseServices()->logControllerEvent(event);
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR,
-             _name() << "  "
-                     << "failed to log event in " << __func__);
+        LOGS(_log, LOG_LVL_ERROR, _controllerName4log() << "  failed to log event in " << __func__);
     }
 }
 
 void MasterControllerHttpApp::_assertIsStarted(string const& func) const {
     if (nullptr == _controller) {
         throw logic_error("MasterControllerHttpApp::" + func + "  Controller is not running");
+    }
+}
+
+void MasterControllerHttpApp::_registryUpdateLoop() {
+    auto const serviceProvider = _controller->serviceProvider();
+    auto const config = serviceProvider->config();
+    auto const method = http::Method::POST;
+    string const url = "http://" + config->get<string>("registry", "host") + ":" +
+                       to_string(config->get<uint16_t>("registry", "port")) + "/controller";
+    vector<string> const headers = {"Content-Type: application/json"};
+    json const request = json::object({{"version", http::MetaModule::version},
+                                       {"instance_id", serviceProvider->instanceId()},
+                                       {"auth_key", serviceProvider->authKey()},
+                                       {"controller",
+                                        {{"name", _name},
+                                         {"id", _controller->identity().id},
+                                         {"port", config->get<uint16_t>("controller", "http-server-port")},
+                                         {"host-name", util::get_current_host_fqdn()}}}});
+    string const requestContext =
+            _controllerName4log() + ": '" + http::method2string(method) + "' request to '" + url + "'";
+    http::Client client(method, url, request.dump(), headers);
+    while (!_isFailed()) {
+        try {
+            json const response = client.readAsJson();
+            if (0 == response.at("success").get<int>()) {
+                string const error = response.at("error").get<string>();
+                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                abort();
+            }
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        }
+        this_thread::sleep_for(
+                chrono::seconds(max(1U, config->get<unsigned int>("registry", "heartbeat-ival-sec"))));
     }
 }
 
