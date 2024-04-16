@@ -48,6 +48,7 @@
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
 #include "http/Client.h"
+#include "http/MetaModule.h"
 #include "http/Method.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
@@ -97,7 +98,8 @@ void registryUpdateLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
     string const url = "http://" + czarConfig->replicationRegistryHost() + ":" +
                        to_string(czarConfig->replicationRegistryPort()) + "/czar";
     vector<string> const headers = {"Content-Type: application/json"};
-    json const request = json::object({{"instance_id", czarConfig->replicationInstanceId()},
+    json const request = json::object({{"version", http::MetaModule::version},
+                                       {"instance_id", czarConfig->replicationInstanceId()},
                                        {"auth_key", czarConfig->replicationAuthKey()},
                                        {"czar",
                                         {{"name", czarConfig->name()},
