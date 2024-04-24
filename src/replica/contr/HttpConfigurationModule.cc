@@ -93,7 +93,7 @@ json HttpConfigurationModule::executeImpl(string const& subModuleName) {
         return _deleteDatabase();
     else if (subModuleName == "ADD-DATABASE")
         return _addDatabase();
-    else if (subModuleName == "UNPUBLISH-DATABASE")
+    else if (subModuleName == "[UN-]PUBLISH-DATABASE")
         return _unpublishDatabase();
     else if (subModuleName == "DELETE-TABLE")
         return _deleteTable();
@@ -260,14 +260,20 @@ json HttpConfigurationModule::_addDatabase() {
 
 json HttpConfigurationModule::_unpublishDatabase() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
-
     auto const database = params().at("database");
+    bool const publish = body().optional<int>("publish", 0) != 0;
     debug(__func__, "database=" + database);
+    debug(__func__, "publish=" + bool2str(publish));
+
+    // The publish parameter was introduced in API version 34.
+    checkApiVersion(__func__, publish ? 34 : 12);
+
     if (!isAdmin()) {
-        throw http::Error(__func__, "administrator's privileges are required to un-publish databases.");
+        throw http::Error(__func__, "administrator's privileges are required to (un-)publish databases.");
     }
-    DatabaseInfo const databaseInfo = controller()->serviceProvider()->config()->unPublishDatabase(database);
+    auto const config = controller()->serviceProvider()->config();
+    DatabaseInfo const databaseInfo =
+            publish ? config->publishDatabase(database) : config->unPublishDatabase(database);
     // This step is needed to get workers' Configuration in-sync with its
     // persistent state.
     bool const allWorkers = true;
