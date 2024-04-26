@@ -53,9 +53,73 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qproc.TaskMsgFactory");
 
 namespace lsst::qserv::qproc {
 
+//&&&uj
+bool TaskMsgFactory::fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& chunkQuerySpec,
+                                 std::string const& chunkResultName, QueryId queryId, int jobId,
+                                 int attemptCount, qmeta::CzarId czarId) {
+    std::string resultTable("Asdfasfd");
+    if (!chunkResultName.empty()) {
+        resultTable = chunkResultName;
+    }
+    // shared
+    //&&&taskMsg->set_session(_session);
+    taskMsg->set_db(chunkQuerySpec.db);
+    //&&&taskMsg->set_protocol(2);
+    taskMsg->set_queryid(queryId);
+    taskMsg->set_jobid(jobId);
+    taskMsg->set_attemptcount(attemptCount);
+    taskMsg->set_czarid(czarId);
+    // LOGS(_log, LOG_LVL_INFO, "&&& _makeMsg ses=" << _session << " db=" << chunkQuerySpec.db << " qId=" <<
+    // queryId << " jId=" << jobId << " att=" << attemptCount << " cz=" << czarId);
+    //  scanTables (for shared scans)
+    //  check if more than 1 db in scanInfo
+    std::string db;
+    for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+        if (db.empty()) {
+            db = sTbl.db;
+        }
+    }
+
+    for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+        lsst::qserv::proto::TaskMsg_ScanTable* msgScanTbl = taskMsg->add_scantable();
+        sTbl.copyToScanTable(msgScanTbl);
+    }
+
+    taskMsg->set_scanpriority(chunkQuerySpec.scanInfo.scanRating);
+    taskMsg->set_scaninteractive(chunkQuerySpec.scanInteractive);
+
+    // per-chunk
+    taskMsg->set_chunkid(chunkQuerySpec.chunkId);
+    // per-fragment
+    // TODO refactor to simplify
+    if (chunkQuerySpec.nextFragment.get()) {
+        ChunkQuerySpec const* sPtr = &chunkQuerySpec;
+        while (sPtr) {
+            LOGS(_log, LOG_LVL_TRACE, "nextFragment");
+            for (unsigned int t = 0; t < (sPtr->queries).size(); t++) {
+                LOGS(_log, LOG_LVL_TRACE, (sPtr->queries).at(t));
+            }
+            // Linked fragments will not have valid subChunkTables vectors,
+            // So, we reuse the root fragment's vector.
+            _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
+                         sPtr->queries);
+            sPtr = sPtr->nextFragment.get();
+        }
+    } else {
+        LOGS(_log, LOG_LVL_TRACE, "no nextFragment");
+        for (unsigned int t = 0; t < (chunkQuerySpec.queries).size(); t++) {
+            LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
+        }
+        _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
+                     chunkQuerySpec.queries);
+    }
+    return true;
+}
+
 std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& chunkQuerySpec,
                                                          std::string const& chunkResultName, QueryId queryId,
                                                          int jobId, int attemptCount, qmeta::CzarId czarId) {
+    LOGS(_log, LOG_LVL_WARN, "&&& TaskMsgFactory::_makeMsg  start");
     std::string resultTable("Asdfasfd");
     if (!chunkResultName.empty()) {
         resultTable = chunkResultName;
@@ -110,6 +174,7 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
         _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
                      chunkQuerySpec.queries);
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& TaskMsgFactory::_makeMsg  end");
     return taskMsg;
 }
 

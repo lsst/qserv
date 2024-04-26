@@ -76,12 +76,14 @@ extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace {
 
+/* &&&
 string const createAsyncResultTmpl(
         "CREATE TABLE IF NOT EXISTS %1% "
         "(jobId BIGINT, resultLocation VARCHAR(1024))"
         "ENGINE=MEMORY;"
         "INSERT INTO %1% (jobId, resultLocation) "
         "VALUES (%2%, '%3%')");
+*/
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
@@ -270,6 +272,11 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setReplicationHttpPort(port);
 
     _czarRegistry = CzarRegistry::create(_czarConfig);
+}
+
+Czar::~Czar() {
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
+    cout << "&&& Czar::~Czar()" << endl;
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
@@ -516,8 +523,15 @@ void Czar::_makeAsyncResult(string const& asyncResultTable, QueryId queryId, str
         throw exc;
     }
 
+    string const createAsyncResultTmpl(
+            "CREATE TABLE IF NOT EXISTS %1% "
+            "(jobId BIGINT, resultLocation VARCHAR(1024))"
+            "ENGINE=MEMORY;"
+            "INSERT INTO %1% (jobId, resultLocation) "
+            "VALUES (%2%, '%3%')");
+
     string query =
-            (boost::format(::createAsyncResultTmpl) % asyncResultTable % queryId % resultLocEscaped).str();
+            (boost::format(createAsyncResultTmpl) % asyncResultTable % queryId % resultLocEscaped).str();
 
     if (not sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure creating async result table", sqlErr);
@@ -537,7 +551,7 @@ void Czar::removeOldResultTables() {
     _lastRemovedTimer.start();
     _removingOldTables = true;
     // Run in a separate thread in the off chance this takes a while.
-    thread t([this]() {
+    thread thrd([this]() {
         LOGS(_log, LOG_LVL_INFO, "Removing old result database tables.");
         auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlResultConfig());
         string dbName = _czarConfig->getMySqlResultConfig().dbName;
@@ -583,8 +597,8 @@ void Czar::removeOldResultTables() {
         }
         _removingOldTables = false;
     });
-    t.detach();
-    _oldTableRemovalThread = std::move(t);
+    thrd.detach();
+    _oldTableRemovalThread = std::move(thrd);
 }
 
 SubmitResult Czar::getQueryInfo(QueryId queryId) const {
