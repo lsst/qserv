@@ -264,8 +264,8 @@ public:
     void addQueryMessages(QueryId queryId, std::shared_ptr<qdisp::MessageStore> const& msgStore) override;
 
     /// @see QMeta::getChunkMap
-    QMeta::ChunkMap getChunkMap(std::chrono::time_point<std::chrono::system_clock> const& prevUpdateTime =
-                                        std::chrono::time_point<std::chrono::system_clock>()) override;
+    QMetaChunkMap getChunkMap(std::chrono::time_point<std::chrono::system_clock> const& prevUpdateTime =
+                                      std::chrono::time_point<std::chrono::system_clock>()) override;
 
 protected:
     ///  Check that all necessary tables exist

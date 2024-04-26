@@ -14,7 +14,23 @@ target_link_libraries(qserv_meta PUBLIC
     qserv_common
     log
     mysqlclient_r
+    
+#    ccontrol
+#    czar
+#    parser
+#    rproc
+#    qana
+#    qproc
+#    query  
 )
+# &&& see if there's a way to remove some target_link_libraries
+# &&&   ccontrol
+# &&&    czar
+# &&&    parser
+# &&&    rproc
+# &&&    qana
+# &&&    qproc
+# &&&    query  
 
 install(TARGETS qserv_meta)
 install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/qmeta/schema/)

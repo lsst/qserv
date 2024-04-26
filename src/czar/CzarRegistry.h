@@ -67,6 +67,8 @@ public:
     ~CzarRegistry();
 
     struct WorkerContactInfo {
+        using Ptr = std::shared_ptr<WorkerContactInfo>;
+
         WorkerContactInfo(std::string const& wId_, std::string const& wHost_,
                           std::string const& wManagementHost_, int wPort_, TIMEPOINT updateTime_)
                 : wId(wId_),
@@ -87,8 +89,15 @@ public:
         }
     };
 
-    using WorkerContactMap = std::unordered_map<std::string, WorkerContactInfo>;
+    using WorkerContactMap = std::unordered_map<std::string, WorkerContactInfo::Ptr>;
     using WorkerContactMapPtr = std::shared_ptr<WorkerContactMap>;
+
+    /// Return _contactMap, the object that the returned pointer points to is
+    /// constant and no attempts should be made to change it.
+    WorkerContactMapPtr getWorkerContactMap() {
+        std::lock_guard<std::mutex> lockG(_mapMtx);
+        return _contactMap;
+    }
 
 private:
     CzarRegistry() = delete;
