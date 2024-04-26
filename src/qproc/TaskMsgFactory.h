@@ -58,6 +58,12 @@ public:
     virtual void serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName, QueryId queryId,
                               int jobId, int attemptCount, qmeta::CzarId czarId, std::ostream& os);
 
+    //&&&uj
+    /// Use the provided information to fill in taskMsg.
+    /// @return true if successful.
+    bool fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& s, std::string const& chunkResultName,
+                     QueryId queryId, int jobId, int attemptCount, qmeta::CzarId czarId);
+
 private:
     std::shared_ptr<proto::TaskMsg> _makeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName,
                                              QueryId queryId, int jobId, int attemptCount,
