@@ -42,7 +42,7 @@ class ResponseSummary;
 
 namespace lsst::qserv::qdisp {
 
-class JobQuery;
+class JobBase;
 
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
@@ -57,7 +57,8 @@ public:
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
     ResponseHandler() {}
-    void setJobQuery(std::shared_ptr<JobQuery> const& jobQuery) { _jobQuery = jobQuery; }
+    //&&&void setJobQuery(std::shared_ptr<JobQuery> const& jobQuery) { _jobQuery = jobQuery; }
+    void setJobQuery(std::shared_ptr<JobBase> const& jobBase) { _jobBase = jobBase; }
     virtual ~ResponseHandler() {}
 
     /// Process a request for pulling and merging a job result into the result table
@@ -85,7 +86,8 @@ public:
     std::weak_ptr<JobQuery> getJobQuery() { return _jobQuery; }
 
 private:
-    std::weak_ptr<JobQuery> _jobQuery;
+    //&&& std::weak_ptr<JobQuery> _jobQuery;
+    std::weak_ptr<JobBase> _jobBase;
 };
 
 inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) { return r.print(os); }

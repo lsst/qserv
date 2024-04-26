@@ -842,10 +842,10 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     }
 }
 
-QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> const& prevUpdateTime) {
+QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> const& prevUpdateTime) {
     lock_guard<mutex> lock(_dbMutex);
 
-    QMeta::ChunkMap chunkMap;
+    QMetaChunkMap chunkMap;
 
     auto trans = QMetaTransaction::create(*_conn);
 
@@ -856,7 +856,7 @@ QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock>
             (prevUpdateTime == chrono::time_point<chrono::system_clock>()) || (prevUpdateTime < updateTime);
     if (!force) {
         trans->commit();
-        return QMeta::ChunkMap();
+        return QMetaChunkMap();
     }
 
     // Read the map itself
@@ -882,7 +882,7 @@ QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock>
             string const& table = row[2];
             unsigned int chunk = lsst::qserv::stoui(row[3]);
             size_t const size = stoull(row[4]);
-            chunkMap.workers[worker][database][table].push_back(ChunkMap::ChunkInfo{chunk, size});
+            chunkMap.workers[worker][database][table].push_back(QMetaChunkMap::ChunkInfo{chunk, size});
         }
         chunkMap.updateTime = updateTime;
     } catch (exception const& ex) {

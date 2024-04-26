@@ -26,16 +26,22 @@
 // System headers
 #include <chrono>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <mutex>
-#include <set>
+//&&&#include <set>
 #include <string>
 #include <sstream>
 
 // Qserv headers
 #include "global/clock_defs.h"
-#include "qmeta/QMeta.h"
+// #include "qmeta/QMeta.h" &&&
 #include "util/Issue.h"
+
+namespace lsst::qserv::qmeta {
+class QMeta;
+struct QMetaChunkMap;
+}  // namespace lsst::qserv::qmeta
 
 namespace lsst::qserv::czar {
 
@@ -84,6 +90,8 @@ public:
 
     static Ptr create(std::shared_ptr<qmeta::QMeta> const& qmeta) { return Ptr(new CzarChunkMap(qmeta)); }
 
+    ~CzarChunkMap();
+
     class WorkerChunksData;
 
     /// Essentially a structure for storing data about which tables and workers are associated with this
@@ -102,6 +110,9 @@ public:
         /// Add `worker` to the `_workerHasThisMap` to indicate that worker has a copy
         /// of this chunk.
         void addToWorkerHasThis(std::shared_ptr<WorkerChunksData> const& worker);
+
+        /// Return a copy of _workerHasThisMap.
+        std::map<std::string, std::weak_ptr<WorkerChunksData>> getWorkerHasThisMapCopy() const;
 
         std::string dump() const;
 
@@ -187,7 +198,7 @@ public:
 
     /// Make new ChunkMap and WorkerChunkMap from the data in `qChunkMap`.
     static std::pair<std::shared_ptr<CzarChunkMap::ChunkMap>, std::shared_ptr<CzarChunkMap::WorkerChunkMap>>
-    makeNewMaps(qmeta::QMeta::ChunkMap const& qChunkMap);
+    makeNewMaps(qmeta::QMetaChunkMap const& qChunkMap);
 
     /// Verify that all chunks belong to at least one worker and that all chunks are represented in shared
     /// scans.

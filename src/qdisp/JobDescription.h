@@ -41,11 +41,13 @@
 
 namespace lsst::qserv {
 
-namespace qproc {
+namespace proto {
+class TaskMsg;
+}
 
+namespace qproc {
 class ChunkQuerySpec;
 class TaskMsgFactory;
-
 }  // namespace qproc
 
 namespace qdisp {
@@ -84,6 +86,8 @@ public:
     /// @returns true when _attemptCount is incremented correctly and the payload is built.
     bool incrAttemptCount();
     bool verifyPayload() const;  ///< @return true if the payload is acceptable to protobufs.
+
+    bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
 
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
