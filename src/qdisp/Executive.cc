@@ -66,6 +66,7 @@
 #include "qdisp/MessageStore.h"
 #include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
+#include "qdisp/UberJob.h"
 #include "qdisp/XrdSsiMocks.h"
 #include "query/QueryContext.h"
 #include "qproc/QuerySession.h"
@@ -174,6 +175,7 @@ void Executive::setQueryId(QueryId id) {
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
 JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::add start");
     JobQuery::Ptr jobQuery;
     {
         // Create the JobQuery and put it in the map.
@@ -210,26 +212,50 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     }
 
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
-
+    /* &&&uj
+    //&&&uj code just returns the jobQuery at this point, it doesn't call runJob().
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
     bool started = jobQuery->runJob();
     if (!started && isLimitRowComplete()) {
         markCompleted(jobQuery->getIdInt(), false);
     }
+    */
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::add end");
     return jobQuery;
 }
 
+void Executive::runJobQuery(JobQuery::Ptr const& jobQuery) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::runJobQuery start");
+    bool started = jobQuery->runJob();
+    if (!started && isLimitRowComplete()) {
+        markCompleted(jobQuery->getIdInt(), false);
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::runJobQuery end");
+}
+
 void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueJobStart start");
     _jobStartCmdList.push_back(cmd);
     if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 0);
     } else {
         _qdispPool->queCmd(cmd, 1);
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueJobStart end");
+}
+
+void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob start");
+    bool started = uberJob->runUberJob();
+    if (!started && isLimitRowComplete()) {
+        uberJob->callMarkCompleteFunc(false);
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob end");
 }
 
 void Executive::waitForAllJobsToStart() {
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart");
+    LOGS(_log, LOG_LVL_WARN, "&&& waitForAllJobsToStart  start");
     // Wait for each command to start.
     while (true) {
         bool empty = _jobStartCmdList.empty();
@@ -239,13 +265,16 @@ void Executive::waitForAllJobsToStart() {
         cmd->waitComplete();
     }
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart done");
+    LOGS(_log, LOG_LVL_WARN, "&&& waitForAllJobsToStart  end");
 }
 
 // If the executive has not been cancelled, then we simply start the query.
 // @return true if query was actually started (i.e. we were not cancelled)
 //
-bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
+bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {  // &&&
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::startQuery start");
     lock_guard<recursive_mutex> lock(_cancelled.getMutex());
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::startQuery a");
 
     // If we have been cancelled, then return false.
     //
@@ -268,7 +297,62 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
     // Start the query. The rest is magically done in the background.
     //
     getXrdSsiService()->ProcessRequest(*(qr.get()), jobResource);
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::startQuery end");
     return true;
+}
+
+Executive::ChunkIdJobMapType& Executive::getChunkJobMapAndInvalidate() {  // &&&
+    lock_guard<mutex> lck(_chunkToJobMapMtx);
+    if (_chunkToJobMapInvalid.exchange(true)) {
+        throw util::Bug(ERR_LOC, "getChunkJobMapInvalidate called when map already invalid");
+    }
+    return _chunkToJobMap;
+}
+
+void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {  // &&&
+    lock_guard<mutex> lck(_uberJobsMtx);
+    for (auto const& uJob : uJobsToAdd) {
+        _uberJobs.push_back(uJob);
+    }
+}
+
+bool Executive::startUberJob(UberJob::Ptr const& uJob) {  // &&&
+
+    lock_guard<recursive_mutex> lock(_cancelled.getMutex());
+
+    // If this has been cancelled, then return false.
+    //
+    if (_cancelled) return false;
+
+    // Construct a temporary resource object to pass to ProcessRequest().
+    // Affinity should be meaningless here as there should only be one instance of each worker.
+    XrdSsiResource::Affinity affinity = XrdSsiResource::Affinity::Default;
+    LOGS(_log, LOG_LVL_INFO, "&&& startUberJob uJob->workerResource=" << uJob->getWorkerResource());
+    XrdSsiResource uJobResource(uJob->getWorkerResource(), "", uJob->getIdStr(), "", 0, affinity);
+
+    // Now construct the actual query request and tie it to the jobQuery. The
+    // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
+    // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
+    //
+    QueryRequest::Ptr qr = QueryRequest::create(uJob);
+    uJob->setQueryRequest(qr);
+
+    // Start the query. The rest is magically done in the background.
+    //
+    getXrdSsiService()->ProcessRequest(*(qr.get()), uJobResource);
+    return true;
+}
+
+JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {  //&&&
+    assert(jqRaw != nullptr);
+    int jobId = jqRaw->getIdInt();
+    lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+    auto iter = _jobMap.find(jobId);
+    if (iter == _jobMap.end()) {
+        throw util::Bug(ERR_LOC, "Could not find the entry for jobId=" + to_string(jobId));
+    }
+    JobQuery::Ptr jq = iter->second;
+    return jq;
 }
 
 /// Add a JobQuery to this Executive.

@@ -49,8 +49,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarRegistry");
 namespace lsst::qserv::czar {
 
 CzarRegistry::CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig) : _czarConfig(czarConfig) {
-    // Begin periodically updating worker's status in the Replication System's registry
-    // in the detached thread. This will continue before the application gets terminated.
+    cout << "&&& CzarRegistry::CzarRegistry a" << endl;
+    // Begin periodically updating worker's status in the Replication System's registry.
+    // This will continue until the application gets terminated.
     thread registryUpdateThread(&CzarRegistry::_registryUpdateLoop, this);
     _czarHeartbeatThrd = move(registryUpdateThread);
 
@@ -59,16 +60,22 @@ CzarRegistry::CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfi
 }
 
 CzarRegistry::~CzarRegistry() {
+    cout << "&&& CzarRegistry::~CzarRegistry a" << endl;
     _loop = false;
     if (_czarHeartbeatThrd.joinable()) {
+        cout << "&&& CzarRegistry::~CzarRegistry a1" << endl;
         _czarHeartbeatThrd.join();
     }
+    cout << "&&& CzarRegistry::~CzarRegistry b" << endl;
     if (_czarWorkerInfoThrd.joinable()) {
+        cout << "&&& CzarRegistry::~CzarRegistry b1" << endl;
         _czarWorkerInfoThrd.join();
     }
+    cout << "&&& CzarRegistry::~CzarRegistry end" << endl;
 }
 
 void CzarRegistry::_registryUpdateLoop() {
+    cout << "&&& CzarRegistry::_registryUpdateLoop a" << endl;
     auto const method = http::Method::POST;
     string const url = "http://" + _czarConfig->replicationRegistryHost() + ":" +
                        to_string(_czarConfig->replicationRegistryPort()) + "/czar";
@@ -99,9 +106,11 @@ void CzarRegistry::_registryUpdateLoop() {
         }
         this_thread::sleep_for(chrono::seconds(max(1U, _czarConfig->replicationRegistryHearbeatIvalSec())));
     }
+    cout << "&&& CzarRegistry::_registryUpdateLoop end" << endl;
 }
 
 void CzarRegistry::_registryWorkerInfoLoop() {
+    cout << "&&& CzarRegistry::_registryWorkerInfoLoop a" << endl;
     // Get worker information from the registry
     vector<string> const headers;
     auto const method = http::Method::GET;
@@ -135,6 +144,7 @@ void CzarRegistry::_registryWorkerInfoLoop() {
         }
         this_thread::sleep_for(chrono::seconds(15));
     }
+    cout << "&&& CzarRegistry::_registryWorkerInfoLoop end" << endl;
 }
 
 CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {
@@ -149,13 +159,13 @@ CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
         int wPort = jsQserv.at("management-port").get<int>();
         uint64_t updateTimeInt = jsQserv.at("update-time-ms").get<uint64_t>();
         TIMEPOINT updateTime = TIMEPOINT(chrono::milliseconds(updateTimeInt));
-        WorkerContactInfo wInfo(key, wHost, wManagementHost, wPort, updateTime);
+        auto wInfo = make_shared<WorkerContactInfo>(key, wHost, wManagementHost, wPort, updateTime);
         LOGS(_log, LOG_LVL_DEBUG,
              __func__ << " wHost=" << wHost << " wPort=" << wPort << " updateTime=" << updateTimeInt);
         auto iter = wMap->find(key);
         if (iter != wMap->end()) {
             LOGS(_log, LOG_LVL_ERROR, __func__ << " duplicate key " << key << " in " << response);
-            if (!wInfo.sameContactInfo(iter->second)) {
+            if (!wInfo->sameContactInfo(*(iter->second))) {
                 LOGS(_log, LOG_LVL_ERROR, __func__ << " incongruent key " << key << " in " << response);
                 return nullptr;
             }
@@ -180,7 +190,7 @@ bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
         if (iter == other.end()) {
             return false;
         } else {
-            if (!(iter->second.sameContactInfo(wInfo))) {
+            if (!(iter->second->sameContactInfo(*wInfo))) {
                 return false;
             }
         }

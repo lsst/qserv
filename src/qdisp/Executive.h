@@ -30,7 +30,6 @@
 #include <atomic>
 #include <mutex>
 #include <sstream>
-#include <unordered_map>
 #include <vector>
 
 // Third-party headers
@@ -51,6 +50,9 @@
 #include "util/threadSafe.h"
 #include "util/ThreadPool.h"
 
+//&&& replace with better enable/disable feature.
+#define uberJobsEnabled 0  //&&&
+
 // Forward declarations
 class XrdSsiService;
 
@@ -67,6 +69,7 @@ class QuerySession;
 namespace qdisp {
 class JobQuery;
 class MessageStore;
+class UberJob;  //&&&uj
 }  // namespace qdisp
 
 namespace util {
@@ -92,6 +95,8 @@ class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
+    typedef int ChunkIdType;  //&&&uj This type is probably not needed
+    typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
 
     /// Construct an Executive.
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
@@ -106,6 +111,12 @@ public:
 
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
+
+    /// &&& doc
+    void runJobQuery(std::shared_ptr<JobQuery> const& jobQuery);
+
+    // &&&uj doc
+    void runUberJob(std::shared_ptr<UberJob> const& uberJob);
 
     /// Queue a job to be sent to a worker so it can be started.
     void queueJobStart(PriorityCommand::Ptr const& cmd);
@@ -166,6 +177,13 @@ public:
     /// Store job status and execution errors for the proxy and qservMeta QMessages.
     /// @see python module lsst.qserv.czar.proxy.unlock()
     void updateProxyMessages();
+
+    /// Add UbjerJobs to this user query. &&&
+    void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);  /// &&&
+
+    ChunkIdJobMapType& getChunkJobMapAndInvalidate();                     /// &&&
+    bool startUberJob(std::shared_ptr<UberJob> const& uJob);              /// &&&
+    std::shared_ptr<JobQuery> getSharedPtrForRawJobPtr(JobQuery* jqRaw);  /// &&&
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
@@ -239,6 +257,15 @@ private:
     std::mutex _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
 
     bool _scanInteractive = false;  ///< true for interactive scans.
+
+    // Add a job to the _chunkToJobMap //&&&uj
+    void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);  //&&&uj
+    /// _chunkToJobMap is created once and then destroyed when used.
+    std::atomic<bool> _chunkToJobMapInvalid{false};   ///< true indicates the map is no longer valid. //&&&uj
+    std::mutex _chunkToJobMapMtx;                     ///< protects _chunkToJobMap //&&&uj
+    ChunkIdJobMapType _chunkToJobMap;                 ///< Map of jobs ordered by chunkId  //&&&uj
+    std::vector<std::shared_ptr<UberJob>> _uberJobs;  ///< List of UberJobs //&&&uj
+    std::mutex _uberJobsMtx;                          ///< protects _uberJobs. //&&&uj
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
