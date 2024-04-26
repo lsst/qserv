@@ -35,6 +35,7 @@
 // Qserv headers
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
+#include "util/Bug.h"
 #include "qdisp/ResponseHandler.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
@@ -81,6 +82,13 @@ void JobDescription::buildPayload() {
     _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount,
                                   _czarId, os);
     _payloads[_attemptCount] = os.str();
+}
+
+bool JobDescription::fillTaskMsg(proto::TaskMsg* tMsg) {  //&&&uj
+    //&&&uj FIXNOW return _taskMsgFactory->fillTaskMsg(tMsg, *_chunkQuerySpec, _chunkResultName, _queryId,
+    //_jobId, _attemptCount, _czarId);
+    util::Bug(ERR_LOC, "&&& JobDescription::fillTaskMsg");
+    return false;
 }
 
 bool JobDescription::verifyPayload() const {

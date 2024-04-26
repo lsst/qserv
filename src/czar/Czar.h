@@ -77,6 +77,7 @@ public:
 
     Czar(Czar const&) = delete;
     Czar& operator=(Czar const&) = delete;
+    ~Czar();
 
     /**
      * Submit query for execution.
