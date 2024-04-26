@@ -34,7 +34,7 @@
 
 // Qserv headers
 #include "global/clock_defs.h"
-#include "qmeta/QMeta.h"
+// #include "qmeta/QMeta.h" &&&
 #include "util/Issue.h"
 
 namespace lsst::qserv::qmeta {
@@ -93,6 +93,8 @@ public:
     CzarChunkMap& operator=(CzarChunkMap const&) = delete;
 
     static Ptr create() { return Ptr(new CzarChunkMap()); }
+
+    ~CzarChunkMap();
 
     ~CzarChunkMap();
 

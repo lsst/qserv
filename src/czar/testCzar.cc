@@ -39,7 +39,6 @@
 // Qserv headers
 #include "qmeta/QMeta.h"
 #include "czar/CzarChunkMap.h"
-#include "qmeta/QMeta.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
@@ -51,7 +50,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.testCzar");
 using namespace std;
 
 BOOST_AUTO_TEST_SUITE(Suite)
-
 
 void insertIntoQChunkMap(qmeta::QMetaChunkMap& qChunkMap, string const& workerId, string const& dbName,
                          string const& tableName, unsigned int chunkNum, size_t sz) {
@@ -91,6 +89,7 @@ qmeta::QMetaChunkMap convertJsonToChunkMap(nlohmann::json const& jsChunks) {
 
 BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     // Each chunk only occurs on one worker
+    cerr << "&&& a" << endl;
     string test1 = R"(
     {
       "ce1c1b79-e6fb-11ee-a46b-0242c0a80308":
@@ -127,6 +126,7 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
            }
     }
     )";
+    cerr << "&&& b " << test1 << endl;
 
     /// 3 workers, each containing all chunks.
     string test2 = R"(
@@ -187,6 +187,7 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
            }
     }
     )";
+    cerr << "&&& c" << endl;
 
     auto dbToFamily = make_shared<czar::CzarFamilyMap::DbNameToFamilyNameType>();
     czar::CzarFamilyMap czFamMap(dbToFamily);
@@ -197,6 +198,7 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     czar::CzarFamilyMap::verify(familyMap);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarFamilyMap test 1 passed");
 
+    cerr << "&&& g" << endl;
     auto jsTest2 = nlohmann::json::parse(test2);
     qmeta::QMetaChunkMap qChunkMap2 = convertJsonToChunkMap(jsTest2);
     auto familyMap2 = czFamMap.makeNewMaps(qChunkMap2, true);

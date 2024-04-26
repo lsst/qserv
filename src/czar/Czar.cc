@@ -74,7 +74,6 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
 }  // anonymous namespace
 
@@ -256,6 +255,11 @@ Czar::~Czar() {
     _monitorLoop = false;
     _monitorThrd.join();
     LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
+}
+
+Czar::~Czar() {
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
+    cout << "&&& Czar::~Czar()" << endl;
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {

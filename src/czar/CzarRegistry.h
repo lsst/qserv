@@ -89,6 +89,13 @@ public:
     /// `deleteWorkerResults` is true.
     void endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults);
 
+    /// Return _contactMap, the object that the returned pointer points to is
+    /// constant and no attempts should be made to change it.
+    WorkerContactMapPtr getWorkerContactMap() {
+        std::lock_guard<std::mutex> lockG(_mapMtx);
+        return _contactMap;
+    }
+
 private:
     CzarRegistry() = delete;
     CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,

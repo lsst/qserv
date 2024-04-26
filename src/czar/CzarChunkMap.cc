@@ -25,6 +25,7 @@
 
 // System headers
 #include <sstream>
+#include <iostream>  // &&& del
 
 // LSST headers
 #include "lsst/log/Log.h"

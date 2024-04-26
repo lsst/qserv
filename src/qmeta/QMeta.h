@@ -102,6 +102,7 @@ public:
      */
     typedef std::vector<std::pair<std::string, std::string> > TableNames;
 
+#if 0   //&&&
     /**
      * The structure ChunkMap encapsulates a disposition of chunks at Qserv workers
      * along with a time when the map was updated.
@@ -119,7 +120,7 @@ public:
      *   }
      * @endcode
      */
-    struct ChunkMap {
+    struct QMetaChunkMap {
         /// @return 'true' if the map is empty (or constructed using the default constructor)
         bool empty() const {
             return workers.empty() || (std::chrono::time_point<std::chrono::system_clock>() == updateTime);
@@ -143,6 +144,7 @@ public:
         /// The last time the map was updated (since UNIX Epoch).
         TIMEPOINT updateTime;
     };
+#endif  //&&&
 
     /**
      *  Create QMeta instance from configuration dictionary.
@@ -401,8 +403,9 @@ public:
      * @throws EmptyTableError if the corresponding metadata table doesn't have any record
      * @throws SqlError for any other error related to MySQL
      */
-    virtual ChunkMap getChunkMap(std::chrono::time_point<std::chrono::system_clock> const& prevUpdateTime =
-                                         std::chrono::time_point<std::chrono::system_clock>()) = 0;
+    virtual QMetaChunkMap getChunkMap(
+            std::chrono::time_point<std::chrono::system_clock> const& prevUpdateTime =
+                    std::chrono::time_point<std::chrono::system_clock>()) = 0;
 
 protected:
     // Default constructor
