@@ -226,6 +226,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     std::string query = aQuery;
 
     // TODO: DM-43386 need to have WorkerChunkMap info at this point
+    // &&&
 
     std::string stripped;
     bool async = false;
