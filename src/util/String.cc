@@ -25,6 +25,8 @@
 #include "util/String.h"
 
 // System headers
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <stdexcept>
 
@@ -169,6 +171,18 @@ string String::fromHex(string const& hex, string const& prefix) {
         *(outPtr++) = static_cast<char>(v);
     }
     return out;
+}
+
+string String::toLower(string const& str) {
+    string result = str;
+    transform(result.begin(), result.end(), result.begin(), ::tolower);
+    return result;
+}
+
+string String::toUpper(string const& str) {
+    string result = str;
+    transform(result.begin(), result.end(), result.begin(), ::toupper);
+    return result;
 }
 
 }  // namespace lsst::qserv::util

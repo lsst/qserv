@@ -413,4 +413,16 @@ BOOST_AUTO_TEST_CASE(FromHexTest) {
     BOOST_CHECK_EQUAL(out, outLowerExpected);
 }
 
+BOOST_AUTO_TEST_CASE(StringCaseTranslationTest) {
+    LOGS_INFO("StringCaseTranslationTest test begins");
+
+    BOOST_CHECK_EQUAL(util::String::toLower("lower case"), "lower case");
+    BOOST_CHECK_EQUAL(util::String::toLower("UPPERCASE"), "uppercase");
+    BOOST_CHECK_EQUAL(util::String::toLower("Mixed_Case"), "mixed_case");
+
+    BOOST_CHECK_EQUAL(util::String::toUpper("lower case"), "LOWER CASE");
+    BOOST_CHECK_EQUAL(util::String::toUpper("uppercase"), "UPPERCASE");
+    BOOST_CHECK_EQUAL(util::String::toUpper("Mixed_Case"), "MIXED_CASE");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

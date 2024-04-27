@@ -150,6 +150,14 @@ public:
      * @throw std::range_error For non-hexadecimal characters in the input.
      */
     static std::string fromHex(std::string const& hex, std::string const& prefix = std::string());
+
+    /// @param str A string to be translated
+    /// @return The string with all characters converted to lower case.
+    static std::string toLower(std::string const& str);
+
+    /// @param str A string to be translated
+    /// @return The string with all characters converted to upper case.
+    static std::string toUpper(std::string const& str);
 };
 
 }  // namespace lsst::qserv::util
