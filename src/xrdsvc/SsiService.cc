@@ -46,6 +46,7 @@
 
 // Qserv headers
 #include "http/Client.h"
+#include "http/MetaModule.h"
 #include "http/Method.h"
 #include "memman/MemMan.h"
 #include "memman/MemManNone.h"
@@ -117,7 +118,8 @@ void registryUpdateLoop(string const& id) {
     string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
                        to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
     vector<string> const headers = {"Content-Type: application/json"};
-    json const request = json::object({{"instance_id", workerConfig->replicationInstanceId()},
+    json const request = json::object({{"version", http::MetaModule::version},
+                                       {"instance_id", workerConfig->replicationInstanceId()},
                                        {"auth_key", workerConfig->replicationAuthKey()},
                                        {"worker",
                                         {{"name", id},

@@ -220,7 +220,7 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpConfigurationModule::process(
                                          self->controller(), self->name(), self->_processorConfig, req, resp,
-                                         "UNPUBLISH-DATABASE", http::AuthType::REQUIRED);
+                                         "[UN-]PUBLISH-DATABASE", http::AuthType::REQUIRED);
                              });
     httpServer()->addHandler("DELETE", "/replication/config/table/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {

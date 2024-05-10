@@ -25,6 +25,8 @@
 #include "util/String.h"
 
 // System headers
+#include <algorithm>
+#include <cctype>
 #include <functional>
 #include <stdexcept>
 
@@ -63,7 +65,8 @@ vector<T> getNumericVectFromStr(string const& func, vector<string> const& string
     return result;
 }
 
-char const hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+char const hexCharsUC[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+char const hexCharsLC[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 }  // namespace
 
@@ -110,20 +113,76 @@ vector<uint64_t> String::parseToVectUInt64(string const& str, string const& deli
                                              throwOnError, defaultVal);
 }
 
-string String::toHex(char const* ptr, size_t length) {
+string String::toHex(char const* ptr, size_t length, string const& prefix, bool lowerCase) {
     if (ptr == nullptr) {
         throw invalid_argument(CONTEXT_(__func__) + "sequnce pointer is nullptr");
     }
     if (length == 0) return string();
-    string out;
-    out.resize(2 * length);
-    char* outPtr = &out[0];
+    char const* hexChars = lowerCase ? hexCharsLC : hexCharsUC;
+    string out(prefix);
+    out.resize(2 * length + prefix.size());
+    char* outPtr = &out[prefix.size()];
     for (char const* inPtr = ptr; inPtr < ptr + length; ++inPtr) {
         char const& byte = *inPtr;
-        *(outPtr++) = ::hexChars[(byte & 0xF0) >> 4];
-        *(outPtr++) = ::hexChars[(byte & 0x0F) >> 0];
+        *(outPtr++) = hexChars[(byte & 0xF0) >> 4];
+        *(outPtr++) = hexChars[(byte & 0x0F) >> 0];
     }
     return out;
+}
+
+string String::fromHex(string const& hex, string const& prefix) {
+    size_t const hexSize = hex.size();
+    size_t const prefixSize = prefix.size();
+    if (hexSize == 0 || prefixSize >= hexSize) return string();
+    if ((hexSize - prefixSize) % 2 != 0) {
+        throw invalid_argument(CONTEXT_(__func__) + "odd number of significant characters in the input");
+    }
+    if (prefixSize > 0) {
+        if (hex.substr(0, prefixSize) != prefix) {
+            throw invalid_argument(CONTEXT_(__func__) + "the input doesn't start with the prefix");
+        }
+    }
+    string out;
+    out.resize((hexSize - prefixSize) / 2);
+    char* outPtr = &out[0];
+    for (char const* ptr = hex.data() + prefixSize; ptr != hex.data() + hexSize;) {
+        int v = 0;
+        char c = *(ptr++);
+        if ((c >= '0') && (c <= '9')) {
+            v = c - '0';
+        } else if ((c >= 'a') && (c <= 'f')) {
+            v = 10 + (c - 'a');
+        } else if ((c >= 'A') && (c <= 'F')) {
+            v = 10 + (c - 'A');
+        } else {
+            throw range_error(CONTEXT_(__func__) + "not a valid hexadecimal character");
+        }
+        v <<= 4;
+        c = *(ptr++);
+        if ((c >= '0') && (c <= '9')) {
+            v += (c - '0');
+        } else if ((c >= 'a') && (c <= 'f')) {
+            v += 10 + (c - 'a');
+        } else if ((c >= 'A') && (c <= 'F')) {
+            v += 10 + (c - 'A');
+        } else {
+            throw range_error(CONTEXT_(__func__) + "not a valid hexadecimal character");
+        }
+        *(outPtr++) = static_cast<char>(v);
+    }
+    return out;
+}
+
+string String::toLower(string const& str) {
+    string result = str;
+    transform(result.begin(), result.end(), result.begin(), ::tolower);
+    return result;
+}
+
+string String::toUpper(string const& str) {
+    string result = str;
+    transform(result.begin(), result.end(), result.begin(), ::toupper);
+    return result;
 }
 
 }  // namespace lsst::qserv::util

@@ -2,6 +2,7 @@ add_library(czar OBJECT)
 
 target_sources(czar PRIVATE
     Czar.cc
+    HttpCzarIngestModule.cc
     HttpCzarSvc.cc
     HttpCzarQueryModule.cc
     HttpModule.cc

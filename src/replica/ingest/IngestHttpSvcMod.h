@@ -40,7 +40,7 @@ namespace lsst::qserv::replica {
 
 /**
  * Class IngestHttpSvcMod processes chunk/table contribution requests made over HTTP.
- * The class is used by the HTTP server build into the worker Ingest service.
+ * The class is used by the HTTP server built into the worker Ingest service.
  */
 class IngestHttpSvcMod : public http::ModuleBase {
 public:

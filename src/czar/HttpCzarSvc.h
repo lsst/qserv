@@ -42,7 +42,7 @@ class Foreman;
 namespace lsst::qserv::czar {
 
 /**
- * Class HttpCzarSvc is the HTTP server for processing user query requests.
+ * Class HttpCzarSvc is the HTTP server for processing user requests.
  *
  * The server creates and manages its own collection of BOOST ASIO service threads.
  * The number of threads is specified via the corresponding parameter of the class's

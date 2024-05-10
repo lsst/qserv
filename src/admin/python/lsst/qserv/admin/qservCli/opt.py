@@ -315,7 +315,8 @@ env_user_build_image = FlagEnvVal(
 env_qserv_build_root = FlagEnvVal("--qserv-build-root", "QSERV_BUILD_ROOT", "/home/{user}/code/qserv")
 env_project = FlagEnvVal("--project", "QSERV_PROJECT", getpass.getuser())
 env_outdir = FlagEnvVal("--outdir", "OUTDIR", "/tmp")
-env_dashboard_port = FlagEnvVal("--dashboard-port", "QSERV_DASHBOARD_PORT", None)
+env_dashboard_port = FlagEnvVal("--dashboard-port", "QSERV_DASHBOARD_PORT", "25081")
+env_http_frontend_port = FlagEnvVal("--http-frontend-port", "QSERV_HTTP_FRONTEND_PORT", "4048")
 env_dh_user = EnvVal("QSERV_DH_USER", "CI only; the dockerhub user for pushing and pulling images")
 env_dh_token = EnvVal(
     "QSERV_DH_TOKEN",
@@ -533,6 +534,7 @@ qserv_env_vals = FlagEnvVals(
         env_qserv_build_root,
         env_project,
         env_dashboard_port,
+        env_http_frontend_port,
         env_dh_user,
         env_dh_token,
         env_ltd_user,
@@ -662,6 +664,14 @@ option_dashboard_port = partial(
     env_dashboard_port.opt,
     help=env_dashboard_port.help("The host port to use for the qserv dashboard."),
     default=env_dashboard_port.val(),
+)
+
+
+option_http_frontend_port = partial(
+    click.option,
+    env_http_frontend_port.opt,
+    help=env_http_frontend_port.help("The host port to use for the qserv HTTP frontend."),
+    default=env_http_frontend_port.val(),
 )
 
 

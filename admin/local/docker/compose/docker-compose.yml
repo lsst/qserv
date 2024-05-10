@@ -416,7 +416,7 @@ services:
         expose:
             - "4048"
         ports:
-            - "0.0.0.0:4048:4048"
+            - "0.0.0.0:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
     repl_mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true

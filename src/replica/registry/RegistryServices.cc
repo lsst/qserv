@@ -60,6 +60,17 @@ void RegistryServices::removeCzar(std::string const& name) {
     _services["czars"].erase(name);
 }
 
+void RegistryServices::updateController(string const& name, json const& controllerInfo) {
+    if (!controllerInfo.is_object()) throw invalid_argument(CONTEXT_ + "not a valid JSON object.");
+    replica::Lock const lock(_mtx, CONTEXT_);
+    _services["controllers"][name] = controllerInfo;
+}
+
+void RegistryServices::removeController(string const& name) {
+    replica::Lock const lock(_mtx, CONTEXT_);
+    _services["controllers"].erase(name);
+}
+
 json RegistryServices::toJson() const {
     replica::Lock const lock(_mtx, CONTEXT_);
     return _services;

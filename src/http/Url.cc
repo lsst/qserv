@@ -36,27 +36,27 @@ namespace lsst::qserv::http {
 Url::Url(string const& url) : _url(url) { _translate(); }
 
 string const& Url::fileHost() const {
-    if (_scheme == FILE) return _fileHost;
+    if ((_scheme == DATA_JSON) || (_scheme == FILE)) return _fileHost;
     throw logic_error(_error(__func__, "not a file resource."));
 }
 
 string const& Url::filePath() const {
-    if (_scheme == FILE) return _filePath;
+    if ((_scheme == DATA_JSON) || (_scheme == FILE)) return _filePath;
     throw logic_error(_error(__func__, "not a file resource."));
 }
 
 string const& Url::host() const {
-    if (_scheme != FILE) return _host;
+    if ((_scheme != DATA_JSON) && (_scheme != FILE)) return _host;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
 
 uint16_t Url::port() const {
-    if (_scheme != FILE) return _port;
+    if ((_scheme != DATA_JSON) && (_scheme != FILE)) return _port;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
 
 string const& Url::target() const {
-    if (_scheme != FILE) return _target;
+    if ((_scheme != DATA_JSON) && (_scheme != FILE)) return _target;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
 
@@ -65,13 +65,26 @@ string Url::_error(string const& func, string const& msg) { return "Url::" + fun
 void Url::_translate() {
     if (_url.empty()) throw invalid_argument(_error(__func__, "url is empty."));
 
-    static map<string, Scheme> const schemes = {
-            {"file://", Scheme::FILE}, {"http://", Scheme::HTTP}, {"https://", Scheme::HTTPS}};
+    static map<string, Scheme> const schemes = {{"data-json://", Scheme::DATA_JSON},
+                                                {"file://", Scheme::FILE},
+                                                {"http://", Scheme::HTTP},
+                                                {"https://", Scheme::HTTPS}};
     for (auto&& itr : schemes) {
         string const& prefix = itr.first;
         Scheme const scheme = itr.second;
         if ((_url.length() > prefix.length()) && (_url.substr(0, prefix.length()) == prefix)) {
-            if (Scheme::FILE == scheme) {
+            if (Scheme::DATA_JSON == scheme) {
+                // This scheme assumes the following format: "data-json://<host>/"
+                string const hostFilePath = _url.substr(prefix.length());
+                string::size_type const pos = hostFilePath.find_first_of('/');
+                if (pos != string::npos) {
+                    if ((pos != 0) and (hostFilePath.length() == pos + 1)) {
+                        _scheme = scheme;
+                        _fileHost = hostFilePath.substr(0, pos);
+                        return;
+                    }
+                }
+            } else if (Scheme::FILE == scheme) {
                 // Note that the file path should be always absolute in the URL. It's impossible to
                 // pass a relative location of a file in this scheme. The file path is required to
                 // have at least one character besides the root folder.
@@ -123,7 +136,6 @@ void Url::_translate() {
             }
         }
     }
-
     throw invalid_argument(_error(__func__, "invalid url '" + _url + "'"));
 }
 

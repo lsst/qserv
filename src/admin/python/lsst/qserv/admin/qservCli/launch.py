@@ -33,6 +33,7 @@ from typing import Dict, List, Optional
 
 from .opt import (
     env_dashboard_port,
+    env_http_frontend_port,
     env_mariadb_image,
     env_qserv_image,
     env_dh_user,
@@ -1462,6 +1463,7 @@ def up(
     qserv_image: str,
     mariadb_image: str,
     dashboard_port: Optional[int],
+    http_frontend_port: Optional[int],
 ) -> None:
     """Send docker-compose up and down commands.
 
@@ -1479,6 +1481,8 @@ def up(
         The name of the mariadb image to use.
     dashboard_port : `int` or `None`
         The host port to use for the qserv dashboard.
+    http_frontend_port : `int` or `None`
+        The host port to use for the qserv HTTP frontend.
     """
     args = ["docker-compose", "-f", yaml_file]
     if project:
@@ -1490,6 +1494,8 @@ def up(
     }
     if dashboard_port:
         env_override[env_dashboard_port.env_var] = str(dashboard_port)
+    if http_frontend_port:
+        env_override[env_http_frontend_port.env_var] = str(http_frontend_port)
     if dry:
         env_str = " ".join([f"{k}={v}" for k, v in env_override.items()])
         print(f"{env_str} {' '.join(args)}")

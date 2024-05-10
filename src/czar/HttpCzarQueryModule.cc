@@ -79,21 +79,13 @@ json HttpCzarQueryModule::executeImpl(string const& subModuleName) {
     throw invalid_argument(context() + func + " unsupported sub-module");
 }
 
-HttpCzarQueryModule::BinaryEncodingMode HttpCzarQueryModule::_parseBinaryEncoding(string const& str) {
-    if (str == "hex")
-        return BinaryEncodingMode::BINARY_ENCODE_HEX;
-    else if (str == "array")
-        return BinaryEncodingMode::BINARY_ENCODE_ARRAY;
-    throw invalid_argument(context() + string(__func__) + " unsupported binary encoding '" + str + "'");
-}
-
 json HttpCzarQueryModule::_submit() {
     debug(__func__);
     checkApiVersion(__func__, 33);
 
     string const binaryEncodingStr = body().optional<string>("binary_encoding", "hex");
-    BinaryEncodingMode const binaryEncoding = _parseBinaryEncoding(binaryEncodingStr);
-    debug(__func__, "binary_encoding=" + binaryEncodingStr);
+    http::BinaryEncodingMode const binaryEncoding = http::parseBinaryEncoding(binaryEncodingStr);
+    debug(__func__, "binary_encoding=" + http::binaryEncoding2string(binaryEncoding));
 
     SubmitResult const submitResult = _getRequestParamsAndSubmit(__func__, false);
     return _waitAndExtractResult(submitResult, binaryEncoding);
@@ -148,8 +140,8 @@ json HttpCzarQueryModule::_result() {
     debug(__func__);
     checkApiVersion(__func__, 33);
     string const binaryEncodingStr = query().optionalString("binary_encoding", "hex");
-    BinaryEncodingMode const binaryEncoding = _parseBinaryEncoding(binaryEncodingStr);
-    debug(__func__, "binary_encoding=" + binaryEncodingStr);
+    http::BinaryEncodingMode const binaryEncoding = http::parseBinaryEncoding(binaryEncodingStr);
+    debug(__func__, "binary_encoding=" + http::binaryEncoding2string(binaryEncoding));
     return _waitAndExtractResult(_getQueryInfo(), binaryEncoding);
 }
 
@@ -179,7 +171,7 @@ SubmitResult HttpCzarQueryModule::_getQueryInfo() const {
 }
 
 json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult,
-                                                BinaryEncodingMode binaryEncoding) const {
+                                                http::BinaryEncodingMode binaryEncoding) const {
     // Block the current thread before the query will finish or fail.
     string const messageSelectQuery =
             "SELECT chunkId, code, message, severity+0, timeStamp FROM " + submitResult.messageTable;
@@ -289,7 +281,7 @@ json HttpCzarQueryModule::_schemaToJson(sql::Schema const& schema) const {
 }
 
 json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results, json const& schemaJson,
-                                      BinaryEncodingMode binaryEncoding) const {
+                                      http::BinaryEncodingMode binaryEncoding) const {
     // Extract the column binary attributes into the vector. Checkimg column type
     // status in the vector should work significantly faster comparing with JSON.
     size_t const numColumns = schemaJson.size();
@@ -307,10 +299,10 @@ json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results, json const& sche
             } else {
                 if (isBinary[i]) {
                     switch (binaryEncoding) {
-                        case BinaryEncodingMode::BINARY_ENCODE_HEX:
+                        case http::BinaryEncodingMode::HEX:
                             rowJson.push_back(util::String::toHex(row[i].first, row[i].second));
                             break;
-                        case BinaryEncodingMode::BINARY_ENCODE_ARRAY:
+                        case http::BinaryEncodingMode::ARRAY:
                             // Notes on the std::u8string type and constructor:
                             // 1. This string type is required for encoding binary data which is only possible
                             //    with the 8-bit encoding and not possible with the 7-bit ASCII

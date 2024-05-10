@@ -56,6 +56,7 @@ from .opt import (
     option_cmake,
     option_compose_file,
     option_dashboard_port,
+    option_http_frontend_port,
     option_debuggable,
     env_dh_user,
     env_dh_token,
@@ -744,6 +745,7 @@ def update_schema(
 @option_compose_file()
 @option_project()
 @option_dashboard_port()
+@option_http_frontend_port()
 @option_dry()
 def up(
     yaml_file: str,
@@ -752,6 +754,7 @@ def up(
     qserv_image: str,
     mariadb_image: str,
     dashboard_port: int,
+    http_frontend_port: int,
 ) -> None:
     """Launch a docker compose cluster."""
     launch.up(
@@ -761,6 +764,7 @@ def up(
         qserv_image=qserv_image,
         mariadb_image=mariadb_image,
         dashboard_port=dashboard_port,
+        http_frontend_port=http_frontend_port,
     )
 
 

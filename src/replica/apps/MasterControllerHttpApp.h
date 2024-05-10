@@ -69,7 +69,7 @@ private:
     MasterControllerHttpApp(int argc, char* argv[]);
 
     /// @return the name of the application for the purpose of logging
-    std::string _name() const { return "MASTER CONTROLLER"; };
+    std::string _controllerName4log() const { return "CONTROLLER[" + _name + "]"; }
 
     /**
      * Evict the specified worker from the cluster.
@@ -119,7 +119,20 @@ private:
      */
     void _assertIsStarted(std::string const& func) const;
 
+    /**
+     * This function will keep periodically updating Controller's info in the Replication
+     * System's Registry.
+     * @note The thread will terminate the process if the registraton request to the Registry
+     * was explicitly denied by the service. This means the application may be misconfigured.
+     * Transient communication errors when attempting to connect or send requests to
+     * the Registry will be posted into the log stream and ignored.
+     */
+    void _registryUpdateLoop();
+
     // Command line parameters
+
+    /// The unique name of the controller as it's seen in the service discovery Registry.
+    std::string _name = "master";
 
     unsigned int _healthProbeIntervalSec;
     unsigned int _replicationIntervalSec;

@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
+#include "czar/HttpCzarIngestModule.h"
 #include "czar/HttpCzarQueryModule.h"
 #include "http/MetaModule.h"
 #include "qhttp/Server.h"
@@ -41,7 +42,7 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.HttpCzarSvc");
 
-string const serviceName = "CZAR-QUERY-FRONTEND ";
+string const serviceName = "CZAR-FRONTEND ";
 
 }  // namespace
 
@@ -98,6 +99,22 @@ uint16_t HttpCzarSvc::start() {
             {{"GET", "/query-async/result/:qid",
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
                   HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/ingest/data",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "INGEST-DATA");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"DELETE", "/ingest/database/:database",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp,
+                                                "DELETE-DATABASE");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"DELETE", "/ingest/table/:database/:table",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "DELETE-TABLE");
               }}});
     _httpServerPtr->start();
 
