@@ -30,10 +30,18 @@
 #include <functional>
 #include <stdexcept>
 
+// Third party headers
+#include <boost/algorithm/string.hpp>
+#include <boost/archive/iterators/transform_width.hpp>
+#include <boost/archive/iterators/base64_from_binary.hpp>
+#include <boost/archive/iterators/binary_from_base64.hpp>
+
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace boost::algorithm;
+using namespace boost::archive::iterators;
 
 #define CONTEXT_(func) ("String::" + string(func) + " ")
 
@@ -183,6 +191,44 @@ string String::toUpper(string const& str) {
     string result = str;
     transform(result.begin(), result.end(), result.begin(), ::toupper);
     return result;
+}
+
+string String::toBase64(char const* ptr, size_t length) {
+    if (ptr == nullptr) {
+        throw invalid_argument(CONTEXT_(__func__) + "sequnce pointer is nullptr");
+    }
+    if (length == 0) return string();
+
+    size_t const padding = (3 - length % 3) % 3;              // calculate padding size
+    size_t const encodedLength = (length + padding) * 4 / 3;  // calculate encoded length
+
+    string encoded;
+    encoded.reserve(encodedLength);
+
+    // Append base64 characters to result string.
+    typedef base64_from_binary<transform_width<const char*, 6, 8>> base64_iterator;
+    for (base64_iterator itr(ptr), end(ptr + length); itr != end; ++itr) {
+        encoded.push_back(*itr);
+    }
+
+    // Add padding characters if necessary.
+    for (size_t i = 0; i < padding; ++i) {
+        encoded.push_back('=');
+    }
+    return encoded;
+}
+
+string String::fromBase64(string const& str) {
+    if (str.empty()) return string();
+    string decoded;
+    try {
+        typedef transform_width<binary_from_base64<string::const_iterator>, 8, 6> base64_decoder;
+        decoded = trim_right_copy_if(string(base64_decoder(str.begin()), base64_decoder(str.end())),
+                                     [](char c) { return c == '\0'; });
+    } catch (exception const& ex) {
+        throw range_error(CONTEXT_(__func__) + "failed to decode base64 string: " + ex.what());
+    }
+    return decoded;
 }
 
 }  // namespace lsst::qserv::util

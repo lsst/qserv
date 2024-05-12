@@ -158,6 +158,36 @@ public:
     /// @param str A string to be translated
     /// @return The string with all characters converted to upper case.
     static std::string toUpper(std::string const& str);
+
+    /**
+     * Encode the input sequence of bytes into the Base64 representation packaged
+     * into a string with ('=') padding as needed.
+     *
+     * For example, the method will convert a sequence of characters as shown below:
+     * @code
+     *   "0123456789" -> "MDEyMzQ1Njc4OQ=="
+     * @endcode
+     * @param ptr A pointer to the byte sequence.
+     * @param length The number of bytes to translate.
+     * @return The encoded sequence of bytes or the empty string if the length=0.
+     * @throw std::invalid_argument If the pointer is nullptr.
+     */
+    static std::string toBase64(char const* ptr, std::size_t length);
+    static std::string toBase64(std::string const& str) { return toBase64(str.data(), str.size()); }
+
+    /**
+     * Decode the Base64-encoded (padded with '=' as needed) string into the binary string.
+     *
+     * For example, the method will decode the encoded Base64 string as shown below:
+     * @code
+     *   "MDEyMzQ1Njc4OQ==" -> "0123456789"
+     * @endcode
+     *
+     * @param str The string to be decoded.
+     * @return The decoded sequence of bytes or the empty string if the input is emoty.
+     * @throw std::range_error For non-base64 characters in the input.
+     */
+    static std::string fromBase64(std::string const& str);
 };
 
 }  // namespace lsst::qserv::util
