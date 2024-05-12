@@ -37,7 +37,7 @@ string const adminAuthKey;
 
 namespace lsst::qserv::http {
 
-unsigned int const MetaModule::version = 34;
+unsigned int const MetaModule::version = 35;
 
 void MetaModule::process(string const& context, nlohmann::json const& info, qhttp::Request::Ptr const& req,
                          qhttp::Response::Ptr const& resp, string const& subModuleName) {
