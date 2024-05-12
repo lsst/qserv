@@ -92,7 +92,7 @@ json IngestDataHttpSvcMod::executeImpl(string const& subModuleName) {
 
 json IngestDataHttpSvcMod::_syncProcessData() {
     debug(__func__);
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 35);
 
     auto const context_ = context() + __func__;
     auto const config = serviceProvider()->config();
@@ -258,6 +258,9 @@ json IngestDataHttpSvcMod::_syncProcessData() {
                     case http::BinaryEncodingMode::HEX:
                         row.append(_translateHexString(context_, jsonColumn, rowIdx, colIdx));
                         break;
+                    case http::BinaryEncodingMode::B64:
+                        row.append(_translateBase64String(context_, jsonColumn, rowIdx, colIdx));
+                        break;
                     case http::BinaryEncodingMode::ARRAY: {
                         u8string const str = _translateByteArray(context_, jsonColumn, rowIdx, colIdx);
                         row.append(reinterpret_cast<char const*>(str.data()), str.size());
@@ -319,6 +322,28 @@ string IngestDataHttpSvcMod::_translateHexString(string const& context_, json co
         } catch (exception const& ex) {
             _contrib.error = "failed to decode a value of the '" +
                              http::binaryEncoding2string(http::BinaryEncodingMode::HEX) +
+                             "' binary encoded column at row " + to_string(rowIdx) + " and column " +
+                             to_string(colIdx) + ", ex: " + string(ex.what());
+        }
+    } else {
+        _contrib.error = "unsupported type name '" + string(jsonColumn.type_name()) + "' found at row " +
+                         to_string(rowIdx) + " and column " + to_string(colIdx) +
+                         " where the string type was expected";
+    }
+    bool const failed = true;
+    _contrib = serviceProvider()->databaseServices()->startedTransactionContrib(_contrib, failed);
+    _failed(context_);
+    throw http::Error(context_, _contrib.error);
+}
+
+string IngestDataHttpSvcMod::_translateBase64String(string const& context_, json const& jsonColumn,
+                                                    size_t rowIdx, size_t colIdx) {
+    if (jsonColumn.is_string()) {
+        try {
+            return util::String::fromBase64(jsonColumn.get<string>());
+        } catch (exception const& ex) {
+            _contrib.error = "failed to decode a value of the '" +
+                             http::binaryEncoding2string(http::BinaryEncodingMode::B64) +
                              "' binary encoded column at row " + to_string(rowIdx) + " and column " +
                              to_string(colIdx) + ", ex: " + string(ex.what());
         }

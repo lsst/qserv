@@ -139,7 +139,7 @@ json HttpCzarIngestModule::executeImpl(string const& subModuleName) {
 
 json HttpCzarIngestModule::_ingestData() {
     debug(__func__);
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 35);
 
     auto const databaseName = body().required<string>("database");
     auto const tableName = body().required<string>("table");

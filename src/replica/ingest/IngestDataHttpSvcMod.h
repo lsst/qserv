@@ -101,6 +101,8 @@ private:
 
     std::string _translateHexString(std::string const& context_, nlohmann::json const& jsonColumn,
                                     size_t rowIdx, size_t colIdx);
+    std::string _translateBase64String(std::string const& context_, nlohmann::json const& jsonColumn,
+                                       size_t rowIdx, size_t colIdx);
     std::u8string _translateByteArray(std::string const& context_, nlohmann::json const& jsonColumn,
                                       size_t rowIdx, size_t colIdx);
     std::string _translatePrimitiveType(std::string const& context_, nlohmann::json const& jsonColumn,
