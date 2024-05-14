@@ -25,6 +25,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -79,7 +80,22 @@ std::vector<std::string> const char2hex_lower = {
         "d0", "d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "d9", "da", "db", "dc", "dd", "de", "df",
         "e0", "e1", "e2", "e3", "e4", "e5", "e6", "e7", "e8", "e9", "ea", "eb", "ec", "ed", "ee", "ef",
         "f0", "f1", "f2", "f3", "f4", "f5", "f6", "f7", "f8", "f9", "fa", "fb", "fc", "fd", "fe", "ff"};
+
+std::unordered_map<std::string, std::string> const str2base64 = {
+        {"0", "MA=="},
+        {"01", "MDE="},
+        {"012", "MDEy"},
+        {"0123", "MDEyMw=="},
+        {"01234", "MDEyMzQ="},
+        {"012345", "MDEyMzQ1"},
+        {"0123456", "MDEyMzQ1Ng=="},
+        {"01234567", "MDEyMzQ1Njc="},
+        {"012345678", "MDEyMzQ1Njc4"},
+        {"0123456789", "MDEyMzQ1Njc4OQ=="},
+        {"!@#$$\%\%^^&&**(())_)(**&&&", "IUAjJCQlJV5eJiYqKigoKSlfKSgqKiYmJg=="}};
+
 }  // namespace
+
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(SplitStringTest) {
@@ -423,6 +439,37 @@ BOOST_AUTO_TEST_CASE(StringCaseTranslationTest) {
     BOOST_CHECK_EQUAL(util::String::toUpper("lower case"), "LOWER CASE");
     BOOST_CHECK_EQUAL(util::String::toUpper("uppercase"), "UPPERCASE");
     BOOST_CHECK_EQUAL(util::String::toUpper("Mixed_Case"), "MIXED_CASE");
+}
+
+BOOST_AUTO_TEST_CASE(ToBase64Test) {
+    LOGS_INFO("ToBase64Test test begins");
+
+    // Null pointer is treated as an illegal input.
+    BOOST_CHECK_THROW(util::String::toBase64(nullptr, 0), std::invalid_argument);
+
+    // This test ensures that the empty string is always returned for the empty
+    // input regardleass.
+    char const empty[] = "";
+    BOOST_CHECK_EQUAL(util::String::toBase64(empty, 0), std::string());
+
+    for (auto const& [str, b64] : ::str2base64) {
+        BOOST_CHECK_EQUAL(util::String::toBase64(str), b64);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(FromBase64Test) {
+    LOGS_INFO("FromBase64Test test begins");
+
+    // Make sure the result is empty if no  input beyond the optional
+    // prefix is present.
+    std::string const empty;
+    BOOST_CHECK_EQUAL(util::String::fromBase64(empty), std::string());
+
+    for (auto const& [str, b64] : ::str2base64) {
+        std::string const decoded = util::String::fromBase64(b64);
+        BOOST_CHECK_EQUAL(decoded.size(), str.size());
+        BOOST_CHECK_EQUAL(decoded, str);
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

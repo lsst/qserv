@@ -32,6 +32,8 @@ namespace lsst::qserv::http {
 BinaryEncodingMode parseBinaryEncoding(string const& str) {
     if (str == "hex")
         return BinaryEncodingMode::HEX;
+    else if (str == "b64")
+        return BinaryEncodingMode::B64;
     else if (str == "array")
         return BinaryEncodingMode::ARRAY;
     throw invalid_argument("http::" + string(__func__) + " unsupported mode '" + str + "'");
@@ -41,6 +43,8 @@ string binaryEncoding2string(BinaryEncodingMode mode) {
     switch (mode) {
         case BinaryEncodingMode::HEX:
             return "hex";
+        case BinaryEncodingMode::B64:
+            return "b64";
         case BinaryEncodingMode::ARRAY:
             return "array";
     }

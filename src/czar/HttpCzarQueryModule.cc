@@ -81,7 +81,7 @@ json HttpCzarQueryModule::executeImpl(string const& subModuleName) {
 
 json HttpCzarQueryModule::_submit() {
     debug(__func__);
-    checkApiVersion(__func__, 33);
+    checkApiVersion(__func__, 35);
 
     string const binaryEncodingStr = body().optional<string>("binary_encoding", "hex");
     http::BinaryEncodingMode const binaryEncoding = http::parseBinaryEncoding(binaryEncodingStr);
@@ -138,7 +138,7 @@ json HttpCzarQueryModule::_status() {
 
 json HttpCzarQueryModule::_result() {
     debug(__func__);
-    checkApiVersion(__func__, 33);
+    checkApiVersion(__func__, 35);
     string const binaryEncodingStr = query().optionalString("binary_encoding", "hex");
     http::BinaryEncodingMode const binaryEncoding = http::parseBinaryEncoding(binaryEncodingStr);
     debug(__func__, "binary_encoding=" + http::binaryEncoding2string(binaryEncoding));
@@ -301,6 +301,9 @@ json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results, json const& sche
                     switch (binaryEncoding) {
                         case http::BinaryEncodingMode::HEX:
                             rowJson.push_back(util::String::toHex(row[i].first, row[i].second));
+                            break;
+                        case http::BinaryEncodingMode::B64:
+                            rowJson.push_back(util::String::toBase64(row[i].first, row[i].second));
                             break;
                         case http::BinaryEncodingMode::ARRAY:
                             // Notes on the std::u8string type and constructor:

@@ -29,11 +29,12 @@
 namespace lsst::qserv::http {
 
 /// The names of the allowed modes.
-static std::vector<std::string> const allowedBinaryEncodingModes = {"hex", "array"};
+static std::vector<std::string> const allowedBinaryEncodingModes = {"hex", "b64", "array"};
 
 /// Options for encoding data of the binary columns in the JSON result.
 enum class BinaryEncodingMode : int {
     HEX,   ///< The hexadecimal representation stored as a string
+    B64,   ///< Data encoded using Base64 algorithm (with padding as needed)
     ARRAY  ///< JSON array of 8-bit unsigned integers in a range of 0 .. 255.
 };
 
