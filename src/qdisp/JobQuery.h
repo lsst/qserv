@@ -46,7 +46,6 @@ class QueryRequest;
 /** This class is used to describe, monitor, and control a single query to a worker.
  *
  */
-//&&&class JobQuery : public std::enable_shared_from_this<JobQuery> {
 class JobQuery : public JobBase {
 public:
     typedef std::shared_ptr<JobQuery> Ptr;
@@ -55,7 +54,6 @@ public:
     static JobQuery::Ptr create(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
                                 JobStatus::Ptr const& jobStatus,
                                 std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid) {
-        //&&&Ptr jq = std::make_shared<JobQuery>(executive, jobDescription, jobStatus, markCompleteFunc, qid);
         Ptr jq = Ptr(new JobQuery(executive, jobDescription, jobStatus, markCompleteFunc, qid));
         jq->_setup();
         return jq;
@@ -86,7 +84,6 @@ public:
     }
 
     void callMarkCompleteFunc(bool success) override;
-    //&&& std::shared_ptr<MarkCompleteFunc> getMarkCompleteFunc() { return _markCompleteFunc; }
 
     bool cancel(bool superfluous = false);
     bool isQueryCancelled() override;
@@ -97,15 +94,11 @@ public:
 
     std::ostream& dumpOS(std::ostream& os) const override;
 
-    //&&&friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
-
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     /// Do not call this directly, use create.
     JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
              JobStatus::Ptr const& jobStatus, std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
              QueryId qid);
-
-    //&&&bool isCancelled() { return _cancelled; }
 
     /// Set to true if this job is part of an UberJob
     void setInUberJob(bool inUberJob) { _inUberJob = inUberJob; };
@@ -114,7 +107,6 @@ public:
     bool inUberJob() const { return _inUberJob; }
 
 protected:
-    //&&& void _setup() { _jobDescription->respHandler()->setJobQuery(shared_from_this()); }
     void _setup() {
         JobBase::Ptr jbPtr = shared_from_this();
         _jobDescription->respHandler()->setJobQuery(jbPtr);

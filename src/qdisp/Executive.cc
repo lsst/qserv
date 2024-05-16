@@ -203,6 +203,8 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
                 LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add");
                 return jobQuery;
             }
+
+            _addToChunkJobMap(jobQuery);  // &&&uj
         }
 
         if (_empty.exchange(false)) {
@@ -247,9 +249,11 @@ void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
 void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob start");
     bool started = uberJob->runUberJob();
+    /* &&&uj
     if (!started && isLimitRowComplete()) {
         uberJob->callMarkCompleteFunc(false);
     }
+    */
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob end");
 }
 
@@ -296,6 +300,7 @@ bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {  // &&&
 
     // Start the query. The rest is magically done in the background.
     //
+    // &&&uj sending mechanism needs to change to be like  AddReplicaQservMgtRequest::createHttpReqImp
     getXrdSsiService()->ProcessRequest(*(qr.get()), jobResource);
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::startQuery end");
     return true;
@@ -324,22 +329,8 @@ bool Executive::startUberJob(UberJob::Ptr const& uJob) {  // &&&
     //
     if (_cancelled) return false;
 
-    // Construct a temporary resource object to pass to ProcessRequest().
-    // Affinity should be meaningless here as there should only be one instance of each worker.
-    XrdSsiResource::Affinity affinity = XrdSsiResource::Affinity::Default;
-    LOGS(_log, LOG_LVL_INFO, "&&& startUberJob uJob->workerResource=" << uJob->getWorkerResource());
-    XrdSsiResource uJobResource(uJob->getWorkerResource(), "", uJob->getIdStr(), "", 0, affinity);
+    // &&&uj NEED CODE to put call to runUberJob into the priority queue.
 
-    // Now construct the actual query request and tie it to the jobQuery. The
-    // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
-    // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
-    //
-    QueryRequest::Ptr qr = QueryRequest::create(uJob);
-    uJob->setQueryRequest(qr);
-
-    // Start the query. The rest is magically done in the background.
-    //
-    getXrdSsiService()->ProcessRequest(*(qr.get()), uJobResource);
     return true;
 }
 
@@ -699,6 +690,20 @@ void Executive::_waitAllUntilEmpty() {
             }
         }
         _allJobsComplete.wait_for(lock, statePrintDelay);
+    }
+}
+
+void Executive::_addToChunkJobMap(JobQuery::Ptr const& job) {
+    int chunkId = job->getDescription()->resource().chunk();
+    auto entry = pair<ChunkIdType, JobQuery*>(chunkId, job.get());
+    // LOGS(_log, LOG_LVL_WARN, "&&& _addToChunkJobMap chunkId=" << chunkId);
+    lock_guard<mutex> lck(_chunkToJobMapMtx);
+    if (_chunkToJobMapInvalid) {
+        throw util::Bug(ERR_LOC, "&&& map insert FAILED, map is already invalid");
+    }
+    bool inserted = _chunkToJobMap.insert(entry).second;
+    if (!inserted) {
+        throw util::Bug(ERR_LOC, "&&& map insert FAILED ChunkId=" + to_string(chunkId) + " already existed");
     }
 }
 
