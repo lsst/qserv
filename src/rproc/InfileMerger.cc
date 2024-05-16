@@ -277,6 +277,117 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     return ret;
 }
 
+bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::ResponseData const& responseData) {
+    UberJobId const uJobId = uberJob->getJobId();
+    std::string queryIdJobStr = uberJob->getIdStr();
+    if (!_queryIdStrSet) {
+        _setQueryIdStr(QueryIdHelper::makeIdStr(uberJob->getQueryId()));
+    }
+
+    // Nothing to do if size is zero.
+    if (responseData.row_size() == 0) {
+        return true;
+    }
+
+    // Do nothing if the query got cancelled for any reason.
+    if (uberJob->isQueryCancelled()) {
+        return true;
+    }
+    auto executive = uberJob->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
+        return true;
+    }
+
+    std::unique_ptr<util::SemaLock> semaLock;
+    if (_dbEngine != MYISAM) {
+        // needed for parallel merging with INNODB and MEMORY
+        semaLock.reset(new util::SemaLock(*_semaMgrConn));
+    }
+
+    TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
+                                                    bool success) {
+        if (!success) return;
+        if (std::chrono::duration<double> const seconds = end - start; seconds.count() > 0) {
+            qdisp::CzarStats::get()->addXRootDSSIRecvRate(bytes / seconds.count());
+        }
+    };
+    auto tct = make_shared<TimeCountTracker<double>>(cbf);
+
+    bool ret = false;
+    // Add columns to rows in virtFile.
+    util::Timer virtFileT;
+    virtFileT.start();
+    // UberJobs only get one attempt
+    int resultJobId = makeJobIdAttempt(uberJob->getJobId(), 0);
+    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(
+            responseData, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
+    std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
+    std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
+    virtFileT.stop();
+
+    // If the job attempt is invalid, exit without adding rows.
+    // It will wait here if rows need to be deleted.
+    if (_invalidJobAttemptMgr.incrConcurrentMergeCount(resultJobId)) {
+        return true;
+    }
+
+    size_t const resultSize = responseData.transmitsize();
+    size_t tResultSize;
+    {
+        std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
+        _perJobResultSize[uJobId] += resultSize;
+        tResultSize = _totalResultSize + _perJobResultSize[uJobId];
+    }
+    if (tResultSize > _maxResultTableSizeBytes) {
+        std::ostringstream os;
+        os << queryIdJobStr << " cancelling the query, queryResult table " << _mergeTable
+           << " is too large at " << tResultSize << " bytes, max allowed size is " << _maxResultTableSizeBytes
+           << " bytes";
+        LOGS(_log, LOG_LVL_ERROR, os.str());
+        _error = util::Error(-1, os.str(), -1);
+        return false;
+    }
+
+    tct->addToValue(resultSize);
+    tct->setSuccess();
+    tct.reset();  // stop transmit recieve timer before merging happens.
+
+    qdisp::CzarStats::get()->addTotalBytesRecv(resultSize);
+    qdisp::CzarStats::get()->addTotalRowsRecv(responseData.rowcount());
+
+    // Stop here (if requested) after collecting stats on the amount of data collected
+    // from workers.
+    if (_config.debugNoMerge) {
+        return true;
+    }
+
+    auto start = std::chrono::system_clock::now();
+    switch (_dbEngine) {
+        case MYISAM:
+            ret = _applyMysqlMyIsam(infileStatement, resultSize);
+            break;
+        case INNODB:  // Fallthrough
+        case MEMORY:
+            ret = _applyMysqlInnoDb(infileStatement, resultSize);
+            break;
+        default:
+            throw std::invalid_argument("InfileMerger::_dbEngine is unknown =" + engineToStr(_dbEngine));
+    }
+    auto end = std::chrono::system_clock::now();
+    auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    LOGS(_log, LOG_LVL_DEBUG,
+         "mergeDur=" << mergeDur.count() << " sema(total=" << _semaMgrConn->getTotalCount()
+                     << " used=" << _semaMgrConn->getUsedCount() << ")");
+    if (not ret) {
+        LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
+    }
+    _invalidJobAttemptMgr.decrConcurrentMergeCount();
+
+    LOGS(_log, LOG_LVL_DEBUG, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
+
+    return ret;
+}
+
 bool InfileMerger::_applyMysqlMyIsam(std::string const& query, size_t resultSize) {
     std::unique_lock<std::mutex> lock(_mysqlMutex);
     for (int j = 0; !_mysqlConn.connected(); ++j) {

@@ -25,7 +25,6 @@
 
 // System headers
 #include <sstream>
-#include <iostream>  // &&& del
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -289,7 +288,6 @@ string CzarChunkMap::WorkerChunksData::dump() const {
     return os.str();
 }
 
-
 CzarFamilyMap::Ptr CzarFamilyMap::create(std::shared_ptr<qmeta::QMeta> const& qmeta) {
     // There's nothing the czar can do until with user queries until there's been at least
     // one successful read of the database family tables, as the czar doesn't know where to find anything.
@@ -343,6 +341,9 @@ bool CzarFamilyMap::_read() {
                              << " db=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
         return false;
     }
+
+    // &&& TODO:UJ Before makeNewMaps(), get a list of workers considered to be alive by czar::_activeWorkerMap
+    //             give that list to makeNewMaps, and don't and workers to the maps that aren't on the list.&&& !!!
 
     // Make the new maps.
     auto czConfig = cconfig::CzarConfig::instance();

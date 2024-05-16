@@ -210,7 +210,6 @@ UberJob::Ptr Executive::findUberJob(UberJobId ujId) {
 /// Add a new job to executive queue, if not already in. Not thread-safe.
 ///
 JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
-    LOGS(_log, LOG_LVL_WARN, "&&& Executive::add start");
     JobQuery::Ptr jobQuery;
     {
         // Create the JobQuery and put it in the map.
@@ -279,21 +278,36 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     } else {
         _qdispPool->queCmd(cmd, 1);
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueJobStart end");
+}
+
+void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
+    if (_scanInteractive) {
+        _qdispPool->queCmd(cmd, 3);
+    } else {
+        _qdispPool->queCmd(cmd, 4);
+    }
 }
 
 void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
-    LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob start");
-    bool started = uberJob->runUberJob();
-    if (!started && isLimitRowComplete()) {
-        uberJob->callMarkCompleteFunc(false);
+    /// TODO:UJ delete useqdisppool, only set to false if problems during testing
+    bool const useqdisppool = true;
+    if (useqdisppool) {
+        auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
+
+        auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(runUberJobFunc));
+        _jobStartCmdList.push_back(cmd);
+        if (_scanInteractive) {
+            _qdispPool->queCmd(cmd, 0);
+        } else {
+            _qdispPool->queCmd(cmd, 1);
+        }
+    } else {
+        uberJob->runUberJob();
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob end");
 }
 
 void Executive::waitForAllJobsToStart() {
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart");
-    LOGS(_log, LOG_LVL_WARN, "&&& waitForAllJobsToStart  start");
     // Wait for each command to start.
     while (true) {
         bool empty = _jobStartCmdList.empty();
@@ -303,7 +317,6 @@ void Executive::waitForAllJobsToStart() {
         cmd->waitComplete();
     }
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart done");
-    LOGS(_log, LOG_LVL_WARN, "&&& waitForAllJobsToStart  end");
 }
 
 Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
@@ -354,58 +367,60 @@ void Executive::addMultiError(int errorCode, std::string const& errorMsg, int er
     }
 }
 
-Executive::ChunkIdJobMapType& Executive::getChunkJobMapAndInvalidate() {  // &&&
+Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
     lock_guard<mutex> lck(_chunkToJobMapMtx);
-    if (_chunkToJobMapInvalid.exchange(true)) {
-        throw util::Bug(ERR_LOC, "getChunkJobMapInvalidate called when map already invalid");
+
+    ChunkIdJobMapType unassignedMap;
+    for (auto const& [key, jobPtr] : _chunkToJobMap) {
+        if (!jobPtr->isInUberJob()) {
+            unassignedMap[key] = jobPtr;
+        }
     }
-    return _chunkToJobMap;
+    return unassignedMap;
 }
 
-void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {  // &&&
-    lock_guard<mutex> lck(_uberJobsMtx);
+void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {
+    lock_guard<mutex> lck(_uberJobsMapMtx);
     for (auto const& uJob : uJobsToAdd) {
-        _uberJobs.push_back(uJob);
+        UberJobId ujId = uJob->getJobId();
+        _uberJobsMap[ujId] = uJob;
     }
 }
 
-bool Executive::startUberJob(UberJob::Ptr const& uJob) {  // &&&
-
-    lock_guard<recursive_mutex> lock(_cancelled.getMutex());
-
-    // If this has been cancelled, then return false.
-    //
-    if (_cancelled) return false;
-
-    // Construct a temporary resource object to pass to ProcessRequest().
-    // Affinity should be meaningless here as there should only be one instance of each worker.
-    XrdSsiResource::Affinity affinity = XrdSsiResource::Affinity::Default;
-    LOGS(_log, LOG_LVL_INFO, "&&& startUberJob uJob->workerResource=" << uJob->getWorkerResource());
-    XrdSsiResource uJobResource(uJob->getWorkerResource(), "", uJob->getIdStr(), "", 0, affinity);
-
-    // Now construct the actual query request and tie it to the jobQuery. The
-    // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
-    // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
-    //
-    QueryRequest::Ptr qr = QueryRequest::create(uJob);
-    uJob->setQueryRequest(qr);
-
-    // Start the query. The rest is magically done in the background.
-    //
-    getXrdSsiService()->ProcessRequest(*(qr.get()), uJobResource);
-    return true;
+string Executive::dumpUberJobCounts() const {
+    stringstream os;
+    os << "exec=" << getIdStr();
+    int totalJobs = 0;
+    {
+        lock_guard<mutex> ujmLck(_uberJobsMapMtx);
+        for (auto const& [ujKey, ujPtr] : _uberJobsMap) {
+            int jobCount = ujPtr->getJobCount();
+            totalJobs += jobCount;
+            os << "{" << ujKey << ":" << ujPtr->getIdStr() << " jobCount=" << jobCount << "}";
+        }
+    }
+    {
+        lock_guard<recursive_mutex> jmLck(_jobMapMtx);
+        os << " ujTotalJobs=" << totalJobs << " execJobs=" << _jobMap.size();
+    }
+    return os.str();
 }
 
-JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {  //&&&
-    assert(jqRaw != nullptr);
-    int jobId = jqRaw->getIdInt();
-    lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
-    auto iter = _jobMap.find(jobId);
-    if (iter == _jobMap.end()) {
-        throw util::Bug(ERR_LOC, "Could not find the entry for jobId=" + to_string(jobId));
+void Executive::assignJobsToUberJobs() {
+    auto uqs = _userQuerySelect.lock();
+    if (uqs != nullptr) {
+        uqs->buildAndSendUberJobs();
     }
-    JobQuery::Ptr jq = iter->second;
-    return jq;
+}
+
+void Executive::addMultiError(int errorCode, std::string const& errorMsg, int errorState) {
+    util::Error err(errorCode, errorMsg, errorState);
+    {
+        lock_guard<mutex> lock(_errorsMutex);
+        _multiError.push_back(err);
+        LOGS(_log, LOG_LVL_DEBUG,
+             cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
+    }
 }
 
 /// Add a JobQuery to this Executive.
@@ -618,6 +633,16 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
         uj->killUberJob();
         uj->setStatusIfOk(qmeta::JobStatus::CANCEL, getIdStr() + " killIncomplete on worker=" + workerId);
     }
+}
+
+void Executive::sendWorkerCancelMsg(bool deleteResults) {
+    // TODO:UJ need to send a message to the worker that the query is cancelled and all result files
+    //    should be delete
+    LOGS(_log, LOG_LVL_ERROR,
+         "TODO:UJ NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId "
+         "+ "
+         "queryId. "
+                 << deleteResults);
 }
 
 int Executive::getNumInflight() const {
