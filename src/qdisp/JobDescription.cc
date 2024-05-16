@@ -89,7 +89,6 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
                              << " max=" << MAX_JOB_ATTEMPTS);
         return false;
     }
-
     return true;
 }
 

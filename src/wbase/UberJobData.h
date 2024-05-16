@@ -124,6 +124,21 @@ public:
     std::string resultFilePath() const;
     std::string resultFileHttpUrl() const;
 
+    /// Add the tasks defined in the UberJob to this UberJobData object.
+    void addTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
+        _ujTasks.insert(_ujTasks.end(), tasks.begin(), tasks.end());
+    }
+
+    /// Let the czar know the result is ready.
+    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
+                           uint64_t headerCount);  // TODO:UJ remove headerCount
+
+    /// Let the Czar know there's been a problem.
+    bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+
+    std::string getIdStr() const { return _idStr; }
+    std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
+
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
                 int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,
