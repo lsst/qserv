@@ -66,3 +66,4 @@ message ResponseData {
     required uint32 rowcount = 2;
     required uint64 transmitsize = 3;
 }
+
