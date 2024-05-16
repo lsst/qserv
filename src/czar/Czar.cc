@@ -74,6 +74,7 @@ using namespace std;
 
 namespace {
 
+LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
 }  // anonymous namespace
 
@@ -113,6 +114,9 @@ void Czar::_monitor() {
 
         // Send appropriate messages to all ActiveWorkers. This will
         // check if workers have died by timeout.
+        _czarRegistry->sendActiveWorkersMessages();
+
+        // &&& Send appropriate messages to all ActiveWorkers
         _czarRegistry->sendActiveWorkersMessages();
 
         /// Create new UberJobs (if possible) for all jobs that are
@@ -176,11 +180,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
-    try {
-        _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
-    } catch (ChunkMapException const& exc) {
-        LOGS(_log, LOG_LVL_WARN, string(__func__) + " failed to create CzarChunkMap " + exc.what());
-    }
+    // This will block until there is a successful read of the database tables.
+    _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar databases before the restart.
@@ -259,7 +260,9 @@ Czar::~Czar() {
 
 Czar::~Czar() {
     LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
-    cout << "&&& Czar::~Czar()" << endl;
+    _monitorLoop = false;
+    _monitorThrd.join();
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
