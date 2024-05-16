@@ -25,13 +25,13 @@
 
 // System headers
 #include <sstream>
-#include <iostream>  // &&& del
+//&&& #include <iostream>  // &&& del
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qmeta/QMeta.h"  //&&& move and check linking
+#include "qmeta/QMeta.h"
 #include "czar/Czar.h"
 #include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
@@ -47,7 +47,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarChunkMap");
 namespace lsst::qserv::czar {
 
 CzarChunkMap::CzarChunkMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(qmeta) {
-    cout << "&&& CzarChunkMap::CzarChunkMap()" << endl;
     try {
         auto mapsSet = _read();
         if (!mapsSet) {
@@ -59,10 +58,7 @@ CzarChunkMap::CzarChunkMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(
     }
 }
 
-CzarChunkMap::~CzarChunkMap() {
-    LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap::~CzarChunkMap()");
-    cout << "&&& CzarChunkMap::~CzarChunkMap()" << endl;
-}
+CzarChunkMap::~CzarChunkMap() { LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap::~CzarChunkMap()"); }
 
 bool CzarChunkMap::_read() {
     LOGS(_log, LOG_LVL_TRACE, "CzarChunkMap::_read() start");

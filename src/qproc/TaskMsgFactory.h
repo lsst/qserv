@@ -35,6 +35,9 @@
 #include <iostream>
 #include <memory>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "global/DbTable.h"
 #include "global/intTypes.h"
@@ -64,14 +67,26 @@ public:
     bool fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& s, std::string const& chunkResultName,
                      QueryId queryId, int jobId, int attemptCount, qmeta::CzarId czarId);
 
+    // &&& doc
+    virtual std::shared_ptr<nlohmann::json> makeMsgJson(ChunkQuerySpec const& s,
+                                                        std::string const& chunkResultName, QueryId queryId,
+                                                        int jobId, int attemptCount, qmeta::CzarId czarId);
+
 private:
+    // &&&uj probably delete
     std::shared_ptr<proto::TaskMsg> _makeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName,
                                              QueryId queryId, int jobId, int attemptCount,
                                              qmeta::CzarId czarId);
 
+    // &&&uj probably delete
     void _addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
                       DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
                       std::vector<std::string> const& queries);
+
+    /// &&& doc
+    void _addFragmentJson(nlohmann::json& jsFragments, std::string const& resultName,
+                          DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
+                          std::vector<std::string> const& queries);
 };
 
 }  // namespace lsst::qserv::qproc
