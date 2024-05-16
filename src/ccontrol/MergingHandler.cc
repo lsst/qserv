@@ -259,12 +259,173 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
     return {success, mergeHappened};
 }
 
+std::tuple<bool, bool> readHttpFileAndMergeHttp(
+        lsst::qserv::qdisp::UberJob::Ptr const& uberJob, string const& httpUrl,
+        function<bool(char const*, uint32_t, bool&)> const& messageIsReady,
+        shared_ptr<http::ClientConnPool> const& httpConnPool) {
+    string const context = "MergingHandler::" + string(__func__) + " " + " qid=" + uberJob->getIdStr() + " ";
+
+    LOGS(_log, LOG_LVL_DEBUG, context << "httpUrl=" << httpUrl);
+
+    // Track the file while the control flow is staying within the function.
+    ResultFileTracker const resultFileTracker;
+
+    // The data transmit rate tracker is set up before reading each data message.
+    unique_ptr<lsst::qserv::TimeCountTracker<double>> transmitRateTracker;
+
+    // A location of the next byte to be read from the input file. The variable
+    // is used for error reporting.
+    uint64_t offset = 0;
+
+    // Temporary buffer for messages read from the file. The buffer gets automatically
+    // resized to fit the largest message.
+    unique_ptr<char[]> msgBuf;
+    size_t msgBufSize = 0;
+    size_t msgBufNext = 0;  // An index of the next character in the buffer.
+
+    // Fixed-size buffer to store the message size.
+    string msgSizeBuf(sizeof(uint32_t), '\0');
+    size_t msgSizeBufNext = 0;  // An index of the next character in the buffer.
+
+    // The size of the next/current message. The variable is set after succesfully parsing
+    // the message length header and is reset back to 0 after parsing the message body.
+    // The value is stays 0 while reading the frame header.
+    uint32_t msgSizeBytes = 0;
+    bool success = true;
+    bool mergeSuccess = true;
+    int headerCount = 0;
+    uint64_t totalBytesRead = 0;
+    try {
+        string const noClientData;
+        vector<string> const noClientHeaders;
+        http::ClientConfig clientConfig;
+        clientConfig.httpVersion = CURL_HTTP_VERSION_1_1;  // same as in qhttp
+        clientConfig.bufferSize = CURL_MAX_READ_SIZE;      // 10 MB in the current version of libcurl
+        clientConfig.tcpKeepAlive = true;
+        clientConfig.tcpKeepIdle = 5;   // the default is 60 sec
+        clientConfig.tcpKeepIntvl = 5;  // the default is 60 sec
+        http::Client reader(http::Method::GET, httpUrl, noClientData, noClientHeaders, clientConfig,
+                            httpConnPool);
+        reader.read([&](char const* inBuf, size_t inBufSize) {
+            // A value of the flag is set by the message processor when it's time to finish
+            // or abort reading  the file.
+            bool last = false;
+            char const* next = inBuf;
+            char const* const end = inBuf + inBufSize;
+            while ((next < end) && !last) {
+                LOGS(_log, LOG_LVL_WARN,
+                     context << "TODO:UJ next=" << (uint64_t)next << " end=" << (uint64_t)end
+                             << " last=" << last);
+                if (msgSizeBytes == 0) {
+                    // Continue or finish reading the frame header.
+                    size_t const bytes2read =
+                            std::min(sizeof(uint32_t) - msgSizeBufNext, (size_t)(end - next));
+                    std::memcpy(msgSizeBuf.data() + msgSizeBufNext, next, bytes2read);
+                    next += bytes2read;
+                    offset += bytes2read;
+                    msgSizeBufNext += bytes2read;
+                    if (msgSizeBufNext == sizeof(uint32_t)) {
+                        ++headerCount;
+                        // Done reading the frame header.
+                        msgSizeBufNext = 0;
+                        // Parse and evaluate the message length.
+                        msgSizeBytes = *(reinterpret_cast<uint32_t*>(msgSizeBuf.data()));
+                        if (msgSizeBytes == 0) {
+                            throw runtime_error("message size is 0 at offset " +
+                                                to_string(offset - sizeof(uint32_t)) + ", file: " + httpUrl);
+                        }
+                        if (msgSizeBytes > ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
+                            throw runtime_error("message size " + to_string(msgSizeBytes) + " at offset " +
+                                                to_string(offset - sizeof(uint32_t)) +
+                                                " exceeds the hard limit of " +
+                                                to_string(ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) +
+                                                ", file: " + httpUrl);
+                        }
+                        // Extend the message buffer (if needed). Note that buffer never gets
+                        // truncated to avoid excessive memory deallocations/allocations.
+                        if (msgBufSize < msgSizeBytes) {
+                            msgBufSize = msgSizeBytes;
+                            msgBuf.reset(new char[msgBufSize]);
+                        }
+                        // Starts the tracker to measure the performance of the network I/O.
+                        transmitRateTracker =
+                                make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
+                    }
+                } else {
+                    // Continue or finish reading the message body.
+                    size_t const bytes2read =
+                            std::min((size_t)msgSizeBytes - msgBufNext, (size_t)(end - next));
+                    std::memcpy(msgBuf.get() + msgBufNext, next, bytes2read);
+                    next += bytes2read;
+                    offset += bytes2read;
+                    msgBufNext += bytes2read;
+                    if (msgBufNext == msgSizeBytes) {
+                        // Done reading message body.
+                        msgBufNext = 0;
+
+                        // Destroying the tracker will result in stopping the tracker's timer and
+                        // reporting the file read rate before proceeding to the merge.
+                        if (transmitRateTracker != nullptr) {
+                            transmitRateTracker->addToValue(msgSizeBytes);
+                            transmitRateTracker->setSuccess();
+                            transmitRateTracker.reset();
+                        }
+
+                        // Parse and evaluate the message.
+                        mergeSuccess = messageIsReady(msgBuf.get(), msgSizeBytes, last);
+                        totalBytesRead += msgSizeBytes;
+                        if (!mergeSuccess) {
+                            success = false;
+                            throw runtime_error("message processing failed at offset " +
+                                                to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
+                        }
+                        // Reset the variable to prepare for reading the next header & message (if any).
+                        msgSizeBytes = 0;
+                    } else {
+                        LOGS(_log, LOG_LVL_WARN,
+                             context << " headerCount=" << headerCount
+                                     << " incomplete read diff=" << (msgSizeBytes - msgBufNext));
+                    }
+                }
+            }
+        });
+        LOGS(_log, LOG_LVL_DEBUG,
+             context << " headerCount=" << headerCount << " msgSizeBytes=" << msgSizeBytes
+                     << " totalBytesRead=" << totalBytesRead);
+        if (msgSizeBufNext != 0) {
+            throw runtime_error("short read of the message header at offset " +
+                                to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
+        }
+        if (msgBufNext != 0) {
+            throw runtime_error("short read of the message body at offset " +
+                                to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR, context + " " + ex.what());
+        success = false;
+    }
+
+    // Remove the file from the worker if it still exists. Report and ignore errors.
+    // The files will be garbage-collected by workers.
+    try {
+        http::Client remover(http::Method::DELETE, httpUrl);
+        remover.read([](char const* inBuf, size_t inBufSize) {});
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_WARN, context << "failed to remove " << httpUrl << ", ex: " << ex.what());
+    }
+    // If the merge failed, that indicates something went wrong in the local database table,
+    // is likely this user query is doomed and should be cancelled.
+    LOGS(_log, LOG_LVL_DEBUG, context << " end succes=" << success << " mergeSuccess=" << mergeSuccess);
+    return {success, mergeSuccess};
+}
+
 }  // namespace
 
 namespace lsst::qserv::ccontrol {
 
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
         : _infileMerger{merger}, _tableName{tableName} {}
+
 
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__ << " " << _tableName); }
 
@@ -329,6 +490,20 @@ void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
 
 std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
+}
+
+bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
+                                proto::ResponseData const& responseData) {
+    if (_flushed) {
+        throw util::Bug(ERR_LOC, "already flushed");
+    }
+    bool const success = _infileMerger->mergeHttp(uberJob, responseData);
+    if (!success) {
+        LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
+        util::Error const& err = _infileMerger->getError();
+        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
+    }
+    return success;
 }
 
 bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
