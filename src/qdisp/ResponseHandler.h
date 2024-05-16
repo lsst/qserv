@@ -57,7 +57,6 @@ public:
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
     ResponseHandler() {}
-    //&&&void setJobQuery(std::shared_ptr<JobQuery> const& jobQuery) { _jobQuery = jobQuery; }
     void setJobQuery(std::shared_ptr<JobBase> const& jobBase) { _jobBase = jobBase; }
     virtual ~ResponseHandler() {}
 
@@ -86,11 +85,9 @@ public:
     /// Scrub the results from jobId-attempt from the result table.
     virtual void prepScrubResults(int jobId, int attempt) = 0;
 
-    //&&& std::weak_ptr<JobQuery> getJobQuery() { return _jobQuery; }
     std::weak_ptr<JobBase> getJobBase() { return _jobBase; }
 
 private:
-    //&&& std::weak_ptr<JobQuery> _jobQuery;
     std::weak_ptr<JobBase> _jobBase;
 };
 

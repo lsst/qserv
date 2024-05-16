@@ -25,12 +25,10 @@
 
 // Qserv headers
 #include "qmeta/types.h"
-#include "czar/CzarChunkMap.h"  // Need nested class. &&& Make non-nested?
-#include "czar/CzarRegistry.h"  // Need nested class. &&& Make non-nested?
+#include "czar/CzarChunkMap.h"  // Need nested class. &&&uj Make non-nested?
+#include "czar/CzarRegistry.h"  // Need nested class. &&&uj Make non-nested?
 #include "qdisp/Executive.h"
 #include "qdisp/JobBase.h"
-//&&&#include "qdisp/JobQuery.h"
-//&&&#include "qdisp/QueryRequest.h"
 
 // This header declarations
 namespace lsst { namespace qserv { namespace qdisp {
@@ -42,12 +40,6 @@ public:
     using Ptr = std::shared_ptr<UberJob>;
 
     static uint32_t getMagicNumber() { return 93452; }
-
-    /* &&&
-    static Ptr create(Executive::Ptr const& executive,
-                      std::shared_ptr<ResponseHandler> const& respHandler,
-                      int queryId, int uberJobId, qmeta::CzarId czarId, std::string const& workerResource);
-    */
 
     static Ptr create(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
                       int queryId, int uberJobId, qmeta::CzarId czarId,
@@ -82,10 +74,9 @@ public:
 
     bool verifyPayload() const;
 
-    std::string getWorkerResource() { return _workerResource; }
     int getJobCount() const { return _jobs.size(); }
 
-    /// &&& TODO:UJ may not need,
+    /// &&&uj uj may not need,
     void prepScrubResults();
 
     //&&&uj
@@ -99,11 +90,6 @@ public:
     std::ostream& dumpOS(std::ostream& os) const override;
 
 private:
-    /* &&&
-    UberJob(Executive::Ptr const& executive,
-            std::shared_ptr<ResponseHandler> const& respHandler,
-            int queryId, int uberJobId, qmeta::CzarId czarId, std::string const& workerResource);
-    */
     UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler, int queryId,
             int uberJobId, qmeta::CzarId czarId, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
 
@@ -112,7 +98,7 @@ private:
         _respHandler->setJobQuery(jbPtr);
     }
 
-    std::vector<JobQuery*> _jobs;
+    std::vector<JobQuery*> _jobs;  // &&&uj should be a shared ptr ???
     std::atomic<bool> _started{false};
     bool _inSsi = false;
     JobStatus::Ptr _jobStatus;
@@ -120,8 +106,7 @@ private:
     std::shared_ptr<QueryRequest> _queryRequestPtr;
     std::mutex _qrMtx;
 
-    std::string const _workerResource;
-    std::string _payload;  ///< XrdSsi message to be sent to the _workerResource.
+    std::string _payload;  ///< XrdSsi message to be sent to the _workerResource. //&&&uj remove when possible
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
@@ -130,7 +115,7 @@ private:
     qmeta::CzarId _czarId;
 
     std::string const _idStr;
-    std::shared_ptr<QdispPool> _qdispPool;
+    std::shared_ptr<QdispPool> _qdispPool;  //&&&uj needed?
 
     // &&&uj
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // &&& check if this is needed

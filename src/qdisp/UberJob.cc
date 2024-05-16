@@ -28,18 +28,24 @@
 
 // Third-party headers
 #include <google/protobuf/arena.h>
+#include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "global/LogContext.h"
+#include "http/Client.h"
+#include "http/MetaModule.h"
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "qdisp/JobQuery.h"
 #include "util/Bug.h"
+#include "util/common.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
+using namespace nlohmann;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.UberJob");
@@ -47,25 +53,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.UberJob");
 
 namespace lsst { namespace qserv { namespace qdisp {
 
-/* &&&
-UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
-                  std::shared_ptr<ResponseHandler> const& respHandler,
-                  int queryId, int uberJobId, qmeta::CzarId czarId, string const& workerResource) {
-    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId, czarId, workerResource));
-    uJob->_setup();
-    return uJob;
-}
-
-UberJob::UberJob(Executive::Ptr const& executive,
-         std::shared_ptr<ResponseHandler> const& respHandler,
-         int queryId, int uberJobId, qmeta::CzarId czarId, string const& workerResource)
-    : JobBase(), _workerResource(workerResource),  _executive(executive),
-      _respHandler(respHandler), _queryId(queryId), _uberJobId(uberJobId),
-      _czarId(czarId), _idStr("QID=" + to_string(_queryId) + ":uber=" + to_string(uberJobId)) {
-    _qdispPool = executive->getQdispPool();
-    _jobStatus = make_shared<JobStatus>();
-}
-*/
 UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
                              qmeta::CzarId czarId,
@@ -102,9 +89,81 @@ bool UberJob::addJob(JobQuery* job) {
 }
 
 bool UberJob::runUberJob() {
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() start");
+    // &&&uj most, if not all, of this should be done in a command in the QDispPool.
+    // &&&uk especially the communication parts.
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
-    // Build the uberjob payload.
-    // TODO:UJ For simplicity in the first pass, just make a TaskMsg for each Job and append it to the
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() a");
+    // Build the uberjob payload for each job.
+    nlohmann::json uj;
+    for (auto const& jqPtr : _jobs) {
+        LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() a1");
+        jqPtr->getDescription()->incrAttemptCountScrubResultsJson();
+    }
+
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() b");
+    // Send the uberjob to the worker
+    auto const method = http::Method::POST;
+    string const url = "http://" + _wContactInfo->wHost + ":" + to_string(_wContactInfo->wPort) + "/queryjob";
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() c " << url);
+    vector<string> const headers = {"Content-Type: application/json"};
+    auto const& czarConfig = cconfig::CzarConfig::instance();
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() c");
+    // See xrdsvc::httpWorkerCzarModule::_handleQueryJob for json message parsing.
+    json request = {{"version", http::MetaModule::version},
+                    {"instance_id", czarConfig->replicationInstanceId()},
+                    {"auth_key", czarConfig->replicationAuthKey()},
+                    {"worker", _wContactInfo->wId},
+                    {"czar",
+                     {{"name", czarConfig->name()},
+                      {"id", czarConfig->id()},
+                      {"management-port", czarConfig->replicationHttpPort()},
+                      {"management-host-name", util::get_current_host_fqdn()}}},
+                    {"uberjob",
+                     {{"queryid", _queryId},
+                      {"uberjobid", _uberJobId},
+                      {"czarid", _czarId},
+                      {"jobs", json::array()}}}};
+
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() d " << request);
+    auto& jsUberJob = request["uberjob"];
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() e " << jsUberJob);
+    auto& jsJobs = jsUberJob["jobs"];
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() f " << jsJobs);
+    for (auto const& jbPtr : _jobs) {
+        LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() f1");
+        json jsJob = {{"jobdesc", *(jbPtr->getDescription()->getJsForWorker())}};
+        jsJobs.push_back(jsJob);
+        jbPtr->getDescription()->resetJsForWorker();  // no longer needed.
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJob::runUberJob() g");
+    LOGS(_log, LOG_LVL_WARN, __func__ << " &&&REQ " << request);
+    string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
+    LOGS(_log, LOG_LVL_TRACE,
+         __func__ << " czarPost url=" << url << " request=" << request.dump() << " headers=" << headers[0]);
+    http::Client client(method, url, request.dump(), headers);
+    bool transmitSuccess = false;
+    try {
+        json const response = client.readAsJson();
+        LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::runUberJob() response=" << response);
+        if (0 != response.at("success").get<int>()) {
+            LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::runUberJob() success");
+            transmitSuccess = true;
+        } else {
+            LOGS(_log, LOG_LVL_WARN, "&&&uj NEED CODE UberJob::runUberJob() success=0");
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_WARN, requestContext + " &&&uj failed, ex: " + ex.what());
+    }
+    if (!transmitSuccess) {
+        LOGS(_log, LOG_LVL_ERROR, "&&&uj NEED CODE UberJob::runUberJob() need to try to send jobs elsewhere");
+    } else {
+        LOGS(_log, LOG_LVL_WARN,
+             "&&&uj NEED CODE UberJob::runUberJob() need to register all jobs as transmitted to worker");
+    }
+
+#if 0   // &&&uj Everything in this block needs to happen in some manner. Where is the question
+    // For simplicity in the first pass, just make a TaskMsg for each Job and append it to the
     // UberJobMsg.
     //         This is terribly inefficient and should be replaced by using a template and list of chunks that
     //         the worker fills in, much like subchunks are done now.
@@ -160,13 +219,16 @@ bool UberJob::runUberJob() {
     }
     LOGS(_log, LOG_LVL_WARN,
          "runUberJob failed. cancelled=" << cancelled << " reset=" << handlerReset << " started=" << started);
+#endif  // &&&
     return false;
 }
 
 void UberJob::prepScrubResults() {
-    throw util::Bug(
-            ERR_LOC,
-            "&&& If needed, prepScrubResults should call prepScrubResults for all JobQueries in the UberJob");
+    // &&&uj There's a good chance this will not be needed as incomplete files will not be merged
+    //       so you don't have to worry about removing rows from incomplete jobs or uberjobs
+    //       from the result table.
+    throw util::Bug(ERR_LOC,
+                    "&&&uj If needed, should call prepScrubResults for all JobQueries in the UberJob ");
 }
 
 bool UberJob::isQueryCancelled() {
@@ -201,7 +263,7 @@ void UberJob::callMarkCompleteFunc(bool success) {
 }
 
 std::ostream& UberJob::dumpOS(std::ostream& os) const {
-    os << "(workerResource=" << _workerResource << " jobs sz=" << _jobs.size() << "(";
+    os << "(jobs sz=" << _jobs.size() << "(";
     for (auto const& job : _jobs) {
         JobDescription::Ptr desc = job->getDescription();
         ResourceUnit ru = desc->resource();

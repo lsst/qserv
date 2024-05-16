@@ -89,7 +89,6 @@ qmeta::QMetaChunkMap convertJsonToChunkMap(nlohmann::json const& jsChunks) {
 
 BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     // Each chunk only occurs on one worker
-    cerr << "&&& a" << endl;
     string test1 = R"(
     {
       "ce1c1b79-e6fb-11ee-a46b-0242c0a80308":
@@ -126,7 +125,6 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
            }
     }
     )";
-    cerr << "&&& b " << test1 << endl;
 
     /// 3 workers, each containing all chunks.
     string test2 = R"(
@@ -187,27 +185,18 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
            }
     }
     )";
-    cerr << "&&& c" << endl;
 
     auto jsTest1 = nlohmann::json::parse(test1);
-    cerr << "&&& d" << endl;
     qmeta::QMetaChunkMap qChunkMap1 = convertJsonToChunkMap(jsTest1);
-    cerr << "&&& e" << endl;
     auto [chunkMapPtr, wcMapPtr] = czar::CzarChunkMap::makeNewMaps(qChunkMap1);
     czar::CzarChunkMap::verify(*chunkMapPtr, *wcMapPtr);  // Throws on failure.
-    cerr << "&&& f" << endl;
     LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap test 1 passed");
 
-    cerr << "&&& g" << endl;
     auto jsTest2 = nlohmann::json::parse(test2);
-    cerr << "&&& h" << endl;
     qmeta::QMetaChunkMap qChunkMap2 = convertJsonToChunkMap(jsTest2);
-    cerr << "&&& i" << endl;
     tie(chunkMapPtr, wcMapPtr) = czar::CzarChunkMap::makeNewMaps(qChunkMap2);
-    cerr << "&&& j" << endl;
     czar::CzarChunkMap::verify(*chunkMapPtr, *wcMapPtr);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap test 2 passed");
-    cerr << "&&& end" << endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END()
