@@ -79,6 +79,14 @@ public:
     /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
 
+    /// @see ResponseHandler::flushHttp
+    /// @see MerginHandler::_mergeHttp
+    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
+                                     uint64_t& resultRows) override;
+
+    /// @see ResponseHandler::flushHttpError
+    void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
+
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
 
@@ -92,6 +100,9 @@ public:
     }
 
 private:
+    /// Call InfileMerger to do the work of merging this data to the result.
+    bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
+
     /// Call InfileMerger to do the work of merging this data to the result.
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
