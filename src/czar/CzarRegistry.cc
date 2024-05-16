@@ -49,7 +49,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarRegistry");
 namespace lsst::qserv::czar {
 
 CzarRegistry::CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig) : _czarConfig(czarConfig) {
-    cout << "&&& CzarRegistry::CzarRegistry a" << endl;
     // Begin periodically updating worker's status in the Replication System's registry.
     // This will continue until the application gets terminated.
     thread registryUpdateThread(&CzarRegistry::_registryUpdateLoop, this);
@@ -60,22 +59,16 @@ CzarRegistry::CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfi
 }
 
 CzarRegistry::~CzarRegistry() {
-    cout << "&&& CzarRegistry::~CzarRegistry a" << endl;
     _loop = false;
     if (_czarHeartbeatThrd.joinable()) {
-        cout << "&&& CzarRegistry::~CzarRegistry a1" << endl;
         _czarHeartbeatThrd.join();
     }
-    cout << "&&& CzarRegistry::~CzarRegistry b" << endl;
     if (_czarWorkerInfoThrd.joinable()) {
-        cout << "&&& CzarRegistry::~CzarRegistry b1" << endl;
         _czarWorkerInfoThrd.join();
     }
-    cout << "&&& CzarRegistry::~CzarRegistry end" << endl;
 }
 
 void CzarRegistry::_registryUpdateLoop() {
-    cout << "&&& CzarRegistry::_registryUpdateLoop a" << endl;
     auto const method = http::Method::POST;
     string const url = "http://" + _czarConfig->replicationRegistryHost() + ":" +
                        to_string(_czarConfig->replicationRegistryPort()) + "/czar";
@@ -106,11 +99,9 @@ void CzarRegistry::_registryUpdateLoop() {
         }
         this_thread::sleep_for(chrono::seconds(max(1U, _czarConfig->replicationRegistryHearbeatIvalSec())));
     }
-    cout << "&&& CzarRegistry::_registryUpdateLoop end" << endl;
 }
 
 void CzarRegistry::_registryWorkerInfoLoop() {
-    cout << "&&& CzarRegistry::_registryWorkerInfoLoop a" << endl;
     // Get worker information from the registry
     vector<string> const headers;
     auto const method = http::Method::GET;
@@ -144,7 +135,6 @@ void CzarRegistry::_registryWorkerInfoLoop() {
         }
         this_thread::sleep_for(chrono::seconds(15));
     }
-    cout << "&&& CzarRegistry::_registryWorkerInfoLoop end" << endl;
 }
 
 CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {

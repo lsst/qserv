@@ -74,6 +74,35 @@ bool JobDescription::incrAttemptCount() {
     return true;
 }
 
+bool JobDescription::incrAttemptCountScrubResultsJson() {
+#if 0   //&&&uj this block needs to be reenabled but attempts need to be handled differently ???
+    //&&&uj attempt failures generally result from communictaion problems. SQL errors kill the query.
+    //&&&uj so lots of failed attempts indicate that qserv is unstable.
+    if (_attemptCount >= 0) {
+        _respHandler->prepScrubResults(_jobId, _attemptCount);  //
+    }
+    ++_attemptCount;
+    if (_attemptCount > MAX_JOB_ATTEMPTS) {
+        LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
+        return false;
+    }
+#endif  // &&&
+
+    ++_attemptCount;
+    if (_attemptCount > MAX_JOB_ATTEMPTS) {
+        LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
+        return false;
+    }
+    // build the request
+    //_payloads[_attemptCount] = os.str();
+    auto js = _taskMsgFactory->makeMsgJson(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId,
+                                           _attemptCount, _czarId);
+    LOGS(_log, LOG_LVL_ERROR, "&&& JobDescription::incrAttemptCountScrubResultsJson js=" << (*js));
+    _jsForWorker = js;
+
+    return true;
+}
+
 void JobDescription::buildPayload() {
     ostringstream os;
     _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount,
@@ -81,14 +110,14 @@ void JobDescription::buildPayload() {
     _payloads[_attemptCount] = os.str();
 }
 
-bool JobDescription::fillTaskMsg(proto::TaskMsg* tMsg) {  //&&&uj
-    //&&&uj FIXNOW return _taskMsgFactory->fillTaskMsg(tMsg, *_chunkQuerySpec, _chunkResultName, _queryId,
+bool JobDescription::fillTaskMsg(proto::TaskMsg* tMsg) {  //&&&uj -probably just delete.
+    //&&&uj return _taskMsgFactory->fillTaskMsg(tMsg, *_chunkQuerySpec, _chunkResultName, _queryId,
     //_jobId, _attemptCount, _czarId);
     util::Bug(ERR_LOC, "&&& JobDescription::fillTaskMsg");
     return false;
 }
 
-bool JobDescription::verifyPayload() const {
+bool JobDescription::verifyPayload() const {  //&&&uj - is there any value to this now?
     proto::ProtoImporter<proto::TaskMsg> pi;
     if (!_mock && !pi.messageAcceptable(_payloads.at(_attemptCount))) {
         LOGS(_log, LOG_LVL_DEBUG, _qIdStr << " Error serializing TaskMsg.");

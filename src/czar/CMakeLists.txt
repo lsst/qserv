@@ -10,6 +10,8 @@ target_sources(czar PRIVATE
     HttpCzarIngestModule.cc
     HttpCzarQueryModule.cc
     HttpCzarSvc.cc
+    HttpCzarWorkerModule.cc
+    HttpModule.cc
     HttpMonitorModule.cc
     HttpSvc.cc
     MessageTable.cc

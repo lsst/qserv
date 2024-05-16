@@ -31,6 +31,9 @@
 #include <memory>
 #include <sstream>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "global/constants.h"
 #include "global/intTypes.h"
@@ -89,6 +92,10 @@ public:
 
     bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
 
+    std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
+
+    void resetJsForWorker() { _jsForWorker.reset(); }  // &&&uj may need mutex for _jsForWorker
+
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
 private:
@@ -116,6 +123,9 @@ private:
     std::string _chunkResultName;
 
     bool _mock{false};  ///< True if this is a mock in a unit test.
+
+    /// The information the worker needs to run this job. Reset once sent.
+    std::shared_ptr<nlohmann::json> _jsForWorker;
 };
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
