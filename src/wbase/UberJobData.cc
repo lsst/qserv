@@ -22,11 +22,10 @@
 // Class header
 #include "wbase/UberJobData.h"
 
-#include "../wcontrol/WCzarInfoMap.h"
+#include "wcontrol/WCzarInfoMap.h"
 // System headers
 
 // Third party headers
-#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -107,6 +106,14 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
         workerIdStr = "dummyWorkerIdStr";
         LOGS(_log, LOG_LVL_INFO,
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
+    }
+
+    string workerIdStr;
+    if (_foreman != nullptr) {
+        workerIdStr = _foreman->chunkInventory()->id();
+    } else {
+        workerIdStr = "dummyWorkerIdStr";
+        LOGS(_log, LOG_LVL_INFO, funcN << " _foreman was null, which should only happen in unit tests");
     }
 
     json request = {{"version", http::MetaModule::version},
