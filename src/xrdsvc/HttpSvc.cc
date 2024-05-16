@@ -33,6 +33,7 @@
 #include "wpublish/ChunkInventory.h"
 #include "xrdsvc/HttpMonitorModule.h"
 #include "xrdsvc/HttpReplicaMgtModule.h"
+#include "xrdsvc/HttpWorkerCzarModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -132,6 +133,12 @@ uint16_t HttpSvc::start() {
             {{"PUT", "/inventory",
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
                   HttpReplicaMgtModule::process(::serviceName, self->_foreman, req, resp, "REBUILD",
+                                                http::AuthType::REQUIRED);
+              }}});
+    _httpServerPtr->addHandlers(  //&&&uj
+            {{"POST", "/queryjob",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpWorkerCzarModule::process(::serviceName, self->_foreman, req, resp, "QUERYJOB",
                                                 http::AuthType::REQUIRED);
               }}});
     _httpServerPtr->start();

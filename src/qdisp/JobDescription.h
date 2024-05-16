@@ -31,6 +31,9 @@
 #include <memory>
 #include <sstream>
 
+// Third party headers
+#include "nlohmann/json.hpp"
+
 // Qserv headers
 #include "global/constants.h"
 #include "global/intTypes.h"
@@ -86,10 +89,15 @@ public:
     /// @returns true when _attemptCount is incremented correctly and the payload is built.
     /// If the starting value of _attemptCount was greater than or equal to zero, that
     /// attempt is scrubbed from the result table.
-    bool incrAttemptCountScrubResults();
-    bool verifyPayload() const;  ///< @return true if the payload is acceptable to protobufs.
+    bool incrAttemptCountScrubResults();      // &&&uj - to be deleted
+    bool incrAttemptCountScrubResultsJson();  // &&&uj - scrubbing results probably unneeded with uj.
+    bool verifyPayload() const;               ///< @return true if the payload is acceptable to protobufs.
 
     bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
+
+    std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
+
+    void resetJsForWorker() { _jsForWorker.reset(); }  // &&&uj may need mutex for _jsForWorker
 
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
@@ -118,6 +126,9 @@ private:
     std::string _chunkResultName;
 
     bool _mock{false};  ///< True if this is a mock in a unit test.
+
+    /// The information the worker needs to run this job. Reset once sent.
+    std::shared_ptr<nlohmann::json> _jsForWorker;
 };
 std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 

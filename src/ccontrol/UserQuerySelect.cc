@@ -240,8 +240,9 @@ std::string UserQuerySelect::getResultQuery() const {
     return resultQuery;
 }
 
+#if 0   // &&&
 /// Begin running on all chunks added so far.
-void UserQuerySelect::submitOld() {  // &&&
+void UserQuerySelect::submitOld() {  // &&& to be deleted
     _qSession->finalize();
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
@@ -279,7 +280,6 @@ void UserQuerySelect::submitOld() {  // &&&
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
 
-    // &&&
     for (auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e && !_executive->getCancelled();
          ++i) {
         auto& chunkSpec = *i;
@@ -326,6 +326,7 @@ void UserQuerySelect::submitOld() {  // &&&
         _qMetaAddChunks(chunks);
     }
 }
+#endif  //&&&
 
 /// Begin running on all chunks added so far.
 void UserQuerySelect::submit() {  //&&&uj
@@ -353,14 +354,6 @@ void UserQuerySelect::submit() {  //&&&uj
                                                                : "none produced."));
 
     // Writing query for each chunk, stop if query is cancelled.
-    // attempt to change priority, requires root
-    bool increaseThreadPriority = false;  // TODO: add to configuration
-    util::ThreadPriority threadPriority(pthread_self());
-    if (increaseThreadPriority) {
-        threadPriority.storeOriginalValues();
-        threadPriority.setPriorityPolicy(10);
-    }
-
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew c");
     // Add QStatsTmp table entry
     try {
@@ -404,7 +397,7 @@ void UserQuerySelect::submit() {  //&&&uj
         }
 
         //&&& TODO:UJ for UberJobs, cmr and MerginHandler wont be needed unless the uber job fails. could
-        //probably save some time.
+        // probably save some time.
         //&&& std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(cs->chunkId,
         //_messageStore);
         LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew d3");
@@ -437,7 +430,7 @@ void UserQuerySelect::submit() {  //&&&uj
     }
 
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e");
-    if (uberJobsEnabled) {
+    if (uberJobsEnabled || true) {
         LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1");
         vector<qdisp::UberJob::Ptr> uberJobs;
 
@@ -446,86 +439,45 @@ void UserQuerySelect::submit() {  //&&&uj
         auto czChunkMap = czarPtr->getCzarChunkMap();
         auto czRegistry = czarPtr->getCzarRegistry();
 
+        LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1a");
         auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();  //&&&uj
 
         // Make a map of all jobs in the executive.
         // &&& TODO:UJ for now, just using ints. At some point, need to check that ResourceUnit databases can
         // be found for all databases in the query
         qdisp::Executive::ChunkIdJobMapType chunksInQuery = _executive->getChunkJobMapAndInvalidate();
+        LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1b");
 
         // &&& TODO:UJ skipping in proof of concept: get a list of all databases in jobs (all jobs should use
         // the same databases) Use this to check for conflicts
 
         // assign jobs to uberJobs
-        int maxChunksPerUber = 1;  // &&& maybe put in config???
+        int maxChunksPerUber = 1;  // &&&uj maybe put in config??? or set on command line??
+                                   // &&&uj Different queries may benefit from different values
+                                   // &&&uj Such as LIMIT=1 may work best with this at 1, where
+                                   // &&&uj 100 would be better for others.
         // keep cycling through workers until no more chunks to place.
-
-        /// make a map<worker, deque<chunkId> that will be destroyed as chunks are checked/used
-        //&&&uj REPLACE map<string, deque<int>> tmpWorkerList = workerResources->getDequesFor(dbName);
 
         // TODO:UJ &&&uj So UberJobIds don't conflict with chunk numbers or jobIds, start at a large number.
         //       This could use some refinement.
         int uberJobId = qdisp::UberJob::getFirstIdNumber();
 
-#if 0  // &&&uj
-       // Keep making UberJobs until either all chunks in the query have been assigned or there are no more
-       // chunks on workers.
-        for(auto&& workerIter = tmpWorkerList.begin(); !(chunksInQuery.empty() || tmpWorkerList.empty());) {
-            ///  TODO:UJ One issue here that shouldn't be in a problem in the final version, there are 3 replicas here.
-            ///        The final version should only have LeadChunks, so there shuoldn't be any duplicates. For every hit
-            ///        on the worker, there will be 2 misses. That will probably hurt significantly.
-
-            ///&&& TODO:UJ cs->chunkId in cmr, replacing with uberJobId for now
-            ///&&& TODO:UJ MergingHandler result name looks like it is only used for log messages.
-            string uberResultName = "uber_" + to_string(uberJobId);
-            std::shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(uberJobId, _messageStore);
-            auto respHandler = std::make_shared<MergingHandler>(cmr, _infileMerger, uberResultName);
-
-            string workerResourceName = workerIter->first;
-            deque<int>& dq = workerIter->second;
-            auto uJob = qdisp::UberJob::create(_executive, respHandler, _qMetaQueryId,
-                    uberJobId++, _qMetaCzarId, workerResourceName);
-
-            int chunksInUber = 0;
-            while (!dq.empty() && !chunksInQuery.empty() && chunksInUber < maxChunksPerUber) {
-                int chunkIdWorker = dq.front();
-                dq.pop_front();
-                auto found = chunksInQuery.find(chunkIdWorker);
-                if (found != chunksInQuery.end()) {
-                    uJob->addJob(found->second);
-                    ++chunksInUber;
-                    chunksInQuery.erase(found);
-                }
-            }
-
-            //LOGS(_log, LOG_LVL_INFO, "&&& making UberJob " << uberResultName << " chunks=" << chunksInUber);
-            if (chunksInUber > 0) {
-                uberJobs.push_back(uJob);
-            }
-
-            // If this worker has no more chunks, remove it from the list.
-            auto oldWorkerIter = workerIter;
-            ++workerIter;
-            if (dq.empty()) {
-                tmpWorkerList.erase(oldWorkerIter);
-            }
-
-            // Wrap back to the first worker at the end of the list.
-            if (workerIter == tmpWorkerList.end()) {
-                workerIter = tmpWorkerList.begin();
-            }
-        }
-#else  // &&&uj
-       //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
-       //  - for chunkId in `chunksInQuery`
-       //     - use `chunkMapPtr` to find the shared scan workerId for chunkId
-       //     - if not existing in the map, make a new uberjob
-       //     - if existing uberjob at max jobs, append a new uberjob to the vect
-       //  - once all chunks in the query have been put in uberjobs, find contact info for each worker
-       //      - add worker to each uberjob.
-       //  - For failures - If a worker cannot be contacted, that's an uberjob failure.
-       //      - uberjob failures (due to communications problems) will result in the uberjob being broken
-       //        up into multiple uberjobs going to different workers.
+        // &&&uj
+        //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
+        //  - for chunkId in `chunksInQuery`
+        //     - use `chunkMapPtr` to find the shared scan workerId for chunkId
+        //     - if not existing in the map, make a new uberjob
+        //     - if existing uberjob at max jobs, append a new uberjob to the vect
+        //  - once all chunks in the query have been put in uberjobs, find contact info
+        //    for each worker
+        //      - add worker to each uberjob.
+        //  - For failures - If a worker cannot be contacted, that's an uberjob failure.
+        //      - uberjob failures (due to communications problems) will result in the uberjob
+        //        being broken up into multiple UberJobs going to different workers.
+        //        - The best way to do this is probably to just kill the UberJob and mark all
+        //          Jobs that were in that UberJob as needing re-assignment, and re-running
+        //          the code here. The trick is going to be figuring out which workers are alive.
+        //          Maybe force a fresh lookup from the replicator Registry when an UberJob fails.
         map<string, vector<qdisp::UberJob::Ptr>> workerJobMap;
         vector<qdisp::Executive::ChunkIdType> missingChunks;
 
@@ -533,14 +485,19 @@ void UserQuerySelect::submit() {  //&&&uj
         // numerical order. The workers run shared scans in numerical order of chunk id numbers.
         // This keeps the number of partially complete UberJobs running on a worker to a minimum,
         // and should minimize the time for the first UberJob on the worker to complete.
+        LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c");
         for (auto const& [chunkId, jqPtr] : chunksInQuery) {
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c1");
             auto iter = chunkMapPtr->find(chunkId);
             if (iter == chunkMapPtr->end()) {
+                LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c2");
                 missingChunks.push_back(chunkId);
                 break;
             }
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c3");
             czar::CzarChunkMap::ChunkData::Ptr chunkData = iter->second;
             auto targetWorker = chunkData->getPrimaryScanWorker().lock();
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c4");
             if (targetWorker == nullptr) {
                 LOGS(_log, LOG_LVL_ERROR, "No primary scan worker for chunk=" << chunkData->dump());
                 // Try to assign a different worker to this job
@@ -556,6 +513,11 @@ void UserQuerySelect::submit() {  //&&&uj
                     }
                 }
                 if (!found) {
+                    // &&&uj If enough workers are down, there will be a chunk that cannot be found.
+                    //       the correct course of action is probably to check the Registry, and
+                    //       after so many attempts, cancel the user query with a
+                    //       "chunk(s)[list of missing chunks]" error. Perhaps, the attemptCount
+                    //       in the Job or JobDescription could be used for this.
                     LOGS(_log, LOG_LVL_ERROR,
                          "No primary or alternate worker found for chunk=" << chunkData->dump());
                     throw util::Bug(ERR_LOC, string("No primary or alternate worker found for chunk.") +
@@ -564,21 +526,24 @@ void UserQuerySelect::submit() {  //&&&uj
                 }
             }
             // Add this job to the appropriate UberJob, making the UberJob if needed.
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c5");
             string workerId = targetWorker->getWorkerId();
             auto& ujVect = workerJobMap[workerId];
             if (ujVect.empty() || ujVect.back()->getJobCount() > maxChunksPerUber) {
-                //&&&shared_ptr<ChunkMsgReceiver> cmr = ChunkMsgReceiver::newInstance(uberJobId,
-                //_messageStore);
+                LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c5a");
                 string uberResultName = ttn.make(uberJobId);
                 auto respHandler = make_shared<MergingHandler>(_infileMerger, uberResultName);
                 auto uJob = qdisp::UberJob::create(_executive, respHandler, _executive->getId(), uberJobId++,
                                                    _qMetaCzarId, targetWorker);
                 ujVect.push_back(uJob);
             }
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c6");
             ujVect.back()->addJob(jqPtr);
         }
 
+        LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c7");
         if (!missingChunks.empty()) {
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1c8");
             string errStr = string(__func__) + " a worker could not be found for these chunks ";
             for (auto const& chk : missingChunks) {
                 errStr += to_string(chk) + ",";
@@ -590,34 +555,12 @@ void UserQuerySelect::submit() {  //&&&uj
         }
         LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e end");
 
-#endif  //&&&uj
-
-#if 0  //&&&uj
-        _executive->addUberJobs(uberJobs);
-        for (auto&& uJob:uberJobs) {
-            uJob->runUberJob();
-        }
-        LOGS(_log, LOG_LVL_INFO, "&&& All UberJobs sent.");
-        // If any chunks in the query were not found on a worker's list, run them individually.
-        for (auto& ciq:chunksInQuery) {
-            LOGS(_log, LOG_LVL_INFO, "&&& running remaining jobs ");
-            qdisp::JobQuery* jqRaw = ciq.second;
-            qdisp::JobQuery::Ptr job = _executive->getSharedPtrForRawJobPtr(jqRaw);
-            LOGS(_log, LOG_LVL_INFO, "&&& running remaining jobs " << job->getIdStr());
-            std::function<void(util::CmdData*)> funcBuildJob =
-                    [this, job{move(job)}](util::CmdData*) { // references in captures cause races
-                QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
-                job->runJob();
-            };
-            auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-            _executive->queueJobStart(cmd);
-        }
-    }
-#else  //&&&uj
-       // &&& - How should this work? We have `workerJobMap` which has worker info, but no worker contact info
-       // Add worker contact info to UberJobs.&&&todo
+        //&&&uj
+        // Add worker contact info to UberJobs.
         auto const wContactMap = czRegistry->getWorkerContactMap();
+        LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew f");
         for (auto const& [wIdKey, ujVect] : workerJobMap) {
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew f1");
             auto iter = wContactMap->find(wIdKey);
             if (iter == wContactMap->end()) {
                 // &&&uj Not appropriate to throw for this. Need to re-direct all jobs to different workers.
@@ -625,21 +568,26 @@ void UserQuerySelect::submit() {  //&&&uj
             }
             auto const& wContactInfo = iter->second;
             for (auto const& ujPtr : ujVect) {
+                LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew f2");
                 ujPtr->setWorkerContactInfo(wContactInfo);
             }
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew f3");
             _executive->addUberJobs(ujVect);
+            LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew f4");
             for (auto const& ujPtr : ujVect) {
-                //&&&ujPtr->runUberJob();
-                //&&&_executive->runJobQuery(job);
+                LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew f5");
+                //&&&uj IMPORTANT
+                //&&&uj This just sends the test message to the worker, but the
+                //      worker only parses it and sends a message back. The
+                //      worker does not create and run tasks at this point.
+                //      The call to runUberJob here should be replaced by a call
+                //      to startUberJob that puts the call to runUberJob into
+                //      the a priority queue command.
                 _executive->runUberJob(ujPtr);
             }
         }
-#endif  //&&&uj
 
-        // attempt to restore original thread priority, requires root
-        if (increaseThreadPriority) {
-            threadPriority.restoreOriginalValues();
-        }
+        LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew g");  //&&&uj
 
         LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
         _executive->waitForAllJobsToStart();
@@ -650,7 +598,7 @@ void UserQuerySelect::submit() {  //&&&uj
             _qMetaAddChunks(chunks);
         }
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e end");
+    LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew end");
 }
 
 /// Block until a submit()'ed query completes.
