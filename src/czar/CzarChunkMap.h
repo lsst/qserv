@@ -34,7 +34,6 @@
 
 // Qserv headers
 #include "global/clock_defs.h"
-// #include "qmeta/QMeta.h" &&&
 #include "util/Issue.h"
 
 namespace lsst::qserv::qmeta {
@@ -51,7 +50,6 @@ class ChunkMapException : public util::Issue {
 public:
     ChunkMapException(Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {}
 };
-
 
 /// This class is used to organize worker chunk table information so that it
 /// can be used to send jobs to the appropriate worker and inform workers

@@ -225,4 +225,83 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
     return jsRet;
 }
 
+json HttpCzarWorkerModule::_handleJobError(string const& func) {
+    // Metadata-only responses for the file-based protocol should not have any data
+
+    // Parse and verify the json message and then kill the UberJob.
+    json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
+    try {
+        // See qdisp::UberJob::runUberJob() for json message construction.
+        string const targetWorkerId = body().required<string>("workerid");
+        string const czarName = body().required<string>("czar");
+        qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
+        QueryId const queryId = body().required<QueryId>("queryid");
+        UberJobId const uberJobId = body().required<UberJobId>("uberjobid");
+        int const errorCode = body().required<int>("errorCode");
+        string const errorMsg = body().required<string>("errorMsg");
+
+        // Find UberJob
+        qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
+        if (exec == nullptr) {
+            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobError No executive for qid=") +
+                                   to_string(queryId) + " czar=" + to_string(czarId));
+        }
+        qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
+        if (uj == nullptr) {
+            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobError No UberJob for qid=") +
+                                   to_string(queryId) + " ujId=" + to_string(uberJobId) +
+                                   " czar=" + to_string(czarId));
+        }
+
+        auto importRes = uj->workerError(errorCode, errorMsg);
+        jsRet = importRes;
+
+    } catch (std::invalid_argument const& iaEx) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "HttpCzarWorkerModule::_handleJobError received " << iaEx.what() << " js=" << body().objJson);
+        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
+    }
+    return jsRet;
+}
+
+json HttpCzarWorkerModule::_handleJobReady(string const& func) {
+    // Metadata-only responses for the file-based protocol should not have any data
+
+    // Parse and verify the json message and then have the uberjob import the file.
+    json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
+    try {
+        // See qdisp::UberJob::runUberJob() for json message construction.
+        string const targetWorkerId = body().required<string>("workerid");
+        string const czarName = body().required<string>("czar");
+        qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
+        QueryId const queryId = body().required<QueryId>("queryid");
+        UberJobId const uberJobId = body().required<UberJobId>("uberjobid");
+        string const fileUrl = body().required<string>("fileUrl");
+        uint64_t const rowCount = body().required<uint64_t>("rowCount");
+        uint64_t const fileSize = body().required<uint64_t>("fileSize");
+
+        // Find UberJob
+        qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
+        if (exec == nullptr) {
+            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
+                                   to_string(queryId) + " czar=" + to_string(czarId));
+        }
+        qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
+        if (uj == nullptr) {
+            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
+                                   to_string(queryId) + " ujId=" + to_string(uberJobId) +
+                                   " czar=" + to_string(czarId));
+        }
+
+        auto importRes = uj->importResultFile(fileUrl, rowCount, fileSize);
+        jsRet = importRes;
+
+    } catch (std::invalid_argument const& iaEx) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "HttpCzarWorkerModule::_handleJobReady received " << iaEx.what() << " js=" << body().objJson);
+        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
+    }
+    return jsRet;
+}
+
 }  // namespace lsst::qserv::czar
