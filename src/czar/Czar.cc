@@ -76,15 +76,6 @@ extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace {
 
-/* &&&
-string const createAsyncResultTmpl(
-        "CREATE TABLE IF NOT EXISTS %1% "
-        "(jobId BIGINT, resultLocation VARCHAR(1024))"
-        "ENGINE=MEMORY;"
-        "INSERT INTO %1% (jobId, resultLocation) "
-        "VALUES (%2%, '%3%')");
-*/
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
 /**
@@ -274,10 +265,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarRegistry = CzarRegistry::create(_czarConfig);
 }
 
-Czar::~Czar() {
-    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
-    cout << "&&& Czar::~Czar()" << endl;
-}
+Czar::~Czar() { LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()"); }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
     LOGS(_log, LOG_LVL_DEBUG, "New query: " << query << ", hints: " << util::printable(hints));

@@ -70,7 +70,15 @@ public:
                       int attemptCount, qmeta::CzarId czarId, std::ostream& os) override {
         os << mockPayload;
     }
+
+    std::shared_ptr<nlohmann::json> makeMsgJson(ChunkQuerySpec const& s, std::string const& chunkResultName,
+                                                QueryId queryId, int jobId, int attemptCount,
+                                                qmeta::CzarId czarId) override {
+        return jsPtr;
+    }
+
     std::string mockPayload;
+    std::shared_ptr<nlohmann::json> jsPtr;
 };
 
 }  // namespace lsst::qserv::qproc

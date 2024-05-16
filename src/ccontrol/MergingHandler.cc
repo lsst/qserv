@@ -403,13 +403,6 @@ bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, uint32
 
     // This is needed to ensure the job query would be staying alive for the duration
     // of the operation to prevent inconsistency witin the application.
-    /* &&&
-    auto const jobQuery = getJobQuery().lock();
-    if (jobQuery == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobQuery was NULL");
-        return false;
-    }
-    */
     auto const jobBase = getJobBase().lock();
     if (jobBase == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobBase was NULL");
