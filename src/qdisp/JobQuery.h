@@ -61,9 +61,9 @@ public:
     QueryId getQueryId() const { return _qid; }
     JobId getJobId() const { return _jobDescription->id(); }
     std::string const& getIdStr() const { return _idStr; }
+
     JobDescription::Ptr getDescription() { return _jobDescription; }
     qmeta::JobStatus::Ptr getStatus() { return _jobStatus; }
-
     bool cancel(bool superfluous = false);
     bool isQueryCancelled() override;
 
@@ -120,6 +120,17 @@ protected:
         VMUTEX_HELD(_jqMtx);
         return _uberJobId >= 0;
     }
+
+    /// @return true if _uberJobId was set, it can only be set if it is unassigned
+    ///         or by the current owner.
+    /// NOTE: _rmutex must be held before calling this
+    bool _setUberJobId(UberJobId ujId);
+
+    /// NOTE: _rmutex must be held before calling this
+    UberJobId _getUberJobId() const { return _uberJobId; }
+
+    /// NOTE: _rmutex must be held before calling this
+    bool _isInUberJob() const { return _uberJobId >= 0; }
 
     // Values that don't change once set.
     std::weak_ptr<Executive> _executive;

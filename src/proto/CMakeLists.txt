@@ -17,3 +17,4 @@ target_link_libraries(proto PUBLIC
     log
     protobuf
 )
+

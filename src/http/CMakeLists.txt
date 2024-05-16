@@ -19,6 +19,7 @@ target_sources(http PRIVATE
     RequestBodyJSON.cc
     RequestQuery.cc
     Url.cc
+    WorkerQueryStatusData.cc
 )
 
 target_link_libraries(http PUBLIC
@@ -51,5 +52,6 @@ http_tests(
     testAsyncReq
     testRequestBodyJSON
     testRequestQuery
+    testStatusData
     testUrl
 )
