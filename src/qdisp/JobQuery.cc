@@ -44,21 +44,6 @@ using namespace std;
 
 namespace lsst::qserv::qdisp {
 
-/* &&&
-JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                   JobStatus::Ptr const& jobStatus, shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-                   QueryId qid)
-        : _executive(executive),
-          _jobDescription(jobDescription),
-          _markCompleteFunc(markCompleteFunc),
-          _jobStatus(jobStatus),
-          _qid(qid),
-          _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
-    _qdispPool = executive->getQdispPool();
-    LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
-}
-*/
-
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
                    JobStatus::Ptr const& jobStatus, shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
                    QueryId qid)
@@ -80,7 +65,6 @@ JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_DEBUG, "~JobQuery"); }
  */
 bool JobQuery::runJob() {  // &&&
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
-    LOGS(_log, LOG_LVL_WARN, "&&& JobQuery::runJob start");
     LOGS(_log, LOG_LVL_DEBUG, " runJob " << *this);
     auto executive = _executive.lock();
     if (executive == nullptr) {
@@ -121,12 +105,10 @@ bool JobQuery::runJob() {  // &&&
         // whether or not we are in SSI as cancellation handling differs.
         //
         LOGS(_log, LOG_LVL_TRACE, "runJob calls StartQuery()");
-        //&&& std::shared_ptr<JobQuery> jq(shared_from_this());
         JobQuery::Ptr jq(dynamic_pointer_cast<JobQuery>(shared_from_this()));
         _inSsi = true;
         if (executive->startQuery(jq)) {
             _jobStatus->updateInfo(_idStr, JobStatus::REQUEST, "EXEC");
-            LOGS(_log, LOG_LVL_WARN, "&&& JobQuery::runJob success end");
             return true;
         }
         _inSsi = false;
@@ -195,11 +177,6 @@ string const& JobQuery::getPayload() const { return _jobDescription->payload(); 
 
 void JobQuery::callMarkCompleteFunc(bool success) { _markCompleteFunc->operator()(success); }
 
-/* &&&
-std::ostream& operator<<(std::ostream& os, JobQuery const& jq) {
-    return os << "{" << jq.getIdStr() << jq._jobDescription << " " << *jq._jobStatus << "}";
-}
-*/
 ostream& JobQuery::dumpOS(ostream& os) const {
     return os << "{" << getIdStr() << _jobDescription << " " << _jobStatus << "}";
 }

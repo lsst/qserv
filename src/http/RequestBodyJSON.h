@@ -42,6 +42,17 @@ public:
     /// parsed body of the request
     nlohmann::json objJson = nlohmann::json::object();
 
+    RequestBody() = default;
+    RequestBody(RequestBody const&) = default;
+    RequestBody& operator=(RequestBody const&) = default;
+
+    ~RequestBody() = default;
+
+    /// &&& doc
+    /// &&&uj This would be much more efficient if this class had objJson defined as
+    /// &&&uj a const reference or pointer to const, but implementation likely ugly.
+    RequestBody(nlohmann::json const& js) : objJson(js) {}
+
     /**
      * Check if the specified parameter is present in the input JSON object.
      * @param obj  JSON object to be inspected.
@@ -73,8 +84,15 @@ public:
             throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
                                         "<T>[static] parameter 'obj' is not a valid JSON object");
         }
+<<<<<<< HEAD:src/http/RequestBodyJSON.h
         if (obj.find(name) != obj.end()) return obj[name];
         throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
+=======
+        if (auto const iter = obj.find(name); iter != obj.end()) {
+            return *iter;
+        }
+        throw std::invalid_argument("RequestBody::" + std::string(__func__) +
+>>>>>>> 4c670c16d (Czar and workers can send http messages to each other.):src/http/RequestBody.h
                                     "<T>[static] required parameter " + name +
                                     " is missing in the request body");
     }

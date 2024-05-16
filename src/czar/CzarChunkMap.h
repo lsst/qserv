@@ -29,13 +29,11 @@
 #include <map>
 #include <memory>
 #include <mutex>
-//&&&#include <set>
 #include <string>
 #include <sstream>
 
 // Qserv headers
 #include "global/clock_defs.h"
-// #include "qmeta/QMeta.h" &&&
 #include "util/Issue.h"
 
 namespace lsst::qserv::qmeta {

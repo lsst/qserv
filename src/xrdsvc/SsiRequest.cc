@@ -90,7 +90,6 @@ uint64_t countLimiter = 0;  // LockupDB
 // Step 4
 /// Called by XrdSsi to actually process a request.
 void SsiRequest::execute(XrdSsiRequest& req) {
-    LOGS(_log, LOG_LVL_WARN, "&&& SsiRequest::execute start");
     util::Timer t;
     LOGS(_log, LOG_LVL_DEBUG, "Execute request, resource=" << _resourceName);
 
@@ -124,7 +123,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     // Process the request
     switch (ru.unitType()) {
         case ResourceUnit::DBCHUNK: {
-            LOGS(_log, LOG_LVL_WARN, "&&& SsiRequest::execute DBCHUNK");
             // Increment the counter of the database/chunk resources in use
             _foreman->resourceMonitor()->increment(_resourceName);
 
@@ -188,7 +186,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             break;
         }
         case ResourceUnit::QUERY: {
-            LOGS(_log, LOG_LVL_WARN, "&&& SsiRequest::execute QUERY");
             LOGS(_log, LOG_LVL_DEBUG, "Parsing request details for resource=" << _resourceName);
             proto::QueryManagement request;
             try {
@@ -242,7 +239,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             break;
         }
         default:
-            LOGS(_log, LOG_LVL_WARN, "&&& SsiRequest::execute default");
             reportError("Unexpected unit type '" + std::to_string(ru.unitType()) +
                         "', resource name: " + _resourceName);
             break;

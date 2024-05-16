@@ -208,6 +208,9 @@ protected:
      */
     virtual void sendResponse(std::string const& content, std::string const& contentType) = 0;
 
+    std::string authKey() const { return _authKey; } // &&&uj
+
+
 private:
     /**
      * Pull the raw request body and translate it into a JSON object.
