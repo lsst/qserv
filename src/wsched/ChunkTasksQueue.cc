@@ -54,7 +54,7 @@ void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
                 // Correct ChunkTask wasn't found, make a new one.
                 std::pair<int, ChunkTasks::Ptr> ele(chunkId, std::make_shared<ChunkTasks>(chunkId));
                 auto res = _chunkMap.insert(ele);  // insert should fail if the key already exists.
-                LOGS(_log, LOG_LVL_TRACE, " queueTask chunk=" << chunkId << " created=" << res.second);
+                LOGS(_log, LOG_LVL_DEBUG, " queueTask chunk=" << chunkId << " created=" << res.second);
                 iter = res.first;
             }
         }
