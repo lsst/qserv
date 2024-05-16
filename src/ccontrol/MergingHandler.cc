@@ -277,6 +277,7 @@ shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
         : _infileMerger{merger}, _tableName{tableName} {}
 
+
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__ << " " << _tableName); }
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {

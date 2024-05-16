@@ -229,6 +229,7 @@ std::string UserQuerySelect::getResultQuery() const {
     return resultQuery;
 }
 
+#if 0   // &&&
 /// Begin running on all chunks added so far.
 void UserQuerySelect::submit() {
     auto exec = _executive;
@@ -323,6 +324,7 @@ void UserQuerySelect::submit() {
         _qMetaAddChunks(chunks);
     }
 }
+#endif  //&&&
 
 void UserQuerySelect::buildAndSendUberJobs() {
     // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?

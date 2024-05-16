@@ -43,18 +43,6 @@ using namespace std;
 
 namespace lsst::qserv::qdisp {
 
-/* &&&
-JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                   qmeta::JobStatus::Ptr const& jobStatus, QueryId qid)
-        : _executive(executive),
-          _jobDescription(jobDescription),
-          _jobStatus(jobStatus),
-          _qid(qid),
-          _idStr(QueryIdHelper::makeIdStr(qid, getJobId())) {
-    LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
-}
-*/
-
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
                    JobStatus::Ptr const& jobStatus, shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
                    QueryId qid)
