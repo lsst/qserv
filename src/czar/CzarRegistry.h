@@ -91,10 +91,13 @@ public:
 
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it.
-    WorkerContactMapPtr getWorkerContactMap() {
+    http::WorkerContactInfo::WCMapPtr getWorkerContactMap() {
         std::lock_guard<std::mutex> lockG(_mapMtx);
         return _contactMap;
     }
+
+    /// &&& doc
+    void sendActiveWorkersMessages();
 
 private:
     CzarRegistry() = delete;
