@@ -110,7 +110,6 @@ public:
 
     /// Begin execution of the query over all ChunkSpecs added so far.
     void submit() override;
-    void submitOld();  //&&&
 
     /// Wait until the query has completed execution.
     /// @return the final execution state.
