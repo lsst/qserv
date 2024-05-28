@@ -22,7 +22,7 @@
 // Class header
 #include "wbase/UberJobData.h"
 
-#include "../wcontrol/WCzarInfoMap.h"
+#include "wcontrol/WCzarInfoMap.h"
 // System headers
 
 // Third party headers

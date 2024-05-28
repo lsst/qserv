@@ -69,7 +69,6 @@ using namespace nlohmann;
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
-
 size_t const MB_SIZE_BYTES = 1024 * 1024;
 
 }  // namespace
@@ -170,6 +169,7 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " created");
 }
 
+
 Task::~Task() {}
 
 std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
@@ -267,6 +267,137 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                                                                      sqlConnMgr, queriesAndChunks));
     }
 
+    LOGS(_log, LOG_LVL_WARN, "&&& Task::createTasksForChunk end vect.sz=" << vect.size());
+    return vect;
+}
+
+std::vector<Task::Ptr> Task::createTasksForChunk(
+        std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
+        std::shared_ptr<wbase::FileChannelShared> const& sendChannel, proto::ScanInfo const& scanInfo,
+        bool scanInteractive, int maxTableSizeMb,
+        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr, mysql::MySqlConfig const& mySqlConfig,
+        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+        std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks, uint16_t resultsHttpPort) {
+    QueryId qId = ujData->getQueryId();
+    UberJobId ujId = ujData->getUberJobId();
+    LOGS(_log, LOG_LVL_WARN, "&&&uj Task::createTasksForChunk start");
+
+    UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
+
+    vector<Task::Ptr> vect;
+    for (auto const& job : jsJobs) {
+        json const& jsJobDesc = job["jobdesc"];
+        http::RequestBody rbJobDesc(jsJobDesc);
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC jobdesc " << jsJobDesc);
+        // See qproc::TaskMsgFactory::makeMsgJson for message construction.
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k1");
+        auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k2");
+        auto const jdQueryId = rbJobDesc.required<QueryId>("queryId");
+        if (jdQueryId != qId) {
+            throw TaskException(ERR_LOC, string("ujId=") + to_string(ujId) + " qId=" + to_string(qId) +
+                                                 " QueryId mismatch Job qId=" + to_string(jdQueryId));
+        }
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k3");
+        auto const jdJobId = rbJobDesc.required<int>("jobId");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k4");
+        auto const jdAttemptCount = rbJobDesc.required<int>("attemptCount");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k5");
+        auto const jdQuerySpecDb = rbJobDesc.required<string>("querySpecDb");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k6");
+        auto const jdScanPriority = rbJobDesc.required<int>("scanPriority");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k7");
+        auto const jdScanInteractive = rbJobDesc.required<bool>("scanInteractive");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k8");
+        auto const jdMaxTableSizeMb = rbJobDesc.required<int>("maxTableSize");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k9");
+        auto const jdChunkId = rbJobDesc.required<int>("chunkId");
+        LOGS(_log, LOG_LVL_WARN,
+             __func__ << "&&&SUBC jd cid=" << jdCzarId << " jdQId=" << jdQueryId << " jdJobId=" << jdJobId
+                      << " jdAtt=" << jdAttemptCount << " jdQDb=" << jdQuerySpecDb
+                      << " jdScanPri=" << jdScanPriority << " interactive=" << jdScanInteractive
+                      << " maxTblSz=" << jdMaxTableSizeMb << " chunkId=" << jdChunkId);
+
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10");
+        auto const jdQueryFragments = rbJobDesc.required<json>("queryFragments");
+        int fragmentNumber = 0;  //&&&uj should this be 1??? Is this at all useful?
+        for (auto const& frag : jdQueryFragments) {
+            vector<string> fragSubQueries;
+            vector<int> fragSubchunkIds;
+            vector<TaskDbTbl> fragSubTables;
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10a");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC frag=" << frag);
+            http::RequestBody rbFrag(frag);
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10b");
+            auto const& jsQueries = rbFrag.required<json>("queries");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10c");
+            // &&&uj move to uberjob???, these should be the same for all jobs
+            for (auto const& subQ : jsQueries) {
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10c1");
+                http::RequestBody rbSubQ(subQ);
+                auto const subQuery = rbSubQ.required<string>("subQuery");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10c2");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC subQuery=" << subQuery);
+                fragSubQueries.push_back(subQuery);
+            }
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10d1");
+            auto const& resultTable = rbFrag.required<string>("resultTable");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10d2");
+            auto const& jsSubIds = rbFrag.required<json>("subchunkIds");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC scId jsSubIds=" << jsSubIds);
+            for (auto const& scId : jsSubIds) {
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10e1");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC scId=" << scId);
+                fragSubchunkIds.push_back(scId);
+            }
+            auto const& jsSubTables = rbFrag.required<json>("subchunkTables");
+
+            for (auto const& scDbTable : jsSubTables) {  // &&&uj are these the same for all jobs?
+                http::RequestBody rbScDbTable(scDbTable);
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10f1");
+                string scDb = rbScDbTable.required<string>("scDb");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC scDb=" << scDb);
+                string scTable = rbScDbTable.required<string>("scTable");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC scTable=" << scDbTable);
+                TaskDbTbl scDbTbl(scDb, scTable);
+                fragSubTables.push_back(scDbTbl);
+            }
+
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC fragSubQueries.sz=" << fragSubQueries.size());
+            for (string const& fragSubQ : fragSubQueries) {
+                size_t templateId = userQueryInfo->addTemplate(fragSubQ);
+                if (fragSubchunkIds.empty()) {
+                    bool const noSubchunks = false;
+                    int const subchunkId = -1;
+                    auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber,
+                                                   userQueryInfo, templateId, noSubchunks, subchunkId,
+                                                   jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
+                                                   fragSubTables, fragSubchunkIds, sendChannel,
+                                                   resultsHttpPort));  // &&& change to make_shared
+                    vect.push_back(task);
+                } else {
+                    for (auto subchunkId : fragSubchunkIds) {
+                        bool const hasSubchunks = true;
+                        auto task = Task::Ptr(new Task(
+                                ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, userQueryInfo,
+                                templateId, hasSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
+                                scanInteractive, maxTableSizeMb, fragSubTables, fragSubchunkIds, sendChannel,
+                                resultsHttpPort));  // &&& change to make_shared
+                        vect.push_back(task);
+                    }
+                }
+            }
+            ++fragmentNumber;
+        }
+    }
+
+    for (auto taskPtr : vect) {
+        // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
+        taskPtr->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(taskPtr, chunkResourceMgr, mySqlConfig,
+                                                                     sqlConnMgr, queriesAndChunks));
+    }
+    // sendChannel->setTaskCount(vect.size()); &&& done at uberjob level now
+    LOGS(_log, LOG_LVL_WARN, "&&&uj Task::createTasksForChunk end vect.sz=" << vect.size());
     return vect;
 }
 
