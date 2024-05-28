@@ -29,7 +29,6 @@
 
 // Third party headers
 #include "lsst/log/Log.h"
-#include "XrdSsi/XrdSsiCluster.hh"
 
 // Qserv headers
 #include "http/Client.h"  // &&&uj will probably need to be removed
@@ -40,6 +39,9 @@
 #include "mysql/MySqlUtils.h"
 #include "qmeta/types.h"  // &&&uj
 #include "util/String.h"
+#include "wbase/FileChannelShared.h"
+#include "wbase/Task.h"
+#include "wbase/UberJobData.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/ResourceMonitor.h"
@@ -101,132 +103,147 @@ json HttpWorkerCzarModule::_queryJob() {  // &&&uj
 }
 
 json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
-    // See qdisp::UberJob::runUberJob() for json message construction.
-    LOGS(_log, LOG_LVL_ERROR, __func__ << "&&&SUBC NEEDS CODE");
-    auto const& jsReq = body().objJson;
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC jsReq=" << jsReq);
-    string const targetWorkerId = body().required<string>("worker");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC targetWorkerId=" << targetWorkerId);
+    json jsRet;
+    vector<wbase::Task::Ptr> ujTasks;
+    try {
+        // See qdisp::UberJob::runUberJob() for json message construction.
+        LOGS(_log, LOG_LVL_ERROR, __func__ << "&&&SUBC NEEDS CODE");
+        auto const& jsReq = body().objJson;
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC jsReq=" << jsReq);
+        string const targetWorkerId = body().required<string>("worker");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC targetWorkerId=" << targetWorkerId);
 
-    // &&& ??? Maybe add RequestBody(json const& js) constructor to leverage functions for nested items like
-    // "czar".
-    //&&&auto const& jsCzar = jsReq["czar"];
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC a");
-    http::RequestBody rbCzar(body().required<json>("czar"));
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC b");
-    auto czarName = rbCzar.required<string>("name");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC c");
-    auto czarId = rbCzar.required<qmeta::CzarId>("id");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC d");
-    auto czarPort = rbCzar.required<int>("management-port");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC e");
-    auto czarHostName = rbCzar.required<string>("management-host-name");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC f");
-    LOGS(_log, LOG_LVL_WARN,
-         __func__ << "&&&SUBC czar n=" << czarName << " id=" << czarId << " p=" << czarPort
-                  << " h=" << czarHostName);
-
-    http::RequestBody rbUberJob(body().required<json>("uberjob"));
-    auto ujQueryId = rbUberJob.required<uint64_t>("queryid");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC g");
-    auto ujId = rbUberJob.required<int>("uberjobid");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC h");
-    auto ujCzarId = rbUberJob.required<int>("czarid");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC i");
-    auto ujJobs = rbUberJob.required<json>("jobs");
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC j");
-    LOGS(_log, LOG_LVL_WARN,
-         __func__ << "&&&SUBC uj qid=" << ujQueryId << " ujid=" << ujId << " czid=" << ujCzarId);
-
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k");
-    for (auto const& job : ujJobs) {
-        json const& jsJobDesc = job["jobdesc"];
-        http::RequestBody rbJobDesc(jsJobDesc);
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC jobdesc " << jsJobDesc);
-        // See qproc::TaskMsgFactory::makeMsgJson for message construction.
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k1");
-        auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k2");
-        auto const jdQueryId = rbJobDesc.required<int>("queryId");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k3");
-        auto const jdJobId = rbJobDesc.required<int>("jobId");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k4");
-        auto const jdAttemptCount = rbJobDesc.required<int>("attemptCount");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k5");
-        auto const jdQuerySpecDb = rbJobDesc.required<string>("querySpecDb");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k6");
-        auto const jdScanPriority = rbJobDesc.required<int>("scanPriority");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k7");
-        auto const jdScanInteractive = rbJobDesc.required<bool>("scanInteractive");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k8");
-        auto const jdMaxTableSize = rbJobDesc.required<int>("maxTableSize");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k9");
-        auto const jdChunkId = rbJobDesc.required<int>("chunkId");
+        // &&& ??? Maybe add RequestBody(json const& js) constructor to leverage functions for nested items
+        // like "czar".
+        //&&&auto const& jsCzar = jsReq["czar"];
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC a");
+        http::RequestBody rbCzar(body().required<json>("czar"));
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC b");
+        auto czarName = rbCzar.required<string>("name");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC c");
+        auto czarId = rbCzar.required<qmeta::CzarId>("id");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC d");
+        auto czarPort = rbCzar.required<int>("management-port");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC e");
+        auto czarHostName = rbCzar.required<string>("management-host-name");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC f");
         LOGS(_log, LOG_LVL_WARN,
-             __func__ << "&&&SUBC jd cid=" << jdCzarId << " jdQId=" << jdQueryId << " jdJobId=" << jdJobId
-                      << " jdAtt=" << jdAttemptCount << " jdQDb=" << jdQuerySpecDb
-                      << " jdScanPri=" << jdScanPriority << " interactive=" << jdScanInteractive
-                      << " maxTblSz=" << jdMaxTableSize << " chunkId=" << jdChunkId);
+             __func__ << "&&&SUBC czar n=" << czarName << " id=" << czarId << " p=" << czarPort
+                      << " h=" << czarHostName);
 
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10");
-        auto const jdQueryFragments = rbJobDesc.required<json>("queryFragments");
-        for (auto const& frag : jdQueryFragments) {
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10a");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC frag=" << frag);
-            http::RequestBody rbFrag(frag);
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10b");
-            auto const& jsQueries = rbFrag.required<json>("queries");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10c");
-            for (auto const& subQ :
-                 jsQueries) {  // &&&uj move to uberjob, these should be the same for all jobs
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10c1");
-                http::RequestBody rbSubQ(subQ);
-                auto const subQuery = rbSubQ.required<string>("subQuery");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10c2");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC subQuery=" << subQuery);
-            }
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10d1");
-            auto const& resultTable = rbFrag.required<string>("resultTable");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10d2");
-            auto const& jsSubIds = rbFrag.required<json>("subchunkIds");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC scId jsSubIds=" << jsSubIds);
-            for (auto const& scId : jsSubIds) {
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10e1");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC scId=" << scId);
-            }
-            auto const& jsSubTables = rbFrag.required<json>("subchunkTables");
-            for (string scTable : jsSubTables) {  // &&&uj are these the same for all jobs?
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10f1");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC scTable=" << scTable);
-            }
-        }
+        http::RequestBody rbUberJob(body().required<json>("uberjob"));
+        auto ujQueryId = rbUberJob.required<QueryId>("queryid");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC g");
+        auto ujId = rbUberJob.required<UberJobId>("uberjobid");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC h");
+        auto ujCzarId = rbUberJob.required<int>("czarid");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC i");
+        auto ujJobs = rbUberJob.required<json>("jobs");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC j");
+        LOGS(_log, LOG_LVL_WARN,
+             __func__ << "&&&SUBC uj qid=" << ujQueryId << " ujid=" << ujId << " czid=" << ujCzarId);
 
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11");
-        auto const jdChunkScanTables = rbJobDesc.required<json>("chunkScanTables");
-        for (auto const& tbl : jdChunkScanTables) {
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a1");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC tbl=" << tbl);
-            http::RequestBody rbTbl(tbl);
-            auto const& chunkScanDb = rbTbl.required<string>("db");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a2");
-            auto const& lockInMemory = rbTbl.required<bool>("lockInMemory");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a3");
-            auto const& chunkScanTable = rbTbl.required<string>("table");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a4");
-            auto const& tblScanRating = rbTbl.required<int>("tblScanRating");
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a5");
+        //&&&uj make UberJobData, FileChannelShared, and Tasks.
+        auto ujData =
+                wbase::UberJobData::create(ujId, czarId, czarHostName, czarPort, ujQueryId, targetWorkerId);
+        auto channelShared =
+                wbase::FileChannelShared::create(ujId, czarId, czarHostName, czarPort, targetWorkerId);
+
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k");
+        for (auto const& job : ujJobs) {
+            json const& jsJobDesc = job["jobdesc"];
+            http::RequestBody rbJobDesc(jsJobDesc);
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC jobdesc " << jsJobDesc);
+            // See qproc::TaskMsgFactory::makeMsgJson for message construction.
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k1");
+            auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k2");
+            auto const jdQueryId = rbJobDesc.required<QueryId>("queryId");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k3");
+            auto const jdJobId = rbJobDesc.required<int>("jobId");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k4");
+            auto const jdAttemptCount = rbJobDesc.required<int>("attemptCount");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k5");
+            auto const jdQuerySpecDb = rbJobDesc.required<string>("querySpecDb");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k6");
+            auto const jdScanPriority = rbJobDesc.required<int>("scanPriority");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k7");
+            auto const jdScanInteractive = rbJobDesc.required<bool>("scanInteractive");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k8");
+            auto const jdMaxTableSize = rbJobDesc.required<int>("maxTableSize");
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k9");
+            auto const jdChunkId = rbJobDesc.required<int>("chunkId");
             LOGS(_log, LOG_LVL_WARN,
-                 __func__ << "&&&SUBC chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
-                          << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
+                 __func__ << "&&&SUBC jd cid=" << jdCzarId << " jdQId=" << jdQueryId << " jdJobId=" << jdJobId
+                          << " jdAtt=" << jdAttemptCount << " jdQDb=" << jdQuerySpecDb
+                          << " jdScanPri=" << jdScanPriority << " interactive=" << jdScanInteractive
+                          << " maxTblSz=" << jdMaxTableSize << " chunkId=" << jdChunkId);
+
+            //&&&uj need scan table info befor making tasks
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11");
+            //&&&proto::ScanTableInfo::ListOf scanTables;
+            proto::ScanInfo scanInfo;
+            auto const jdChunkScanTables = rbJobDesc.required<json>("chunkScanTables");
+            for (auto const& tbl : jdChunkScanTables) {
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a1");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC tbl=" << tbl);
+                http::RequestBody rbTbl(tbl);
+                auto const& chunkScanDb = rbTbl.required<string>("db");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a2");
+                auto const& lockInMemory = rbTbl.required<bool>("lockInMemory");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a3");
+                auto const& chunkScanTable = rbTbl.required<string>("table");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a4");
+                auto const& tblScanRating = rbTbl.required<int>("tblScanRating");
+                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a5");
+                LOGS(_log, LOG_LVL_WARN,
+                     __func__ << "&&&SUBC chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
+                              << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
+                scanInfo.infoTables.emplace_back(chunkScanDb, chunkScanTable, lockInMemory, tblScanRating);
+            }
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k12");
+            scanInfo.scanRating = jdScanPriority;
+
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10");
+
+            // create tasks and add them to ujData
+            auto chunkTasks = wbase::Task::createTasksForChunk(
+                    ujData, ujJobs, channelShared, scanInfo, jdScanInteractive, jdMaxTableSize,
+                    foreman()->chunkResourceMgr(), foreman()->mySqlConfig(), foreman()->sqlConnMgr(),
+                    foreman()->queriesAndChunks(), foreman()->httpPort());
+            ujTasks.insert(ujTasks.end(), chunkTasks.begin(), chunkTasks.end());
         }
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k12");
+        channelShared->setTaskCount(ujTasks.size());
+
+#if 0   /// &&&&&&&&
+        // Now that the request is decoded (successfully or not), release the
+        // xrootd request buffer. To avoid data races, this must happen before
+        // the task is handed off to another thread for processing, as there is a
+        // reference to this SsiRequest inside the reply channel for the task,
+        // and after the call to BindRequest.
+            ReleaseRequestBuffer();
+            t.start();
+            _foreman->processTasks(tasks);  // Queues tasks to be run later. //&&&uj next
+            t.stop();
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
+            break;
+        }
+#endif  /// &&&&&&&&
+
+        // &&&uj temporary, send response back to czar saying file is ready. The file is not ready, but this
+        //       is just an initial comms test
+        _temporaryRespFunc(targetWorkerId, czarName, czarId, czarHostName, czarPort, ujQueryId, ujId);
+
+        string note = string("qId=") + to_string(ujQueryId) + " ujId=" + to_string(ujId) +
+                      "tasks in uberJob=" + to_string(channelShared->getTaskCount());
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC note=" << note);
+        jsRet = {{"success", 1}, {"errortype", "none"}, {"note", note}};
+
+    } catch (wbase::TaskException const& texp) {
+        LOGS(_log, LOG_LVL_ERROR, "wbase::TaskException received " << texp.what());
+        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", texp.what()}};
     }
-
-    // &&&uj temporary, send response back to czar saying file is ready. The file is not ready, but this
-    //       an initial comms test
-    _temporaryRespFunc(targetWorkerId, czarName, czarId, czarHostName, czarPort, ujQueryId, ujId);
-
-    json jsRet = {{"success", 1}, {"errortype", "none"}, {"note", "none"}};
     return jsRet;
 }
 
