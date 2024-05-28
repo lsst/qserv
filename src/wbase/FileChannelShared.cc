@@ -267,8 +267,12 @@ shared_ptr<FileChannelShared> FileChannelShared::create(shared_ptr<wbase::SendCh
 
 FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                                      string const& workerId)
-        : _sendChannel(sendChannel),
+        : _isUberJob(false),
+          _sendChannel(sendChannel),
+          _uberJobId(0),
           _czarId(czarId),
+          _czarHostName(""),  ///< Name of the czar host.
+          _czarPort(-1),
           _workerId(workerId),
           _protobufArena(make_unique<google::protobuf::Arena>()),
           _scsId(scsSeqId++) {
@@ -276,6 +280,30 @@ FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendC
     if (_sendChannel == nullptr) {
         throw util::Bug(ERR_LOC, "FileChannelShared constructor given nullptr");
     }
+}
+
+//&&&uj
+FileChannelShared::Ptr FileChannelShared::create(UberJobId uberJobId, qmeta::CzarId czarId,
+                                                 string const& czarHostName, int czarPort,
+                                                 string const& workerId) {
+    lock_guard<mutex> const lock(_resultsDirCleanupMtx);
+    return Ptr(new FileChannelShared(uberJobId, czarId, czarHostName, czarPort, workerId));
+}
+
+FileChannelShared::FileChannelShared(UberJobId uberJobId, qmeta::CzarId czarId, string const& czarHostName,
+                                     int czarPort, string const& workerId)
+        : _isUberJob(true),
+          _sendChannel(nullptr),
+          _uberJobId(uberJobId),
+          _czarId(czarId),
+          _czarHostName(czarHostName),
+          _czarPort(czarPort),
+          _workerId(workerId),
+          _protobufArena(make_unique<google::protobuf::Arena>()),
+          _scsId(scsSeqId++),
+          _useHttp(true) {
+    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created");
+    LOGS(_log, LOG_LVL_WARN, "&&& FileChannelShared created useHttp true");
 }
 
 FileChannelShared::~FileChannelShared() {
@@ -286,11 +314,15 @@ FileChannelShared::~FileChannelShared() {
     if (isDead()) {
         _removeFile(lock_guard<mutex>(_tMtx));
     }
-    if (_sendChannel != nullptr) {
-        _sendChannel->setDestroying();
-        if (!_sendChannel->isDead()) {
-            _sendChannel->kill("~FileChannelShared()");
+    if (!_useHttp) {
+        if (_sendChannel != nullptr) {
+            _sendChannel->setDestroying();
+            if (!_sendChannel->isDead()) {
+                _sendChannel->kill("~FileChannelShared()");
+            }
         }
+    } else {
+        LOGS(_log, LOG_LVL_WARN, "&&&uj should anything be sent to czar at this point???");
     }
     LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared deleted");
 }
@@ -310,8 +342,12 @@ bool FileChannelShared::kill(string const& note) {
 }
 
 bool FileChannelShared::isDead() {
-    if (_sendChannel == nullptr) return true;
-    return _sendChannel->isDead();
+    if (!_useHttp) {
+        if (_sendChannel == nullptr) return true;
+        return _sendChannel->isDead();
+    } else {
+        return _dead;
+    }
 }
 
 string FileChannelShared::makeIdStr(int qId, int jId) {
@@ -322,11 +358,16 @@ string FileChannelShared::makeIdStr(int qId, int jId) {
 bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
     lock_guard<mutex> const tMtxLock(_tMtx);
-    if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
-        LOGS(_log, LOG_LVL_ERROR, "Could not transmit the error message to Czar.");
-        return false;
+    if (!_useHttp) {
+        if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
+            LOGS(_log, LOG_LVL_ERROR, "Could not transmit the error message to Czar.");
+            return false;
+        }
+        return true;
+    } else {
+        LOGS(_log, LOG_LVL_WARN, "&&&uj NEED CODE send msg to czar with the errors");
     }
-    return true;
+    return false;
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
@@ -429,7 +470,16 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
 bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string const& note) {
     LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared::" << __func__ << " " << note);
-    return _sendChannel->kill(note);
+    if (!_useHttp) {
+        return _sendChannel->kill(note);
+    } else {
+        bool oldVal = _dead.exchange(true);
+        if (!oldVal) {
+            LOGS(_log, LOG_LVL_WARN, "FileChannelShared first kill call " << note);
+        }
+        // &&&uj anything else need to be done?
+        return oldVal;
+    }
 }
 
 bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
@@ -579,20 +629,27 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     LOGS(_log, LOG_LVL_DEBUG,
          __func__ << " idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size());
 
-    // Send the message sent out-of-band within the SSI metadata.
-    if (!_sendChannel->setMetadata(_responseBuf.data(), _responseBuf.size())) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in setMetadata " << idStr);
-        _kill(streamMutexLock, "setMetadata");
-        return false;
-    }
+    if (!_useHttp) {
+        // Send the message sent out-of-band within the SSI metadata.
+        if (!_sendChannel->setMetadata(_responseBuf.data(), _responseBuf.size())) {
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in setMetadata " << idStr);
+            _kill(streamMutexLock, "setMetadata");
+            return false;
+        }
 
-    // Send back the empty object since no info is expected by a caller
-    // for this type of requests beyond the usual error notifications (if any).
-    // Note that this call is needed to initiate the transaction.
-    if (!_sendChannel->sendData((char const*)0, 0)) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in sendData " << idStr);
-        _kill(streamMutexLock, "sendData");
-        return false;
+        // Send back the empty object since no info is expected by a caller
+        // for this type of requests beyond the usual error notifications (if any).
+        // Note that this call is needed to initiate the transaction.
+        if (!_sendChannel->sendData((char const*)0, 0)) {
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in sendData " << idStr);
+            _kill(streamMutexLock, "sendData");
+            return false;
+        }
+    } else {
+        LOGS(_log, LOG_LVL_WARN, "&&&uj NEED CODE send the url back with http");
+        // &&&uj the http communications need to happen in a different thread, or this thread can be booted
+        // from
+        // &&&uj the scheduler so that it can just wait for a response.
     }
     return true;
 }
