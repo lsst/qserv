@@ -242,7 +242,7 @@ std::string UserQuerySelect::getResultQuery() const {
 
 #if 0   // &&&
 /// Begin running on all chunks added so far.
-void UserQuerySelect::submitOld() {  // &&& to be deleted
+void UserQuerySelect::submit() {  // &&& to be deleted
     _qSession->finalize();
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
@@ -339,7 +339,6 @@ void UserQuerySelect::submit() {  //&&&uj
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
     assert(_infileMerger);
 
-    //&&&auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>(_qMetaQueryId);
     auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>();
     TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
     std::vector<int> chunks;
@@ -435,7 +434,6 @@ void UserQuerySelect::submit() {  //&&&uj
         vector<qdisp::UberJob::Ptr> uberJobs;
 
         auto czarPtr = czar::Czar::getCzar();
-        // auto workerResources = czarPtr->getWorkerResourceLists(); //&&& replace with CzarRegistry stuff
         auto czChunkMap = czarPtr->getCzarChunkMap();
         auto czRegistry = czarPtr->getCzarRegistry();
 

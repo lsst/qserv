@@ -179,7 +179,7 @@ public:
     void updateProxyMessages();
 
     /// Add UbjerJobs to this user query. &&&
-    void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);  /// &&&
+    void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);
 
     ChunkIdJobMapType& getChunkJobMapAndInvalidate();                     /// &&&
     bool startUberJob(std::shared_ptr<UberJob> const& uJob);              /// &&&
@@ -260,7 +260,7 @@ private:
 
     // Add a job to the _chunkToJobMap //&&&uj
     void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);  //&&&uj
-    /// _chunkToJobMap is created once and then destroyed when used.
+    /// _chunkToJobMap is created once and then destroyed after use.
     std::atomic<bool> _chunkToJobMapInvalid{false};   ///< true indicates the map is no longer valid. //&&&uj
     std::mutex _chunkToJobMapMtx;                     ///< protects _chunkToJobMap //&&&uj
     ChunkIdJobMapType _chunkToJobMap;                 ///< Map of jobs ordered by chunkId  //&&&uj
