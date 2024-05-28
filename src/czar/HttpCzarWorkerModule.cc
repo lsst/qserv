@@ -60,7 +60,7 @@ json HttpCzarWorkerModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
     debug(func);
     //&&&uj this seems irrelevant for a worker enforceInstanceId(func,
-    //cconfig::CzarConfig::instance()->replicationInstanceId());
+    // cconfig::CzarConfig::instance()->replicationInstanceId());
     enforceCzarName(func);
     if (subModuleName == "QUERYJOB-ERROR")
         return _queryJobError();

@@ -110,8 +110,8 @@ private:
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
-    int const _queryId;
-    int const _uberJobId;
+    QueryId const _queryId;
+    UberJobId const _uberJobId;
     qmeta::CzarId _czarId;
 
     std::string const _idStr;
