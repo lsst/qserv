@@ -77,17 +77,19 @@ Server::Server(asio::io_service& io_service, unsigned short port, int backlog,
 
 Server::~Server() { stop(); }
 
-void Server::addHandler(std::string const& method, std::string const& pattern, Handler handler) {
+void Server::addHandler(std::string const& method, std::string const& pattern, Handler handler,
+                        bool readEntireBody) {
     auto& handlers = _pathHandlersByMethod[method];
     handlers.resize(handlers.size() + 1);
     auto& phandler = handlers.back();
     phandler.path.parse(pattern);
     phandler.handler = handler;
+    phandler.readEntireBody = readEntireBody;
 }
 
 void Server::addHandlers(std::initializer_list<HandlerSpec> handlers) {
     for (auto& handler : handlers) {
-        addHandler(handler.method, handler.pattern, handler.handler);
+        addHandler(handler.method, handler.pattern, handler.handler, handler.readEntireBody);
     }
 }
 
@@ -175,14 +177,10 @@ void Server::stop() {
     _activeSockets.clear();
 }
 
-void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
-    auto self = shared_from_this();
-
-    // Set up a timer and handler to timeout requests that take too long to arrive.
-
+std::shared_ptr<asio::steady_timer> Server::_startTimer(std::shared_ptr<ip::tcp::socket> socket) {
     auto timer = std::make_shared<asio::steady_timer>(_io_service);
     timer->expires_from_now(_requestTimeout);
-    timer->async_wait([self, socket](boost::system::error_code const& ec) {
+    timer->async_wait([self = shared_from_this(), socket](boost::system::error_code const& ec) {
         if (!ec) {
             LOGLS_WARN(_log, logger(self) << logger(socket) << "read timed out, closing");
             boost::system::error_code ignore;
@@ -194,10 +192,17 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
             LOGLS_ERROR(_log, logger(self) << logger(socket) << "read timeout timer: " << ec.message());
         }
     });
+    return timer;
+}
+
+void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
+    auto self = shared_from_this();
+
+    // Set up a timer and handler to timeout requests that take too long to arrive.
+    auto timer = _startTimer(socket);
 
     // Create Response object for this request. Completion handler will log total request + response
     // time, then either turn-around or close the client socket as appropriate.
-
     auto startTime = chrono::steady_clock::now();
     auto reuseSocket = std::make_shared<bool>(false);
     auto const response = std::shared_ptr<Response>(new Response(
@@ -220,116 +225,87 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
 
     // Create Request object for this request, and initiate header read.
 
-    auto const request = std::shared_ptr<Request>(new Request(self, socket));
+    auto const request = std::shared_ptr<Request>(new Request(self, response, socket));
     asio::async_read_until(
             *socket, request->_requestbuf, "\r\n\r\n",
             [self, socket, reuseSocket, request, response, timer](boost::system::error_code const& ec,
                                                                   size_t bytesRead) {
                 if (ec == asio::error::operation_aborted) {
                     LOGLS_ERROR(_log, logger(self) << logger(socket) << "header read canceled");
-                    timer->cancel();
-                    return;
                 } else if (ec) {
                     LOGLS_ERROR(_log, logger(self)
                                               << logger(socket) << "header read failed: " << ec.message());
-                    timer->cancel();
-                    return;
                 }
-
-                size_t bytesBuffered = request->_requestbuf.size() - bytesRead;
-
-                if (!(request->_parseHeader() && request->_parseUri())) {
-                    timer->cancel();
+                timer->cancel();
+                if (ec) return;
+                if (!(request->_parseHeader(bytesRead) && request->_parseUri())) {
                     response->sendStatus(STATUS_BAD_REQ);
                     return;
                 }
-
                 if (request->version == "HTTP/1.1") {
                     *reuseSocket = true;
                 }
-
-                if (request->header.count("Content-Length") > 0) {
-                    std::size_t bytesToRead;
+                auto const pathHandler = self->_findPathHandler(request);
+                if (pathHandler == nullptr) {
+                    LOGLS_DEBUG(_log, logger(self) << logger(socket) << "no handler found");
+                    response->sendStatus(STATUS_NOT_FOUND);
+                    return;
+                }
+                if (pathHandler->readEntireBody) {
                     try {
-                        bytesToRead = stoull(request->header["Content-Length"]);
-                    } catch (std::exception const& e) {
-                        LOGLS_WARN(_log, logger(self) << logger(socket)
-                                                      << "rejecting request with bad Content-Length: "
-                                                      << ctrlquote(request->header["Content-Length"]));
-                        timer->cancel();
-                        response->sendStatus(STATUS_BAD_REQ);
-                        return;
+                        request->readEntireBodyAsync([self, pathHandler](auto request, auto response,
+                                                                         bool success, size_t bytesRead) {
+                            if (success) {
+                                self->_dispatchRequest(pathHandler, request, response);
+                            } else {
+                                response->sendStatus(STATUS_BAD_REQ);
+                            }
+                        });
+                    } catch (...) {
+                        response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
                     }
-                    bytesToRead -= bytesBuffered;
-                    LOGLS_INFO(_log, logger(self)
-                                             << logger(socket) << request->method << " " << request->target
-                                             << " " << request->version << " + " << bytesToRead << " bytes");
-                    asio::async_read(
-                            *socket, request->_requestbuf, asio::transfer_exactly(bytesToRead),
-                            [self, socket, request, response, timer](boost::system::error_code const& ec,
-                                                                     size_t) {
-                                timer->cancel();
-                                if (ec == asio::error::operation_aborted) {
-                                    LOGLS_ERROR(_log, logger(self) << logger(socket)
-                                                                   << "request body read canceled");
-                                    return;
-                                } else if (ec) {
-                                    LOGLS_ERROR(_log,
-                                                logger(self) << logger(socket)
-                                                             << "request body read failed: " << ec.message());
-                                    return;
-                                }
-                                if ((request->header["Content-Type"] ==
-                                     "application/x-www-form-urlencoded") &&
-                                    !request->_parseBody()) {
-                                    LOGLS_ERROR(_log, logger(self) << logger(socket) << "form decode failed");
-                                    response->sendStatus(STATUS_BAD_REQ);
-                                    return;
-                                }
-                                self->_dispatchRequest(request, response);
-                            });
                 } else {
-                    LOGLS_INFO(_log, logger(self) << logger(socket) << request->method << " "
-                                                  << request->target << " " << request->version);
-                    timer->cancel();
-                    self->_dispatchRequest(request, response);
+                    self->_dispatchRequest(pathHandler, request, response);
                 }
             });
 }
 
-void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response) {
+std::shared_ptr<Server::PathHandler> Server::_findPathHandler(Request::Ptr request) {
     auto pathHandlersIt = _pathHandlersByMethod.find(request->method);
     if (pathHandlersIt != _pathHandlersByMethod.end()) {
         boost::smatch pathMatch;
         for (auto& pathHandler : pathHandlersIt->second) {
             if (boost::regex_match(request->path, pathMatch, pathHandler.path.regex)) {
                 pathHandler.path.updateParamsFromMatch(request, pathMatch);
-                LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << "invoking handler for "
-                                               << pathHandler.path.regex);
-                try {
-                    pathHandler.handler(request, response);
-                } catch (boost::system::system_error const& e) {
-                    LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
-                                                   << "exception thrown from handler: " << e.what());
-                    switch (e.code().value()) {
-                        case errc::permission_denied:
-                            response->sendStatus(STATUS_FORBIDDEN);
-                            break;
-                        default:
-                            response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
-                            break;
-                    }
-                } catch (std::exception const& e) {
-                    LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
-                                                   << "exception thrown from handler: " << e.what());
-                    response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
-                }
-                return;
+                return std::make_shared<PathHandler>(pathHandler);
             }
         }
     }
-    LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << "no handler found");
-    response->sendStatus(STATUS_NOT_FOUND);
+    return nullptr;
+}
+
+void Server::_dispatchRequest(std::shared_ptr<PathHandler> pathHandler, Request::Ptr request,
+                              Response::Ptr response) {
+    LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << "invoking handler for "
+                                   << pathHandler->path.regex);
+    try {
+        pathHandler->handler(request, response);
+    } catch (boost::system::system_error const& e) {
+        LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
+                                       << "exception thrown from handler: " << e.what());
+        switch (e.code().value()) {
+            case errc::permission_denied:
+                response->sendStatus(STATUS_FORBIDDEN);
+                break;
+            default:
+                response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
+                break;
+        }
+    } catch (std::exception const& e) {
+        LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
+                                       << "exception thrown from handler: " << e.what());
+        response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
+    }
 }
 
 }  // namespace lsst::qserv::qhttp

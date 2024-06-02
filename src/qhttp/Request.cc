@@ -24,6 +24,7 @@
 #include "qhttp/Request.h"
 
 // System headers
+#include <algorithm>
 #include <cstdlib>
 #include <utility>
 
@@ -34,6 +35,7 @@
 #include "lsst/log/Log.h"
 #include "qhttp/LogHelpers.h"
 
+namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
 
 namespace {
@@ -42,14 +44,23 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
 
 namespace lsst::qserv::qhttp {
 
-Request::Request(std::shared_ptr<Server> const server, std::shared_ptr<ip::tcp::socket> const socket)
-        : content(&_requestbuf), _server(std::move(server)), _socket(std::move(socket)) {
+std::size_t const Request::defaultRecordSizeBytes = 1024 * 1024;
+
+Request::Request(std::shared_ptr<Server> const server, std::shared_ptr<Response> const response,
+                 std::shared_ptr<ip::tcp::socket> const socket)
+        : content(&_requestbuf),
+          _server(std::move(server)),
+          _response(std::move(response)),
+          _socket(std::move(socket)) {
     boost::system::error_code ignore;
     localAddr = _socket->local_endpoint(ignore);
     remoteAddr = _socket->remote_endpoint(ignore);
 }
 
-bool Request::_parseHeader() {
+bool Request::_parseHeader(std::size_t headerSizeBytes) {
+    // Note: a value of the attribute must be computed before parsing the header.
+    _contentReadBytes = _requestbuf.size() - headerSizeBytes;
+
     std::string line;
     if (!getline(content, line)) return false;
 
@@ -88,7 +99,16 @@ bool Request::_parseHeader() {
         }
         header[headerMatch[1]] = headerMatch[2];
     }
-
+    if (header.count("Content-Length") > 0) {
+        try {
+            _contentLengthBytes = stoull(header["Content-Length"]);
+        } catch (std::exception const& e) {
+            LOGLS_WARN(_log, logger(_server)
+                                     << logger(_socket) << "rejecting request with bad Content-Length: "
+                                     << ctrlquote(header["Content-Length"]));
+            return false;
+        }
+    }
     return true;
 }
 
@@ -120,11 +140,6 @@ bool Request::_parseUri() {
         query[key] = value;
     }
 
-    return true;
-}
-
-bool Request::_parseBody() {
-    // TODO: implement application/x-www-form-urlencoded body -> body
     return true;
 }
 
@@ -161,6 +176,46 @@ std::string Request::_percentDecode(std::string const& encoded, bool exceptPathD
     decoded.append(tail, encoded.cend());
 
     return decoded;
+}
+
+void Request::readEntireBodyAsync(BodyReadCallback onFinished) {
+    std::size_t const bytesToRead = _contentLengthBytes - _contentReadBytes;
+    _readBodyAsync(_server->_startTimer(_socket), bytesToRead, onFinished);
+}
+
+void Request::readPartialBodyAsync(BodyReadCallback onFinished, size_t numBytes) {
+    std::size_t const bytesToRead =
+            std::min(_contentLengthBytes - _contentReadBytes, numBytes == 0 ? _recordSizeBytes : numBytes);
+    _readBodyAsync(_server->_startTimer(_socket), bytesToRead, onFinished);
+}
+
+void Request::_readBodyAsync(std::shared_ptr<asio::steady_timer> timer_, std::size_t bytesToRead,
+                             BodyReadCallback onFinished) {
+    auto timer = std::move(timer_);
+    auto self = shared_from_this();
+    if (bytesToRead > 0) {
+        _contentReadBytes += bytesToRead;
+        LOGLS_INFO(_log, logger(_server) << logger(_socket) << method << " " << target << " " << version
+                                         << " + " << bytesToRead << " bytes");
+        asio::async_read(*_socket, _requestbuf, asio::transfer_exactly(bytesToRead),
+                         [self, timer, onFinished](boost::system::error_code const& ec, size_t bytesRead) {
+                             timer->cancel();
+                             if (ec == asio::error::operation_aborted) {
+                                 LOGLS_ERROR(_log, logger(self->_server) << logger(self->_socket)
+                                                                         << "request body read canceled");
+                             } else if (ec) {
+                                 LOGLS_ERROR(_log, logger(self->_server)
+                                                           << logger(self->_socket)
+                                                           << "request body read failed: " << ec.message());
+                             }
+                             onFinished(self, self->_response, !ec, bytesRead);
+                             self->content.clear();
+                         });
+    } else {
+        LOGLS_INFO(_log, logger(_server) << logger(_socket) << method << " " << target << " " << version);
+        timer->cancel();
+        onFinished(self, _response, true, 0);
+    }
 }
 
 }  // namespace lsst::qserv::qhttp
