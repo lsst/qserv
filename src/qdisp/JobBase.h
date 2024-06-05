@@ -31,13 +31,17 @@
 // This header declarations
 namespace lsst { namespace qserv { namespace qdisp {
 
+class Executive;
 class JobStatus;
 class QdispPool;
 class ResponseHandler;
 class QueryRequest;
 
 /// Base class for JobQuery and UberJob.
-/// TODO:UJ This could use a lot of cleanup.
+/// TODO:UJ This could use a lot of cleanup. Once UberJobs are fully in effect, there's no need
+///         for this base class as it won't be possible to send a JobQuery to a worker without
+///         putting it in an UberJob first. The UberJob is a wrapper that stores worker contact
+///         info.
 class JobBase : public std::enable_shared_from_this<JobBase> {
 public:
     using Ptr = std::shared_ptr<JobBase>;
@@ -48,7 +52,7 @@ public:
     virtual ~JobBase() = default;
 
     virtual QueryId getQueryId() const = 0;
-    virtual int getIdInt() const = 0;
+    virtual UberJobId getJobId() const = 0;
     virtual std::string const& getIdStr() const = 0;
     virtual std::shared_ptr<QdispPool> getQdispPool() = 0;
     virtual std::string const& getPayload() const = 0;  ///< const& in return type is essential for xrootd
@@ -58,6 +62,7 @@ public:
     virtual bool isQueryCancelled() = 0;
     virtual void callMarkCompleteFunc(bool success) = 0;
     virtual void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) = 0;
+    virtual std::shared_ptr<qdisp::Executive> getExecutive() = 0;
 
     virtual std::ostream& dumpOS(std::ostream& os) const;
 

@@ -56,7 +56,14 @@ namespace lsst::qserv::util {
 class MultiError;
 }  // namespace lsst::qserv::util
 
+/* &&&
+namespace lsst::qserv::wcontrol {
+class Foreman;
+}
+*/
+
 namespace lsst::qserv::wbase {
+class UberJobData;
 
 /// The class is responsible for writing mysql result rows as Protobuf
 /// serialized messages into an output file. Once a task (or all sub-chunk
@@ -120,9 +127,16 @@ public:
     static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                       std::string const& workerId = std::string());
 
+    /* &&&
     /// The factory method for handling UberJob over http.
     static Ptr create(UberJobId uberJobId, qmeta::CzarId czarId, std::string const& czarHostName,
-                      int czarPort, std::string const& workerId);
+                      int czarPort, std::string const& workerId,
+                      ComInfoToCzar::Ptr const& comInfoToCzar);
+                      */
+    /// The factory method for handling UberJob over http.
+    static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId, std::string const& czarHostName,
+            int czarPort, std::string const& workerId); //&&& delete all params except uberJob
+
 
     FileChannelShared() = delete;
     FileChannelShared(FileChannelShared const&) = delete;
@@ -176,7 +190,7 @@ private:
     FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                       std::string const& workerId);
 
-    FileChannelShared(UberJobId uberJobId, qmeta::CzarId czarId, std::string const& czarHostName,
+    FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId, std::string const& czarHostName,
                       int czarPort, std::string const& workerId);
 
     /// @see wbase::SendChannel::kill
@@ -237,16 +251,21 @@ private:
     bool _sendResponse(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
                        bool cancelled, util::MultiError const& multiErr);
 
+    /// &&&uj doc
+    void _fileReadyResponse();
+
     mutable std::mutex _tMtx;  ///< Protects data recording and Czar notification
 
     bool _isUberJob;  ///< true if this is using UberJob http. To be removed when _sendChannel goes away.
 
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
-    UberJobId const _uberJobId;
-    qmeta::CzarId const _czarId;      ///< id of the czar that requested this task(s).
-    std::string const _czarHostName;  ///< Name of the czar host.
-    int const _czarPort;              ///< port for the czar.
-    std::string const _workerId;      ///< The unique identifier of the worker.
+    std::weak_ptr<UberJobData> _uberJobData; ///< &&& doc
+
+    UberJobId const _uberJobId;       ///< &&& doc
+    qmeta::CzarId const _czarId;      ///< id of the czar that requested this task(s). &&& delete
+    std::string const _czarHostName;  ///< Name of the czar host. &&& delete
+    int const _czarPort;              ///< port for the czar. &&& delete
+    std::string const _workerId;      ///< The unique identifier of the worker. &&& delete
 
     // Allocatons/deletion of the data messages are managed by Google Protobuf Arena.
     std::unique_ptr<google::protobuf::Arena> _protobufArena;
@@ -286,6 +305,8 @@ private:
 
     uint32_t _rowcount = 0;      ///< The total numnber of rows in all result sets of a query.
     uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
+
+    //&&&ComInfoToCzar::Ptr _comInfoToCzar; ///< &&&uj doc
 
     bool const _useHttp = false;     ///< to be eliminated when xrootd is no longer used.
     std::atomic<bool> _dead{false};  ///< Set to true when the contents of the file are no longer useful.
