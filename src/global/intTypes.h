@@ -37,7 +37,8 @@ typedef std::vector<int32_t> Int32Vector;
 
 /// Typedef for Query ID in query metadata.
 typedef std::uint64_t QueryId;
-typedef std::uint64_t UberJobId;
+typedef std::int64_t JobId;
+typedef JobId UberJobId; // These must be the same type.
 
 /// Class to provide a consistent format for QueryIds in the log file
 class QueryIdHelper {
@@ -54,7 +55,7 @@ public:
     /// @parameter qid - query id number.
     /// @parameter jobId - the job id number.
     /// @parameter invalid - true, qid is not a valid user query id.
-    static std::string makeIdStr(QueryId qid, int jobId, bool invalid = false) {
+    static std::string makeIdStr(QueryId qid, JobId jobId, bool invalid = false) {
         if (invalid) return makeIdStr(qid, true) + "?;";
         return makeIdStr(qid) + std::to_string(jobId) + ";";
     }

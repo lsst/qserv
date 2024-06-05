@@ -97,6 +97,10 @@ string getErrorText(XrdSsiErrInfo& e) {
 
 namespace lsst::qserv::qdisp {
 
+mutex Executive::_executiveMapMtx; ///< protects _executiveMap
+map<QueryId, Executive::Ptr> Executive::_executiveMap; ///< Map of executives for queries in progress.
+
+
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
@@ -167,9 +171,48 @@ void Executive::_updateStats() const {
 }
 
 void Executive::setQueryId(QueryId id) {
+    if (_queryIdSet.exchange(true) == true) {
+        throw util::Bug(ERR_LOC, "Executive::setQueryId called more than once _id=" + to_string(_id) + " id=" + to_string(id));
+    }
     _id = id;
     _idStr = QueryIdHelper::makeIdStr(_id);
+
+    // Insert into the global executive map.
+    {
+        lock_guard<mutex> lgMap(_executiveMapMtx);
+        _executiveMap[_id] = shared_from_this();
+    }
     qdisp::CzarStats::get()->trackQueryProgress(_id);
+}
+
+void Executive::removeFromMap() {
+    if (_queryIdSet) {
+        return;
+    }
+    // Remove this from the global executive map.
+    lock_guard<mutex> lgMap(_executiveMapMtx);
+    auto iter = _executiveMap.find(_id);
+    if (iter != _executiveMap.end()) {
+        _executiveMap.erase(iter);
+    }
+}
+
+Executive::Ptr Executive::getExecutiveFromMap(QueryId qId) {
+    lock_guard<mutex> lgMap(_executiveMapMtx);
+    auto iter = _executiveMap.find(qId);
+    if (iter == _executiveMap.end()) {
+        return nullptr;
+    }
+    return iter->second;
+}
+
+UberJob::Ptr Executive::findUberJob(UberJobId ujId) {
+    lock_guard<mutex> lgMap(_uberJobsMapMtx);
+    auto iter = _uberJobsMap.find(ujId);
+    if (iter == _uberJobsMap.end()) {
+        return nullptr;
+    }
+    return iter->second;
 }
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.
@@ -184,7 +227,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         MarkCompleteFunc::Ptr mcf = make_shared<MarkCompleteFunc>(thisPtr, jobDesc->id());
         jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, mcf, _id);
 
-        QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
+        QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
 
         {
             lock_guard<recursive_mutex> lock(_cancelled.getMutex());
@@ -199,7 +242,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
                 return jobQuery;
             }
 
-            if (!_track(jobQuery->getIdInt(), jobQuery)) {
+            if (!_track(jobQuery->getJobId(), jobQuery)) {
                 LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add");
                 return jobQuery;
             }
@@ -213,7 +256,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         ++_requestCount;
     }
 
-    QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getIdInt());
+    QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
     /* &&&uj
     //&&&uj code just returns the jobQuery at this point, it doesn't call runJob().
     LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
@@ -230,7 +273,7 @@ void Executive::runJobQuery(JobQuery::Ptr const& jobQuery) {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::runJobQuery start");
     bool started = jobQuery->runJob();
     if (!started && isLimitRowComplete()) {
-        markCompleted(jobQuery->getIdInt(), false);
+        markCompleted(jobQuery->getJobId(), false);
     }
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::runJobQuery end");
 }
@@ -244,6 +287,17 @@ void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
         _qdispPool->queCmd(cmd, 1);
     }
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueJobStart end");
+}
+
+void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueFileCollect start");
+
+    if (_scanInteractive) {
+        _qdispPool->queCmd(cmd, 3);
+    } else {
+        _qdispPool->queCmd(cmd, 4);
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueFileCollect end");
 }
 
 void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
@@ -315,9 +369,10 @@ Executive::ChunkIdJobMapType& Executive::getChunkJobMapAndInvalidate() {  // &&&
 }
 
 void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {  // &&&
-    lock_guard<mutex> lck(_uberJobsMtx);
+    lock_guard<mutex> lck(_uberJobsMapMtx);
     for (auto const& uJob : uJobsToAdd) {
-        _uberJobs.push_back(uJob);
+        UberJobId ujId = uJob->getJobId();
+        _uberJobsMap[ujId] = uJob;
     }
 }
 
@@ -336,7 +391,7 @@ bool Executive::startUberJob(UberJob::Ptr const& uJob) {  // &&&
 
 JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {  //&&&
     assert(jqRaw != nullptr);
-    int jobId = jqRaw->getIdInt();
+    int jobId = jqRaw->getJobId();
     lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
     auto iter = _jobMap.find(jobId);
     if (iter == _jobMap.end()) {
@@ -350,7 +405,7 @@ JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {  //&&&
 /// Return true if it was successfully added to the map.
 ///
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
-    auto entry = pair<int, JobQuery::Ptr>(job->getIdInt(), job);
+    auto entry = pair<int, JobQuery::Ptr>(job->getJobId(), job);
     lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
     bool res = _jobMap.insert(entry).second;
     _totalJobs = _jobMap.size();
@@ -393,7 +448,7 @@ bool Executive::join() {
     return _empty || isLimitRowComplete();
 }
 
-void Executive::markCompleted(int jobId, bool success) {
+void Executive::markCompleted(JobId jobId, bool success) {
     ResponseHandler::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);

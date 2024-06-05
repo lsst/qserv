@@ -27,11 +27,13 @@
 #include "qmeta/types.h"
 #include "czar/CzarChunkMap.h"  // Need nested class. &&&uj Make non-nested?
 #include "czar/CzarRegistry.h"  // Need nested class. &&&uj Make non-nested?
-#include "qdisp/Executive.h"
+//&&&#include "qdisp/Executive.h"
 #include "qdisp/JobBase.h"
 
 // This header declarations
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
+
+class JobQuery;
 
 class QueryRequest;
 
@@ -41,7 +43,7 @@ public:
 
     static uint32_t getMagicNumber() { return 93452; }
 
-    static Ptr create(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
+    static Ptr create(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
                       int queryId, int uberJobId, qmeta::CzarId czarId,
                       czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
 
@@ -53,11 +55,11 @@ public:
 
     static int getFirstIdNumber() { return 9'000'000; }
 
-    bool addJob(JobQuery* job);
+    bool addJob(std::shared_ptr<JobQuery> const& job);
     bool runUberJob();
 
     QueryId getQueryId() const override { return _queryId; }  // TODO:UJ relocate to JobBase
-    int getIdInt() const override { return _uberJobId; }
+    UberJobId getJobId() const override { return _uberJobId; } // &&&uj change name
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }  // TODO:UJ relocate to JobBase
     std::string const& getPayload() const override { return _payload; }
@@ -66,10 +68,15 @@ public:
     bool getScanInteractive() const override { return false; }  ///< UberJobs are never interactive.
     bool isQueryCancelled() override;                           // TODO:UJ relocate to JobBase
     void callMarkCompleteFunc(bool success) override;  ///< call markComplete for all jobs in this UberJob.
+    std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
     void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) override {
+        /* &&&
         std::lock_guard<std::mutex> lock(_qrMtx);
         _queryRequestPtr = qr;
+        }
+        */
+        ; // Do nothing as QueryRequest is only needed for xrootd.
     }
 
     bool verifyPayload() const;
@@ -87,23 +94,32 @@ public:
     //&&&uj
     czar::CzarChunkMap::WorkerChunksData::Ptr getWorkerData() { return _workerData; }
 
+    /// &&&uj doc
+    nlohmann::json importResultFile(std::string const& fileUrl, uint64_t rowCount, uint64_t fileSize);
+
     std::ostream& dumpOS(std::ostream& os) const override;
 
 private:
-    UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler, int queryId,
+    UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler, int queryId,
             int uberJobId, qmeta::CzarId czarId, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
 
-    void _setup() {
-        JobBase::Ptr jbPtr = shared_from_this();
-        _respHandler->setJobQuery(jbPtr);
-    }
+    /// Used to setup elements that can't be done in the constructor.
+    void _setup();
 
-    std::vector<JobQuery*> _jobs;  // &&&uj should be a shared ptr ???
+    /// &&&uj doc
+    nlohmann::json _errorFinish(bool shouldCancel);
+
+    /// &&&uj doc
+    nlohmann::json _finish(uint64_t resultRows);
+
+
+    std::vector<std::shared_ptr<JobQuery>> _jobs;  //&&&uj
+    std::mutex _jobsMtx; ///< Protects _jobs
     std::atomic<bool> _started{false};
     bool _inSsi = false;
-    JobStatus::Ptr _jobStatus;
+    std::shared_ptr<JobStatus> _jobStatus; // &&&uj uber jobstatus probably needs to different than jobstatus.
 
-    std::shared_ptr<QueryRequest> _queryRequestPtr;
+    //&&& std::shared_ptr<QueryRequest> _queryRequestPtr;
     std::mutex _qrMtx;
 
     std::string _payload;  ///< XrdSsi message to be sent to the _workerResource. //&&&uj remove when possible
@@ -124,6 +140,6 @@ private:
     czar::CzarRegistry::WorkerContactInfo::Ptr _wContactInfo;
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_UBERJOB_H
