@@ -69,6 +69,9 @@ private:
 
     ///  &&& doc
     nlohmann::json _queryJobReady();
+
+    ///  &&& doc
+    nlohmann::json _handleJobReady(std::string const& func);
 };
 
 }  // namespace lsst::qserv::czar
