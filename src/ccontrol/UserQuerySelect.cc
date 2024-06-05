@@ -343,7 +343,7 @@ void UserQuerySelect::submit() {  //&&&uj
     TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
     std::vector<int> chunks;
     std::mutex chunksMtx;
-    int sequence = 0;
+    JobId sequence = 0;
 
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew b");
     auto queryTemplates = _qSession->makeQueryTemplates();
@@ -429,7 +429,8 @@ void UserQuerySelect::submit() {  //&&&uj
     }
 
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e");
-    if (uberJobsEnabled || true) {
+    //&&&if (uberJobsEnabled || true) {
+    if (uberJobsEnabled) {
         LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e1");
         vector<qdisp::UberJob::Ptr> uberJobs;
 
@@ -677,6 +678,10 @@ void UserQuerySelect::discard() {
             return;
         }
     }
+
+    // Remove _executive from ExecutiveMap &&&uj
+    _executive->removeFromMap();
+
     // Make sure resources are released.
     if (_executive && _executive->getNumInflight() > 0) {
         throw UserQueryError(getQueryIdString() + " Executive unfinished, cannot discard");
