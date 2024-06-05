@@ -24,6 +24,7 @@
 
 // Qserv headers
 #include "util/Bug.h"
+#include "wbase/UberJobData.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -99,6 +100,12 @@ std::string UserQueryInfo::getTemplate(size_t id) {
                                          " size=" + to_string(_templates.size()));
     }
     return _templates[id];
+}
+
+void UserQueryInfo::addUberJob(std::shared_ptr<UberJobData> const& ujData) {
+    lock_guard<mutex> lockUq(_uberJobMapMtx);
+    UberJobId ujId = ujData->getUberJobId();
+    _uberJobMap[ujId] = ujData;
 }
 
 }  // namespace lsst::qserv::wbase
