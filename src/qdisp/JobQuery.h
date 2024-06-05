@@ -65,7 +65,7 @@ public:
     bool runJob();
 
     QueryId getQueryId() const override { return _qid; }
-    int getIdInt() const override { return _jobDescription->id(); }
+    JobId getJobId() const override { return _jobDescription->id(); }
     std::string const& getPayload() const override;
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _jobDescription->respHandler(); }
@@ -88,7 +88,7 @@ public:
     bool cancel(bool superfluous = false);
     bool isQueryCancelled() override;
 
-    Executive::Ptr getExecutive() { return _executive.lock(); }
+    std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
     std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
 

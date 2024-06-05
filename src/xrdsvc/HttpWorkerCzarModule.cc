@@ -39,9 +39,11 @@
 #include "mysql/MySqlUtils.h"
 #include "qmeta/types.h"  // &&&uj
 #include "util/String.h"
+#include "util/Timer.h"
 #include "wbase/FileChannelShared.h"
 #include "wbase/Task.h"
 #include "wbase/UberJobData.h"
+#include "wbase/UserQueryInfo.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/ResourceMonitor.h"
@@ -143,11 +145,19 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         LOGS(_log, LOG_LVL_WARN,
              __func__ << "&&&SUBC uj qid=" << ujQueryId << " ujid=" << ujId << " czid=" << ujCzarId);
 
-        //&&&uj make UberJobData, FileChannelShared, and Tasks.
+        //&&&uj make UberJobData, UseQueryInfo entry, FileChannelShared, and Tasks.
         auto ujData =
-                wbase::UberJobData::create(ujId, czarId, czarHostName, czarPort, ujQueryId, targetWorkerId);
+                wbase::UberJobData::create(ujId, czarName, czarId, czarHostName, czarPort, ujQueryId, targetWorkerId, foreman(), authKey());
+        LOGS(_log, LOG_LVL_WARN, "&&&uj (ujData != nullptr) = " << (ujData != nullptr));
+
+        // Find the entry for this queryId, creat a new one if needed.
+        wbase::UserQueryInfo::Ptr userQueryInfo = wbase::UserQueryInfo::uqMapInsert(ujQueryId);
+        userQueryInfo->addUberJob(ujData);
+
         auto channelShared =
-                wbase::FileChannelShared::create(ujId, czarId, czarHostName, czarPort, targetWorkerId);
+                wbase::FileChannelShared::create(ujData, czarId, czarHostName, czarPort, targetWorkerId);
+        ujData->setFileChannelShared(channelShared);
+
 
         LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k");
         for (auto const& job : ujJobs) {
@@ -214,6 +224,13 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
             ujTasks.insert(ujTasks.end(), chunkTasks.begin(), chunkTasks.end());
         }
         channelShared->setTaskCount(ujTasks.size());
+        ujData->addTasks(ujTasks);
+
+        util::Timer timer;
+        timer.start();
+        foreman()->processTasks(ujTasks);  // Queues tasks to be run later.
+        timer.stop();
+        LOGS(_log, LOG_LVL_WARN, __func__  << "&&& Enqueued UberJob time=" << timer.getElapsed() << " " << jsReq);
 
 #if 0   /// &&&&&&&&
         // Now that the request is decoded (successfully or not), release the
@@ -233,10 +250,10 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
 
         // &&&uj temporary, send response back to czar saying file is ready. The file is not ready, but this
         //       is just an initial comms test
-        _temporaryRespFunc(targetWorkerId, czarName, czarId, czarHostName, czarPort, ujQueryId, ujId);
+        //&&&_temporaryRespFunc(targetWorkerId, czarName, czarId, czarHostName, czarPort, ujQueryId, ujId);
 
         string note = string("qId=") + to_string(ujQueryId) + " ujId=" + to_string(ujId) +
-                      "tasks in uberJob=" + to_string(channelShared->getTaskCount());
+                      " tasks in uberJob=" + to_string(channelShared->getTaskCount());
         LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC note=" << note);
         jsRet = {{"success", 1}, {"errortype", "none"}, {"note", note}};
 
@@ -247,9 +264,11 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     return jsRet;
 }
 
+// &&&uj delete
 void HttpWorkerCzarModule::_temporaryRespFunc(string const& targetWorkerId, string const& czarName,
                                               qmeta::CzarId czarId, string const& czarHostName, int czarPort,
                                               uint64_t queryId, uint64_t uberJobId) {
+
     json request = {{"version", http::MetaModule::version},
                     {"workerid", foreman()->chunkInventory()->id()},
                     {"auth_key", authKey()},
@@ -260,8 +279,9 @@ void HttpWorkerCzarModule::_temporaryRespFunc(string const& targetWorkerId, stri
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};
-    string const url = "http://" + czarHostName + ":" + to_string(czarPort) + "/queryjob-ready";
+    string const url = "http://" + czarHostName + ":" + to_string(czarPort) + "/queryjob-error";
     string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
+    LOGS(_log, LOG_LVL_WARN, "czarName=" << czarName << " czarHostName=" << czarHostName << " &&&uj HttpWorkerCzarModule::_temporaryRespFunc url=" << url << " request=" << request.dump());
     http::Client client(method, url, request.dump(), headers);
     bool transmitSuccess = false;
     try {

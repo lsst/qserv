@@ -62,7 +62,7 @@ class ResponseHandler;
 class JobDescription {
 public:
     using Ptr = std::shared_ptr<JobDescription>;
-    static JobDescription::Ptr create(qmeta::CzarId czarId, QueryId qId, int jobId,
+    static JobDescription::Ptr create(qmeta::CzarId czarId, QueryId qId, JobId jobId,
                                       ResourceUnit const& resource,
                                       std::shared_ptr<ResponseHandler> const& respHandler,
                                       std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
@@ -77,7 +77,7 @@ public:
     JobDescription& operator=(JobDescription const&) = delete;
 
     void buildPayload();  ///< Must be run after construction to avoid problems with unit tests.
-    int id() const { return _jobId; }
+    JobId id() const { return _jobId; }
     ResourceUnit const& resource() const { return _resource; }
     std::string const& payload() { return _payloads[_attemptCount]; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
@@ -99,14 +99,14 @@ public:
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
 private:
-    JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId, ResourceUnit const& resource,
+    JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
                    std::shared_ptr<ResponseHandler> const& respHandler,
                    std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                    std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                    std::string const& chunkResultName, bool mock = false);
     qmeta::CzarId _czarId;
     QueryId _queryId;
-    int _jobId;  ///< Job's Id number.
+    JobId _jobId;  ///< Job's Id number.
     std::string const _qIdStr;
     int _attemptCount{-1};   ///< Start at -1 so that first attempt will be 0, see incrAttemptCount().
     ResourceUnit _resource;  ///< path, e.g. /q/LSST/23125

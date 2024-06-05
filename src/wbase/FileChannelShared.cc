@@ -37,6 +37,7 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
+#include "wbase/UberJobData.h"
 #include "wconfig/WorkerConfig.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "util/Bug.h"
@@ -46,6 +47,7 @@
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
 #include "xrdsvc/StreamBuffer.h"
+
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -280,18 +282,19 @@ FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendC
 }
 
 //&&&uj
-FileChannelShared::Ptr FileChannelShared::create(UberJobId uberJobId, qmeta::CzarId czarId,
+FileChannelShared::Ptr FileChannelShared::create(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
                                                  string const& czarHostName, int czarPort,
                                                  string const& workerId) {
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
-    return Ptr(new FileChannelShared(uberJobId, czarId, czarHostName, czarPort, workerId));
+    return Ptr(new FileChannelShared(uberJob, czarId, czarHostName, czarPort, workerId));
 }
 
-FileChannelShared::FileChannelShared(UberJobId uberJobId, qmeta::CzarId czarId, string const& czarHostName,
+FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData, qmeta::CzarId czarId, string const& czarHostName,
                                      int czarPort, string const& workerId)
         : _isUberJob(true),
           _sendChannel(nullptr),
-          _uberJobId(uberJobId),
+          _uberJobData(uberJobData),
+          _uberJobId(uberJobData->getUberJobId()),
           _czarId(czarId),
           _czarHostName(czarHostName),
           _czarPort(czarPort),
@@ -570,6 +573,7 @@ void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
 
 bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
                                       bool cancelled, util::MultiError const& multiErr) {
+    LOGS(_log, LOG_LVL_WARN, "&&& FileChannelShared::_sendResponse");
     auto const queryId = task->getQueryId();
     auto const jobId = task->getJobId();
     auto const idStr(makeIdStr(queryId, jobId));
@@ -625,6 +629,8 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     LOGS(_log, LOG_LVL_DEBUG,
          __func__ << " idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size());
 
+    LOGS(_log, LOG_LVL_WARN,
+             __func__ << "&&& idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size() << " useHttp=" << _useHttp);
     if (!_useHttp) {
         // Send the message sent out-of-band within the SSI metadata.
         if (!_sendChannel->setMetadata(_responseBuf.data(), _responseBuf.size())) {
@@ -646,8 +652,53 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
         // &&&uj the http communications need to happen in a different thread, or this thread can be booted
         // from
         // &&&uj the scheduler so that it can just wait for a response.
+        auto ujData = _uberJobData.lock();
+        if (ujData == nullptr) {
+            LOGS(_log, LOG_LVL_WARN, __func__ << " uberJobData is nullptr for ujId=" << _uberJobId);
+            return false;
+        }
+        string httpFileUrl = task->resultFileHttpUrl();
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj ujId="<< _uberJobId << " httpFileUrl=" << httpFileUrl);
+        ujData->fileReadyResponse(httpFileUrl, _rowcount, _transmitsize);
     }
     return true;
 }
+
+/* &&&
+void FileChannelShared::_fileReadyResponse() {
+    json request = {{"version", http::MetaModule::version},
+                    {"workerid", _comInfoToCzar->foreman->chunkInventory()->id()},
+                    {"auth_key", authKey()},
+                    {"czar", czarName},
+                    {"czarid", czarId},
+                    {"queryid", queryId},
+                    {"uberjobid", uberJobId}};
+
+    auto const method = http::Method::POST;
+    vector<string> const headers = {"Content-Type: application/json"};
+    string const url = "http://" + czarHostName + ":" + to_string(czarPort) + "/queryjob-ready";
+    string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
+    http::Client client(method, url, request.dump(), headers);
+    bool transmitSuccess = false;
+    try {
+        json const response = client.readAsJson();
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj response=" << response);
+        if (0 != response.at("success").get<int>()) {
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj success");
+            transmitSuccess = true;
+        } else {
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE success=0");
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_WARN, requestContext + " &&&uj failed, ex: " + ex.what());
+    }
+    if (!transmitSuccess) {
+        LOGS(_log, LOG_LVL_ERROR,
+             __func__ << "&&&uj NEED CODE try again??? Let czar find out through polling worker status???");
+    } else {
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE do nothing, czar should collect file");
+    }
+}
+*/
 
 }  // namespace lsst::qserv::wbase

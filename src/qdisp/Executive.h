@@ -51,7 +51,7 @@
 #include "util/ThreadPool.h"
 
 //&&& replace with better enable/disable feature.
-#define uberJobsEnabled 0  //&&&
+#define uberJobsEnabled 1  //&&&uj || true
 
 // Forward declarations
 class XrdSsiService;
@@ -89,14 +89,14 @@ struct ExecutiveConfig {
     static std::string getMockStr() { return "Mock"; }
 };
 
-/// class Executive manages the execution of jobs for a UserQuery, while
-/// maintaining minimal information about the jobs themselves.
+/// class Executive manages the execution of jobs for a UserQuery.
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
     typedef int ChunkIdType;  //&&&uj This type is probably not needed
-    typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
+    //&&&typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
+    typedef std::map<ChunkIdType, std::shared_ptr<JobQuery>> ChunkIdJobMapType;
 
     /// Construct an Executive.
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
@@ -109,10 +109,19 @@ public:
 
     ~Executive();
 
+    /// &&& doc
+    static Ptr getExecutiveFromMap(QueryId qId);
+
+    /// &&& doc
+    void removeFromMap();
+
+    /// &&& doc
+    std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
+
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
-    /// &&& doc
+    /// &&& doc - to be deleted
     void runJobQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
     // &&&uj doc
@@ -120,6 +129,9 @@ public:
 
     /// Queue a job to be sent to a worker so it can be started.
     void queueJobStart(PriorityCommand::Ptr const& cmd);
+
+    /// &&& doc
+    void queueFileCollect(PriorityCommand::Ptr const& cmd);
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
@@ -130,7 +142,7 @@ public:
     bool join();
 
     /// Notify the executive that an item has completed
-    void markCompleted(int refNum, bool success);
+    void markCompleted(JobId refNum, bool success);
 
     /// Squash all the jobs.
     void squash();
@@ -264,8 +276,11 @@ private:
     std::atomic<bool> _chunkToJobMapInvalid{false};   ///< true indicates the map is no longer valid. //&&&uj
     std::mutex _chunkToJobMapMtx;                     ///< protects _chunkToJobMap //&&&uj
     ChunkIdJobMapType _chunkToJobMap;                 ///< Map of jobs ordered by chunkId  //&&&uj
-    std::vector<std::shared_ptr<UberJob>> _uberJobs;  ///< List of UberJobs //&&&uj
-    std::mutex _uberJobsMtx;                          ///< protects _uberJobs. //&&&uj
+
+    /// Map of all UberJobs. Failed UberJobs remain in the map as new ones are created
+    /// to handle failed UberJobs.
+    std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
+    std::mutex _uberJobsMapMtx;  ///< protects _uberJobs. //&&&uj
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
@@ -281,13 +296,18 @@ private:
 
     /// Number of time data has been ignored for for this user query.
     std::atomic<int> _dataIgnoredCount{0};
+
+    std::atomic<bool> _queryIdSet{false}; ///< Set to true when _id is set.
+
+    static std::mutex _executiveMapMtx; ///< protects _executiveMap
+    static std::map<QueryId, Ptr> _executiveMap; ///< Map of executives for queries in progress.
 };
 
 class MarkCompleteFunc {
 public:
     typedef std::shared_ptr<MarkCompleteFunc> Ptr;
 
-    MarkCompleteFunc(Executive::Ptr const& e, int jobId) : _executive(e), _jobId(jobId) {}
+    MarkCompleteFunc(Executive::Ptr const& e, JobId jobId) : _executive(e), _jobId(jobId) {}
     virtual ~MarkCompleteFunc() {}
 
     virtual void operator()(bool success) {
@@ -299,7 +319,7 @@ public:
 
 private:
     std::weak_ptr<Executive> _executive;
-    int _jobId;
+    JobId _jobId;
 };
 
 }  // namespace qdisp

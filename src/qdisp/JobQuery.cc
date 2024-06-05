@@ -53,7 +53,7 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
           _markCompleteFunc(markCompleteFunc),
           _jobStatus(jobStatus),
           _qid(qid),
-          _idStr(QueryIdHelper::makeIdStr(qid, getIdInt())) {
+          _idStr(QueryIdHelper::makeIdStr(qid, getJobId())) {
     _qdispPool = executive->getQdispPool();
     LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
@@ -64,7 +64,7 @@ JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_DEBUG, "~JobQuery"); }
  * @return - false if it can not setup the job or the maximum number of attempts has been reached.
  */
 bool JobQuery::runJob() {  // &&&
-    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, " runJob " << *this);
     auto executive = _executive.lock();
     if (executive == nullptr) {
@@ -120,7 +120,7 @@ bool JobQuery::runJob() {  // &&&
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel(bool superfluous) {
-    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
         lock_guard<recursive_mutex> lock(_rmutex);
@@ -148,7 +148,7 @@ bool JobQuery::cancel(bool superfluous) {
                 LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
                 return false;
             }
-            executive->markCompleted(getIdInt(), false);
+            executive->markCompleted(getJobId(), false);
         }
         if (!superfluous) {
             _jobDescription->respHandler()->processCancel();
@@ -164,7 +164,7 @@ bool JobQuery::cancel(bool superfluous) {
 /// cancelling all the jobs that it makes a difference. If either the executive,
 /// or the job has cancelled, proceeding is probably not a good idea.
 bool JobQuery::isQueryCancelled() {
-    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getIdInt());
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "_executive == nullptr");
