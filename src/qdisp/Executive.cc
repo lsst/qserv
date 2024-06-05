@@ -86,6 +86,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.Executive");
 
 namespace lsst::qserv::qdisp {
 
+mutex Executive::_executiveMapMtx; ///< protects _executiveMap
+map<QueryId, Executive::Ptr> Executive::_executiveMap; ///< Map of executives for queries in progress.
+
+
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
@@ -257,6 +261,17 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueJobStart end");
 }
 
+void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueFileCollect start");
+
+    if (_scanInteractive) {
+        _qdispPool->queCmd(cmd, 3);
+    } else {
+        _qdispPool->queCmd(cmd, 4);
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueFileCollect end");
+}
+
 void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob start");
     bool started = uberJob->runUberJob();
@@ -340,9 +355,10 @@ Executive::ChunkIdJobMapType& Executive::getChunkJobMapAndInvalidate() {  // &&&
 }
 
 void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {  // &&&
-    lock_guard<mutex> lck(_uberJobsMtx);
+    lock_guard<mutex> lck(_uberJobsMapMtx);
     for (auto const& uJob : uJobsToAdd) {
-        _uberJobs.push_back(uJob);
+        UberJobId ujId = uJob->getJobId();
+        _uberJobsMap[ujId] = uJob;
     }
 }
 
@@ -361,7 +377,7 @@ bool Executive::startUberJob(UberJob::Ptr const& uJob) {  // &&&
 
 JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {  //&&&
     assert(jqRaw != nullptr);
-    int jobId = jqRaw->getIdInt();
+    int jobId = jqRaw->getJobId();
     lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
     auto iter = _jobMap.find(jobId);
     if (iter == _jobMap.end()) {

@@ -61,6 +61,7 @@ HttpCzarWorkerModule::HttpCzarWorkerModule(string const& context, shared_ptr<qht
 
 json HttpCzarWorkerModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
+    LOGS(_log, LOG_LVL_WARN, "&&&uj &&&UJR HttpCzarWorkerModule::executeImpl " << func);
     debug(func);
     cconfig::CzarConfig::instance()->replicationInstanceId();
     enforceCzarName(func);
@@ -224,5 +225,58 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
     }
     return jsRet;
 }
+
+json HttpCzarWorkerModule::_handleJobReady(string const& func) {
+    // Metadata-only responses for the file-based protocol should not have any data
+
+    // Parse and verify the json message and then have the uberjob import the file.
+    json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
+    try {
+        // See qdisp::UberJob::runUberJob() for json message construction.
+        auto const& js = body().objJson;
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR js=" << js);
+        string const targetWorkerId = body().required<string>("workerid");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR targetWorkerId=" << targetWorkerId);
+        string const czarName = body().required<string>("czar");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR czarName=" << czarName);
+        qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR czarId=" << czarId);
+        QueryId const queryId =  body().required<QueryId>("queryid");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR queryId=" << queryId);
+        UberJobId const uberJobId = body().required<UberJobId>("uberjobid");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR uberJobId=" << uberJobId);
+        string const fileUrl = body().required<string>("fileUrl");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR fileUrl=" << fileUrl);
+        uint64_t const rowCount = body().required<uint64_t>("rowCount");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR rowCount=" << rowCount);
+        uint64_t const fileSize = body().required<uint64_t>("fileSize");
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR fileSize=" << fileSize);
+
+
+        // Find UberJob
+        qdisp::Executive::Ptr exec = qdisp::Executive::getExecutiveFromMap(queryId);
+        if (exec == nullptr) {
+             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobRead No executive for qid=") + to_string(queryId));
+        }
+        qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
+        if (uj == nullptr) {
+            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobRead No UberJob for qid=") + to_string(queryId) + " ujId=" + to_string(uberJobId));
+        }
+        // &&&uj NEED CODE to verify incoming values to those in the UberJob
+
+
+
+
+        auto importRes = uj->importResultFile(fileUrl, rowCount, fileSize); // &&&uj move this to after parse.
+        jsRet = importRes;
+
+
+    } catch (std::invalid_argument const& iaExp) {
+        LOGS(_log, LOG_LVL_ERROR, "HttpCzarWorkerModule::_handleJobReady received " << iaExp.what() << " js=" << body().objJson);
+        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaExp.what()}};
+    }
+    return jsRet;
+}
+
 
 }  // namespace lsst::qserv::czar

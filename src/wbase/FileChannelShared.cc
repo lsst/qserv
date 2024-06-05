@@ -47,6 +47,7 @@
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
 
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -620,5 +621,42 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     _uberJobData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
     return true;
 }
+
+/* &&&
+void FileChannelShared::_fileReadyResponse() {
+    json request = {{"version", http::MetaModule::version},
+                    {"workerid", _comInfoToCzar->foreman->chunkInventory()->id()},
+                    {"auth_key", authKey()},
+                    {"czar", czarName},
+                    {"czarid", czarId},
+                    {"queryid", queryId},
+                    {"uberjobid", uberJobId}};
+
+    auto const method = http::Method::POST;
+    vector<string> const headers = {"Content-Type: application/json"};
+    string const url = "http://" + czarHostName + ":" + to_string(czarPort) + "/queryjob-ready";
+    string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
+    http::Client client(method, url, request.dump(), headers);
+    bool transmitSuccess = false;
+    try {
+        json const response = client.readAsJson();
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj response=" << response);
+        if (0 != response.at("success").get<int>()) {
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj success");
+            transmitSuccess = true;
+        } else {
+            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE success=0");
+        }
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_WARN, requestContext + " &&&uj failed, ex: " + ex.what());
+    }
+    if (!transmitSuccess) {
+        LOGS(_log, LOG_LVL_ERROR,
+             __func__ << "&&&uj NEED CODE try again??? Let czar find out through polling worker status???");
+    } else {
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE do nothing, czar should collect file");
+    }
+}
+*/
 
 }  // namespace lsst::qserv::wbase

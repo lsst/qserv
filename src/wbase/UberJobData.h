@@ -124,6 +124,14 @@ public:
     std::string resultFilePath() const;
     std::string resultFileHttpUrl() const;
 
+    /// &&& doc
+    void addTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
+        _ujTasks.insert(_ujTasks.end(), tasks.begin(), tasks.end());
+    }
+
+    /// &&& doc
+    void fileReadyResponse(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize);
+
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
                 int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,

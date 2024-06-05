@@ -62,6 +62,41 @@ void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
         iter->second->queTask(task);
     }
 }
+*/
+
+/// Queue tasks from an uberjob.
+void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
+    std::lock_guard<std::mutex> lg(_mapMx);
+    auto iter = _chunkMap.end();
+    int prevChunkId = -1; // invalid chunkId number
+    for (auto const& task : tasks) {
+        int chunkId = task->getChunkId();
+        /* &&&
+        if (iter != _chunkMap.end() && iter->first != chunkId) {
+            LOGS(_log, LOG_LVL_ERROR,
+                    "All tasks grouped together must be on the same chunk."
+                    << " chunkA=" << iter->first << " chunkB=" << chunkId);
+            throw util::Bug(ERR_LOC, "ChunkTasksQueue::queueTask mismatched chunkIds");
+        }
+        */
+        // If it's the first time through, or the chunkId is different than the previous one, then
+        // find the correct ChunkTask. UberJobs are constructed in a way that makes it likely
+        // that subchunks for the same chunk will be grouped together in `tasks`.
+        if (iter == _chunkMap.end() || prevChunkId != chunkId) {
+            prevChunkId = chunkId;
+            iter = _chunkMap.find(chunkId);
+            if (iter == _chunkMap.end()) {
+                // Correct ChunkTask wasn't found, make a new one.
+                std::pair<int, ChunkTasks::Ptr> ele(chunkId, std::make_shared<ChunkTasks>(chunkId, _memMan));
+                auto res = _chunkMap.insert(ele);  // insert should fail if the key already exists.
+                LOGS(_log, LOG_LVL_DEBUG, " queueTask chunk=" << chunkId << " created=" << res.second);
+                iter = res.first;
+            }
+        }
+        ++_taskCount;
+        iter->second->queTask(task);
+    }
+}
 
 /// Queue a Task with other tasks on the same chunk.
 void ChunkTasksQueue::queueTask(wbase::Task::Ptr const& task) {

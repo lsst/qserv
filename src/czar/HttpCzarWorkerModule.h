@@ -81,6 +81,8 @@ private:
 
     /// Translates the issues and calls the Czar to take action.
     nlohmann::json _handleWorkerCzarComIssue(std::string const& func);
+    ///  &&& doc
+    nlohmann::json _handleJobReady(std::string const& func);
 };
 
 }  // namespace lsst::qserv::czar

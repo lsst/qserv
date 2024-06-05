@@ -83,6 +83,7 @@ class QdispPool;
 
 namespace qdisp {
 
+
 /// class Executive manages the execution of jobs for a UserQuery.
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
@@ -116,6 +117,15 @@ public:
     /// Find the UberJob with `ujId`.
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
 
+    /// &&& doc
+    static Ptr getExecutiveFromMap(QueryId qId);
+
+    /// &&& doc
+    void removeFromMap();
+
+    /// &&& doc
+    std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
+
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
@@ -124,6 +134,9 @@ public:
 
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
     void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
+
+    /// &&& doc
+    void queueFileCollect(PriorityCommand::Ptr const& cmd);
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
@@ -327,8 +340,11 @@ private:
     std::atomic<bool> _chunkToJobMapInvalid{false};   ///< true indicates the map is no longer valid. //&&&uj
     std::mutex _chunkToJobMapMtx;                     ///< protects _chunkToJobMap //&&&uj
     ChunkIdJobMapType _chunkToJobMap;                 ///< Map of jobs ordered by chunkId  //&&&uj
-    std::vector<std::shared_ptr<UberJob>> _uberJobs;  ///< List of UberJobs //&&&uj
-    std::mutex _uberJobsMtx;                          ///< protects _uberJobs. //&&&uj
+
+    /// Map of all UberJobs. Failed UberJobs remain in the map as new ones are created
+    /// to handle failed UberJobs.
+    std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
+    std::mutex _uberJobsMapMtx;  ///< protects _uberJobs. //&&&uj
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.

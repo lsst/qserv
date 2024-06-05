@@ -26,7 +26,6 @@
 // System headers
 
 // Third party headers
-#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
