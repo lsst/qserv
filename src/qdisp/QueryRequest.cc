@@ -64,7 +64,7 @@ namespace lsst::qserv::qdisp {
 QueryRequest::QueryRequest(JobBase::Ptr const& job)
         : _job(job),
           _qid(job->getQueryId()),
-          _jobid(job->getIdInt()),
+          _jobid(job->getJobId()),
           _jobIdStr(job->getIdStr()),
           _qdispPool(_job->getQdispPool()) {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
