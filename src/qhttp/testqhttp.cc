@@ -951,7 +951,7 @@ BOOST_FIXTURE_TEST_CASE(body_stream_reader, QhttpFixture) {
                 response->sendStatus(qhttp::STATUS_INTERNAL_SERVER_ERR);
                 return;
             }
-            _readContent.append(std::istream_iterator<char>(request->content), std::istream_iterator<char>());
+            _readContent.append(std::istreambuf_iterator<char>(request->content), {});
             ++_numReads;
             if (request->contentReadBytes() == request->contentLengthBytes()) {
                 BOOST_CHECK_EQUAL(_expectedNumReads, _numReads);
