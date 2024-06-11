@@ -27,6 +27,7 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <random>
 #include <sstream>
 #include <stdexcept>
@@ -35,6 +36,7 @@
 
 // Third party headers
 #include "boost/asio.hpp"
+#include "boost/noncopyable.hpp"
 #include "nlohmann/json.hpp"
 
 // Qserv headers
@@ -75,7 +77,7 @@ uint64_t readBody(qhttp::Request::Ptr const& req) {
 
 /// @return 'YYYY-MM-DD HH:MM:SS.mmm  '
 string timestamp() {
-    return util::TimeUtils::toDateTimeString(std::chrono::milliseconds(util::TimeUtils::now())) + "  ";
+    return util::TimeUtils::toDateTimeString(chrono::milliseconds(util::TimeUtils::now())) + "  ";
 }
 
 /// @return requestor's IP address as a string
@@ -85,6 +87,40 @@ string senderIpAddr(qhttp::Request::Ptr const& req) {
     ss << req->remoteAddr.address();
     return ss.str();
 }
+
+class RequestHandler : public enable_shared_from_this<RequestHandler>, boost::noncopyable {
+public:
+    static void handle(qhttp::Request::Ptr request, qhttp::Response::Ptr response) {
+        auto handler = shared_ptr<RequestHandler>(new RequestHandler());
+        handler->_handle(request, response);
+    }
+
+private:
+    RequestHandler() = default;
+
+    void _handle(qhttp::Request::Ptr request, qhttp::Response::Ptr response) {
+        request->readPartialBodyAsync([self = shared_from_this()](auto request, auto response, bool success) {
+            self->_processData(request, response, success);
+        });
+    }
+    void _processData(qhttp::Request::Ptr request, qhttp::Response::Ptr response, bool success) {
+        if (!success) {
+            response->sendStatus(qhttp::STATUS_INTERNAL_SERVER_ERR);
+            return;
+        }
+        _readContent.append(istreambuf_iterator<char>(request->content), {});
+        if (request->contentReadBytes() == request->contentLengthBytes()) {
+            cout << _readContent << endl;
+            response->sendStatus(qhttp::STATUS_OK);
+        } else {
+            request->readPartialBodyAsync(
+                    [self = shared_from_this()](auto request, auto response, bool success) {
+                        self->_processData(request, response, success);
+                    });
+        }
+    }
+    string _readContent;
+};
 
 }  // namespace
 
@@ -105,6 +141,9 @@ QhttpTestApp::QhttpTestApp(int argc, char* argv[])
                     "An interval (milliseconds) for reporting the performance counters. Must be greater than "
                     "0.",
                     _reportIntervalMs)
+            .flag("progress",
+                  "The flag which would turn on periodic progress report on the incoming requests.",
+                  _progress)
             .flag("verbose", "The flag which would turn on detailed report on the incoming requests.",
                   _verbose);
 }
@@ -172,6 +211,13 @@ int QhttpTestApp::runImpl() {
                                   httpServer->stop();
                                   stop = true;
                               }}});
+    httpServer->addHandlers(
+            {{"POST", "/body/dump", [&](qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp) {
+                  ++numRequests;
+                  if (_verbose)
+                      cout << ::timestamp() << "Request: " << ::senderIpAddr(req) << "  /body/dump" << endl;
+                  RequestHandler::handle(req, resp);
+              }}});
 
     // Make sure the service started before launching any BOOST ASIO threads.
     // This will prevent threads from finishing due to a lack of work to be done.
@@ -199,9 +245,11 @@ int QhttpTestApp::runImpl() {
                                                (_reportIntervalMs / millisecondsInSecond) / KiB;
         double const kBytesPerSecondSent =
                 (endNumBytesSent - beginNumBytesSent) / (_reportIntervalMs / millisecondsInSecond) / KiB;
-        cout << ::timestamp() << "Process: " << setprecision(7) << requestsPerSecond << " Req/s  "
-             << "Receive: " << setprecision(7) << kBytesPerSecondReceived << " KiB/s  "
-             << "Send: " << setprecision(7) << kBytesPerSecondSent << " KiB/s" << endl;
+        if (_progress) {
+            cout << ::timestamp() << "Process: " << setprecision(7) << requestsPerSecond << " Req/s  "
+                 << "Receive: " << setprecision(7) << kBytesPerSecondReceived << " KiB/s  "
+                 << "Send: " << setprecision(7) << kBytesPerSecondSent << " KiB/s" << endl;
+        }
         beginNumRequests = endNumRequests;
     }
     for (auto&& ptr : threads) {
