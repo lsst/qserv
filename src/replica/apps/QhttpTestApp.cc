@@ -36,10 +36,10 @@
 
 // Third party headers
 #include "boost/asio.hpp"
-#include "boost/noncopyable.hpp"
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "qhttp/MultiPartParser.h"
 #include "qhttp/Server.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"
@@ -48,6 +48,7 @@
 
 using namespace std;
 using json = nlohmann::json;
+namespace qhttp = lsst::qserv::qhttp;
 using namespace lsst::qserv;
 
 namespace {
@@ -88,38 +89,46 @@ string senderIpAddr(qhttp::Request::Ptr const& req) {
     return ss.str();
 }
 
-class RequestHandler : public enable_shared_from_this<RequestHandler>, boost::noncopyable {
+class SimpleRequestProcessor : public qhttp::RequestProcessor {
 public:
-    static void handle(qhttp::Request::Ptr request, qhttp::Response::Ptr response) {
-        auto handler = shared_ptr<RequestHandler>(new RequestHandler());
-        handler->_handle(request, response);
-    }
+    explicit SimpleRequestProcessor(qhttp::Response::Ptr response) : qhttp::RequestProcessor(response) {}
 
-private:
-    RequestHandler() = default;
-
-    void _handle(qhttp::Request::Ptr request, qhttp::Response::Ptr response) {
-        request->readPartialBodyAsync([self = shared_from_this()](auto request, auto response, bool success) {
-            self->_processData(request, response, success);
-        });
+    virtual bool onParamValue(qhttp::ContentHeader const& hdr, std::string const& name,
+                              std::string_view const& value) {
+        cout << "[ Header ]\n"
+             << "'" << hdr.str() << "'\n"
+             << "[ Param ]\n"
+             << "  Name: '" << name << "'\n"
+             << "  Value: '" << value << "'" << endl;
+        return true;
     }
-    void _processData(qhttp::Request::Ptr request, qhttp::Response::Ptr response, bool success) {
-        if (!success) {
-            response->sendStatus(qhttp::STATUS_INTERNAL_SERVER_ERR);
-            return;
-        }
-        _readContent.append(istreambuf_iterator<char>(request->content), {});
-        if (request->contentReadBytes() == request->contentLengthBytes()) {
-            cout << _readContent << endl;
+    virtual bool onFileOpen(qhttp::ContentHeader const& hdr, std::string const& name,
+                            std::string const& filename, std::string const& contentType) {
+        cout << "[ Header ]\n"
+             << "'" << hdr.str() << "'\n"
+             << "[ File open ]\n"
+             << "  Name: '" << name << "'\n"
+             << "  Filename: '" << filename << "'\n"
+             << "  Content-type: '" << contentType << "'" << endl;
+        return true;
+    }
+    virtual bool onFileContent(std::string_view const& data) {
+        cout << "[ File content: " << data.size() << " bytes ]\n'" << data << "'" << endl;
+        return true;
+    }
+    virtual bool onFileClose() {
+        cout << "[ File close ]" << endl;
+        return true;
+    }
+    virtual void onFinished(std::string const& error) {
+        cout << "[ Finished ]\n"
+             << "  Error: '" << error << "'" << endl;
+        if (error.empty()) {
             response->sendStatus(qhttp::STATUS_OK);
         } else {
-            request->readPartialBodyAsync(
-                    [self = shared_from_this()](auto request, auto response, bool success) {
-                        self->_processData(request, response, success);
-                    });
+            response->sendStatus(qhttp::STATUS_INTERNAL_SERVER_ERR);
         }
     }
-    string _readContent;
 };
 
 }  // namespace
@@ -216,7 +225,7 @@ int QhttpTestApp::runImpl() {
                   ++numRequests;
                   if (_verbose)
                       cout << ::timestamp() << "Request: " << ::senderIpAddr(req) << "  /body/dump" << endl;
-                  RequestHandler::handle(req, resp);
+                  qhttp::MultiPartParser::parse(req, make_shared<::SimpleRequestProcessor>(resp));
               }}});
 
     // Make sure the service started before launching any BOOST ASIO threads.
