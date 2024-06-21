@@ -130,7 +130,16 @@ public:
     }
 
     /// &&& doc
-    void fileReadyResponse(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize);
+    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
+                           uint64_t headerCount);  // &&& remove headerCount
+
+    /// &&& doc
+    bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+
+    std::string getIdStr() const { return _idStr; }
+    std::string getFuncIdStr(std::string const& funcName) {
+        return getIdStr() + " UberJobData::" + funcName + " ";
+    }
 
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,

@@ -44,8 +44,8 @@ using namespace std;
 namespace lsst::qserv::qdisp {
 
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                   JobStatus::Ptr const& jobStatus, shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-                   QueryId qid)
+                   qmeta::JobStatus::Ptr const& jobStatus,
+                   shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid)
         : JobBase(),
           _executive(executive),
           _jobDescription(jobDescription),

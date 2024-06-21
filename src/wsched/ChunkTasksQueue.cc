@@ -68,7 +68,7 @@ void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
 void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
     std::lock_guard<std::mutex> lg(_mapMx);
     auto iter = _chunkMap.end();
-    int prevChunkId = -1; // invalid chunkId number
+    int prevChunkId = -1;  // invalid chunkId number
     for (auto const& task : tasks) {
         int chunkId = task->getChunkId();
         /* &&&

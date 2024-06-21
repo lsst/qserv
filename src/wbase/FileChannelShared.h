@@ -127,7 +127,6 @@ public:
     static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                       std::string const& workerId = std::string());
 
-    /* &&&
     /// The factory method for handling UberJob over http.
     static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
                       std::string const& czarHostName, int czarPort,

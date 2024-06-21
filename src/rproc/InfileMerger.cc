@@ -279,7 +279,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
 }
 
 bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::ResponseData const& responseData) {
-    auto jq = uberJob; // &&& replace jq with uberJob
+    auto jq = uberJob;  // &&& replace jq with uberJob
     //&&&JobId const jobId = responseSummary.jobid();
     UberJobId const uJobId = uberJob->getJobId();
     //&&&std::string queryIdJobStr = QueryIdHelper::makeIdStr(responseSummary.queryid(), jobId);
@@ -393,7 +393,6 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
 
     return ret;
 }
-
 
 bool InfileMerger::_applyMysqlMyIsam(std::string const& query, size_t resultSize) {
     std::unique_lock<std::mutex> lock(_mysqlMutex);

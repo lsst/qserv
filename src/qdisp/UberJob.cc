@@ -205,6 +205,27 @@ void UberJob::_unassignJobs() {
     _jobs.clear();
 }
 
+void UberJob::_unassignJobs() {
+    lock_guard<mutex> lck(_jobsMtx);
+    for (auto&& job : _jobs) {
+        string idStr = job->getIdStr();
+        if (!job->unassignFromUberJob(getJobId())) {
+            auto exec = _executive.lock();
+            if (exec != nullptr) {
+                LOGS(_log, LOG_LVL_ERROR, " max attempts for " << idStr << " reached, cancelling");
+                exec->squash();
+                return;
+            }
+        }
+    }
+    _jobs.clear();
+    auto const exec = _executive.lock();
+    if (exec != nullptr) {
+        bool const setFlag = true;
+        exec->setFlagFailedUberJob(setFlag);
+    }
+}
+
 bool UberJob::isQueryCancelled() {
     auto exec = _executive.lock();
     if (exec == nullptr) {
@@ -243,6 +264,24 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
 
 void UberJob::callMarkCompleteFunc(bool success) {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " success=" << success);
+
+    // Overwriting errors is probably not a good idea.
+    if (currentState >= qmeta::JobStatus::CANCEL && currentState < qmeta::JobStatus::COMPLETE) {
+        LOGS(_log, LOG_LVL_WARN,
+             getIdStr() << "UberJob::" << __func__ << " already error current="
+                        << _jobStatus->stateStr(currentState) << " new=" << _jobStatus->stateStr(newState));
+        return false;
+    }
+
+    _jobStatus->updateInfo(getIdStr(), newState, msg);
+    for (auto&& jq : _jobs) {
+        jq->getStatus()->updateInfo(jq->getIdStr(), newState, msg);
+    }
+    return true;
+}
+
+void UberJob::callMarkCompleteFunc(bool success) {
+    LOGS(_log, LOG_LVL_DEBUG, "UberJob::callMarkCompleteFunc success=" << success);
 
     lock_guard<mutex> lck(_jobsMtx);
     // Need to set this uberJob's status, however exec->markCompleted will set
@@ -495,33 +534,25 @@ void UberJob::killUberJob() {
     return;
 }
 
-
 /// Retrieve and process a result file using the file-based protocol
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
-//&&&bool QueryRequest::_importResultFile(JobBase::Ptr const& job) {
-nlohmann::json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
+json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile a");
-    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile fileUrl=" << fileUrl << " rowCount=" << rowCount << " fileSize=" << fileSize);
-
-    //&&&uj NEED CODE update status for each job in this uberjob
-    //      jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
+    LOGS(_log, LOG_LVL_WARN,
+         "&&&uj UberJob::importResultFile fileUrl=" << fileUrl << " rowCount=" << rowCount
+                                                    << " fileSize=" << fileSize);
 
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "UberJob::importResultFile import job was cancelled.");
-        return _errorFinish(true);
+        return _importResultError(true, "cancelled", "Query cancelled");
     }
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile b");
-    /* &&&
-    auto jq = std::dynamic_pointer_cast<JobQuery>(job);
-    if (jq == nullptr) {
-        throw util::Bug(ERR_LOC, string(__func__) + " unexpected pointer type for job");
-    }
-    */
+
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "UberJob::importResultFile no executive or cancelled");
-        return _errorFinish(true);
+        return _importResultError(true, "cancelled", "Query cancelled - no executive");
     }
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile c");
 
@@ -529,197 +560,181 @@ nlohmann::json UberJob::importResultFile(string const& fileUrl, uint64_t rowCoun
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
             LOGS(_log, LOG_LVL_INFO,
-                    "UberJob ignoring, enough rows already "
-                    << "dataIgnored=" << dataIgnored);
+                 "UberJob ignoring, enough rows already "
+                         << "dataIgnored=" << dataIgnored);
         }
-        return _errorFinish(false);
+        return _importResultError(false, "rowLimited", "Enough rows already");
     }
 
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile d");
-    //&&& int messageSize = 0;
-    //&&& const char* message = GetMetadata(messageSize);
 
     LOGS(_log, LOG_LVL_DEBUG, __func__ << " _jobIdStr=" << getIdStr() << ", fileSize=" << fileSize);
+
+    bool const statusSet = setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrl);
+    if (!statusSet) {
+        LOGS(_log, LOG_LVL_WARN, getIdStr() << " &&&uj setStatusFail could not set status to RESPONSE_READY");
+        return _importResultError(false, "setStatusFail", "could not set status to RESPONSE_READY");
+    }
 
     JobBase::Ptr jBaseThis = shared_from_this();
     weak_ptr<UberJob> ujThis = std::dynamic_pointer_cast<UberJob>(jBaseThis);
 
-    /// &&&&&&&&&&&&&&&&&&&&&&uj This NEEDS CODE Command class item instead of lambda and queue that to qdisppool &&&&&&&&&&&&&&&&&
-    /// &&&&&&&&&uj Also, HttpCzarWorkerModule::_handleJobReady isn't getting message from the worker UberJobData::fileReadyResponse &&&&&&&&&
+    // &&&uj lambda may not be the best way to do this.
+    // &&&uj check synchronization - may need a mutex for merging.
     auto fileCollectFunc = [ujThis, fileUrl, rowCount](util::CmdData*) {
         LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile::fileCollectFunc a");
-        /* &&&
-        // &&&uj this version of flush is going to have issues.
-        // &&&uj the reading of the file needs to happen elsewhere.
-        uint32_t resultRows = 0;
-        if (!jq->getDescription()->respHandler()->flush(responseSummary, resultRows)) {
-            LOGS(_log, LOG_LVL_ERROR, __func__ << " not flushOk");
-            _flushError(jq);
-            return false;
-        }
-        //&&&_totalRows += resultRows;
-         *
-         */
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG, "UberJob::importResultFile::fileCollectFunction uberjob ptr is null " << fileUrl);
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "UberJob::importResultFile::fileCollectFunction uberjob ptr is null " << fileUrl);
             return;
         }
         uint64_t resultRows = 0;
-        auto [flushSuccess, flushShouldCancel] = ujPtr->getRespHandler()->flushHttp(fileUrl, rowCount, resultRows);
+        auto [flushSuccess, flushShouldCancel] =
+                ujPtr->getRespHandler()->flushHttp(fileUrl, rowCount, resultRows);
         LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile::fileCollectFunc b");
         if (!flushSuccess) {
             // This would probably indicate malformed file+rowCount or
             // writing the result table failed.
-            ujPtr->_errorFinish(flushShouldCancel);
+            ujPtr->_importResultError(flushShouldCancel, "mergeError", "merging failed");
         }
-
 
         // At this point all data for this job have been read, there's no point in
         // having XrdSsi wait for anything.
-        //&&&jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "COMPLETE");
         LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile::fileCollectFunc c");
-        ujPtr->_finish(resultRows);  //&&&uj flush and finish need to happen elsewhere, put it in qdisppool.
-
+        ujPtr->_importResultFinish(resultRows);
 
         LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile::fileCollectFunc end");
     };
 
-    //&&&fileCollectFunc();
-
-    //&&&auto cmd = std::make_shared<qdisp::PriorityCommand>(fileCollectFunc);
     auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(fileCollectFunc));
     exec->queueFileCollect(cmd);
-
-
-    /* &&&uj no need for this
-    proto::ResponseSummary responseSummary;
-    if (!(responseSummary.ParseFromArray(message, messageSize) && responseSummary.IsInitialized())) {
-        string const err = "failed to parse the response summary, messageSize=" + to_string(messageSize);
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
-        throw util::Bug(ERR_LOC, err);
-    }
-    */
-
 
     // If the query meets the limit row complete complete criteria, it will start
     // squashing superfluous results so the answer can be returned quickly.
 
     json jsRet = {{"success", 1}, {"errortype", ""}, {"note", "queued for collection"}};
     return jsRet;
-
-#if 0 //&&&
-    // It's possible jq and _jobQuery differ, so need to use jq.
-    if (job->isQueryCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
-        _errorFinish(true);
-        return false;
-    }
-    auto jq = std::dynamic_pointer_cast<JobQuery>(job);
-    if (jq == nullptr) {
-        throw util::Bug(ERR_LOC, string(__func__) + " unexpected pointer type for job");
-    }
-    auto executive = jq->getExecutive();
-    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
-        if (executive == nullptr || executive->getCancelled()) {
-            LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
-        } else {
-            int dataIgnored = (executive->incrDataIgnoredCount());
-            if ((dataIgnored - 1) % 1000 == 0) {
-                LOGS(_log, LOG_LVL_INFO,
-                     "QueryRequest::_processData ignoring, enough rows already "
-                             << "dataIgnored=" << dataIgnored);
-            }
-        }
-        _errorFinish(true);
-        return false;
-    }
-
-    int messageSize = 0;
-    const char* message = GetMetadata(messageSize);
-
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << " _jobIdStr=" << _jobIdStr << ", messageSize=" << messageSize);
-
-    proto::ResponseSummary responseSummary;
-    if (!(responseSummary.ParseFromArray(message, messageSize) && responseSummary.IsInitialized())) {
-        string const err = "failed to parse the response summary, messageSize=" + to_string(messageSize);
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
-        throw util::Bug(ERR_LOC, err);
-    }
-    uint32_t resultRows = 0;
-    if (!jq->getDescription()->respHandler()->flush(responseSummary, resultRows)) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " not flushOk");
-        _flushError(jq);
-        return false;
-    }
-    _totalRows += resultRows;
-
-    // At this point all data for this job have been read, there's no point in
-    // having XrdSsi wait for anything.
-    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "COMPLETE");
-    _finish();
-
-    // If the query meets the limit row complete complete criteria, it will start
-    // squashing superfluous results so the answer can be returned quickly.
-    executive->addResultRows(_totalRows);
-    executive->checkLimitRowComplete();
-
-    return true;
-#endif // &&&
 }
 
-json UberJob::_errorFinish(bool shouldCancel) {
-    json jsRet = {{"success", 0}, {"errortype", "dataproblem"}, {"note", ""}};
-    /// &&&uj NEED CODE
-    ///          - each JobQuery in _jobs needs to be flagged as needing to be
-    ///            put in an UberJob and it's attempt count increased and checked
-    ///            against the attempt limit.
-    ///          - executive needs to be told to make new UberJobs until all
-    ///              JobQueries are being handled by an UberJob.
-    /// &&&uj see QueryRequest for some details
-    ///       If shouldCancel is false, it may be possible to recover, so all
-    ///       jobs that were in this query should marked NEED_RETRY so they
-    ///       will be retried.
-    ///       If shouldCancel is true, this function should call markComplete
-    ///       for all jobs in the uberjob, with all jobs failed.
-    ///
-    ///       In both case, the worker should delete the file as
-    ///       this czar will not ask for it, so return a "success:0" json
-    ///       message to the worker.
-    if (shouldCancel) {
-        jsRet = {{"success", 0}, {"errortype", "cancelling"}, {"note", ""}};
+json UberJob::workerError(int errorCode, string const& errorMsg) {
+    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError a");
+    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError code=" << errorCode << " msg=" << errorMsg);
+    LOGS(_log, LOG_LVL_INFO, "UberJob::workerError code=" << errorCode << " msg=" << errorMsg);
+
+    //&&&uj NEED CODE update status for each job in this uberjob
+    //      jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
+
+    bool const deleteData = true;
+    auto exec = _executive.lock();
+    if (exec == nullptr || isQueryCancelled()) {
+        LOGS(_log, LOG_LVL_WARN, "UberJob::workerError no executive or cancelled");
+        return _workerErrorFinish(deleteData, "cancelled");
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError c");
+
+    if (exec->isLimitRowComplete()) {
+        int dataIgnored = exec->incrDataIgnoredCount();
+        if ((dataIgnored - 1) % 1000 == 0) {
+            LOGS(_log, LOG_LVL_INFO,
+                 "UberJob ignoring, enough rows already "
+                         << "dataIgnored=" << dataIgnored);
+        }
+        return _workerErrorFinish(!deleteData, "none", "limitRowComplete");
+    }
+
+    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError d");
+
+    //&&&uj get error message to the user?
+
+    JobBase::Ptr jBaseThis = shared_from_this();
+    weak_ptr<UberJob> ujThis = std::dynamic_pointer_cast<UberJob>(jBaseThis);
+
+    string errType = to_string(errorCode) + ":" + errorMsg;
+    return _workerErrorFinish(deleteData, errType, "");
+}
+
+json UberJob::_importResultError(bool shouldCancel, string const& errorType, string const& note) {
+    json jsRet = {{"success", 0}, {"errortype", errorType}, {"note", note}};
+    ///       In all cases, the worker should delete the file as
+    ///       this czar will not ask for it.
+
+    auto exec = _executive.lock();
+    if (exec != nullptr) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "UberJob::" << __func__ << " uberJobId=" << getJobId() << " shouldCancel=" << shouldCancel
+                         << " errorType=" << errorType << " " << note);
+        if (shouldCancel) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 "UberJob::" << __func__ << " uberJobId=" << getJobId() << " failing jobs");
+            callMarkCompleteFunc(false);  // all jobs failed, no retry
+            exec->squash();
+        } else {
+            /// - each JobQuery in _jobs needs to be flagged as needing to be
+            ///   put in an UberJob and it's attempt count increased and checked
+            ///   against the attempt limit.
+            /// - executive needs to be told to make new UberJobs until all
+            ///   JobQueries are being handled by an UberJob.
+            LOGS(_log, LOG_LVL_ERROR,
+                 "UberJob::" << __func__ << " uberJobId=" << getJobId() << " reassigning jobs");
+            _unassignJobs();
+            exec->assignJobsToUberJobs();
+        }
     } else {
-        ;
+        LOGS(_log, LOG_LVL_INFO,
+             "UberJob::" << __func__ << " uberJobId=" << getJobId() << " already cancelled shouldCancel="
+                         << shouldCancel << " errorType=" << errorType << " " << note);
     }
     return jsRet;
 }
 
-nlohmann::json UberJob::_finish(uint64_t resultRows) {
-    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::_finish a");
-    /// &&&uj NEED CODE
-    /// &&&uj see QueryRequest for some details
-    ///       If this is called, the file has been collected and the worker should delete it
+nlohmann::json UberJob::_importResultFinish(uint64_t resultRows) {
+    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::_importResultFinish a");
+    /// If this is called, the file has been collected and the worker should delete it
     ///
-    ///       This function should call markComplete for all jobs in the uberjob
-    ///       and return a "success:1" json message to be sent to the worker.
+    /// This function should call markComplete for all jobs in the uberjob
+    /// and return a "success:1" json message to be sent to the worker.
+    bool const statusSet =
+            setStatusIfOk(qmeta::JobStatus::RESPONSE_DONE, getIdStr() + " _importResultFinish");
+    if (!statusSet) {
+        LOGS(_log, LOG_LVL_DEBUG, "UberJob::" << __func__ << " failed to set status " << getIdStr());
+        return {{"success", 0}, {"errortype", "statusMismatch"}, {"note", "failed to set status"}};
+    }
     auto exec = _executive.lock();
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "UberJob::_finish executive is null qId=" << getQueryId() << " ujId=" << getJobId());
+        LOGS(_log, LOG_LVL_DEBUG, "UberJob::" << __func__ << " executive is null " << getIdStr());
         return {{"success", 0}, {"errortype", "cancelled"}, {"note", "executive is null"}};
     }
 
     bool const success = true;
-    callMarkCompleteFunc(success);
+    callMarkCompleteFunc(success);  // sets status to COMPLETE
     exec->addResultRows(resultRows);
     exec->checkLimitRowComplete();
 
-
-
     json jsRet = {{"success", 1}, {"errortype", ""}, {"note", ""}};
-    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::_finish end");
+    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::_importResultFinish end");
     return jsRet;
 }
 
+nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& errorType,
+                                           std::string const& note) {
+    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::_workerErrorFinish a");
+    /// If this is called, the file has been collected and the worker should delete it
+    ///
+    /// Should this call markComplete for all jobs in the uberjob???
+    /// &&& Only recoverable errors would be: communication failure, or missing table ???
+    /// Return a "success:1" json message to be sent to the worker.
+    auto exec = _executive.lock();
+    if (exec == nullptr) {
+        LOGS(_log, LOG_LVL_DEBUG,
+             "UberJob::_workerErrorFinish executive is null qId=" << getQueryId() << " ujId=" << getJobId());
+        return {{"success", 0}, {"errortype", "cancelled"}, {"note", "executive is null"}};
+    }
+
+    json jsRet = {{"success", 1}, {"deletedata", deleteData}, {"errortype", ""}, {"note", ""}};
+    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::_importResultFinish end");
+    return jsRet;
+}
 
 std::ostream& UberJob::dumpOS(std::ostream& os) const {
     os << "(jobs sz=" << _jobs.size() << "(";

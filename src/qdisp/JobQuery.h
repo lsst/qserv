@@ -120,6 +120,17 @@ protected:
         return _uberJobId >= 0;
     }
 
+    /// @return true if _uberJobId was set, it can only be set if it is unassigned
+    ///         or by the current owner.
+    /// NOTE: _rmutex must be held before calling this
+    bool _setUberJobId(UberJobId ujId);
+
+    /// NOTE: _rmutex must be held before calling this
+    UberJobId _getUberJobId() const { return _uberJobId; }
+
+    /// NOTE: _rmutex must be held before calling this
+    bool _isInUberJob() const { return _uberJobId >= 0; }
+
     // Values that don't change once set.
     std::weak_ptr<Executive> _executive;
     /// The job description needs to survive until the task is complete.
@@ -141,7 +152,6 @@ protected:
     /// indicate this job is unassigned. To prevent race conditions,
     /// an UberJob may only unassign a job if it has the same ID as
     /// _uberJobId.
-    /// All jobs must be unassigned before they can be reassigned.
     UberJobId _uberJobId = -1;
 };
 

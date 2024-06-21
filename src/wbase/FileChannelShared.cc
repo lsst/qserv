@@ -47,7 +47,6 @@
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
 
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -359,6 +358,8 @@ bool FileChannelShared::isRowLimitComplete() const {
 
 void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
+    LOGS(_log, LOG_LVL_WARN,
+         "&&& FileChannelShared::buildAndTransmitError scsId=" << _scsId << " ujId=" << _uberJobId);
     lock_guard<mutex> const tMtxLock(_tMtx);
     if (_rowLimitComplete) {
         LOGS(_log, LOG_LVL_WARN,
@@ -450,6 +451,8 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             // Make sure the file is sync to disk before notifying Czar.
             _file.flush();
             _file.close();
+            LOGS(_log, LOG_LVL_WARN,
+                 "&&& FileChannelShared flush+close " << _fileName << " scsId=" << _scsId);
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
@@ -533,6 +536,7 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
     uint32_t const msgSizeBytes = msg.size();
     _file.write(reinterpret_cast<char const*>(&msgSizeBytes), sizeof msgSizeBytes);
     _file.write(msg.data(), msgSizeBytes);
+    LOGS(_log, LOG_LVL_WARN, "&&&uj headerCount=" << _headerCount << " wrote msgSizeBytes=" << msgSizeBytes);
 
     if (!(_file.is_open() && _file.good())) {
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
