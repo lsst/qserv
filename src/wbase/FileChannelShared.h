@@ -134,9 +134,9 @@ public:
                       ComInfoToCzar::Ptr const& comInfoToCzar);
                       */
     /// The factory method for handling UberJob over http.
-    static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId, std::string const& czarHostName,
-            int czarPort, std::string const& workerId); //&&& delete all params except uberJob
-
+    static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
+                      std::string const& czarHostName, int czarPort,
+                      std::string const& workerId);  //&&& delete all params except uberJob
 
     FileChannelShared() = delete;
     FileChannelShared(FileChannelShared const&) = delete;
@@ -190,8 +190,8 @@ private:
     FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                       std::string const& workerId);
 
-    FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId, std::string const& czarHostName,
-                      int czarPort, std::string const& workerId);
+    FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
+                      std::string const& czarHostName, int czarPort, std::string const& workerId);
 
     /// @see wbase::SendChannel::kill
     /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
@@ -259,7 +259,7 @@ private:
     bool _isUberJob;  ///< true if this is using UberJob http. To be removed when _sendChannel goes away.
 
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
-    std::weak_ptr<UberJobData> _uberJobData; ///< &&& doc
+    std::weak_ptr<UberJobData> _uberJobData;                 ///< &&& doc
 
     UberJobId const _uberJobId;       ///< &&& doc
     qmeta::CzarId const _czarId;      ///< id of the czar that requested this task(s). &&& delete
@@ -305,6 +305,7 @@ private:
 
     uint32_t _rowcount = 0;      ///< The total numnber of rows in all result sets of a query.
     uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
+    uint64_t _headerCount = 0;   ///< &&& del
 
     //&&&ComInfoToCzar::Ptr _comInfoToCzar; ///< &&&uj doc
 

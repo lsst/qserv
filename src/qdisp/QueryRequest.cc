@@ -46,7 +46,7 @@
 #include "qdisp/UberJob.h"
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
-#include "qdisp/JobStatus.h"
+#include "qmeta/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/Bug.h"
 #include "util/common.h"
@@ -126,7 +126,7 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
         os << _jobIdStr << __func__ << " request failed " << getSsiErr(eInfo, nullptr) << " "
            << GetEndPoint();
         jq->getRespHandler()->errorFlush(os.str(), -1);
-        jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR, "SSI");
+        jq->getStatus()->updateInfo(_jobIdStr, qmeta::JobStatus::RESPONSE_ERROR, "SSI");
         _errorFinish();
         return true;
     }
@@ -138,18 +138,18 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
             break;
         case XrdSsiRespInfo::isData:
             if (string(rInfo.buff, rInfo.blen) == "MockResponse") {
-                jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "MOCK");
+                jq->getStatus()->updateInfo(_jobIdStr, qmeta::JobStatus::COMPLETE, "MOCK");
                 _finish();
                 return true;
             } else if (rInfo.blen == 0) {
                 // Metadata-only responses for the file-based protocol should not have any data
-                jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
+                jq->getStatus()->updateInfo(_jobIdStr, qmeta::JobStatus::RESPONSE_READY, "SSI");
                 return _importResultFile(jq);
             }
             responseTypeName = "isData";
             break;
         case XrdSsiRespInfo::isError:
-            jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_ERROR, "SSI", rInfo.eNum,
+            jq->getStatus()->updateInfo(_jobIdStr, qmeta::JobStatus::RESPONSE_ERROR, "SSI", rInfo.eNum,
                                         string(rInfo.eMsg));
             return _importError(string(rInfo.eMsg), rInfo.eNum);
         case XrdSsiRespInfo::isFile:
@@ -214,7 +214,7 @@ bool QueryRequest::_importResultFile(JobBase::Ptr const& job) {
 
     // At this point all data for this job have been read, there's no point in
     // having XrdSsi wait for anything.
-    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "COMPLETE");
+    jq->getStatus()->updateInfo(_jobIdStr, qmeta::JobStatus::COMPLETE, "COMPLETE");
     _finish();
 
     // If the query meets the limit row complete complete criteria, it will start
@@ -249,8 +249,8 @@ void QueryRequest::ProcessResponseData(XrdSsiErrInfo const& eInfo, char* buff, i
 
 void QueryRequest::_flushError(JobBase::Ptr const& jq) {
     ResponseHandler::Error err = jq->getRespHandler()->getError();
-    jq->getStatus()->updateInfo(_jobIdStr, JobStatus::MERGE_ERROR, "MERGE", err.getCode(), err.getMsg(),
-                                MSG_ERROR);
+    jq->getStatus()->updateInfo(_jobIdStr, qmeta::JobStatus::MERGE_ERROR, "MERGE", err.getCode(),
+                                err.getMsg(), MSG_ERROR);
     _errorFinish(true);
 }
 
@@ -268,7 +268,7 @@ bool QueryRequest::cancel() {
         // Only call the following if the job is NOT already done.
         if (_finishStatus == ACTIVE) {
             auto jq = _job;
-            if (jq != nullptr) jq->getStatus()->updateInfo(_jobIdStr, JobStatus::CANCEL, "CANCEL");
+            if (jq != nullptr) jq->getStatus()->updateInfo(_jobIdStr, qmeta::JobStatus::CANCEL, "CANCEL");
         }
     }
     return _errorFinish(true);  // return true if errorFinish cancelled

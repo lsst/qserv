@@ -87,6 +87,7 @@ public:
             return (wId == other.wId && wHost == other.wHost && wManagementHost == other.wManagementHost &&
                     wPort == other.wPort);
         }
+        std::string dump() const;
     };
 
     using WorkerContactMap = std::unordered_map<std::string, WorkerContactInfo::Ptr>;
