@@ -37,6 +37,7 @@
 #include "http/RequestBody.h"
 #include "http/RequestQuery.h"
 #include "util/Bug.h"
+#include "util/MultiError.h"
 #include "wcontrol/Foreman.h"
 #include "wpublish/ChunkInventory.h"
 #include "wpublish/QueriesAndChunks.h"
@@ -52,8 +53,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.UberJobData");
 
 namespace lsst::qserv::wbase {
 
-UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost, int czarPort,
-                         uint64_t queryId, std::string const& workerId,
+UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
+                         std::string czarHost, int czarPort, uint64_t queryId, std::string const& workerId,
                          std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey)
         : _uberJobId(uberJobId),
           _czarName(czarName),
@@ -63,7 +64,8 @@ UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta
           _queryId(queryId),
           _workerId(workerId),
           _authKey(authKey),
-          _foreman(foreman) {}
+          _foreman(foreman),
+          _idStr(string("QID=") + to_string(_queryId) + ":ujId=" + to_string(_uberJobId)) {}
 
 void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared) {
     if (_fileChannelShared != nullptr && _fileChannelShared != fileChannelShared) {
@@ -72,8 +74,12 @@ void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const&
     _fileChannelShared = fileChannelShared;
 }
 
-void UberJobData::fileReadyResponse(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize) {
-    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::fileReadyResponse a httpFileUrl=" << httpFileUrl);
+void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
+                                    uint64_t headerCount) {
+    string const funcN = getFuncIdStr(__func__);
+    LOGS(_log, LOG_LVL_WARN,
+         funcN << "&&& UberJobData::responseFileReady a httpFileUrl=" << httpFileUrl << " rows=" << rowCount
+               << " fSize=" << fileSize << " headerCount=" << headerCount);
 
     json request = {{"version", http::MetaModule::version},
                     {"workerid", _foreman->chunkInventory()->id()},
@@ -84,49 +90,112 @@ void UberJobData::fileReadyResponse(string const& httpFileUrl, uint64_t rowCount
                     {"uberjobid", _uberJobId},
                     {"fileUrl", httpFileUrl},
                     {"rowCount", rowCount},
-                    {"fileSize", fileSize}};
+                    {"fileSize", fileSize},
+                    {"headerCount", headerCount}};
 
-    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::fileReadyResponse b");
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::responseFileReady b");
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};
     //&&&string const url = "http://" + _czarName + ":" + to_string(_czarPort) + "/queryjob-ready";
     string const url = "http://" + _czarHost + ":" + to_string(_czarPort) + "/queryjob-ready";
     string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
-    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::fileReadyResponse c");
-    LOGS(_log, LOG_LVL_WARN, "&&&uj UberJobData::fileReadyResponse url=" << url << " request=" << request.dump());
+    LOGS(_log, LOG_LVL_WARN,
+         funcN + "&&&uj UberJobData::responseFileReady url=" << url << " request=" << request.dump());
     http::Client client(method, url, request.dump(), headers);
 
-    int maxTries = 2; // &&& set from config
+    int maxTries = 2;  // &&& set from config
     bool transmitSuccess = false;
-    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::fileReadyResponse d");
-    for (int j=0; j<maxTries; ++j) {
-        LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::fileReadyResponse d1");
+    for (int j = 0; (!transmitSuccess && j < maxTries); ++j) {
+        LOGS(_log, LOG_LVL_WARN,
+             funcN + "&&&uj UberJobData::responseFileReady j=" << j << " url=" << url
+                                                               << " request=" << request.dump());
         try {
-            LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::fileReadyResponse d2");
             json const response = client.readAsJson();
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj response=" << response);
+            LOGS(_log, LOG_LVL_WARN, funcN << "&&&uj response=" << response);
             if (0 != response.at("success").get<int>()) {
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj success");
+                LOGS(_log, LOG_LVL_WARN, funcN << "&&&uj success");
                 transmitSuccess = true;
             } else {
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE success=0");
+                LOGS(_log, LOG_LVL_WARN,
+                     funcN << "&&&uj NEED CODE success=0, result file should probably be deleted.");
+                j = maxTries;  /// There's no point in resending as the czar got the message and didn't like
+                               /// it.
             }
         } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, requestContext + " &&&uj failed, ex: " + ex.what());
+            LOGS(_log, LOG_LVL_WARN, funcN + " " + requestContext + " &&&uj failed, ex: " + ex.what());
         }
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::fileReadyResponse e");
 
     if (!transmitSuccess) {
         LOGS(_log, LOG_LVL_ERROR,
-             __func__ << "&&&uj NEED CODE Let czar find out through polling worker status???");
-    } else {
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE do nothing, czar should collect file");
+             funcN << "&&&uj NEED CODE Let czar find out through polling worker status??? Just throw the "
+                      "result away???");
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::fileReadyResponse end");
+    LOGS(_log, LOG_LVL_WARN, funcN << "&&& UberJobData::responseFileReady end");
 }
 
+bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task,
+                                bool cancelled) {
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::responseError a");
+    string const funcN = getFuncIdStr(__func__);
 
+    string errorMsg;
+    int errorCode = 0;
+    if (!multiErr.empty()) {
+        errorMsg = multiErr.toOneLineString();
+        errorCode = multiErr.firstErrorCode();
+    } else if (cancelled) {
+        errorMsg = "cancelled";
+        errorCode = -1;
+    }
+    if (!errorMsg.empty() or (errorCode != 0)) {
+        errorMsg =
+                funcN + " error(s) in result for chunk #" + to_string(task->getChunkId()) + ": " + errorMsg;
+        LOGS(_log, LOG_LVL_ERROR, errorMsg);
+    }
+
+    json request = {{"version", http::MetaModule::version},
+                    {"workerid", _foreman->chunkInventory()->id()},
+                    {"auth_key", _authKey},
+                    {"czar", _czarName},
+                    {"czarid", _czarId},
+                    {"queryid", _queryId},
+                    {"uberjobid", _uberJobId},
+                    {"errorCode", errorCode},
+                    {"errorMsg", errorMsg}};
+
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::responseError b");
+
+    auto const method = http::Method::POST;
+    vector<string> const headers = {"Content-Type: application/json"};
+    //&&&string const url = "http://" + _czarName + ":" + to_string(_czarPort) + "/queryjob-ready";
+    string const url = "http://" + _czarHost + ":" + to_string(_czarPort) + "/queryjob-error";
+    string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
+    LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::responseError c");
+    LOGS(_log, LOG_LVL_WARN,
+         funcN << "&&&uj UberJobData::responseError url=" << url << " request=" << request.dump());
+    http::Client client(method, url, request.dump(), headers);
+
+    int maxTries = 2;  // &&& set from config
+    bool transmitSuccess = false;
+    for (int j = 0; !transmitSuccess && j < maxTries; ++j) {
+        try {
+            json const response = client.readAsJson();
+            LOGS(_log, LOG_LVL_WARN, funcN << "&&&uj response=" << response);
+            if (0 != response.at("success").get<int>()) {
+                LOGS(_log, LOG_LVL_WARN, funcN << "&&&uj success");
+                transmitSuccess = true;
+            } else {
+                LOGS(_log, LOG_LVL_WARN, funcN << "&&&uj NEED CODE success=0");
+                j = maxTries;  /// There's no point in resending as the czar got the message and didn't like
+                               /// it.
+            }
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, funcN + " " + requestContext + " &&&uj failed, ex: " + ex.what());
+        }
+    }
+    return transmitSuccess;
+}
 
 }  // namespace lsst::qserv::wbase

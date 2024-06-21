@@ -29,8 +29,8 @@
 /// The MessageStore classes are responsible for maintaining status and
 /// error messages associated with a query.
 
-#ifndef LSST_QSERV_QDISP_MESSAGESTORE_H
-#define LSST_QSERV_QDISP_MESSAGESTORE_H
+#ifndef LSST_QSERV_QMETA_MESSAGESTORE_H
+#define LSST_QSERV_QMETA_MESSAGESTORE_H
 
 // System headers
 #include <ctime>
@@ -40,13 +40,13 @@
 
 // Qserv headers
 #include "global/constants.h"
-#include "qdisp/JobStatus.h"
+#include "qmeta/JobStatus.h"
 
-namespace lsst::qserv::qdisp {
+namespace lsst::qserv::qmeta {
 
 struct QueryMessage {
     QueryMessage(int chunkId_, std::string const& msgSource_, int code_, std::string description_,
-                 JobStatus::TimeType timestamp_, MessageSeverity severity_)
+                 qmeta::JobStatus::TimeType timestamp_, MessageSeverity severity_)
             : chunkId(chunkId_),
               msgSource(msgSource_),
               code(code_),
@@ -58,7 +58,7 @@ struct QueryMessage {
     std::string msgSource;
     int code;
     std::string description;
-    JobStatus::TimeType timestamp;
+    qmeta::JobStatus::TimeType timestamp;
     MessageSeverity severity;
 };
 
@@ -95,7 +95,7 @@ public:
      */
     void addMessage(int chunkId, std::string const& msgSource, int code, std::string const& description,
                     MessageSeverity severity_ = MessageSeverity::MSG_INFO,
-                    JobStatus::TimeType timestamp = JobStatus::TimeType());
+                    qmeta::JobStatus::TimeType timestamp = qmeta::JobStatus::TimeType());
 
     /** Add an error message to this MessageStore
      *
@@ -117,6 +117,6 @@ private:
     std::vector<QueryMessage> _queryMessages;
 };
 
-}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qmeta
 
-#endif  // LSST_QSERV_QDISP_MESSAGESTORE_H
+#endif  // LSST_QSERV_QMETA_MESSAGESTORE_H
