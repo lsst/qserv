@@ -45,8 +45,8 @@ using namespace std;
 namespace lsst::qserv::qdisp {
 
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                   JobStatus::Ptr const& jobStatus, shared_ptr<MarkCompleteFunc> const& markCompleteFunc,
-                   QueryId qid)
+                   qmeta::JobStatus::Ptr const& jobStatus,
+                   shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid)
         : JobBase(),
           _executive(executive),
           _jobDescription(jobDescription),
@@ -108,7 +108,7 @@ bool JobQuery::runJob() {  // &&&
         JobQuery::Ptr jq(dynamic_pointer_cast<JobQuery>(shared_from_this()));
         _inSsi = true;
         if (executive->startQuery(jq)) {
-            _jobStatus->updateInfo(_idStr, JobStatus::REQUEST, "EXEC");
+            _jobStatus->updateInfo(_idStr, qmeta::JobStatus::REQUEST, "EXEC");
             return true;
         }
         _inSsi = false;
@@ -171,6 +171,34 @@ bool JobQuery::isQueryCancelled() {
         return true;  // Safer to assume the worst.
     }
     return exec->getCancelled();
+}
+
+bool JobQuery::_setUberJobId(UberJobId ujId) {
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
+    if (_uberJobId >= 0 && ujId != _uberJobId) {
+        LOGS(_log, LOG_LVL_ERROR,
+             __func__ << " couldn't change UberJobId as ujId=" << ujId << " is owned by " << _uberJobId);
+        return false;
+    }
+    _uberJobId = ujId;
+    return true;
+}
+
+bool JobQuery::unassignFromUberJob(UberJobId ujId) {
+    QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
+    std::lock_guard<std::recursive_mutex> lock(_rmutex);
+    if (_uberJobId < 0) {
+        LOGS(_log, LOG_LVL_INFO, __func__ << " UberJobId already unassigned. attempt by ujId=" << ujId);
+        return true;
+    }
+    if (_uberJobId != ujId) {
+        LOGS(_log, LOG_LVL_ERROR,
+             __func__ << " couldn't change UberJobId as ujId=" << ujId << " is owned by " << _uberJobId);
+        return false;
+    }
+    _uberJobId = -1;
+    _jobDescription->incrAttemptCountScrubResultsJson();
+    return true;
 }
 
 string const& JobQuery::getPayload() const { return _jobDescription->payload(); }

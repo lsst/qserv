@@ -234,7 +234,6 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
             jid = tsk->getJobId();
             QSERV_LOGCONTEXT_QUERY_JOB(qid, jid);
         } else {
-
             // &&&if (qid != t->getQueryId() || jid != t->getJobId()) {
             if (qid != tsk->getQueryId()) {
                 string eMsg("Mismatch multiple query/job ids in single queCmd ");

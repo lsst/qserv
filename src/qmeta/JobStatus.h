@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QDISP_JOBSTATUS_H
-#define LSST_QSERV_QDISP_JOBSTATUS_H
+#ifndef LSST_QSERV_QMETA_JOBSTATUS_H
+#define LSST_QSERV_QMETA_JOBSTATUS_H
 
 // System headers
 #include <chrono>
@@ -34,9 +34,9 @@
 // qserv headers
 #include "global/constants.h"
 
-namespace lsst::qserv::qdisp {
+namespace lsst::qserv::qmeta {
 
-/** Monitor execution of a chunk query against an SSI ressource
+/** Monitor execution of a chunk query.
  *
  *  JobStatus instances receive timestamped reports of execution State. This
  *  allows a manager object to receive updates on status without exposing its
@@ -61,13 +61,13 @@ public:
         UNKNOWN = 0,
         REQUEST = 1203,
         RESPONSE_READY,
-        RESPONSE_ERROR,
         RESPONSE_DATA,
         RESPONSE_DATA_NACK,
         RESPONSE_DONE,
-        RESULT_ERROR,
-        MERGE_ERROR,
         CANCEL,
+        RESPONSE_ERROR,  // Errors must be between CANCEL and COMPLETE
+        RESULT_ERROR,    // &&&uj ERRORS and CANCEL should probably be
+        MERGE_ERROR,     // &&&uj separate from State, but may cause issues.
         COMPLETE = 2000
     };
 
@@ -96,6 +96,13 @@ public:
     void updateInfo(std::string const& idMsg, State s, std::string const& source, int code = 0,
                     std::string const& desc = "", MessageSeverity severity = MSG_INFO);
 
+    /// Same as updateInfo() except existing error states are not overwritten.
+    /// @see updateInfo()
+    /// @return Negative values indicate the status was changed, zero and positive values
+    void updateInfoNoErrorOverwrite(std::string const& idMsg, State s, std::string const& source,
+                                    int code = 0, std::string const& desc = "",
+                                    MessageSeverity severity = MSG_INFO);
+
     struct Info {
         Info();
         // More detailed debugging may store a vector of states, appending
@@ -116,11 +123,21 @@ public:
         return _info;
     }
 
+    State getState() const {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _info.state;
+    }
+
     static std::string stateStr(JobStatus::State const& state);
 
     friend std::ostream& operator<<(std::ostream& os, JobStatus const& es);
 
 private:
+    /// @see updateInfo()
+    /// note: _mutex must be held before calling.
+    void _updateInfo(std::string const& idMsg, JobStatus::State s, std::string const& source, int code,
+                     std::string const& desc, MessageSeverity severity);
+
     Info _info;
     mutable std::mutex _mutex;  ///< Mutex to guard concurrent updates
 };
@@ -128,6 +145,6 @@ std::ostream& operator<<(std::ostream& os, JobStatus const& es);
 std::ostream& operator<<(std::ostream& os, JobStatus::Info const& inf);
 std::ostream& operator<<(std::ostream& os, JobStatus::State const& state);
 
-}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qmeta
 
-#endif  // LSST_QSERV_QDISP_JOBSTATUS_H
+#endif  // LSST_QSERV_META_JOBSTATUS_H

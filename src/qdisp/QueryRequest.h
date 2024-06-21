@@ -160,7 +160,7 @@ private:
 
     std::shared_ptr<QueryRequest> _keepAlive;  ///< Used to keep this object alive during race condition.
     QueryId _qid = 0;                          // for logging
-    JobId _jobid = -1;                           // for logging
+    JobId _jobid = -1;                         // for logging
     std::string _jobIdStr{QueryIdHelper::makeIdStr(0, 0, true)};  ///< for debugging only.
 
     std::atomic<bool> _finishedCalled{false};

@@ -1,6 +1,8 @@
 add_library(qmeta SHARED)
 
-target_sources(qmeta PRIVATE
+target_sources(qserv_meta PRIVATE
+    JobStatus.cc
+    MessageStore.cc
     QMeta.cc
     QMetaMysql.cc
     QMetaSelect.cc

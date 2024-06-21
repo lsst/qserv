@@ -71,7 +71,8 @@ public:
     /// @return shouldCancel - if success was false, this being true indicates there
     ///                   was an unrecoverable error in table writing and the query
     ///                   should be cancelled.
-    virtual std::tuple<bool, bool> flushHttp(std::string const& fileUrl,  uint64_t expectedRows, uint64_t& resultRows) = 0;
+    virtual std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
+                                             uint64_t& resultRows) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
