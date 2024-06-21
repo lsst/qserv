@@ -28,11 +28,14 @@
 // Qserv headers
 #include "global/intTypes.h"
 
+namespace lsst::qserv::qmeta {
+class JobStatus;
+}
+
 // This header declarations
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 class Executive;
-class JobStatus;
 class QdispPool;
 class ResponseHandler;
 class QueryRequest;
@@ -57,7 +60,7 @@ public:
     virtual std::shared_ptr<QdispPool> getQdispPool() = 0;
     virtual std::string const& getPayload() const = 0;  ///< const& in return type is essential for xrootd
     virtual std::shared_ptr<ResponseHandler> getRespHandler() = 0;
-    virtual std::shared_ptr<JobStatus> getStatus() = 0;
+    virtual std::shared_ptr<qmeta::JobStatus> getStatus() = 0;
     virtual bool getScanInteractive() const = 0;
     virtual bool isQueryCancelled() = 0;
     virtual void callMarkCompleteFunc(bool success) = 0;
@@ -70,6 +73,6 @@ public:
     friend std::ostream& operator<<(std::ostream& os, JobBase const& jb);
 };
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_JOBBASE_H

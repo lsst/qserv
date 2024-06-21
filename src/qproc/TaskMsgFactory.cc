@@ -296,9 +296,9 @@ void TaskMsgFactory::_addFragmentJson(nlohmann::json& jsFragments, std::string c
     LOGS(_log, LOG_LVL_WARN, __func__ << tmp);
 
     tmp = "&&&SUBCa scids=";
-    for (auto const& qstr : subchunkIds) {
+    for (auto const& scid : subchunkIds) {
         tmp += "~";
-        tmp += qstr + "~";
+        tmp += to_string(scid) + "~";
     }
     LOGS(_log, LOG_LVL_WARN, __func__ << tmp);
 

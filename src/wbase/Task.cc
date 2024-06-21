@@ -81,7 +81,7 @@ string buildResultFilePath(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMs
     return path.string();
 }
 
-std::atomic<uint64_t> fileSeq = 0;
+// std::atomic<uint64_t> fileSeq = 0; &&&
 //&&&uj
 string buildUjResultFilePath(lsst::qserv::wbase::UberJobData::Ptr const& ujData,
                              string const& resultsDirname) {
@@ -90,7 +90,7 @@ string buildUjResultFilePath(lsst::qserv::wbase::UberJobData::Ptr const& ujData,
     // UberJobs have multiple chunks which can each have different attempt numbers.
     // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
     path /= to_string(ujData->getCzarId()) + "-" + to_string(ujData->getQueryId()) + "-" +
-            to_string(ujData->getUberJobId()) + "-" + to_string(fileSeq++) + ".proto";
+            to_string(ujData->getUberJobId()) + "-0" + ".proto";
     return path.string();
 }
 

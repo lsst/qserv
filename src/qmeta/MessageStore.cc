@@ -23,7 +23,7 @@
 // See MessageStore.h
 
 // Class header
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 
 // System headers
 #include <iostream>
@@ -36,13 +36,12 @@
 
 // Qserv headers
 #include "global/constants.h"
-#include "qdisp/JobStatus.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.MessageStore");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.MessageStore");
 }
 
-namespace lsst::qserv::qdisp {
+namespace lsst::qserv::qmeta {
 
 ////////////////////////////////////////////////////////////////////////
 // public
@@ -50,9 +49,9 @@ namespace lsst::qserv::qdisp {
 
 void MessageStore::addMessage(int chunkId, std::string const& msgSource, int code,
                               std::string const& description, MessageSeverity severity,
-                              JobStatus::TimeType timestamp) {
-    if (timestamp == JobStatus::TimeType()) {
-        timestamp = JobStatus::getNow();
+                              qmeta::JobStatus::TimeType timestamp) {
+    if (timestamp == qmeta::JobStatus::TimeType()) {
+        timestamp = qmeta::JobStatus::getNow();
     }
     auto level = code < 0 ? LOG_LVL_ERROR : LOG_LVL_DEBUG;
     LOGS(_log, level, "Add msg: " << chunkId << " " << msgSource << " " << code << " " << description);
@@ -80,4 +79,4 @@ int MessageStore::messageCount(int code) const {
     return count;
 }
 
-}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qmeta
