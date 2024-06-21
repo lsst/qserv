@@ -80,7 +80,8 @@ public:
     /// @return shouldCancel - if success was false, this being true indicates there
     ///                   was an unrecoverable error in table writing and the query
     ///                   should be cancelled.
-    std::tuple<bool, bool> flushHttp(std::string const& fileUrl,  uint64_t expectedRows, uint64_t& resultRows) override;
+    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
+                                     uint64_t& resultRows) override;
 
     /// &&&uj doc
     bool flushHttpError();

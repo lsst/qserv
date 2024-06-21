@@ -81,11 +81,13 @@ private:
     /// &&& doc
     nlohmann::json _handleQueryJob(std::string const& func);
 
+    /* &&&
     /// &&&uj temporary function for testing communication. Something like this will
     ///       need to be called when the uberjob has finished making the result file.
     void _temporaryRespFunc(std::string const& targetWorkerId, std::string const& czarName,
                             qmeta::CzarId czarId, std::string const& czarHostName, int czarPort,
                             uint64_t ujQueryId, uint64_t ujId);
+                            */
 };
 
 }  // namespace lsst::qserv::xrdsvc

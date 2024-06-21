@@ -82,7 +82,7 @@ private:
 
     /// Map of all UberJobData objects on this worker for this User Query.
     std::map<UberJobId, std::shared_ptr<UberJobData>> _uberJobMap;
-    std::mutex _uberJobMapMtx; ///< protects _uberJobMap;
+    std::mutex _uberJobMapMtx;  ///< protects _uberJobMap;
 };
 
 }  // namespace lsst::qserv::wbase
