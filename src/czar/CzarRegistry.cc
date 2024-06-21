@@ -188,4 +188,11 @@ bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
     return true;
 }
 
+string CzarRegistry::WorkerContactInfo::dump() const {
+    stringstream os;
+    os << "workerContactInfo{"
+       << "id=" << wId << " host=" << wHost << " mgHost=" << wManagementHost << " port=" << wPort << "}";
+    return os.str();
+}
+
 }  // namespace lsst::qserv::czar

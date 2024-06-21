@@ -27,8 +27,8 @@
 #include "qmeta/types.h"
 #include "czar/CzarChunkMap.h"  // Need nested class. &&&uj Make non-nested?
 #include "czar/CzarRegistry.h"  // Need nested class. &&&uj Make non-nested?
-//&&&#include "qdisp/Executive.h"
 #include "qdisp/JobBase.h"
+#include "qmeta/JobStatus.h"
 
 // This header declarations
 namespace lsst::qserv::qdisp {
@@ -37,15 +37,17 @@ class JobQuery;
 
 class QueryRequest;
 
+/// &&& doc
+/// This class is a contains x number of jobs that need to go to the same worker
+/// from a single user query, and contact information for the worker. It also holds
+/// some information common to all jobs.
 class UberJob : public JobBase {
 public:
     using Ptr = std::shared_ptr<UberJob>;
 
-    static uint32_t getMagicNumber() { return 93452; }
-
-    static Ptr create(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-                      int queryId, int uberJobId, qmeta::CzarId czarId,
-                      czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
+    static Ptr create(std::shared_ptr<Executive> const& executive,
+                      std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
+                      qmeta::CzarId czarId, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
 
     UberJob() = delete;
     UberJob(UberJob const&) = delete;
@@ -53,30 +55,37 @@ public:
 
     virtual ~UberJob(){};
 
-    static int getFirstIdNumber() { return 9'000'000; }
+    static int getFirstIdNumber() { return 9'000'000; }  // &&&uj this can probably be 0 now.
 
     bool addJob(std::shared_ptr<JobQuery> const& job);
     bool runUberJob();
 
-    QueryId getQueryId() const override { return _queryId; }  // TODO:UJ relocate to JobBase
-    UberJobId getJobId() const override { return _uberJobId; } // &&&uj change name
+    QueryId getQueryId() const override { return _queryId; }    // TODO:UJ relocate to JobBase
+    UberJobId getJobId() const override { return _uberJobId; }  // &&&uj change name
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }  // TODO:UJ relocate to JobBase
     std::string const& getPayload() const override { return _payload; }
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
-    std::shared_ptr<JobStatus> getStatus() override { return _jobStatus; }  // TODO:UJ relocate to JobBase
+    std::shared_ptr<qmeta::JobStatus> getStatus() override {
+        return _jobStatus;
+    }                                                           // TODO:UJ relocate to JobBase
     bool getScanInteractive() const override { return false; }  ///< UberJobs are never interactive.
     bool isQueryCancelled() override;                           // TODO:UJ relocate to JobBase
     void callMarkCompleteFunc(bool success) override;  ///< call markComplete for all jobs in this UberJob.
     std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
     void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) override {
-        /* &&&
-        std::lock_guard<std::mutex> lock(_qrMtx);
-        _queryRequestPtr = qr;
-        }
-        */
-        ; // Do nothing as QueryRequest is only needed for xrootd.
+        ;  // Do nothing as QueryRequest is only needed for xrootd. &&&uj
+    }
+
+    /// Return false if not ok to set the status to newState, otherwise set the state for
+    /// this UberJob and all jobs it contains to newState.
+    /// This is used both to set status and prevent the system from repeating operations
+    /// that have already happened. If it returns false, the thread calling this
+    /// should stop processing.
+    bool setStatusIfOk(qmeta::JobStatus::State newState, std::string const& msg) {
+        std::lock_guard<std::mutex> jobLock(_jobsMtx);
+        return _setStatusIfOk(newState, msg);
     }
 
     bool verifyPayload() const;
@@ -97,30 +106,47 @@ public:
     /// &&&uj doc
     nlohmann::json importResultFile(std::string const& fileUrl, uint64_t rowCount, uint64_t fileSize);
 
+    /// &&&uj doc
+    nlohmann::json workerError(int errorCode, std::string const& errorMsg);
+
     std::ostream& dumpOS(std::ostream& os) const override;
 
 private:
-    UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler, int queryId,
-            int uberJobId, qmeta::CzarId czarId, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
+    UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
+            int queryId, int uberJobId, qmeta::CzarId czarId,
+            czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
 
     /// Used to setup elements that can't be done in the constructor.
     void _setup();
 
-    /// &&&uj doc
-    nlohmann::json _errorFinish(bool shouldCancel);
+    /// @see setStatusIfOk
+    /// note: _jobsMtx must be locked before calling.
+    bool _setStatusIfOk(qmeta::JobStatus::State newState, std::string const& msg);
 
     /// &&&uj doc
-    nlohmann::json _finish(uint64_t resultRows);
+    void _unassignJobs();
 
+    /// &&&uj doc
+    /// &&&uj The strings for errorType should have a centralized location in the code - global or util
+    nlohmann::json _importResultError(bool shouldCancel, std::string const& errorType,
+                                      std::string const& note);
+
+    /// &&&uj doc
+    nlohmann::json _importResultFinish(uint64_t resultRows);
+
+    /// &&& uj doc
+    nlohmann::json _workerErrorFinish(bool successful, std::string const& errorType = std::string(),
+                                      std::string const& note = std::string());
 
     std::vector<std::shared_ptr<JobQuery>> _jobs;  //&&&uj
-    std::mutex _jobsMtx; ///< Protects _jobs
+    mutable std::mutex _jobsMtx;                   ///< Protects _jobs, _jobStatus
     std::atomic<bool> _started{false};
     bool _inSsi = false;
-    std::shared_ptr<JobStatus> _jobStatus; // &&&uj uber jobstatus probably needs to different than jobstatus.
+    qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};  // &&&uj The JobStatus class should be changed
+                                                               // to better represent UberJobs
 
     //&&& std::shared_ptr<QueryRequest> _queryRequestPtr;
-    std::mutex _qrMtx;
+    //&&&std::mutex _qrMtx;
 
     std::string _payload;  ///< XrdSsi message to be sent to the _workerResource. //&&&uj remove when possible
 

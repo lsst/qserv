@@ -37,9 +37,16 @@
 #include "qmeta/types.h"
 #include "wbase/SendChannel.h"
 
-namespace lsst::qserv::wcontrol {
+namespace lsst::qserv {
+
+namespace util {
+class MultiError;
+}
+
+namespace wcontrol {
 class Foreman;
 }
+}  // namespace lsst::qserv
 
 namespace lsst::qserv::wbase {
 
@@ -55,10 +62,12 @@ public:
     UberJobData() = delete;
     UberJobData(UberJobData const&) = delete;
 
-    static Ptr create(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string const& czarHost, int czarPort,
-                      uint64_t queryId, std::string const& workerId,
-                      std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey) {
-        return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, workerId, foreman, authKey));
+    static Ptr create(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
+                      std::string const& czarHost, int czarPort, uint64_t queryId,
+                      std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
+                      std::string const& authKey) {
+        return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, workerId,
+                                   foreman, authKey));
     }
     // &&& doc
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
@@ -76,11 +85,20 @@ public:
     }
 
     /// &&& doc
-    void fileReadyResponse(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize);
+    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
+                           uint64_t headerCount);  // &&& remove headerCount
+
+    /// &&& doc
+    bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+
+    std::string getIdStr() const { return _idStr; }
+    std::string getFuncIdStr(std::string const& funcName) {
+        return getIdStr() + " UberJobData::" + funcName + " ";
+    }
 
 private:
-    UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost, int czarPort,
-                uint64_t queryId, std::string const& workerId,
+    UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
+                int czarPort, uint64_t queryId, std::string const& workerId,
                 std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey);
 
     UberJobId const _uberJobId;
@@ -106,7 +124,7 @@ private:
     //&&& uint64_t const queryId;
     //&&&uint64_t const uberJobId;
 
-
+    std::string const _idStr;
 };
 
 }  // namespace lsst::qserv::wbase

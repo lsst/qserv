@@ -40,10 +40,11 @@
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
 #include "qdisp/JobDescription.h"
-#include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/SharedResources.h"
 #include "qdisp/QdispPool.h"
+#include "qdisp/UberJob.h"
+#include "qmeta/JobStatus.h"
 #include "util/EventThread.h"
 #include "util/InstanceCount.h"
 #include "util/MultiError.h"
@@ -58,9 +59,14 @@ class XrdSsiService;
 
 namespace lsst::qserv {
 
-namespace qmeta {
-class QStatus;
+namespace ccontrol {
+class UserQuerySelect;
 }
+
+namespace qmeta {
+class MessageStore;
+class QStatus;
+}  // namespace qmeta
 
 namespace qproc {
 class QuerySession;
@@ -68,9 +74,12 @@ class QuerySession;
 
 namespace qdisp {
 class JobQuery;
-class MessageStore;
 class UberJob;  //&&&uj
 }  // namespace qdisp
+
+namespace rproc {
+class InfileMerger;
+}
 
 namespace util {
 class AsyncTimer;
@@ -101,7 +110,7 @@ public:
     /// Construct an Executive.
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
+    static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
                                  std::shared_ptr<qmeta::QStatus> const& qMeta,
                                  std::shared_ptr<qproc::QuerySession> const& querySession,
@@ -111,6 +120,13 @@ public:
 
     /// &&& doc
     static Ptr getExecutiveFromMap(QueryId qId);
+
+    /// &&&uj doc
+    void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }
+    //&&&void buildAndSendUberJobs(int const maxChunksPerUber);
+
+    /// &&&uj doc   Return a map that only contains Jobs not assigned to an UberJob.
+    ChunkIdJobMapType unassignedChunksInQuery();
 
     /// &&& doc
     void removeFromMap();
@@ -149,7 +165,15 @@ public:
 
     bool getEmpty() { return _empty; }
 
+    /// These values cannot be set until information has been collected from
+    /// QMeta, which isn't called until some basic checks on the user query
+    /// have passed.
     void setQueryId(QueryId id);
+    //&&&void setTmpTableNameGenerator(std::shared_ptr<ccontrol::TmpTableName> const& ttn) { _ttn = ttn; }
+
+    //&&&void setInfileMerger(std::shared_ptr<rproc::InfileMerger> infileMerger) { _infileMerger =
+    //infileMerger; }
+
     QueryId getId() const { return _id; }
     std::string const& getIdStr() const { return _idStr; }
 
@@ -193,12 +217,21 @@ public:
     /// Add UbjerJobs to this user query. &&&
     void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);
 
-    ChunkIdJobMapType& getChunkJobMapAndInvalidate();                     /// &&&
+    /// &&&uj doc
+    void assignJobsToUberJobs();
+
+    ChunkIdJobMapType& getChunkJobMapAndInvalidate();                     /// &&& delete
     bool startUberJob(std::shared_ptr<UberJob> const& uJob);              /// &&&
     std::shared_ptr<JobQuery> getSharedPtrForRawJobPtr(JobQuery* jqRaw);  /// &&&
 
+    int getTotalJobs() { return _totalJobs; }
+
+    void setFlagFailedUberJob(bool val) { _failedUberJob = val; }
+
+    std::string dumpUberJobCounts() const;
+
 private:
-    Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
+    Executive(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
               SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qStatus,
               std::shared_ptr<qproc::QuerySession> const& querySession);
 
@@ -228,7 +261,7 @@ private:
 
     ExecutiveConfig _config;  ///< Personal copy of config
     std::atomic<bool> _empty{true};
-    std::shared_ptr<MessageStore> _messageStore;  ///< MessageStore for logging
+    std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
     /// RPC interface, static to avoid getting every time a user query starts and separate
     /// from _xrdSsiService to avoid conflicts with XrdSsiServiceMock.
@@ -255,11 +288,25 @@ private:
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
-    mutable std::recursive_mutex _jobMapMtx;
+    mutable std::recursive_mutex _jobMapMtx;  // &&& see what it takes to make this a normal mutex
 
-    QueryId _id{0};  ///< Unique identifier for this query.
+    QueryId _id = 0;  ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
-    // util::InstanceCount _instC{"Executive"};
+
+    /* &&&
+    qmeta::CzarId _qMetaCzarId;  ///< Czar ID in QMeta database
+
+    /// temporary table name generator, which uses a hash and jobId or uberJobId
+    /// to generate names for tables. This cannot be set until after `_id` is
+    /// set.
+    std::shared_ptr<ccontrol::TmpTableName> _ttn;
+
+    /// Pointer to the result merging class.
+    std::shared_ptr<rproc::InfileMerger> _infileMerger;
+
+    /// UberJobIds for need to be unique within each UserQuery.
+    std::atomic<int> _uberJobId = qdisp::UberJob::getFirstIdNumber();
+    */
 
     std::shared_ptr<qmeta::QStatus> _qMeta;
     /// Last time Executive updated QMeta, defaults to epoch for clock.
@@ -273,14 +320,15 @@ private:
     // Add a job to the _chunkToJobMap //&&&uj
     void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);  //&&&uj
     /// _chunkToJobMap is created once and then destroyed after use.
-    std::atomic<bool> _chunkToJobMapInvalid{false};   ///< true indicates the map is no longer valid. //&&&uj
-    std::mutex _chunkToJobMapMtx;                     ///< protects _chunkToJobMap //&&&uj
-    ChunkIdJobMapType _chunkToJobMap;                 ///< Map of jobs ordered by chunkId  //&&&uj
+    std::atomic<bool> _chunkToJobMapInvalid{
+            false};                    ///< true indicates the map is no longer valid. //&&&uj delete
+    std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap //&&&uj
+    ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId  //&&&uj
 
     /// Map of all UberJobs. Failed UberJobs remain in the map as new ones are created
     /// to handle failed UberJobs.
     std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
-    std::mutex _uberJobsMapMtx;  ///< protects _uberJobs. //&&&uj
+    mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs. //&&&uj
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
@@ -297,12 +345,22 @@ private:
     /// Number of time data has been ignored for for this user query.
     std::atomic<int> _dataIgnoredCount{0};
 
-    std::atomic<bool> _queryIdSet{false}; ///< Set to true when _id is set.
+    std::atomic<bool> _queryIdSet{false};  ///< Set to true when _id is set.
 
-    static std::mutex _executiveMapMtx; ///< protects _executiveMap
-    static std::map<QueryId, Ptr> _executiveMap; ///< Map of executives for queries in progress.
+    ///&&&uj
+    std::weak_ptr<ccontrol::UserQuerySelect> _userQuerySelect;
+
+    /// If true, there are probably jobs that need to be reassigned to new
+    /// UberJobs.
+    /// &&&uj NEED CODE - at some point this needs to be checked so the
+    ///                   executive can make new uberjobs.
+    std::atomic<bool> _failedUberJob{false};
+
+    static std::mutex _executiveMapMtx;           ///< protects _executiveMap
+    static std::map<QueryId, Ptr> _executiveMap;  ///< Map of executives for queries in progress.
 };
 
+/// &&&uj MarkCompleteFunc is not needed with uberjobs.
 class MarkCompleteFunc {
 public:
     typedef std::shared_ptr<MarkCompleteFunc> Ptr;
