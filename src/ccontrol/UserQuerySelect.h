@@ -32,6 +32,7 @@
  */
 
 // System headers
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -50,13 +51,13 @@
 // Forward declarations
 namespace lsst::qserv::qdisp {
 class Executive;
-class MessageStore;
 class QdispPool;
 }  // namespace lsst::qserv::qdisp
 
 namespace lsst::qserv::qmeta {
+class MessageStore;
 class QMeta;
-}
+}  // namespace lsst::qserv::qmeta
 
 namespace lsst::qserv::qproc {
 class DatabaseModels;
@@ -80,11 +81,13 @@ class SemaMgr;
 
 namespace lsst::qserv::ccontrol {
 
+class TmpTableName;
+
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
 class UserQuerySelect : public UserQuery {
 public:
     UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
-                    std::shared_ptr<qdisp::MessageStore> const& messageStore,
+                    std::shared_ptr<qmeta::MessageStore> const& messageStore,
                     std::shared_ptr<qdisp::Executive> const& executive,
                     std::shared_ptr<qproc::DatabaseModels> const& dbModels,
                     std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
@@ -124,7 +127,7 @@ public:
     void discard() override;
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
+    std::shared_ptr<qmeta::MessageStore> getMessageStore() override { return _messageStore; }
 
     /// @return Name of the result table for this query, can be empty
     std::string getResultTableName() const override { return _resultTable; }
@@ -151,6 +154,9 @@ public:
     /// save the result query in the query metadata
     void saveResultQuery();
 
+    /// &&&uj doc
+    void buildAndSendUberJobs();
+
 private:
     /// @return ORDER BY part of SELECT statement that gets executed by the proxy
     std::string _getResultOrderBy() const;
@@ -169,7 +175,7 @@ private:
 
     // Delegate classes
     std::shared_ptr<qproc::QuerySession> _qSession;
-    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::shared_ptr<qmeta::MessageStore> _messageStore;
     std::shared_ptr<qdisp::Executive> _executive;
     std::shared_ptr<qproc::DatabaseModels> _databaseModels;
     std::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
@@ -185,11 +191,17 @@ private:
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed{false};
     std::mutex _killMutex;
-    mutable std::string _errorExtra;  ///< Additional error information
-    std::string _resultTable;         ///< Result table name
-    std::string _resultLoc;           ///< Result location
-    std::string _resultDb;            ///< Result database (todo is this the same as resultLoc??)
-    bool _async;                      ///< true for async query
+    mutable std::string _errorExtra;          ///< Additional error information
+    std::string _resultTable;                 ///< Result table name
+    std::string _resultLoc;                   ///< Result location
+    std::string _resultDb;                    ///< Result database (todo is this the same as resultLoc??)
+    bool _async;                              ///< true for async query
+    int _maxChunksPerUberJob = 1;             ///< &&&uj
+    std::atomic<int> _uberJobIdSeq{900'000};  ///< &&&uj can probably start at 1
+    std::shared_ptr<TmpTableName> _ttn;       ///< Temporary table name generator.
+
+    /// &&&uj Only one thread should run buildAndSendUberJobs() at a time
+    std::mutex _buildUberJobMtx;
 };
 
 }  // namespace lsst::qserv::ccontrol

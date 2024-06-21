@@ -218,7 +218,7 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 
 void InfileMerger::mergeCompleteFor(int jobId) {
     std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-    _totalResultSize += _perJobResultSize[jobId]; //&&&uj this can probably be simplified
+    _totalResultSize += _perJobResultSize[jobId];  //&&&uj this can probably be simplified
 }
 
 bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
@@ -334,7 +334,7 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
 }
 
 bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::ResponseData const& responseData) {
-    auto jq = uberJob; // &&& replace jq with uberJob
+    auto jq = uberJob;  // &&& replace jq with uberJob
     //&&&JobId const jobId = responseSummary.jobid();
     UberJobId const uJobId = uberJob->getJobId();
     //&&&std::string queryIdJobStr = QueryIdHelper::makeIdStr(responseSummary.queryid(), jobId);
@@ -448,7 +448,6 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
 
     return ret;
 }
-
 
 bool InfileMerger::_applyMysqlMyIsam(std::string const& query, size_t resultSize) {
     std::unique_lock<std::mutex> lock(_mysqlMutex);

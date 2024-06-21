@@ -54,9 +54,11 @@ class ResponseSummary;
 }  // namespace proto
 namespace qdisp {
 class JobQuery;
-class MessageStore;
 class UberJob;
 }  // namespace qdisp
+namespace QMeta {
+class MessageStore;
+}
 namespace qproc {
 class DatabaseModels;
 }

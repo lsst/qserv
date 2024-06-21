@@ -36,9 +36,9 @@
 
 // Qserv headers
 #include "global/stringUtil.h"
-#include "qdisp/JobStatus.h"
-#include "qdisp/MessageStore.h"
 #include "qmeta/Exceptions.h"
+#include "qmeta/JobStatus.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QMetaTransaction.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
@@ -807,14 +807,14 @@ void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
     trans->commit();
 }
 
-void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStore> const& msgStore) {
+void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> const& msgStore) {
     int msgCount = msgStore->messageCount();
     int cancelCount = 0;
     int completeCount = 0;
     int execFailCount = 0;
     map<string, ManyMsg> msgCountMap;
     for (int i = 0; i != msgCount; ++i) {
-        qdisp::QueryMessage const& qMsg = msgStore->getMessage(i);
+        qmeta::QueryMessage const& qMsg = msgStore->getMessage(i);
         try {
             _addQueryMessage(queryId, qMsg, cancelCount, completeCount, execFailCount, msgCountMap);
         } catch (qmeta::SqlError const& ex) {
@@ -823,11 +823,11 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     }
     // Add the total number of cancel messages received.
     if (cancelCount > 0 || execFailCount > 0) {
-        qdisp::QueryMessage qm(-1, "CANCELTOTAL", 0,
+        qmeta::QueryMessage qm(-1, "CANCELTOTAL", 0,
                                string("{\"CANCEL_count\":") + to_string(cancelCount) +
                                        ", \"EXECFAIL_count\":" + to_string(execFailCount) +
                                        ", \"COMPLETE_count\":" + to_string(completeCount) + "}",
-                               qdisp::JobStatus::getNow(), MessageSeverity::MSG_INFO);
+                               qmeta::JobStatus::getNow(), MessageSeverity::MSG_INFO);
         _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
     }
 
@@ -836,7 +836,7 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
             string source = string("MANY_") + elem.first;
             string desc = string("{\"msgSource\":") + elem.first +
                           ", \"count\":" + to_string(elem.second.count) + "}";
-            qdisp::QueryMessage qm(-1, source, 0, desc, qdisp::JobStatus::getNow(), elem.second.severity);
+            qmeta::QueryMessage qm(-1, source, 0, desc, qmeta::JobStatus::getNow(), elem.second.severity);
             _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
         }
     }
@@ -920,7 +920,7 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
     }
 }
 
-void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
+void QMetaMysql::_addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qMsg, int& cancelCount,
                                   int& completeCount, int& execFailCount, map<string, ManyMsg>& msgCountMap) {
     // Don't add duplicate messages.
     if (qMsg.msgSource == "DUPLICATE") return;
@@ -981,7 +981,7 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qM
     query += ", " + to_string(qMsg.code);
     query += ", \"" + _conn->escapeString(severity) + "\"";
     query += ", \"" + _conn->escapeString(qMsg.description) + "\"";
-    query += ", " + to_string(qdisp::JobStatus::timeToInt(qMsg.timestamp));
+    query += ", " + to_string(qmeta::JobStatus::timeToInt(qMsg.timestamp));
     query += ")";
     // run query
     sql::SqlErrorObject errObj;

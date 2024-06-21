@@ -72,6 +72,8 @@ private:
 
     ///  &&& doc
     nlohmann::json _handleJobReady(std::string const& func);
+
+    nlohmann::json _handleJobError(std::string const& func);
 };
 
 }  // namespace lsst::qserv::czar

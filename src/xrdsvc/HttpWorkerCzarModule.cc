@@ -146,8 +146,8 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
              __func__ << "&&&SUBC uj qid=" << ujQueryId << " ujid=" << ujId << " czid=" << ujCzarId);
 
         //&&&uj make UberJobData, UseQueryInfo entry, FileChannelShared, and Tasks.
-        auto ujData =
-                wbase::UberJobData::create(ujId, czarName, czarId, czarHostName, czarPort, ujQueryId, targetWorkerId, foreman(), authKey());
+        auto ujData = wbase::UberJobData::create(ujId, czarName, czarId, czarHostName, czarPort, ujQueryId,
+                                                 targetWorkerId, foreman(), authKey());
         LOGS(_log, LOG_LVL_WARN, "&&&uj (ujData != nullptr) = " << (ujData != nullptr));
 
         // Find the entry for this queryId, creat a new one if needed.
@@ -157,7 +157,6 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         auto channelShared =
                 wbase::FileChannelShared::create(ujData, czarId, czarHostName, czarPort, targetWorkerId);
         ujData->setFileChannelShared(channelShared);
-
 
         LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k");
         for (auto const& job : ujJobs) {
@@ -230,7 +229,8 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         timer.start();
         foreman()->processTasks(ujTasks);  // Queues tasks to be run later.
         timer.stop();
-        LOGS(_log, LOG_LVL_WARN, __func__  << "&&& Enqueued UberJob time=" << timer.getElapsed() << " " << jsReq);
+        LOGS(_log, LOG_LVL_WARN,
+             __func__ << "&&& Enqueued UberJob time=" << timer.getElapsed() << " " << jsReq);
 
 #if 0   /// &&&&&&&&
         // Now that the request is decoded (successfully or not), release the
@@ -264,6 +264,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     return jsRet;
 }
 
+#if 0   //&&&
 // &&&uj delete
 void HttpWorkerCzarModule::_temporaryRespFunc(string const& targetWorkerId, string const& czarName,
                                               qmeta::CzarId czarId, string const& czarHostName, int czarPort,
@@ -303,5 +304,6 @@ void HttpWorkerCzarModule::_temporaryRespFunc(string const& targetWorkerId, stri
         LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE do nothing, czar should collect file");
     }
 }
+#endif  // &&&
 
 }  // namespace lsst::qserv::xrdsvc

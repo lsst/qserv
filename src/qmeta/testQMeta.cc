@@ -33,6 +33,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "qmeta/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QStatusMysql.h"
 #include "sql/SqlConnection.h"
