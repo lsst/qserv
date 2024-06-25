@@ -21,6 +21,7 @@ find_package(Protobuf REQUIRED)
 find_package(pybind11 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(XRootD REQUIRED)
+find_package(httplib REQUIRED)
 
 add_compile_options(-Og -g -Wall -Wextra -Wno-unused-parameter)
 add_compile_definitions(BOOST_TEST_DYN_LINK=1)

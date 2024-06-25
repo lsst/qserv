@@ -131,6 +131,15 @@ RUN cd /tmp \
     && cd /tmp \
     && rm -rf xrootd
 
+RUN cd /tmp \
+    && git clone https://github.com/yhirose/cpp-httplib.git \
+    && mkdir cpp-httplib/build \
+    && cd cpp-httplib/build \
+    && cmake -DCMAKE_BUILD_TYPE=Release -DHTTPLIB_REQUIRE_OPENSSL=on -DHTTPLIB_COMPILE=on -DBUILD_SHARED_LIBS=on .. \
+    && cmake --build . --target install \
+    && cd /tmp \
+    && rm -rf cpp-httplib
+
 RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && echo /usr/local/lib64 >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
@@ -153,7 +162,6 @@ RUN pip3 install \
     sqlalchemy-stubs \
     types-PyYAML \
     types-requests
-
 
 RUN useradd --create-home --uid 1000 --shell /bin/bash qserv
 
@@ -243,6 +251,7 @@ COPY --from=lite-build /usr/local/lib64/libXrd*.so /usr/local/lib64/
 COPY --from=lite-build /usr/local/bin/xrootd /usr/local/bin/
 COPY --from=lite-build /usr/local/bin/cmsd /usr/local/bin/
 COPY --from=lite-build /usr/local/bin/xrdfs /usr/local/bin/
+COPY --from=lite-build /usr/local/lib64/libcpp-httplib.so /usr/local/lib64/
 
 RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && echo /usr/local/lib64 >> /etc/ld.so.conf.d/local.conf \
