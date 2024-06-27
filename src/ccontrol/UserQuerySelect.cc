@@ -881,16 +881,15 @@ void UserQuerySelect::discard() {
         }
     }
 
-    // Remove _executive from ExecutiveMap &&&uj
-    _executive->removeFromMap();
-
     // Make sure resources are released.
     if (_executive && _executive->getNumInflight() > 0) {
         throw UserQueryError(getQueryIdString() + " Executive unfinished, cannot discard");
     }
+
     _executive.reset();
     _messageStore.reset();
     _qSession.reset();
+
     try {
         _discardMerger();
     } catch (UserQueryError const& e) {
