@@ -101,7 +101,7 @@ string getErrorText(XrdSsiErrInfo& e) {
 namespace lsst::qserv::qdisp {
 
 mutex Executive::_executiveMapMtx;                      ///< protects _executiveMap
-map<QueryId, Executive::Ptr> Executive::_executiveMap;  ///< Map of executives for queries in progress.
+map<QueryId, std::weak_ptr<Executive>> Executive::_executiveMap;  ///< Map of executives for queries in progress.
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
@@ -124,12 +124,17 @@ Executive::~Executive() {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::~Executive() " << getIdStr());
     qdisp::CzarStats::get()->deleteQuery();
     qdisp::CzarStats::get()->deleteJobs(_incompleteJobs.size());
+    // Remove this executive from the map.
+    if (getExecutiveFromMap(getId()) != nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) + " pointer in map should be invalid QID=" << getId());
+    }
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
     delete dynamic_cast<XrdSsiServiceMock*>(_xrdSsiService);
     if (_asyncTimer != nullptr) {
         _asyncTimer->cancel();
         qdisp::CzarStats::get()->untrackQueryProgress(_id);
     }
+    LOGS(_log, LOG_LVL_WARN, "&&& Executive::~Executive() " << getIdStr() << " end");
 }
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> const& ms,
@@ -190,25 +195,17 @@ void Executive::setQueryId(QueryId id) {
     qdisp::CzarStats::get()->trackQueryProgress(_id);
 }
 
-void Executive::removeFromMap() {
-    if (_queryIdSet) {
-        return;
-    }
-    // Remove this from the global executive map.
-    lock_guard<mutex> lgMap(_executiveMapMtx);
-    auto iter = _executiveMap.find(_id);
-    if (iter != _executiveMap.end()) {
-        _executiveMap.erase(iter);
-    }
-}
-
 Executive::Ptr Executive::getExecutiveFromMap(QueryId qId) {
     lock_guard<mutex> lgMap(_executiveMapMtx);
     auto iter = _executiveMap.find(qId);
     if (iter == _executiveMap.end()) {
         return nullptr;
     }
-    return iter->second;
+    Executive::Ptr exec = iter->second.lock();
+    if (exec == nullptr) {
+        _executiveMap.erase(iter);
+    }
+    return exec;
 }
 
 UberJob::Ptr Executive::findUberJob(UberJobId ujId) {
@@ -262,14 +259,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     }
 
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
-    /* &&&uj
-    //&&&uj code just returns the jobQuery at this point, it doesn't call runJob().
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::add with path=" << jobDesc->resource().path());
-    bool started = jobQuery->runJob();
-    if (!started && isLimitRowComplete()) {
-        markCompleted(jobQuery->getIdInt(), false);
-    }
-    */
+
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::add end");
     return jobQuery;
 }
@@ -434,6 +424,16 @@ JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {  //&&&
     }
     JobQuery::Ptr jq = iter->second;
     return jq;
+}
+
+/// &&& doc
+void Executive::addMultiError(int errorCode, std::string const& errorMsg, int errorState) {
+    util::Error err(errorCode, errorMsg, errorState);
+    {
+        lock_guard<mutex> lock(_errorsMutex);
+        _multiError.push_back(err);
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
+    }
 }
 
 /// Add a JobQuery to this Executive.
@@ -793,8 +793,8 @@ void Executive::_waitAllUntilEmpty() {
 
 void Executive::_addToChunkJobMap(JobQuery::Ptr const& job) {
     int chunkId = job->getDescription()->resource().chunk();
-    auto entry = pair<ChunkIdType, JobQuery*>(chunkId, job.get());
-    // LOGS(_log, LOG_LVL_WARN, "&&& _addToChunkJobMap chunkId=" << chunkId);
+    auto entry = pair<ChunkIdType, JobQuery::Ptr>(chunkId, job);
+    // LOGS(_log, LOG_LVL_WARN, "&&& _addToChunkJobMap chunkId=" << chunkId); &&&
     lock_guard<mutex> lck(_chunkToJobMapMtx);
     if (_chunkToJobMapInvalid) {
         throw util::Bug(ERR_LOC, "&&& map insert FAILED, map is already invalid");
@@ -845,7 +845,7 @@ ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
     return os;
 }
 
-/// precondition: _requestersMutex is held by current thread.
+/// precondition: _incompleteJobsMutex is held by current thread.
 void Executive::_printState(ostream& os) {
     for (auto const& entry : _incompleteJobs) {
         JobQuery::Ptr job = entry.second;
