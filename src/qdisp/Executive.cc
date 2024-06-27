@@ -87,7 +87,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.Executive");
 namespace lsst::qserv::qdisp {
 
 mutex Executive::_executiveMapMtx;                      ///< protects _executiveMap
-map<QueryId, Executive::Ptr> Executive::_executiveMap;  ///< Map of executives for queries in progress.
+map<QueryId, std::weak_ptr<Executive>> Executive::_executiveMap;  ///< Map of executives for queries in progress.
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
@@ -414,6 +414,16 @@ JobQuery::Ptr Executive::getSharedPtrForRawJobPtr(JobQuery* jqRaw) {  //&&&
     }
     JobQuery::Ptr jq = iter->second;
     return jq;
+}
+
+/// &&& doc
+void Executive::addMultiError(int errorCode, std::string const& errorMsg, int errorState) {
+    util::Error err(errorCode, errorMsg, errorState);
+    {
+        lock_guard<mutex> lock(_errorsMutex);
+        _multiError.push_back(err);
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
+    }
 }
 
 /// Add a JobQuery to this Executive.

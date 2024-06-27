@@ -542,7 +542,6 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
          "&&&uj UberJob::importResultFile fileUrl=" << fileUrl << " rowCount=" << rowCount
                                                     << " fileSize=" << fileSize);
 
-    // It's possible jq and _jobQuery differ, so need to use jq.
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "UberJob::importResultFile import job was cancelled.");
         return _importResultError(true, "cancelled", "Query cancelled");
@@ -623,9 +622,10 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
     LOGS(_log, LOG_LVL_INFO, "UberJob::workerError code=" << errorCode << " msg=" << errorMsg);
 
     //&&&uj NEED CODE update status for each job in this uberjob
-    //      jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
+    //jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
 
     bool const deleteData = true;
+    bool const keepData = !deleteData;
     auto exec = _executive.lock();
     if (exec == nullptr || isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "UberJob::workerError no executive or cancelled");
@@ -640,15 +640,22 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
                  "UberJob ignoring, enough rows already "
                          << "dataIgnored=" << dataIgnored);
         }
-        return _workerErrorFinish(!deleteData, "none", "limitRowComplete");
+        return _workerErrorFinish(keepData, "none", "limitRowComplete");
     }
 
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError d");
 
-    //&&&uj get error message to the user?
-
+    /* &&&
     JobBase::Ptr jBaseThis = shared_from_this();
     weak_ptr<UberJob> ujThis = std::dynamic_pointer_cast<UberJob>(jBaseThis);
+     */
+
+    //&&&uj get error message to the user and kill the user query.
+    //&&&jq->getDescription()->respHandler()->flushHttpError(errorCode, errorMsg, util::ErrorCode::MYSQLEXEC);
+    int errState = util::ErrorCode::MYSQLEXEC;
+    getRespHandler()->flushHttpError(errorCode, errorMsg, errState);
+    exec->addMultiError(errorCode, errorMsg, errState);
+    exec->squash();
 
     string errType = to_string(errorCode) + ":" + errorMsg;
     return _workerErrorFinish(deleteData, errType, "");

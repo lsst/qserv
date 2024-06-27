@@ -120,6 +120,10 @@ public:
     /// &&& doc
     static Ptr getExecutiveFromMap(QueryId qId);
 
+    std::string cName(const char* funcName="") {
+        return std::string("Executive::") + funcName;
+    }
+
     /// &&&uj doc
     void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }
     //&&&void buildAndSendUberJobs(int const maxChunksPerUber);
@@ -127,8 +131,10 @@ public:
     /// &&&uj doc   Return a map that only contains Jobs not assigned to an UberJob.
     ChunkIdJobMapType unassignedChunksInQuery();
 
+    /* &&&
     /// &&& doc
     void removeFromMap();
+    */
 
     /// &&& doc
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
@@ -217,6 +223,9 @@ public:
     int getTotalJobs() { return _totalJobs; }
 
     /// Add an error code and message that may be displayed to the user.
+    void addMultiError(int errorCode, std::string const& errorMsg, int errState);
+
+    /// &&& doc
     void addMultiError(int errorCode, std::string const& errorMsg, int errState);
 
     std::string dumpUberJobCounts() const;

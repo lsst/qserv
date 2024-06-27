@@ -88,7 +88,7 @@ public:
                                      uint64_t& resultRows) override;
 
     /// &&&uj doc
-    bool flushHttpError();
+    void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
