@@ -104,7 +104,6 @@ public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
     typedef int ChunkIdType;  //&&&uj This type is probably not needed
-    //&&&typedef std::map<ChunkIdType, JobQuery*> ChunkIdJobMapType;
     typedef std::map<ChunkIdType, std::shared_ptr<JobQuery>> ChunkIdJobMapType;
 
     /// Construct an Executive.
@@ -121,6 +120,10 @@ public:
     /// &&& doc
     static Ptr getExecutiveFromMap(QueryId qId);
 
+    std::string cName(const char* funcName="") {
+        return std::string("Executive::") + funcName;
+    }
+
     /// &&&uj doc
     void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }
     //&&&void buildAndSendUberJobs(int const maxChunksPerUber);
@@ -128,8 +131,10 @@ public:
     /// &&&uj doc   Return a map that only contains Jobs not assigned to an UberJob.
     ChunkIdJobMapType unassignedChunksInQuery();
 
+    /* &&&
     /// &&& doc
     void removeFromMap();
+    */
 
     /// &&& doc
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
@@ -220,15 +225,20 @@ public:
     /// &&&uj doc
     void assignJobsToUberJobs();
 
-    ChunkIdJobMapType& getChunkJobMapAndInvalidate();                     /// &&& delete
+    //&&& ChunkIdJobMapType& getChunkJobMapAndInvalidate();                     /// &&& delete
     bool startUberJob(std::shared_ptr<UberJob> const& uJob);              /// &&&
-    std::shared_ptr<JobQuery> getSharedPtrForRawJobPtr(JobQuery* jqRaw);  /// &&&
+    std::shared_ptr<JobQuery> getSharedPtrForRawJobPtr(JobQuery* jqRaw);  /// &&& delete
 
     int getTotalJobs() { return _totalJobs; }
 
     void setFlagFailedUberJob(bool val) { _failedUberJob = val; }
 
+    /// &&& doc
+    void addMultiError(int errorCode, std::string const& errorMsg, int errState);
+
     std::string dumpUberJobCounts() const;
+
+
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
@@ -357,7 +367,7 @@ private:
     std::atomic<bool> _failedUberJob{false};
 
     static std::mutex _executiveMapMtx;           ///< protects _executiveMap
-    static std::map<QueryId, Ptr> _executiveMap;  ///< Map of executives for queries in progress.
+    static std::map<QueryId, std::weak_ptr<Executive>> _executiveMap;  ///< Map of executives for queries in progress.
 };
 
 /// &&&uj MarkCompleteFunc is not needed with uberjobs.
