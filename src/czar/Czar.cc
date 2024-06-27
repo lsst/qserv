@@ -337,19 +337,29 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
     auto finalizer = [uq, msgTable]() mutable {
+        string qidstr = to_string(uq->getQueryId());
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " a");
         // Add logging context with query ID
         QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
         LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " b");
         uq->submit();
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " c");
         uq->join();
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " d");
         try {
             msgTable.unlock(uq);
+            LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " e");
             if (uq) uq->discard();
+            LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " f");
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
             // will likely hang because table may still be locked.
             LOGS(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): " << exc.what());
         }
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " g");
+        uq.reset();
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " end");
     };
     LOGS(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
     thread finalThread(finalizer);
