@@ -58,7 +58,10 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
     LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
 
-JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_DEBUG, "~JobQuery"); }
+JobQuery::~JobQuery() {
+    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery");
+    LOGS(_log, LOG_LVL_WARN, "~JobQuery QID=" <<_idStr);
+}
 
 /** Attempt to run the job on a worker.
  * @return - false if it can not setup the job or the maximum number of attempts has been reached.

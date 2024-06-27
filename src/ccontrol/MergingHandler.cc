@@ -588,7 +588,7 @@ MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std:
     _initState();
 }
 
-MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__); }
+MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << _tableName); }
 
 bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) {
     _wName = responseSummary.wname();
@@ -803,6 +803,20 @@ tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expe
         _infileMerger->mergeCompleteFor(uberJob->getJobId());
     }
     return {success, shouldCancel};
+}
+
+void MergingHandler::flushHttpError(int errorCode, std::string const& errorMsg, int status) {
+    /* &&&
+    _error = util::Error(responseSummary.errorcode(), responseSummary.errormsg(),
+                         util::ErrorCode::MYSQLEXEC);
+    _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());
+    _flushError(jq);
+    */
+
+    if(!_errorSet.exchange(true)) {
+        _error = util::Error(errorCode, errorMsg, util::ErrorCode::MYSQLEXEC);
+        _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());
+    }
 }
 
 }  // namespace lsst::qserv::ccontrol
