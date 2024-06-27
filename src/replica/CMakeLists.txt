@@ -40,6 +40,7 @@ target_link_libraries(replica PUBLIC
     pthread
     crypto
     curl
+    cpp-httplib
 )
 
 function(REPLICA_UTILS)

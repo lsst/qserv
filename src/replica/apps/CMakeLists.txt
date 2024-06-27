@@ -15,6 +15,7 @@ target_sources(replica_apps PRIVATE
     ControllerApp.cc
     DatabaseTestApp.cc
     DeleteWorkerApp.cc
+    DirectorIndexApp.cc
     FileExportApp.cc
     FileIngestApp.cc
     FileReadApp.cc
@@ -22,7 +23,7 @@ target_sources(replica_apps PRIVATE
     FixUpApp.cc
     HttpAsyncReqApp.cc
     HttpClientApp.cc
-    DirectorIndexApp.cc
+    HttpLibServerApp.cc
     MasterControllerHttpApp.cc
     MessengerTestApp.cc
     MoveApp.cc
