@@ -51,7 +51,6 @@ public:
     ChunkMapException(Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {}
 };
 
-
 /// This class is used to organize worker chunk table information so that it
 /// can be used to send jobs to the appropriate worker and inform workers
 /// what chunks they can expect to handle in shared scans.

@@ -117,8 +117,10 @@ public:
     /// Find the UberJob with `ujId`.
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
 
+    /* &&&
     /// &&& doc
     static Ptr getExecutiveFromMap(QueryId qId);
+    */
 
     std::string cName(const char* funcName="") {
         return std::string("Executive::") + funcName;
@@ -130,11 +132,6 @@ public:
 
     /// &&&uj doc   Return a map that only contains Jobs not assigned to an UberJob.
     ChunkIdJobMapType unassignedChunksInQuery();
-
-    /* &&&
-    /// &&& doc
-    void removeFromMap();
-    */
 
     /// &&& doc
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);

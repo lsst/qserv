@@ -257,7 +257,12 @@ Czar::~Czar() {
     LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
 }
 
-Czar::~Czar() { LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()"); }
+Czar::~Czar() {
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
+    _monitorLoop = false;
+    _monitorThrd.join();
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
+}
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
     LOGS(_log, LOG_LVL_DEBUG, "New query: " << query << ", hints: " << util::printable(hints));

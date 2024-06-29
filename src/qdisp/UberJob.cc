@@ -207,23 +207,32 @@ void UberJob::_unassignJobs() {
 
 void UberJob::_unassignJobs() {
     lock_guard<mutex> lck(_jobsMtx);
+    auto exec = _executive.lock();
+    if (exec == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " exec is null");
+        return;
+    }
+    auto maxAttempts = exec->getMaxAttempts();
     for (auto&& job : _jobs) {
-        string idStr = job->getIdStr();
+        string jid = job->getIdStr();
         if (!job->unassignFromUberJob(getJobId())) {
-            auto exec = _executive.lock();
-            if (exec != nullptr) {
-                LOGS(_log, LOG_LVL_ERROR, " max attempts for " << idStr << " reached, cancelling");
-                exec->squash();
-                return;
-            }
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not unassign job=" << jid << " cancelling");
+            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "unable to re-assign " + jid, util::ErrorCode::INTERNAL);
+            exec->squash();
+            return;
         }
+        auto attempts = job->getAttemptCount();
+        if (attempts > maxAttempts) {
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " job=" << jid << " attempts=" << attempts << " maxAttempts reached, cancelling");
+            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "max attempts reached " + to_string(attempts) + " job=" + jid, util::ErrorCode::INTERNAL);
+            exec->squash();
+            return;
+        }
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " job=" << jid << " attempts=" << attempts);
     }
     _jobs.clear();
-    auto const exec = _executive.lock();
-    if (exec != nullptr) {
-        bool const setFlag = true;
-        exec->setFlagFailedUberJob(setFlag);
-    }
+    bool const setFlag = true;
+    exec->setFlagFailedUberJob(setFlag);
 }
 
 bool UberJob::isQueryCancelled() {
@@ -567,11 +576,11 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
 
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile d");
 
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << " _jobIdStr=" << getIdStr() << ", fileSize=" << fileSize);
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " fileSize=" << fileSize);
 
     bool const statusSet = setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrl);
     if (!statusSet) {
-        LOGS(_log, LOG_LVL_WARN, getIdStr() << " &&&uj setStatusFail could not set status to RESPONSE_READY");
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&&uj setStatusFail could not set status to RESPONSE_READY");
         return _importResultError(false, "setStatusFail", "could not set status to RESPONSE_READY");
     }
 
@@ -584,8 +593,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile::fileCollectFunc a");
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG,
-                 "UberJob::importResultFile::fileCollectFunction uberjob ptr is null " << fileUrl);
+            LOGS(_log, LOG_LVL_DEBUG, "UberJob::importResultFile::fileCollectFunction uberjob ptr is null " << fileUrl);
             return;
         }
         uint64_t resultRows = 0;
@@ -619,16 +627,13 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
 json UberJob::workerError(int errorCode, string const& errorMsg) {
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError a");
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError code=" << errorCode << " msg=" << errorMsg);
-    LOGS(_log, LOG_LVL_INFO, "UberJob::workerError code=" << errorCode << " msg=" << errorMsg);
-
-    //&&&uj NEED CODE update status for each job in this uberjob
-    //jq->getStatus()->updateInfo(_jobIdStr, JobStatus::RESPONSE_READY, "SSI");
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " errcode=" << errorCode << " errmsg=" << errorMsg);
 
     bool const deleteData = true;
     bool const keepData = !deleteData;
     auto exec = _executive.lock();
     if (exec == nullptr || isQueryCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, "UberJob::workerError no executive or cancelled");
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled");
         return _workerErrorFinish(deleteData, "cancelled");
     }
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError c");
@@ -637,7 +642,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
             LOGS(_log, LOG_LVL_INFO,
-                 "UberJob ignoring, enough rows already "
+                 cName(__func__) << " ignoring, enough rows already "
                          << "dataIgnored=" << dataIgnored);
         }
         return _workerErrorFinish(keepData, "none", "limitRowComplete");
@@ -645,17 +650,24 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
 
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError d");
 
-    /* &&&
-    JobBase::Ptr jBaseThis = shared_from_this();
-    weak_ptr<UberJob> ujThis = std::dynamic_pointer_cast<UberJob>(jBaseThis);
-     */
+    // Currently there are no detecable recoverable errors from workers. The only error that a worker
+    // could send back that may possibly be recoverable would be a missing table error, which is not
+    // trivia to detect. A worker local database error may also qualify.
+    bool recoverableError = false;
+    recoverableError = true; //&&& delete after testing
+    if (recoverableError) { // &&& instead of killing the query, try to retry the jobs on a different worker
+        /* &&&
+         *
+         */
+        _unassignJobs();
 
-    //&&&uj get error message to the user and kill the user query.
-    //&&&jq->getDescription()->respHandler()->flushHttpError(errorCode, errorMsg, util::ErrorCode::MYSQLEXEC);
-    int errState = util::ErrorCode::MYSQLEXEC;
-    getRespHandler()->flushHttpError(errorCode, errorMsg, errState);
-    exec->addMultiError(errorCode, errorMsg, errState);
-    exec->squash();
+    } else {// &&&
+        // Get the error message to the user and kill the user query.
+        int errState = util::ErrorCode::MYSQLEXEC;
+        getRespHandler()->flushHttpError(errorCode, errorMsg, errState);
+        exec->addMultiError(errorCode, errorMsg, errState);
+        exec->squash();
+    } // &&&
 
     string errType = to_string(errorCode) + ":" + errorMsg;
     return _workerErrorFinish(deleteData, errType, "");
@@ -669,11 +681,10 @@ json UberJob::_importResultError(bool shouldCancel, string const& errorType, str
     auto exec = _executive.lock();
     if (exec != nullptr) {
         LOGS(_log, LOG_LVL_ERROR,
-             "UberJob::" << __func__ << " uberJobId=" << getJobId() << " shouldCancel=" << shouldCancel
+             cName(__func__) << " shouldCancel=" << shouldCancel
                          << " errorType=" << errorType << " " << note);
         if (shouldCancel) {
-            LOGS(_log, LOG_LVL_ERROR,
-                 "UberJob::" << __func__ << " uberJobId=" << getJobId() << " failing jobs");
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failing jobs");
             callMarkCompleteFunc(false);  // all jobs failed, no retry
             exec->squash();
         } else {
@@ -682,14 +693,13 @@ json UberJob::_importResultError(bool shouldCancel, string const& errorType, str
             ///   against the attempt limit.
             /// - executive needs to be told to make new UberJobs until all
             ///   JobQueries are being handled by an UberJob.
-            LOGS(_log, LOG_LVL_ERROR,
-                 "UberJob::" << __func__ << " uberJobId=" << getJobId() << " reassigning jobs");
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " reassigning jobs");
             _unassignJobs();
             exec->assignJobsToUberJobs();
         }
     } else {
         LOGS(_log, LOG_LVL_INFO,
-             "UberJob::" << __func__ << " uberJobId=" << getJobId() << " already cancelled shouldCancel="
+             cName(__func__) << " already cancelled shouldCancel="
                          << shouldCancel << " errorType=" << errorType << " " << note);
     }
     return jsRet;
@@ -704,12 +714,12 @@ nlohmann::json UberJob::_importResultFinish(uint64_t resultRows) {
     bool const statusSet =
             setStatusIfOk(qmeta::JobStatus::RESPONSE_DONE, getIdStr() + " _importResultFinish");
     if (!statusSet) {
-        LOGS(_log, LOG_LVL_DEBUG, "UberJob::" << __func__ << " failed to set status " << getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " failed to set status " << getIdStr());
         return {{"success", 0}, {"errortype", "statusMismatch"}, {"note", "failed to set status"}};
     }
     auto exec = _executive.lock();
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "UberJob::" << __func__ << " executive is null " << getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
         return {{"success", 0}, {"errortype", "cancelled"}, {"note", "executive is null"}};
     }
 
@@ -733,8 +743,7 @@ nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& e
     /// Return a "success:1" json message to be sent to the worker.
     auto exec = _executive.lock();
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG,
-             "UberJob::_workerErrorFinish executive is null qId=" << getQueryId() << " ujId=" << getJobId());
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
         return {{"success", 0}, {"errortype", "cancelled"}, {"note", "executive is null"}};
     }
 

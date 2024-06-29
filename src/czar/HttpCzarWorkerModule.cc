@@ -251,7 +251,7 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
         LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR errorMsg=" << errorMsg);
 
         // Find UberJob
-        qdisp::Executive::Ptr exec = qdisp::Executive::getExecutiveFromMap(queryId);
+        qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
         if (exec == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobError No executive for qid=") +
                                    to_string(queryId));
@@ -301,7 +301,7 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
         LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR fileSize=" << fileSize);
 
         // Find UberJob
-        qdisp::Executive::Ptr exec = qdisp::Executive::getExecutiveFromMap(queryId);
+        qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
         if (exec == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
                                    to_string(queryId));
