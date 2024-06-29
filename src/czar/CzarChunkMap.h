@@ -48,6 +48,9 @@ public:
     ChunkMapException(Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {}
 };
 
+// &&&&&&&&&& Provide a map based on family name (which will be based on database name for now)
+//            to determine which maps to use. CzarFamilyMap.
+
 /// This class is used to organize worker chunk table information so that it
 /// can be used to send jobs to the appropriate worker and inform workers
 /// what chunks they can expect to handle in shared scans.
@@ -215,6 +218,9 @@ public:
         std::lock_guard<std::mutex> lck(_mapMtx);
         return {_chunkMap, _workerChunkMap};
     }
+
+    /// &&& doc
+    bool read();
 
 private:
     /// Try to `_read` values for maps from `qmeta`.
