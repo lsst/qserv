@@ -570,6 +570,18 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
          " as a command-line parameter to the application."
 )
 @click.option(
+    "--http-ssl-cert-file",
+    help="A location of a file containing an SSL/TSL certificate.",
+    default="/config-etc/ssl/czar-cert.pem",
+    show_default=True,
+)
+@click.option(
+    "--http-ssl-private-key-file",
+    help="A location of a file containing an SSL/TSL private key.",
+    default="/config-etc/ssl/czar-key.pem",
+    show_default=True,
+)
+@click.option(
     "--czar-cfg-file",
     help="Path to the czar config file.",
     default=czar_http_cfg_template,
@@ -601,8 +613,10 @@ def czar_http(ctx: click.Context, **kwargs: Any) -> None:
         db_uri=targs["db_uri"],
         czar_cfg_file=targs["czar_cfg_file"],
         czar_cfg_path=targs["czar_cfg_path"],
-        cmd=targs["cmd"],
         log_cfg_file=targs["log_cfg_file"],
+        http_ssl_cert_file=targs["http_ssl_cert_file"],
+        http_ssl_private_key_file=targs["http_ssl_private_key_file"],
+        cmd=targs["cmd"],
     )
 
 
