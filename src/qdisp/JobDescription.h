@@ -107,6 +107,7 @@ private:
                    std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                    std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                    std::string const& chunkResultName, bool mock = false);
+
     qmeta::CzarId _czarId;
     QueryId _queryId;
     JobId _jobId;  ///< Job's Id number.
