@@ -117,6 +117,8 @@ public:
         return _isInUberJob();
     }
 
+    int getAttemptCount() const;
+
     /// If ujId is the current owner, clear ownership.
     /// @return true if job is unassigned.
     bool unassignFromUberJob(UberJobId ujId);
@@ -127,13 +129,16 @@ protected:
         _jobDescription->respHandler()->setJobQuery(jbPtr);
     }
 
+    /* &&&
     /// NOTE: _rmutex must be held before calling this
     int _getRunAttemptsCount() const {
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         return _jobDescription->getAttemptCount();
     }
+
     int _getMaxAttempts() const { return 5; }  // Arbitrary value until solid value with reason determined.
-    int _getAttemptSleepSeconds() const { return 30; }  // As above or until added to config file.
+    int _getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
+    */
 
     /// @return true if _uberJobId was set, it can only be set if it is unassigned
     ///         or by the current owner.

@@ -117,8 +117,10 @@ public:
 
     ~Executive();
 
+    /* &&&
     /// &&& doc
     static Ptr getExecutiveFromMap(QueryId qId);
+    */
 
     std::string cName(const char* funcName="") {
         return std::string("Executive::") + funcName;
@@ -130,11 +132,6 @@ public:
 
     /// &&&uj doc   Return a map that only contains Jobs not assigned to an UberJob.
     ChunkIdJobMapType unassignedChunksInQuery();
-
-    /* &&&
-    /// &&& doc
-    void removeFromMap();
-    */
 
     /// &&& doc
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
@@ -238,7 +235,9 @@ public:
 
     std::string dumpUberJobCounts() const;
 
-
+    // The below value should probably be based on the user query, with longer sleeps for slower queries.
+    int getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
+    int getMaxAttempts() const { return 5; }  // Should be set by config
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
@@ -366,8 +365,10 @@ private:
     ///                   executive can make new uberjobs.
     std::atomic<bool> _failedUberJob{false};
 
+    /* &&&
     static std::mutex _executiveMapMtx;           ///< protects _executiveMap
     static std::map<QueryId, std::weak_ptr<Executive>> _executiveMap;  ///< Map of executives for queries in progress.
+    */
 };
 
 /// &&&uj MarkCompleteFunc is not needed with uberjobs.

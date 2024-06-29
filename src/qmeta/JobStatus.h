@@ -66,8 +66,9 @@ public:
         RESPONSE_DONE,
         CANCEL,
         RESPONSE_ERROR,  // Errors must be between CANCEL and COMPLETE
-        RESULT_ERROR,    // &&&uj ERRORS and CANCEL should probably be
-        MERGE_ERROR,     // &&&uj separate from State, but may cause issues.
+        RESULT_ERROR,
+        MERGE_ERROR,
+        RETRY_ERROR,
         COMPLETE = 2000
     };
 
