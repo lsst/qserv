@@ -86,7 +86,7 @@ bool JobQuery::runJob() {  // &&&
 
         LOGS(_log, LOG_LVL_DEBUG, "runJob checking attempt=" << _jobDescription->getAttemptCount());
         lock_guard<recursive_mutex> lock(_rmutex);
-        if (_jobDescription->getAttemptCount() < _getMaxAttempts()) {
+        if (_jobDescription->getAttemptCount() < executive->getMaxAttempts()) {
             bool okCount = _jobDescription->incrAttemptCountScrubResults();
             if (!okCount) {
                 criticalErr("hit structural max of retries");
@@ -179,7 +179,7 @@ bool JobQuery::isQueryCancelled() {
 bool JobQuery::_setUberJobId(UberJobId ujId) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     if (_uberJobId >= 0 && ujId != _uberJobId) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGS(_log, LOG_LVL_DEBUG,
              __func__ << " couldn't change UberJobId as ujId=" << ujId << " is owned by " << _uberJobId);
         return false;
     }
@@ -202,6 +202,11 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
     _uberJobId = -1;
     _jobDescription->incrAttemptCountScrubResultsJson();
     return true;
+}
+
+int JobQuery::getAttemptCount() const {
+    std::lock_guard<std::recursive_mutex> lock(_rmutex);
+    return _jobDescription->getAttemptCount();
 }
 
 string const& JobQuery::getPayload() const { return _jobDescription->payload(); }

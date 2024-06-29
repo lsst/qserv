@@ -100,8 +100,10 @@ string getErrorText(XrdSsiErrInfo& e) {
 
 namespace lsst::qserv::qdisp {
 
+/* &&&
 mutex Executive::_executiveMapMtx;                      ///< protects _executiveMap
 map<QueryId, std::weak_ptr<Executive>> Executive::_executiveMap;  ///< Map of executives for queries in progress.
+*/
 
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
@@ -125,7 +127,7 @@ Executive::~Executive() {
     qdisp::CzarStats::get()->deleteQuery();
     qdisp::CzarStats::get()->deleteJobs(_incompleteJobs.size());
     // Remove this executive from the map.
-    if (getExecutiveFromMap(getId()) != nullptr) {
+    if (czar::Czar::getCzar()->getExecutiveFromMap(getId()) != nullptr) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) + " pointer in map should be invalid QID=" << getId());
     }
     // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
@@ -155,6 +157,8 @@ Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<qmeta::Mes
     // stopping the timer.
     auto const czarStatsUpdateIvalSec = cconfig::CzarConfig::instance()->czarStatsUpdateIvalSec();
     if (czarStatsUpdateIvalSec > 0) {
+        // AsyncTimer has a 'self' keep alive in AsyncTimer::start() that keeps it safe when
+        // this Executive is deleted.
         ptr->_asyncTimer = util::AsyncTimer::create(
                 asioIoService, std::chrono::milliseconds(czarStatsUpdateIvalSec * 1000),
                 [self = std::weak_ptr<Executive>(ptr)](auto expirationIvalMs) -> bool {
@@ -189,12 +193,16 @@ void Executive::setQueryId(QueryId id) {
 
     // Insert into the global executive map.
     {
+        /* &&&
         lock_guard<mutex> lgMap(_executiveMapMtx);
         _executiveMap[_id] = shared_from_this();
+        */
+        czar::Czar::getCzar()->insertExecutive(_id, shared_from_this());
     }
     qdisp::CzarStats::get()->trackQueryProgress(_id);
 }
 
+/* &&&
 Executive::Ptr Executive::getExecutiveFromMap(QueryId qId) {
     lock_guard<mutex> lgMap(_executiveMapMtx);
     auto iter = _executiveMap.find(qId);
@@ -207,6 +215,7 @@ Executive::Ptr Executive::getExecutiveFromMap(QueryId qId) {
     }
     return exec;
 }
+*/
 
 UberJob::Ptr Executive::findUberJob(UberJobId ujId) {
     lock_guard<mutex> lgMap(_uberJobsMapMtx);
@@ -295,15 +304,26 @@ void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueFileCollect end");
 }
 
-/// &&&uj &&&&&&&&&&&&&&&&&&&&&& NEED CODE put this as command in qdisppool.
+
 void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob start");
-    bool started = uberJob->runUberJob();
-    /* &&&uj
-    if (!started && isLimitRowComplete()) {
-        uberJob->callMarkCompleteFunc(false);
+
+    bool const useqdisppool = true; /// &&& delete
+    if (useqdisppool) {
+        auto runUberJobFunc = [uberJob](util::CmdData*) {
+            LOGS(_log, LOG_LVL_WARN, "&&&uj Executive::runUberJob::runUberJobFunc a");
+            uberJob->runUberJob();
+        };
+
+        auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(runUberJobFunc));
+        if (_scanInteractive) {
+            _qdispPool->queCmd(cmd, 0);
+        } else {
+            _qdispPool->queCmd(cmd, 1);
+        }
+    } else {
+        uberJob->runUberJob();
     }
-    */
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob end");
 }
 
@@ -397,7 +417,6 @@ string Executive::dumpUberJobCounts() const {
 
 void Executive::assignJobsToUberJobs() {
     auto uqs = _userQuerySelect.lock();
-    /// &&& NEED CODE put on qdisppool &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
     uqs->buildAndSendUberJobs();
 }
 
