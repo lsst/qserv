@@ -92,7 +92,7 @@ bool JobDescription::incrAttemptCountScrubResultsJson() {
 #endif  // &&&
 
     ++_attemptCount;
-    if (_attemptCount > MAX_JOB_ATTEMPTS) {
+    if (_attemptCount >= MAX_JOB_ATTEMPTS) {
         LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
         return false;
     }
