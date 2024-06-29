@@ -54,6 +54,7 @@
 #include "http/Method.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
+#include "qdisp/Executive.h"
 #include "qdisp/QdispPool.h"
 #include "qdisp/SharedResources.h"
 #include "qproc/DatabaseModels.h"
@@ -167,6 +168,45 @@ Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName)
     return _czar;
 }
 
+void Czar::_monitor() {
+    LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor a");
+    while(_monitorLoop) {
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor b");
+        this_thread::sleep_for(_monitorSleepTime);
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor c");
+
+
+        /// Check database for changes in worker chunk assignments and aliveness
+        _czarChunkMap->read();
+
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor d");
+        /// Create new UberJobs for all jobs that got unassigned for any reason.
+        map<QueryId, shared_ptr<qdisp::Executive>> execMap;
+        {
+            // Make a copy of all valid Executives
+            lock_guard<mutex> execMapLock(_executiveMapMtx);
+            auto iter = _executiveMap.begin();
+            while(iter != _executiveMap.end()) {
+                auto qIdKey = iter->first;
+                shared_ptr<qdisp::Executive> exec = iter->second.lock();
+                if (exec == nullptr) {
+                    iter = _executiveMap.erase(iter);
+                } else {
+                    execMap[qIdKey] = exec;
+                    ++iter;
+                }
+            }
+        }
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor e");
+        // Use the copy to create new UberJobs as needed
+        for (auto&& [qIdKey, execVal] : execMap) {
+            execVal->assignJobsToUberJobs();
+        }
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor f");
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor end");
+}
+
 // Constructors
 Czar::Czar(string const& configFilePath, string const& czarName)
         : _czarName(czarName),
@@ -263,9 +303,19 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setReplicationHttpPort(port);
 
     _czarRegistry = CzarRegistry::create(_czarConfig);
+
+    // Start the monitor thread
+    thread monitorThrd(&Czar::_monitor, this);
+    _monitorThrd = move(monitorThrd);
+
 }
 
-Czar::~Czar() { LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()"); }
+Czar::~Czar() {
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
+    _monitorLoop = false;
+    _monitorThrd.join();
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
+}
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
     LOGS(_log, LOG_LVL_DEBUG, "New query: " << query << ", hints: " << util::printable(hints));
@@ -697,6 +747,24 @@ QueryId Czar::_lastQueryIdBeforeRestart() const {
         throw runtime_error(msg);
     }
     return stoull(queryIdStr);
+}
+
+void Czar::insertExecutive(QueryId qId, std::shared_ptr<qdisp::Executive> const& execPtr) {
+    lock_guard<mutex> lgMap(_executiveMapMtx);
+    _executiveMap[qId] = execPtr;
+}
+
+std::shared_ptr<qdisp::Executive> Czar::getExecutiveFromMap(QueryId qId) {
+    lock_guard<mutex> lgMap(_executiveMapMtx);
+    auto iter = _executiveMap.find(qId);
+    if (iter == _executiveMap.end()) {
+        return nullptr;
+    }
+    std::shared_ptr<qdisp::Executive> exec = iter->second.lock();
+    if (exec == nullptr) {
+        _executiveMap.erase(iter);
+    }
+    return exec;
 }
 
 }  // namespace lsst::qserv::czar

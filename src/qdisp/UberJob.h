@@ -60,6 +60,10 @@ public:
     bool addJob(std::shared_ptr<JobQuery> const& job);
     bool runUberJob();
 
+    std::string cName(const char* funcN) const {
+        return std::string("UberJob::") + funcN + " " + getIdStr();
+    }
+
     QueryId getQueryId() const override { return _queryId; }    // TODO:UJ relocate to JobBase
     UberJobId getJobId() const override { return _uberJobId; }  // &&&uj change name
     std::string const& getIdStr() const override { return _idStr; }
@@ -145,16 +149,13 @@ private:
     qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};  // &&&uj The JobStatus class should be changed
                                                                // to better represent UberJobs
 
-    //&&& std::shared_ptr<QueryRequest> _queryRequestPtr;
-    //&&&std::mutex _qrMtx;
-
     std::string _payload;  ///< XrdSsi message to be sent to the _workerResource. //&&&uj remove when possible
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
     QueryId const _queryId;
     UberJobId const _uberJobId;
-    qmeta::CzarId _czarId;
+    qmeta::CzarId const _czarId;
 
     std::string const _idStr;
     std::shared_ptr<QdispPool> _qdispPool;  //&&&uj needed?
