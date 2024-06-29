@@ -399,6 +399,8 @@ services:
           --xrootd-manager czar_xrootd
           --http-frontend-port 4048
           --http-frontend-threads 4
+          --http-ssl-cert-file /config-etc/ssl/czar-cert.pem
+          --http-ssl-private-key-file /config-etc/ssl/czar-key.pem
           --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey

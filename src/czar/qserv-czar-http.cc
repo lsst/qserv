@@ -39,7 +39,7 @@ namespace czar = lsst::qserv::czar;
 namespace qserv = lsst::qserv;
 
 namespace {
-string const usage = "Usage: <czar-name> <config> <port> <threads>";
+string const usage = "Usage: <czar-name> <config> <port> <threads> <ssl-cert-file> <ssl-private-key-file>";
 }
 
 int main(int argc, char* argv[]) {
@@ -49,7 +49,9 @@ int main(int argc, char* argv[]) {
     // - the port number (0 value would result in allocating the first available port)
     // - the number of service threads (0 value would assume the number of host machine's
     //   hardware threads)
-    if (argc != 5) {
+    // - a location of the SSL/TSL certificate for the secure connections
+    // - a location of the SSL/TSL private key
+    if (argc != 7) {
         cerr << __func__ << ": insufficient number of the command-line parameters\n" << ::usage << endl;
         return 1;
     }
@@ -71,6 +73,8 @@ int main(int argc, char* argv[]) {
         cerr << __func__ << ": failed to parse command line parameters\n" << ::usage << endl;
         return 1;
     }
+    string const sslCertFile = argv[nextArg++];
+    string const sslPrivateKeyFile = argv[nextArg++];
     try {
         auto const czar = czar::Czar::createCzar(configFilePath, czarName);
         auto const svc = czar::HttpCzarSvc::create(port, numThreads);

@@ -232,9 +232,10 @@ WORKDIR /home/qserv
 
 RUN mkdir -p /qserv/data && \
     mkdir /config-etc && \
+    mkdir /config-etc/ssl && \
     mkdir -p /qserv/run/tmp && \
     mkdir -p /var/run/xrootd && \
-    chown qserv:qserv /qserv/data /config-etc /qserv/run/tmp /var/run/xrootd
+    chown qserv:qserv /qserv/data /config-etc /config-etc/ssl /qserv/run/tmp /var/run/xrootd
 
 RUN alternatives --install /usr/bin/python python /usr/bin/python3.9 1
 ENV PYTHONPATH "${PYTHONPATH}:/usr/local/python"
