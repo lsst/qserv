@@ -59,6 +59,16 @@ CzarChunkMap::CzarChunkMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(
 
 CzarChunkMap::~CzarChunkMap() { LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap::~CzarChunkMap()"); }
 
+bool CzarChunkMap::read() {
+    bool mapsSet = false;
+    try {
+        mapsSet = _read();
+    } catch (qmeta::QMetaError const& qExc) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " CzarChunkMap could not read DB " << qExc.what());
+    }
+    return mapsSet;
+}
+
 bool CzarChunkMap::_read() {
     LOGS(_log, LOG_LVL_TRACE, "CzarChunkMap::_read() start");
     // If replacing the map, this may take a bit of time, but it's probably

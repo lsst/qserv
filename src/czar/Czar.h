@@ -59,6 +59,11 @@ namespace lsst::qserv::util {
 class FileMonitor;
 }  // namespace lsst::qserv::util
 
+namespace lsst::qserv::qdisp {
+class Executive;
+}  // namespace lsst::qserv::qdisp
+
+
 namespace lsst::qserv::czar {
 
 class CzarChunkMap;
@@ -133,6 +138,12 @@ public:
 
     std::shared_ptr<CzarRegistry> getCzarRegistry() const { return _czarRegistry; }
 
+    /// &&& doc
+    void insertExecutive(QueryId qId, std::shared_ptr<qdisp::Executive> const& execPtr);
+
+    /// &&& doc
+    std::shared_ptr<qdisp::Executive> getExecutiveFromMap(QueryId qId);
+
 private:
     /// Private constructor for singleton.
     Czar(std::string const& configFilePath, std::string const& czarName);
@@ -151,6 +162,9 @@ private:
 
     /// @return An identifier of the last query that was recorded in the query metadata table
     QueryId _lastQueryIdBeforeRestart() const;
+
+    /// &&& doc
+    void _monitor();
 
     static Ptr _czar;  ///< Pointer to single instance of the Czar.
 
@@ -193,6 +207,15 @@ private:
 
     /// Connection to the registry to register the czar and get worker contact information.
     std::shared_ptr<CzarRegistry> _czarRegistry;
+
+
+    std::mutex _executiveMapMtx;           ///< protects _executiveMap
+    std::map<QueryId, std::weak_ptr<qdisp::Executive>> _executiveMap;  ///< Map of executives for queries in progress.
+
+    std::thread _monitorThrd; ///< &&& doc
+    std::atomic<bool> _monitorLoop{true}; ///< &&& doc
+    std::chrono::milliseconds _monitorSleepTime{15000};  ///< Wait time between checks. &&& set from config
+
 };
 
 }  // namespace lsst::qserv::czar
