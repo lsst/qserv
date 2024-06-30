@@ -60,11 +60,17 @@ public:
     //      path-to-regexp (https://github.com/pillarjs/path-to-regexp) as used by express.js; see that link
     //      for examples of supported pattern syntax. A HandlerSpec combines a Handler, an HTTP method, and
     //      a URI pattern for convenient installation of multiple handlers via std::initializer_lists.
+    //      The optional readEntireBody parameter of HandlerSpec allows the user to specify whether the
+    //      server should read the entire request body before calling the handler.  If false, the handler
+    //      will be called with a request object that has a null body, and the handler is responsible for
+    //      reading the body as necessary.  This is useful for handlers that need to stream large request
+    //      bodies to disk or to another service.
 
     using HandlerSpec = struct {
         std::string const& method;
         std::string const& pattern;
         Handler handler;
+        bool readEntireBody = true;
     };
 
     //----- create() is a static Server factory method.  Pass in an asio::io_service instance onto which the
@@ -84,7 +90,8 @@ public:
     //----- Methods to install Handlers on a Server.  These must be called before start(), or between calls
     //      to stop() and start().
 
-    void addHandler(std::string const& method, std::string const& pattern, Handler handler);
+    void addHandler(std::string const& method, std::string const& pattern, Handler handler,
+                    bool readEntireBody = true);
     void addHandlers(std::initializer_list<HandlerSpec> handlers);
 
     //----- StaticContent and AjaxEndpoint are specialized Handlers for common use cases (static files served
@@ -122,6 +129,14 @@ public:
     void stop();
 
 private:
+    friend class Request;
+
+    struct PathHandler {
+        Path path;
+        Handler handler;
+        bool readEntireBody = true;
+    };
+
     Server(Server const&) = delete;
     Server& operator=(Server const&) = delete;
 
@@ -130,13 +145,12 @@ private:
 
     void _accept();
 
+    std::shared_ptr<boost::asio::steady_timer> _startTimer(
+            std::shared_ptr<boost::asio::ip::tcp::socket> socket);
     void _readRequest(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
-    void _dispatchRequest(Request::Ptr request, Response::Ptr response);
-
-    struct PathHandler {
-        Path path;
-        Handler handler;
-    };
+    std::shared_ptr<Server::PathHandler> _findPathHandler(Request::Ptr request);
+    void _dispatchRequest(std::shared_ptr<PathHandler> pathHandler, Request::Ptr request,
+                          Response::Ptr response);
 
     std::unordered_map<std::string, std::vector<PathHandler>> _pathHandlersByMethod;
 

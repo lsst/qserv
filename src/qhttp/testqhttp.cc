@@ -244,9 +244,11 @@ struct QhttpFixture {
         BOOST_TEST(curl_global_init(CURL_GLOBAL_DEFAULT) == CURLE_OK);
 
         static char const* usage =
-                "Usage: --data=<path> --log-level=<level> --threads=<num> --retry-delay=<milliseconds>";
+                "Usage: --client-threads=<num> --data=<path> --log-level=<level> --threads=<num> "
+                "--retry-delay=<milliseconds>";
         static char const* opts = "d:l:t:r:m";
-        static struct option lopts[] = {{"data", required_argument, nullptr, 'd'},
+        static struct option lopts[] = {{"client-threads", required_argument, nullptr, 'c'},
+                                        {"data", required_argument, nullptr, 'd'},
                                         {"log-level", required_argument, nullptr, 'l'},
                                         {"threads", required_argument, nullptr, 't'},
                                         {"retries", required_argument, nullptr, 'r'},
@@ -260,6 +262,15 @@ struct QhttpFixture {
         optind = 1;
         while ((opt = getopt_long(argc, argv, opts, lopts, nullptr)) != -1) {
             switch (opt) {
+                case 'c':
+                    try {
+                        numClientThreads = std::min(static_cast<size_t>(std::thread::hardware_concurrency()),
+                                                    std::max(numClientThreads, std::stoul(optarg)));
+                    } catch (...) {
+                        LOG_ERROR(usage);
+                        std::abort();
+                    }
+                    break;
                 case 'd':
                     dataDir = optarg;
                     break;
@@ -444,6 +455,7 @@ struct QhttpFixture {
     unsigned long numRetries = 1;
     unsigned long retryDelayMs = 1;
     size_t numThreads = 1;
+    size_t numClientThreads = 1;
 };
 
 BOOST_FIXTURE_TEST_CASE(request_timeout, QhttpFixture) {
@@ -848,6 +860,161 @@ BOOST_FIXTURE_TEST_CASE(ajax, QhttpFixture) {
     t1.join();
     t2.join();
     t3.join();
+}
+
+BOOST_FIXTURE_TEST_CASE(body_reader, QhttpFixture) {
+    // Note that the completion status sending is delayed when the body reading
+    // is asynchronous, and is triggered explicitly by the handler.
+    auto makeTestHandler = [](bool autoReadEntireBody, std::string const& expectedContent) {
+        return [autoReadEntireBody, &expectedContent](auto request, auto response) {
+            BOOST_CHECK_EQUAL(request->contentLengthBytes(), expectedContent.size());
+            if (autoReadEntireBody) {
+                BOOST_CHECK_EQUAL(request->contentLengthBytes(), request->contentReadBytes());
+                BOOST_CHECK_EQUAL(request->contentReadBytes(), expectedContent.size());
+                std::string content;
+                request->content >> content;
+                BOOST_CHECK_EQUAL(content, expectedContent);
+                response->sendStatus(qhttp::STATUS_OK);
+            } else {
+                request->readEntireBodyAsync(
+                        [&expectedContent](auto request, auto response, bool success, std::size_t bytesRead) {
+                            BOOST_CHECK_EQUAL(success, true);
+                            if (success) {
+                                BOOST_CHECK_EQUAL(request->contentReadBytes(), expectedContent.size());
+                                // Some (in the extreme case - all) bytes might be already read when
+                                // the request header was received and processed.
+                                BOOST_TEST(bytesRead <= request->contentReadBytes());
+                            }
+                            std::string content;
+                            request->content >> content;
+                            BOOST_CHECK_EQUAL(content, expectedContent);
+                            response->sendStatus(qhttp::STATUS_OK);
+                        });
+            }
+        };
+    };
+
+    bool const readEntireBody = true;
+    std::string const content = "abc";
+    server->addHandlers({{"POST", "/foo1", makeTestHandler(readEntireBody, content)}});
+    server->addHandlers({{"POST", "/foo2", makeTestHandler(!readEntireBody, content), !readEntireBody}});
+
+    start();
+
+    CurlEasy curl(numRetries, retryDelayMs);
+
+    for (std::size_t i = 0; i < 10; ++i) {
+        curl.setup("POST", urlPrefix + "foo1", content).perform().validate(qhttp::STATUS_OK, "text/html");
+        curl.setup("POST", urlPrefix + "foo2", content).perform().validate(qhttp::STATUS_OK, "text/html");
+    }
+}
+
+BOOST_FIXTURE_TEST_CASE(body_stream_reader, QhttpFixture) {
+    class RequestHandler : public std::enable_shared_from_this<RequestHandler>, boost::noncopyable {
+    public:
+        static void handle(std::size_t expectedNumReads, std::string const& expectedContent,
+                           qhttp::Request::Ptr request, qhttp::Response::Ptr response,
+                           std::size_t bytesToRead = 0) {
+            auto handler = std::shared_ptr<RequestHandler>(
+                    new RequestHandler(expectedNumReads, expectedContent, bytesToRead));
+            handler->_handle(request, response);
+        }
+
+    private:
+        RequestHandler(std::size_t expectedNumReads, std::string const& expectedContent,
+                       std::size_t bytesToRead = 0)
+                : _expectedNumReads(expectedNumReads),
+                  _expectedContent(expectedContent),
+                  _bytesToRead(bytesToRead) {}
+
+        void _handle(qhttp::Request::Ptr request, qhttp::Response::Ptr response) {
+            BOOST_CHECK_EQUAL(request->contentLengthBytes(), _expectedContent.size());
+            BOOST_TEST(request->contentReadBytes() <= request->contentLengthBytes());
+            request->readPartialBodyAsync(
+                    [self = shared_from_this()](auto request, auto response, bool success,
+                                                std::size_t bytesRead) {
+                        if (success) {
+                            if (self->_bytesToRead == 0) {
+                                BOOST_TEST(bytesRead <= request->recordSizeBytes());
+                            } else {
+                                BOOST_TEST(bytesRead <= self->_bytesToRead);
+                            }
+                        }
+                        self->_processData(request, response, success);
+                    },
+                    _bytesToRead);
+        }
+        void _processData(qhttp::Request::Ptr request, qhttp::Response::Ptr response, bool success) {
+            BOOST_TEST(request->contentReadBytes() <= request->contentLengthBytes());
+            BOOST_CHECK_EQUAL(success, true);
+            if (!success) {
+                response->sendStatus(qhttp::STATUS_INTERNAL_SERVER_ERR);
+                return;
+            }
+            _readContent.append(std::istreambuf_iterator<char>(request->content), {});
+            ++_numReads;
+            if (request->contentReadBytes() == request->contentLengthBytes()) {
+                BOOST_CHECK_EQUAL(_expectedNumReads, _numReads);
+                BOOST_CHECK_EQUAL(_expectedContent.size(), _readContent.size());
+                BOOST_CHECK_EQUAL(_expectedContent, _readContent);
+                response->sendStatus(qhttp::STATUS_OK);
+            } else {
+                request->readPartialBodyAsync(
+                        [self = shared_from_this()](auto request, auto response, bool success,
+                                                    std::size_t bytesRead) {
+                            if (success) {
+                                if (self->_bytesToRead == 0) {
+                                    BOOST_TEST(bytesRead <= request->recordSizeBytes());
+                                } else {
+                                    BOOST_TEST(bytesRead <= self->_bytesToRead);
+                                }
+                            }
+                            self->_processData(request, response, success);
+                        },
+                        _bytesToRead);
+            }
+        }
+        std::size_t const _expectedNumReads;
+        std::string const& _expectedContent;
+        std::size_t const _bytesToRead = 0;
+        std::size_t _numReads = 0;
+        std::string _readContent;
+    };
+
+    BOOST_CHECK_EQUAL(qhttp::Request::defaultRecordSizeBytes, 1024 * 1024);
+    std::string const expectedContent(16 * qhttp::Request::defaultRecordSizeBytes, '0');
+
+    bool const readEntireBody = true;
+    server->addHandlers({{"POST", "/foo",
+                          [expectedNumReads = 16, &expectedContent](auto request, auto response) {
+                              RequestHandler::handle(expectedNumReads, expectedContent, request, response);
+                          },
+                          !readEntireBody}});
+
+    server->addHandlers({{"POST", "/bar",
+                          [expectedNumReads = 16 * 1024, &expectedContent](auto request, auto response) {
+                              std::size_t const bytesToRead = 1024;
+                              RequestHandler::handle(expectedNumReads, expectedContent, request, response,
+                                                     bytesToRead);
+                          },
+                          !readEntireBody}});
+
+    start();
+
+    std::vector<std::thread> threads;
+    for (std::size_t i = 0; i < numClientThreads; ++i) {
+        threads.emplace_back([this, &expectedContent]() {
+            for (std::string const path : {"foo", "bar"}) {
+                CurlEasy curl(numRetries, retryDelayMs);
+                curl.setup("POST", urlPrefix + path, expectedContent)
+                        .perform()
+                        .validate(qhttp::STATUS_OK, "text/html");
+            }
+        });
+    }
+    for (auto& t : threads) {
+        t.join();
+    }
 }
 
 }  // namespace lsst::qserv
