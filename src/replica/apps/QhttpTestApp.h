@@ -79,6 +79,9 @@ private:
     /// An interval (milliseconds) for reporting the performance counters
     int _reportIntervalMs = 1000;
 
+    /// The flag which would turn on periodic progress report on the incoming requests
+    bool _progress = false;
+
     /// The flag which would turn on detailed report on the incoming requests
     bool _verbose = false;
 };

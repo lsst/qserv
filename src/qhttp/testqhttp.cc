@@ -27,8 +27,9 @@
 #include <chrono>
 #include <fstream>
 #include <getopt.h>
-#include <sstream>
 #include <set>
+#include <sstream>
+#include <stdio.h>
 #include <string>
 #include <thread>
 #include <vector>
@@ -41,6 +42,9 @@
 #include "curl/curl.h"
 
 #include "lsst/log/Log.h"
+#include "qhttp/MultiPartParser.h"
+#include "qhttp/Request.h"
+#include "qhttp/Response.h"
 #include "qhttp/Server.h"
 #include "qhttp/Status.h"
 
@@ -94,6 +98,11 @@ public:
     CurlEasy& setup(std::string const& method, std::string const& url, std::string const& data,
                     std::initializer_list<std::string> headers = {});
 
+    CurlEasy& setupPostFormUpload(std::string const& url,
+                                  std::unordered_map<std::string, std::string> const& parameters = {},
+                                  std::unordered_map<std::string, std::string> const& files = {},
+                                  std::initializer_list<std::string> headers = {});
+
     CurlEasy& perform();
 
     CurlEasy& validate(lsst::qserv::qhttp::Status responseCode, std::string const& contentType);
@@ -102,7 +111,12 @@ public:
     unsigned long retryDelayMs;
     CURL* hcurl;
     curl_slist* hlist;
+    curl_mime* hmultipart;
     std::string recdContent;
+
+private:
+    void _setHeaders(std::initializer_list<std::string> headers);
+    void _setResponseHandler();
 };
 
 CurlEasy::CurlEasy(unsigned long numRetries_, unsigned long retryDelayMs_)
@@ -110,11 +124,13 @@ CurlEasy::CurlEasy(unsigned long numRetries_, unsigned long retryDelayMs_)
     hcurl = curl_easy_init();
     BOOST_TEST(hcurl != static_cast<CURL*>(nullptr));
     hlist = nullptr;
+    hmultipart = nullptr;
 }
 
 CurlEasy::~CurlEasy() {
     curl_slist_free_all(hlist);
     curl_easy_cleanup(hcurl);
+    curl_mime_free(hmultipart);
 }
 
 CurlEasy& CurlEasy::setup(std::string const& method, std::string const& url, std::string const& data,
@@ -131,17 +147,35 @@ CurlEasy& CurlEasy::setup(std::string const& method, std::string const& url, std
     } else {
         BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_CUSTOMREQUEST, method.c_str()) == CURLE_OK);
     }
+    _setHeaders(headers);
+    _setResponseHandler();
 
-    curl_slist_free_all(hlist);
-    hlist = nullptr;
-    for (auto& header : headers) {
-        hlist = curl_slist_append(hlist, header.c_str());
+    return *this;
+}
+
+CurlEasy& CurlEasy::setupPostFormUpload(std::string const& url,
+                                        std::unordered_map<std::string, std::string> const& parameters,
+                                        std::unordered_map<std::string, std::string> const& files,
+                                        std::initializer_list<std::string> headers) {
+    hmultipart = curl_mime_init(hcurl);
+    BOOST_TEST(hmultipart != nullptr);
+    curl_mimepart* part = nullptr;
+    for (auto const& [name, val] : parameters) {
+        part = curl_mime_addpart(hmultipart);
+        BOOST_TEST(curl_mime_name(part, name.data()) == CURLE_OK);
+        BOOST_TEST(curl_mime_data(part, val.data(), val.size()) == CURLE_OK);
     }
-    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_HTTPHEADER, hlist) == CURLE_OK);
+    for (auto const& [name, path] : files) {
+        part = curl_mime_addpart(hmultipart);
+        BOOST_TEST(curl_mime_name(part, name.data()) == CURLE_OK);
+        BOOST_TEST(curl_mime_filedata(part, path.data()) == CURLE_OK);
+    }
+    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_VERBOSE, 1L) == CURLE_OK);
+    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_URL, url.c_str()) == CURLE_OK);
+    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_MIMEPOST, hmultipart) == CURLE_OK);
 
-    recdContent.erase();
-    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_WRITEFUNCTION, writeToString) == CURLE_OK);
-    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_WRITEDATA, &recdContent) == CURLE_OK);
+    _setHeaders(headers);
+    _setResponseHandler();
 
     return *this;
 }
@@ -172,6 +206,21 @@ CurlEasy& CurlEasy::validate(lsst::qserv::qhttp::Status responseCode, std::strin
     BOOST_TEST(recdContentLength == recdContent.size());
 
     return *this;
+}
+
+void CurlEasy::_setHeaders(std::initializer_list<std::string> headers) {
+    curl_slist_free_all(hlist);
+    hlist = nullptr;
+    for (auto& header : headers) {
+        hlist = curl_slist_append(hlist, header.c_str());
+    }
+    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_HTTPHEADER, hlist) == CURLE_OK);
+}
+
+void CurlEasy::_setResponseHandler() {
+    recdContent.erase();
+    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_WRITEFUNCTION, writeToString) == CURLE_OK);
+    BOOST_TEST(curl_easy_setopt(hcurl, CURLOPT_WRITEDATA, &recdContent) == CURLE_OK);
 }
 
 //
@@ -1014,6 +1063,92 @@ BOOST_FIXTURE_TEST_CASE(body_stream_reader, QhttpFixture) {
     }
     for (auto& t : threads) {
         t.join();
+    }
+}
+
+class TestRequestProcessor : public qhttp::RequestProcessor {
+public:
+    explicit TestRequestProcessor(qhttp::Response::Ptr response,
+                                  std::unordered_map<std::string, std::string> const& expectedParameters,
+                                  std::unordered_map<std::string, std::string> const& expectedFiles)
+            : qhttp::RequestProcessor(response),
+              _expectedParameters(expectedParameters),
+              _expectedFiles(expectedFiles) {}
+
+    virtual bool onParamValue(qhttp::ContentHeader const& hdr, std::string const& name,
+                              std::string_view const& value) {
+        BOOST_CHECK(_receivedParameters.count(name) == 0);
+        BOOST_CHECK(_expectedParameters.count(name) != 0);
+        BOOST_CHECK_EQUAL(_expectedParameters.at(name), value);
+        _receivedParameters[name] = value;
+        return true;
+    }
+    virtual bool onFileOpen(qhttp::ContentHeader const& hdr, std::string const& name,
+                            std::string const& filename, std::string const& contentType) {
+        BOOST_CHECK(_receivedFilesContent.count(name) == 0);
+        BOOST_CHECK(_expectedFiles.count(name) != 0);
+        _currentFile = name;
+        _receivedFilesContent[name] = std::string();
+        return true;
+    }
+    virtual bool onFileContent(std::string_view const& data) {
+        BOOST_CHECK(!_currentFile.empty());
+        BOOST_CHECK(_receivedFilesContent.count(_currentFile) != 0);
+        BOOST_CHECK(_expectedFiles.count(_currentFile) != 0);
+        _receivedFilesContent[_currentFile] += data;
+        return true;
+    }
+    virtual bool onFileClose() {
+        BOOST_CHECK(!_currentFile.empty());
+        BOOST_CHECK(_receivedFilesContent.count(_currentFile) != 0);
+        BOOST_CHECK(_expectedFiles.count(_currentFile) != 0);
+        compareWithFile(_receivedFilesContent[_currentFile], _expectedFiles.at(_currentFile));
+        return true;
+    }
+    virtual void onFinished(std::string const& error) {
+        if (error.empty()) {
+            BOOST_CHECK_EQUAL(_receivedParameters.size(), _expectedParameters.size());
+            BOOST_CHECK_EQUAL(_receivedFilesContent.size(), _expectedFiles.size());
+            response->sendStatus(qhttp::STATUS_OK);
+        } else {
+            response->sendStatus(qhttp::STATUS_INTERNAL_SERVER_ERR);
+        }
+    }
+
+private:
+    std::string _currentFile;
+    std::unordered_map<std::string, std::string> _receivedParameters;
+    std::unordered_map<std::string, std::string> _receivedFilesContent;
+    std::unordered_map<std::string, std::string> const _expectedParameters;
+    std::unordered_map<std::string, std::string> const _expectedFiles;
+};
+
+BOOST_FIXTURE_TEST_CASE(multi_part, QhttpFixture) {
+    std::unordered_map<std::string, std::string> const parameters = {{"p1", "v1"}, {"p2", "v2"}, {"p3", ""}};
+    std::unordered_map<std::string, std::string> const files = {{"stype", dataDir + "css/style.css"},
+                                                                {"script", dataDir + "js/main.js"}};
+    bool const readEntireBody = true;
+    server->addHandlers({{"POST", "/foo",
+                          [&parameters, &files](auto request, auto response) {
+                              auto processor = make_shared<TestRequestProcessor>(response, parameters, files);
+                              qhttp::MultiPartParser::parse(request, processor);
+                          },
+                          readEntireBody}});
+    server->addHandlers({{"POST", "/bar",
+                          [&parameters, &files](auto request, auto response) {
+                              auto processor = make_shared<TestRequestProcessor>(response, parameters, files);
+                              qhttp::MultiPartParser::parse(request, processor);
+                          },
+                          !readEntireBody}});
+
+    start();
+
+    for (std::string const service : {"foo", "bar"}) {
+        CurlEasy curl(numRetries, retryDelayMs);
+        curl.setupPostFormUpload(urlPrefix + service, parameters, files,
+                                 {"Content-Type: multipart/form-data"})
+                .perform()
+                .validate(qhttp::STATUS_OK, "text/html");
     }
 }
 

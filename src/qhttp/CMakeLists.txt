@@ -2,6 +2,7 @@ add_library(qhttp SHARED)
 
 target_sources(qhttp PRIVATE
     AjaxEndpoint.cc
+    MultiPartParser.cc
     Path.cc
     Request.cc
     Response.cc
