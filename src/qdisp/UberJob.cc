@@ -106,9 +106,10 @@ bool UberJob::runUberJob() {
     LOGS(_log, LOG_LVL_WARN,
          getIdStr() << "&&&uj count qid=" << getQueryId() << " ujId=" << getJobId()
                     << " jobs.sz=" << _jobs.size());
+    auto exec = _executive.lock();
     for (auto const& jqPtr : _jobs) {
-        LOGS(_log, LOG_LVL_WARN, getIdStr() << "&&& UberJob ::runUberJob() a1");
-        jqPtr->getDescription()->incrAttemptCountScrubResultsJson();
+        LOGS(_log, LOG_LVL_WARN, getIdStr() << "&&& UberJob ::runUberJob() a1 " << jqPtr->getIdStr());
+        jqPtr->getDescription()->incrAttemptCountScrubResultsJson(exec, true);
     }
 
     LOGS(_log, LOG_LVL_WARN, getIdStr() << "&&& UberJob::runUberJob() b");
@@ -209,7 +210,7 @@ void UberJob::_unassignJobs() {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " exec is null");
         return;
     }
-    auto maxAttempts = exec->getMaxAttempts();
+    //&&&auto maxAttempts = exec->getMaxAttempts();
     for (auto&& job : _jobs) {
         string jid = job->getIdStr();
         if (!job->unassignFromUberJob(getJobId())) {
@@ -218,6 +219,7 @@ void UberJob::_unassignJobs() {
             exec->squash();
             return;
         }
+        /* &&&
         auto attempts = job->getAttemptCount();
         if (attempts > maxAttempts) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " job=" << jid << " attempts=" << attempts << " maxAttempts reached, cancelling");
@@ -225,7 +227,8 @@ void UberJob::_unassignJobs() {
             exec->squash();
             return;
         }
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " job=" << jid << " attempts=" << attempts);
+        */
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " job=" << jid << " attempts=" << job->getAttemptCount());
     }
     _jobs.clear();
     bool const setFlag = true;
