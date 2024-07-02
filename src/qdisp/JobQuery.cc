@@ -200,7 +200,10 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
         return false;
     }
     _uberJobId = -1;
-    _jobDescription->incrAttemptCountScrubResultsJson();
+
+    auto exec = _executive.lock();
+    // Do not increase the count as it should have been increased when the job was started.
+    _jobDescription->incrAttemptCountScrubResultsJson(exec, false);
     return true;
 }
 

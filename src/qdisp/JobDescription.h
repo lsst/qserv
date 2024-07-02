@@ -55,6 +55,7 @@ class TaskMsgFactory;
 
 namespace qdisp {
 
+class Executive;
 class ResponseHandler;
 
 /** Description of a job managed by the executive
