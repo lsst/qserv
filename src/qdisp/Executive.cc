@@ -417,7 +417,9 @@ string Executive::dumpUberJobCounts() const {
 
 void Executive::assignJobsToUberJobs() {
     auto uqs = _userQuerySelect.lock();
-    uqs->buildAndSendUberJobs();
+    if (uqs != nullptr) {
+        uqs->buildAndSendUberJobs();
+    }
 }
 
 bool Executive::startUberJob(UberJob::Ptr const& uJob) {  // &&&
@@ -535,15 +537,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
             lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
             string id = job->getIdStr() + "<>" + idStr;
-            /* &&&
-            auto jState = job->getStatus()->getInfo().state;
-            // Don't overwrite existing error states.
-            if (jState != qmeta::JobStatus::CANCEL && jState != qmeta::JobStatus::RESPONSE_ERROR &&
-                jState != qmeta::JobStatus::RESULT_ERROR && jState != qmeta::JobStatus::MERGE_ERROR) {
-                job->getStatus()->updateInfo(id, qmeta::JobStatus::RESULT_ERROR, "EXECFAIL", err.getCode(),
-                                             err.getMsg());
-            }
-            */
+
             // Don't overwrite existing error states.
             job->getStatus()->updateInfoNoErrorOverwrite(id, qmeta::JobStatus::RESULT_ERROR, "EXECFAIL",
                                                          err.getCode(), err.getMsg());
@@ -584,6 +578,9 @@ void Executive::squash() {
     for (auto const& job : jobsToCancel) {
         job->cancel();
     }
+
+    // TODO:UJ - Send a message to all workers saying this czarId + queryId is cancelled.
+    //           The workers will just mark all associated tasks as cancelled, and that should be it.
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
 }
 
