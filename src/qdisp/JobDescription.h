@@ -55,6 +55,7 @@ class TaskMsgFactory;
 
 namespace qdisp {
 
+class Executive;
 class ResponseHandler;
 
 /** Description of a job managed by the executive
@@ -90,7 +91,8 @@ public:
     /// If the starting value of _attemptCount was greater than or equal to zero, that
     /// attempt is scrubbed from the result table.
     bool incrAttemptCountScrubResults();      // &&&uj - to be deleted
-    bool incrAttemptCountScrubResultsJson();  // &&&uj - scrubbing results probably unneeded with uj.
+    /// doc &&&uj - scrubbing results probably unneeded with uj. This should be renamed.
+    bool incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase);
     bool verifyPayload() const;               ///< @return true if the payload is acceptable to protobufs.
 
     bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
