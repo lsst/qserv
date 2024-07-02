@@ -400,7 +400,9 @@ string Executive::dumpUberJobCounts() const {
 
 void Executive::assignJobsToUberJobs() {
     auto uqs = _userQuerySelect.lock();
-    uqs->buildAndSendUberJobs();
+    if (uqs != nullptr) {
+        uqs->buildAndSendUberJobs();
+    }
 }
 
 bool Executive::startUberJob(UberJob::Ptr const& uJob) {  // &&&

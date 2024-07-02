@@ -152,6 +152,7 @@ protected:
     /// indicate this job is unassigned. To prevent race conditions,
     /// an UberJob may only unassign a job if it has the same ID as
     /// _uberJobId.
+    /// All jobs must be unassigned before they can be reassigned.
     UberJobId _uberJobId = -1;
 };
 

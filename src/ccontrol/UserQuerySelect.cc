@@ -549,17 +549,10 @@ void UserQuerySelect::buildAndSendUberJobs() {
     auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();  //&&&uj
 
     // Make a map of all jobs in the executive.
-    // &&& TODO:UJ for now, just using ints. At some point, need to check that ResourceUnit databases can
-    // be found for all databases in the query
-    /* &&& instead of destroying the only copy, going to make a copy that only contains
-     * unassigned jobs.
-    qdisp::Executive::ChunkIdJobMapType chunksInQuery = _executive->getChunkJobMapAndInvalidate();
-            if (_chunkToJobMapInvalid.exchange(true)) {
-            throw util::Bug(ERR_LOC, "getChunkJobMapInvalidate called when map already invalid");
-        }
-        return _chunkToJobMap;
+    // &&& TODO:UJ At some point, need to check that ResourceUnit databases can
+    // &&& be found for all databases in the query.
+    // &&& NEED CODE to use database family instead of making this check.
 
-    */
     qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = _executive->unassignedChunksInQuery();
 
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs c");
@@ -609,10 +602,12 @@ void UserQuerySelect::buildAndSendUberJobs() {
         if (iter == chunkMapPtr->end()) {
             LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs d1a");
             missingChunks.push_back(chunkId);
-            break;
+            bool const increaseAttemptCount = true;
+            jqPtr->getDescription()->incrAttemptCountScrubResultsJson(_executive, increaseAttemptCount);
+            // Assign as many jobs as possible. Any chunks not found will be attempted later.
+            continue;
         }
         LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs d2");
-        ;
         czar::CzarChunkMap::ChunkData::Ptr chunkData = iter->second;
         auto targetWorker = chunkData->getPrimaryScanWorker().lock();
         LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs d3");
@@ -676,10 +671,11 @@ void UserQuerySelect::buildAndSendUberJobs() {
         for (auto const& chk : missingChunks) {
             errStr += to_string(chk) + ",";
         }
+        errStr += " they will be retried later.";
         LOGS(_log, LOG_LVL_ERROR, errStr);
-        throw util::Bug(
-                ERR_LOC,
-                errStr + " Crashing the program here for this reason is not appropriate. &&& NEEDS CODE");
+        // There are likely to be unassigned jobs, so set a flag to try to make
+        // new uber jobs for these jobs.
+        _executive->setFlagFailedUberJob(true);
     }
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs e");
 
