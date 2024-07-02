@@ -29,7 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "http/ModuleBase.h"
+#include "http/QhttpModule.h"
 
 // This header declarations
 namespace lsst::qserv::http {
@@ -38,7 +38,7 @@ namespace lsst::qserv::http {
  * Class MetaModule implements a handler for the metadata queries on the REST API itself.
  * The service responds with an information object provided at the creation time of the module.
  */
-class MetaModule : public http::ModuleBase {
+class MetaModule : public http::QhttpModule {
 public:
     typedef std::shared_ptr<MetaModule> Ptr;
 
@@ -53,8 +53,8 @@ public:
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(std::string const& context, nlohmann::json const& info,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName);
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName);
 
     MetaModule() = delete;
     MetaModule(MetaModule const&) = delete;
@@ -67,8 +67,8 @@ protected:
     virtual std::string context() const final;
 
 private:
-    MetaModule(std::string const& context, nlohmann::json const& info, qhttp::Request::Ptr const& req,
-               qhttp::Response::Ptr const& resp);
+    MetaModule(std::string const& context, nlohmann::json const& info,
+               std::shared_ptr<qhttp::Request> const& req, std::shared_ptr<qhttp::Response> const& resp);
 
     nlohmann::json _version();
 

@@ -35,6 +35,7 @@
 #include "css/CssError.h"
 #include "global/intTypes.h"
 #include "http/Exceptions.h"
+#include "http/RequestQuery.h"
 #include "qmeta/types.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigDatabase.h"

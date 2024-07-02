@@ -10,8 +10,9 @@ target_sources(http PRIVATE
     Exceptions.cc
     MetaModule.cc
     Method.cc
-    ModuleBase.cc
-    RequestBody.cc
+    Module.cc
+    QhttpModule.cc
+    RequestBodyJSON.cc
     RequestQuery.cc
     Url.cc
 )

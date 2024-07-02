@@ -20,11 +20,12 @@
  */
 
 // Class header
-#include "http/ModuleBase.h"
+#include "http/Module.h"
 
 // Qserv headers
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
+#include "http/RequestQuery.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -36,7 +37,7 @@ using namespace std;
 using json = nlohmann::json;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.http.ModuleBase");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.http.Module");
 
 string packWarnings(list<string> const& warnings) {
     string packed;
@@ -50,15 +51,12 @@ string packWarnings(list<string> const& warnings) {
 
 namespace lsst::qserv::http {
 
-ModuleBase::ModuleBase(string const& authKey, string const& adminAuthKey, qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp)
-        : _authKey(authKey), _adminAuthKey(adminAuthKey), _req(req), _resp(resp), _query(req->query) {}
+Module::Module(string const& authKey, string const& adminAuthKey)
+        : _authKey(authKey), _adminAuthKey(adminAuthKey) {}
 
-ModuleBase::~ModuleBase() {}
-
-void ModuleBase::execute(string const& subModuleName, http::AuthType const authType) {
+void Module::execute(string const& subModuleName, http::AuthType const authType) {
     try {
-        _body = RequestBody(_req);
+        _parseRequestBodyJSON();
         if (authType == http::AuthType::REQUIRED) _enforceAuthorization();
         json result = executeImpl(subModuleName);
         _sendData(result);
@@ -73,7 +71,7 @@ void ModuleBase::execute(string const& subModuleName, http::AuthType const authT
     }
 }
 
-void ModuleBase::checkApiVersion(string const& func, unsigned int minVersion, string const& warning) const {
+void Module::checkApiVersion(string const& func, unsigned int minVersion, string const& warning) const {
     unsigned int const maxVersion = MetaModule::version;
     unsigned int version = 0;
     string const versionAttrName = "version";
@@ -86,7 +84,7 @@ void ModuleBase::checkApiVersion(string const& func, unsigned int minVersion, st
     // Note that requests sent w/o explicitly specified API version will still be
     // processed. In this case a warning will be sent in the response object.
     try {
-        if (req()->method == "GET") {
+        if (method() == "GET") {
             if (!query().has(versionAttrName)) {
                 warn("No version number was provided in the request's query.");
                 return;
@@ -111,9 +109,9 @@ void ModuleBase::checkApiVersion(string const& func, unsigned int minVersion, st
     }
 }
 
-void ModuleBase::enforceInstanceId(string const& func, string const& requiredInstanceId) const {
-    string const instanceId = req()->method == "GET" ? query().requiredString("instance_id")
-                                                     : body().required<string>("instance_id");
+void Module::enforceInstanceId(string const& func, string const& requiredInstanceId) const {
+    string const instanceId = method() == "GET" ? query().requiredString("instance_id")
+                                                : body().required<string>("instance_id");
     debug(func, "instance_id: " + instanceId);
     if (instanceId != requiredInstanceId) {
         throw invalid_argument(context() + func + " Qserv instance identifier mismatch. Client sent '" +
@@ -121,36 +119,54 @@ void ModuleBase::enforceInstanceId(string const& func, string const& requiredIns
     }
 }
 
-void ModuleBase::info(string const& msg) const { LOGS(_log, LOG_LVL_INFO, context() << msg); }
+void Module::info(string const& msg) const { LOGS(_log, LOG_LVL_INFO, context() << msg); }
 
-void ModuleBase::debug(string const& msg) const { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
+void Module::debug(string const& msg) const { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
 
-void ModuleBase::warn(string const& msg) const {
+void Module::warn(string const& msg) const {
     LOGS(_log, LOG_LVL_WARN, context() << msg);
     _warnings.push_back(msg);
 }
 
-void ModuleBase::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
+void Module::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
 
-void ModuleBase::_sendError(string const& func, string const& errorMsg, json const& errorExt) const {
+void Module::_sendError(string const& func, string const& errorMsg, json const& errorExt) {
     error(func, errorMsg);
     json result;
     result["success"] = 0;
     result["error"] = errorMsg;
     result["error_ext"] = errorExt.is_null() ? json::object() : errorExt;
     result["warning"] = ::packWarnings(_warnings);
-    resp()->send(result.dump(), "application/json");
+    sendResponse(result.dump(), "application/json");
 }
 
-void ModuleBase::_sendData(json& result) {
+void Module::_sendData(json& result) {
     result["success"] = 1;
     result["error"] = "";
     result["error_ext"] = json::object();
     result["warning"] = ::packWarnings(_warnings);
-    resp()->send(result.dump(), "application/json");
+    sendResponse(result.dump(), "application/json");
 }
 
-void ModuleBase::_enforceAuthorization() {
+void Module::_parseRequestBodyJSON() {
+    string content;
+    getRequestBody(content, "application/json");
+    if (!content.empty()) {
+        try {
+            _body.objJson = json::parse(content);
+            if (_body.objJson.is_null() || _body.objJson.is_object()) return;
+        } catch (...) {
+            // Not really interested in knowing specific details of the exception.
+            // All what matters here is that the string can't be parsed into
+            // a valid JSON object. This will be reported via another exception
+            // after this block ends.
+            ;
+        }
+        throw std::invalid_argument("invalid format of the request body. A simple JSON object was expected");
+    }
+}
+
+void Module::_enforceAuthorization() {
     if (body().has("admin_auth_key")) {
         auto const adminAuthKey = body().required<string>("admin_auth_key");
         if (adminAuthKey != _adminAuthKey) {

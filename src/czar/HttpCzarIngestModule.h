@@ -33,7 +33,7 @@
 
 // Qserv headers
 #include "http/Method.h"
-#include "http/ModuleBase.h"
+#include "http/QhttpModule.h"
 
 // Forward declarations
 
@@ -53,7 +53,7 @@ namespace lsst::qserv::czar {
  * Class HttpCzarIngestModule implements a handler for processing requests for ingesting
  * user-generated data prodicts via the HTTP-based frontend.
  */
-class HttpCzarIngestModule : public http::ModuleBase {
+class HttpCzarIngestModule : public http::QhttpModule {
 public:
     /**
      * @note supported values for parameter 'subModuleName' are:

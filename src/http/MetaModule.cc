@@ -39,15 +39,16 @@ namespace lsst::qserv::http {
 
 unsigned int const MetaModule::version = 35;
 
-void MetaModule::process(string const& context, nlohmann::json const& info, qhttp::Request::Ptr const& req,
-                         qhttp::Response::Ptr const& resp, string const& subModuleName) {
+void MetaModule::process(string const& context, nlohmann::json const& info,
+                         shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
+                         string const& subModuleName) {
     MetaModule module(context, info, req, resp);
     module.execute(subModuleName, ::authType);
 }
 
-MetaModule::MetaModule(string const& context, nlohmann::json const& info, qhttp::Request::Ptr const& req,
-                       qhttp::Response::Ptr const& resp)
-        : http::ModuleBase(::authKey, ::adminAuthKey, req, resp), _context(context), _info(info) {
+MetaModule::MetaModule(string const& context, nlohmann::json const& info,
+                       shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp)
+        : http::QhttpModule(::authKey, ::adminAuthKey, req, resp), _context(context), _info(info) {
     if (!_info.is_object()) {
         throw invalid_argument("MetaModule::" + string(__func__) + " parameter info must be an object.");
     }

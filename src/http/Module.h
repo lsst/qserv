@@ -19,8 +19,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTP_MODULEBASE_H
-#define LSST_QSERV_HTTP_MODULEBASE_H
+#ifndef LSST_QSERV_HTTP_MODULE_H
+#define LSST_QSERV_HTTP_MODULE_H
 
 // System headers
 #include <list>
@@ -33,10 +33,12 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "http/RequestBody.h"
-#include "http/RequestQuery.h"
-#include "qhttp/Request.h"
-#include "qhttp/Response.h"
+#include "http/RequestBodyJSON.h"
+
+// Forward declarations
+namespace lsst::qserv::http {
+class RequestQuery;
+}  // namespace lsst::qserv::http
 
 // This header declarations
 namespace lsst::qserv::http {
@@ -45,38 +47,35 @@ namespace lsst::qserv::http {
 /// module's authorization requirements.
 enum class AuthType { REQUIRED, NONE };
 
-/**
- * Class ModuleBase is a base class for requests processing modules
- * of the HTTP servers built into the Replication system's services.
- */
-class ModuleBase {
+/// Class AuthError represent exceptions thrown when the authorization
+/// requirements aren't met.
+class AuthError : public std::invalid_argument {
 public:
-    /**
-     * Class AuthError represent exceptions thrown when the authorization
-     * requirements aren't met.
-     */
-    class AuthError : public std::invalid_argument {
-    public:
-        using std::invalid_argument::invalid_argument;
-    };
+    using std::invalid_argument::invalid_argument;
+};
 
-    ModuleBase() = delete;
-    ModuleBase(ModuleBase const&) = delete;
-    ModuleBase& operator=(ModuleBase const&) = delete;
+/**
+ * Class Module is the very base class for the request processing modules of the HTTP servers.
+ */
+class Module {
+public:
+    Module() = delete;
+    Module(Module const&) = delete;
+    Module& operator=(Module const&) = delete;
 
-    virtual ~ModuleBase();
+    virtual ~Module() = default;
 
     /**
      * Invokes a subclass-specific request processing provided by implementations
-     * of the pure virtual method ModuleBase::executeImpl(). The current method
+     * of the pure virtual method Module::executeImpl(). The current method
      * would also do an optional processing of exceptions thrown by the subclass-specific
-     * implementations of method ModuleBase::executeImpl(). These error conditions will
+     * implementations of method Module::executeImpl(). These error conditions will
      * be reported to as errors to callers.
      *
      * @param subModuleName  this optional parameter allows modules to have
      *   multiple sub-modules. A value of this parameter will be forwarded to
      *   the subclass-specific implementation of the pure virtual method
-     *   ModuleBase::executeImpl().
+     *   Module::executeImpl().
      * @param authType  Authorization requirements of the module. If 'http::AuthType::REQUIRED' is
      *   requested then the method will enforce the authorization. A lack of required
      *   authorization key in a request, or an incorrect value of such key would result
@@ -100,26 +99,23 @@ protected:
     /**
      * @param authKey  An authorization key for operations which require extra security.
      * @param adminAuthKey  An administrator-level authorization key.
-     * @param req  The HTTP request.
-     * @param resp  The HTTP response channel.
      */
-    ModuleBase(std::string const& authKey, std::string const& adminAuthKey, qhttp::Request::Ptr const& req,
-               qhttp::Response::Ptr const& resp);
-
-    qhttp::Request::Ptr const& req() const { return _req; }
-    qhttp::Response::Ptr const& resp() const { return _resp; }
+    Module(std::string const& authKey, std::string const& adminAuthKey);
 
     /// @return Authorization level of the request.
     bool isAdmin() const { return _isAdmin; }
 
-    /// @return Parameters of a REST request.
-    std::unordered_map<std::string, std::string> const& params() const { return _req->params; }
+    /// @return The method of a request.
+    virtual std::string method() const = 0;
+
+    /// @return Captured URL path elements.
+    virtual std::unordered_map<std::string, std::string> params() const = 0;
 
     /// @return Parameters of the request's query captured from the request's URL.
-    RequestQuery const& query() const { return _query; }
+    virtual RequestQuery query() const = 0;
 
     /// @return Optional parameters of a request extracted from the request's body (if any).
-    RequestBody const& body() const { return _body; }
+    RequestBodyJSON const& body() const { return _body; }
 
     // Message loggers for the corresponding log levels
 
@@ -152,7 +148,7 @@ protected:
      * in the "warning" attribute at the returned JSON object.
      *
      * The method will look for th eversion attribute in the query string of the "GET"
-     * requests. For requests that are called using methods "POIST", "PUT" or "DELETE"
+     * requests. For requests that are called using methods "POST", "PUT" or "DELETE"
      * the attribute will be located in the requests's body.
      *
      * @note Services that are calling the method should adjust the minimum version
@@ -185,8 +181,16 @@ protected:
     void enforceInstanceId(std::string const& func, std::string const& requiredInstanceId) const;
 
     /**
+     * Get the raw body of a request if it's available and if the content type
+     * meets expectations.
+     * @note An assumption is made that the body is small enough to fit into memory.
+     * @param content The content of the body is set of a request if all conditions are met.
+     * @param requiredContentType The required content type of the body.
+     */
+    virtual void getRequestBody(std::string& content, std::string const& requiredContentType) = 0;
+
+    /**
      * To implement a subclass-specific request processing.
-     *
      * @note All exceptions thrown by the implementations will be intercepted and
      *   reported as errors to callers. Exceptions are now the only way to report
      *   errors from modules.
@@ -197,7 +201,21 @@ protected:
      */
     virtual nlohmann::json executeImpl(std::string const& subModuleName) = 0;
 
+    /**
+     * Send a response back to a requester of a service.
+     * @param content The content to be sent back.
+     * @param contentType The type of the content to be sent back.
+     */
+    virtual void sendResponse(std::string const& content, std::string const& contentType) = 0;
+
 private:
+    /**
+     * Pull the raw request body and translate it into a JSON object.
+     * @note The body will be set only if the request has a body and the content
+     * type is "application/json". Otherwise the body will be left empty.
+     */
+    void _parseRequestBodyJSON();
+
     /**
      * Inspect the body of a request or a presence of a user-supplied authorization key.
      * Its value will be compared against a value of the corresponding configuration
@@ -218,7 +236,7 @@ private:
      * @param errorExt (optional) The additional information on the error.
      */
     void _sendError(std::string const& func, std::string const& errorMsg,
-                    nlohmann::json const& errorExt = nlohmann::json::object()) const;
+                    nlohmann::json const& errorExt = nlohmann::json::object());
 
     /**
      * Report a result back to a requester of a service upon its successful
@@ -231,19 +249,12 @@ private:
 
     std::string const _authKey;
     std::string const _adminAuthKey;
-    qhttp::Request::Ptr const _req;
-    qhttp::Response::Ptr const _resp;
 
     /// The flag indicating if a request has been granted the "administrator"-level privileges.
     bool _isAdmin = false;
 
-    /// The parser for parameters passed into the Web services via the optional
-    /// query part of a URL. The object gets initialized from the request.
-    RequestQuery const _query;
-
-    /// The body of a request is initialized/parsed from the request before calling
-    /// the overloaded method HttpModule::executeImpl.
-    RequestBody _body;
+    /// The body of a request is initialized by Module::execute().
+    RequestBodyJSON _body;
 
     /// The optional warning message to be sent to a caller if the API version
     /// number wasn't mentoned in the request.
@@ -252,4 +263,4 @@ private:
 
 }  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTP_MODULEBASE_H
+#endif  // LSST_QSERV_HTTP_MODULE_H

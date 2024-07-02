@@ -26,7 +26,7 @@
 #include <string>
 
 // Qserv headers
-#include "http/ModuleBase.h"
+#include "http/QhttpModule.h"
 
 // Forward declarations
 namespace lsst::qserv::qhttp {
@@ -40,7 +40,7 @@ namespace lsst::qserv::czar {
 /**
  * Class HttpModule is an intermediate base class of the Qserv Czar modules.
  */
-class HttpModule : public http::ModuleBase {
+class HttpModule : public http::QhttpModule {
 public:
     HttpModule() = delete;
     HttpModule(HttpModule const&) = delete;

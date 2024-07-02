@@ -30,7 +30,8 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
-#include "http/RequestBody.h"
+#include "http/RequestBodyJSON.h"
+#include "http/RequestQuery.h"
 #include "replica/config/Configuration.h"
 #include "replica/jobs/SqlCreateIndexesJob.h"
 #include "replica/jobs/SqlDropIndexesJob.h"
@@ -154,15 +155,15 @@ json HttpSqlIndexModule::_createIndexes() {
     }
     vector<SqlIndexColumn> indexColumns;
     for (auto&& columnJson : columnsJson) {
-        string const column = http::RequestBody::required<string>(columnJson, "column");
+        string const column = http::RequestBodyJSON::required<string>(columnJson, "column");
         if (!table.columns.empty() and
             table.columns.cend() == find_if(table.columns.cbegin(), table.columns.cend(),
                                             [&column](auto&& c) { return c.name == column; })) {
             throw invalid_argument(context() + "::" + string(__func__) + "  requested column '" + column +
                                    "' has not been found in the table schema.");
         }
-        indexColumns.emplace_back(column, http::RequestBody::required<size_t>(columnJson, "length"),
-                                  http::RequestBody::required<int>(columnJson, "ascending"));
+        indexColumns.emplace_back(column, http::RequestBodyJSON::required<size_t>(columnJson, "length"),
+                                  http::RequestBodyJSON::required<int>(columnJson, "ascending"));
     }
 
     bool const allWorkers = true;

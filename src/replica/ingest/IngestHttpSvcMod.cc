@@ -24,6 +24,8 @@
 
 // Qserv header
 #include "http/Method.h"
+#include "qhttp/Request.h"
+#include "qhttp/Response.h"
 #include "replica/util/Csv.h"
 
 // System headers
@@ -37,7 +39,7 @@ namespace lsst::qserv::replica {
 
 void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
                                IngestRequestMgr::Ptr const& ingestRequestMgr, string const& workerName,
-                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                               qhttp::Request::Ptr const& req, shared_ptr<qhttp::Response> const& resp,
                                string const& subModuleName, http::AuthType const authType) {
     IngestHttpSvcMod module(serviceProvider, ingestRequestMgr, workerName, req, resp);
     module.execute(subModuleName, authType);
@@ -45,8 +47,8 @@ void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
 
 IngestHttpSvcMod::IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                                    IngestRequestMgr::Ptr const& ingestRequestMgr, string const& workerName,
-                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
-        : http::ModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+                                   qhttp::Request::Ptr const& req, shared_ptr<qhttp::Response> const& resp)
+        : http::QhttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
           _serviceProvider(serviceProvider),
           _ingestRequestMgr(ingestRequestMgr),
           _workerName(workerName) {}
