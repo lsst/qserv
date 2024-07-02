@@ -7,6 +7,7 @@ target_sources(czar PRIVATE
     CzarRegistry.cc
     HttpCzarSvc.cc
     HttpCzarQueryModule.cc
+    HttpCzarWorkerModule.cc
     HttpModule.cc
     HttpMonitorModule.cc
     HttpSvc.cc

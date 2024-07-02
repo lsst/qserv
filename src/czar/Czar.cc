@@ -53,6 +53,7 @@
 #include "http/Method.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
+#include "qdisp/Executive.h"
 #include "qdisp/QdispPool.h"
 #include "qdisp/SharedResources.h"
 #include "qproc/DatabaseModels.h"
@@ -75,13 +76,6 @@ extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace {
 
-string const createAsyncResultTmpl(
-        "CREATE TABLE IF NOT EXISTS %1% "
-        "(jobId BIGINT, resultLocation VARCHAR(1024))"
-        "ENGINE=MEMORY;"
-        "INSERT INTO %1% (jobId, resultLocation) "
-        "VALUES (%2%, '%3%')");
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
 }  // anonymous namespace
@@ -93,6 +87,53 @@ Czar::Ptr Czar::_czar;
 Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName) {
     _czar.reset(new Czar(configFilePath, czarName));
     return _czar;
+}
+
+void Czar::_monitor() {
+    LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor a");
+    while(_monitorLoop) {
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor b");
+        this_thread::sleep_for(_monitorSleepTime);
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor c");
+
+
+        /// Check database for changes in worker chunk assignments and aliveness
+        _czarChunkMap->read();
+
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor d");
+        /// Create new UberJobs for all jobs that are unassigned for any reason.
+        map<QueryId, shared_ptr<qdisp::Executive>> execMap;
+        {
+            // Make a copy of all valid Executives
+            lock_guard<mutex> execMapLock(_executiveMapMtx);
+            auto iter = _executiveMap.begin();
+            while(iter != _executiveMap.end()) {
+                auto qIdKey = iter->first;
+                shared_ptr<qdisp::Executive> exec = iter->second.lock();
+                if (exec == nullptr) {
+                    iter = _executiveMap.erase(iter);
+                } else {
+                    execMap[qIdKey] = exec;
+                    ++iter;
+                }
+            }
+        }
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor e");
+        // Use the copy to create new UberJobs as needed
+        for (auto&& [qIdKey, execVal] : execMap) {
+            execVal->assignJobsToUberJobs();
+        }
+        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor f");
+
+        // TODO:UJ get missing results from workers.
+        //    This would be files that workers sent messages to the czar to
+        //    collect, but there was a communication problem and the czar didn't get the message
+        //    or didn't collect the file. to retrieve complete files that haven't been
+        //    collected.
+        //    Or, possibly just have the worker try to re-send the file ready message to
+        //    the czar.
+    }
+    LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor end");
 }
 
 // Constructors
@@ -191,6 +232,18 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setReplicationHttpPort(port);
 
     _czarRegistry = CzarRegistry::create(_czarConfig);
+
+    // Start the monitor thread
+    thread monitorThrd(&Czar::_monitor, this);
+    _monitorThrd = move(monitorThrd);
+
+}
+
+Czar::~Czar() {
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
+    _monitorLoop = false;
+    _monitorThrd.join();
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
@@ -263,19 +316,29 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
     auto finalizer = [uq, msgTable]() mutable {
+        string qidstr = to_string(uq->getQueryId());
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " a");
         // Add logging context with query ID
         QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
         LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " b");
         uq->submit();
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " c");
         uq->join();
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " d");
         try {
             msgTable.unlock(uq);
+            LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " e");
             if (uq) uq->discard();
+            LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " f");
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
             // will likely hang because table may still be locked.
             LOGS(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): " << exc.what());
         }
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " g");
+        uq.reset();
+        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " end");
     };
     LOGS(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
     thread finalThread(finalizer);
@@ -437,8 +500,15 @@ void Czar::_makeAsyncResult(string const& asyncResultTable, QueryId queryId, str
         throw exc;
     }
 
+    string const createAsyncResultTmpl(
+            "CREATE TABLE IF NOT EXISTS %1% "
+            "(jobId BIGINT, resultLocation VARCHAR(1024))"
+            "ENGINE=MEMORY;"
+            "INSERT INTO %1% (jobId, resultLocation) "
+            "VALUES (%2%, '%3%')");
+
     string query =
-            (boost::format(::createAsyncResultTmpl) % asyncResultTable % queryId % resultLocEscaped).str();
+            (boost::format(createAsyncResultTmpl) % asyncResultTable % queryId % resultLocEscaped).str();
 
     if (not sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure creating async result table", sqlErr);
@@ -458,7 +528,7 @@ void Czar::removeOldResultTables() {
     _lastRemovedTimer.start();
     _removingOldTables = true;
     // Run in a separate thread in the off chance this takes a while.
-    thread t([this]() {
+    thread thrd([this]() {
         LOGS(_log, LOG_LVL_INFO, "Removing old result database tables.");
         auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlResultConfig());
         string dbName = _czarConfig->getMySqlResultConfig().dbName;
@@ -504,8 +574,8 @@ void Czar::removeOldResultTables() {
         }
         _removingOldTables = false;
     });
-    t.detach();
-    _oldTableRemovalThread = std::move(t);
+    thrd.detach();
+    _oldTableRemovalThread = std::move(thrd);
 }
 
 SubmitResult Czar::getQueryInfo(QueryId queryId) const {
@@ -606,6 +676,24 @@ QueryId Czar::_lastQueryIdBeforeRestart() const {
         throw runtime_error(msg);
     }
     return stoull(queryIdStr);
+}
+
+void Czar::insertExecutive(QueryId qId, std::shared_ptr<qdisp::Executive> const& execPtr) {
+    lock_guard<mutex> lgMap(_executiveMapMtx);
+    _executiveMap[qId] = execPtr;
+}
+
+std::shared_ptr<qdisp::Executive> Czar::getExecutiveFromMap(QueryId qId) {
+    lock_guard<mutex> lgMap(_executiveMapMtx);
+    auto iter = _executiveMap.find(qId);
+    if (iter == _executiveMap.end()) {
+        return nullptr;
+    }
+    std::shared_ptr<qdisp::Executive> exec = iter->second.lock();
+    if (exec == nullptr) {
+        _executiveMap.erase(iter);
+    }
+    return exec;
 }
 
 }  // namespace lsst::qserv::czar

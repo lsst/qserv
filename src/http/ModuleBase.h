@@ -197,6 +197,8 @@ protected:
      */
     virtual nlohmann::json executeImpl(std::string const& subModuleName) = 0;
 
+    std::string authKey() const { return _authKey; }
+
 private:
     /**
      * Inspect the body of a request or a presence of a user-supplied authorization key.

@@ -37,8 +37,8 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "czar/CzarChunkMap.h"
 #include "qmeta/QMeta.h"
+#include "czar/CzarChunkMap.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;
@@ -51,13 +51,13 @@ using namespace std;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-void insertIntoQChunkMap(qmeta::QMeta::ChunkMap& qChunkMap, string const& workerId, string const& dbName,
+void insertIntoQChunkMap(qmeta::QMetaChunkMap& qChunkMap, string const& workerId, string const& dbName,
                          string const& tableName, unsigned int chunkNum, size_t sz) {
-    qChunkMap.workers[workerId][dbName][tableName].push_back(qmeta::QMeta::ChunkMap::ChunkInfo{chunkNum, sz});
+    qChunkMap.workers[workerId][dbName][tableName].push_back(qmeta::QMetaChunkMap::ChunkInfo{chunkNum, sz});
 }
 
-qmeta::QMeta::ChunkMap convertJsonToChunkMap(nlohmann::json const& jsChunks) {
-    qmeta::QMeta::ChunkMap qChunkMap;
+qmeta::QMetaChunkMap convertJsonToChunkMap(nlohmann::json const& jsChunks) {
+    qmeta::QMetaChunkMap qChunkMap;
     for (auto const& [workerId, dbs] : jsChunks.items()) {
         for (auto const& [dbName, tables] : dbs.items()) {
             for (auto const& [tableName, chunks] : tables.items()) {
@@ -187,13 +187,13 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     )";
 
     auto jsTest1 = nlohmann::json::parse(test1);
-    qmeta::QMeta::ChunkMap qChunkMap1 = convertJsonToChunkMap(jsTest1);
+    qmeta::QMetaChunkMap qChunkMap1 = convertJsonToChunkMap(jsTest1);
     auto [chunkMapPtr, wcMapPtr] = czar::CzarChunkMap::makeNewMaps(qChunkMap1);
     czar::CzarChunkMap::verify(*chunkMapPtr, *wcMapPtr);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap test 1 passed");
 
     auto jsTest2 = nlohmann::json::parse(test2);
-    qmeta::QMeta::ChunkMap qChunkMap2 = convertJsonToChunkMap(jsTest2);
+    qmeta::QMetaChunkMap qChunkMap2 = convertJsonToChunkMap(jsTest2);
     tie(chunkMapPtr, wcMapPtr) = czar::CzarChunkMap::makeNewMaps(qChunkMap2);
     czar::CzarChunkMap::verify(*chunkMapPtr, *wcMapPtr);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap test 2 passed");

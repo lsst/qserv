@@ -30,6 +30,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "qmeta/QMeta.h"
 #include "czar/Czar.h"
 #include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
@@ -56,12 +57,24 @@ CzarChunkMap::CzarChunkMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(
     }
 }
 
+CzarChunkMap::~CzarChunkMap() { LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap::~CzarChunkMap()"); }
+
+bool CzarChunkMap::read() {
+    bool mapsSet = false;
+    try {
+        mapsSet = _read();
+    } catch (qmeta::QMetaError const& qExc) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " CzarChunkMap could not read DB " << qExc.what());
+    }
+    return mapsSet;
+}
+
 bool CzarChunkMap::_read() {
     LOGS(_log, LOG_LVL_TRACE, "CzarChunkMap::_read() start");
     // If replacing the map, this may take a bit of time, but it's probably
     // better to wait for new maps if something changed.
     std::lock_guard gLock(_mapMtx);
-    qmeta::QMeta::ChunkMap qChunkMap = _qmeta->getChunkMap();
+    qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap();
     if (_lastUpdateTime >= qChunkMap.updateTime) {
         LOGS(_log, LOG_LVL_DEBUG,
              __func__ << " CzarChunkMap no need to read "
@@ -87,7 +100,7 @@ bool CzarChunkMap::_read() {
 }
 
 pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap>> CzarChunkMap::makeNewMaps(
-        qmeta::QMeta::ChunkMap const& qChunkMap) {
+        qmeta::QMetaChunkMap const& qChunkMap) {
     // Create new maps.
     auto wcMapPtr = make_shared<WorkerChunkMap>();
     auto chunkMapPtr = make_shared<ChunkMap>();
@@ -99,7 +112,7 @@ pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap
             // Tables -> Chunks map
             for (auto const& [tableName, chunks] : tables) {
                 // vector of ChunkInfo
-                for (qmeta::QMeta::ChunkMap::ChunkInfo const& chunkInfo : chunks) {
+                for (qmeta::QMetaChunkMap::ChunkInfo const& chunkInfo : chunks) {
                     try {
                         int64_t chunkNum = chunkInfo.chunk;
                         SizeT sz = chunkInfo.size;
@@ -326,6 +339,12 @@ void CzarChunkMap::ChunkData::addToWorkerHasThis(std::shared_ptr<WorkerChunksDat
     }
 
     _workerHasThisMap[worker->_workerId] = worker;
+}
+
+std::map<std::string, std::weak_ptr<CzarChunkMap::WorkerChunksData>>
+CzarChunkMap::ChunkData::getWorkerHasThisMapCopy() const {
+    std::map<std::string, std::weak_ptr<WorkerChunksData>> newMap = _workerHasThisMap;
+    return newMap;
 }
 
 string CzarChunkMap::ChunkData::dump() const {

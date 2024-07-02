@@ -54,8 +54,11 @@ class ResponseSummary;
 }  // namespace proto
 namespace qdisp {
 class JobQuery;
-class MessageStore;
+class UberJob;
 }  // namespace qdisp
+namespace QMeta {
+class MessageStore;
+}
 namespace qproc {
 class DatabaseModels;
 }
@@ -164,6 +167,10 @@ public:
     /// @return true if merge was successfully imported.
     bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
                std::shared_ptr<qdisp::JobQuery> const& jq);
+
+    /// &&&uj doc
+
+    bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
     /// Indicate the merge for the job is complete.
     void mergeCompleteFor(int jobId);

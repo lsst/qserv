@@ -40,10 +40,10 @@
 #include "global/ResourceUnit.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
-#include "qdisp/MessageStore.h"
 #include "qdisp/QueryRequest.h"
 #include "qdisp/SharedResources.h"
 #include "qdisp/XrdSsiMocks.h"
+#include "qmeta/MessageStore.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
 #include "util/threadSafe.h"
@@ -70,7 +70,15 @@ public:
                       int attemptCount, qmeta::CzarId czarId, std::ostream& os) override {
         os << mockPayload;
     }
+
+    std::shared_ptr<nlohmann::json> makeMsgJson(ChunkQuerySpec const& s, std::string const& chunkResultName,
+                                                QueryId queryId, int jobId, int attemptCount,
+                                                qmeta::CzarId czarId) override {
+        return jsPtr;
+    }
+
     std::string mockPayload;
+    std::shared_ptr<nlohmann::json> jsPtr;
 };
 
 }  // namespace lsst::qserv::qproc
@@ -152,7 +160,7 @@ public:
     std::string qrMsg;
     std::string str;
     qdisp::ExecutiveConfig::Ptr conf;
-    std::shared_ptr<qdisp::MessageStore> ms;
+    std::shared_ptr<qmeta::MessageStore> ms;
     qdisp::QdispPool::Ptr qdispPool;
     qdisp::SharedResources::Ptr sharedResources;
     qdisp::Executive::Ptr ex;
@@ -164,7 +172,7 @@ public:
         qdisp::XrdSsiServiceMock::Reset();
         str = qdisp::ExecutiveConfig::getMockStr();
         conf = std::make_shared<qdisp::ExecutiveConfig>(str, 0);  // No updating of QMeta.
-        ms = std::make_shared<qdisp::MessageStore>();
+        ms = std::make_shared<qmeta::MessageStore>();
         qdispPool = std::make_shared<qdisp::QdispPool>(true);
         sharedResources = qdisp::SharedResources::create(qdispPool);
 
@@ -204,7 +212,7 @@ BOOST_AUTO_TEST_CASE(Executive) {
         LOGS_DEBUG("jobs=1");
         tEnv.ex->join();
         LOGS_DEBUG("Executive single query test checking");
-        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qdisp::JobStatus::COMPLETE);
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qmeta::JobStatus::COMPLETE);
         BOOST_CHECK(tEnv.ex->getEmpty() == true);
     }
 
@@ -249,7 +257,7 @@ BOOST_AUTO_TEST_CASE(Executive) {
 
 BOOST_AUTO_TEST_CASE(MessageStore) {
     LOGS_DEBUG("MessageStore test start");
-    qdisp::MessageStore ms;
+    qmeta::MessageStore ms;
     BOOST_CHECK(ms.messageCount() == 0);
     ms.addMessage(123, "EXECUTIVE", 456, "test1");
     std::string str("test2");
@@ -257,7 +265,7 @@ BOOST_AUTO_TEST_CASE(MessageStore) {
     ms.addMessage(86, "EXECUTIVE", -12, "test3");
     BOOST_CHECK(ms.messageCount() == 3);
     BOOST_CHECK(ms.messageCount(-12) == 2);
-    qdisp::QueryMessage qm = ms.getMessage(1);
+    qmeta::QueryMessage qm = ms.getMessage(1);
     BOOST_CHECK(qm.chunkId == 124 && qm.code == -12 && str.compare(qm.description) == 0);
     LOGS_DEBUG("MessageStore test end");
 }
@@ -271,7 +279,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
         SequentialInt sequence(0);
         tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
         tEnv.ex->join();
-        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qdisp::JobStatus::RESULT_ERROR);
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qmeta::JobStatus::RESULT_ERROR);
         BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() > 1);  // Retried, eh?
         BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == qdisp::XrdSsiServiceMock::getReqCount());
     }
@@ -284,7 +292,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
         SequentialInt sequence(0);
         tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
         tEnv.ex->join();
-        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qdisp::JobStatus::RESULT_ERROR);
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qmeta::JobStatus::RESULT_ERROR);
         BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1);
     }
 
@@ -297,7 +305,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
         tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
         tEnv.ex->join();
         LOGS_DEBUG("tEnv.jqTest->...state = " << tEnv.jqTest->getStatus()->getInfo().state);
-        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qdisp::JobStatus::RESULT_ERROR);
+        BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state == qmeta::JobStatus::RESULT_ERROR);
         BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1);  // No retries!
     }
 
@@ -314,7 +322,7 @@ BOOST_AUTO_TEST_CASE(QueryRequest) {
             tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
             tEnv.ex->join();
             BOOST_CHECK(tEnv.jqTest->getStatus()->getInfo().state ==
-                        qdisp::JobStatus::COMPLETE);
+                        qmeta::JobStatus::COMPLETE);
             BOOST_CHECK(qdisp::XrdSsiServiceMock::getFinCount() == 1);
         }
     */

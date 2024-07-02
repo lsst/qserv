@@ -306,6 +306,9 @@ void Server::_dispatchRequest(Request::Ptr request, Response::Ptr response) {
                 pathHandler.path.updateParamsFromMatch(request, pathMatch);
                 LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << "invoking handler for "
                                                << pathHandler.path.regex);
+                LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << " &&&uj invoking handler for "
+                                               << pathHandler.path.regex << " " << request->path
+                                               << " match=" << pathMatch);
                 try {
                     pathHandler.handler(request, response);
                 } catch (boost::system::system_error const& e) {

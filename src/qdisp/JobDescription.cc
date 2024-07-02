@@ -35,6 +35,8 @@
 // Qserv headers
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
+#include "util/Bug.h"
+#include "qdisp/Executive.h"
 #include "qdisp/ResponseHandler.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
@@ -47,7 +49,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobDescription");
 
 namespace lsst::qserv::qdisp {
 
-JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId, ResourceUnit const& resource,
+JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
                                shared_ptr<ResponseHandler> const& respHandler,
                                shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                                shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
@@ -63,7 +65,7 @@ JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId, Res
           _chunkResultName(chunkResultName),
           _mock(mock) {}
 
-bool JobDescription::incrAttemptCountScrubResults() {
+bool JobDescription::incrAttemptCountScrubResults() { // &&& to be deleted
     if (_attemptCount >= 0) {
         _respHandler->prepScrubResults(_jobId, _attemptCount);  // Registers the job-attempt as invalid
     }
@@ -76,6 +78,36 @@ bool JobDescription::incrAttemptCountScrubResults() {
     return true;
 }
 
+bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase) {
+
+    if (increase) {
+        ++_attemptCount;
+    }
+    if (_attemptCount >= MAX_JOB_ATTEMPTS) {
+        LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
+        return false;
+    }
+
+    if (exec != nullptr) {
+        int maxAttempts = exec->getMaxAttempts();
+        LOGS(_log, LOG_LVL_INFO, "JoQDescription::" << __func__ << " attempts=" << _attemptCount);
+        if (_attemptCount > maxAttempts) {
+            LOGS(_log, LOG_LVL_ERROR, "JoQDescription::" << __func__ << " attempts(" << _attemptCount << ") > maxAttempts(" << maxAttempts << ") cancelling");
+            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "max attempts reached " + to_string(_attemptCount) + " " + _qIdStr, util::ErrorCode::INTERNAL);
+            exec->squash();
+            return false;
+        }
+    }
+
+    // build the request
+    auto js = _taskMsgFactory->makeMsgJson(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId,
+                                           _attemptCount, _czarId);
+    LOGS(_log, LOG_LVL_ERROR, "&&& JobDescription::incrAttemptCountScrubResultsJson js=" << (*js));
+    _jsForWorker = js;
+
+    return true;
+}
+
 void JobDescription::buildPayload() {
     ostringstream os;
     _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount,
@@ -83,7 +115,14 @@ void JobDescription::buildPayload() {
     _payloads[_attemptCount] = os.str();
 }
 
-bool JobDescription::verifyPayload() const {
+bool JobDescription::fillTaskMsg(proto::TaskMsg* tMsg) {  //&&&uj -probably just delete.
+    //&&&uj return _taskMsgFactory->fillTaskMsg(tMsg, *_chunkQuerySpec, _chunkResultName, _queryId,
+    //_jobId, _attemptCount, _czarId);
+    util::Bug(ERR_LOC, "&&& JobDescription::fillTaskMsg");
+    return false;
+}
+
+bool JobDescription::verifyPayload() const {  //&&&uj - is there any value to this now?
     proto::ProtoImporter<proto::TaskMsg> pi;
     if (!_mock && !pi.messageAcceptable(_payloads.at(_attemptCount))) {
         LOGS(_log, LOG_LVL_DEBUG, _qIdStr << " Error serializing TaskMsg.");
