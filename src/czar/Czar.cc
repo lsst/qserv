@@ -180,7 +180,7 @@ void Czar::_monitor() {
         _czarChunkMap->read();
 
         LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor d");
-        /// Create new UberJobs for all jobs that got unassigned for any reason.
+        /// Create new UberJobs for all jobs that are unassigned for any reason.
         map<QueryId, shared_ptr<qdisp::Executive>> execMap;
         {
             // Make a copy of all valid Executives
@@ -203,6 +203,14 @@ void Czar::_monitor() {
             execVal->assignJobsToUberJobs();
         }
         LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor f");
+
+        // TODO:UJ get missing results from workers.
+        //    This would be files that workers sent messages to the czar to
+        //    collect, but there was a communication problem and the czar didn't get the message
+        //    or didn't collect the file. to retrieve complete files that haven't been
+        //    collected.
+        //    Or, possibly just have the worker try to re-send the file ready message to
+        //    the czar.
     }
     LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor end");
 }

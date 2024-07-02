@@ -36,6 +36,7 @@
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
+#include "qdisp/Executive.h"
 #include "qdisp/ResponseHandler.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
@@ -64,7 +65,7 @@ JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, R
           _chunkResultName(chunkResultName),
           _mock(mock) {}
 
-bool JobDescription::incrAttemptCountScrubResults() {
+bool JobDescription::incrAttemptCountScrubResults() { // &&& to be deleted
     if (_attemptCount >= 0) {
         _respHandler->prepScrubResults(_jobId, _attemptCount);  // Registers the job-attempt as invalid
     }
@@ -77,27 +78,28 @@ bool JobDescription::incrAttemptCountScrubResults() {
     return true;
 }
 
-bool JobDescription::incrAttemptCountScrubResultsJson() {
-#if 0   //&&&uj this block needs to be reenabled but attempts need to be handled differently ???
-    //&&&uj attempt failures generally result from communictaion problems. SQL errors kill the query.
-    //&&&uj so lots of failed attempts indicate that qserv is unstable.
-    if (_attemptCount >= 0) {
-        _respHandler->prepScrubResults(_jobId, _attemptCount);  //
-    }
-    ++_attemptCount;
-    if (_attemptCount > MAX_JOB_ATTEMPTS) {
-        LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
-        return false;
-    }
-#endif  // &&&
+bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase) {
 
-    ++_attemptCount;
+    if (increase) {
+        ++_attemptCount;
+    }
     if (_attemptCount >= MAX_JOB_ATTEMPTS) {
         LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
         return false;
     }
+
+    if (exec != nullptr) {
+        int maxAttempts = exec->getMaxAttempts();
+        LOGS(_log, LOG_LVL_INFO, "JoQDescription::" << __func__ << " attempts=" << _attemptCount);
+        if (_attemptCount > maxAttempts) {
+            LOGS(_log, LOG_LVL_ERROR, "JoQDescription::" << __func__ << " attempts(" << _attemptCount << ") > maxAttempts(" << maxAttempts << ") cancelling");
+            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "max attempts reached " + to_string(_attemptCount) + " " + _qIdStr, util::ErrorCode::INTERNAL);
+            exec->squash();
+            return false;
+        }
+    }
+
     // build the request
-    //_payloads[_attemptCount] = os.str();
     auto js = _taskMsgFactory->makeMsgJson(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId,
                                            _attemptCount, _czarId);
     LOGS(_log, LOG_LVL_ERROR, "&&& JobDescription::incrAttemptCountScrubResultsJson js=" << (*js));
