@@ -29,7 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "czar/HttpModule.h"
+#include "czar/ChttpModule.h"
 #include "global/intTypes.h"
 #include "http/BinaryEncoding.h"
 
@@ -39,10 +39,10 @@ namespace lsst::qserv::czar {
 struct SubmitResult;
 }  // namespace lsst::qserv::czar
 
-namespace lsst::qserv::qhttp {
+namespace httplib {
 class Request;
 class Response;
-}  // namespace lsst::qserv::qhttp
+}  // namespace httplib
 
 namespace lsst::qserv::sql {
 class SqlResults;
@@ -56,7 +56,7 @@ namespace lsst::qserv::czar {
  * Class HttpCzarQueryModule implements a handler for processing user
  * queries submitted to Czar via the HTTP-based frontend.
  */
-class HttpCzarQueryModule : public czar::HttpModule {
+class HttpCzarQueryModule : public czar::ChttpModule {
 public:
     /**
      * @note supported values for parameter 'subModuleName' are:
@@ -68,8 +68,8 @@ public:
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(std::string const& context, std::shared_ptr<qhttp::Request> const& req,
-                        std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName,
+    static void process(std::string const& context, httplib::Request const& req, httplib::Response& resp,
+                        std::string const& subModuleName,
                         http::AuthType const authType = http::AuthType::NONE);
 
     HttpCzarQueryModule() = delete;
@@ -82,8 +82,7 @@ protected:
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
-    HttpCzarQueryModule(std::string const& context, std::shared_ptr<qhttp::Request> const& req,
-                        std::shared_ptr<qhttp::Response> const& resp);
+    HttpCzarQueryModule(std::string const& context, httplib::Request const& req, httplib::Response& resp);
 
     nlohmann::json _submit();
     nlohmann::json _submitAsync();

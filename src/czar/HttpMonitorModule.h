@@ -29,7 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "czar/HttpModule.h"
+#include "czar/QhttpModule.h"
 
 // Forward declarations
 namespace lsst::qserv::qhttp {
@@ -44,7 +44,7 @@ namespace lsst::qserv::czar {
  * Class HttpMonitorModule implements a handler for reporting various run-time
  * monitoring metrics and statistics collected at the Qserv worker.
  */
-class HttpMonitorModule : public czar::HttpModule {
+class HttpMonitorModule : public QhttpModule {
 public:
     /**
      * @note supported values for parameter 'subModuleName' are:

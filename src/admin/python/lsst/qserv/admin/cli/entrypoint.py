@@ -137,7 +137,13 @@ commands = OrderedDict((
         "--lua-cpath=/usr/local/lua/qserv/lib/czarProxy.so --defaults-file={{proxy_cfg_path}}",
     )),
     ("czar-http", CommandInfo(
-        "qserv-czar-http http {{czar_cfg_path}} {{http_frontend_port}} {{http_frontend_threads}} ",
+        "qserv-czar-http "
+        "http "
+        "{{czar_cfg_path}} "
+        "{{http_frontend_port}} "
+        "{{http_frontend_threads}} "
+        "{{http_ssl_cert_file}} "
+        "{{http_ssl_private_key_file}}",
     )),
     ("cmsd-manager", CommandInfo(
         "cmsd -c {{cmsd_manager_cfg_path}} -n manager -I v4",

@@ -52,16 +52,15 @@ vector<string> const binTypes = {"BIT", "BINARY", "VARBINARY", "TINYBLOB", "BLOB
 
 namespace lsst::qserv::czar {
 
-void HttpCzarQueryModule::process(string const& context, shared_ptr<qhttp::Request> const& req,
-                                  shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
-                                  http::AuthType const authType) {
+void HttpCzarQueryModule::process(string const& context, httplib::Request const& req, httplib::Response& resp,
+                                  string const& subModuleName, http::AuthType const authType) {
     HttpCzarQueryModule module(context, req, resp);
     module.execute(subModuleName, authType);
 }
 
-HttpCzarQueryModule::HttpCzarQueryModule(string const& context, shared_ptr<qhttp::Request> const& req,
-                                         shared_ptr<qhttp::Response> const& resp)
-        : HttpModule(context, req, resp) {}
+HttpCzarQueryModule::HttpCzarQueryModule(string const& context, httplib::Request const& req,
+                                         httplib::Response& resp)
+        : ChttpModule(context, req, resp) {}
 
 json HttpCzarQueryModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";

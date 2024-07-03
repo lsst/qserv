@@ -20,7 +20,7 @@
  */
 
 /**
- * The HTTP-based frontend for Czar.
+ * The CPP-HTTPLIB-based frontend for Czar.
  */
 
 // System headers
@@ -32,15 +32,17 @@
 // Qserv headers
 #include "czar/Czar.h"
 #include "czar/HttpCzarSvc.h"
-#include "global/stringUtil.h"
+#include "global/stringUtil.h"  // for qserv::stoui
 
 using namespace std;
 namespace czar = lsst::qserv::czar;
 namespace qserv = lsst::qserv;
 
 namespace {
-string const usage = "Usage: <czar-name> <config> <port> <threads>";
-}
+
+string const usage = "Usage: <czar-name> <config> <port> <threads> <ssl-cert-file> <ssl-private-key-file>";
+
+}  // namespace
 
 int main(int argc, char* argv[]) {
     // Parse command-line parameters to get:
@@ -73,10 +75,10 @@ int main(int argc, char* argv[]) {
     }
     try {
         auto const czar = czar::Czar::createCzar(configFilePath, czarName);
-        auto const svc = czar::HttpCzarSvc::create(port, numThreads);
-        port = svc->start();
-        cout << __func__ << ": HTTP-based query processing service of Czar started on port " << port << endl;
-        svc->wait();
+        auto const svc = czar::HttpCzarSvc::create(port, numThreads, sslCertFile, sslPrivateKeyFile);
+        cout << __func__ << ": HTTP-based query processing service of Czar bound to port: " << svc->port()
+             << endl;
+        svc->startAndWait();
     } catch (exception const& ex) {
         cerr << __func__ << ": the application failed, exception: " << ex.what() << endl;
         return 1;

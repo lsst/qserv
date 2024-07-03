@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "czar/HttpModule.h"
+#include "czar/QhttpModule.h"
 
 // System headers
 #include <stdexcept>
@@ -36,15 +36,15 @@ using namespace std;
 
 namespace lsst::qserv::czar {
 
-HttpModule::HttpModule(string const& context, shared_ptr<qhttp::Request> const& req,
-                       shared_ptr<qhttp::Response> const& resp)
+QhttpModule::QhttpModule(string const& context, shared_ptr<qhttp::Request> const& req,
+                         shared_ptr<qhttp::Response> const& resp)
         : http::QhttpModule(cconfig::CzarConfig::instance()->replicationAuthKey(),
                             cconfig::CzarConfig::instance()->replicationAdminAuthKey(), req, resp),
           _context(context) {}
 
-string HttpModule::context() const { return _context; }
+string QhttpModule::context() const { return _context; }
 
-void HttpModule::enforceCzarName(string const& func) const {
+void QhttpModule::enforceCzarName(string const& func) const {
     string const czarNameAttrName = "czar";
     string czarName;
     if (req()->method == "GET") {

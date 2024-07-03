@@ -32,8 +32,8 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/ChttpModule.h"
 #include "http/Method.h"
-#include "http/QhttpModule.h"
 
 // Forward declarations
 
@@ -41,10 +41,10 @@ namespace lsst::qserv::http {
 class AsyncReq;
 }  // namespace lsst::qserv::http
 
-namespace lsst::qserv::qhttp {
+namespace httplib {
 class Request;
 class Response;
-}  // namespace lsst::qserv::qhttp
+}  // namespace httplib
 
 // This header declarations
 namespace lsst::qserv::czar {
@@ -53,7 +53,7 @@ namespace lsst::qserv::czar {
  * Class HttpCzarIngestModule implements a handler for processing requests for ingesting
  * user-generated data prodicts via the HTTP-based frontend.
  */
-class HttpCzarIngestModule : public http::QhttpModule {
+class HttpCzarIngestModule : public http::ChttpModule {
 public:
     /**
      * @note supported values for parameter 'subModuleName' are:
@@ -64,8 +64,8 @@ public:
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(boost::asio::io_service& io_service, std::string const& context,
-                        std::shared_ptr<qhttp::Request> const& req,
-                        std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName,
+                        httplib::Request const& req, httplib::Response& resp,
+                        std::string const& subModuleName,
                         http::AuthType const authType = http::AuthType::NONE);
 
     HttpCzarIngestModule() = delete;
@@ -80,8 +80,7 @@ protected:
 
 private:
     HttpCzarIngestModule(boost::asio::io_service& io_service, std::string const& context,
-                         std::shared_ptr<qhttp::Request> const& req,
-                         std::shared_ptr<qhttp::Response> const& resp);
+                         httplib::Request const& req, httplib::Response& resp);
 
     nlohmann::json _ingestData();
     nlohmann::json _deleteDatabase();
