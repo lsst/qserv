@@ -3,6 +3,7 @@ add_library(http SHARED)
 target_sources(http PRIVATE
     AsyncReq.cc
     BinaryEncoding.cc
+    ChttpMetaModule.cc
     ChttpModule.cc
     Client.cc
     ClientConnPool.cc
