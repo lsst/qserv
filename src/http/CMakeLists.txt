@@ -3,6 +3,7 @@ add_library(http SHARED)
 target_sources(http PRIVATE
     AsyncReq.cc
     BinaryEncoding.cc
+    ChttpModule.cc
     Client.cc
     ClientConnPool.cc
     ClientConfig.cc
@@ -25,6 +26,7 @@ target_link_libraries(http PUBLIC
     Boost::filesystem
     Boost::regex
     Boost::system
+    cpp-httplib
 )
 
 install(TARGETS http)
