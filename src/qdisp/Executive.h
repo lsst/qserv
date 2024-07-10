@@ -51,8 +51,8 @@
 #include "util/threadSafe.h"
 #include "util/ThreadPool.h"
 
-//&&& replace with better enable/disable feature.
-#define uberJobsEnabled 1  //&&&uj || true
+// TODO:UJ replace with better enable/disable feature, or just use only UberJobs
+#define uberJobsEnabled 1
 
 // Forward declarations
 class XrdSsiService;
@@ -74,7 +74,7 @@ class QuerySession;
 
 namespace qdisp {
 class JobQuery;
-class UberJob;  //&&&uj
+class UberJob;
 }  // namespace qdisp
 
 namespace rproc {
@@ -103,7 +103,7 @@ class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
-    typedef int ChunkIdType;  //&&&uj This type is probably not needed
+    typedef int ChunkIdType;
     typedef std::map<ChunkIdType, std::shared_ptr<JobQuery>> ChunkIdJobMapType;
 
     /// Construct an Executive.
@@ -117,36 +117,31 @@ public:
 
     ~Executive();
 
-    /* &&&
-    /// &&& doc
-    static Ptr getExecutiveFromMap(QueryId qId);
-    */
-
     std::string cName(const char* funcName = "") { return std::string("Executive::") + funcName; }
 
-    /// &&&uj doc
+    /// Set the UserQuerySelect object for this query so this Executive can ask it to make new
+    /// UberJobs in the future, if needed.
     void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }
-    //&&&void buildAndSendUberJobs(int const maxChunksPerUber);
 
-    /// &&&uj doc   Return a map that only contains Jobs not assigned to an UberJob.
+    /// Return a map that only contains Jobs not assigned to an UberJob.
     ChunkIdJobMapType unassignedChunksInQuery();
 
-    /// &&& doc
+    /// Find the UberJob with `ujId`.
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
 
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
-    /// &&& doc - to be deleted
+    /// TODO:UJ - to be deleted
     void runJobQuery(std::shared_ptr<JobQuery> const& jobQuery);
 
-    // &&&uj doc
+    // Queue `uberJob` to be run using the QDispPool.
     void runUberJob(std::shared_ptr<UberJob> const& uberJob);
 
     /// Queue a job to be sent to a worker so it can be started.
     void queueJobStart(PriorityCommand::Ptr const& cmd);
 
-    /// &&& doc
+    /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
     void queueFileCollect(PriorityCommand::Ptr const& cmd);
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
@@ -169,10 +164,6 @@ public:
     /// QMeta, which isn't called until some basic checks on the user query
     /// have passed.
     void setQueryId(QueryId id);
-    //&&&void setTmpTableNameGenerator(std::shared_ptr<ccontrol::TmpTableName> const& ttn) { _ttn = ttn; }
-
-    //&&&void setInfileMerger(std::shared_ptr<rproc::InfileMerger> infileMerger) { _infileMerger =
-    // infileMerger; }
 
     QueryId getId() const { return _id; }
     std::string const& getIdStr() const { return _idStr; }
@@ -192,7 +183,7 @@ public:
 
     std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
 
-    bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
+    bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);  // TODO:UJ delete
 
     /// Add 'rowCount' to the total number of rows in the result table.
     void addResultRows(int64_t rowCount);
@@ -214,21 +205,23 @@ public:
     /// @see python module lsst.qserv.czar.proxy.unlock()
     void updateProxyMessages();
 
-    /// Add UbjerJobs to this user query. &&&
+    /// Add UbjerJobs to this user query.
     void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);
 
-    /// &&&uj doc
+    /// Call UserQuerySelect::buildAndSendUberJobs make new UberJobs for
+    /// unassigned jobs.
     void assignJobsToUberJobs();
-
-    //&&& ChunkIdJobMapType& getChunkJobMapAndInvalidate();                     /// &&& delete
-    bool startUberJob(std::shared_ptr<UberJob> const& uJob);              /// &&&
-    std::shared_ptr<JobQuery> getSharedPtrForRawJobPtr(JobQuery* jqRaw);  /// &&& delete
 
     int getTotalJobs() { return _totalJobs; }
 
+    /// Set `_failedUberJob` to `val`; Setting this to true is a flag
+    /// that indicates to the Czar::_monitor that this Executive
+    /// probably has unassigned jobs that need to be placed in
+    /// new UberJobs. This `val` should only be set false by
+    /// Czar::_monitor().
     void setFlagFailedUberJob(bool val) { _failedUberJob = val; }
 
-    /// &&& doc
+    /// Add an error code and message that may be displayed to the user.
     void addMultiError(int errorCode, std::string const& errorMsg, int errState);
 
     std::string dumpUberJobCounts() const;
@@ -305,7 +298,10 @@ private:
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
-    mutable std::recursive_mutex _jobMapMtx;  // &&& see what it takes to make this a normal mutex
+    // TODO:UJ see what it takes to make this a normal mutex, before
+    //  xrootd resulted in things being called in difficult to predict
+    //  ways. That shouldn't be an issue any more.
+    mutable std::recursive_mutex _jobMapMtx;
 
     QueryId _id = 0;  ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
@@ -319,18 +315,17 @@ private:
 
     bool _scanInteractive = false;  ///< true for interactive scans.
 
-    // Add a job to the _chunkToJobMap //&&&uj
-    void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);  //&&&uj
-    /// _chunkToJobMap is created once and then destroyed after use.
-    std::atomic<bool> _chunkToJobMapInvalid{
-            false};                    ///< true indicates the map is no longer valid. //&&&uj delete
-    std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap //&&&uj
-    ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId  //&&&uj
+    // Add a job to the _chunkToJobMap
+    // TODO:UJ This may need review as large changes were made to this part of the code.
+    //     code is no longer destructive to _chunkToJobMap
+    void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);
+    std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap
+    ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId
 
     /// Map of all UberJobs. Failed UberJobs remain in the map as new ones are created
     /// to handle failed UberJobs.
     std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
-    mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs. //&&&uj
+    mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs.
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
@@ -349,20 +344,18 @@ private:
 
     std::atomic<bool> _queryIdSet{false};  ///< Set to true when _id is set.
 
-    ///&&&uj
+    /// Weak pointer to the UserQuerySelect object for this query.
     std::weak_ptr<ccontrol::UserQuerySelect> _userQuerySelect;
 
-    /// If true, there are probably jobs that need to be reassigned to new
-    /// UberJobs.
-    /// &&&uj NEED CODE - at some point this needs to be checked so the
-    ///                   executive can make new uberjobs.
+    /// If this is true, there are probably jobs that need to
+    /// be reassigned to new UberJobs.
     std::atomic<bool> _failedUberJob{false};
 
     /// Flag that is set to true when ready to create and run UberJobs.
     std::atomic<bool> _readyToExecute{false};
 };
 
-/// &&&uj MarkCompleteFunc is not needed with uberjobs.
+/// TODO:UJ delete - MarkCompleteFunc is not needed with uberjobs.
 class MarkCompleteFunc {
 public:
     typedef std::shared_ptr<MarkCompleteFunc> Ptr;

@@ -90,16 +90,15 @@ public:
     /// @returns true when _attemptCount is incremented correctly and the payload is built.
     /// If the starting value of _attemptCount was greater than or equal to zero, that
     /// attempt is scrubbed from the result table.
-    bool incrAttemptCountScrubResults();  // &&&uj - to be deleted
-    /// doc &&&uj - scrubbing results probably unneeded with uj. This should be renamed.
+    bool incrAttemptCountScrubResults();  // TODO:UJ - to be deleted
+    /// Increase the attempt count by 1 and return false if that puts it over the limit.
+    /// TODO:UJ scrubbing results unneeded with uj. This should be renamed.
     bool incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase);
     bool verifyPayload() const;  ///< @return true if the payload is acceptable to protobufs.
 
-    //&&&bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
-
     std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
 
-    void resetJsForWorker() { _jsForWorker.reset(); }  // &&&uj may need mutex for _jsForWorker
+    void resetJsForWorker() { _jsForWorker.reset(); }  // TODO:UJ may need mutex for _jsForWorker
 
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 

@@ -317,16 +317,17 @@ void QueryRequest::cleanup() {
 /// a local shared pointer for this QueryRequest and/or its owner JobQuery.
 /// See QueryRequest::cleanup()
 /// @return true if this QueryRequest object had the authority to make changes.
+// TODO:UJ Delete QueryRequest class, including this function.
 bool QueryRequest::_errorFinish(bool shouldCancel) {
     LOGS(_log, LOG_LVL_DEBUG, "_errorFinish() shouldCancel=" << shouldCancel);
 
     auto jbase = _job;
     JobQuery::Ptr jq = dynamic_pointer_cast<JobQuery>(jbase);
     if (jq == nullptr) {
-        //&&&uj IMPORTANT UberJob failures are different than JobQuery failures.
+        // TODO:UJ The QueryRequest class  will be deleted, so this doen't matter.
         UberJob::Ptr uberJob = dynamic_pointer_cast<UberJob>(jbase);
         if (uberJob != nullptr) {
-            throw util::Bug(ERR_LOC, "&&&NEED_CODE for _errorFinish to work correctly with UberJob");
+            throw util::Bug(ERR_LOC, " for _errorFinish to work correctly with UberJob");
             // UberJobs breakup into their JobQueries when they fail and run the jobs directly.
         }
         return false;
@@ -401,17 +402,6 @@ void QueryRequest::_finish() {
     _callMarkComplete(true);
     cleanup();
 }
-
-/* &&&
-/// Inform the Executive that this query completed, and
-// Call MarkCompleteFunc only once, it should only be called from _finish() or _errorFinish.
-void QueryRequest::_callMarkComplete(bool success) {
-    if (!_calledMarkComplete.exchange(true)) {
-        auto jq = _jobQuery;
-        if (jq != nullptr) jq->getMarkCompleteFunc()->operator()(success);
-    }
-}
-*/
 
 void QueryRequest::_callMarkComplete(bool success) {
     if (!_calledMarkComplete.exchange(true)) {

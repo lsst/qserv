@@ -154,7 +154,9 @@ public:
     /// save the result query in the query metadata
     void saveResultQuery();
 
-    /// &&&uj doc
+    /// Use the query and jobs information in the executive to construct and run whatever
+    /// UberJobs are needed. This can be called multiple times by Czar::_monitor
+    /// to reassign failed jobs or jobs that were never assigned.
     void buildAndSendUberJobs();
 
 private:
@@ -191,19 +193,23 @@ private:
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _killed{false};
     std::mutex _killMutex;
-    mutable std::string _errorExtra;          ///< Additional error information
-    std::string _resultTable;                 ///< Result table name
-    std::string _resultLoc;                   ///< Result location
-    std::string _resultDb;                    ///< Result database (todo is this the same as resultLoc??)
-    bool _async;                              ///< true for async query
-    int _maxChunksPerUberJob = 1;             ///< &&&uj
-    std::atomic<int> _uberJobIdSeq{900'000};  ///< &&&uj can probably start at 1
-    std::shared_ptr<TmpTableName> _ttn;       ///< Temporary table name generator.
+    mutable std::string _errorExtra;  ///< Additional error information
+    std::string _resultTable;         ///< Result table name
+    std::string _resultLoc;           ///< Result location
+    std::string _resultDb;            ///< Result database TODO:UJ same as resultLoc??)
+    bool _async;                      ///< true for async query
+
+    /// TODO:UJ The maximum number of chunks allowed in an UberJob. At the very
+    ///   least, this needs to be set in the configuration. However, it may also
+    ///   be useful to change this based on the nature of each UserQuery.
+    int _maxChunksPerUberJob = 1;
+    std::atomic<int> _uberJobIdSeq{1};   ///< Sequence number for UberJobs in this query.
+    std::shared_ptr<TmpTableName> _ttn;  ///< Temporary table name generator.
 
     /// Primary database name for the query.
     std::string _queryDbName;
 
-    /// &&&uj Only one thread should run buildAndSendUberJobs() at a time.
+    /// Only one thread should run buildAndSendUberJobs() for this query at a time.
     std::mutex _buildUberJobMtx;
 };
 
