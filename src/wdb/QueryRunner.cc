@@ -195,7 +195,6 @@ bool QueryRunner::runQuery() {
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
     util::HoldTrack::Mark mark(ERR_LOC, "QR _primeResult() QID=" + _task->getIdStr());
-    LOGS(_log, LOG_LVL_WARN, "&&& " << _task->getIdStr() << " QueryRunner::_primeResult " << query);
     bool queryOk = _mysqlConn->queryUnbuffered(query);
     if (!queryOk) {
         sql::SqlErrorObject errObj;

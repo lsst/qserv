@@ -109,8 +109,7 @@ public:
     /// @return true if merge was successfully imported.
     bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData);
 
-    /// &&&uj doc
-
+    /// Merge the result data collected over Http.
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
     /// Indicate the merge for the job is complete.

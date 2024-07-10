@@ -91,11 +91,9 @@ public:
     bool incrAttemptCount();
     bool verifyPayload() const;  ///< @return true if the payload is acceptable to protobufs.
 
-    //&&&bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
-
     std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
 
-    void resetJsForWorker() { _jsForWorker.reset(); }  // &&&uj may need mutex for _jsForWorker
+    void resetJsForWorker() { _jsForWorker.reset(); }  // TODO:UJ may need mutex for _jsForWorker
 
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 

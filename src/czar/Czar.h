@@ -137,10 +137,10 @@ public:
 
     std::shared_ptr<CzarRegistry> getCzarRegistry() const { return _czarRegistry; }
 
-    /// &&& doc
+    /// Add an Executive to the map of executives.
     void insertExecutive(QueryId qId, std::shared_ptr<qdisp::Executive> const& execPtr);
 
-    /// &&& doc
+    /// Get the executive associated with `qId`, this may be nullptr.
     std::shared_ptr<qdisp::Executive> getExecutiveFromMap(QueryId qId);
 
 private:
@@ -162,7 +162,7 @@ private:
     /// @return An identifier of the last query that was recorded in the query metadata table
     QueryId _lastQueryIdBeforeRestart() const;
 
-    /// &&& doc
+    /// Periodically check for system changes and use those changes to try to finish queries.
     void _monitor();
 
     static Ptr _czar;  ///< Pointer to single instance of the Czar.
@@ -202,7 +202,6 @@ private:
     std::shared_ptr<HttpSvc> _controlHttpSvc;
 
     /// Map of which chunks on which workers and shared scan order.
-    // &&& std::shared_ptr<CzarChunkMap> _czarChunkMap;
     std::shared_ptr<CzarFamilyMap> _czarFamilyMap;
 
     /// Connection to the registry to register the czar and get worker contact information.
@@ -212,9 +211,12 @@ private:
     std::map<QueryId, std::weak_ptr<qdisp::Executive>>
             _executiveMap;  ///< Map of executives for queries in progress.
 
-    std::thread _monitorThrd;                            ///< &&& doc
-    std::atomic<bool> _monitorLoop{true};                ///< &&& doc
-    std::chrono::milliseconds _monitorSleepTime{15000};  ///< Wait time between checks. &&& set from config
+    std::thread _monitorThrd;  ///< Thread to run the _monitor()
+
+    /// Set to false on system shutdown to stop _monitorThrd.
+    std::atomic<bool> _monitorLoop{true};
+    std::chrono::milliseconds _monitorSleepTime{
+            15000};  ///< Wait time between checks. TODO:UJ set from config
 };
 
 }  // namespace lsst::qserv::czar

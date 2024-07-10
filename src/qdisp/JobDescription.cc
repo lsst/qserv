@@ -102,7 +102,7 @@ bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive>
     // build the request
     auto js = _taskMsgFactory->makeMsgJson(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId,
                                            _attemptCount, _czarId);
-    LOGS(_log, LOG_LVL_ERROR, "&&& JobDescription::incrAttemptCountScrubResultsJson js=" << (*js));
+    LOGS(_log, LOG_LVL_DEBUG, "JobDescription::" << __func__ << " js=" << (*js));
     _jsForWorker = js;
 
     return true;
@@ -115,16 +115,7 @@ void JobDescription::buildPayload() {
     _payloads[_attemptCount] = os.str();
 }
 
-/* &&&
-bool JobDescription::fillTaskMsg(proto::TaskMsg* tMsg) {  //&&&uj -probably just delete.
-    //&&&uj return _taskMsgFactory->fillTaskMsg(tMsg, *_chunkQuerySpec, _chunkResultName, _queryId,
-    //_jobId, _attemptCount, _czarId);
-    util::Bug(ERR_LOC, "&&& JobDescription::fillTaskMsg");
-    return false;
-}
-*/
-
-bool JobDescription::verifyPayload() const {  //&&&uj - is there any value to this now?
+bool JobDescription::verifyPayload() const {  // TODO:UJ delete
     proto::ProtoImporter<proto::TaskMsg> pi;
     if (!_mock && !pi.messageAcceptable(_payloads.at(_attemptCount))) {
         LOGS(_log, LOG_LVL_DEBUG, _qIdStr << " Error serializing TaskMsg.");

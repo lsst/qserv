@@ -88,7 +88,7 @@ public:
     virtual void cancel() = 0;  ///< Repeated calls to cancel() must be harmless.
 };
 
-//&&&uj
+/// Class for storing database + table name.
 class TaskDbTbl {
 public:
     TaskDbTbl() = delete;
@@ -119,7 +119,7 @@ public:
 /// failure and should probably be removed when it is no longer needed.
 /// It depends on code in BlendScheduler to work. If the decision is made to keep it
 /// forever, dependency on BlendScheduler needs to be re-worked.
-struct IdSet {  // &&&uj no longer needed
+struct IdSet {  // TODO:UJ delete if possible
     void add(std::string const& id) {
         std::lock_guard<std::mutex> lock(mx);
         _ids.insert(id);
@@ -174,12 +174,12 @@ public:
     Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
          size_t templateId, int subchunkId, std::shared_ptr<FileChannelShared> const& sc,
          uint16_t resultsHttpPort = 8080);
-    // &&&uj too many parameters.
-    // &&&uj fragmentNumber seems pointless
-    // &&&uj hasSubchunks seems redundant.
-    // &&&uj Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
-    // &&&uj   Candidates: scanInfo, maxTableSizeMb, FileChannelShared, resultsHttpPort.
-    // &&&uj Unfortunately, this will be much easier if it is done after xrootd method is removed.
+    // TODO:UJ too many parameters.
+    //  - fragmentNumber seems pointless
+    //  - hasSubchunks seems redundant.
+    //  Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
+    //  Candidates: scanInfo, maxTableSizeMb, FileChannelShared, resultsHttpPort.
+    //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo, size_t templateId,
          bool hasSubchunks, int subchunkId, std::string const& db, proto::ScanInfo const& scanInfo,
@@ -244,7 +244,6 @@ public:
 
     TaskState state() const { return _state; }
     std::string getQueryString() const;
-    int getQueryFragmentNum() { return _queryFragmentNum; }
     std::string const& resultFileAbsPath() const { return _resultFileAbsPath; }
     std::string const& resultFileHttpUrl() const { return _resultFileHttpUrl; }
     bool setTaskQueryRunner(
@@ -363,9 +362,8 @@ private:
     int const _attemptCount = 0;       ///< attemptCount from czar
     int const _queryFragmentNum;       ///< The fragment number of the query in the task message.
     bool const _fragmentHasSubchunks;  ///< True if the fragment in this query has subchunks.
-    //&&& bool const _hasDb;                 ///< true if db was in message from czar.
-    std::string _db;    ///< Task database
-    int const _czarId;  ///< czar Id from the task message.
+    std::string _db;                   ///< Task database
+    int const _czarId;                 ///< czar Id from the task message.
 
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
     std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;

@@ -53,8 +53,8 @@ namespace lsst::qserv::wbase {
 class FileChannelShared;
 class Task;
 
-// &&&uj doc
-/// This class tracks all Tasks associates with the UberJob and reports status to the czar.
+/// This class tracks all Tasks associates with the UberJob on the worker
+/// and reports status to the czar.
 class UberJobData {
 public:
     using Ptr = std::shared_ptr<UberJobData>;
@@ -69,7 +69,7 @@ public:
         return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, workerId,
                                    foreman, authKey));
     }
-    // &&& doc
+    /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
 
     UberJobId getUberJobId() const { return _uberJobId; }
@@ -79,16 +79,16 @@ public:
     uint64_t getQueryId() const { return _queryId; }
     std::string getWorkerId() const { return _workerId; }
 
-    /// &&& doc
+    /// Add the tasks defined in the UberJob to this UberJobData object.
     void addTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
         _ujTasks.insert(_ujTasks.end(), tasks.begin(), tasks.end());
     }
 
-    /// &&& doc
+    /// Let the czar know the result is ready.
     void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
-                           uint64_t headerCount);  // &&& remove headerCount
+                           uint64_t headerCount);  // TODO:UJ remove headerCount
 
-    /// &&& doc
+    /// Let the Czar know there's been a problem.
     bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
     std::string getIdStr() const { return _idStr; }
@@ -105,22 +105,13 @@ private:
     std::string const _czarHost;
     int const _czarPort;
     QueryId const _queryId;
-    std::string const _workerId;  //&&&uj should be able to get this from the worker in a reasonable way.
+    std::string const _workerId;
     std::string const _authKey;
 
     std::shared_ptr<wcontrol::Foreman> const _foreman;
 
     std::vector<std::shared_ptr<wbase::Task>> _ujTasks;
     std::shared_ptr<FileChannelShared> _fileChannelShared;
-
-    //&&&std::shared_ptr<wcontrol::Foreman> const foreman;
-    //&&& std::string const targetWorkerId;  _workerId
-    //&&&std::string const czarName;
-    //&&&qmeta::CzarId const czarId;
-    //&&&std::string const czarHostName;   _czarHost
-    //&&& int const czarPort;
-    //&&& uint64_t const queryId;
-    //&&&uint64_t const uberJobId;
 
     std::string const _idStr;
 };
