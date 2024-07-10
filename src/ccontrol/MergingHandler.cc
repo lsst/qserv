@@ -582,42 +582,11 @@ tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expe
         LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobBase was NULL");
         return {success, shouldCancel};  // both should still be false
     }
-    //&&&  auto const jobQuery = std::dynamic_pointer_cast<qdisp::JobQuery>(jobBase);
     auto const uberJob = std::dynamic_pointer_cast<qdisp::UberJob>(jobBase);
 
     LOGS(_log, LOG_LVL_TRACE,
          "MergingHandler::" << __func__ << " uberJob=" << uberJob->getIdStr() << " fileUrl=" << fileUrl);
 
-    /* &&& errors will be handled by MergingHandler::flushHttpError()
-    if (responseSummary.errorcode() != 0 || !responseSummary.errormsg().empty()) {
-        _error = util::Error(responseSummary.errorcode(), responseSummary.errormsg(),
-                             util::ErrorCode::MYSQLEXEC);
-        _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());
-        LOGS(_log, LOG_LVL_ERROR,
-             "MergingHandler::" << __func__ << " error from worker:" << responseSummary.wname()
-                                << " error: " << _error);
-        return false;
-    }
-    */
-
-    /* &&&&
-    // Dispatch result processing to the corresponidng method which depends on
-    // the result delivery protocol configured at the worker.
-    // Notify the file reader when all rows have been read by setting 'last = true'.
-    auto const dataMergerHttp = [&](char const* buf, uint32_t size, bool& last) {
-        last = true;
-        proto::ResponseData responseData;
-        if (responseData.ParseFromArray(buf, size) && responseData.IsInitialized()) {
-            bool const success = _merge(responseSummary, responseData, jobQuery);
-            if (success) {
-                resultRows += responseData.row_size();
-                last = resultRows >= responseSummary.rowcount();
-            }
-            return success;
-        }
-        throw runtime_error("MergingHandler::flush ** message deserialization failed **");
-    };
-    */
     // Dispatch result processing to the corresponidng method which depends on
     // the result delivery protocol configured at the worker.
     // Notify the file reader when all rows have been read by setting 'last = true'.
@@ -627,11 +596,8 @@ tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expe
         proto::ResponseData responseData;
         if (responseData.ParseFromArray(buf, bufSize) && responseData.IsInitialized()) {
             bool const mergeSuccess = _mergeHttp(uberJob, responseData);
-            //&&&if (responseData.IsInitialized()) {
-            //&&&bool const mergeSuccess = _mergeHttp(uberJob, responseData);
             if (mergeSuccess) {
                 resultRows += responseData.row_size();
-                //&&&last = resultRows >= responseSummary.rowcount();
                 last = resultRows >= expectedRows;
             }
             return mergeSuccess;

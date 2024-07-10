@@ -112,12 +112,14 @@ void JobDescription::buildPayload() {
     _payloads[_attemptCount] = os.str();
 }
 
+/* &&&
 bool JobDescription::fillTaskMsg(proto::TaskMsg* tMsg) {  //&&&uj -probably just delete.
     //&&&uj return _taskMsgFactory->fillTaskMsg(tMsg, *_chunkQuerySpec, _chunkResultName, _queryId,
     //_jobId, _attemptCount, _czarId);
     util::Bug(ERR_LOC, "&&& JobDescription::fillTaskMsg");
     return false;
 }
+*/
 
 bool JobDescription::verifyPayload() const {  //&&&uj - is there any value to this now?
     proto::ProtoImporter<proto::TaskMsg> pi;

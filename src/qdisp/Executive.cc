@@ -316,6 +316,7 @@ void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
         };
 
         auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(runUberJobFunc));
+        _jobStartCmdList.push_back(cmd);
         if (_scanInteractive) {
             _qdispPool->queCmd(cmd, 0);
         } else {
@@ -581,6 +582,8 @@ void Executive::squash() {
 
     // TODO:UJ - Send a message to all workers saying this czarId + queryId is cancelled.
     //           The workers will just mark all associated tasks as cancelled, and that should be it.
+    bool const deleteResults = true;
+    sendWorkerCancelMsg(deleteResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
 }
 
@@ -608,7 +611,14 @@ void Executive::_squashSuperfluous() {
     for (auto const& job : jobsToCancel) {
         job->cancel(true);
     }
+
+    bool const keepResults = false;
+    sendWorkerCancelMsg(keepResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done");
+}
+
+void Executive::sendWorkerCancelMsg(bool deleteResults) {
+    LOGS(_log, LOG_LVL_ERROR, "&&& NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId + queryId.");
 }
 
 int Executive::getNumInflight() const {
