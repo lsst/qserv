@@ -60,7 +60,7 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
 
 JobQuery::~JobQuery() {
     LOGS(_log, LOG_LVL_DEBUG, "~JobQuery");
-    LOGS(_log, LOG_LVL_WARN, "~JobQuery QID=" <<_idStr);
+    LOGS(_log, LOG_LVL_WARN, "~JobQuery QID=" << _idStr);
 }
 
 /** Attempt to run the job on a worker.
