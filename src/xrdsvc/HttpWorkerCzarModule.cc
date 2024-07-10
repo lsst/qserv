@@ -159,7 +159,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         ujData->setFileChannelShared(channelShared);
 
         QueryId jdQueryId = 0;
-        proto::ScanInfo scanInfo; // &&&
+        proto::ScanInfo scanInfo;  // &&&
         bool scanInfoSet = false;
         bool jdScanInteractive = false;
         int jdMaxTableSize = 0;
@@ -213,9 +213,10 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
                     auto const& tblScanRating = rbTbl.required<int>("tblScanRating");
                     LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a5");
                     LOGS(_log, LOG_LVL_WARN,
-                            __func__ << "&&&SUBC chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
-                            << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
-                    scanInfo.infoTables.emplace_back(chunkScanDb, chunkScanTable, lockInMemory, tblScanRating);
+                         __func__ << "&&&SUBC chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
+                                  << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
+                    scanInfo.infoTables.emplace_back(chunkScanDb, chunkScanTable, lockInMemory,
+                                                     tblScanRating);
                     scanInfoSet = true;
                 }
             }
@@ -223,15 +224,16 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
             scanInfo.scanRating = jdScanPriority;
 
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10");
-
         }
 
         // create tasks and add them to ujData
-        auto chunkTasks = wbase::Task::createTasksForChunk( // &&& getting called twice when it should only be called once
+        auto chunkTasks = wbase::Task::createTasksForChunk(  // &&& getting called twice when it should only
+                                                             // be called once
                 ujData, ujJobs, channelShared, scanInfo, jdScanInteractive, jdMaxTableSize,
                 foreman()->chunkResourceMgr(), foreman()->mySqlConfig(), foreman()->sqlConnMgr(),
                 foreman()->queriesAndChunks(), foreman()->httpPort());
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC chunkTasks.sz=" << chunkTasks.size() << " QID=" << jdQueryId);
+        LOGS(_log, LOG_LVL_WARN,
+             __func__ << "&&&SUBC chunkTasks.sz=" << chunkTasks.size() << " QID=" << jdQueryId);
         ujTasks.insert(ujTasks.end(), chunkTasks.begin(), chunkTasks.end());
         LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC ujTasks.sz=" << ujTasks.size() << " QID=" << jdQueryId);
 

@@ -90,10 +90,10 @@ public:
     /// @returns true when _attemptCount is incremented correctly and the payload is built.
     /// If the starting value of _attemptCount was greater than or equal to zero, that
     /// attempt is scrubbed from the result table.
-    bool incrAttemptCountScrubResults();      // &&&uj - to be deleted
+    bool incrAttemptCountScrubResults();  // &&&uj - to be deleted
     /// doc &&&uj - scrubbing results probably unneeded with uj. This should be renamed.
     bool incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase);
-    bool verifyPayload() const;               ///< @return true if the payload is acceptable to protobufs.
+    bool verifyPayload() const;  ///< @return true if the payload is acceptable to protobufs.
 
     //&&&bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
 
