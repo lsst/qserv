@@ -66,7 +66,7 @@ class Executive;
 
 namespace lsst::qserv::czar {
 
-class CzarChunkMap;
+class CzarFamilyMap;
 class CzarRegistry;
 
 /// @addtogroup czar
@@ -134,7 +134,7 @@ public:
     /// @return The reconstructed info for the query
     SubmitResult getQueryInfo(QueryId queryId) const;
 
-    std::shared_ptr<CzarChunkMap> getCzarChunkMap() const { return _czarChunkMap; }
+    std::shared_ptr<CzarFamilyMap> getCzarFamilyMap() const { return _czarFamilyMap; }
 
     std::shared_ptr<CzarRegistry> getCzarRegistry() const { return _czarRegistry; }
 
@@ -203,7 +203,8 @@ private:
     std::shared_ptr<HttpSvc> _controlHttpSvc;
 
     /// Map of which chunks on which workers and shared scan order.
-    std::shared_ptr<CzarChunkMap> _czarChunkMap;
+    // &&& std::shared_ptr<CzarChunkMap> _czarChunkMap;
+    std::shared_ptr<CzarFamilyMap> _czarFamilyMap;
 
     /// Connection to the registry to register the czar and get worker contact information.
     std::shared_ptr<CzarRegistry> _czarRegistry;

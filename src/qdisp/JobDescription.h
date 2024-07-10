@@ -95,7 +95,7 @@ public:
     bool incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase);
     bool verifyPayload() const;               ///< @return true if the payload is acceptable to protobufs.
 
-    bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
+    //&&&bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
 
     std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
 

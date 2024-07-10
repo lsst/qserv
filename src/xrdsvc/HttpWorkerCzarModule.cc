@@ -158,6 +158,12 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
                 wbase::FileChannelShared::create(ujData, czarId, czarHostName, czarPort, targetWorkerId);
         ujData->setFileChannelShared(channelShared);
 
+        QueryId jdQueryId = 0;
+        proto::ScanInfo scanInfo; // &&&
+        bool scanInfoSet = false;
+        bool jdScanInteractive = false;
+        int jdMaxTableSize = 0;
+
         LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k");
         for (auto const& job : ujJobs) {
             json const& jsJobDesc = job["jobdesc"];
@@ -167,7 +173,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k1");
             auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k2");
-            auto const jdQueryId = rbJobDesc.required<QueryId>("queryId");
+            jdQueryId = rbJobDesc.required<QueryId>("queryId");
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k3");
             auto const jdJobId = rbJobDesc.required<int>("jobId");
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k4");
@@ -177,9 +183,9 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k6");
             auto const jdScanPriority = rbJobDesc.required<int>("scanPriority");
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k7");
-            auto const jdScanInteractive = rbJobDesc.required<bool>("scanInteractive");
+            jdScanInteractive = rbJobDesc.required<bool>("scanInteractive");
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k8");
-            auto const jdMaxTableSize = rbJobDesc.required<int>("maxTableSize");
+            jdMaxTableSize = rbJobDesc.required<int>("maxTableSize");
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k9");
             auto const jdChunkId = rbJobDesc.required<int>("chunkId");
             LOGS(_log, LOG_LVL_WARN,
@@ -191,37 +197,44 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
             //&&&uj need scan table info befor making tasks
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11");
             //&&&proto::ScanTableInfo::ListOf scanTables;
-            proto::ScanInfo scanInfo;
+            //&&&proto::ScanInfo scanInfo;
             auto const jdChunkScanTables = rbJobDesc.required<json>("chunkScanTables");
-            for (auto const& tbl : jdChunkScanTables) {
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a1");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC tbl=" << tbl);
-                http::RequestBody rbTbl(tbl);
-                auto const& chunkScanDb = rbTbl.required<string>("db");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a2");
-                auto const& lockInMemory = rbTbl.required<bool>("lockInMemory");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a3");
-                auto const& chunkScanTable = rbTbl.required<string>("table");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a4");
-                auto const& tblScanRating = rbTbl.required<int>("tblScanRating");
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a5");
-                LOGS(_log, LOG_LVL_WARN,
-                     __func__ << "&&&SUBC chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
-                              << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
-                scanInfo.infoTables.emplace_back(chunkScanDb, chunkScanTable, lockInMemory, tblScanRating);
+            if (!scanInfoSet) {
+                for (auto const& tbl : jdChunkScanTables) {
+                    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a1");
+                    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC tbl=" << tbl);
+                    http::RequestBody rbTbl(tbl);
+                    auto const& chunkScanDb = rbTbl.required<string>("db");
+                    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a2");
+                    auto const& lockInMemory = rbTbl.required<bool>("lockInMemory");
+                    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a3");
+                    auto const& chunkScanTable = rbTbl.required<string>("table");
+                    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a4");
+                    auto const& tblScanRating = rbTbl.required<int>("tblScanRating");
+                    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k11a5");
+                    LOGS(_log, LOG_LVL_WARN,
+                            __func__ << "&&&SUBC chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
+                            << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
+                    scanInfo.infoTables.emplace_back(chunkScanDb, chunkScanTable, lockInMemory, tblScanRating);
+                    scanInfoSet = true;
+                }
             }
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k12");
             scanInfo.scanRating = jdScanPriority;
 
             LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC k10");
 
-            // create tasks and add them to ujData
-            auto chunkTasks = wbase::Task::createTasksForChunk(
-                    ujData, ujJobs, channelShared, scanInfo, jdScanInteractive, jdMaxTableSize,
-                    foreman()->chunkResourceMgr(), foreman()->mySqlConfig(), foreman()->sqlConnMgr(),
-                    foreman()->queriesAndChunks(), foreman()->httpPort());
-            ujTasks.insert(ujTasks.end(), chunkTasks.begin(), chunkTasks.end());
         }
+
+        // create tasks and add them to ujData
+        auto chunkTasks = wbase::Task::createTasksForChunk( // &&& getting called twice when it should only be called once
+                ujData, ujJobs, channelShared, scanInfo, jdScanInteractive, jdMaxTableSize,
+                foreman()->chunkResourceMgr(), foreman()->mySqlConfig(), foreman()->sqlConnMgr(),
+                foreman()->queriesAndChunks(), foreman()->httpPort());
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC chunkTasks.sz=" << chunkTasks.size() << " QID=" << jdQueryId);
+        ujTasks.insert(ujTasks.end(), chunkTasks.begin(), chunkTasks.end());
+        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC ujTasks.sz=" << ujTasks.size() << " QID=" << jdQueryId);
+
         channelShared->setTaskCount(ujTasks.size());
         ujData->addTasks(ujTasks);
 
@@ -231,22 +244,6 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         timer.stop();
         LOGS(_log, LOG_LVL_WARN,
              __func__ << "&&& Enqueued UberJob time=" << timer.getElapsed() << " " << jsReq);
-
-#if 0   /// &&&&&&&&
-        // Now that the request is decoded (successfully or not), release the
-        // xrootd request buffer. To avoid data races, this must happen before
-        // the task is handed off to another thread for processing, as there is a
-        // reference to this SsiRequest inside the reply channel for the task,
-        // and after the call to BindRequest.
-            ReleaseRequestBuffer();
-            t.start();
-            _foreman->processTasks(tasks);  // Queues tasks to be run later. //&&&uj next
-            t.stop();
-            LOGS(_log, LOG_LVL_DEBUG,
-                 "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
-            break;
-        }
-#endif  /// &&&&&&&&
 
         // &&&uj temporary, send response back to czar saying file is ready. The file is not ready, but this
         //       is just an initial comms test
