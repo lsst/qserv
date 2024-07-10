@@ -169,14 +169,12 @@ Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName)
 }
 
 void Czar::_monitor() {
-    LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor a");
+    string const funcN("Czar::_monitor");
     while (_monitorLoop) {
-        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor b");
         this_thread::sleep_for(_monitorSleepTime);
-        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor c");
+        LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
 
         /// Check database for changes in worker chunk assignments and aliveness
-        //&&&_czarChunkMap->read();
         _czarFamilyMap->read();
 
         // TODO:UJ If there were changes in `_czarFamilyMap`, see if any
@@ -184,8 +182,8 @@ void Czar::_monitor() {
         // for the downed workers. The `_unassigned` Jobs should get
         // reassigned in the next section `assignJobsToUberJobs`.
 
-        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor d");
-        /// Create new UberJobs for all jobs that are unassigned for any reason.
+        /// Create new UberJobs (if possible) for all jobs that are
+        /// unassigned for any reason.
         map<QueryId, shared_ptr<qdisp::Executive>> execMap;
         {
             // Make a copy of all valid Executives
@@ -202,12 +200,10 @@ void Czar::_monitor() {
                 }
             }
         }
-        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor e");
         // Use the copy to create new UberJobs as needed
         for (auto&& [qIdKey, execVal] : execMap) {
             execVal->assignJobsToUberJobs();
         }
-        LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor f");
 
         // TODO:UJ Maybe get missing results from workers.
         //    This would be files that workers sent messages to the czar to
@@ -220,7 +216,6 @@ void Czar::_monitor() {
         // TODO:UJ Maybe send a list of cancelled and completed queries to the workers?
         //     How long should queryId's remain on this list?
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor end");
 }
 
 // Constructors
@@ -247,7 +242,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
     try {
-        //&&& _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
         _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
     } catch (ChunkMapException const& exc) {
         LOGS(_log, LOG_LVL_WARN, string(__func__) + " failed to create CzarChunkMap " + exc.what());
@@ -404,28 +398,20 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     // note that lambda stores copies of uq and msgTable.
     auto finalizer = [uq, msgTable]() mutable {
         string qidstr = to_string(uq->getQueryId());
-        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " a");
         // Add logging context with query ID
         QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
         LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
-        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " b");
         uq->submit();
-        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " c");
         uq->join();
-        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " d");
         try {
             msgTable.unlock(uq);
-            LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " e");
             if (uq) uq->discard();
-            LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " f");
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
             // will likely hang because table may still be locked.
             LOGS(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): " << exc.what());
         }
-        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " g");
         uq.reset();
-        LOGS(_log, LOG_LVL_WARN, "&&& finalizer QID=" << qidstr << " end");
     };
     LOGS(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
     thread finalThread(finalizer);

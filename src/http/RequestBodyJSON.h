@@ -48,9 +48,9 @@ public:
 
     ~RequestBody() = default;
 
-    /// &&& doc
-    /// &&&uj This would be much more efficient if this class had objJson defined as
-    /// &&&uj a const reference or pointer to const, but implementation likely ugly.
+    /// Make a new RequestBody based on `js`
+    /// TODO:UJ This would be much more efficient if this class had objJson defined as
+    ///   a const reference or pointer to const, but implementation is likely ugly.
     RequestBody(nlohmann::json const& js) : objJson(js) {}
 
     /**

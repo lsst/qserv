@@ -75,15 +75,12 @@ public:
     /// @return true if successful (no error)
     bool flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) override;
 
-    /// &&&uj doc   see ResponseHandler::flushHttp
-    /// @return success - true if the operation was successful
-    /// @return shouldCancel - if success was false, this being true indicates there
-    ///                   was an unrecoverable error in table writing and the query
-    ///                   should be cancelled.
+    /// @see ResponseHandler::flushHttp
+    /// @see MerginHandler::_mergeHttp
     std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
                                      uint64_t& resultRows) override;
 
-    /// &&&uj doc
+    /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
@@ -113,7 +110,7 @@ private:
     bool _merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
                 std::shared_ptr<qdisp::JobQuery> const& jobQuery);
 
-    /// &&&uj doc
+    /// Call InfileMerger to do the work of merging this data to the result.
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
     /// Set error code and string.
@@ -130,7 +127,7 @@ private:
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
     std::string _tableName;                              ///< Target table name
     Error _error;                                        ///< Error description
-    std::atomic<bool> _errorSet{false};                  ///< &&& doc
+    std::atomic<bool> _errorSet{false};                  ///< Set to true when an error is set.
     mutable std::mutex _errorMutex;                      ///< Protect readers from partial updates
     bool _flushed{false};                                ///< flushed to InfileMerger?
     std::string _wName{"~"};                             ///< worker name
