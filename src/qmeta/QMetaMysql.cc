@@ -883,9 +883,9 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
             unsigned int chunk = lsst::qserv::stoui(row[3]);
             size_t const size = stoull(row[4]);
             chunkMap.workers[worker][database][table].push_back(QMetaChunkMap::ChunkInfo{chunk, size});
-            LOGS(_log, LOG_LVL_WARN,
-                 "&&& QMetaInsrt{worker=" << worker << " dbN=" << database << " tblN=" << table
-                                          << " chunk=" << chunk << " sz=" << size);
+            LOGS(_log, LOG_LVL_TRACE,
+                 "QMetaInsrt{worker=" << worker << " dbN=" << database << " tblN=" << table
+                                      << " chunk=" << chunk << " sz=" << size);
         }
         chunkMap.updateTime = updateTime;
     } catch (exception const& ex) {
@@ -917,11 +917,6 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
         throw ConsistencyError(ERR_LOC, "Too many rows in result set of query " + query);
     }
     try {
-        int j = 0;                            // &&& del
-        for (auto const& str : updateTime) {  // &&& del
-            LOGS(_log, LOG_LVL_WARN, "&&& _updatetime j=" << j << " Insrt=" << str << " stol=" << stol(str));
-            ++j;
-        }
         return chrono::time_point<chrono::system_clock>() + chrono::seconds(stol(updateTime[0]));
     } catch (exception const& ex) {
         string const msg = "Failed to parse result set of query " + query + ", ex: " + string(ex.what());

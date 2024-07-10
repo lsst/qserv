@@ -50,7 +50,7 @@ class SsiProviderServer;
 // This header declarations
 namespace lsst::qserv::xrdsvc {
 
-/// &&& doc
+/// This class handles Http message from the czar to the worker.
 class HttpWorkerCzarModule : public xrdsvc::HttpModule {
 public:
     /// @note supported values for parameter 'subModuleName' are:
@@ -75,19 +75,12 @@ private:
                          std::shared_ptr<qhttp::Request> const& req,
                          std::shared_ptr<qhttp::Response> const& resp);
 
-    /// &&& doc
+    /// Handle an UberJob message from the czar to run it on this worker by calling _handleQueryJob.
     nlohmann::json _queryJob();
 
-    /// &&& doc
+    /// Handle an UberJob message from the czar to run it on this worker, this does
+    /// work of deciphering the message, creating UberJobData objects and Task objects.
     nlohmann::json _handleQueryJob(std::string const& func);
-
-    /* &&&
-    /// &&&uj temporary function for testing communication. Something like this will
-    ///       need to be called when the uberjob has finished making the result file.
-    void _temporaryRespFunc(std::string const& targetWorkerId, std::string const& czarName,
-                            qmeta::CzarId czarId, std::string const& czarHostName, int czarPort,
-                            uint64_t ujQueryId, uint64_t ujId);
-                            */
 };
 
 }  // namespace lsst::qserv::xrdsvc

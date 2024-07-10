@@ -79,16 +79,11 @@ public:
 /// cancellation function with its client that maintains a pointer to the
 /// QueryRequest. After Finished(), the cancellation function must be prevented
 /// from accessing the QueryRequest instance.
+// TODO:UJ delete this class
 class QueryRequest : public XrdSsiRequest, public std::enable_shared_from_this<QueryRequest> {
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
 
-    /* &&&
-    static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
-        Ptr newQueryRequest(new QueryRequest(jobQuery));
-        return newQueryRequest;
-    }
-    */
     static Ptr create(std::shared_ptr<JobBase> const& jobBase) {
         Ptr newQueryRequest(new QueryRequest(jobBase));
         return newQueryRequest;
@@ -123,26 +118,17 @@ public:
 
 private:
     // Private constructor to safeguard enable_shared_from_this construction.
-    //&&&QueryRequest(std::shared_ptr<JobQuery> const& jobQuery);
     QueryRequest(JobBase::Ptr const& job);
 
     /// Inform the Executive that this query completed, and call MarkCompleteFunc only once.
     /// This should only be called from _finish() or _errorFinish.
     void _callMarkComplete(bool success);
-    //&&&bool _importResultFile(JobQuery::Ptr const& jq);
     bool _importResultFile(JobBase::Ptr const& jq);
     bool _importError(std::string const& msg, int code);
     bool _errorFinish(bool stopTrying = false);
     void _finish();
-    //&&&void _flushError(JobQuery::Ptr const& jq);
     void _flushError(JobBase::Ptr const& jq);
 
-    /* &&&
-    /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with
-    /// it. A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with
-    /// _finishStatusMutex as needed. If (_finishStatus == ACTIVE) _jobQuery should be good.
-    std::shared_ptr<JobQuery> _jobQuery;
-    */
     /// Job information. Not using a weak_ptr as Executive could drop its JobBase::Ptr before we're done with
     /// it. A call to cancel() could reset _job early, so copy or protect _job with _finishStatusMutex as
     /// needed. If (_finishStatus == ACTIVE) _job should be good.

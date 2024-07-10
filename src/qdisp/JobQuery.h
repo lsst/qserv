@@ -44,7 +44,7 @@ class QdispPool;
 class QueryRequest;
 
 /// This class is used to describe, monitor, and control a single query to a worker.
-/// &&&uj once all Jobs are sent out as UberJobs, the purpose of this class is a bit
+/// TODO:UJ once all Jobs are sent out as UberJobs, the purpose of this class is a bit
 ///       vague. It's components should probably be split between UberJob and
 ///       JobDescription.
 class JobQuery : public JobBase {
@@ -62,7 +62,7 @@ public:
 
     virtual ~JobQuery();
 
-    /// &&& doc
+    /// Run this job.
     bool runJob();
 
     QueryId getQueryId() const override { return _qid; }
@@ -129,17 +129,6 @@ protected:
         _jobDescription->respHandler()->setJobQuery(jbPtr);
     }
 
-    /* &&&
-    /// NOTE: _rmutex must be held before calling this
-    int _getRunAttemptsCount() const {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _jobDescription->getAttemptCount();
-    }
-
-    int _getMaxAttempts() const { return 5; }  // Arbitrary value until solid value with reason determined.
-    int _getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
-    */
-
     /// @return true if _uberJobId was set, it can only be set if it is unassigned
     ///         or by the current owner.
     /// NOTE: _rmutex must be held before calling this
@@ -164,7 +153,7 @@ protected:
     std::string const _idStr;  ///< Identifier string for logging.
 
     // Values that need mutex protection
-    // &&&uj  recursive can probably go away with as well as _inSsi.
+    // TODO:UJ  recursive can probably go away with as well as _inSsi.
     mutable std::recursive_mutex _rmutex;  ///< protects _jobDescription,
                                            ///< _queryRequestPtr, _uberJobId,
                                            ///< and _inSsi
