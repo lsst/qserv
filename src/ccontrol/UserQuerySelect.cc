@@ -276,8 +276,8 @@ void UserQuerySelect::submit() {  //&&&uj
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
 
-    string dbName("");       // it isn't easy to set this  //&&&diff
-    bool dbNameSet = false;  //&&&diff
+    string dbName("");
+    bool dbNameSet = false;
 
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew d");
     for (auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e && !_executive->getCancelled();
@@ -288,7 +288,7 @@ void UserQuerySelect::submit() {  //&&&uj
         // Make the JobQuery now
         QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
 
-        qproc::ChunkQuerySpec::Ptr cs;  //&&&diff old one did this in lambda
+        qproc::ChunkQuerySpec::Ptr cs;
         {
             std::lock_guard<std::mutex> lock(chunksMtx);
             cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
@@ -298,11 +298,10 @@ void UserQuerySelect::submit() {  //&&&uj
 
         LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew d2");
         // This should only need to be set once as all jobs should have the same database name.
-        //&&& this probably has to do with locating xrootd resources, need to check. ???
         if (cs->db != dbName) {
             LOGS(_log, LOG_LVL_WARN, "&&& dbName change from " << dbName << " to " << cs->db);
             if (dbNameSet) {
-                throw util::Bug(ERR_LOC, "Multiple database names in UBerJob");
+                throw util::Bug(ERR_LOC, "Multiple database names in UberJob");
             }
             dbName = cs->db;
             dbNameSet = true;
@@ -313,7 +312,6 @@ void UserQuerySelect::submit() {  //&&&uj
         ru.setAsDbChunk(cs->db, cs->chunkId);
         qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
                 _qMetaCzarId, _executive->getId(), sequence, ru,
-                //&&&std::make_shared<MergingHandler>(cmr, _infileMerger, chunkResultName),
                 std::make_shared<MergingHandler>(_infileMerger, chunkResultName), taskMsgFactory, cs,
                 chunkResultName);
         auto job = _executive->add(jobDesc);
@@ -337,6 +335,10 @@ void UserQuerySelect::submit() {  //&&&uj
         ++sequence;
     }
 
+    if (dbNameSet) {
+        _queryDbName = dbName;
+    }
+
     /// &&& ********************************************************
     /// &&&uj at this point the executive has a map of all jobs with the chunkIds as the key.
 
@@ -349,6 +351,7 @@ void UserQuerySelect::submit() {  //&&&uj
                                    // &&&uj Such as LIMIT=1 may work best with this at 1, where
                                    // &&&uj 100 would be better for others.
         //&&&_executive->buildAndSendUberJobs(maxChunksPerUber);
+        _executive->setReadyToExecute();
         buildAndSendUberJobs();
 
         LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew e2");
@@ -356,7 +359,7 @@ void UserQuerySelect::submit() {  //&&&uj
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew g");  //&&&uj
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
-    _executive->waitForAllJobsToStart();
+    _executive->waitForAllJobsToStart(); // &&& this may not be needed anymore?
 
     // we only care about per-chunk info for ASYNC queries
     if (_async) {
@@ -371,6 +374,14 @@ void UserQuerySelect::buildAndSendUberJobs() {
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs a");
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_INFO, funcN << " start");
+
+    // Ensure `_monitor()` doesn't do anything until everything is ready.
+    if (!_executive->isReadyToExecute()) {
+        LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " executive isn't ready to generate UberJobs.");
+        return;
+    }
+
+    // Only one thread should be generating UberJobs for this user query at any given time.
     lock_guard fcLock(_buildUberJobMtx);
     bool const clearFlag = false;
     _executive->setFlagFailedUberJob(clearFlag);
@@ -380,11 +391,23 @@ void UserQuerySelect::buildAndSendUberJobs() {
     vector<qdisp::UberJob::Ptr> uberJobs;
 
     auto czarPtr = czar::Czar::getCzar();
-    auto czChunkMap = czarPtr->getCzarChunkMap();
+    //&&&auto czChunkMap = czarPtr->getCzarChunkMap();
+    auto czFamilyMap = czarPtr->getCzarFamilyMap();
+    auto czChunkMap = czFamilyMap->getChunkMap(_queryDbName);
     auto czRegistry = czarPtr->getCzarRegistry();
+
+    if (czChunkMap == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, funcN << " no map found for queryDbName=" << _queryDbName);
+        // Make an empty chunk map so all jobs are flagged as needing to be reassigned.
+        // There's a chance that a family will be replicated by the registry.
+        czChunkMap = czar::CzarChunkMap::create();
+        // TODO:UJ It may be better to just fail the query now, but with a working
+        //      system, this should be very rare.
+    }
 
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs b");
     auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();  //&&&uj
+    LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs b1");
 
     // Make a map of all jobs in the executive.
     // &&& TODO:UJ At some point, need to check that ResourceUnit databases can

@@ -283,7 +283,7 @@ private:
 
     std::mutex _queryIdStrMtx;  ///< protects _queryIdStr
     std::atomic<bool> _queryIdStrSet{false};
-    std::string _queryIdStr{"QI=?"};  ///< Unknown until results start coming back from workers.
+    std::string _queryIdStr{"QID=?"};  ///< Unknown until results start coming back from workers.
 
     std::string _jobIdColName;                   ///< Name of the jobId column in the result table.
     int const _jobIdMysqlType{MYSQL_TYPE_LONG};  ///< 4 byte integer.

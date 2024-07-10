@@ -239,6 +239,16 @@ public:
     int getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
     int getMaxAttempts() const { return 5; }  // Should be set by config
 
+    /// Calling this indicates the executive is ready to create and execute UberJobs.
+    void setReadyToExecute() { _readyToExecute = true; }
+
+    /// Returns true if the executive is ready to create and execute UberJobs.
+    bool isReadyToExecute() { return _readyToExecute; }
+
+    /// Send a message to all workers to cancel this query.
+    /// @param deleteResults - If true, delete all result files for this query on the workers.
+    void sendWorkerCancelMsg(bool deleteResults);
+
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
               SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qStatus,
@@ -302,21 +312,6 @@ private:
     QueryId _id = 0;  ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
 
-    /* &&&
-    qmeta::CzarId _qMetaCzarId;  ///< Czar ID in QMeta database
-
-    /// temporary table name generator, which uses a hash and jobId or uberJobId
-    /// to generate names for tables. This cannot be set until after `_id` is
-    /// set.
-    std::shared_ptr<ccontrol::TmpTableName> _ttn;
-
-    /// Pointer to the result merging class.
-    std::shared_ptr<rproc::InfileMerger> _infileMerger;
-
-    /// UberJobIds for need to be unique within each UserQuery.
-    std::atomic<int> _uberJobId = qdisp::UberJob::getFirstIdNumber();
-    */
-
     std::shared_ptr<qmeta::QStatus> _qMeta;
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
@@ -365,10 +360,9 @@ private:
     ///                   executive can make new uberjobs.
     std::atomic<bool> _failedUberJob{false};
 
-    /* &&&
-    static std::mutex _executiveMapMtx;           ///< protects _executiveMap
-    static std::map<QueryId, std::weak_ptr<Executive>> _executiveMap;  ///< Map of executives for queries in progress.
-    */
+    /// Flag that is set to true when ready to create and run UberJobs.
+    std::atomic<bool> _readyToExecute{false};
+
 };
 
 /// &&&uj MarkCompleteFunc is not needed with uberjobs.
