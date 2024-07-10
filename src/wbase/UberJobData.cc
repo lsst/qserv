@@ -76,7 +76,7 @@ void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const&
 
 void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
                                     uint64_t headerCount) {
-    string const funcN = getFuncIdStr(__func__);
+    string const funcN = cName(__func__);
     LOGS(_log, LOG_LVL_WARN,
          funcN << "&&& UberJobData::responseFileReady a httpFileUrl=" << httpFileUrl << " rows=" << rowCount
                << " fSize=" << fileSize << " headerCount=" << headerCount);
@@ -138,7 +138,7 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
 bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task,
                                 bool cancelled) {
     LOGS(_log, LOG_LVL_WARN, "&&& UberJobData::responseError a");
-    string const funcN = getFuncIdStr(__func__);
+    string const funcN = cName(__func__);
 
     string errorMsg;
     int errorCode = 0;
