@@ -132,7 +132,9 @@ void CzarChunkMap::verify() {
         // _monitor will log this and keep using the old maps.
         throw ChunkMapException(ERR_LOC, "verification failed with " + to_string(errorCount) + " errors");
     }
+
 }
+
 
 string CzarChunkMap::dumpChunkMap(ChunkMap const& chunkMap) {
     stringstream os;

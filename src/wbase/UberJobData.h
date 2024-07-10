@@ -137,8 +137,8 @@ public:
     bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
     std::string getIdStr() const { return _idStr; }
-    std::string getFuncIdStr(std::string const& funcName) {
-        return getIdStr() + " UberJobData::" + funcName + " ";
+    std::string cName(std::string const& funcName) {
+        return "UberJobData::" + funcName + " " + getIdStr();
     }
 
 private:

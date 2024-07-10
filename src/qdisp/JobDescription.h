@@ -90,7 +90,7 @@ public:
 
     void resetJsForWorker() { _jsForWorker.reset(); }
 
-    bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
+    //&&&bool fillTaskMsg(proto::TaskMsg* tMsg);  //&&&uj
 
     std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
 

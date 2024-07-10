@@ -189,15 +189,16 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     auto dbToFamily = make_shared<czar::CzarFamilyMap::DbNameToFamilyNameType>();
     czar::CzarFamilyMap czFamMap(dbToFamily);
 
+
     auto jsTest1 = nlohmann::json::parse(test1);
     qmeta::QMetaChunkMap qChunkMap1 = convertJsonToChunkMap(jsTest1);
-    auto familyMap = czFamMap.makeNewMaps(qChunkMap1, true);
+    auto familyMap = czFamMap.makeNewMaps(qChunkMap1);
     czar::CzarFamilyMap::verify(familyMap);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarFamilyMap test 1 passed");
 
     auto jsTest2 = nlohmann::json::parse(test2);
     qmeta::QMetaChunkMap qChunkMap2 = convertJsonToChunkMap(jsTest2);
-    auto familyMap2 = czFamMap.makeNewMaps(qChunkMap2, true);
+    auto familyMap2 = czFamMap.makeNewMaps(qChunkMap2);
     czar::CzarFamilyMap::verify(familyMap2);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarFamilyMap test 2 passed");
 }

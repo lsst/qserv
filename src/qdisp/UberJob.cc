@@ -550,8 +550,10 @@ void UberJob::killUberJob() {
 json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile a");
     LOGS(_log, LOG_LVL_WARN,
-         "&&&uj UberJob::importResultFile fileUrl=" << fileUrl << " rowCount=" << rowCount
+         cName(__func__) << "&&&uj fileUrl=" << fileUrl << " rowCount=" << rowCount
                                                     << " fileSize=" << fileSize);
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " fileUrl=" << fileUrl
+            << " rowCount=" << rowCount << " fileSize=" << fileSize);
 
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "UberJob::importResultFile import job was cancelled.");
@@ -561,7 +563,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
 
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, "UberJob::importResultFile no executive or cancelled");
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) + " no executive or cancelled");
         return _importResultError(true, "cancelled", "Query cancelled - no executive");
     }
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile c");
@@ -601,7 +603,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         uint64_t resultRows = 0;
         auto [flushSuccess, flushShouldCancel] =
                 ujPtr->getRespHandler()->flushHttp(fileUrl, rowCount, resultRows);
-        LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::importResultFile::fileCollectFunc b");
+        LOGS(_log, LOG_LVL_WARN, ujPtr->cName(__func__) << "::fileCollectFunc &&&uj b");
         if (!flushSuccess) {
             // This would probably indicate malformed file+rowCount or
             // writing the result table failed.
@@ -652,24 +654,25 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
 
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::workerError d");
 
-    // Currently there are no detecable recoverable errors from workers. The only error that a worker
-    // could send back that may possibly be recoverable would be a missing table error, which is not
-    // trivia to detect. A worker local database error may also qualify.
+    // Currently there are no detectable recoverable errors from workers. The only
+    // error that a worker could send back that may possibly be recoverable would
+    // be a missing table error, which is not trivial to detect. A worker local
+    // database error may also qualify.
+    // TODO:UJ see if recoverable errors can be detected on the workers, or
+    //   maybe allow a single retry before sending the error back to the user?
     bool recoverableError = false;
-    recoverableError = true; //&&& delete after testing
-    if (recoverableError) { // &&& instead of killing the query, try to retry the jobs on a different worker
-        /* &&&
-         *
-         */
+    recoverableError = true; //&&& delete after testing &&&&&&&
+    if (recoverableError) {
+        // The czar should have new maps before the the new UberJob(s) for
+        // these Jobs are created. (see Czar::_monitor)
         _unassignJobs();
-
-    } else {// &&&
+    } else {
         // Get the error message to the user and kill the user query.
         int errState = util::ErrorCode::MYSQLEXEC;
         getRespHandler()->flushHttpError(errorCode, errorMsg, errState);
         exec->addMultiError(errorCode, errorMsg, errState);
         exec->squash();
-    } // &&&
+    }
 
     string errType = to_string(errorCode) + ":" + errorMsg;
     return _workerErrorFinish(deleteData, errType, "");
@@ -709,6 +712,7 @@ json UberJob::_importResultError(bool shouldCancel, string const& errorType, str
 
 nlohmann::json UberJob::_importResultFinish(uint64_t resultRows) {
     LOGS(_log, LOG_LVL_WARN, "&&&uj UberJob::_importResultFinish a");
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << "&&&uj start"); // &&& keep
     /// If this is called, the file has been collected and the worker should delete it
     ///
     /// This function should call markComplete for all jobs in the uberjob

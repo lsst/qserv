@@ -533,6 +533,14 @@ void UserQuerySelect::buildAndSendUberJobs() {
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs a");
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_INFO, funcN << " start");
+
+    // Ensure `_monitor()` doesn't do anything until everything is ready.
+    if (!_executive->isReadyToExecute()) {
+        LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " executive isn't ready to generate UberJobs.");
+        return;
+    }
+
+    // Only one thread should be generating UberJobs for this user query at any given time.
     lock_guard fcLock(_buildUberJobMtx);
     bool const clearFlag = false;
     _executive->setFlagFailedUberJob(clearFlag);
@@ -542,11 +550,23 @@ void UserQuerySelect::buildAndSendUberJobs() {
     vector<qdisp::UberJob::Ptr> uberJobs;
 
     auto czarPtr = czar::Czar::getCzar();
-    auto czChunkMap = czarPtr->getCzarChunkMap();
+    //&&&auto czChunkMap = czarPtr->getCzarChunkMap();
+    auto czFamilyMap = czarPtr->getCzarFamilyMap();
+    auto czChunkMap = czFamilyMap->getChunkMap(_queryDbName);
     auto czRegistry = czarPtr->getCzarRegistry();
+
+    if (czChunkMap == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, funcN << " no map found for queryDbName=" << _queryDbName);
+        // Make an empty chunk map so all jobs are flagged as needing to be reassigned.
+        // There's a chance that a family will be replicated by the registry.
+        czChunkMap = czar::CzarChunkMap::create();
+        // TODO:UJ It may be better to just fail the query now, but with a working
+        //      system, this should be very rare.
+    }
 
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs b");
     auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();  //&&&uj
+    LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::buildAndSendUberJobs b1");
 
     // Make a map of all jobs in the executive.
     // &&& TODO:UJ At some point, need to check that ResourceUnit databases can

@@ -285,6 +285,7 @@ void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
         };
 
         auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(runUberJobFunc));
+        _jobStartCmdList.push_back(cmd);
         if (_scanInteractive) {
             _qdispPool->queCmd(cmd, 0);
         } else {
@@ -650,6 +651,10 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
         uj->killUberJob();
         uj->setStatusIfOk(qmeta::JobStatus::CANCEL, getIdStr() + " killIncomplete on worker=" + workerId);
     }
+}
+
+void Executive::sendWorkerCancelMsg(bool deleteResults) {
+    LOGS(_log, LOG_LVL_ERROR, "&&& NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId + queryId.");
 }
 
 int Executive::getNumInflight() const {

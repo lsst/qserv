@@ -177,7 +177,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
     try {
-        _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
+        //&&& _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
+        _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
     } catch (ChunkMapException const& exc) {
         LOGS(_log, LOG_LVL_WARN, string(__func__) + " failed to create CzarChunkMap " + exc.what());
     }
