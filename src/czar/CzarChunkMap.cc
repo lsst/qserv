@@ -59,8 +59,7 @@ CzarChunkMap::CzarChunkMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(
 }
 */
 
-CzarChunkMap::CzarChunkMap()  {
-}
+CzarChunkMap::CzarChunkMap() {}
 
 CzarChunkMap::~CzarChunkMap() { LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap::~CzarChunkMap()"); }
 
@@ -106,8 +105,8 @@ bool CzarChunkMap::_readOld() {
 }
 */
 
-pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap>> CzarChunkMap::makeNewMapsOld(
-        qmeta::QMetaChunkMap const& qChunkMap) {
+pair<shared_ptr<CzarChunkMap::ChunkMap>, shared_ptr<CzarChunkMap::WorkerChunkMap>>
+CzarChunkMap::makeNewMapsOld(qmeta::QMetaChunkMap const& qChunkMap) {
     // Create new maps.
     auto wcMapPtr = make_shared<WorkerChunkMap>();
     auto chunkMapPtr = make_shared<ChunkMap>();
@@ -314,9 +313,7 @@ void CzarChunkMap::verify() {
         // it's easier to isolate problems.
         throw ChunkMapException(ERR_LOC, "verification failed with " + to_string(errorCount) + " errors");
     }
-
 }
-
 
 string CzarChunkMap::dumpChunkMap(ChunkMap const& chunkMap) {
     stringstream os;
@@ -362,7 +359,6 @@ CzarChunkMap::ChunkData::getWorkerHasThisMapCopy() const {
 }
 
 void CzarChunkMap::organize() {
-
     auto chunksSortedBySize = make_shared<ChunkVector>();
 
     //&&&calcChunkMap(*chunkMapPtr, *chunksSortedBySize);
@@ -385,8 +381,8 @@ void CzarChunkMap::organize() {
                 continue;  // maybe the next one will be okay.
             }
             LOGS(_log, LOG_LVL_DEBUG,
-                    __func__ << " wkrId=" << wkrData << " tsz=" << wkrData->_sharedScanTotalSize
-                    << " smallest=" << smallest);
+                 __func__ << " wkrId=" << wkrData << " tsz=" << wkrData->_sharedScanTotalSize
+                          << " smallest=" << smallest);
             if (wkrData->_sharedScanTotalSize < smallest) {
                 smallestWkr = wkrData;
                 smallest = smallestWkr->_sharedScanTotalSize;
@@ -394,13 +390,13 @@ void CzarChunkMap::organize() {
         }
         if (smallestWkr == nullptr) {
             throw ChunkMapException(ERR_LOC, string(__func__) + " no smallesWkr found for chunk=" +
-                    to_string(chunkData->_chunkId));
+                                                     to_string(chunkData->_chunkId));
         }
         smallestWkr->_sharedScanChunkMap[chunkData->_chunkId] = chunkData;
         smallestWkr->_sharedScanTotalSize += chunkData->_totalBytes;
         chunkData->_primaryScanWorker = smallestWkr;
         LOGS(_log, LOG_LVL_DEBUG,
-                " chunk=" << chunkData->_chunkId << " assigned to scan on " << smallestWkr->_workerId);
+             " chunk=" << chunkData->_chunkId << " assigned to scan on " << smallestWkr->_workerId);
     }
 }
 
@@ -436,8 +432,6 @@ string CzarChunkMap::WorkerChunksData::dump() const {
     return os.str();
 }
 
-
-
 CzarFamilyMap::CzarFamilyMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(qmeta) {
     try {
         auto mapsSet = _read();
@@ -469,8 +463,8 @@ bool CzarFamilyMap::_read() {
     if (_lastUpdateTime >= qChunkMap.updateTime) {
         LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) << " no need to read "
-                      << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime)
-                      << " db=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
+                             << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime)
+                             << " db=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
         return false;
     }
 
@@ -501,10 +495,12 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
         LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::makeNewMaps &&& c " << workerId << " dbs.sz=" << dbs.size());
         // Databases -> Tables map
         for (auto const& [dbName, tables] : dbs) {
-            LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::makeNewMaps &&& d " << dbName << " tbls.sz=" << tables.size() );
+            LOGS(_log, LOG_LVL_WARN,
+                 "CzarFamilyMap::makeNewMaps &&& d " << dbName << " tbls.sz=" << tables.size());
             // Tables -> Chunks map
             for (auto const& [tableName, chunks] : tables) {
-                LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::makeNewMaps &&& e " << tableName << " chunks.sz=" << chunks.size());
+                LOGS(_log, LOG_LVL_WARN,
+                     "CzarFamilyMap::makeNewMaps &&& e " << tableName << " chunks.sz=" << chunks.size());
                 // vector of ChunkInfo
                 for (qmeta::QMetaChunkMap::ChunkInfo const& chunkInfo : chunks) {
                     LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::makeNewMaps &&& f");
@@ -542,7 +538,7 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
 
     // this needs to be done for each CzarChunkMap in the family map.
     LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::makeNewMaps &&& i");
-    for(auto&& [familyName, chunkMapPtr] : *newFamilyMap) {
+    for (auto&& [familyName, chunkMapPtr] : *newFamilyMap) {
         LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::makeNewMaps &&& j");
         LOGS(_log, LOG_LVL_DEBUG, "CzarFamilyMap::makeNewMaps working on " << familyName);
         LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::makeNewMaps &&& k");
@@ -556,13 +552,15 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
 }
 
 void CzarFamilyMap::insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFamilyMap, string const& workerId,
-                                      string const& dbName, string const& tableName, int64_t chunkIdNum,
-                                      CzarChunkMap::SizeT sz) {
+                                   string const& dbName, string const& tableName, int64_t chunkIdNum,
+                                   CzarChunkMap::SizeT sz) {
     LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::insertIntoMaps &&& a");
     // Get the CzarChunkMap for this family
     auto familyName = getFamilyNameFromDbName(dbName);
     LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::insertIntoMaps &&& b");
-    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " familyInsrt{w=" << workerId << " fN=" << familyName << " dbN=" << dbName << " tblN=" << tableName << " chunk=" << chunkIdNum << " sz=" << sz << "}");
+    LOGS(_log, LOG_LVL_INFO,
+         cName(__func__) << " familyInsrt{w=" << workerId << " fN=" << familyName << " dbN=" << dbName
+                         << " tblN=" << tableName << " chunk=" << chunkIdNum << " sz=" << sz << "}");
     auto& nfMap = *newFamilyMap;
     CzarChunkMap::Ptr czarChunkMap;
     LOGS(_log, LOG_LVL_WARN, "CzarFamilyMap::insertIntoMaps &&& c");
