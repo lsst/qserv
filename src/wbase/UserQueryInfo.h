@@ -65,7 +65,7 @@ public:
     /// @throws Bug if id is out of range.
     std::string getTemplate(size_t id);
 
-    /// &&& doc
+    /// Add an UberJobData object to the UserQueryInfo.
     void addUberJob(std::shared_ptr<UberJobData> const& ujData);
 
 private:

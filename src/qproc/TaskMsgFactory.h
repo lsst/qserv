@@ -61,29 +61,28 @@ public:
     virtual void serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName, QueryId queryId,
                               int jobId, int attemptCount, qmeta::CzarId czarId, std::ostream& os);
 
-    //&&&uj
     /// Use the provided information to fill in taskMsg.
     /// @return true if successful.
     bool fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& s, std::string const& chunkResultName,
                      QueryId queryId, int jobId, int attemptCount, qmeta::CzarId czarId);
 
-    // &&& doc
+    /// Make and return the json message for a single Job.
     virtual std::shared_ptr<nlohmann::json> makeMsgJson(ChunkQuerySpec const& s,
                                                         std::string const& chunkResultName, QueryId queryId,
                                                         int jobId, int attemptCount, qmeta::CzarId czarId);
 
 private:
-    // &&&uj probably delete
+    // TODO:UJ  delete when possible
     std::shared_ptr<proto::TaskMsg> _makeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName,
                                              QueryId queryId, int jobId, int attemptCount,
                                              qmeta::CzarId czarId);
 
-    // &&&uj probably delete
+    // TODO:UJ  delete when possible
     void _addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
                       DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
                       std::vector<std::string> const& queries);
 
-    /// &&& doc
+    /// Make a json message for a single fragment.
     void _addFragmentJson(nlohmann::json& jsFragments, std::string const& resultName,
                           DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
                           std::vector<std::string> const& queries);

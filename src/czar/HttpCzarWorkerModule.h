@@ -40,7 +40,7 @@ class Response;
 // This header declarations
 namespace lsst::qserv::czar {
 
-/// &&& doc This class is used to handle messages to this czar from workers.
+/// This class is used to handle messages to this czar from the workers.
 class HttpCzarWorkerModule : public czar::HttpModule {
 public:
     /// @note supported values for parameter 'subModuleName' are:
@@ -64,15 +64,16 @@ private:
     HttpCzarWorkerModule(std::string const& context, std::shared_ptr<qhttp::Request> const& req,
                          std::shared_ptr<qhttp::Response> const& resp);
 
-    ///  &&& doc
+    /// Called to handle message indicating this czar needs to handle an error on a worker.
     nlohmann::json _queryJobError();
 
-    ///  &&& doc
+    /// Called to indicate an UberJob is ready with data that needs to be collected.
     nlohmann::json _queryJobReady();
 
-    ///  &&& doc
+    /// Translates the message and calls the Czar to collect the data.
     nlohmann::json _handleJobReady(std::string const& func);
 
+    /// Translates the error and calls the Czar to take action.
     nlohmann::json _handleJobError(std::string const& func);
 };
 

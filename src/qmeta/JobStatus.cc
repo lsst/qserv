@@ -55,11 +55,6 @@ void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, std::st
                            std::string const& desc, MessageSeverity severity) {
     std::lock_guard<std::mutex> lock(_mutex);
     _updateInfo(idMsg, s, source, code, desc, severity);
-    /* &&&
-        LOGS(_log, LOG_LVL_DEBUG, idMsg << " Updating state to: " << s << " code=" << code << " " << desc << "
-       src=" << source); _info.stateTime = getNow(); _info.state = s; _info.stateCode = code; _info.stateDesc
-       = desc; _info.source = source; _info.severity = severity;
-        */
 }
 
 void JobStatus::_updateInfo(std::string const& idMsg, JobStatus::State s, std::string const& source, int code,
