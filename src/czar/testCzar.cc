@@ -186,6 +186,7 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     }
     )";
 
+    /* &&&
     auto jsTest1 = nlohmann::json::parse(test1);
     qmeta::QMetaChunkMap qChunkMap1 = convertJsonToChunkMap(jsTest1);
     auto [chunkMapPtr, wcMapPtr] = czar::CzarChunkMap::makeNewMaps(qChunkMap1);
@@ -197,6 +198,24 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     tie(chunkMapPtr, wcMapPtr) = czar::CzarChunkMap::makeNewMaps(qChunkMap2);
     czar::CzarChunkMap::verify(*chunkMapPtr, *wcMapPtr);  // Throws on failure.
     LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap test 2 passed");
+    */
+
+    auto dbToFamily = make_shared<czar::CzarFamilyMap::DbNameToFamilyNameType>();
+    czar::CzarFamilyMap czFamMap(dbToFamily);
+
+
+    auto jsTest1 = nlohmann::json::parse(test1);
+    qmeta::QMetaChunkMap qChunkMap1 = convertJsonToChunkMap(jsTest1);
+    //&&&auto [chunkMapPtr, wcMapPtr] = czar::CzarChunkMap::makeNewMaps(qChunkMap1);
+    auto familyMap = czFamMap.makeNewMaps(qChunkMap1);
+    czar::CzarFamilyMap::verify(familyMap);  // Throws on failure.
+    LOGS(_log, LOG_LVL_DEBUG, "CzarFamilyMap test 1 passed");
+
+    auto jsTest2 = nlohmann::json::parse(test2);
+    qmeta::QMetaChunkMap qChunkMap2 = convertJsonToChunkMap(jsTest2);
+    auto familyMap2 = czFamMap.makeNewMaps(qChunkMap2);
+    czar::CzarFamilyMap::verify(familyMap2);  // Throws on failure.
+    LOGS(_log, LOG_LVL_DEBUG, "CzarFamilyMap test 2 passed");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
