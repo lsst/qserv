@@ -189,7 +189,6 @@ BOOST_AUTO_TEST_CASE(CzarChunkMap) {
     auto dbToFamily = make_shared<czar::CzarFamilyMap::DbNameToFamilyNameType>();
     czar::CzarFamilyMap czFamMap(dbToFamily);
 
-
     auto jsTest1 = nlohmann::json::parse(test1);
     qmeta::QMetaChunkMap qChunkMap1 = convertJsonToChunkMap(jsTest1);
     auto familyMap = czFamMap.makeNewMaps(qChunkMap1);

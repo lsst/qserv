@@ -536,7 +536,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
     if (!_executive->isReadyToExecute()) {
-        LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " executive isn't ready to generate UberJobs.");
+        LOGS(_log, LOG_LVL_DEBUG,
+             "UserQuerySelect::" << __func__ << " executive isn't ready to generate UberJobs.");
         return;
     }
 

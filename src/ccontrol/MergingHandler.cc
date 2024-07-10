@@ -572,6 +572,7 @@ tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expe
 }
 
 void MergingHandler::flushHttpError(int errorCode, std::string const& errorMsg, int status) {
+
     if (!_errorSet.exchange(true)) {
         _error = util::Error(errorCode, errorMsg, util::ErrorCode::MYSQLEXEC);
         _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());

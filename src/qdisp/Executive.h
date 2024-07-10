@@ -122,9 +122,7 @@ public:
     static Ptr getExecutiveFromMap(QueryId qId);
     */
 
-    std::string cName(const char* funcName="") {
-        return std::string("Executive::") + funcName;
-    }
+    std::string cName(const char* funcName = "") { return std::string("Executive::") + funcName; }
 
     /// &&&uj doc
     void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }

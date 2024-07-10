@@ -88,7 +88,8 @@ namespace lsst::qserv::qdisp {
 
 /* &&&
 mutex Executive::_executiveMapMtx;                      ///< protects _executiveMap
-map<QueryId, std::weak_ptr<Executive>> Executive::_executiveMap;  ///< Map of executives for queries in progress.
+map<QueryId, std::weak_ptr<Executive>> Executive::_executiveMap;  ///< Map of executives for queries in
+progress.
 */
 
 ////////////////////////////////////////////////////////////////////////
@@ -273,11 +274,10 @@ void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::queueFileCollect end");
 }
 
-
 void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
     LOGS(_log, LOG_LVL_WARN, "&&& Executive::runUberJob start");
 
-    bool const useqdisppool = true; /// &&& delete
+    bool const useqdisppool = true;  /// &&& delete
     if (useqdisppool) {
         auto runUberJobFunc = [uberJob](util::CmdData*) {
             LOGS(_log, LOG_LVL_WARN, "&&&uj Executive::runUberJob::runUberJobFunc a");
@@ -437,7 +437,8 @@ void Executive::addMultiError(int errorCode, std::string const& errorMsg, int er
     {
         lock_guard<mutex> lock(_errorsMutex);
         _multiError.push_back(err);
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
+        LOGS(_log, LOG_LVL_DEBUG,
+             cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
     }
 }
 
@@ -654,7 +655,9 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
 }
 
 void Executive::sendWorkerCancelMsg(bool deleteResults) {
-    LOGS(_log, LOG_LVL_ERROR, "&&& NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId + queryId.");
+    LOGS(_log, LOG_LVL_ERROR,
+         "&&& NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId + "
+         "queryId.");
 }
 
 int Executive::getNumInflight() const {

@@ -137,9 +137,7 @@ public:
     bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
     std::string getIdStr() const { return _idStr; }
-    std::string cName(std::string const& funcName) {
-        return "UberJobData::" + funcName + " " + getIdStr();
-    }
+    std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
 
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
