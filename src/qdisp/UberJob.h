@@ -60,9 +60,7 @@ public:
     bool addJob(std::shared_ptr<JobQuery> const& job);
     bool runUberJob();
 
-    std::string cName(const char* funcN) const {
-        return std::string("UberJob::") + funcN + " " + getIdStr();
-    }
+    std::string cName(const char* funcN) const { return std::string("UberJob::") + funcN + " " + getIdStr(); }
 
     QueryId getQueryId() const override { return _queryId; }    // TODO:UJ relocate to JobBase
     UberJobId getJobId() const override { return _uberJobId; }  // &&&uj change name

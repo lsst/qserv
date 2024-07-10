@@ -76,7 +76,6 @@ bool JobDescription::incrAttemptCount() {
 }
 
 bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase) {
-
     if (increase) {
         ++_attemptCount;
     }
@@ -89,8 +88,12 @@ bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive>
         int maxAttempts = exec->getMaxAttempts();
         LOGS(_log, LOG_LVL_INFO, "JoQDescription::" << __func__ << " attempts=" << _attemptCount);
         if (_attemptCount > maxAttempts) {
-            LOGS(_log, LOG_LVL_ERROR, "JoQDescription::" << __func__ << " attempts(" << _attemptCount << ") > maxAttempts(" << maxAttempts << ") cancelling");
-            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "max attempts reached " + to_string(_attemptCount) + " " + _qIdStr, util::ErrorCode::INTERNAL);
+            LOGS(_log, LOG_LVL_ERROR,
+                 "JoQDescription::" << __func__ << " attempts(" << _attemptCount << ") > maxAttempts("
+                                    << maxAttempts << ") cancelling");
+            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR,
+                                "max attempts reached " + to_string(_attemptCount) + " " + _qIdStr,
+                                util::ErrorCode::INTERNAL);
             exec->squash();
             return false;
         }
