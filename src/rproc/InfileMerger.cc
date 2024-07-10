@@ -218,7 +218,7 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 
 void InfileMerger::mergeCompleteFor(int jobId) {
     std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-    _totalResultSize += _perJobResultSize[jobId];  //&&&uj this can probably be simplified
+    _totalResultSize += _perJobResultSize[jobId];  // TODO:UJ this can probably be simplified
 }
 
 bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
@@ -334,13 +334,9 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
 }
 
 bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::ResponseData const& responseData) {
-    auto jq = uberJob;  // &&& replace jq with uberJob
-    //&&&JobId const jobId = responseSummary.jobid();
     UberJobId const uJobId = uberJob->getJobId();
-    //&&&std::string queryIdJobStr = QueryIdHelper::makeIdStr(responseSummary.queryid(), jobId);
     std::string queryIdJobStr = uberJob->getIdStr();
     if (!_queryIdStrSet) {
-        //&&&_setQueryIdStr(QueryIdHelper::makeIdStr(responseSummary.queryid()));
         _setQueryIdStr(QueryIdHelper::makeIdStr(uberJob->getQueryId()));
     }
 
@@ -350,10 +346,10 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     }
 
     // Do nothing if the query got cancelled for any reason.
-    if (jq->isQueryCancelled()) {
+    if (uberJob->isQueryCancelled()) {
         return true;
     }
-    auto executive = jq->getExecutive();
+    auto executive = uberJob->getExecutive();
     if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
         return true;
     }
@@ -378,7 +374,6 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     util::Timer virtFileT;
     virtFileT.start();
     // UberJobs only get one attempt
-    //&&&int resultJobId = makeJobIdAttempt(responseSummary.jobid(), responseSummary.attemptcount());
     int resultJobId = makeJobIdAttempt(uberJob->getJobId(), 0);
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(
             responseData, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);

@@ -56,7 +56,7 @@ using namespace std;
 
 namespace lsst::qserv::qproc {
 
-//&&&uj - Probaly just delete this
+// TODO:UJ - Probaly just delete this
 bool TaskMsgFactory::fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& chunkQuerySpec,
                                  std::string const& chunkResultName, QueryId queryId, int jobId,
                                  int attemptCount, qmeta::CzarId czarId) {
@@ -70,8 +70,7 @@ bool TaskMsgFactory::fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& 
     taskMsg->set_jobid(jobId);
     taskMsg->set_attemptcount(attemptCount);
     taskMsg->set_czarid(czarId);
-    // LOGS(_log, LOG_LVL_INFO, "&&& _makeMsg ses=" << _session << " db=" << chunkQuerySpec.db << " qId=" <<
-    // queryId << " jId=" << jobId << " att=" << attemptCount << " cz=" << czarId);
+
     //  scanTables (for shared scans)
     //  check if more than 1 db in scanInfo
     std::string db;
@@ -174,7 +173,6 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
         _addFragment(*taskMsg, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
                      chunkQuerySpec.queries);
     }
-    LOGS(_log, LOG_LVL_WARN, "&&& TaskMsgFactory::_makeMsg  end");
     return taskMsg;
 }
 
@@ -216,26 +214,25 @@ std::shared_ptr<nlohmann::json> TaskMsgFactory::makeMsgJson(ChunkQuerySpec const
                                                             std::string const& chunkResultName,
                                                             QueryId queryId, int jobId, int attemptCount,
                                                             qmeta::CzarId czarId) {
-    LOGS(_log, LOG_LVL_WARN, "&&& TaskMsgFactory::makeMsgJson  start");
     std::string resultTable("Asdfasfd");
     if (!chunkResultName.empty()) {
-        resultTable =
-                chunkResultName;  // &&&uj this probably needs to be replaced with whatever it should be now.
+        resultTable = chunkResultName;
     }
 
-    auto jsJobMsgPtr = std::shared_ptr<nlohmann::json>(new nlohmann::json(
-            {{"czarId", czarId},
-             {"queryId", queryId},
-             {"jobId", jobId},
-             {"attemptCount", attemptCount},
-             {"querySpecDb", chunkQuerySpec.db},
-             {"scanPriority", chunkQuerySpec.scanInfo.scanRating},
-             {"scanInteractive", chunkQuerySpec.scanInteractive},
-             {"maxTableSize", (cconfig::CzarConfig::instance()->getMaxTableSizeMB())},
-             {"chunkScanTables", nlohmann::json::array()},
-             {"chunkId", chunkQuerySpec.chunkId},
-             {"queryFragments", nlohmann::json::array()}}));  // &&&uj verify that these can be put in the
-                                                              // uberjob to reduce copies.
+    // TODO:UJ verify that these can be put in the uberjob to reduce duplicates
+    //         and the size of the message.
+    auto jsJobMsgPtr = std::shared_ptr<nlohmann::json>(
+            new nlohmann::json({{"czarId", czarId},
+                                {"queryId", queryId},
+                                {"jobId", jobId},
+                                {"attemptCount", attemptCount},
+                                {"querySpecDb", chunkQuerySpec.db},
+                                {"scanPriority", chunkQuerySpec.scanInfo.scanRating},
+                                {"scanInteractive", chunkQuerySpec.scanInteractive},
+                                {"maxTableSize", (cconfig::CzarConfig::instance()->getMaxTableSizeMB())},
+                                {"chunkScanTables", nlohmann::json::array()},
+                                {"chunkId", chunkQuerySpec.chunkId},
+                                {"queryFragments", nlohmann::json::array()}}));
 
     auto& jsJobMsg = *jsJobMsgPtr;
 
@@ -253,12 +250,11 @@ std::shared_ptr<nlohmann::json> TaskMsgFactory::makeMsgJson(ChunkQuerySpec const
         ChunkQuerySpec const* sPtr = &chunkQuerySpec;
         while (sPtr) {
             LOGS(_log, LOG_LVL_TRACE, "nextFragment");
-            for (unsigned int t = 0; t < (sPtr->queries).size(); t++) {  // &&& delete block
-                LOGS(_log, LOG_LVL_TRACE, (sPtr->queries).at(t));
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC q=" << (sPtr->queries).at(t));
+            for (unsigned int t = 0; t < (sPtr->queries).size(); t++) {
+                LOGS(_log, LOG_LVL_DEBUG, __func__ << " q=" << (sPtr->queries).at(t));
             }
-            for (auto const& sbi : sPtr->subChunkIds) {  // &&& delete block
-                LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC sbi=" << sbi);
+            for (auto const& sbi : sPtr->subChunkIds) {
+                LOGS(_log, LOG_LVL_DEBUG, __func__ << " sbi=" << sbi);
             }
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
@@ -275,7 +271,6 @@ std::shared_ptr<nlohmann::json> TaskMsgFactory::makeMsgJson(ChunkQuerySpec const
                          chunkQuerySpec.queries);
     }
 
-    LOGS(_log, LOG_LVL_WARN, "&&& TaskMsgFactory::makeMsg  end " << jsJobMsg);
     return jsJobMsgPtr;
 }
 
@@ -286,28 +281,12 @@ void TaskMsgFactory::_addFragmentJson(nlohmann::json& jsFragments, std::string c
                              {"queries", nlohmann::json::array()},
                              {"subchunkTables", nlohmann::json::array()},
                              {"subchunkIds", nlohmann::json::array()}};
-    LOGS(_log, LOG_LVL_WARN, "&&&SUBCa jsFrag=" << jsFrag);
-
-    string tmp("&&&SUBCa queries=");
-    for (auto const& qstr : queries) {
-        tmp += "~";
-        tmp += qstr + "~";
-    }
-    LOGS(_log, LOG_LVL_WARN, __func__ << tmp);
-
-    tmp = "&&&SUBCa scids=";
-    for (auto const& scid : subchunkIds) {
-        tmp += "~";
-        tmp += to_string(scid) + "~";
-    }
-    LOGS(_log, LOG_LVL_WARN, __func__ << tmp);
 
     auto& jsQueries = jsFrag["queries"];
     for (auto& qry : queries) {
         nlohmann::json jsQry = {{"subQuery", qry}};
         jsQueries.push_back(move(jsQry));
     }
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC jsQueries=" << jsQueries);
 
     // Add the db+table pairs to the subchunk.
     auto& jsSubchunkTables = jsFrag["subchunkTables"];
@@ -316,16 +295,13 @@ void TaskMsgFactory::_addFragmentJson(nlohmann::json& jsFragments, std::string c
         jsSubchunkTables.push_back(move(jsSubchunkTbl));
         LOGS(_log, LOG_LVL_TRACE, "added dbtbl=" << tbl.db << "." << tbl.table);
     }
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC jsSubchunkTables=" << jsSubchunkTables);
 
     // Add subchunk id numbers
     auto& jsSubchunkIds = jsFrag["subchunkIds"];
     for (auto& subchunkId : subchunkIds) {
         jsSubchunkIds.push_back(subchunkId);
     }
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBC jsSubchunkIds=" << jsSubchunkIds);
 
-    LOGS(_log, LOG_LVL_WARN, __func__ << "&&&SUBCz jsFrag=" << jsFrag);
     jsFragments.push_back(move(jsFrag));
 }
 

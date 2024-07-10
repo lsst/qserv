@@ -25,8 +25,8 @@
 
 // Qserv headers
 #include "qmeta/types.h"
-#include "czar/CzarChunkMap.h"  // Need nested class. &&&uj Make non-nested?
-#include "czar/CzarRegistry.h"  // Need nested class. &&&uj Make non-nested?
+#include "czar/CzarChunkMap.h"  // Need nested class. TODO:UJ Make non-nested?
+#include "czar/CzarRegistry.h"  // Need nested class. TODO:UJ Make non-nested?
 #include "qdisp/JobBase.h"
 #include "qmeta/JobStatus.h"
 
@@ -37,10 +37,14 @@ class JobQuery;
 
 class QueryRequest;
 
-/// &&& doc
 /// This class is a contains x number of jobs that need to go to the same worker
 /// from a single user query, and contact information for the worker. It also holds
 /// some information common to all jobs.
+/// The UberJob constructs the message to send to the worker and handles collecting
+/// and merging the results.
+/// When this UberJobCompletes, all the Jobs it contains are registered as completed.
+/// If this UberJob fails, it will be destroyed, un-assigning all of its Jobs.
+/// Those Jobs will need to be reassigned to new UberJobs, or the query cancelled.
 class UberJob : public JobBase {
 public:
     using Ptr = std::shared_ptr<UberJob>;
@@ -55,18 +59,18 @@ public:
 
     virtual ~UberJob(){};
 
-    static int getFirstIdNumber() { return 9'000'000; }  // &&&uj this can probably be 0 now.
-
     bool addJob(std::shared_ptr<JobQuery> const& job);
     bool runUberJob();
 
     std::string cName(const char* funcN) const { return std::string("UberJob::") + funcN + " " + getIdStr(); }
 
-    QueryId getQueryId() const override { return _queryId; }    // TODO:UJ relocate to JobBase
-    UberJobId getJobId() const override { return _uberJobId; }  // &&&uj change name
+    QueryId getQueryId() const override { return _queryId; }
+    UberJobId getJobId() const override {
+        return _uberJobId;
+    }  // TODO:UJ change name when JobBase no longer needed.
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }  // TODO:UJ relocate to JobBase
-    std::string const& getPayload() const override { return _payload; }
+    std::string const& getPayload() const override { return _payload; }  // TODO:UJ delete when possible.
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() override {
         return _jobStatus;
@@ -77,7 +81,7 @@ public:
     std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
     void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) override {
-        ;  // Do nothing as QueryRequest is only needed for xrootd. &&&uj
+        ;  // Do nothing as QueryRequest is only needed for xrootd. TODO:UJ delete function.
     }
 
     /// Return false if not ok to set the status to newState, otherwise set the state for
@@ -90,25 +94,24 @@ public:
         return _setStatusIfOk(newState, msg);
     }
 
-    bool verifyPayload() const;
-
     int getJobCount() const { return _jobs.size(); }
 
-    /// &&&uj uj may not need,
+    /// TODO:UJ may not need,
     void prepScrubResults();
 
-    //&&&uj
+    /// Set the worker information needed to send messages to the worker believed to
+    /// be responsible for the chunks handled in this UberJob.
     void setWorkerContactInfo(czar::CzarRegistry::WorkerContactInfo::Ptr const& wContactInfo) {
         _wContactInfo = wContactInfo;
     }
 
-    //&&&uj
+    /// Get the data for the worker that should handle this UberJob.
     czar::CzarChunkMap::WorkerChunksData::Ptr getWorkerData() { return _workerData; }
 
-    /// &&&uj doc
+    /// Collect and merge the results from the worker.
     nlohmann::json importResultFile(std::string const& fileUrl, uint64_t rowCount, uint64_t fileSize);
 
-    /// &&&uj doc
+    /// Handle an error from the worker.
     nlohmann::json workerError(int errorCode, std::string const& errorMsg);
 
     std::ostream& dumpOS(std::ostream& os) const override;
@@ -125,29 +128,29 @@ private:
     /// note: _jobsMtx must be locked before calling.
     bool _setStatusIfOk(qmeta::JobStatus::State newState, std::string const& msg);
 
-    /// &&&uj doc
+    /// unassign all Jobs in this UberJob and set the Executive flag to indicate that Jobs need
+    /// reassignment.
     void _unassignJobs();
 
-    /// &&&uj doc
-    /// &&&uj The strings for errorType should have a centralized location in the code - global or util
+    /// Import and error from trying to collect results.
+    /// TODO:UJ The strings for errorType should have a centralized location in the code - global or util
     nlohmann::json _importResultError(bool shouldCancel, std::string const& errorType,
                                       std::string const& note);
 
-    /// &&&uj doc
+    /// Let the executive know that all Jobs in UberJob are complete.
     nlohmann::json _importResultFinish(uint64_t resultRows);
 
-    /// &&& uj doc
+    /// Let the Executive know about errors while handling results.
     nlohmann::json _workerErrorFinish(bool successful, std::string const& errorType = std::string(),
                                       std::string const& note = std::string());
 
-    std::vector<std::shared_ptr<JobQuery>> _jobs;  //&&&uj
+    std::vector<std::shared_ptr<JobQuery>> _jobs;  ///< List of Jobs in this UberJob.
     mutable std::mutex _jobsMtx;                   ///< Protects _jobs, _jobStatus
     std::atomic<bool> _started{false};
-    bool _inSsi = false;
-    qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};  // &&&uj The JobStatus class should be changed
-                                                               // to better represent UberJobs
+    qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};  // TODO:UJ Maybe the JobStatus class should be
+                                                               // changed to better represent UberJobs
 
-    std::string _payload;  ///< XrdSsi message to be sent to the _workerResource. //&&&uj remove when possible
+    std::string _payload;  ///< XrdSsi message to be sent to the _workerResource. TODO:UJ remove when possible
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
@@ -156,12 +159,12 @@ private:
     qmeta::CzarId const _czarId;
 
     std::string const _idStr;
-    std::shared_ptr<QdispPool> _qdispPool;  //&&&uj needed?
+    std::shared_ptr<QdispPool> _qdispPool;  // TODO:UJ remove when possible.
 
-    // &&&uj
-    czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // &&& check if this is needed
+    // Map of workerData
+    czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed
 
-    // &&&uj
+    // Contact information for the target worker.
     czar::CzarRegistry::WorkerContactInfo::Ptr _wContactInfo;
 };
 
