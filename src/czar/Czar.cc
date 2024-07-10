@@ -177,7 +177,13 @@ void Czar::_monitor() {
 
 
         /// Check database for changes in worker chunk assignments and aliveness
-        _czarChunkMap->read();
+        //&&&_czarChunkMap->read();
+        _czarFamilyMap->read();
+
+        // TODO:UJ If there were changes in `_czarFamilyMap`, see if any
+        // workers went down. If any did, `_unassign` all Jobs in UberJobs
+        // for the downed workers. The `_unassigned` Jobs should get
+        // reassigned in the next section `assignJobsToUberJobs`.
 
         LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor d");
         /// Create new UberJobs for all jobs that are unassigned for any reason.
@@ -204,13 +210,16 @@ void Czar::_monitor() {
         }
         LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor f");
 
-        // TODO:UJ get missing results from workers.
+        // TODO:UJ Maybe get missing results from workers.
         //    This would be files that workers sent messages to the czar to
         //    collect, but there was a communication problem and the czar didn't get the message
         //    or didn't collect the file. to retrieve complete files that haven't been
         //    collected.
-        //    Or, possibly just have the worker try to re-send the file ready message to
-        //    the czar.
+        //    Basically, is there a reasonable way to check that all UberJobs are being handled
+        //    and nothing has fallen through the cracks?
+
+        // TODO:UJ Maybe send a list of cancelled and completed queries to the workers?
+        //     How long should queryId's remain on this list?
     }
     LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor end");
 }
@@ -239,7 +248,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
     try {
-        _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
+        //&&& _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
+        _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
     } catch (ChunkMapException const& exc) {
         LOGS(_log, LOG_LVL_WARN, string(__func__) + " failed to create CzarChunkMap " + exc.what());
     }
