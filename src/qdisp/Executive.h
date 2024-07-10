@@ -122,9 +122,7 @@ public:
     static Ptr getExecutiveFromMap(QueryId qId);
     */
 
-    std::string cName(const char* funcName="") {
-        return std::string("Executive::") + funcName;
-    }
+    std::string cName(const char* funcName = "") { return std::string("Executive::") + funcName; }
 
     /// &&&uj doc
     void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }
@@ -174,7 +172,7 @@ public:
     //&&&void setTmpTableNameGenerator(std::shared_ptr<ccontrol::TmpTableName> const& ttn) { _ttn = ttn; }
 
     //&&&void setInfileMerger(std::shared_ptr<rproc::InfileMerger> infileMerger) { _infileMerger =
-    //infileMerger; }
+    // infileMerger; }
 
     QueryId getId() const { return _id; }
     std::string const& getIdStr() const { return _idStr; }
@@ -237,7 +235,7 @@ public:
 
     // The below value should probably be based on the user query, with longer sleeps for slower queries.
     int getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
-    int getMaxAttempts() const { return 5; }  // Should be set by config
+    int getMaxAttempts() const { return 5; }           // Should be set by config
 
     /// Calling this indicates the executive is ready to create and execute UberJobs.
     void setReadyToExecute() { _readyToExecute = true; }
@@ -362,7 +360,6 @@ private:
 
     /// Flag that is set to true when ready to create and run UberJobs.
     std::atomic<bool> _readyToExecute{false};
-
 };
 
 /// &&&uj MarkCompleteFunc is not needed with uberjobs.
