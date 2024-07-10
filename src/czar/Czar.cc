@@ -170,11 +170,10 @@ Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName)
 
 void Czar::_monitor() {
     LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor a");
-    while(_monitorLoop) {
+    while (_monitorLoop) {
         LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor b");
         this_thread::sleep_for(_monitorSleepTime);
         LOGS(_log, LOG_LVL_WARN, "&&& Czar::_monitor c");
-
 
         /// Check database for changes in worker chunk assignments and aliveness
         //&&&_czarChunkMap->read();
@@ -192,7 +191,7 @@ void Czar::_monitor() {
             // Make a copy of all valid Executives
             lock_guard<mutex> execMapLock(_executiveMapMtx);
             auto iter = _executiveMap.begin();
-            while(iter != _executiveMap.end()) {
+            while (iter != _executiveMap.end()) {
                 auto qIdKey = iter->first;
                 shared_ptr<qdisp::Executive> exec = iter->second.lock();
                 if (exec == nullptr) {
@@ -325,7 +324,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // Start the monitor thread
     thread monitorThrd(&Czar::_monitor, this);
     _monitorThrd = move(monitorThrd);
-
 }
 
 Czar::~Czar() {

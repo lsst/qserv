@@ -883,7 +883,9 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
             unsigned int chunk = lsst::qserv::stoui(row[3]);
             size_t const size = stoull(row[4]);
             chunkMap.workers[worker][database][table].push_back(QMetaChunkMap::ChunkInfo{chunk, size});
-            LOGS(_log, LOG_LVL_WARN, "&&& QMetaInsrt{worker=" << worker << " dbN=" << database << " tblN=" << table << " chunk=" << chunk << " sz=" << size);
+            LOGS(_log, LOG_LVL_WARN,
+                 "&&& QMetaInsrt{worker=" << worker << " dbN=" << database << " tblN=" << table
+                                          << " chunk=" << chunk << " sz=" << size);
         }
         chunkMap.updateTime = updateTime;
     } catch (exception const& ex) {
@@ -897,7 +899,8 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string const tableName = "chunkMapStatus";
-    string const query = "SELECT TIME_TO_SEC(`update_time`) FROM `" + tableName + "` ORDER BY `update_time` DESC LIMIT 1";
+    string const query =
+            "SELECT TIME_TO_SEC(`update_time`) FROM `" + tableName + "` ORDER BY `update_time` DESC LIMIT 1";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (!_conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);
@@ -914,8 +917,8 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
         throw ConsistencyError(ERR_LOC, "Too many rows in result set of query " + query);
     }
     try {
-        int j=0; // &&& del
-        for (auto const& str : updateTime) { // &&& del
+        int j = 0;                            // &&& del
+        for (auto const& str : updateTime) {  // &&& del
             LOGS(_log, LOG_LVL_WARN, "&&& _updatetime j=" << j << " Insrt=" << str << " stol=" << stol(str));
             ++j;
         }

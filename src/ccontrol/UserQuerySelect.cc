@@ -359,7 +359,7 @@ void UserQuerySelect::submit() {  //&&&uj
     LOGS(_log, LOG_LVL_WARN, "&&& UserQuerySelect::submitNew g");  //&&&uj
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
-    _executive->waitForAllJobsToStart(); // &&& this may not be needed anymore?
+    _executive->waitForAllJobsToStart();  // &&& this may not be needed anymore?
 
     // we only care about per-chunk info for ASYNC queries
     if (_async) {
@@ -377,7 +377,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
     if (!_executive->isReadyToExecute()) {
-        LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " executive isn't ready to generate UberJobs.");
+        LOGS(_log, LOG_LVL_DEBUG,
+             "UserQuerySelect::" << __func__ << " executive isn't ready to generate UberJobs.");
         return;
     }
 

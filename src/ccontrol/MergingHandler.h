@@ -130,7 +130,7 @@ private:
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
     std::string _tableName;                              ///< Target table name
     Error _error;                                        ///< Error description
-    std::atomic<bool> _errorSet{false};  ///< &&& doc
+    std::atomic<bool> _errorSet{false};                  ///< &&& doc
     mutable std::mutex _errorMutex;                      ///< Protect readers from partial updates
     bool _flushed{false};                                ///< flushed to InfileMerger?
     std::string _wName{"~"};                             ///< worker name

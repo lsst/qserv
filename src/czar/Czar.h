@@ -63,7 +63,6 @@ namespace lsst::qserv::qdisp {
 class Executive;
 }  // namespace lsst::qserv::qdisp
 
-
 namespace lsst::qserv::czar {
 
 class CzarFamilyMap;
@@ -209,14 +208,13 @@ private:
     /// Connection to the registry to register the czar and get worker contact information.
     std::shared_ptr<CzarRegistry> _czarRegistry;
 
+    std::mutex _executiveMapMtx;  ///< protects _executiveMap
+    std::map<QueryId, std::weak_ptr<qdisp::Executive>>
+            _executiveMap;  ///< Map of executives for queries in progress.
 
-    std::mutex _executiveMapMtx;           ///< protects _executiveMap
-    std::map<QueryId, std::weak_ptr<qdisp::Executive>> _executiveMap;  ///< Map of executives for queries in progress.
-
-    std::thread _monitorThrd; ///< &&& doc
-    std::atomic<bool> _monitorLoop{true}; ///< &&& doc
+    std::thread _monitorThrd;                            ///< &&& doc
+    std::atomic<bool> _monitorLoop{true};                ///< &&& doc
     std::chrono::milliseconds _monitorSleepTime{15000};  ///< Wait time between checks. &&& set from config
-
 };
 
 }  // namespace lsst::qserv::czar
