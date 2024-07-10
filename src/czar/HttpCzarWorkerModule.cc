@@ -61,7 +61,6 @@ HttpCzarWorkerModule::HttpCzarWorkerModule(string const& context, shared_ptr<qht
 
 json HttpCzarWorkerModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
-    LOGS(_log, LOG_LVL_WARN, "&&&uj &&&UJR HttpCzarWorkerModule::executeImpl " << func);
     debug(func);
     cconfig::CzarConfig::instance()->replicationInstanceId();
     enforceCzarName(func);
@@ -233,35 +232,26 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
     json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
         // See qdisp::UberJob::runUberJob() for json message construction.
-        auto const& js = body().objJson;
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR js=" << js);
         string const targetWorkerId = body().required<string>("workerid");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR targetWorkerId=" << targetWorkerId);
         string const czarName = body().required<string>("czar");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR czarName=" << czarName);
         qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR czarId=" << czarId);
         QueryId const queryId = body().required<QueryId>("queryid");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR queryId=" << queryId);
         UberJobId const uberJobId = body().required<UberJobId>("uberjobid");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR uberJobId=" << uberJobId);
         int const errorCode = body().required<int>("errorCode");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR errorCode=" << errorCode);
         string const errorMsg = body().required<string>("errorMsg");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR errorMsg=" << errorMsg);
 
         // Find UberJob
         qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
         if (exec == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobError No executive for qid=") +
-                                   to_string(queryId));
+                                   to_string(queryId) + " czar=" + to_string(czarId));
         }
         qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
         if (uj == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobError No UberJob for qid=") +
-                                   to_string(queryId) + " ujId=" + to_string(uberJobId));
+                                   to_string(queryId) + " ujId=" + to_string(uberJobId) +
+                                   " czar=" + to_string(czarId));
         }
-        // &&&uj NEED CODE to verify incoming values to those in the UberJob
 
         auto importRes = uj->workerError(errorCode, errorMsg);
         jsRet = importRes;
@@ -281,37 +271,27 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
         // See qdisp::UberJob::runUberJob() for json message construction.
-        auto const& js = body().objJson;
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR js=" << js);
         string const targetWorkerId = body().required<string>("workerid");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR targetWorkerId=" << targetWorkerId);
         string const czarName = body().required<string>("czar");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR czarName=" << czarName);
         qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR czarId=" << czarId);
         QueryId const queryId = body().required<QueryId>("queryid");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR queryId=" << queryId);
         UberJobId const uberJobId = body().required<UberJobId>("uberjobid");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR uberJobId=" << uberJobId);
         string const fileUrl = body().required<string>("fileUrl");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR fileUrl=" << fileUrl);
         uint64_t const rowCount = body().required<uint64_t>("rowCount");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR rowCount=" << rowCount);
         uint64_t const fileSize = body().required<uint64_t>("fileSize");
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&UJR fileSize=" << fileSize);
 
         // Find UberJob
         qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
         if (exec == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
-                                   to_string(queryId));
+                                   to_string(queryId) + " czar=" + to_string(czarId));
         }
         qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
         if (uj == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
-                                   to_string(queryId) + " ujId=" + to_string(uberJobId));
+                                   to_string(queryId) + " ujId=" + to_string(uberJobId) +
+                                   " czar=" + to_string(czarId));
         }
-        // &&&uj NEED CODE to verify incoming values to those in the UberJob
 
         auto importRes = uj->importResultFile(fileUrl, rowCount, fileSize);
         jsRet = importRes;

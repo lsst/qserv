@@ -84,6 +84,7 @@ private:
     ///  &&& doc
     nlohmann::json _handleJobReady(std::string const& func);
 
+    /// Translates the error and calls the Czar to take action.
     nlohmann::json _handleJobError(std::string const& func);
 };
 

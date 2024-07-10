@@ -79,15 +79,12 @@ public:
     /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
 
-    /// &&&uj doc   see ResponseHandler::flushHttp
-    /// @return success - true if the operation was successful
-    /// @return shouldCancel - if success was false, this being true indicates there
-    ///                   was an unrecoverable error in table writing and the query
-    ///                   should be cancelled.
+    /// @see ResponseHandler::flushHttp
+    /// @see MerginHandler::_mergeHttp
     std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
                                      uint64_t& resultRows) override;
 
-    /// &&&uj doc
+    /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
@@ -106,7 +103,7 @@ private:
     /// Call InfileMerger to do the work of merging this data to the result.
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
-    /// &&&uj doc
+    /// Call InfileMerger to do the work of merging this data to the result.
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
     /// Set error code and string.

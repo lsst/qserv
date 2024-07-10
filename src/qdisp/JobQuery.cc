@@ -62,7 +62,7 @@ JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }
 /** Attempt to run the job on a worker.
  * @return - false if it can not setup the job or the maximum number of attempts has been reached.
  */
-bool JobQuery::runJob() {  // &&&
+bool JobQuery::runJob() {  // TODO:UJ delete
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, " runJob " << *this);
     auto executive = _executive.lock();

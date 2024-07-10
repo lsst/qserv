@@ -291,9 +291,6 @@ std::shared_ptr<Server::PathHandler> Server::_findPathHandler(Request::Ptr reque
 #else // &&& =====
                 LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << "invoking handler for "
                                                << pathHandler.path.regex);
-                LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << " &&&uj invoking handler for "
-                                               << pathHandler.path.regex << " " << request->path
-                                               << " match=" << pathMatch);
                 try {
                     pathHandler.handler(request, response);
                 } catch (boost::system::system_error const& e) {

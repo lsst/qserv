@@ -117,21 +117,16 @@ public:
     /// Find the UberJob with `ujId`.
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
 
-    /* &&&
-    /// &&& doc
-    static Ptr getExecutiveFromMap(QueryId qId);
-    */
-
     std::string cName(const char* funcName = "") { return std::string("Executive::") + funcName; }
 
-    /// &&&uj doc
+    /// Set the UserQuerySelect object for this query so this Executive can ask it to make new
+    /// UberJobs in the future, if needed.
     void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }
-    //&&&void buildAndSendUberJobs(int const maxChunksPerUber);
 
-    /// &&&uj doc   Return a map that only contains Jobs not assigned to an UberJob.
+    /// Return a map that only contains Jobs not assigned to an UberJob.
     ChunkIdJobMapType unassignedChunksInQuery();
 
-    /// &&& doc
+    /// Find the UberJob with `ujId`.
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
 
     /// Add an item with a reference number
@@ -143,7 +138,7 @@ public:
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
     void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
 
-    /// &&& doc
+    /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
     void queueFileCollect(PriorityCommand::Ptr const& cmd);
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
@@ -220,7 +215,7 @@ public:
     /// Add an error code and message that may be displayed to the user.
     void addMultiError(int errorCode, std::string const& errorMsg, int errState);
 
-    /// &&& doc
+    /// Add an error code and message that may be displayed to the user.
     void addMultiError(int errorCode, std::string const& errorMsg, int errState);
 
     std::string dumpUberJobCounts() const;
@@ -345,18 +340,17 @@ private:
     std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
     mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs.
 
-    // Add a job to the _chunkToJobMap //&&&uj
-    void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);  //&&&uj
-    /// _chunkToJobMap is created once and then destroyed after use.
-    std::atomic<bool> _chunkToJobMapInvalid{
-            false};                    ///< true indicates the map is no longer valid. //&&&uj delete
-    std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap //&&&uj
-    ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId  //&&&uj
+    // Add a job to the _chunkToJobMap
+    // TODO:UJ This may need review as large changes were made to this part of the code.
+    //     code is no longer destructive to _chunkToJobMap
+    void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);
+    std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap
+    ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId
 
     /// Map of all UberJobs. Failed UberJobs remain in the map as new ones are created
     /// to handle failed UberJobs.
     std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
-    mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs. //&&&uj
+    mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs.
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.

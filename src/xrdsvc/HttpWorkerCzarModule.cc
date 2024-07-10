@@ -221,7 +221,6 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
         ujData->responseError(multiErr, -1, false, LOG_LVL_ERROR);
     }
 }
-#endif  // &&&
 
 json HttpWorkerCzarModule::_queryStatus() {
     debug(__func__);

@@ -72,7 +72,7 @@ public:
     /// Add the error to the error output if it is the first error.
     virtual void flushHttpError(int errorCode, std::string const& errorMsg, int status) = 0;
 
-    /// &&&uj doc
+    /// Collect result data from the worker and merge it with the query result table.
     /// @return success - true if the operation was successful
     /// @return shouldCancel - if success was false, this being true indicates there
     ///                   was an unrecoverable error in table writing and the query
@@ -80,7 +80,7 @@ public:
     virtual std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
                                              uint64_t& resultRows) = 0;
 
-    /// &&& doc
+    /// Add the error to the error output if it is the first error.
     virtual void flushHttpError(int errorCode, std::string const& errorMsg, int status) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.

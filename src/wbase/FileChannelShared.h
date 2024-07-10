@@ -56,12 +56,6 @@ namespace lsst::qserv::util {
 class MultiError;
 }  // namespace lsst::qserv::util
 
-/* &&&
-namespace lsst::qserv::wcontrol {
-class Foreman;
-}
-*/
-
 namespace lsst::qserv::wbase {
 class UberJobData;
 
@@ -122,7 +116,6 @@ public:
      */
     static nlohmann::json filesToJson(std::vector<QueryId> const& queryIds, unsigned int maxFiles);
 
-    //&&&uj
     /// The factory method for the channel class.
     static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                       std::string const& workerId = std::string());
@@ -190,7 +183,6 @@ private:
     FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                       std::string const& workerId);
 
-
     /// Private constructor to protect shared pointer integrity.
     FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
                       std::string const& czarHostName, int czarPort, std::string const& workerId);
@@ -253,9 +245,6 @@ private:
      */
     bool _sendResponse(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
                        bool cancelled, util::MultiError const& multiErr, bool mustSend = false);
-
-    /// &&&uj doc
-    void _fileReadyResponse();
 
     mutable std::mutex _tMtx;  ///< Protects data recording and Czar notification
 

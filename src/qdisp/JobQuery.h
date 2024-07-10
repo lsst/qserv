@@ -61,6 +61,7 @@ public:
     QueryId getQueryId() const { return _qid; }
     JobId getJobId() const { return _jobDescription->id(); }
     std::string const& getIdStr() const { return _idStr; }
+
     JobDescription::Ptr getDescription() { return _jobDescription; }
     qmeta::JobStatus::Ptr getStatus() { return _jobStatus; }
     bool cancel(bool superfluous = false);

@@ -358,8 +358,6 @@ bool FileChannelShared::isRowLimitComplete() const {
 
 void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
-    LOGS(_log, LOG_LVL_WARN,
-         "&&& FileChannelShared::buildAndTransmitError scsId=" << _scsId << " ujId=" << _uberJobId);
     lock_guard<mutex> const tMtxLock(_tMtx);
     if (_rowLimitComplete) {
         LOGS(_log, LOG_LVL_WARN,
@@ -451,8 +449,6 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             // Make sure the file is sync to disk before notifying Czar.
             _file.flush();
             _file.close();
-            LOGS(_log, LOG_LVL_WARN,
-                 "&&& FileChannelShared flush+close " << _fileName << " scsId=" << _scsId);
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
@@ -536,7 +532,6 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
     uint32_t const msgSizeBytes = msg.size();
     _file.write(reinterpret_cast<char const*>(&msgSizeBytes), sizeof msgSizeBytes);
     _file.write(msg.data(), msgSizeBytes);
-    LOGS(_log, LOG_LVL_WARN, "&&&uj headerCount=" << _headerCount << " wrote msgSizeBytes=" << msgSizeBytes);
 
     if (!(_file.is_open() && _file.good())) {
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
@@ -625,42 +620,5 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     _uberJobData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
     return true;
 }
-
-/* &&&
-void FileChannelShared::_fileReadyResponse() {
-    json request = {{"version", http::MetaModule::version},
-                    {"workerid", _comInfoToCzar->foreman->chunkInventory()->id()},
-                    {"auth_key", authKey()},
-                    {"czar", czarName},
-                    {"czarid", czarId},
-                    {"queryid", queryId},
-                    {"uberjobid", uberJobId}};
-
-    auto const method = http::Method::POST;
-    vector<string> const headers = {"Content-Type: application/json"};
-    string const url = "http://" + czarHostName + ":" + to_string(czarPort) + "/queryjob-ready";
-    string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
-    http::Client client(method, url, request.dump(), headers);
-    bool transmitSuccess = false;
-    try {
-        json const response = client.readAsJson();
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj response=" << response);
-        if (0 != response.at("success").get<int>()) {
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj success");
-            transmitSuccess = true;
-        } else {
-            LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE success=0");
-        }
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, requestContext + " &&&uj failed, ex: " + ex.what());
-    }
-    if (!transmitSuccess) {
-        LOGS(_log, LOG_LVL_ERROR,
-             __func__ << "&&&uj NEED CODE try again??? Let czar find out through polling worker status???");
-    } else {
-        LOGS(_log, LOG_LVL_WARN, __func__ << "&&&uj NEED CODE do nothing, czar should collect file");
-    }
-}
-*/
 
 }  // namespace lsst::qserv::wbase
