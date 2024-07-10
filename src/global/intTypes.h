@@ -47,8 +47,8 @@ public:
     /// @parameter qid - query id number.
     /// @parameter invalid - true, qid is not a valid user query id.
     static std::string makeIdStr(QueryId qid, bool invalid = false) {
-        if (invalid) return "QI=?:";
-        return "QI=" + std::to_string(qid) + ":";
+        if (invalid) return "QID=?:";
+        return "QID=" + std::to_string(qid) + ":";
     }
 
     /// Returns a standardized user query id string with jobId.

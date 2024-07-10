@@ -200,7 +200,10 @@ private:
     std::atomic<int> _uberJobIdSeq{900'000};  ///< &&&uj can probably start at 1
     std::shared_ptr<TmpTableName> _ttn;       ///< Temporary table name generator.
 
-    /// &&&uj Only one thread should run buildAndSendUberJobs() at a time
+    /// Primary database name for the query.
+    std::string _queryDbName;
+
+    /// &&&uj Only one thread should run buildAndSendUberJobs() at a time.
     std::mutex _buildUberJobMtx;
 };
 
