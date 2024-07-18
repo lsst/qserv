@@ -37,8 +37,7 @@
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
-#include "http/RequestBody.h"
-#include "qhttp/Request.h"
+#include "http/RequestBodyJSON.h"
 #include "qhttp/Status.h"
 
 using namespace std;
@@ -106,18 +105,16 @@ void setProtocolFields(json& data) {
 namespace lsst::qserv::czar {
 
 void HttpCzarIngestModule::process(asio::io_service& io_service, string const& context,
-                                   shared_ptr<qhttp::Request> const& req,
-                                   shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
-                                   http::AuthType const authType) {
+                                   httplib::Request const& req, httplib::Response& resp,
+                                   string const& subModuleName, http::AuthType const authType) {
     HttpCzarIngestModule module(io_service, context, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpCzarIngestModule::HttpCzarIngestModule(asio::io_service& io_service, string const& context,
-                                           shared_ptr<qhttp::Request> const& req,
-                                           shared_ptr<qhttp::Response> const& resp)
-        : http::ModuleBase(cconfig::CzarConfig::instance()->replicationAuthKey(),
-                           cconfig::CzarConfig::instance()->replicationAdminAuthKey(), req, resp),
+                                           httplib::Request const& req, httplib::Response& resp)
+        : http::ChttpModule(cconfig::CzarConfig::instance()->replicationAuthKey(),
+                            cconfig::CzarConfig::instance()->replicationAdminAuthKey(), req, resp),
           _io_service(io_service),
           _context(context),
           _registryBaseUrl("http://" + cconfig::CzarConfig::instance()->replicationRegistryHost() + ":" +

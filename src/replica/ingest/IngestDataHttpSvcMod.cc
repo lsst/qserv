@@ -26,6 +26,8 @@
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/Method.h"
+#include "qhttp/Request.h"
+#include "qhttp/Response.h"
 #include "replica/config/Configuration.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/util/Csv.h"
@@ -43,7 +45,7 @@ namespace util = lsst::qserv::util;
 
 namespace {
 /// @return requestor's IP address
-string senderIpAddr(qhttp::Request::Ptr const& req) {
+string senderIpAddr(shared_ptr<qhttp::Request> const& req) {
     ostringstream ss;
     ss << req->remoteAddr.address();
     return ss.str();
@@ -69,16 +71,17 @@ bool isBinaryColumnType(string const& type) {
 namespace lsst::qserv::replica {
 
 void IngestDataHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
-                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                   string const& subModuleName, http::AuthType const authType) {
+                                   shared_ptr<qhttp::Request> const& req,
+                                   shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                   http::AuthType const authType) {
     IngestDataHttpSvcMod module(serviceProvider, workerName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 IngestDataHttpSvcMod::IngestDataHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
-                                           string const& workerName, qhttp::Request::Ptr const& req,
-                                           qhttp::Response::Ptr const& resp)
-        : http::ModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+                                           string const& workerName, shared_ptr<qhttp::Request> const& req,
+                                           shared_ptr<qhttp::Response> const& resp)
+        : http::QhttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
           IngestFileSvc(serviceProvider, workerName) {}
 
 string IngestDataHttpSvcMod::context() const { return "INGEST-DATA-HTTP-SVC "; }

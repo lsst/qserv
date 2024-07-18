@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
+#include "http/RequestQuery.h"
 #include "replica/config/Configuration.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"

@@ -28,9 +28,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "http/ModuleBase.h"
-#include "qhttp/Request.h"
-#include "qhttp/Response.h"
+#include "http/QhttpModule.h"
 #include "replica/ingest/IngestRequest.h"
 #include "replica/ingest/IngestRequestMgr.h"
 #include "replica/services/ServiceProvider.h"
@@ -42,7 +40,7 @@ namespace lsst::qserv::replica {
  * Class IngestHttpSvcMod processes chunk/table contribution requests made over HTTP.
  * The class is used by the HTTP server built into the worker Ingest service.
  */
-class IngestHttpSvcMod : public http::ModuleBase {
+class IngestHttpSvcMod : public http::QhttpModule {
 public:
     IngestHttpSvcMod() = delete;
     IngestHttpSvcMod(IngestHttpSvcMod const&) = delete;
@@ -81,22 +79,23 @@ public:
      */
     static void process(ServiceProvider::Ptr const& serviceProvider,
                         IngestRequestMgr::Ptr const& ingestRequestMgr, std::string const& workerName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName,
                         http::AuthType const authType = http::AuthType::REQUIRED);
 
 protected:
-    /// @see http::ModuleBase::context()
+    /// @see http::Module::context()
     virtual std::string context() const final;
 
-    /// @see http::ModuleBase::executeImpl()
+    /// @see http::Module::executeImpl()
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     /// @see method IngestHttpSvcMod::create()
     IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                      IngestRequestMgr::Ptr const& ingestRequestMgr, std::string const& workerName,
-                     qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+                     std::shared_ptr<qhttp::Request> const& req,
+                     std::shared_ptr<qhttp::Response> const& resp);
 
     /// Process a table contribution request (SYNC).
     nlohmann::json _syncProcessRequest() const;

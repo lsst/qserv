@@ -33,6 +33,7 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
+#include "http/RequestQuery.h"
 #include "replica/config/Configuration.h"
 #include "replica/jobs/AbortTransactionJob.h"
 #include "replica/jobs/DirectorIndexJob.h"

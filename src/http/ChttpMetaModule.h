@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTP_METAMODULE_H
-#define LSST_QSERV_HTTP_METAMODULE_H
+#ifndef LSST_QSERV_HTTP_CHTTPMETAMODULE_H
+#define LSST_QSERV_HTTP_CHTTPMETAMODULE_H
 
 // System headers
 #include <memory>
@@ -29,18 +29,18 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "http/QhttpModule.h"
+#include "http/ChttpModule.h"
 
 // This header declarations
 namespace lsst::qserv::http {
 
 /**
- * Class MetaModule implements a handler for the metadata queries on the REST API itself.
+ * Class ChttpMetaModule implements a handler for the metadata queries on the REST API itself.
  * The service responds with an information object provided at the creation time of the module.
  */
-class MetaModule : public http::QhttpModule {
+class ChttpMetaModule : public http::ChttpModule {
 public:
-    typedef std::shared_ptr<MetaModule> Ptr;
+    typedef std::shared_ptr<ChttpMetaModule> Ptr;
 
     /// The current version of the REST API
     static unsigned int const version;
@@ -52,23 +52,22 @@ public:
      * @param info The information object to be returned to clients of the service.
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(std::string const& context, nlohmann::json const& info,
-                        std::shared_ptr<qhttp::Request> const& req,
-                        std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName);
+    static void process(std::string const& context, nlohmann::json const& info, httplib::Request const& req,
+                        httplib::Response& resp, std::string const& subModuleName);
 
-    MetaModule() = delete;
-    MetaModule(MetaModule const&) = delete;
-    MetaModule& operator=(MetaModule const&) = delete;
+    ChttpMetaModule() = delete;
+    ChttpMetaModule(ChttpMetaModule const&) = delete;
+    ChttpMetaModule& operator=(ChttpMetaModule const&) = delete;
 
-    ~MetaModule() final = default;
+    ~ChttpMetaModule() final = default;
 
 protected:
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
     virtual std::string context() const final;
 
 private:
-    MetaModule(std::string const& context, nlohmann::json const& info,
-               std::shared_ptr<qhttp::Request> const& req, std::shared_ptr<qhttp::Response> const& resp);
+    ChttpMetaModule(std::string const& context, nlohmann::json const& info, httplib::Request const& req,
+                    httplib::Response& resp);
 
     nlohmann::json _version();
 
@@ -78,4 +77,4 @@ private:
 
 }  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTP_METAMODULE_H
+#endif  // LSST_QSERV_HTTP_CHTTPMETAMODULE_H

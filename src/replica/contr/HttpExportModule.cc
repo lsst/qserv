@@ -27,7 +27,7 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
-#include "http/RequestBody.h"
+#include "http/RequestBodyJSON.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigWorker.h"
 #include "replica/services/DatabaseServices.h"
@@ -201,11 +201,11 @@ json HttpExportModule::_getTables() {
 
             for (auto&& tableJson : tablesJson) {
                 TableSpec spec;
-                spec.tableName = http::RequestBody::required<string>(tableJson, "table");
+                spec.tableName = http::RequestBodyJSON::required<string>(tableJson, "table");
                 spec.partitioned = database.findTable(spec.tableName).isPartitioned;
                 if (spec.partitioned) {
-                    spec.overlap = http::RequestBody::required<unsigned int>(tableJson, "overlap");
-                    spec.chunk = http::RequestBody::required<unsigned int>(tableJson, "chunk");
+                    spec.overlap = http::RequestBodyJSON::required<unsigned int>(tableJson, "overlap");
+                    spec.chunk = http::RequestBodyJSON::required<unsigned int>(tableJson, "chunk");
                 }
                 ConfigWorker const worker =
                         spec.partitioned ? findWorkerForChunk(spec.chunk) : allConfigWorkers[0];

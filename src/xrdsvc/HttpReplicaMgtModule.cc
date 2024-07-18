@@ -32,7 +32,7 @@
 
 // Qserv headers
 #include "http/Exceptions.h"
-#include "http/RequestBody.h"
+#include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
 #include "mysql/MySqlUtils.h"
 #include "util/String.h"

@@ -23,6 +23,7 @@ import json
 import logging
 import os
 import shlex
+import socket
 import subprocess
 import sys
 import time
@@ -657,6 +658,8 @@ def enter_czar_http(
     czar_cfg_file: str,
     czar_cfg_path: str,
     log_cfg_file: str,
+    http_ssl_cert_file : str,
+    http_ssl_private_key_file : str,
     cmd: str,
 ) -> None:
     """Entrypoint script for the proxy container.
@@ -673,6 +676,10 @@ def enter_czar_http(
         Location to render the czar config file.
     log_cfg_file : `str`
         Location of the log4cxx config file.
+    http_ssl_cert_file : `str`
+        The path to the SSL certificate file.
+    http_ssl_private_key_file : `str`
+        The path to the SSL private key file.
     cmd : `str`
         The jinja2 template for the command for this function to execute.
     """
@@ -699,6 +706,32 @@ def enter_czar_http(
     apply_template_cfg_file(czar_cfg_file, czar_cfg_path)
 
     _do_smig_block(qmeta_smig_dir, "qmeta", db_uri)
+
+    # check if the SSL certificate and private key files exist and create
+    # them if they don't.
+    if not os.path.exists(http_ssl_cert_file) or not os.path.exists(http_ssl_private_key_file):
+        _log.info("Generating self-signed SSL/TLS certificate %s and private key %s for HTTPS",
+                  http_ssl_cert_file, http_ssl_private_key_file)
+        country = "US"
+        state = "California"
+        loc = "Menlo Park"
+        org = "SLAC National Accelerator Laboratory"
+        org_unit = "Rubin Observatory"
+        hostname = socket.gethostbyaddr(socket.gethostname())[0]  # FQDN if available
+        subj = f"/C={country}/ST={state}/L={loc}/O={org}/OU={org_unit}/CN={hostname}"
+        openssl_cmd = [
+            "openssl", "req",
+            "-x509",
+            "-newkey", "rsa:4096",
+            "-out", http_ssl_cert_file,
+            "-keyout", http_ssl_private_key_file,
+            "-sha256",
+            "-days", "365",
+            "-nodes",
+            "-subj", subj]
+        ret = subprocess.run(openssl_cmd, env=dict(os.environ,), cwd="/home/qserv")
+        if ret.returncode != 0:
+            raise RuntimeError("Failed to create SSL certificate and private key files.")
 
     env = dict(
         os.environ,

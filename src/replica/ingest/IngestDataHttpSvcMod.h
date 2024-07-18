@@ -28,12 +28,17 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "http/ModuleBase.h"
-#include "qhttp/Request.h"
-#include "qhttp/Response.h"
+#include "http/QhttpModule.h"
 #include "replica/ingest/IngestFileSvc.h"
 #include "replica/ingest/TransactionContrib.h"
 #include "replica/services/ServiceProvider.h"
+
+// Forward declarations
+
+namespace lsst::qserv::qhttp {
+class Request;
+class Response;
+}  // namespace lsst::qserv::qhttp
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -44,7 +49,7 @@ namespace lsst::qserv::replica {
  * Unlike class IngestHttpSvcMod, the current class is meant to be used for ingesting
  * payloads that are pushed directly into the service over the HTTP protocol.
  */
-class IngestDataHttpSvcMod : public http::ModuleBase, public IngestFileSvc {
+class IngestDataHttpSvcMod : public http::QhttpModule, public IngestFileSvc {
 public:
     IngestDataHttpSvcMod() = delete;
     IngestDataHttpSvcMod(IngestDataHttpSvcMod const&) = delete;
@@ -70,21 +75,22 @@ public:
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                        std::string const& subModuleName,
+                        std::shared_ptr<qhttp::Request> const& req,
+                        std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName,
                         http::AuthType const authType = http::AuthType::REQUIRED);
 
 protected:
-    /// @see http::ModuleBase::context()
+    /// @see http::Module::context()
     virtual std::string context() const final;
 
-    /// @see http::ModuleBase::executeImpl()
+    /// @see http::Module::executeImpl()
     virtual nlohmann::json executeImpl(std::string const& subModuleName) final;
 
 private:
     /// @see method IngestDataHttpSvcMod::create()
     IngestDataHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                         qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
+                         std::shared_ptr<qhttp::Request> const& req,
+                         std::shared_ptr<qhttp::Response> const& resp);
 
     /// Process a table contribution request (SYNC).
     nlohmann::json _syncProcessData();

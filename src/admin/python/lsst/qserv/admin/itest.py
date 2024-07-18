@@ -21,6 +21,7 @@
 from filecmp import dircmp
 import json
 import logging
+import urllib3
 import requests
 import os
 import re
@@ -510,7 +511,7 @@ class ITestQueryHttp:
 
         # Submit the query, check and analyze the completion status
         svc = str(urljoin(connection, '/query'))
-        req = requests.post(svc, json={'query': query, 'database': database, 'binary_encoding': 'hex'})
+        req = requests.post(svc, json={'query': query, 'database': database, 'binary_encoding': 'hex'}, verify=False)
         req.raise_for_status()
         res = req.json()
         if res['success'] == 0:
@@ -534,7 +535,7 @@ class ITestQueryHttp:
 
         # Submit the query via the async service, check and analyze the completion status
         svc = str(urljoin(connection, '/query-async'))
-        req = requests.post(svc, json={'query': query, 'database': database})
+        req = requests.post(svc, json={'query': query, 'database': database}, verify=False)
         req.raise_for_status()
         res = req.json()
         if res['success'] == 0:
@@ -547,7 +548,7 @@ class ITestQueryHttp:
         while time.time() < end_time:
             # Submit a request to check a status of the query
             svc = str(urljoin(connection, f"/query-async/status/{query_id}"))
-            req = requests.get(svc)
+            req = requests.get(svc, verify=False)
             req.raise_for_status()
             res = req.json()
             if res['success'] == 0:
@@ -561,7 +562,7 @@ class ITestQueryHttp:
 
         # Make another request to pull the result set
         svc = str(urljoin(connection, f"/query-async/result/{query_id}?binary_encoding=hex"))
-        req = requests.get(svc)
+        req = requests.get(svc, verify=False)
         req.raise_for_status()
         res = req.json()
         if res['success'] == 0:
@@ -747,6 +748,8 @@ class ITestCaseHttp:
             self.db_name,
             skip_numbers,
         )
+        # Supress the warning about the self-signed certificate
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) 
 
     def run(self) -> None:
         """Run the test queries in a test case.

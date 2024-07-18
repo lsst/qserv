@@ -18,15 +18,15 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_CZAR_HTTPMODULE_H
-#define LSST_QSERV_CZAR_HTTPMODULE_H
+#ifndef LSST_QSERV_CZAR_QHTTPMODULE_H
+#define LSST_QSERV_CZAR_QHTTPMODULE_H
 
 // System headers
 #include <memory>
 #include <string>
 
 // Qserv headers
-#include "http/ModuleBase.h"
+#include "http/QhttpModule.h"
 
 // Forward declarations
 namespace lsst::qserv::qhttp {
@@ -38,19 +38,19 @@ class Response;
 namespace lsst::qserv::czar {
 
 /**
- * Class HttpModule is an intermediate base class of the Qserv Czar modules.
+ * Class QhttpModule is an intermediate base class of the Qserv Czar modules.
  */
-class HttpModule : public http::ModuleBase {
+class QhttpModule : public http::QhttpModule {
 public:
-    HttpModule() = delete;
-    HttpModule(HttpModule const&) = delete;
-    HttpModule& operator=(HttpModule const&) = delete;
+    QhttpModule() = delete;
+    QhttpModule(QhttpModule const&) = delete;
+    QhttpModule& operator=(QhttpModule const&) = delete;
 
-    virtual ~HttpModule() = default;
+    virtual ~QhttpModule() = default;
 
 protected:
-    HttpModule(std::string const& context, std::shared_ptr<qhttp::Request> const& req,
-               std::shared_ptr<qhttp::Response> const& resp);
+    QhttpModule(std::string const& context, std::shared_ptr<qhttp::Request> const& req,
+                std::shared_ptr<qhttp::Response> const& resp);
 
     virtual std::string context() const final;
 
@@ -68,4 +68,4 @@ private:
 
 }  // namespace lsst::qserv::czar
 
-#endif  // LSST_QSERV_CZAR_HTTPMODULE_H
+#endif  // LSST_QSERV_CZAR_QHTTPMODULE_H

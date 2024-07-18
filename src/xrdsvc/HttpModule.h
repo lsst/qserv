@@ -26,7 +26,7 @@
 #include <string>
 
 // Qserv headers
-#include "http/ModuleBase.h"
+#include "http/QhttpModule.h"
 
 namespace lsst::qserv::qhttp {
 class Request;
@@ -48,7 +48,7 @@ namespace lsst::qserv::xrdsvc {
 /**
  * Class HttpModule is an intermediate base class of the Qserv worker modules.
  */
-class HttpModule : public http::ModuleBase {
+class HttpModule : public http::QhttpModule {
 public:
     HttpModule() = delete;
     HttpModule(HttpModule const&) = delete;

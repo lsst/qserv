@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTP_REQUESTBODY_H
-#define LSST_QSERV_HTTP_REQUESTBODY_H
+#ifndef LSST_QSERV_HTTP_REQUESTBODYJSON_H
+#define LSST_QSERV_HTTP_REQUESTBODYJSON_H
 
 // System headers
 #include <algorithm>
@@ -29,46 +29,21 @@
 // Third party headers
 #include "nlohmann/json.hpp"
 
-// Qserv headers
-#include "qhttp/Server.h"
-
 // This header declarations
 namespace lsst::qserv::http {
 
 /**
- * Helper class RequestBody parses a body of an HTTP request
- * which has the following header:
- *
- *   Content-Type: application/json
- *
- * Exceptions may be thrown by the constructor of the class if
- * the request has an unexpected content type, or if its payload
- * is not a proper JSON object.
+ * Class RequestBodyJSON represents the request body parsed into a JSON object.
+ * This type of an object is only available for requests that have the following
+ * header: 'Content-Type: application/json'.
  */
-class RequestBody {
+class RequestBodyJSON {
 public:
     /// parsed body of the request
     nlohmann::json objJson = nlohmann::json::object();
 
-    RequestBody() = default;
-    RequestBody(RequestBody const&) = default;
-    RequestBody& operator=(RequestBody const&) = default;
-
-    ~RequestBody() = default;
-
     /**
-     * The constructor will parse and evaluate a body of an HTTP request
-     * and populate the 'kv' dictionary. Exceptions may be thrown in
-     * the following scenarios:
-     * - the required HTTP header is not found in the request
-     * - the body doesn't have a valid JSON string (unless the body is empty)
-     *
-     * @param req  The request to be parsed.
-     */
-    explicit RequestBody(qhttp::Request::Ptr const& req);
-
-    /**
-     * Check if thw specified parameter is present in the input JSON object.
+     * Check if the specified parameter is present in the input JSON object.
      * @param obj  JSON object to be inspected.
      * @param name  The name of a parameter.
      * @return  'true' if the parameter was found.
@@ -95,11 +70,11 @@ public:
     template <typename T>
     static T required(nlohmann::json const& obj, std::string const& name) {
         if (not obj.is_object()) {
-            throw std::invalid_argument("RequestBody::" + std::string(__func__) +
+            throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
                                         "<T>[static] parameter 'obj' is not a valid JSON object");
         }
         if (obj.find(name) != obj.end()) return obj[name];
-        throw std::invalid_argument("RequestBody::" + std::string(__func__) +
+        throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
                                     "<T>[static] required parameter " + name +
                                     " is missing in the request body");
     }
@@ -127,7 +102,7 @@ public:
     T required(std::string const& name, std::vector<T> const& permitted) const {
         auto const value = required<T>(objJson, name);
         if (_in(value, permitted)) return value;
-        throw std::invalid_argument("RequestBody::" + std::string(__func__) +
+        throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
                                     "<T>(permitted) a value of parameter " + name + " is not allowed.");
     }
 
@@ -155,7 +130,7 @@ public:
     T optional(std::string const& name, T const& defaultValue, std::vector<T> const& permitted) const {
         auto const value = optional<T>(name, defaultValue);
         if (_in(value, permitted)) return value;
-        throw std::invalid_argument("RequestBody::" + std::string(__func__) +
+        throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
                                     "<T>(permitted) a value of parameter " + name + " is not allowed.");
     }
 
@@ -169,11 +144,11 @@ public:
     std::vector<T> requiredColl(std::string const& name) const {
         auto const itr = objJson.find(name);
         if (itr == objJson.end()) {
-            throw std::invalid_argument("RequestBody::" + std::string(__func__) + "<T> required parameter " +
-                                        name + " is missing in the request body");
+            throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
+                                        "<T> required parameter " + name + " is missing in the request body");
         }
         if (not itr->is_array()) {
-            throw std::invalid_argument("RequestBody::" + std::string(__func__) +
+            throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
                                         "<T> a value of the required parameter " + name + " is not an array");
         }
         std::vector<T> coll;
@@ -213,4 +188,4 @@ private:
 
 }  // namespace lsst::qserv::http
 
-#endif  // LSST_QSERV_HTTP_REQUESTBODY_H
+#endif  // LSST_QSERV_HTTP_REQUESTBODYJSON_H

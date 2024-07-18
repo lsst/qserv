@@ -48,7 +48,7 @@ void HttpMonitorModule::process(string const& context, shared_ptr<qhttp::Request
 
 HttpMonitorModule::HttpMonitorModule(string const& context, shared_ptr<qhttp::Request> const& req,
                                      shared_ptr<qhttp::Response> const& resp)
-        : HttpModule(context, req, resp) {}
+        : QhttpModule(context, req, resp) {}
 
 json HttpMonitorModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";

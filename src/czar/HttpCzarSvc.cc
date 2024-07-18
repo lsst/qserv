@@ -25,12 +25,17 @@
 // System headers
 #include <stdexcept>
 
+// Third-party headers
+#ifndef CPPHTTPLIB_OPENSSL_SUPPORT
+#define CPPHTTPLIB_OPENSSL_SUPPORT 1
+#endif
+#include <httplib.h>
+
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "czar/HttpCzarIngestModule.h"
 #include "czar/HttpCzarQueryModule.h"
-#include "http/MetaModule.h"
-#include "qhttp/Server.h"
+#include "http/ChttpMetaModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -44,114 +49,108 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.HttpCzarSvc");
 
 string const serviceName = "CZAR-FRONTEND ";
 
+template <typename T>
+void throwIf(bool condition, string const& message) {
+    if (condition) throw T(message);
+}
+
 }  // namespace
 
 namespace lsst::qserv::czar {
 
-shared_ptr<HttpCzarSvc> HttpCzarSvc::create(uint16_t port, unsigned int numThreads) {
-    return shared_ptr<HttpCzarSvc>(new HttpCzarSvc(port, numThreads));
+shared_ptr<HttpCzarSvc> HttpCzarSvc::create(int port, unsigned int numThreads, string const& sslCertFile,
+                                            string const& sslPrivateKeyFile) {
+    return shared_ptr<HttpCzarSvc>(new HttpCzarSvc(port, numThreads, sslCertFile, sslPrivateKeyFile));
 }
 
-HttpCzarSvc::HttpCzarSvc(uint16_t port, unsigned int numThreads) : _port(port), _numThreads(numThreads) {}
+HttpCzarSvc::HttpCzarSvc(int port, unsigned int numThreads, string const& sslCertFile,
+                         string const& sslPrivateKeyFile)
+        : _port(port),
+          _numThreads(numThreads),
+          _sslCertFile(sslCertFile),
+          _sslPrivateKeyFile(sslPrivateKeyFile) {
+    _createAndConfigure();
+}
 
-uint16_t HttpCzarSvc::start() {
+void HttpCzarSvc::startAndWait() {
     string const context = "czar::HttpCzarSvc::" + string(__func__) + " ";
-    if (_httpServerPtr != nullptr) {
-        throw logic_error(context + "the service is already running.");
-    }
-    _httpServerPtr = qhttp::Server::create(_io_service, _port);
 
-    auto const self = shared_from_this();
+    // IMPORTANT: Request handlers can't be registered in the constructor
+    // because of the shared_from_this() call. This is because the shared
+    // pointer is not yet initialized at the time of the constructor call.
+    _registerHandlers();
 
-    // Make sure the handlers are registered and the server is started before
-    // launching any BOOST ASIO threads. This will prevent threads from finishing
-    // due to a lack of work to be done.
-    _httpServerPtr->addHandlers(
-            {{"GET", "/meta/version",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  json const info = json::object(
-                          {{"kind", "qserv-czar-query-frontend"},
-                           {"id", cconfig::CzarConfig::instance()->id()},
-                           {"instance_id", cconfig::CzarConfig::instance()->replicationInstanceId()}});
-                  http::MetaModule::process(::serviceName, info, req, resp, "VERSION");
-              }}});
-    _httpServerPtr->addHandlers(
-            {{"POST", "/query",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpCzarQueryModule::process(::serviceName, req, resp, "SUBMIT");
-              }}});
-    _httpServerPtr->addHandlers(
-            {{"POST", "/query-async",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpCzarQueryModule::process(::serviceName, req, resp, "SUBMIT-ASYNC");
-              }}});
-    _httpServerPtr->addHandlers(
-            {{"DELETE", "/query-async/:qid",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpCzarQueryModule::process(::serviceName, req, resp, "CANCEL");
-              }}});
-    _httpServerPtr->addHandlers(
-            {{"GET", "/query-async/status/:qid",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpCzarQueryModule::process(::serviceName, req, resp, "STATUS");
-              }}});
-    _httpServerPtr->addHandlers(
-            {{"GET", "/query-async/result/:qid",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT");
-              }}});
-    _httpServerPtr->addHandlers(
-            {{"POST", "/ingest/data",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "INGEST-DATA");
-              }}});
-    _httpServerPtr->addHandlers(
-            {{"DELETE", "/ingest/database/:database",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp,
-                                                "DELETE-DATABASE");
-              }}});
-    _httpServerPtr->addHandlers(
-            {{"DELETE", "/ingest/table/:database/:table",
-              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "DELETE-TABLE");
-              }}});
-    _httpServerPtr->start();
+    // This will prevent the I/O service from exiting the .run()
+    // method event when it will run out of any requests to process.
+    // Unless the service will be explicitly stopped.
+    _work.reset(new boost::asio::io_service::work(_io_service));
 
     // Initialize the I/O context and start the service threads. At this point
     // the server will be ready to service incoming requests.
-    for (unsigned int i = 0; i < _numThreads; ++i) {
-        _threads.push_back(make_unique<thread>([self]() { self->_io_service.run(); }));
+    for (unsigned int i = 0; i < _numBoostAsioThreads; ++i) {
+        _threads.push_back(make_unique<thread>([self = shared_from_this()]() { self->_io_service.run(); }));
     }
-    auto const actualPort = _httpServerPtr->getPort();
-    LOGS(_log, LOG_LVL_INFO, context + "started on port " + to_string(actualPort));
-    return actualPort;
+    bool const started = _svr->listen_after_bind();
+    ::throwIf<runtime_error>(!started, context + "Failed to start the server");
 }
 
-void HttpCzarSvc::stop() {
+void HttpCzarSvc::_createAndConfigure() {
     string const context = "czar::HttpCzarSvc::" + string(__func__) + " ";
-    if (_httpServerPtr == nullptr) {
-        throw logic_error(context + "the service is not running.");
+
+    ::throwIf<invalid_argument>(_sslCertFile.empty(), context + "SSL certificate file is not valid");
+    ::throwIf<invalid_argument>(_sslPrivateKeyFile.empty(), context + "SSL private key file is not valid");
+
+    _svr = make_unique<httplib::SSLServer>(_sslCertFile.data(), _sslPrivateKeyFile.data());
+    ::throwIf<runtime_error>(!_svr->is_valid(), context + "Failed to create the server");
+
+    _svr->new_task_queue = [&] { return new httplib::ThreadPool(_numThreads, _maxQueuedRequests); };
+    if (_port == 0) {
+        _port = _svr->bind_to_any_port(_bindAddr, _port);
+        ::throwIf<runtime_error>(_port < 0, context + "Failed to bind the server to any port");
+    } else {
+        bool const bound = _svr->bind_to_port(_bindAddr, _port);
+        ::throwIf<runtime_error>(!bound,
+                                 context + "Failed to bind the server to the port: " + to_string(_port));
     }
-
-    // Stopping the server and resetting the I/O context will abort the ongoing
-    // requests and unblock the service threads.
-    _httpServerPtr->stop();
-    _httpServerPtr = nullptr;
-    _io_service.reset();
-
-    LOGS(_log, LOG_LVL_INFO, context + "stopped");
+    LOGS(_log, LOG_LVL_INFO, context + "started on port " + to_string(_port));
 }
 
-void HttpCzarSvc::wait() {
-    string const context = "czar::HttpCzarSvc::" + string(__func__) + " ";
-    if (_httpServerPtr == nullptr) {
-        throw logic_error(context + "the service is not running.");
-    }
-    for (auto&& t : _threads) {
-        t->join();
-    }
-    LOGS(_log, LOG_LVL_INFO, context + "unlocked");
+void HttpCzarSvc::_registerHandlers() {
+    ::throwIf<logic_error>(_svr == nullptr,
+                           "czar::HttpCzarSvc::" + string(__func__) + " the server is not initialized");
+    auto const self = shared_from_this();
+    _svr->Get("/meta/version", [self](httplib::Request const& req, httplib::Response& resp) {
+        json const info =
+                json::object({{"kind", "qserv-czar-query-frontend"},
+                              {"id", cconfig::CzarConfig::instance()->id()},
+                              {"instance_id", cconfig::CzarConfig::instance()->replicationInstanceId()}});
+        http::ChttpMetaModule::process(::serviceName, info, req, resp, "VERSION");
+    });
+    _svr->Post("/query", [self](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "SUBMIT");
+    });
+    _svr->Post("/query-async", [self](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "SUBMIT-ASYNC");
+    });
+    _svr->Delete("/query-async/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "CANCEL");
+    });
+    _svr->Get("/query-async/status/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "STATUS");
+    });
+    _svr->Get("/query-async/result/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT");
+    });
+    _svr->Post("/ingest/data", [self](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "INGEST-DATA");
+    });
+    _svr->Delete("/ingest/database/:database", [self](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "DELETE-DATABASE");
+    });
+    _svr->Delete(
+            "/ingest/table/:database/:table", [self](httplib::Request const& req, httplib::Response& resp) {
+                HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "DELETE-TABLE");
+            });
 }
 
 }  // namespace lsst::qserv::czar

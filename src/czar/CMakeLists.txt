@@ -1,14 +1,15 @@
 add_library(czar OBJECT)
 
 target_sources(czar PRIVATE
+    ChttpModule.cc
     Czar.cc
     HttpCzarIngestModule.cc
-    HttpCzarSvc.cc
     HttpCzarQueryModule.cc
-    HttpModule.cc
+    HttpCzarSvc.cc
     HttpMonitorModule.cc
     HttpSvc.cc
     MessageTable.cc
+    QhttpModule.cc
 )
 
 target_include_directories(czar PRIVATE
@@ -23,6 +24,7 @@ target_link_libraries(czar PUBLIC
     util
     log
     XrdSsiLib
+    cpp-httplib
 )
 
 function(CZAR_UTILS)

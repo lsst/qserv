@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "http/MetaModule.h"
+#include "http/ChttpMetaModule.h"
 
 // System headers
 #include <stdexcept>
@@ -37,35 +37,34 @@ string const adminAuthKey;
 
 namespace lsst::qserv::http {
 
-unsigned int const MetaModule::version = 35;
+unsigned int const ChttpMetaModule::version = 35;
 
-void MetaModule::process(string const& context, nlohmann::json const& info,
-                         shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
-                         string const& subModuleName) {
-    MetaModule module(context, info, req, resp);
+void ChttpMetaModule::process(string const& context, nlohmann::json const& info, httplib::Request const& req,
+                              httplib::Response& resp, string const& subModuleName) {
+    ChttpMetaModule module(context, info, req, resp);
     module.execute(subModuleName, ::authType);
 }
 
-MetaModule::MetaModule(string const& context, nlohmann::json const& info,
-                       shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp)
-        : http::QhttpModule(::authKey, ::adminAuthKey, req, resp), _context(context), _info(info) {
+ChttpMetaModule::ChttpMetaModule(string const& context, nlohmann::json const& info,
+                                 httplib::Request const& req, httplib::Response& resp)
+        : http::ChttpModule(::authKey, ::adminAuthKey, req, resp), _context(context), _info(info) {
     if (!_info.is_object()) {
-        throw invalid_argument("MetaModule::" + string(__func__) + " parameter info must be an object.");
+        throw invalid_argument("ChttpMetaModule::" + string(__func__) + " parameter info must be an object.");
     }
 }
 
-json MetaModule::executeImpl(string const& subModuleName) {
+json ChttpMetaModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "VERSION") return _version();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
 
-string MetaModule::context() const { return _context; }
+string ChttpMetaModule::context() const { return _context; }
 
-json MetaModule::_version() {
+json ChttpMetaModule::_version() {
     debug(__func__);
     json result = _info;
-    result["version"] = MetaModule::version;
+    result["version"] = ChttpMetaModule::version;
     return result;
 }
 

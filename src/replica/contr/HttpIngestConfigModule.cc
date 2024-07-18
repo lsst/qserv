@@ -29,6 +29,7 @@
 #include "global/stringUtil.h"
 #include "http/Client.h"
 #include "http/Exceptions.h"
+#include "http/RequestQuery.h"
 #include "replica/config/Configuration.h"
 #include "replica/services/DatabaseServices.h"
 

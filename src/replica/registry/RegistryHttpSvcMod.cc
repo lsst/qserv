@@ -40,7 +40,7 @@ using namespace lsst::qserv;
 
 namespace {
 /// @return requestor's IP address
-string senderIpAddr(qhttp::Request::Ptr const& req) {
+string senderIpAddr(shared_ptr<qhttp::Request> const& req) {
     ostringstream ss;
     ss << req->remoteAddr.address();
     return ss.str();
@@ -62,16 +62,17 @@ bool isSecurityContextKey(string const& key) {
 namespace lsst::qserv::replica {
 
 void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, RegistryServices& services,
-                                 qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
-                                 string const& subModuleName, http::AuthType const authType) {
+                                 shared_ptr<qhttp::Request> const& req,
+                                 shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+                                 http::AuthType const authType) {
     RegistryHttpSvcMod module(serviceProvider, services, req, resp);
     module.execute(subModuleName, authType);
 }
 
 RegistryHttpSvcMod::RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
-                                       RegistryServices& services, qhttp::Request::Ptr const& req,
-                                       qhttp::Response::Ptr const& resp)
-        : http::ModuleBase(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+                                       RegistryServices& services, shared_ptr<qhttp::Request> const& req,
+                                       shared_ptr<qhttp::Response> const& resp)
+        : http::QhttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
           _serviceProvider(serviceProvider),
           _services(services) {}
 
