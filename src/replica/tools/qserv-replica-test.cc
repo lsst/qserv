@@ -28,6 +28,7 @@
 #include "replica/apps/DatabaseTestApp.h"
 #include "replica/apps/HttpAsyncReqApp.h"
 #include "replica/apps/HttpClientApp.h"
+#include "replica/apps/HttpLibServerApp.h"
 #include "replica/apps/MessengerTestApp.h"
 #include "replica/apps/MySQLTestApp.h"
 #include "replica/apps/QhttpTestApp.h"
@@ -44,6 +45,7 @@ ApplicationColl getAppColl() {
     coll.add<DatabaseTestApp>("DATABASE");
     coll.add<HttpAsyncReqApp>("HTTP-ASYNC-CLIENT");
     coll.add<HttpClientApp>("HTTP-CLIENT");
+    coll.add<HttpLibServerApp>("HTTPLIB-SERVER");
     coll.add<MessengerTestApp>("MESSENGER");
     coll.add<MySQLTestApp>("MYSQL");
     coll.add<QhttpTestApp>("QHTTP");
