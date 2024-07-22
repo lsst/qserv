@@ -84,7 +84,6 @@ public:
     }
     /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
-
     bool getScanInteractive() const { return _scanInteractive; }
     std::shared_ptr<protojson::ScanInfo> getScanInfo() const { return _scanInfo; }
 
