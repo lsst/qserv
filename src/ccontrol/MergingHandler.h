@@ -82,11 +82,6 @@ public:
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
 
-    /// @return true if the receiver has completed its duties.
-    bool finished() const override;
-
-    bool reset() override;  ///< Reset the state that a request can be retried.
-
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override;
 
