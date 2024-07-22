@@ -33,13 +33,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "util/Bug.h"
 #include "qdisp/Executive.h"
 #include "qdisp/ResponseHandler.h"
 #include "qproc/ChunkQuerySpec.h"
-#include "qproc/TaskMsgFactory.h"
 
 using namespace std;
 
@@ -51,7 +49,6 @@ namespace lsst::qserv::qdisp {
 
 JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
                                shared_ptr<ResponseHandler> const& respHandler,
-                               shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                                shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                                string const& chunkResultName, bool mock)
         : _czarId(czarId),
@@ -60,22 +57,11 @@ JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, R
           _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
           _resource(resource),
           _respHandler(respHandler),
-          _taskMsgFactory(taskMsgFactory),
           _chunkQuerySpec(chunkQuerySpec),
           _chunkResultName(chunkResultName),
           _mock(mock) {}
 
-bool JobDescription::incrAttemptCount() {
-    ++_attemptCount;
-    if (_attemptCount > MAX_JOB_ATTEMPTS) {
-        LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
-        return false;
-    }
-    buildPayload();
-    return true;
-}
-
-bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase) {
+bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bool increase) {
     if (increase) {
         ++_attemptCount;
     }
@@ -98,39 +84,16 @@ bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive>
             return false;
         }
     }
-
-    // build the request
-    auto js = _taskMsgFactory->makeMsgJson(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId,
-                                           _attemptCount, _czarId);
-    LOGS(_log, LOG_LVL_DEBUG, "JobDescription::" << __func__ << " js=" << (*js));
-    _jsForWorker = js;
-
-    return true;
-}
-
-void JobDescription::buildPayload() {
-    ostringstream os;
-    _taskMsgFactory->serializeMsg(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId, _attemptCount,
-                                  _czarId, os);
-    _payloads[_attemptCount] = os.str();
-}
-
-bool JobDescription::verifyPayload() const {  // TODO:UJ delete
-    proto::ProtoImporter<proto::TaskMsg> pi;
-    if (!_mock && !pi.messageAcceptable(_payloads.at(_attemptCount))) {
-        LOGS(_log, LOG_LVL_DEBUG, _qIdStr << " Error serializing TaskMsg.");
-        return false;
-    }
     return true;
 }
 
 bool JobDescription::getScanInteractive() const { return _chunkQuerySpec->scanInteractive; }
 
-int JobDescription::getScanRating() const { return _chunkQuerySpec->scanInfo.scanRating; }
+int JobDescription::getScanRating() const { return _chunkQuerySpec->scanInfo->scanRating; }
 
 ostream& operator<<(ostream& os, JobDescription const& jd) {
-    os << "job(id=" << jd._jobId << " payloads.size=" << jd._payloads.size() << " ru=" << jd._resource.path()
-       << " attemptCount=" << jd._attemptCount << ")";
+    os << "job(id=" << jd._jobId << " ru=" << jd._resource.path() << " attemptCount=" << jd._attemptCount
+       << ")";
     return os;
 }
 

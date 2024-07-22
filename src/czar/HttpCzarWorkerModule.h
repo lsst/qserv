@@ -29,7 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "czar/HttpModule.h"
+#include "czar/QhttpModule.h"
 
 // Forward declarations
 namespace lsst::qserv::qhttp {
@@ -41,7 +41,7 @@ class Response;
 namespace lsst::qserv::czar {
 
 /// This class is used to handle messages to this czar from the workers.
-class HttpCzarWorkerModule : public czar::HttpModule {
+class HttpCzarWorkerModule : public QhttpModule {
 public:
     /// @note supported values for parameter 'subModuleName' are:
     ///   'QUERYJOB-ERROR' - error in a QUERYJOB
@@ -70,11 +70,17 @@ private:
     /// Called to indicate an UberJob is ready with data that needs to be collected.
     nlohmann::json _queryJobReady();
 
+    /// Called to indicate there were problems with the worker trying to reach this czar.
+    nlohmann::json _workerCzarComIssue();
+
     /// Translates the message and calls the Czar to collect the data.
     nlohmann::json _handleJobReady(std::string const& func);
 
     /// Translates the error and calls the Czar to take action.
     nlohmann::json _handleJobError(std::string const& func);
+
+    /// Translates the issues and calls the Czar to take action.
+    nlohmann::json _handleWorkerCzarComIssue(std::string const& func);
 };
 
 }  // namespace lsst::qserv::czar

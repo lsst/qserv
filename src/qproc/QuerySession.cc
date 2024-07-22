@@ -363,8 +363,8 @@ void QuerySession::print(std::ostream& os) const {
     os << "  needs merge: " << this->needsMerge();
     os << "  1st parallel statement: \"" << par << "\"";
     os << "  merge statement: \"" << mer << "\"";
-    os << "  scanRating:" << _context->scanInfo.scanRating;
-    for (auto const& tbl : _context->scanInfo.infoTables) {
+    os << "  scanRating:" << _context->scanInfo->scanRating;
+    for (auto const& tbl : _context->scanInfo->infoTables) {
         os << "  ScanTable: " << tbl.db << "." << tbl.table << " lock=" << tbl.lockInMemory
            << " rating=" << tbl.scanRating;
     }
@@ -391,6 +391,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::
     }
 
     for (auto&& queryTemplate : queryTemplates) {
+        LOGS(_log, LOG_LVL_WARN, "&&&uj QuerySession::_buildChunkQueries qt=" << queryTemplate.dump());
         std::string str = _context->queryMapping->apply(chunkSpec, queryTemplate);
         chunkQueries.push_back(std::move(str));
     }
@@ -401,6 +402,8 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
     querySession.print(out);
     return out;
 }
+
+protojson::ScanInfo::Ptr QuerySession::getScanInfo() const { return _context->scanInfo; }
 
 ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
                                                       ChunkSpec const& chunkSpec,
