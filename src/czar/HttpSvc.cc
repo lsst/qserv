@@ -101,6 +101,11 @@ uint16_t HttpSvc::start() {
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
                   HttpCzarWorkerModule::process(::serviceName, req, resp, "QUERYJOB-READY");
               }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/workerczarcomissue",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarWorkerModule::process(::serviceName, req, resp, "WORKERCZARCOMISSUE");
+              }}});
     _httpServerPtr->start();
 
     // Initialize the I/O context and start the service threads. At this point
