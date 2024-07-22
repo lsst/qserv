@@ -288,7 +288,6 @@ string CzarChunkMap::WorkerChunksData::dump() const {
     return os.str();
 }
 
-
 CzarFamilyMap::Ptr CzarFamilyMap::create(std::shared_ptr<qmeta::QMeta> const& qmeta) {
     // There's nothing the czar can do until with user queries until there's been at least
     // one successful read of the database family tables, as the czar doesn't know where to find anything.
