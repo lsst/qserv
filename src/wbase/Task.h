@@ -154,7 +154,6 @@ public:
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
          std::shared_ptr<FileChannelShared> const& sc,
          std::shared_ptr<wpublish::QueryStatistics> const& queryStats_);
-
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
@@ -338,6 +337,8 @@ private:
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
     std::shared_ptr<wdb::QueryRunner> _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
+    protojson::ScanInfo::Ptr _scanInfo;
+    bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
 
