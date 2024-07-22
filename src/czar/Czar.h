@@ -37,10 +37,10 @@
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/UserQueryFactory.h"
 #include "czar/SubmitResult.h"
+#include "global/clock_defs.h"
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
-#include "qdisp/SharedResources.h"
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
@@ -51,8 +51,13 @@ class CzarConfig;
 }  // namespace lsst::qserv::cconfig
 
 namespace lsst::qserv::czar {
+class ActiveWorkerMap;
 class HttpSvc;
 }  // namespace lsst::qserv::czar
+
+namespace lsst::qserv::http {
+class ClientConnPool;
+}  // namespace lsst::qserv::http
 
 namespace lsst::qserv::util {
 class FileMonitor;
@@ -118,8 +123,9 @@ public:
      */
     static Ptr getCzar() { return _czar; }
 
-    /// Return a pointer to QdispSharedResources
-    qdisp::SharedResources::Ptr getQdispSharedResources() { return _qdispSharedResources; }
+
+    /// Remove all old tables in the qservResult database.
+    void removeOldResultTables();
 
     /// @return true if trivial queries should be treated as
     ///         interactive queries to stress test the czar.
@@ -138,6 +144,26 @@ public:
 
     /// Get the executive associated with `qId`, this may be nullptr.
     std::shared_ptr<qdisp::Executive> getExecutiveFromMap(QueryId qId);
+
+    std::shared_ptr<ActiveWorkerMap> getActiveWorkerMap() const { return _activeWorkerMap; }
+
+    std::map<QueryId, std::weak_ptr<qdisp::Executive>> getExecMapCopy() const;
+
+    /// This function kills incomplete UberJobs associated with `workerId`.
+    /// This is done when it is believed a worker has died. The executive
+    /// un-assignes the Jobs associated with the UberJobs and then
+    /// adds the ids to lists for the affected worker. If the worker
+    /// reconnects, it will stop work on those UberJobs when it gets the
+    /// list.
+    void killIncompleteUbjerJobsOn(std::string const& workerId);
+
+    std::shared_ptr<util::QdispPool> getQdispPool() const { return _qdispPool; }
+
+    std::shared_ptr<http::ClientConnPool> getCommandHttpPool() const { return _commandHttpPool; }
+
+    /// Startup time of czar, sent to workers so they can detect that the czar was
+    /// was restarted when this value changes.
+    static uint64_t const czarStartupTime;
 
 private:
     /// Private constructor for singleton.
@@ -177,10 +203,12 @@ private:
     IdToQuery _idToQuery;          ///< maps query ID to query (for currently running queries)
     std::mutex _mutex;             ///< protects _uqFactory, _clientToQuery, and _idToQuery
 
-    /// Thread pool for handling Responses from XrdSsi,
-    /// the PsuedoFifo to prevent czar from calling most recent requests,
-    /// and any other resources for use by query executives.
-    qdisp::SharedResources::Ptr _qdispSharedResources;
+    util::Timer _lastRemovedTimer;  ///< Timer to limit table deletions.
+    std::mutex _lastRemovedMtx;     ///< protects _lastRemovedTimer
+
+    /// Prevents multiple concurrent calls to _removeOldTables().
+    std::atomic<bool> _removingOldTables{false};
+    std::thread _oldTableRemovalThread;  ///< thread needs to remain valid while running.
 
     bool _queryDistributionTestVer;  ///< True if config says this is distribution test version.
 
@@ -196,7 +224,7 @@ private:
     /// Connection to the registry to register the czar and get worker contact information.
     std::shared_ptr<CzarRegistry> _czarRegistry;
 
-    std::mutex _executiveMapMtx;  ///< protects _executiveMap
+    mutable std::mutex _executiveMapMtx;  ///< protects _executiveMap
     std::map<QueryId, std::weak_ptr<qdisp::Executive>>
             _executiveMap;  ///< Map of executives for queries in progress.
 
@@ -204,8 +232,28 @@ private:
 
     /// Set to false on system shutdown to stop _monitorThrd.
     std::atomic<bool> _monitorLoop{true};
-    std::chrono::milliseconds _monitorSleepTime{
-            15000};  ///< Wait time between checks. TODO:UJ set from config
+
+    /// Wait time between checks to.
+    std::chrono::milliseconds _monitorSleepTime;
+
+    /// Keeps track of all workers (alive or otherwise) that this czar
+    /// may communicate with. Once created, the pointer never changes.
+    std::shared_ptr<ActiveWorkerMap> _activeWorkerMap;
+
+    /// A combined priority queue and thread pool to regulate czar communications
+    /// with workers. Once created, the pointer never changes.
+    /// TODO:UJ - It may be better to have a pool for each worker as it
+    ///           may be possible for a worker to have communications
+    ///           problems in a way that would wedge the pool. This can
+    ///           probably be done fairly easily by having pools
+    ///           attached to ActiveWorker in _activeWorkerMap.
+    ///           This was not possible in xrootd as the czar had
+    ///           no reasonable way to know where Jobs were going.
+    std::shared_ptr<util::QdispPool> _qdispPool;
+
+    /// Pool of http client connections for sending commands (UberJobs
+    /// and worker status requests).
+    std::shared_ptr<http::ClientConnPool> _commandHttpPool;
 };
 
 }  // namespace lsst::qserv::czar
