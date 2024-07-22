@@ -159,6 +159,7 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
     return string();
 }
 
+
 std::tuple<bool, bool> readHttpFileAndMergeHttp(
         lsst::qserv::qdisp::UberJob::Ptr const& uberJob, string const& httpUrl,
         function<bool(char const*, uint32_t, bool&)> const& messageIsReady,
@@ -330,6 +331,7 @@ MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std:
 
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << _tableName); }
 
+
 bool MergingHandler::flush(proto::ResponseSummary const& resp) {
     _wName = resp.wname();
 
@@ -381,18 +383,12 @@ void MergingHandler::errorFlush(std::string const& msg, int code) {
     LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
 }
 
-bool MergingHandler::finished() const { return _flushed; }
 
-bool MergingHandler::reset() {
-    // If we've pushed any bits to the merger successfully, we have to undo them
-    // to reset to a fresh state. For now, we will just fail if we've already
-    // begun merging. If we implement the ability to retract a partial result
-    // merge, then we can use it and do something better.
-    if (_flushed) {
-        return false;  // Can't reset if we have already pushed state.
-    }
-    _initState();
-    return true;
+// Note that generally we always have an _infileMerger object except during
+// a unit test. I suppose we could try to figure out how to create one.
+//
+void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
+    if (_infileMerger) _infileMerger->prepScrub(jobId, attemptCount);
 }
 
 std::ostream& MergingHandler::print(std::ostream& os) const {
@@ -504,12 +500,11 @@ tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expe
 
     // This is needed to ensure the job query would be staying alive for the duration
     // of the operation to prevent inconsistency within the application.
-    auto const jobBase = getJobBase().lock();
-    if (jobBase == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobBase was NULL");
+    auto const uberJob = getUberJob().lock();
+    if (uberJob == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, uberJob was NULL");
         return {success, shouldCancel};  // both should still be false
     }
-    auto const uberJob = std::dynamic_pointer_cast<qdisp::UberJob>(jobBase);
 
     LOGS(_log, LOG_LVL_TRACE,
          "MergingHandler::" << __func__ << " uberJob=" << uberJob->getIdStr() << " fileUrl=" << fileUrl);

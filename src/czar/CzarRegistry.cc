@@ -48,7 +48,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarRegistry");
 
 namespace lsst::qserv::czar {
 
-CzarRegistry::CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig) : _czarConfig(czarConfig) {
+CzarRegistry::CzarRegistry(cconfig::CzarConfig::Ptr const& czarConfig,
+                           ActiveWorkerMap::Ptr const& activeWorkerMap)
+        : _czarConfig(czarConfig), _activeWorkerMap(activeWorkerMap) {
     // Begin periodically updating worker's status in the Replication System's registry.
     // This will continue until the application gets terminated.
     thread registryUpdateThread(&CzarRegistry::_registryUpdateLoop, this);
@@ -66,6 +68,11 @@ CzarRegistry::~CzarRegistry() {
     if (_czarWorkerInfoThrd.joinable()) {
         _czarWorkerInfoThrd.join();
     }
+}
+
+protojson::WorkerContactInfo::WCMapPtr CzarRegistry::getWorkerContactMap() const {
+    lock_guard lockG(_cmapMtx);
+    return _contactMap;
 }
 
 void CzarRegistry::_registryUpdateLoop() {
@@ -103,6 +110,10 @@ void CzarRegistry::_registryUpdateLoop() {
 
 void CzarRegistry::_registryWorkerInfoLoop() {
     // Get worker information from the registry
+    string const replicationInstanceId = _czarConfig->replicationInstanceId();
+    string const replicationAuthKey = _czarConfig->replicationAuthKey();
+    uint64_t const czarStartTime = Czar::czarStartupTime;
+
     vector<string> const headers;
     auto const method = http::Method::GET;
     string const url = "http://" + _czarConfig->replicationRegistryHost() + ":" +
@@ -119,13 +130,18 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                 LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
                 // TODO: Is there a better thing to do than just log this here?
             } else {
-                WorkerContactMapPtr wMap = _buildMapFromJson(response);
-                // Compare the new map to the existing map and replace if different.
+                protojson::WorkerContactInfo::WCMapPtr wMap = _buildMapFromJson(response);
+                // Update the values in the map
                 {
-                    lock_guard<mutex> lck(_mapMtx);
-                    if (wMap != nullptr && !_compareMap(*wMap)) {
+                    auto czInfo = protojson::CzarContactInfo::create(
+                            _czarConfig->name(), _czarConfig->id(), _czarConfig->replicationHttpPort(),
+                            util::get_current_host_fqdn(), czarStartTime);
+                    lock_guard lck(_cmapMtx);
+                    if (wMap != nullptr) {
                         _contactMap = wMap;
-                        _latestUpdate = CLOCK::now();
+                        _latestMapUpdate = CLOCK::now();
+                        _activeWorkerMap->updateMap(*_contactMap, czInfo, replicationInstanceId,
+                                                    replicationAuthKey);
                     }
                 }
             }
@@ -137,25 +153,22 @@ void CzarRegistry::_registryWorkerInfoLoop() {
     }
 }
 
-CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {
+protojson::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {
     auto const& jsServices = response.at("services");
     auto const& jsWorkers = jsServices.at("workers");
-    auto wMap = WorkerContactMapPtr(new WorkerContactMap());
+    auto wMap = protojson::WorkerContactInfo::WCMapPtr(new protojson::WorkerContactInfo::WCMap());
     for (auto const& [key, value] : jsWorkers.items()) {
         auto const& jsQserv = value.at("qserv");
         LOGS(_log, LOG_LVL_DEBUG, __func__ << " key=" << key << " jsQ=" << jsQserv);
-        string wHost = jsQserv.at("host-addr").get<string>();
-        string wManagementHost = jsQserv.at("management-host-name").get<string>();
-        int wPort = jsQserv.at("management-port").get<int>();
-        uint64_t updateTimeInt = jsQserv.at("update-time-ms").get<uint64_t>();
-        TIMEPOINT updateTime = TIMEPOINT(chrono::milliseconds(updateTimeInt));
-        auto wInfo = make_shared<WorkerContactInfo>(key, wHost, wManagementHost, wPort, updateTime);
-        LOGS(_log, LOG_LVL_DEBUG,
-             __func__ << " wHost=" << wHost << " wPort=" << wPort << " updateTime=" << updateTimeInt);
+
+        // The names for items here are different than the names used by workers.
+        auto wInfo = protojson::WorkerContactInfo::createFromJsonRegistry(key, jsQserv);
+
+        LOGS(_log, LOG_LVL_DEBUG, __func__ << " wInfot=" << wInfo->dump());
         auto iter = wMap->find(key);
         if (iter != wMap->end()) {
             LOGS(_log, LOG_LVL_ERROR, __func__ << " duplicate key " << key << " in " << response);
-            if (!wInfo->sameContactInfo(*(iter->second))) {
+            if (!wInfo->isSameContactInfo(*(iter->second))) {
                 LOGS(_log, LOG_LVL_ERROR, __func__ << " incongruent key " << key << " in " << response);
                 return nullptr;
             }
@@ -167,7 +180,8 @@ CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
     return wMap;
 }
 
-bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
+bool CzarRegistry::_compareMapContactInfo(protojson::WorkerContactInfo::WCMap const& other) const {
+    VMUTEX_HELD(_cmapMtx);
     if (_contactMap == nullptr) {
         // If _contactMap is null, it needs to be replaced.
         return false;
@@ -180,7 +194,7 @@ bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
         if (iter == other.end()) {
             return false;
         } else {
-            if (!(iter->second->sameContactInfo(*wInfo))) {
+            if (!(iter->second->isSameContactInfo(*wInfo))) {
                 return false;
             }
         }
@@ -188,11 +202,37 @@ bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
     return true;
 }
 
-string CzarRegistry::WorkerContactInfo::dump() const {
-    stringstream os;
-    os << "workerContactInfo{"
-       << "id=" << wId << " host=" << wHost << " mgHost=" << wManagementHost << " port=" << wPort << "}";
-    return os.str();
+protojson::WorkerContactInfo::WCMapPtr CzarRegistry::waitForWorkerContactMap() const {
+    protojson::WorkerContactInfo::WCMapPtr contMap = nullptr;
+    while (contMap == nullptr) {
+        {
+            lock_guard lockG(_cmapMtx);
+            contMap = _contactMap;
+        }
+        if (contMap == nullptr) {
+            // This should only ever happen at startup if there's trouble getting data.
+            LOGS(_log, LOG_LVL_WARN, "waitForWorkerContactMap() _contactMap unavailable waiting for info");
+            this_thread::sleep_for(1s);
+        }
+    }
+    return contMap;
+}
+
+void CzarRegistry::sendActiveWorkersMessages() {
+    // Send messages to each active worker as needed
+    _activeWorkerMap->sendActiveWorkersMessages();
+}
+
+void CzarRegistry::endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults) {
+    // Add query id to the appropriate list.
+    if (deleteWorkerResults) {
+        _activeWorkerMap->addToDoneDeleteFiles(qId);
+    } else {
+        _activeWorkerMap->addToDoneKeepFiles(qId);
+    }
+
+    // With lists updated, send out messages.
+    _activeWorkerMap->sendActiveWorkersMessages();
 }
 
 }  // namespace lsst::qserv::czar
