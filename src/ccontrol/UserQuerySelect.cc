@@ -71,7 +71,6 @@
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
 
-#include "qdisp/QdispPool.h"
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -86,7 +85,6 @@
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
-#include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
 #include "qmeta/MessageStore.h"
@@ -95,7 +93,6 @@
 #include "qproc/geomAdapter.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
-#include "qproc/TaskMsgFactory.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/JoinRef.h"
@@ -108,8 +105,9 @@
 #include "sql/Schema.h"
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
+#include "util/Histogram.h"  //&&&
+#include "util/QdispPool.h"
 #include "util/ThreadPriority.h"
-#include "xrdreq/QueryManagementAction.h"
 #include "qdisp/UberJob.h"
 
 namespace {
@@ -119,15 +117,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
 using namespace std;
 
 namespace lsst::qserv {
-
-/// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
-/// debugging purposes
-class ProtoPrinter {
-public:
-    ProtoPrinter() {}
-    virtual void operator()(std::shared_ptr<proto::TaskMsg> m) { std::cout << "Got taskmsg ok"; }
-    virtual ~ProtoPrinter() {}
-};
 
 ////////////////////////////////////////////////////////////////////////
 // UserQuerySelect implementation
@@ -143,7 +132,8 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  std::shared_ptr<qmeta::QStatus> const& queryStatsData,
                                  std::shared_ptr<util::SemaMgr> const& semaMgrConn, qmeta::CzarId czarId,
-                                 std::string const& errorExtra, bool async, std::string const& resultDb)
+                                 std::string const& errorExtra, bool async, std::string const& resultDb,
+                                 int uberJobMaxChunks)
         : _qSession(qs),
           _messageStore(messageStore),
           _executive(executive),
@@ -156,7 +146,8 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
           _qMetaCzarId(czarId),
           _errorExtra(errorExtra),
           _resultDb(resultDb),
-          _async(async) {}
+          _async(async),
+          _uberJobMaxChunks(uberJobMaxChunks) {}
 
 std::string UserQuerySelect::getError() const {
     std::string div = (_errorExtra.size() && _qSession->getError().size()) ? " " : "";
@@ -249,7 +240,6 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
     assert(_infileMerger);
 
-    auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>();
     _ttn = std::make_shared<TmpTableName>(_qMetaQueryId, _qSession->getOriginal());
     std::vector<int> chunks;
     std::mutex chunksMtx;
@@ -270,6 +260,7 @@ void UserQuerySelect::submit() {
     }
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
+    _executive->setScanInfo(_qSession->getScanInfo());
 
     string dbName("");
     bool dbNameSet = false;
@@ -281,10 +272,14 @@ void UserQuerySelect::submit() {
         // Make the JobQuery now
         QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
 
+        // TODO:UJ The template(s) is generated here and later it is compared to other
+        //         templates. It would be better to create the list of query templates here
+        //         and just store the index into the list of templates in the `cs`.
         qproc::ChunkQuerySpec::Ptr cs;
         {
             std::lock_guard<std::mutex> lock(chunksMtx);
-            cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
+            bool fillInChunkIdTag = false;  // do not fill in the chunkId
+            cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
             chunks.push_back(cs->chunkId);
         }
         std::string chunkResultName = _ttn->make(cs->chunkId);
@@ -303,19 +298,8 @@ void UserQuerySelect::submit() {
         ru.setAsDbChunk(cs->db, cs->chunkId);
         qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
                 _qMetaCzarId, _executive->getId(), sequence, ru,
-                std::make_shared<MergingHandler>(_infileMerger, chunkResultName), taskMsgFactory, cs,
-                chunkResultName);
+                std::make_shared<MergingHandler>(_infileMerger, chunkResultName), cs, chunkResultName);
         auto job = _executive->add(jobDesc);
-
-        if (!uberJobsEnabled) {
-            // references in captures cause races
-            auto funcBuildJob = [this, job{move(job)}](util::CmdData*) {
-                QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
-                _executive->runJobQuery(job);
-            };
-            auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
-            _executive->queueJobStart(cmd);
-        }
         ++sequence;
     }
 
@@ -324,16 +308,9 @@ void UserQuerySelect::submit() {
     }
 
     /// At this point the executive has a map of all jobs with the chunkIds as the key.
-    if (uberJobsEnabled) {
-        // TODO:UJ _maxCHunksPerUberJob maybe put in config??? or set on command line??
-        //         Different queries may benefit from different values
-        //         Such as LIMIT=1 may work best with this at 1, where
-        //         100 would be better for others.
-        _maxChunksPerUberJob = 2;
-        // This is needed to prevent Czar::_monitor from starting things before they are ready.
-        _executive->setReadyToExecute();
-        buildAndSendUberJobs();
-    }
+    // This is needed to prevent Czar::_monitor from starting things before they are ready.
+    _executive->setReadyToExecute();
+    buildAndSendUberJobs();
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     // TODO:UJ Waiting for all jobs to start may not be needed anymore?
@@ -346,9 +323,12 @@ void UserQuerySelect::submit() {
     }
 }
 
+util::HistogramRolling histoBuildAndS("&&&uj histoBuildAndS", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+
 void UserQuerySelect::buildAndSendUberJobs() {
+    // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " start");
+    LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
     if (!_executive->isReadyToExecute()) {
@@ -358,16 +338,22 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     // Only one thread should be generating UberJobs for this user query at any given time.
     lock_guard fcLock(_buildUberJobMtx);
-    bool const clearFlag = false;
-    _executive->setFlagFailedUberJob(clearFlag);
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << _executive->getTotalJobs());
 
     vector<qdisp::UberJob::Ptr> uberJobs;
 
+    qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = _executive->unassignedChunksInQuery();
+    if (unassignedChunksInQuery.empty()) {
+        LOGS(_log, LOG_LVL_DEBUG, funcN << " no unassigned Jobs");
+        return;
+    }
+
+    // Get czar info and the worker contactMap.
     auto czarPtr = czar::Czar::getCzar();
     auto czFamilyMap = czarPtr->getCzarFamilyMap();
     auto czChunkMap = czFamilyMap->getChunkMap(_queryDbName);
     auto czRegistry = czarPtr->getCzarRegistry();
+    auto const wContactMap = czRegistry->waitForWorkerContactMap();
 
     if (czChunkMap == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, funcN << " no map found for queryDbName=" << _queryDbName);
@@ -378,9 +364,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();
     // Make a map of all jobs in the executive.
-    // TODO:UJ Maybe a check should be made that all datbases are in the same family?
-
-    qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = _executive->unassignedChunksInQuery();
+    // TODO:UJ Maybe a check should be made that all databases are in the same family?
 
     // keep cycling through workers until no more chunks to place.
     //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
@@ -394,72 +378,111 @@ void UserQuerySelect::buildAndSendUberJobs() {
     //  - For failures - If a worker cannot be contacted, that's an uberjob failure.
     //      - uberjob failures (due to communications problems) will result in the uberjob
     //        being broken up into multiple UberJobs going to different workers.
-    //        - The best way to do this is probably to just kill the UberJob and mark all
-    //          Jobs that were in that UberJob as needing re-assignment, and re-running
-    //          the code here. The trick is going to be figuring out which workers are alive.
-    //          Maybe force a fresh lookup from the replicator Registry when an UberJob fails.
-    map<string, vector<qdisp::UberJob::Ptr>> workerJobMap;
+    //        - If an UberJob fails, the UberJob is killed and all the Jobs it contained
+    //          are flagged as needing re-assignment and this function will be called
+    //          again to put those Jobs in new UberJobs. Correctly re-assigning the
+    //          Jobs requires accurate information from the registry about which workers
+    //          are alive or dead.
+    struct WInfoAndUJPtr {
+        using Ptr = shared_ptr<WInfoAndUJPtr>;
+        qdisp::UberJob::Ptr uberJobPtr;
+        protojson::WorkerContactInfo::Ptr wInf;
+    };
+    map<string, WInfoAndUJPtr::Ptr> workerJobMap;
     vector<qdisp::Executive::ChunkIdType> missingChunks;
 
+    auto startassign = CLOCK::now();  //&&&
     // unassignedChunksInQuery needs to be in numerical order so that UberJobs contain chunk numbers in
-    // numerical order. The workers run shared scans in numerical order of chunk id numbers.
-    // This keeps the number of partially complete UberJobs running on a worker to a minimum,
+    // numerical order. The workers run shared scans in numerical order of chunkId numbers.
+    // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
     // and should minimize the time for the first UberJob on the worker to complete.
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
+
+        bool const increaseAttemptCount = true;
+        jqPtr->getDescription()->incrAttemptCount(_executive, increaseAttemptCount);
+
+        // If too many workers are down, there will be a chunk that cannot be found.
+        // Just continuing should leave jobs `unassigned` with their attempt count
+        // increased. Either the chunk will be found and jobs assigned, or the jobs'
+        // attempt count will reach max and the query will be cancelled
+        auto lambdaMissingChunk = [&](string const& msg) {
+            missingChunks.push_back(chunkId);
+            //&&&bool const increaseAttemptCount = true;
+            //&&&jqPtr->getDescription()->incrAttemptCountScrubResultsJson(_executive, increaseAttemptCount);
+            LOGS(_log, LOG_LVL_ERROR, msg);
+        };
+
         auto iter = chunkMapPtr->find(chunkId);
         if (iter == chunkMapPtr->end()) {
-            missingChunks.push_back(chunkId);
-            bool const increaseAttemptCount = true;
-            jqPtr->getDescription()->incrAttemptCountScrubResultsJson(_executive, increaseAttemptCount);
-            // Assign as many jobs as possible. Any chunks not found will be attempted later.
+            lambdaMissingChunk(funcN + " No chunkData for=" + to_string(chunkId));
             continue;
         }
         czar::CzarChunkMap::ChunkData::Ptr chunkData = iter->second;
         auto targetWorker = chunkData->getPrimaryScanWorker().lock();
-        // TODO:UJ maybe  if (targetWorker == nullptr || this worker already tried for this chunk) {
-        if (targetWorker == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, funcN << " No primary scan worker for chunk=" << chunkData->dump());
+        // TODO:UJ maybe  if (targetWorker == nullptr || ... ||  this worker already tried for this chunk) {
+        if (targetWorker == nullptr || targetWorker->isDead()) {
+            LOGS(_log, LOG_LVL_WARN,
+                 funcN << " No primary scan worker for chunk=" + chunkData->dump()
+                       << ((targetWorker == nullptr) ? " targ was null" : " targ was dead"));
             // Try to assign a different worker to this job
             auto workerHasThisChunkMap = chunkData->getWorkerHasThisMapCopy();
             bool found = false;
             for (auto wIter = workerHasThisChunkMap.begin(); wIter != workerHasThisChunkMap.end() && !found;
                  ++wIter) {
                 auto maybeTarg = wIter->second.lock();
-                if (maybeTarg != nullptr) {
+                if (maybeTarg != nullptr && !maybeTarg->isDead()) {
                     targetWorker = maybeTarg;
                     found = true;
                     LOGS(_log, LOG_LVL_WARN,
-                         funcN << " Alternate worker found for chunk=" << chunkData->dump());
+                         funcN << " Alternate worker=" << targetWorker->getWorkerId()
+                               << " found for chunk=" << chunkData->dump());
                 }
             }
             if (!found) {
-                // If too many workers are down, there will be a chunk that cannot be found.
-                // Just continuing should leave jobs `unassigned` with their attempt count
-                // increased. Either the chunk will be found and jobs assigned, or the jobs'
-                // attempt count will reach max and the query will be cancelled
-                // TODO:UJ Needs testing/verification
-                LOGS(_log, LOG_LVL_ERROR,
-                     funcN << " No primary or alternate worker found for chunk=" << chunkData->dump());
+                lambdaMissingChunk(funcN +
+                                   " No primary or alternate worker found for chunk=" + chunkData->dump());
                 continue;
             }
         }
         // Add this job to the appropriate UberJob, making the UberJob if needed.
         string workerId = targetWorker->getWorkerId();
-        auto& ujVect = workerJobMap[workerId];
-        if (ujVect.empty() || ujVect.back()->getJobCount() >= _maxChunksPerUberJob) {
+        WInfoAndUJPtr::Ptr& wInfUJ = workerJobMap[workerId];
+        if (wInfUJ == nullptr) {
+            wInfUJ = make_shared<WInfoAndUJPtr>();
+            auto iter = wContactMap->find(workerId);
+            if (iter == wContactMap->end()) {
+                // TODO:UJ Not appropriate to throw for this. Need to re-direct all jobs to different workers.
+                //         Also, this really shouldn't happen, but crashing the czar is probably a bad idea,
+                //         so maybe return internal error to the user?
+                throw util::Bug(ERR_LOC, funcN + " TODO:UJ no contact information for " + workerId);
+            }
+            wInfUJ->wInf = iter->second;
+        }
+
+        if (wInfUJ->uberJobPtr == nullptr) {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
             auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
             auto uJob = qdisp::UberJob::create(_executive, respHandler, _executive->getId(), ujId,
                                                _qMetaCzarId, targetWorker);
-            ujVect.push_back(uJob);
+            uJob->setWorkerContactInfo(wInfUJ->wInf);
+            wInfUJ->uberJobPtr = uJob;
+        };
+
+        wInfUJ->uberJobPtr->addJob(jqPtr);
+
+        if (wInfUJ->uberJobPtr->getJobCount() >= _uberJobMaxChunks) {
+            // Queue the UberJob to be sent to a worker
+            _executive->addAndQueueUberJob(wInfUJ->uberJobPtr);
+
+            // Clear the pinter so a new UberJob is created later if needed.
+            wInfUJ->uberJobPtr = nullptr;
         }
-        auto& ujVectBack = ujVect.back();
-        ujVectBack->addJob(jqPtr);
-        LOGS(_log, LOG_LVL_DEBUG,
-             funcN << " ujVectBack{" << ujVectBack->getIdStr() << " jobCnt=" << ujVectBack->getJobCount()
-                   << "}");
     }
+    auto endassign = CLOCK::now();                                       //&&&
+    std::chrono::duration<double> secsassign = endassign - startassign;  // &&&
+    histoBuildAndS.addEntry(endassign, secsassign.count());              //&&&
+    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoBuildAndS.getString(""));
 
     if (!missingChunks.empty()) {
         string errStr = funcN + " a worker could not be found for these chunks ";
@@ -468,31 +491,19 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         errStr += " they will be retried later.";
         LOGS(_log, LOG_LVL_ERROR, errStr);
-        // There are likely to be unassigned jobs, so set a flag to try to make
-        // new uber jobs for these jobs.
-        _executive->setFlagFailedUberJob(true);
     }
 
-    // Add worker contact info to UberJobs.
-    auto const wContactMap = czRegistry->getWorkerContactMap();
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
-    for (auto const& [wIdKey, ujVect] : workerJobMap) {
-        auto iter = wContactMap->find(wIdKey);
-        if (iter == wContactMap->end()) {
-            // TODO:UJ Not appropriate to throw for this. Need to re-direct all jobs to different workers.
-            //         Also, this really shouldn't happen, but crashing the czar is probably a bad idea,
-            //         so maybe return internal error to the user?
-            throw util::Bug(ERR_LOC, funcN + " TODO:UJ no contact information for " + wIdKey);
-        }
-        auto const& wContactInfo = iter->second;
-        for (auto const& ujPtr : ujVect) {
-            ujPtr->setWorkerContactInfo(wContactInfo);
-        }
-        _executive->addUberJobs(ujVect);
-        for (auto const& ujPtr : ujVect) {
-            _executive->runUberJob(ujPtr);
+    // Queue unqued UberJobs, these have less than the max number of jobs.
+    for (auto const& [wIdKey, winfUjPtr] : workerJobMap) {
+        if (winfUjPtr != nullptr) {
+            auto& ujPtr = winfUjPtr->uberJobPtr;
+            if (ujPtr != nullptr) {
+                _executive->addAndQueueUberJob(ujPtr);
+            }
         }
     }
+
+    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
 }
 
 /// Block until a submit()'ed query completes.
@@ -526,33 +537,25 @@ QueryState UserQuerySelect::join() {
     // finalRows < 0 indicates there was no postprocessing, so collected rows and final rows should be the
     // same.
     if (finalRows < 0) finalRows = collectedRows;
-    // Notify workers on the query completion/cancellation to ensure
-    // resources are properly cleaned over there as well.
-    proto::QueryManagement::Operation operation = proto::QueryManagement::COMPLETE;
+
     QueryState state = SUCCESS;
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes, finalRows);
-        LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
+        LOGS(_log, LOG_LVL_INFO, "Joined everything (success) QID=" << getQueryId());
     } else if (_killed) {
         // status is already set to ABORTED
-        LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed)");
-        operation = proto::QueryManagement::CANCEL;
+        LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed) QID=" << getQueryId());
         state = ERROR;
     } else {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED, collectedRows, collectedBytes, finalRows);
-        LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
-        operation = proto::QueryManagement::CANCEL;
+        LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!) QID=" << getQueryId());
         state = ERROR;
     }
     auto const czarConfig = cconfig::CzarConfig::instance();
-    if (czarConfig->notifyWorkersOnQueryFinish()) {
-        try {
-            xrdreq::QueryManagementAction::notifyAllWorkers(czarConfig->getXrootdFrontendUrl(), operation,
-                                                            _qMetaCzarId, _qMetaQueryId);
-        } catch (std::exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, ex.what());
-        }
-    }
+
+    // Notify workers on the query completion/cancellation to ensure
+    // resources are properly cleaned over there as well.
+    czar::Czar::getCzar()->getActiveWorkerMap()->addToDoneDeleteFiles(_executive->getId());
     return state;
 }
 

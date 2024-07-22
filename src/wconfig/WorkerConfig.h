@@ -159,9 +159,6 @@ public:
         return _ReservedInteractiveSqlConnections->getVal();
     }
 
-    /// @return the maximum number of gigabytes that can be used by StreamBuffers
-    unsigned int getBufferMaxTotalGB() const { return _bufferMaxTotalGB->getVal(); }
-
     /// @return the maximum number of concurrent transmits to a czar
     unsigned int getMaxTransmits() const { return _maxTransmits->getVal(); }
 
@@ -172,6 +169,29 @@ public:
 
     /// @return the port number of the worker XROOTD service for serving result files
     uint16_t resultsXrootdPort() const { return _resultsXrootdPort->getVal(); }
+
+    /// The size
+    int getQPoolSize() const { return _qPoolSize->getVal(); }
+
+    /// The highest priority number, such as 2, which results
+    /// in queues for priorities 0, 1, 2, and 100; where 0 is the
+    /// highest priority.
+    /// @see util::QdispPool
+    int getQPoolMaxPriority() const { return _qPoolMaxPriority->getVal(); }
+
+    /// The maximum number of running threads at each priority,
+    /// "30:20:20:10" with _qPoolMaxPriority=2 allows 30 threads
+    /// at priority 0, 20 threads at priorities 1+2, and 10 threads
+    /// at priority 100.
+    /// @see util::QdispPool
+    std::string getQPoolRunSizes() const { return _qPoolRunSizes->getVal(); }
+
+    /// The minimum number of running threads per priority,
+    /// "3:3:3:3" with _qPoolMaxPriority=2 means that a thread at priority
+    /// 0 would not start if it meant that there would not be enough threads
+    /// left to have running for each of priorities 1, 2, and 100.
+    /// @see util::QdispPool
+    std::string getQPoolMinRunningSizes() const { return _qPoolMinRunningSizes->getVal(); }
 
     /// @return the number of the BOOST ASIO threads for servicing HTGTP requests
     size_t resultsNumHttpThreads() const { return _resultsNumHttpThreads->getVal(); }
@@ -306,8 +326,6 @@ private:
             util::ConfigValTUInt::create(_configValMap, "sqlconnections", "maxsqlconn", notReq, 800);
     CVTUIntPtr _ReservedInteractiveSqlConnections = util::ConfigValTUInt::create(
             _configValMap, "sqlconnections", "reservedinteractivesqlconn", notReq, 50);
-    CVTUIntPtr _bufferMaxTotalGB =
-            util::ConfigValTUInt::create(_configValMap, "transmit", "buffermaxtotalgb", notReq, 41);
     CVTUIntPtr _maxTransmits =
             util::ConfigValTUInt::create(_configValMap, "transmit", "maxtransmits", notReq, 40);
     CVTIntPtr _maxPerQid = util::ConfigValTInt::create(_configValMap, "transmit", "maxperqid", notReq, 3);
@@ -346,6 +364,14 @@ private:
     CVTStrPtr _mysqlHostname =
             util::ConfigValTStr::create(_configValMap, "mysql", "hostname", required, "none");
     CVTStrPtr _mysqlDb = util::ConfigValTStr::create(_configValMap, "mysql", "db", notReq, "");
+
+    CVTIntPtr _qPoolSize = util::ConfigValTInt::create(_configValMap, "qpool", "Size", notReq, 50);
+    CVTIntPtr _qPoolMaxPriority =
+            util::ConfigValTInt::create(_configValMap, "qpool", "MaxPriority", notReq, 2);
+    CVTStrPtr _qPoolRunSizes =
+            util::ConfigValTStr::create(_configValMap, "qpool", "RunSizes", notReq, "30:20:20:10");
+    CVTStrPtr _qPoolMinRunningSizes =
+            util::ConfigValTStr::create(_configValMap, "qpool", "MinRunningSizes", notReq, "3:3:3:3");
 };
 
 }  // namespace lsst::qserv::wconfig

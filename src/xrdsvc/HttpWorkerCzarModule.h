@@ -81,6 +81,14 @@ private:
     /// Handle an UberJob message from the czar to run it on this worker, this does
     /// work of deciphering the message, creating UberJobData objects and Task objects.
     nlohmann::json _handleQueryJob(std::string const& func);
+
+    /// Verify some aspects of the query and call _handleQueryStatus
+    nlohmann::json _queryStatus();
+
+    /// Reconstruct the message, absorb the lists into this worker's state,
+    /// queue the ComIssue message and needed, and send the lists back to
+    /// the czar.
+    nlohmann::json _handleQueryStatus(std::string const& func);
 };
 
 }  // namespace lsst::qserv::xrdsvc

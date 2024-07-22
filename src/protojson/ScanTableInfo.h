@@ -21,17 +21,18 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_PROTO_SCANTABLEINFO_H
-#define LSST_QSERV_PROTO_SCANTABLEINFO_H
+#ifndef LSST_QSERV_PROTOJSON_SCANTABLEINFO_H
+#define LSST_QSERV_PROTOJSON_SCANTABLEINFO_H
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
 
-// Qserv headers
-#include "proto/worker.pb.h"
+// Third party headers
+#include "nlohmann/json.hpp"
 
-namespace lsst::qserv::proto {
+namespace lsst::qserv::protojson {
 
 /// Structure to store shared scan information for a single table.
 ///
@@ -42,21 +43,8 @@ struct ScanTableInfo {
     ScanTableInfo(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
     ScanTableInfo(std::string const& db_, std::string const& table_, bool lockInMemory_, int scanRating_)
             : db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanRating{scanRating_} {}
-    ScanTableInfo(TaskMsg_ScanTable const& scanTbl)
-            : db{scanTbl.db()},
-              table{scanTbl.table()},
-              lockInMemory{scanTbl.lockinmemory()},
-              scanRating{scanTbl.scanrating()} {}
 
     ScanTableInfo(ScanTableInfo const&) = default;
-
-    /// Copy contents of this object into a TaskMsg_ScanTable object.
-    void copyToScanTable(TaskMsg_ScanTable* msgScanTbl) const {
-        msgScanTbl->set_db(db);
-        msgScanTbl->set_table(table);
-        msgScanTbl->set_lockinmemory(lockInMemory);
-        msgScanTbl->set_scanrating(scanRating);
-    }
 
     int compare(ScanTableInfo const& rhs) const;
 
@@ -66,12 +54,24 @@ struct ScanTableInfo {
     int scanRating{0};
 };
 
-struct ScanInfo {
+/// This class stores information about database table ratings for
+/// a user query.
+class ScanInfo {
+public:
+    using Ptr = std::shared_ptr<ScanInfo>;
+
     /// Threshold priority values. Scan priorities are not limited to these values.
     enum Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
 
     ScanInfo() = default;
     ScanInfo(ScanInfo const&) = default;
+
+    static Ptr create() { return Ptr(new ScanInfo()); }
+
+    static Ptr createFromJson(nlohmann::json const& ujJson);
+
+    /// Return a json version of the contents of this class.
+    nlohmann::json serializeJson() const;
 
     void sortTablesSlowestFirst();
     int compareTables(ScanInfo const& rhs);
@@ -83,6 +83,6 @@ struct ScanInfo {
 std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl);
 std::ostream& operator<<(std::ostream& os, ScanInfo const& info);
 
-}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::protojson
 
-#endif  // LSST_QSERV_PROTO_SCANTABLEINFO_H
+#endif  // LSST_QSERV_PROTOJSON_SCANTABLEINFO_H

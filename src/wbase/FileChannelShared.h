@@ -139,7 +139,9 @@ public:
     int getTaskCount() const { return _taskCount; }
 
     /// @return true if this is the last task to call this
-    bool transmitTaskLast();
+    /// @param rowLimitComplete - true means enough rows for the result are
+    ///       already in the file, so other tasks can be ignored.
+    bool transmitTaskLast(bool rowLimitComplete);
 
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
@@ -169,7 +171,12 @@ public:
     bool kill(std::string const& note);
 
     /// @see wbase::SendChannel::isDead
-    bool isDead();
+    bool isDead() const;
+
+    /// Return true if there are enough rows in this result file to satisfy the
+    ///    LIMIT portion of the query.
+    /// @See _rowLimitComplete
+    bool isRowLimitComplete() const;
 
 private:
     /// TODO:UJ delete sendchannel version of constructor when possible.
@@ -233,17 +240,18 @@ private:
      * @param task - a task that produced the result set
      * @param cancelled - request cancellaton flag (if any)
      * @param multiErr - a collector of any errors that were captured during result set processing
+     * @param mustSend - set to true if this message should be sent even if the query was cancelled.
      * @return 'true' if the operation was successfull
      */
     bool _sendResponse(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
-                       bool cancelled, util::MultiError const& multiErr);
+                       bool cancelled, util::MultiError const& multiErr, bool mustSend = false);
 
     mutable std::mutex _tMtx;  ///< Protects data recording and Czar notification
 
     bool _isUberJob;  ///< true if this is using UberJob http. To be removed when _sendChannel goes away.
 
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
-    std::weak_ptr<UberJobData> _uberJobData;                 ///< Pointer to UberJobData
+    std::shared_ptr<UberJobData> _uberJobData;               ///< Contains czar contact info.
 
     UberJobId const _uberJobId;       ///< The UberJobId
     qmeta::CzarId const _czarId;      ///< id of the czar that requested this task(s). TODO:UJ delete
@@ -287,11 +295,15 @@ private:
     // Counters reported to Czar in the only ("summary") message sent upon the completion
     // of all tasks of a query.
 
-    uint32_t _rowcount = 0;      ///< The total numnber of rows in all result sets of a query.
+    int64_t _rowcount = 0;       ///< The total numnber of rows in all result sets of a query.
     uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
     uint64_t _headerCount = 0;   ///< Count of headers received.
 
-    bool const _useHttp = false;     ///< to be eliminated when xrootd is no longer used.
+    /// _rowLimitComplete indicates that there is a LIMIT clause in the user query that
+    /// can be applied to the queries given to workers. It's important to apply it
+    /// when possible as an UberJob could have 1000 chunks and a LIMIT of 1, and it's
+    /// much faster to answer the query without scanning all 1000 chunks.
+    std::atomic<bool> _rowLimitComplete;
     std::atomic<bool> _dead{false};  ///< Set to true when the contents of the file are no longer useful.
 };
 

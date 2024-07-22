@@ -46,7 +46,6 @@
 #include "util/ResultFileNameParser.h"
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
-#include "xrdsvc/StreamBuffer.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -299,8 +298,7 @@ FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& 
           _czarPort(czarPort),
           _workerId(workerId),
           _protobufArena(make_unique<google::protobuf::Arena>()),
-          _scsId(scsSeqId++),
-          _useHttp(true) {
+          _scsId(scsSeqId++) {
     LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created scsId=" << _scsId << " ujId=" << _uberJobId);
 }
 
@@ -310,25 +308,34 @@ FileChannelShared::~FileChannelShared() {
     // dead it means there was a problem to process a query or send back a response
     // to Czar. In either case, the file would be useless and it has to be deleted
     // in order to avoid leaving unclaimed result files within the results folder.
-    if (isDead()) {
+    //
+    // _rowLimitComplete confuses things as it can cause other Tasks using this
+    // file to be cancelled, but the file should not be deleted until collected.
+    // In any case, the WorkerQueryStatusData message from the czar will delete
+    // the file when the user query completes.
+    if (isDead() && !_rowLimitComplete) {
         _removeFile(lock_guard<mutex>(_tMtx));
-    }
-    if (!_useHttp) {
-        if (_sendChannel != nullptr) {
-            _sendChannel->setDestroying();
-            if (!_sendChannel->isDead()) {
-                _sendChannel->kill("~FileChannelShared()");
-            }
-        }
     }
     LOGS(_log, LOG_LVL_DEBUG, "~FileChannelShared end");
 }
 
 void FileChannelShared::setTaskCount(int taskCount) { _taskCount = taskCount; }
 
-bool FileChannelShared::transmitTaskLast() {
+bool FileChannelShared::transmitTaskLast(bool rowLimitComplete) {
     lock_guard<mutex> const streamMutexLock(_streamMutex);
     ++_lastCount;
+    if (rowLimitComplete) {
+        // There are enough rows in the file so other tasks can be ignored.
+        if (_rowLimitComplete.exchange(true) == false) {
+            // This is TaskLast.
+            return true;
+        } else {
+            // A different task set _rowLimitComplete before
+            // this one. Since there can be only one TaskLast,
+            // it is not this one.
+            return false;
+        }
+    }
     bool lastTaskDone = _lastCount >= _taskCount;
     return lastTaskDone;
 }
@@ -338,41 +345,29 @@ bool FileChannelShared::kill(string const& note) {
     return _kill(streamMutexLock, note);
 }
 
-bool FileChannelShared::isDead() {
-    if (!_useHttp) {
-        if (_sendChannel == nullptr) return true;
-        return _sendChannel->isDead();
-    } else {
-        return _dead;
-    }
-}
+bool FileChannelShared::isDead() const { return _dead; }
 
 string FileChannelShared::makeIdStr(int qId, int jId) {
     string str("QID" + (qId == 0 ? "" : to_string(qId) + "#" + to_string(jId)));
     return str;
 }
 
+bool FileChannelShared::isRowLimitComplete() const {
+    lock_guard<mutex> const tMtxLock(_tMtx);
+    return _rowLimitComplete;
+}
+
 bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
     lock_guard<mutex> const tMtxLock(_tMtx);
-    if (!_useHttp) {
-        if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
-            LOGS(_log, LOG_LVL_ERROR, "Could not transmit the error message to Czar.");
-            return false;
-        }
-        return true;
-    } else {
-        auto ujData = _uberJobData.lock();
-        if (ujData == nullptr) {
-            LOGS(_log, LOG_LVL_WARN,
-                 __func__ << " not sending error as ujData is null " << multiErr.toString());
-            return false;
-        }
-        // Delete the result file as nobody will come looking for it.
-        _kill(tMtxLock, " buildAndTransmitError");
-        return ujData->responseError(multiErr, task, cancelled);
+    if (_rowLimitComplete) {
+        LOGS(_log, LOG_LVL_WARN,
+             __func__ << " already enough rows, this call likely a side effect" << task->getIdStr());
+        return false;
     }
-    return false;
+    // Delete the result file as nobody will come looking for it.
+    _kill(tMtxLock, " buildAndTransmitError");
+    return _uberJobData->responseError(multiErr, task, cancelled);
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
@@ -398,6 +393,11 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         // This lock is to protect the stream from having other Tasks mess with it
         // while data is loading.
         lock_guard<mutex> const tMtxLockA(_tMtx);
+        if (_rowLimitComplete) {
+            LOGS(_log, LOG_LVL_DEBUG, __func__ << " already enough rows, returning " << task->getIdStr());
+            // Deleting the file now could be risky.
+            return erred;
+        }
 
         util::Timer bufferFillT;
         bufferFillT.start();
@@ -420,7 +420,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
         int64_t const maxTableSize = task->getMaxTableSize();
         // Fail the operation if the amount of data in the result set exceeds the requested
-        // "large result" limit (in case if the one was specified).
+        // "large result" limit (in case one was specified).
         if (maxTableSize > 0 && bytesTransmitted > maxTableSize) {
             string const err = "The result set size " + to_string(bytesTransmitted) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
@@ -431,18 +431,28 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             break;
         }
 
+        int const ujRowLimit = task->getRowLimit();
+        bool rowLimitComplete = false;
+        if (ujRowLimit > 0 && _rowcount >= ujRowLimit) {
+            // There are enough rows to satisfy the query, so stop reading
+            hasMoreRows = false;
+            rowLimitComplete = true;
+            LOGS(_log, LOG_LVL_DEBUG,
+                 __func__ << " enough rows for query rows=" << _rowcount << " " << task->getIdStr());
+        }
+
         // If no more rows are left in the task's result set then we need to check
         // if this is last task in a logical group of ones created for processing
         // the current request (note that certain classes of requests may require
         // more than one task for processing).
-        if (!hasMoreRows && transmitTaskLast()) {
+        if (!hasMoreRows && transmitTaskLast(rowLimitComplete)) {
             // Make sure the file is sync to disk before notifying Czar.
             _file.flush();
             _file.close();
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
-            if (!_sendResponse(tMtxLockA, task, cancelled, multiErr)) {
+            if (!_sendResponse(tMtxLockA, task, cancelled, multiErr, rowLimitComplete)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
                 break;
@@ -466,7 +476,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     // includes problems encountered while sending a response back to Czar after
     // successfully processing the query and writing all results into the file.
     // The file is not going to be used by Czar in either of these scenarios.
-    if (cancelled || erred || isDead()) {
+    if ((cancelled || erred || isDead()) && !_rowLimitComplete) {
         lock_guard<mutex> const tMtxLockA(_tMtx);
         _removeFile(tMtxLockA);
     }
@@ -475,16 +485,11 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
 bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string const& note) {
     LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared::" << __func__ << " " << note);
-    if (!_useHttp) {
-        return _sendChannel->kill(note);
-    } else {
-        bool oldVal = _dead.exchange(true);
-        if (!oldVal) {
-            LOGS(_log, LOG_LVL_WARN, "FileChannelShared first kill call " << note);
-        }
-        _removeFile(streamMutexLock);
-        return oldVal;
+    bool oldVal = _dead.exchange(true);
+    if (!oldVal) {
+        LOGS(_log, LOG_LVL_WARN, "FileChannelShared first kill call " << note);
     }
+    return oldVal;
 }
 
 bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
@@ -584,7 +589,7 @@ void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
 }
 
 bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
-                                      bool cancelled, util::MultiError const& multiErr) {
+                                      bool cancelled, util::MultiError const& multiErr, bool mustSend) {
     auto const queryId = task->getQueryId();
     auto const jobId = task->getJobId();
     auto const idStr(makeIdStr(queryId, jobId));
@@ -603,99 +608,15 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
 
     QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
     LOGS(_log, LOG_LVL_DEBUG, __func__);
-    if (isDead()) {
+    if (isDead() && !mustSend) {
         LOGS(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");
         return false;
     }
 
     // Prepare the response object and serialize in into a message that will
-    // be sent to Czar.
-    proto::ResponseSummary response;
-    response.set_wname(_workerId);
-    response.set_queryid(queryId);
-    response.set_jobid(jobId);
-    response.set_fileresource_http(task->resultFileHttpUrl());
-    response.set_attemptcount(task->getAttemptCount());
-    response.set_rowcount(_rowcount);
-    response.set_transmitsize(_transmitsize);
-    string errorMsg;
-    int errorCode = 0;
-    if (!multiErr.empty()) {
-        errorMsg = multiErr.toOneLineString();
-        errorCode = multiErr.firstErrorCode();
-    } else if (cancelled) {
-        errorMsg = "cancelled";
-        errorCode = -1;
-    }
-    if (!errorMsg.empty() or (errorCode != 0)) {
-        errorMsg = "FileChannelShared::" + string(__func__) + " error(s) in result for chunk #" +
-                   to_string(task->getChunkId()) + ": " + errorMsg;
-        response.set_errormsg(errorMsg);
-        response.set_errorcode(errorCode);
-        LOGS(_log, LOG_LVL_ERROR, errorMsg);
-    }
-    response.SerializeToString(&_responseBuf);
-
-    LOGS(_log, LOG_LVL_DEBUG,
-         __func__ << " idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size());
-
-    LOGS(_log, LOG_LVL_WARN,
-             __func__ << "&&& idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size() << " useHttp=" << _useHttp);
-    if (!_useHttp) {
-        proto::ResponseSummary response;
-        response.set_wname(_workerId);
-        response.set_queryid(queryId);
-        response.set_jobid(jobId);
-        response.set_fileresource_xroot(task->resultFileXrootUrl());
-        response.set_fileresource_http(task->resultFileHttpUrl());
-        response.set_attemptcount(task->getAttemptCount());
-        response.set_rowcount(_rowcount);
-        response.set_transmitsize(_transmitsize);
-        string errorMsg;
-        int errorCode = 0;
-        if (!multiErr.empty()) {
-            errorMsg = multiErr.toOneLineString();
-            errorCode = multiErr.firstErrorCode();
-        } else if (cancelled) {
-            errorMsg = "cancelled";
-            errorCode = -1;
-        }
-        if (!errorMsg.empty() or (errorCode != 0)) {
-            errorMsg = "FileChannelShared::" + string(__func__) + " error(s) in result for chunk #" +
-                       to_string(task->getChunkId()) + ": " + errorMsg;
-            response.set_errormsg(errorMsg);
-            response.set_errorcode(errorCode);
-            LOGS(_log, LOG_LVL_ERROR, errorMsg);
-        }
-        response.SerializeToString(&_responseBuf);
-
-        LOGS(_log, LOG_LVL_DEBUG,
-             __func__ << " idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size());
-
-        // Send the message sent out-of-band within the SSI metadata.
-        if (!_sendChannel->setMetadata(_responseBuf.data(), _responseBuf.size())) {
-            LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in setMetadata " << idStr);
-            _kill(streamMutexLock, "setMetadata");
-            return false;
-        }
-
-        // Send back the empty object since no info is expected by a caller
-        // for this type of requests beyond the usual error notifications (if any).
-        // Note that this call is needed to initiate the transaction.
-        if (!_sendChannel->sendData((char const*)0, 0)) {
-            LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in sendData " << idStr);
-            _kill(streamMutexLock, "sendData");
-            return false;
-        }
-    } else {
-        auto ujData = _uberJobData.lock();
-        if (ujData == nullptr) {
-            LOGS(_log, LOG_LVL_WARN, __func__ << " uberJobData is nullptr for ujId=" << _uberJobId);
-            return false;
-        }
-        string httpFileUrl = task->resultFileHttpUrl();
-        ujData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
-    }
+    // be sent to the Czar.
+    string httpFileUrl = task->resultFileHttpUrl();
+    _uberJobData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
     return true;
 }
 
