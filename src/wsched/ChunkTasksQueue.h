@@ -82,7 +82,7 @@ public:
                 return false;
             }
             // compare scanInfo (slower scans first)
-            int siComp = x->getScanInfo().compareTables(y->getScanInfo());
+            int siComp = x->getScanInfo()->compareTables(*(y->getScanInfo()));
             return siComp < 0;
         };
         void push(wbase::Task::Ptr const& task);

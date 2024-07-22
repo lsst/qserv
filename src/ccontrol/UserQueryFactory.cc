@@ -68,6 +68,7 @@
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "util/QdispPool.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
@@ -259,7 +260,7 @@ UserQueryFactory::~UserQueryFactory() {
 }
 
 UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::string const& defaultDb,
-                                              qdisp::SharedResources::Ptr const& qdispSharedResources,
+                                              util::QdispPool::Ptr const& qdispPool,
                                               std::string const& userQueryId, std::string const& msgTableName,
                                               std::string const& resultDb) {
     // result location could potentially be specified by SUBMIT command, for now
@@ -364,6 +365,9 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                     std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
             infileMergerConfig->debugNoMerge = _debugNoMerge;
         }
+
+        auto czarConfig = cconfig::CzarConfig::instance();
+        int uberJobMaxChunks = czarConfig->getUberJobMaxChunks();
 
         // This, effectively invalid, UserQuerySelect object should report errors from both `errorExtra`
         // and errors that the QuerySession `qs` has stored internally.
