@@ -6,6 +6,7 @@ target_sources(wcontrol PRIVATE
     ResourceMonitor.cc
     SqlConnMgr.cc
     WorkerStats.cc
+    WCzarInfoMap.cc
 )
 
 install(

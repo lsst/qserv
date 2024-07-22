@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "qdisp/QdispPool.h"
+#include "util/QdispPool.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -32,10 +32,10 @@
 #include "util/common.h"
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QdispPool");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.QdispPool");
 }
 
-namespace lsst::qserv::qdisp {
+namespace lsst::qserv::util {
 
 ///< @Return true if the queue could be added.
 bool PriorityQueue::addPriQueue(int priority, int minRunning, int maxRunning) {
@@ -67,6 +67,10 @@ void PriorityQueue::queCmd(util::Command::Ptr const& cmd) {
 void PriorityQueue::queCmd(PriorityCommand::Ptr const& cmd, int priority) {
     {
         std::lock_guard<std::mutex> lock(_mtx);
+        if (cmd->_queued.exchange(true) == true) {
+            throw util::Bug(ERR_LOC,
+                            "PriorityQueue::queCmd cmd has already been queued and cannot be queued twice.");
+        }
         auto iter = _queues.find(priority);
         if (iter == _queues.end()) {
             // give it the default priority
@@ -162,6 +166,7 @@ void PriorityQueue::_incrDecrRunningCount(util::Command::Ptr const& cmd, int inc
             iter->second->running += incrDecr;
         }
     }
+    _cv.notify_one();
 }
 
 void PriorityQueue::commandStart(util::Command::Ptr const& cmd) {
@@ -260,4 +265,4 @@ QdispPool::QdispPool(bool unitTest) {
     }
 }
 
-}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::util

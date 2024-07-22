@@ -43,6 +43,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 
@@ -780,6 +781,8 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
     // Check if the table needs to be read. Note that the default value of
     // the previous update timestamp always forces an attempt to read the map.
     auto const updateTime = _getChunkMapUpdateTime(lock);
+    LOGS(_log, LOG_LVL_INFO,
+         "QMetaMysql::getChunkMap updateTime=" << util::TimeUtils::timePointToDateTimeString(updateTime));
     bool const force =
             (prevUpdateTime == chrono::time_point<chrono::system_clock>()) || (prevUpdateTime < updateTime);
     if (!force) {
@@ -827,8 +830,9 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string const tableName = "chunkMapStatus";
-    string const query =
-            "SELECT TIME_TO_SEC(`update_time`) FROM `" + tableName + "` ORDER BY `update_time` DESC LIMIT 1";
+    string const query = "SELECT UNIX_TIMESTAMP(`update_time`) FROM `" + tableName +
+                         "` ORDER BY `update_time` DESC LIMIT 1";
+
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (!_conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);
@@ -845,6 +849,7 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
         throw ConsistencyError(ERR_LOC, "Too many rows in result set of query " + query);
     }
     try {
+        LOGS(_log, LOG_LVL_TRACE, "QMetaMysql::_getChunkMapUpdateTime " << updateTime[0]);
         return chrono::time_point<chrono::system_clock>() + chrono::seconds(stol(updateTime[0]));
     } catch (exception const& ex) {
         string const msg = "Failed to parse result set of query " + query + ", ex: " + string(ex.what());
