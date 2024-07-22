@@ -347,6 +347,7 @@ bool FileChannelShared::isRowLimitComplete() const {
     return _rowLimitComplete;
 }
 
+
 void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
     lock_guard<mutex> const tMtxLock(_tMtx);
