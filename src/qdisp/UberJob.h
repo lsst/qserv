@@ -169,6 +169,7 @@ private:
 
     // Contact information for the target worker.
     protojson::WorkerContactInfo::Ptr _wContactInfo;  // TODO:UJ Maybe change to ActiveWorker?
+
 };
 
 }  // namespace lsst::qserv::qdisp
