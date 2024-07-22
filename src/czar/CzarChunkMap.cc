@@ -246,11 +246,29 @@ string CzarChunkMap::WorkerChunksData::dump() const {
     return os.str();
 }
 
+CzarFamilyMap::Ptr CzarFamilyMap::create(std::shared_ptr<qmeta::QMeta> const& qmeta) {
+    // There's nothing the czar can do until with user queries until there's been at least
+    // one successful read of the database family tables, as the czar doesn't know where to find anything.
+    Ptr newPtr = nullptr;
+    while (newPtr == nullptr) {
+        try {
+            newPtr = Ptr(new CzarFamilyMap(qmeta));
+        } catch (ChunkMapException const& exc) {
+            LOGS(_log, LOG_LVL_WARN, "Could not create CzarFamilyMap, sleep and retry " << exc.what());
+        }
+        if (newPtr == nullptr) {
+            this_thread::sleep_for(10s);
+        }
+    }
+
+    return newPtr;
+}
+
 CzarFamilyMap::CzarFamilyMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(qmeta) {
     try {
         auto mapsSet = _read();
         if (!mapsSet) {
-            throw ChunkMapException(ERR_LOC, cName(__func__) + " maps were not set in contructor");
+            throw ChunkMapException(ERR_LOC, cName(__func__) + " maps were not set in constructor");
         }
     } catch (qmeta::QMetaError const& qExc) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not read DB " << qExc.what());
