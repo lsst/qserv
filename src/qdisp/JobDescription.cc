@@ -77,7 +77,6 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
             return false;
         }
     }
-
     if (_attemptCount >= MAX_JOB_ATTEMPTS) {
         LOGS(_log, LOG_LVL_ERROR,
              cName(__func__) << " attemptCount greater than max number of retries " << _attemptCount
