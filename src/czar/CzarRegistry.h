@@ -34,7 +34,9 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "czar/ActiveWorker.h"
 #include "global/clock_defs.h"
+#include "util/Mutex.h"
 
 namespace lsst::qserv::cconfig {
 class CzarConfig;
@@ -60,49 +62,36 @@ public:
     using Ptr = std::shared_ptr<CzarRegistry>;
 
     /// Return a pointer to a new CzarRegistry object.
-    static Ptr create(std::shared_ptr<cconfig::CzarConfig> const& czarConfig) {
-        return Ptr(new CzarRegistry(czarConfig));
+    static Ptr create(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
+                      std::shared_ptr<ActiveWorkerMap> const& activeWorkerMap) {
+        return Ptr(new CzarRegistry(czarConfig, activeWorkerMap));
     }
 
     ~CzarRegistry();
 
-    struct WorkerContactInfo {
-        using Ptr = std::shared_ptr<WorkerContactInfo>;
-
-        WorkerContactInfo(std::string const& wId_, std::string const& wHost_,
-                          std::string const& wManagementHost_, int wPort_, TIMEPOINT updateTime_)
-                : wId(wId_),
-                  wHost(wHost_),
-                  wManagementHost(wManagementHost_),
-                  wPort(wPort_),
-                  updateTime(updateTime_) {}
-        std::string const wId;              ///< key
-        std::string const wHost;            ///< "host-addr" entry.
-        std::string const wManagementHost;  ///< "management-host-name" entry.
-        int const wPort;                    ///< "management-port" entry.
-        TIMEPOINT const updateTime;         ///< "update-time-ms" entry.
-
-        /// Return true if all members, aside from updateTime, are equal.
-        bool sameContactInfo(WorkerContactInfo const& other) const {
-            return (wId == other.wId && wHost == other.wHost && wManagementHost == other.wManagementHost &&
-                    wPort == other.wPort);
-        }
-        std::string dump() const;
-    };
-
-    using WorkerContactMap = std::unordered_map<std::string, WorkerContactInfo::Ptr>;
-    using WorkerContactMapPtr = std::shared_ptr<WorkerContactMap>;
-
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it.
-    WorkerContactMapPtr getWorkerContactMap() {
-        std::lock_guard<std::mutex> lockG(_mapMtx);
-        return _contactMap;
-    }
+    protojson::WorkerContactInfo::WCMapPtr getWorkerContactMap() const;
+
+    /// Return _contactMap, the object that the returned pointer points to is
+    /// constant and no attempts should be made to change it. This
+    /// function will wait forever for a valid contact map to be ready.
+    protojson::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
+
+    /// Send all live workers the `WorkerQueryStatusData` message for
+    /// that worker. This may result in the worker sending back the
+    /// `WorkerCzarComIssue` message if there were communication problems.
+    void sendActiveWorkersMessages();
+
+    /// Add the query id to the list of queries to end on workers and
+    /// send the messages, deleting all result files if
+    /// `deleteWorkerResults` is true.
+    void endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults);
 
 private:
     CzarRegistry() = delete;
-    CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig);
+    CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
+                 std::shared_ptr<ActiveWorkerMap> const& activeWorkerMap);
 
     /// This function will keep periodically updating Czar's info in the Replication System's Registry
     /// until _loop is set to false.
@@ -115,10 +104,11 @@ private:
     void _registryWorkerInfoLoop();
 
     /// Build a new WorkerContactMap from the json `response`
-    WorkerContactMapPtr _buildMapFromJson(nlohmann::json const& response);
+    protojson::WorkerContactInfo::WCMapPtr _buildMapFromJson(nlohmann::json const& response);
 
-    /// Return true if maps are the same size and all of the elements are the same().
-    bool _compareMap(WorkerContactMap const& other) const;
+    /// Return true if maps are the same size and all of the elements have the same contact info.
+    /// NOTE: _cmapMtx must be held when calling.
+    bool _compareMapContactInfo(protojson::WorkerContactInfo::WCMap const& other) const;
 
     std::shared_ptr<cconfig::CzarConfig> const _czarConfig;  ///< Pointer to the CzarConfig.
 
@@ -127,9 +117,13 @@ private:
     std::thread _czarWorkerInfoThrd;  ///< This thread continuously collects worker contact information.
 
     /// Pointer to the map of worker contact information.
-    WorkerContactMapPtr _contactMap;
-    TIMEPOINT _latestUpdate;  ///< The last time the _contactMap was updated.
-    std::mutex _mapMtx;       /// Protects _contactMap, _latestUpdate.
+    protojson::WorkerContactInfo::WCMapPtr _contactMap;
+    TIMEPOINT _latestMapUpdate;  ///< The last time the _contactMap was updated, unrelated to
+                                 ///< WorkerContactInfo update.
+    mutable MUTEX _cmapMtx;      /// Protects _contactMap, _latestUpdate
+
+    /// Map for tracking worker aliveness, it has its own internal mutex.
+    std::shared_ptr<ActiveWorkerMap> const _activeWorkerMap;
 };
 
 }  // namespace lsst::qserv::czar

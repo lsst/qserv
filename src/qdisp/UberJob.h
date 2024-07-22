@@ -27,15 +27,16 @@
 #include "qmeta/types.h"
 #include "czar/CzarChunkMap.h"  // Need nested class. TODO:UJ Make non-nested?
 #include "czar/CzarRegistry.h"  // Need nested class. TODO:UJ Make non-nested?
-#include "qdisp/JobBase.h"
+#include "qdisp/Executive.h"
 #include "qmeta/JobStatus.h"
 
-// This header declarations
+namespace lsst::qserv::util {
+class QdispPool;
+}
+
 namespace lsst::qserv::qdisp {
 
 class JobQuery;
-
-class QueryRequest;
 
 /// This class is a contains x number of jobs that need to go to the same worker
 /// from a single user query, and contact information for the worker. It also holds
@@ -45,7 +46,7 @@ class QueryRequest;
 /// When this UberJobCompletes, all the Jobs it contains are registered as completed.
 /// If this UberJob fails, it will be destroyed, un-assigning all of its Jobs.
 /// Those Jobs will need to be reassigned to new UberJobs, or the query cancelled.
-class UberJob : public JobBase {
+class UberJob : public std::enable_shared_from_this<UberJob> {
 public:
     using Ptr = std::shared_ptr<UberJob>;
 
@@ -57,32 +58,28 @@ public:
     UberJob(UberJob const&) = delete;
     UberJob& operator=(UberJob const&) = delete;
 
-    virtual ~UberJob(){};
-
-    bool addJob(std::shared_ptr<JobQuery> const& job);
-    bool runUberJob();
+    virtual ~UberJob() {};
 
     std::string cName(const char* funcN) const { return std::string("UberJob::") + funcN + " " + getIdStr(); }
 
-    QueryId getQueryId() const override { return _queryId; }
-    UberJobId getJobId() const override {
-        return _uberJobId;
-    }  // TODO:UJ change name when JobBase no longer needed.
-    std::string const& getIdStr() const override { return _idStr; }
-    std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }  // TODO:UJ relocate to JobBase
-    std::string const& getPayload() const override { return _payload; }  // TODO:UJ delete when possible.
-    std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
-    std::shared_ptr<qmeta::JobStatus> getStatus() override {
-        return _jobStatus;
-    }                                                           // TODO:UJ relocate to JobBase
-    bool getScanInteractive() const override { return false; }  ///< UberJobs are never interactive.
-    bool isQueryCancelled() override;                           // TODO:UJ relocate to JobBase
-    void callMarkCompleteFunc(bool success) override;  ///< call markComplete for all jobs in this UberJob.
-    std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
+    bool addJob(std::shared_ptr<JobQuery> const& job);
 
-    void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) override {
-        ;  // Do nothing as QueryRequest is only needed for xrootd. TODO:UJ delete function.
-    }
+    /// Make a json version of this UberJob and send it to its worker.
+    virtual void runUberJob();
+
+    /// Kill this UberJob and unassign all Jobs so they can be used in a new UberJob if needed.
+    void killUberJob();
+
+    QueryId getQueryId() const { return _queryId; }
+    UberJobId getJobId() const {
+        return _uberJobId;
+    }  // &&& TODO:UJ change name when JobBase no longer needed.
+    std::string const& getIdStr() const { return _idStr; }
+    std::shared_ptr<ResponseHandler> getRespHandler() { return _respHandler; }
+    std::shared_ptr<qmeta::JobStatus> getStatus() { return _jobStatus; }
+    bool isQueryCancelled();
+    void callMarkCompleteFunc(bool success);  ///< call markComplete for all jobs in this UberJob.
+    std::shared_ptr<Executive> getExecutive() { return _executive.lock(); }
 
     /// Return false if not ok to set the status to newState, otherwise set the state for
     /// this UberJob and all jobs it contains to newState.
@@ -101,9 +98,11 @@ public:
 
     /// Set the worker information needed to send messages to the worker believed to
     /// be responsible for the chunks handled in this UberJob.
-    void setWorkerContactInfo(czar::CzarRegistry::WorkerContactInfo::Ptr const& wContactInfo) {
+    void setWorkerContactInfo(protojson::WorkerContactInfo::Ptr const& wContactInfo) {
         _wContactInfo = wContactInfo;
     }
+
+    protojson::WorkerContactInfo::Ptr getWorkerContactInfo() { return _wContactInfo; }
 
     /// Get the data for the worker that should handle this UberJob.
     czar::CzarChunkMap::WorkerChunksData::Ptr getWorkerData() { return _workerData; }
@@ -114,13 +113,16 @@ public:
     /// Handle an error from the worker.
     nlohmann::json workerError(int errorCode, std::string const& errorMsg);
 
-    std::ostream& dumpOS(std::ostream& os) const override;
+    std::ostream& dumpOS(std::ostream& os) const;
+    std::string dump() const;
+    friend std::ostream& operator<<(std::ostream& os, UberJob const& uj);
 
-private:
+protected:
     UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-            int queryId, int uberJobId, qmeta::CzarId czarId,
+            int queryId, int uberJobId, qmeta::CzarId czarId, int rowLimit,
             czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
 
+private:
     /// Used to setup elements that can't be done in the constructor.
     void _setup();
 
@@ -129,7 +131,7 @@ private:
     bool _setStatusIfOk(qmeta::JobStatus::State newState, std::string const& msg);
 
     /// unassign all Jobs in this UberJob and set the Executive flag to indicate that Jobs need
-    /// reassignment.
+    /// reassignment. The list of _jobs is cleared, so multiple calls of this should be harmless.
     void _unassignJobs();
 
     /// Import and error from trying to collect results.
@@ -138,7 +140,7 @@ private:
                                       std::string const& note);
 
     /// Let the executive know that all Jobs in UberJob are complete.
-    nlohmann::json _importResultFinish(uint64_t resultRows);
+    void _importResultFinish(uint64_t resultRows);
 
     /// Let the Executive know about errors while handling results.
     nlohmann::json _workerErrorFinish(bool successful, std::string const& errorType = std::string(),
@@ -157,15 +159,15 @@ private:
     QueryId const _queryId;
     UberJobId const _uberJobId;
     qmeta::CzarId const _czarId;
+    int const _rowLimit;
 
     std::string const _idStr;
-    std::shared_ptr<QdispPool> _qdispPool;  // TODO:UJ remove when possible.
 
     // Map of workerData
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed
 
     // Contact information for the target worker.
-    czar::CzarRegistry::WorkerContactInfo::Ptr _wContactInfo;
+    protojson::WorkerContactInfo::Ptr _wContactInfo;  // Change to ActiveWorker &&& ???
 };
 
 }  // namespace lsst::qserv::qdisp

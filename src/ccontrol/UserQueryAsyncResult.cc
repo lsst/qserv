@@ -85,6 +85,8 @@ void UserQueryAsyncResult::submit() {
 
     // if there are messages already it means the error was detected, stop right here
     if (_messageStore->messageCount() > 0) {
+        LOGS(_log, LOG_LVL_WARN,
+             "UserQueryAsyncResult::submit giving up, messageCount=" << _messageStore->messageCount());
         return;
     }
 
@@ -92,6 +94,7 @@ void UserQueryAsyncResult::submit() {
     if (_qInfo.czarId() != _czarId) {
         // TODO: tell user which czar was it?
         std::string message = "Query originated from different czar";
+        LOGS(_log, LOG_LVL_WARN, "UserQueryAsyncResult::submit giving up, message=" << message);
         _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }

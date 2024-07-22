@@ -175,7 +175,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
         if (first) {
             first = false;
 
-            auto const& scanTables = task->getScanInfo().infoTables;
+            auto const& scanTables = task->getScanInfo()->infoTables;
             bool interactive = task->getScanInteractive();
             if (scanTables.size() <= 0 || interactive) {
                 // If there are no scan tables, no point in putting on a shared scan.
@@ -186,7 +186,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                 targSched = _group;
             } else {
                 onInteractive = false;
-                int scanPriority = task->getScanInfo().scanRating;
+                int scanPriority = task->getScanInfo()->scanRating;
                 if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
                     ostringstream ss;
                     ss << "Blend chose scan for priority=" << scanPriority << " : ";
@@ -259,6 +259,7 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found");
     }
     _infoChanged = true;
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart &&& end");
 }
 
 void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
