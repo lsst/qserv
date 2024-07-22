@@ -8,7 +8,6 @@ target_sources(qproc PRIVATE
     IndexMap.cc
     QuerySession.cc
     SecondaryIndex.cc
-    TaskMsgFactory.cc
 )
 
 target_link_libraries(qproc PRIVATE
@@ -36,7 +35,6 @@ FUNCTION(qproc_tests)
             css
             qmeta
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )

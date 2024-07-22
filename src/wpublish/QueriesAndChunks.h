@@ -193,8 +193,18 @@ public:
     void removeDead();
     void removeDead(QueryStatistics::Ptr const& queryStats);
 
-    /// Return the statistics for a user query.
-    QueryStatistics::Ptr getStats(QueryId const& qId) const;
+    /// Return the statistics for a user query, may be nullptr,
+    /// in many cases addQueryId() may be preferable if
+    /// new information is being added to the returned object.
+    /// @see addQueryId()
+    QueryStatistics::Ptr getStats(QueryId qId) const;
+
+    /// Return the statistics for a user query, creating if needed.
+    /// Since it is possible to get messages out of order, there
+    /// are several case where something like a cancellation
+    /// message arrives before any tasks have been created.
+    /// @see getStats()
+    QueryStatistics::Ptr addQueryId(QueryId qId, CzarIdType czarId);
 
     void addTask(wbase::Task::Ptr const& task);
     void queuedTask(wbase::Task::Ptr const& task);
@@ -233,6 +243,10 @@ public:
         std::map<int, ChunkTimePercent> chunkPercentages;
     };
     using ScanTableSumsMap = std::map<std::string, ScanTableSums>;
+
+    /// If the worker believes this czar has died, it calls this to stop
+    /// all Tasks associated with that czar.
+    void killAllQueriesFromCzar(CzarIdType czarId);
 
     friend std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc);
 
