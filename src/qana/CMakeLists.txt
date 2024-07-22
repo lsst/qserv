@@ -40,7 +40,6 @@ FUNCTION(qana_tests)
             css
             qmeta
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )
