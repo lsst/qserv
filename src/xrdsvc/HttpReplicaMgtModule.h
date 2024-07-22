@@ -189,10 +189,6 @@ private:
     /// when attempting to add replicas into non-existing databases.
     std::set<std::string> _missingDatabaseNames;
 
-    // XROOTD/SSI service context.
-
-    xrdsvc::SsiProviderServer* _providerServer = nullptr;
-    XrdSsiCluster* _clusterManager = nullptr;
     bool _dataContext = false;
 };
 

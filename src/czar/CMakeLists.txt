@@ -1,6 +1,7 @@
 add_library(czar SHARED)
 
 target_sources(czar PRIVATE
+    ActiveWorker.cc
     ChttpModule.cc
     Czar.cc
     CzarChunkMap.cc
@@ -12,7 +13,6 @@ target_sources(czar PRIVATE
     HttpCzarQueryModule.cc
     HttpCzarSvc.cc
     HttpCzarWorkerModule.cc
-    HttpModule.cc
     HttpMonitorModule.cc
     HttpSvc.cc
     MessageTable.cc
@@ -27,8 +27,10 @@ target_include_directories(czar PRIVATE
 target_link_libraries(czar PUBLIC
     cconfig
     http
+    protojson
     qdisp
     qhttp
+    replica
     util
     log
     XrdSsiLib

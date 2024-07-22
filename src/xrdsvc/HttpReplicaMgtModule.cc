@@ -78,10 +78,7 @@ HttpReplicaMgtModule::HttpReplicaMgtModule(string const& context,
                                            shared_ptr<wcontrol::Foreman> const& foreman,
                                            shared_ptr<qhttp::Request> const& req,
                                            shared_ptr<qhttp::Response> const& resp)
-        : HttpModule(context, foreman, req, resp),
-          _providerServer(dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup)),
-          _clusterManager(_providerServer->GetClusterManager()),
-          _dataContext(_clusterManager->DataContext()) {}
+        : HttpModule(context, foreman, req, resp) {}
 
 json HttpReplicaMgtModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
@@ -330,9 +327,6 @@ void HttpReplicaMgtModule::_modifyChunk(string const& func, int chunk, string co
     string const resource = ::makeResource(database, chunk);
     debug(func, operation + " resource: " + resource + ", DataContext: " + to_string(_dataContext));
     try {
-        // Notify XRootD/cmsd and (depending on a mode) modify the provider's
-        // copy of the inventory. After that modify both (persistent and
-        // transient) inventories.
         if (Direction::ADD == direction) {
             try {
                 // The first operation to add the chunk to the persistent inventory
@@ -340,8 +334,6 @@ void HttpReplicaMgtModule::_modifyChunk(string const& func, int chunk, string co
                 // steps will be skipped and the database will be ignored with a warn message logged
                 // and reported back to a caller.
                 foreman()->chunkInventory()->add(database, chunk, foreman()->mySqlConfig());
-                if (_dataContext) _providerServer->GetChunkInventory().add(database, chunk);
-                _clusterManager->Added(resource.data());
             } catch (wpublish::InvalidParamError const& ex) {
                 // This optimisation is to avoid flooding logs with repetitive warnings
                 // about the same non-existing database in case if many chunks are being
@@ -354,8 +346,6 @@ void HttpReplicaMgtModule::_modifyChunk(string const& func, int chunk, string co
                 }
             }
         } else {
-            _clusterManager->Removed(resource.data());
-            if (_dataContext) _providerServer->GetChunkInventory().remove(database, chunk);
             foreman()->chunkInventory()->remove(database, chunk, foreman()->mySqlConfig());
         }
     } catch (wpublish::QueryError const& ex) {
