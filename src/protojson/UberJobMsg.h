@@ -142,7 +142,6 @@ public:
 
     /// Return a json version of the contents of this class.
     nlohmann::json toJson() const;
-
     std::vector<int> const& getJobSubQueryTempIndexes() const { return _jobSubQueryTempIndexes; }
     std::vector<int> const& getJobDbTablesIndexes() const { return _jobDbTablesIndexes; }
     std::vector<int> const& getSubchunkIds() const { return _subchunkIds; }
@@ -209,7 +208,6 @@ private:
     JobId _jobId;
     int _attemptCount;
     std::string _chunkQuerySpecDb;
-
     int _chunkId;
     JobFragment::VectPtr _jobFragments{new JobFragment::Vect()};
 

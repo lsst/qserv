@@ -22,7 +22,6 @@
 // Class header
 #include "wbase/UberJobData.h"
 
-#include "wcontrol/WCzarInfoMap.h"
 // System headers
 
 // Third party headers
@@ -45,6 +44,7 @@
 #include "util/ResultFileName.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
+#include "wcontrol/WCzarInfoMap.h"
 #include "wpublish/ChunkInventory.h"
 #include "wpublish/QueriesAndChunks.h"
 
@@ -135,9 +135,6 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
 }
 
 void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl) {
-    // TODO:UJ Maybe register this UberJob as failed with a czar notification method
-    //         so that a secondary means can be used to make certain the czar hears about
-    //         the error. See related TODO:UJ comment in responseFileReady()
     LOGS(_log, logLvl, cName(__func__));
     // NOTE: Calls to responseError() and responseFileReady() are protected by the
     //       mutex in FileChannelShared (_tMtx).

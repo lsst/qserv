@@ -128,7 +128,6 @@ ScanInfo::Ptr ScanInfo::createFromJson(nlohmann::json const& siJson) {
         iTbls.emplace_back(db, table, lockInMem, sRating);
     }
     siPtr->sortTablesSlowestFirst();
-
     return siPtr;
 }
 

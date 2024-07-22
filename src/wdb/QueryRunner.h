@@ -96,7 +96,6 @@ private:
 
     /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
-    std::atomic<bool> _cancelled{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 
