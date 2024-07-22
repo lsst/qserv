@@ -62,6 +62,7 @@ public:
     std::string const& getIdStr() const { return _idStr; }
     JobDescription::Ptr getDescription() { return _jobDescription; }
     qmeta::JobStatus::Ptr getStatus() { return _jobStatus; }
+
     bool cancel(bool superfluous = false);
     bool isQueryCancelled();
 
