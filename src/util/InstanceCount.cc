@@ -32,7 +32,7 @@ void InstanceCount::_increment(std::string const& source) {
     auto iter = ret.first;
     iter->second += 1;
     LOGS(_log, LOG_LVL_WARN,
-         "InstanceCount " << source << " " << iter->first << "=" << iter->second);  // LockupDB INFO
+         "InstanceCount " << source << " " << iter->first << "=" << iter->second);  //&&&DEBUG
 }
 
 InstanceCount::~InstanceCount() {
@@ -41,7 +41,7 @@ InstanceCount::~InstanceCount() {
     if (iter != _instances.end()) {
         iter->second -= 1;
         LOGS(_log, LOG_LVL_WARN,
-             "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);  // LockupDB INFO
+             "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);  //&&&DEBUG
         if (iter->second == 0) {
             _instances.erase(_className);
         }
