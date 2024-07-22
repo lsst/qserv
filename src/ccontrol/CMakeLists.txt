@@ -31,7 +31,6 @@ target_link_libraries(ccontrol PUBLIC
     parser
     replica
     sphgeom
-    xrdreq
     XrdCl
 )
 
@@ -54,7 +53,6 @@ FUNCTION(ccontrol_tests)
             qmeta
             query
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )
