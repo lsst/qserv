@@ -16,10 +16,6 @@ target_link_libraries(global PUBLIC
     log
 )
 
-install(
-    TARGETS global
-)
-
 FUNCTION(global_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
@@ -34,3 +30,4 @@ ENDFUNCTION()
 global_tests(
     testStringUtil
 )
+
