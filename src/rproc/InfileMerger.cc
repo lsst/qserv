@@ -172,6 +172,26 @@ bool InfileMerger::merge(proto::ResponseSummary const& resp,
         _setQueryIdStr(QueryIdHelper::makeIdStr(resp.queryid()));
     }
 
+    // Nothing to do if size is zero.
+    if (responseData.row_size() == 0) {
+        return true;
+    }
+
+    // Do nothing if the query got cancelled for any reason.
+    if (jq->isQueryCancelled()) {
+        return true;
+    }
+    auto executive = jq->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete()) {
+        return true;
+    }
+
+    std::unique_ptr<util::SemaLock> semaLock;
+    if (_dbEngine != MYISAM) {
+        // needed for parallel merging with INNODB and MEMORY
+        semaLock.reset(new util::SemaLock(*_semaMgrConn));
+    }
+
     TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
                                                     bool success) {
         if (!success) return;
@@ -246,7 +266,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
         return true;
     }
     auto executive = uberJob->getExecutive();
-    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
+    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete()) {
         return true;
     }
 
