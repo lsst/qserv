@@ -1,17 +1,14 @@
 add_library(xrdsvc SHARED)
 add_dependencies(xrdsvc proto)
 
-target_sources(xrdsvc PRIVATE
-    ChannelStream.cc
+target_sources(qserv_xrdsvc PRIVATE
     HttpModule.cc
     HttpMonitorModule.cc
     HttpReplicaMgtModule.cc
     HttpWorkerCzarModule.cc
     HttpSvc.cc
     SsiProvider.cc
-    SsiRequest.cc
     SsiService.cc
-    StreamBuffer.cc
 )
 
 target_include_directories(xrdsvc PRIVATE

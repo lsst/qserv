@@ -48,32 +48,11 @@
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
 #include "wbase/Base.h"
-#include "wdb/QuerySql.h"
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.ChunkResource");
 
-template <typename T>
-class ScScriptBuilder {
-public:
-    ScScriptBuilder(lsst::qserv::wdb::QuerySql& qSql_, std::string const& db, std::string const& table,
-                    std::string const& scColumn, int chunkId)
-            : qSql(qSql_) {
-        buildT = (boost::format(lsst::qserv::wbase::CREATE_SUBCHUNK_SCRIPT) % db % table % scColumn %
-                  chunkId % "%1%")
-                         .str();
-        cleanT = (boost::format(lsst::qserv::wbase::CLEANUP_SUBCHUNK_SCRIPT) % db % table % chunkId % "%1%")
-                         .str();
-    }
-    void operator()(T const& subc) {
-        qSql.buildList.push_back((boost::format(buildT) % subc).str());
-        qSql.cleanupList.push_back((boost::format(cleanT) % subc).str());
-    }
-    std::string buildT;
-    std::string cleanT;
-    lsst::qserv::wdb::QuerySql& qSql;
-};
 }  // anonymous namespace
 
 namespace lsst::qserv::wdb {

@@ -29,6 +29,7 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 #include <sstream>
 
 // Third party headers
@@ -44,13 +45,8 @@
 
 namespace lsst::qserv {
 
-namespace proto {
-class TaskMsg;
-}
-
 namespace qproc {
 class ChunkQuerySpec;
-class TaskMsgFactory;
 }  // namespace qproc
 
 namespace qdisp {
@@ -58,18 +54,16 @@ namespace qdisp {
 class Executive;
 class ResponseHandler;
 
-/** Description of a job managed by the executive
- */
+/// Description of a job managed by the executive
 class JobDescription {
 public:
     using Ptr = std::shared_ptr<JobDescription>;
     static JobDescription::Ptr create(qmeta::CzarId czarId, QueryId qId, JobId jobId,
                                       ResourceUnit const& resource,
                                       std::shared_ptr<ResponseHandler> const& respHandler,
-                                      std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                                       std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                                       std::string const& chunkResultName, bool mock = false) {
-        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler, taskMsgFactory,
+        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler,
                                                   chunkQuerySpec, chunkResultName, mock));
         return jd;
     }
@@ -77,30 +71,28 @@ public:
     JobDescription(JobDescription const&) = delete;
     JobDescription& operator=(JobDescription const&) = delete;
 
-    void buildPayload();  ///< Must be run after construction to avoid problems with unit tests.
     JobId id() const { return _jobId; }
     ResourceUnit const& resource() const { return _resource; }
-    std::string const& payload() { return _payloads[_attemptCount]; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
     int getAttemptCount() const { return _attemptCount; }
+    std::shared_ptr<qproc::ChunkQuerySpec> getChunkQuerySpec() { return _chunkQuerySpec; }
+    std::string getChunkResultName() { return _chunkResultName; }
 
     bool getScanInteractive() const;
     int getScanRating() const;
 
-    /// @returns true when _attemptCount is incremented correctly and the payload is built.
-    bool incrAttemptCount();
-    bool verifyPayload() const;  ///< @return true if the payload is acceptable to protobufs.
+    /// Increase the attempt count by 1 and return false if that puts it over the limit.
+    bool incrAttemptCount(std::shared_ptr<Executive> const& exec, bool increase);
 
     std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
 
-    void resetJsForWorker() { _jsForWorker.reset(); }  // TODO:UJ may need mutex for _jsForWorker
+    void resetJsForWorker() { _jsForWorker.reset(); }
 
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
 private:
     JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
                    std::shared_ptr<ResponseHandler> const& respHandler,
-                   std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                    std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                    std::string const& chunkResultName, bool mock = false);
 
@@ -111,14 +103,7 @@ private:
     int _attemptCount{-1};   ///< Start at -1 so that first attempt will be 0, see incrAttemptCount().
     ResourceUnit _resource;  ///< path, e.g. /q/LSST/23125
 
-    /// _payloads - encoded requests, one per attempt. No guarantee that xrootd is done
-    /// with the payload buffer, so hang onto all of them until the query is finished.
-    /// Also, using a map so the strings wont be moved.
-    /// The xrootd callback function QueryRequest::GetRequest should
-    /// return something other than a char*.
-    std::map<int, std::string> _payloads;
     std::shared_ptr<ResponseHandler> _respHandler;  // probably MergingHandler
-    std::shared_ptr<qproc::TaskMsgFactory> _taskMsgFactory;
     std::shared_ptr<qproc::ChunkQuerySpec> _chunkQuerySpec;
     std::string _chunkResultName;
 

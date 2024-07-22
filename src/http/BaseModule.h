@@ -215,6 +215,8 @@ protected:
      */
     void sendData(nlohmann::json& result);
 
+    std::string authKey() const { return _authKey; }
+
 private:
     /**
      * Check the authorization keys provided in the request's body against the expected values.

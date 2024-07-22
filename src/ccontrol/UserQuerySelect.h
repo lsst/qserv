@@ -42,7 +42,6 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "css/StripingParams.h"
-#include "qdisp/SharedResources.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
@@ -90,7 +89,8 @@ public:
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                     std::shared_ptr<qmeta::QProgress> const& queryProgress, qmeta::CzarId czarId,
-                    std::string const& errorExtra, bool async, std::string const& resultDb);
+                    std::string const& errorExtra, bool async, std::string const& resultDb,
+                    int uberJobMaxChunks);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
@@ -194,10 +194,8 @@ private:
     std::string _resultDb;            ///< Result database TODO:UJ same as resultLoc??)
     bool _async;                      ///< true for async query
 
-    /// TODO:UJ The maximum number of chunks allowed in an UberJob. At the very
-    ///   least, this needs to be set in the configuration. However, it may also
-    ///   be useful to change this based on the nature of each UserQuery.
-    int _maxChunksPerUberJob = 1;
+    /// The maximum number of chunks allowed in an UberJob, set from config.
+    int const _uberJobMaxChunks;
     std::atomic<int> _uberJobIdSeq{1};   ///< Sequence number for UberJobs in this query.
     std::shared_ptr<TmpTableName> _ttn;  ///< Temporary table name generator.
 
