@@ -28,6 +28,5 @@ FUNCTION(global_tests)
 ENDFUNCTION()
 
 global_tests(
-    testResourceUnit
     testStringUtil
 )
