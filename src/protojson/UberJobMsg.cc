@@ -294,6 +294,7 @@ json JobDbTableMap::toJson() const {
         jsDbTblMap.push_back(jsDbTbl);
     }
 
+<<<<<<< HEAD
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " " << jsDbTblMap);
     return jsDbTblMap;
 }
