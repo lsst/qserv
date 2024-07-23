@@ -37,7 +37,12 @@ string const adminAuthKey;
 
 namespace lsst::qserv::http {
 
-unsigned int const MetaModule::version = 35; // &&&uj
+// MetaModule::version is the ultimate source of truth for the version number.
+// All version values must match. Other version location are in :
+//      class ReplicationInterface repl_api_version
+//               in src/admin/python/lsst/qserv/admin/replicationinterface.py
+//      RestAPIVersion in src/www/qserv/js/Common.js
+unsigned int const MetaModule::version = 35;  // TODO:UJ this may need to change when merging the branch.
 
 void MetaModule::process(string const& context, nlohmann::json const& info,
                          shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
