@@ -62,6 +62,7 @@ HttpCzarWorkerModule::HttpCzarWorkerModule(string const& context, shared_ptr<qht
 json HttpCzarWorkerModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
     debug(func);
+    cconfig::CzarConfig::instance()->replicationInstanceId();
     enforceCzarName(func);
     if (subModuleName == "QUERYJOB-ERROR")
         return _queryJobError();
