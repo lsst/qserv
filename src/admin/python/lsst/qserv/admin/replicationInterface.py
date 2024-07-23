@@ -201,6 +201,8 @@ class ReplicationInterface:
         self.repl_ctrl = urlparse(repl_ctrl_uri)
         self.auth_key = auth_key
         self.admin_auth_key = admin_auth_key
+
+        # Must match MetaModule::version in http/MetaModule.cc
         self.repl_api_version = 35
         _log.debug(f"ReplicationInterface %s", self.repl_ctrl)
 
