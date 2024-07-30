@@ -177,10 +177,10 @@ void Czar::_monitor() {
         /// Check database for changes in worker chunk assignments and aliveness
         _czarFamilyMap->read();
 
-        // TODO:UJ If there were changes in `_czarFamilyMap`, see if any
-        // workers went down. If any did, `_unassign` all Jobs in UberJobs
-        // for the downed workers. The `_unassigned` Jobs should get
-        // reassigned in the next section `assignJobsToUberJobs`.
+        // TODO:UJ DM-45470 If there were changes in `_czarFamilyMap`,
+        // see if any workers went down. If any did, `_unassign` all
+        // Jobs in UberJobs for the downed workers. The `_unassigned`
+        // Jobs should get reassigned in the next section `assignJobsToUberJobs`.
 
         /// Create new UberJobs (if possible) for all jobs that are
         /// unassigned for any reason.
@@ -205,7 +205,7 @@ void Czar::_monitor() {
             execVal->assignJobsToUberJobs();
         }
 
-        // TODO:UJ Maybe get missing results from workers.
+        // TODO:UJ DM-45470 Maybe get missing results from workers.
         //    This would be files that workers sent messages to the czar to
         //    collect, but there was a communication problem and the czar didn't get the message
         //    or didn't collect the file. to retrieve complete files that haven't been
@@ -215,6 +215,11 @@ void Czar::_monitor() {
 
         // TODO:UJ Maybe send a list of cancelled and completed queries to the workers?
         //     How long should queryId's remain on this list?
+        //     It's probably better to have the executive for a query to send out
+        //     messages to worker that a user query was cancelled. If a worker sends
+        //     the czar about a cancelled user query, or the executive for that
+        //     query cannot be found, the worker should cancel all Tasks associated
+        //     with that queryId.
     }
 }
 
@@ -241,13 +246,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
-    /* &&&
-    try {
-        _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
-    } catch (ChunkMapException const& exc) {
-        LOGS(_log, LOG_LVL_WARN, string(__func__) + " failed to create CzarChunkMap " + exc.what());
-    }
-    */
     // This will block until there is a successful read of the database tables.
     _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
 
