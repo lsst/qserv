@@ -288,7 +288,7 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
     vector<Task::Ptr> vect;
     for (auto const& job : jsJobs) {
         json const& jsJobDesc = job["jobdesc"];
-        http::RequestBody rbJobDesc(jsJobDesc);
+        http::RequestBodyJSON rbJobDesc(jsJobDesc);
         // See qproc::TaskMsgFactory::makeMsgJson for message construction.
         auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
         auto const jdQueryId = rbJobDesc.required<QueryId>("queryId");
@@ -316,11 +316,11 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
             vector<int> fragSubchunkIds;
             vector<TaskDbTbl> fragSubTables;
             LOGS(_log, LOG_LVL_DEBUG, funcN << " frag=" << frag);
-            http::RequestBody rbFrag(frag);
+            http::RequestBodyJSON rbFrag(frag);
             auto const& jsQueries = rbFrag.required<json>("queries");
             // TODO:UJ move to uberjob???, these should be the same for all jobs
             for (auto const& subQ : jsQueries) {
-                http::RequestBody rbSubQ(subQ);
+                http::RequestBodyJSON rbSubQ(subQ);
                 auto const subQuery = rbSubQ.required<string>("subQuery");
                 LOGS(_log, LOG_LVL_DEBUG, funcN << " subQuery=" << subQuery);
                 fragSubQueries.push_back(subQuery);
@@ -333,7 +333,7 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
             auto const& jsSubTables = rbFrag.required<json>("subchunkTables");
 
             for (auto const& scDbTable : jsSubTables) {  // TODO:UJ are these the same for all jobs?
-                http::RequestBody rbScDbTable(scDbTable);
+                http::RequestBodyJSON rbScDbTable(scDbTable);
                 string scDb = rbScDbTable.required<string>("scDb");
                 string scTable = rbScDbTable.required<string>("scTable");
                 TaskDbTbl scDbTbl(scDb, scTable);

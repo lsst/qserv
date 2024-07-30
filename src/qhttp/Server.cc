@@ -286,31 +286,7 @@ std::shared_ptr<Server::PathHandler> Server::_findPathHandler(Request::Ptr reque
         for (auto& pathHandler : pathHandlersIt->second) {
             if (boost::regex_match(request->path, pathMatch, pathHandler.path.regex)) {
                 pathHandler.path.updateParamsFromMatch(request, pathMatch);
-#if 0 // &&& <<<<<<< HEAD
                 return std::make_shared<PathHandler>(pathHandler);
-#else // &&& =====
-                LOGLS_DEBUG(_log, logger(this) << logger(request->_socket) << "invoking handler for "
-                                               << pathHandler.path.regex);
-                try {
-                    pathHandler.handler(request, response);
-                } catch (boost::system::system_error const& e) {
-                    LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
-                                                   << "exception thrown from handler: " << e.what());
-                    switch (e.code().value()) {
-                        case errc::permission_denied:
-                            response->sendStatus(STATUS_FORBIDDEN);
-                            break;
-                        default:
-                            response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
-                            break;
-                    }
-                } catch (std::exception const& e) {
-                    LOGLS_ERROR(_log, logger(this) << logger(request->_socket)
-                                                   << "exception thrown from handler: " << e.what());
-                    response->sendStatus(STATUS_INTERNAL_SERVER_ERR);
-                }
-                return;
-#endif //&&& >>>>>>> ca9f7b24f (Added some error handling.)
             }
         }
     }
