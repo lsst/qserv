@@ -168,9 +168,9 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
                 for (auto const& tbl : jdChunkScanTables) {
                     http::RequestBody rbTbl(tbl);
                     auto const& chunkScanDb = rbTbl.required<string>("db");
-                    auto const& lockInMemory = rbTbl.required<bool>("lockInMemory");
+                    auto lockInMemory = rbTbl.required<bool>("lockInMemory");
                     auto const& chunkScanTable = rbTbl.required<string>("table");
-                    auto const& tblScanRating = rbTbl.required<int>("tblScanRating");
+                    auto tblScanRating = rbTbl.required<int>("tblScanRating");
                     LOGS(_log, LOG_LVL_TRACE,
                          __func__ << " chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
                                   << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
