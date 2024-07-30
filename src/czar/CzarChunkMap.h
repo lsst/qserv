@@ -244,8 +244,7 @@ public:
     typedef std::map<std::string, CzarChunkMap::Ptr> FamilyMapType;
     typedef std::map<std::string, std::string> DbNameToFamilyNameType;
 
-    static Ptr create(
-            std::shared_ptr<qmeta::QMeta> const& qmeta);  //&&& { return Ptr(new CzarFamilyMap(qmeta)); }
+    static Ptr create(std::shared_ptr<qmeta::QMeta> const& qmeta);
 
     CzarFamilyMap() = delete;
     CzarFamilyMap(CzarFamilyMap const&) = delete;

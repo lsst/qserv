@@ -34,7 +34,7 @@
 #include "http/Client.h"  // TODO:UJ will probably need to be removed
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
-#include "http/RequestBody.h"
+#include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
 #include "mysql/MySqlUtils.h"
 #include "qmeta/types.h"
@@ -108,7 +108,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         auto const& jsReq = body().objJson;
         string const targetWorkerId = body().required<string>("worker");
 
-        http::RequestBody rbCzar(body().required<json>("czar"));
+        http::RequestBodyJSON rbCzar(body().required<json>("czar"));
         auto czarName = rbCzar.required<string>("name");
         auto czarId = rbCzar.required<qmeta::CzarId>("id");
         auto czarPort = rbCzar.required<int>("management-port");
@@ -117,7 +117,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
              __func__ << " czar n=" << czarName << " id=" << czarId << " p=" << czarPort
                       << " h=" << czarHostName);
 
-        http::RequestBody rbUberJob(body().required<json>("uberjob"));
+        http::RequestBodyJSON rbUberJob(body().required<json>("uberjob"));
         auto ujQueryId = rbUberJob.required<QueryId>("queryid");
         auto ujId = rbUberJob.required<UberJobId>("uberjobid");
         auto ujCzarId = rbUberJob.required<int>("czarid");
@@ -146,7 +146,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
 
         for (auto const& job : ujJobs) {
             json const& jsJobDesc = job["jobdesc"];
-            http::RequestBody rbJobDesc(jsJobDesc);
+            http::RequestBodyJSON rbJobDesc(jsJobDesc);
             // See qproc::TaskMsgFactory::makeMsgJson for message construction.
             auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
             jdQueryId = rbJobDesc.required<QueryId>("queryId");
@@ -166,7 +166,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
             auto const jdChunkScanTables = rbJobDesc.required<json>("chunkScanTables");
             if (!scanInfoSet) {
                 for (auto const& tbl : jdChunkScanTables) {
-                    http::RequestBody rbTbl(tbl);
+                    http::RequestBodyJSON rbTbl(tbl);
                     auto const& chunkScanDb = rbTbl.required<string>("db");
                     auto lockInMemory = rbTbl.required<bool>("lockInMemory");
                     auto const& chunkScanTable = rbTbl.required<string>("table");
