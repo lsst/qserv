@@ -29,7 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "czar/HttpModule.h"
+#include "czar/QhttpModule.h"
 
 // Forward declarations
 namespace lsst::qserv::qhttp {
@@ -41,7 +41,7 @@ class Response;
 namespace lsst::qserv::czar {
 
 /// This class is used to handle messages to this czar from the workers.
-class HttpCzarWorkerModule : public czar::HttpModule {
+class HttpCzarWorkerModule : public QhttpModule {
 public:
     /// @note supported values for parameter 'subModuleName' are:
     ///   'QUERYJOB-ERROR' - error in a QUERYJOB
