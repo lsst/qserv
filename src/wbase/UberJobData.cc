@@ -34,7 +34,7 @@
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
-#include "http/RequestBody.h"
+#include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
