@@ -85,7 +85,6 @@ string const createAsyncResultTmpl(
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
-<<<<<<< HEAD
 /**
  * This function will keep periodically updating Czar's info in the Replication
  * System's Registry.
@@ -164,8 +163,6 @@ void registryWorkerInfoLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
     }
 }
 
-=======
->>>>>>> 0bb38abe0 (Added CzarRegistry.)
 }  // anonymous namespace
 
 namespace lsst::qserv::czar {
