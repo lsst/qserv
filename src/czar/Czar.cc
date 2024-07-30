@@ -128,14 +128,14 @@ void registryUpdateLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
     }
 }
 
-
 // &&& doc
 void registryWorkerInfoLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
     // Get worker information from the registry
     auto const method = http::Method::GET;
-    string const url = "http://" + czarConfig->replicationRegistryHost() + ":" +
-                       to_string(czarConfig->replicationRegistryPort())
-                       + "/services?instance_id=" + czarConfig->replicationInstanceId(); // &&& what is this value supposed to be to get worker info?
+    string const url =
+            "http://" + czarConfig->replicationRegistryHost() + ":" +
+            to_string(czarConfig->replicationRegistryPort()) + "/services?instance_id=" +
+            czarConfig->replicationInstanceId();  // &&& what is this value supposed to be to get worker info?
     vector<string> const headers = {"Content-Type: application/json"};
     json request = nlohmann::json();
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
