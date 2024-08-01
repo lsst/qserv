@@ -541,11 +541,15 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     // Only one thread should be generating UberJobs for this user query at any given time.
     lock_guard fcLock(_buildUberJobMtx);
-    bool const clearFlag = false;
-    _executive->setFlagFailedUberJob(clearFlag);
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << _executive->getTotalJobs());
 
     vector<qdisp::UberJob::Ptr> uberJobs;
+
+    qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = _executive->unassignedChunksInQuery();
+    if (unassignedChunksInQuery.empty()) {
+        LOGS(_log, LOG_LVL_TRACE, funcN << " no unassigned Jobs");
+        return;
+    }
 
     auto czarPtr = czar::Czar::getCzar();
     auto czFamilyMap = czarPtr->getCzarFamilyMap();
@@ -561,9 +565,9 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();
     // Make a map of all jobs in the executive.
-    // TODO:UJ Maybe a check should be made that all datbases are in the same family?
+    // TODO:UJ Maybe a check should be made that all databases are in the same family?
 
-    qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = _executive->unassignedChunksInQuery();
+
 
     // keep cycling through workers until no more chunks to place.
     //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
@@ -651,9 +655,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         errStr += " they will be retried later.";
         LOGS(_log, LOG_LVL_ERROR, errStr);
-        // There are likely to be unassigned jobs, so set a flag to try to make
-        // new uber jobs for these jobs.
-        _executive->setFlagFailedUberJob(true);
     }
 
     // Add worker contact info to UberJobs.

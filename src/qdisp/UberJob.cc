@@ -225,8 +225,6 @@ void UberJob::_unassignJobs() {
              cName(__func__) << " job=" << jid << " attempts=" << job->getAttemptCount());
     }
     _jobs.clear();
-    bool const setFlag = true;
-    exec->setFlagFailedUberJob(setFlag);
 }
 
 bool UberJob::isQueryCancelled() {

@@ -45,6 +45,7 @@ class QueryRequest;
 ///         for this base class as it won't be possible to send a JobQuery to a worker without
 ///         putting it in an UberJob first. The UberJob is a wrapper that stores worker contact
 ///         info.
+// &&& delete this class as JobQuery and UberJob should no longer have much in common
 class JobBase : public std::enable_shared_from_this<JobBase> {
 public:
     using Ptr = std::shared_ptr<JobBase>;
@@ -64,7 +65,7 @@ public:
     virtual bool getScanInteractive() const = 0;
     virtual bool isQueryCancelled() = 0;
     virtual void callMarkCompleteFunc(bool success) = 0;
-    virtual void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) = 0;
+    //&&&virtual void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) = 0;
     virtual std::shared_ptr<qdisp::Executive> getExecutive() = 0;
 
     virtual std::ostream& dumpOS(std::ostream& os) const;
