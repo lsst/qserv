@@ -48,10 +48,6 @@
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "XrdSsi/XrdSsiErrInfo.hh"
-#include "XrdSsi/XrdSsiProvider.hh"
-#include "XrdSsi/XrdSsiResource.hh"
-#include "XrdSsi/XrdSsiService.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -62,13 +58,12 @@
 #include "ccontrol/msgCode.h"
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQuerySelect.h"
+#include "czar/Czar.h"
 #include "global/LogContext.h"
 #include "global/ResourceUnit.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
-#include "qdisp/QueryRequest.h"
 #include "qdisp/ResponseHandler.h"
-#include "qdisp/XrdSsiMocks.h"
 #include "query/QueryContext.h"
 #include "qproc/QuerySession.h"
 #include "qmeta/Exceptions.h"
@@ -82,19 +77,9 @@
 
 using namespace std;
 
-extern XrdSsiProvider* XrdSsiProviderClient;
-
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.Executive");
-
-string getErrorText(XrdSsiErrInfo& e) {
-    ostringstream os;
-    int errCode;
-    os << "XrdSsiError " << e.Get(errCode);
-    os << " Code=" << errCode;
-    return os.str();
-}
 
 }  // anonymous namespace
 
@@ -112,7 +97,7 @@ Executive::Executive(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> c
           _qMeta(qStatus),
           _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
-    _setup();
+    //&&&_setup();
     _setupLimit();
     qdisp::CzarStats::get()->addQuery();
 }
@@ -125,8 +110,6 @@ Executive::~Executive() {
     if (czar::Czar::getCzar()->getExecutiveFromMap(getId()) != nullptr) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) + " pointer in map should be invalid QID=" << getId());
     }
-    // Real XrdSsiService objects are unowned, but mocks are allocated in _setup.
-    delete dynamic_cast<XrdSsiServiceMock*>(_xrdSsiService);
     if (_asyncTimer != nullptr) {
         _asyncTimer->cancel();
         qdisp::CzarStats::get()->untrackQueryProgress(_id);
@@ -244,13 +227,6 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     return jobQuery;
 }
 
-void Executive::runJobQuery(JobQuery::Ptr const& jobQuery) {
-    bool started = jobQuery->runJob();
-    if (!started && isLimitRowComplete()) {
-        markCompleted(jobQuery->getJobId(), false);
-    }
-}
-
 void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
     _jobStartCmdList.push_back(cmd);
     if (_scanInteractive) {
@@ -297,35 +273,6 @@ void Executive::waitForAllJobsToStart() {
         cmd->waitComplete();
     }
     LOGS(_log, LOG_LVL_INFO, "waitForAllJobsToStart done");
-}
-
-// If the executive has not been cancelled, then we simply start the query.
-// @return true if query was actually started (i.e. we were not cancelled)
-// // TODO:UJ  delete this function
-bool Executive::startQuery(shared_ptr<JobQuery> const& jobQuery) {
-    lock_guard<recursive_mutex> lock(_cancelled.getMutex());
-
-    // If this has been cancelled, then return false.
-    if (_cancelled) return false;
-
-    // Construct a temporary resource object to pass to ProcessRequest().
-    //   Interactive Queries should have an Affinity of XrdSsiResource::None or Weak while
-    //   Scans should have an affinity of Strong
-    XrdSsiResource::Affinity affinity = (_scanInteractive) ? XrdSsiResource::Weak : XrdSsiResource::Strong;
-    XrdSsiResource jobResource(jobQuery->getDescription()->resource().path(), "", jobQuery->getIdStr(), "", 0,
-                               affinity);
-
-    // Now construct the actual query request and tie it to the jobQuery. The
-    // shared pointer is used by QueryRequest to keep itself alive, sloppy design.
-    // Note that JobQuery calls StartQuery that then calls JobQuery, yech!
-    //
-    QueryRequest::Ptr qr = QueryRequest::create(jobQuery);
-    jobQuery->setQueryRequest(qr);
-
-    // Start the query. The rest is magically done in the background.
-    //
-    getXrdSsiService()->ProcessRequest(*(qr.get()), jobResource);
-    return true;
 }
 
 Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
@@ -577,26 +524,12 @@ string Executive::getProgressDesc() const {
     return msg_progress;
 }
 
+/* &&&
 void Executive::_setup() {
-    XrdSsiErrInfo eInfo;
     _empty.store(true);
     _requestCount = 0;
-    // If unit testing, load the mock service.
-    if (_config.serviceUrl.compare(_config.getMockStr()) == 0) {
-        _xrdSsiService = new XrdSsiServiceMock(this);
-    } else {
-        static XrdSsiService* xrdSsiServiceStatic =
-                XrdSsiProviderClient->GetService(eInfo, _config.serviceUrl);
-        _xrdSsiService = xrdSsiServiceStatic;
-    }
-    if (!_xrdSsiService) {
-        LOGS(_log, LOG_LVL_DEBUG,
-             _id << " Error obtaining XrdSsiService in Executive: "
-                    "serviceUrl="
-                 << _config.serviceUrl << " " << getErrorText(eInfo));
-    }
-    assert(_xrdSsiService);
 }
+*/
 
 /** Add (jobId,r) entry to _requesters map if not here yet
  *  else leave _requesters untouched.
