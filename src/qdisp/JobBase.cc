@@ -19,14 +19,36 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#include "UserQuerySet.h"
+// Class header
+#include "qdisp/JobBase.h"
+
+// System headers
+#include <iostream>
 
 // Qserv headers
-#include "qmeta/MessageStore.h"
 
-namespace lsst::qserv::ccontrol {
+// LSST headers
+#include "lsst/log/Log.h"
 
-UserQuerySet::UserQuerySet(std::string const& varName, std::string const& varValue)
-        : _varName(varName), _varValue(varValue), _messageStore(std::make_shared<qmeta::MessageStore>()) {}
+using namespace std;
 
-}  // namespace lsst::qserv::ccontrol
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobBase");
+}
+
+namespace lsst { namespace qserv { namespace qdisp {
+
+std::ostream& JobBase::dumpOS(std::ostream& os) const {
+    os << "JobBase no data members";
+    return os;
+}
+
+std::string JobBase::dump() const {
+    std::ostringstream os;
+    dumpOS(os);
+    return os.str();
+}
+
+std::ostream& operator<<(std::ostream& os, JobBase const& jb) { return jb.dumpOS(os); }
+
+}}}  // namespace lsst::qserv::qdisp

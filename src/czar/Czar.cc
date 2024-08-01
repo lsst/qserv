@@ -54,6 +54,7 @@
 #include "http/Method.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
+#include "qdisp/Executive.h"
 #include "qdisp/QdispPool.h"
 #include "qdisp/SharedResources.h"
 #include "qproc/DatabaseModels.h"
@@ -76,92 +77,7 @@ extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace {
 
-string const createAsyncResultTmpl(
-        "CREATE TABLE IF NOT EXISTS %1% "
-        "(jobId BIGINT, resultLocation VARCHAR(1024))"
-        "ENGINE=MEMORY;"
-        "INSERT INTO %1% (jobId, resultLocation) "
-        "VALUES (%2%, '%3%')");
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
-
-/**
- * This function will keep periodically updating Czar's info in the Replication
- * System's Registry.
- * @param name The unique identifier of the Czar to be registered.
- * @param czarConfig A pointer to the Czar configuration service.
- * @note The thread will terminate the process if the registraton request to the Registry
- * was explicitly denied by the service. This means the application may be misconfigured.
- * Transient communication errors when attempting to connect or send requests to
- * the Registry will be posted into the log stream and ignored.
- */
-void registryUpdateLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
-    auto const method = http::Method::POST;
-    string const url = "http://" + czarConfig->replicationRegistryHost() + ":" +
-                       to_string(czarConfig->replicationRegistryPort()) + "/czar";
-    vector<string> const headers = {"Content-Type: application/json"};
-    json const request = json::object({{"version", http::MetaModule::version},
-                                       {"instance_id", czarConfig->replicationInstanceId()},
-                                       {"auth_key", czarConfig->replicationAuthKey()},
-                                       {"czar",
-                                        {{"name", czarConfig->name()},
-                                         {"id", czarConfig->id()},
-                                         {"management-port", czarConfig->replicationHttpPort()},
-                                         {"management-host-name", util::get_current_host_fqdn()}}}});
-    string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
-    LOGS(_log, LOG_LVL_WARN, "&&&czarPost url=" << url);
-    LOGS(_log, LOG_LVL_WARN, "&&&czarPost request=" << request.dump());
-    LOGS(_log, LOG_LVL_WARN, "&&&czarPost headers=" << headers[0]);
-    http::Client client(method, url, request.dump(), headers);
-    while (true) {
-        try {
-            json const response = client.readAsJson();
-            if (0 == response.at("success").get<int>()) {
-                string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
-                abort();
-            }
-        } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
-        }
-        this_thread::sleep_for(chrono::seconds(max(1U, czarConfig->replicationRegistryHearbeatIvalSec())));
-    }
-}
-
-// &&& doc
-void registryWorkerInfoLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
-    // Get worker information from the registry
-    auto const method = http::Method::GET;
-    string const url =
-            "http://" + czarConfig->replicationRegistryHost() + ":" +
-            to_string(czarConfig->replicationRegistryPort()) + "/services?instance_id=" +
-            czarConfig->replicationInstanceId();  // &&& what is this value supposed to be to get worker info?
-    vector<string> const headers = {"Content-Type: application/json"};
-    json request = nlohmann::json();
-    string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
-    LOGS(_log, LOG_LVL_WARN, "&&&czarGet url=" << url);
-    LOGS(_log, LOG_LVL_WARN, "&&&czarGet request=" << request.dump());
-    LOGS(_log, LOG_LVL_WARN, "&&&czarGet headers=" << headers[0]);
-    http::Client client(method, url, request.dump(), headers);
-    while (true) {
-        LOGS(_log, LOG_LVL_WARN, "&&&czarGet loop start");
-        try {
-            json const response = client.readAsJson();
-            /* &&&
-            if (0 == response.at("success").get<int>()) {
-                string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
-                abort();
-            }
-            */
-            LOGS(_log, LOG_LVL_WARN, "&&&czarGet resp=" << response);
-        } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
-            LOGS(_log, LOG_LVL_WARN, requestContext + " &&& failed, ex: " + ex.what());
-        }
-        this_thread::sleep_for(chrono::seconds(15));
-    }
-}
 
 }  // anonymous namespace
 
@@ -172,6 +88,61 @@ Czar::Ptr Czar::_czar;
 Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName) {
     _czar.reset(new Czar(configFilePath, czarName));
     return _czar;
+}
+
+void Czar::_monitor() {
+    string const funcN("Czar::_monitor");
+    while (_monitorLoop) {
+        this_thread::sleep_for(_monitorSleepTime);
+        LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
+
+        /// Check database for changes in worker chunk assignments and aliveness
+        _czarFamilyMap->read();
+
+        // TODO:UJ DM-45470 If there were changes in `_czarFamilyMap`,
+        // see if any workers went down. If any did, `_unassign` all
+        // Jobs in UberJobs for the downed workers. The `_unassigned`
+        // Jobs should get reassigned in the next section `assignJobsToUberJobs`.
+
+        /// Create new UberJobs (if possible) for all jobs that are
+        /// unassigned for any reason.
+        map<QueryId, shared_ptr<qdisp::Executive>> execMap;
+        {
+            // Make a copy of all valid Executives
+            lock_guard<mutex> execMapLock(_executiveMapMtx);
+            auto iter = _executiveMap.begin();
+            while (iter != _executiveMap.end()) {
+                auto qIdKey = iter->first;
+                shared_ptr<qdisp::Executive> exec = iter->second.lock();
+                if (exec == nullptr) {
+                    iter = _executiveMap.erase(iter);
+                } else {
+                    execMap[qIdKey] = exec;
+                    ++iter;
+                }
+            }
+        }
+        // Use the copy to create new UberJobs as needed
+        for (auto&& [qIdKey, execVal] : execMap) {
+            execVal->assignJobsToUberJobs();
+        }
+
+        // TODO:UJ DM-45470 Maybe get missing results from workers.
+        //    This would be files that workers sent messages to the czar to
+        //    collect, but there was a communication problem and the czar didn't get the message
+        //    or didn't collect the file. to retrieve complete files that haven't been
+        //    collected.
+        //    Basically, is there a reasonable way to check that all UberJobs are being handled
+        //    and nothing has fallen through the cracks?
+
+        // TODO:UJ Maybe send a list of cancelled and completed queries to the workers?
+        //     How long should queryId's remain on this list?
+        //     It's probably better to have the executive for a query to send out
+        //     messages to worker that a user query was cancelled. If a worker sends
+        //     the czar about a cancelled user query, or the executive for that
+        //     query cannot be found, the worker should cancel all Tasks associated
+        //     with that queryId.
+    }
 }
 
 // Constructors
@@ -197,11 +168,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
-    try {
-        _czarChunkMap = CzarChunkMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
-    } catch (ChunkMapException const& exc) {
-        LOGS(_log, LOG_LVL_WARN, string(__func__) + " failed to create CzarChunkMap " + exc.what());
-    }
+    // This will block until there is a successful read of the database tables.
+    _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar database before the restart.
@@ -270,6 +238,17 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setReplicationHttpPort(port);
 
     _czarRegistry = CzarRegistry::create(_czarConfig);
+
+    // Start the monitor thread
+    thread monitorThrd(&Czar::_monitor, this);
+    _monitorThrd = move(monitorThrd);
+}
+
+Czar::~Czar() {
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
+    _monitorLoop = false;
+    _monitorThrd.join();
+    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
@@ -342,6 +321,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     // spawn background thread to wait until query finishes to unlock,
     // note that lambda stores copies of uq and msgTable.
     auto finalizer = [uq, msgTable]() mutable {
+        string qidstr = to_string(uq->getQueryId());
         // Add logging context with query ID
         QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
         LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
@@ -355,6 +335,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
             // will likely hang because table may still be locked.
             LOGS(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): " << exc.what());
         }
+        uq.reset();
     };
     LOGS(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
     thread finalThread(finalizer);
@@ -516,8 +497,15 @@ void Czar::_makeAsyncResult(string const& asyncResultTable, QueryId queryId, str
         throw exc;
     }
 
+    string const createAsyncResultTmpl(
+            "CREATE TABLE IF NOT EXISTS %1% "
+            "(jobId BIGINT, resultLocation VARCHAR(1024))"
+            "ENGINE=MEMORY;"
+            "INSERT INTO %1% (jobId, resultLocation) "
+            "VALUES (%2%, '%3%')");
+
     string query =
-            (boost::format(::createAsyncResultTmpl) % asyncResultTable % queryId % resultLocEscaped).str();
+            (boost::format(createAsyncResultTmpl) % asyncResultTable % queryId % resultLocEscaped).str();
 
     if (not sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure creating async result table", sqlErr);
@@ -537,7 +525,7 @@ void Czar::removeOldResultTables() {
     _lastRemovedTimer.start();
     _removingOldTables = true;
     // Run in a separate thread in the off chance this takes a while.
-    thread t([this]() {
+    thread thrd([this]() {
         LOGS(_log, LOG_LVL_INFO, "Removing old result database tables.");
         auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlResultConfig());
         string dbName = _czarConfig->getMySqlResultConfig().dbName;
@@ -583,8 +571,8 @@ void Czar::removeOldResultTables() {
         }
         _removingOldTables = false;
     });
-    t.detach();
-    _oldTableRemovalThread = std::move(t);
+    thrd.detach();
+    _oldTableRemovalThread = std::move(thrd);
 }
 
 SubmitResult Czar::getQueryInfo(QueryId queryId) const {
@@ -685,6 +673,24 @@ QueryId Czar::_lastQueryIdBeforeRestart() const {
         throw runtime_error(msg);
     }
     return stoull(queryIdStr);
+}
+
+void Czar::insertExecutive(QueryId qId, std::shared_ptr<qdisp::Executive> const& execPtr) {
+    lock_guard<mutex> lgMap(_executiveMapMtx);
+    _executiveMap[qId] = execPtr;
+}
+
+std::shared_ptr<qdisp::Executive> Czar::getExecutiveFromMap(QueryId qId) {
+    lock_guard<mutex> lgMap(_executiveMapMtx);
+    auto iter = _executiveMap.find(qId);
+    if (iter == _executiveMap.end()) {
+        return nullptr;
+    }
+    std::shared_ptr<qdisp::Executive> exec = iter->second.lock();
+    if (exec == nullptr) {
+        _executiveMap.erase(iter);
+    }
+    return exec;
 }
 
 }  // namespace lsst::qserv::czar
