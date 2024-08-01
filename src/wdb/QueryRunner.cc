@@ -281,8 +281,10 @@ bool QueryRunner::_dispatchChannel() {
             if (taskSched != nullptr) {
                 taskSched->histTimeOfRunningTasks->addEntry(primeT.getElapsed());
                 LOGS(_log, LOG_LVL_DEBUG, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
+                LOGS(_log, LOG_LVL_WARN, "&&&DASH QR " << taskSched->histTimeOfRunningTasks->getString("run"));
             } else {
                 LOGS(_log, LOG_LVL_ERROR, "QR runtaskSched == nullptr");
+                LOGS(_log, LOG_LVL_ERROR, "&&&DASH QR runtaskSched == nullptr");
             }
             double runTimeSeconds = primeT.getElapsed();
             double subchunkRunTimeSeconds = subChunkT.getElapsed();
