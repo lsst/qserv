@@ -35,6 +35,8 @@
 // This header declarations
 namespace lsst::qserv::wbase {
 
+class UberJobData;
+
 /// This class contains information about a user query that is effectively the same
 /// for all Task's in the user query.
 class UserQueryInfo {
@@ -63,6 +65,9 @@ public:
     /// @throws Bug if id is out of range.
     std::string getTemplate(size_t id);
 
+    /// Add an UberJobData object to the UserQueryInfo.
+    void addUberJob(std::shared_ptr<UberJobData> const& ujData);
+
 private:
     static Map _uqMap;
     static std::mutex _uqMapMtx;  ///< protects _uqMap
@@ -74,6 +79,10 @@ private:
     /// to alter existing indexes into the vector.
     std::vector<std::string> _templates;
     std::mutex _uqMtx;  ///< protects _templates;
+
+    /// Map of all UberJobData objects on this worker for this User Query.
+    std::map<UberJobId, std::shared_ptr<UberJobData>> _uberJobMap;
+    std::mutex _uberJobMapMtx;  ///< protects _uberJobMap;
 };
 
 }  // namespace lsst::qserv::wbase

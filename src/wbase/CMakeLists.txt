@@ -6,6 +6,7 @@ target_sources(wbase PRIVATE
     FileChannelShared.cc
     SendChannel.cc
     Task.cc
+    UberJobData.cc
     UserQueryInfo.cc
     WorkerCommand.cc
 )

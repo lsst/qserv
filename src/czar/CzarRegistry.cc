@@ -49,8 +49,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarRegistry");
 namespace lsst::qserv::czar {
 
 CzarRegistry::CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig) : _czarConfig(czarConfig) {
-    // Begin periodically updating worker's status in the Replication System's registry
-    // in the detached thread. This will continue before the application gets terminated.
+    // Begin periodically updating worker's status in the Replication System's registry.
+    // This will continue until the application gets terminated.
     thread registryUpdateThread(&CzarRegistry::_registryUpdateLoop, this);
     _czarHeartbeatThrd = move(registryUpdateThread);
 
@@ -149,13 +149,13 @@ CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
         int wPort = jsQserv.at("management-port").get<int>();
         uint64_t updateTimeInt = jsQserv.at("update-time-ms").get<uint64_t>();
         TIMEPOINT updateTime = TIMEPOINT(chrono::milliseconds(updateTimeInt));
-        WorkerContactInfo wInfo(key, wHost, wManagementHost, wPort, updateTime);
+        auto wInfo = make_shared<WorkerContactInfo>(key, wHost, wManagementHost, wPort, updateTime);
         LOGS(_log, LOG_LVL_DEBUG,
              __func__ << " wHost=" << wHost << " wPort=" << wPort << " updateTime=" << updateTimeInt);
         auto iter = wMap->find(key);
         if (iter != wMap->end()) {
             LOGS(_log, LOG_LVL_ERROR, __func__ << " duplicate key " << key << " in " << response);
-            if (!wInfo.sameContactInfo(iter->second)) {
+            if (!wInfo->sameContactInfo(*(iter->second))) {
                 LOGS(_log, LOG_LVL_ERROR, __func__ << " incongruent key " << key << " in " << response);
                 return nullptr;
             }
@@ -180,12 +180,19 @@ bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
         if (iter == other.end()) {
             return false;
         } else {
-            if (!(iter->second.sameContactInfo(wInfo))) {
+            if (!(iter->second->sameContactInfo(*wInfo))) {
                 return false;
             }
         }
     }
     return true;
+}
+
+string CzarRegistry::WorkerContactInfo::dump() const {
+    stringstream os;
+    os << "workerContactInfo{"
+       << "id=" << wId << " host=" << wHost << " mgHost=" << wManagementHost << " port=" << wPort << "}";
+    return os.str();
 }
 
 }  // namespace lsst::qserv::czar

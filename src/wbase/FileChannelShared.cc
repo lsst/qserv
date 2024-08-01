@@ -37,6 +37,7 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
+#include "wbase/UberJobData.h"
 #include "wconfig/WorkerConfig.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "util/Bug.h"
@@ -267,8 +268,12 @@ shared_ptr<FileChannelShared> FileChannelShared::create(shared_ptr<wbase::SendCh
 
 FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                                      string const& workerId)
-        : _sendChannel(sendChannel),
+        : _isUberJob(false),
+          _sendChannel(sendChannel),
+          _uberJobId(0),
           _czarId(czarId),
+          _czarHostName(""),  ///< Name of the czar host.
+          _czarPort(-1),
           _workerId(workerId),
           _protobufArena(make_unique<google::protobuf::Arena>()),
           _scsId(scsSeqId++) {
@@ -278,7 +283,32 @@ FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendC
     }
 }
 
+FileChannelShared::Ptr FileChannelShared::create(std::shared_ptr<wbase::UberJobData> const& uberJob,
+                                                 qmeta::CzarId czarId, string const& czarHostName,
+                                                 int czarPort, string const& workerId) {
+    lock_guard<mutex> const lock(_resultsDirCleanupMtx);
+    return Ptr(new FileChannelShared(uberJob, czarId, czarHostName, czarPort, workerId));
+}
+
+FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData,
+                                     qmeta::CzarId czarId, string const& czarHostName, int czarPort,
+                                     string const& workerId)
+        : _isUberJob(true),
+          _sendChannel(nullptr),
+          _uberJobData(uberJobData),
+          _uberJobId(uberJobData->getUberJobId()),
+          _czarId(czarId),
+          _czarHostName(czarHostName),
+          _czarPort(czarPort),
+          _workerId(workerId),
+          _protobufArena(make_unique<google::protobuf::Arena>()),
+          _scsId(scsSeqId++),
+          _useHttp(true) {
+    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created scsId=" << _scsId << " ujId=" << _uberJobId);
+}
+
 FileChannelShared::~FileChannelShared() {
+    LOGS(_log, LOG_LVL_DEBUG, "~FileChannelShared scsId=" << _scsId << " ujId=" << _uberJobId);
     // Normally, the channel should not be dead at this time. If it's already
     // dead it means there was a problem to process a query or send back a response
     // to Czar. In either case, the file would be useless and it has to be deleted
@@ -286,13 +316,15 @@ FileChannelShared::~FileChannelShared() {
     if (isDead()) {
         _removeFile(lock_guard<mutex>(_tMtx));
     }
-    if (_sendChannel != nullptr) {
-        _sendChannel->setDestroying();
-        if (!_sendChannel->isDead()) {
-            _sendChannel->kill("~FileChannelShared()");
+    if (!_useHttp) {
+        if (_sendChannel != nullptr) {
+            _sendChannel->setDestroying();
+            if (!_sendChannel->isDead()) {
+                _sendChannel->kill("~FileChannelShared()");
+            }
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared deleted");
+    LOGS(_log, LOG_LVL_DEBUG, "~FileChannelShared end");
 }
 
 void FileChannelShared::setTaskCount(int taskCount) { _taskCount = taskCount; }
@@ -310,8 +342,12 @@ bool FileChannelShared::kill(string const& note) {
 }
 
 bool FileChannelShared::isDead() {
-    if (_sendChannel == nullptr) return true;
-    return _sendChannel->isDead();
+    if (!_useHttp) {
+        if (_sendChannel == nullptr) return true;
+        return _sendChannel->isDead();
+    } else {
+        return _dead;
+    }
 }
 
 string FileChannelShared::makeIdStr(int qId, int jId) {
@@ -322,11 +358,24 @@ string FileChannelShared::makeIdStr(int qId, int jId) {
 bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
     lock_guard<mutex> const tMtxLock(_tMtx);
-    if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
-        LOGS(_log, LOG_LVL_ERROR, "Could not transmit the error message to Czar.");
-        return false;
+    if (!_useHttp) {
+        if (!_sendResponse(tMtxLock, task, cancelled, multiErr)) {
+            LOGS(_log, LOG_LVL_ERROR, "Could not transmit the error message to Czar.");
+            return false;
+        }
+        return true;
+    } else {
+        auto ujData = _uberJobData.lock();
+        if (ujData == nullptr) {
+            LOGS(_log, LOG_LVL_WARN,
+                 __func__ << " not sending error as ujData is null " << multiErr.toString());
+            return false;
+        }
+        // Delete the result file as nobody will come looking for it.
+        _kill(tMtxLock, " buildAndTransmitError");
+        return ujData->responseError(multiErr, task, cancelled);
     }
-    return true;
+    return false;
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
@@ -429,7 +478,16 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
 bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string const& note) {
     LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared::" << __func__ << " " << note);
-    return _sendChannel->kill(note);
+    if (!_useHttp) {
+        return _sendChannel->kill(note);
+    } else {
+        bool oldVal = _dead.exchange(true);
+        if (!oldVal) {
+            LOGS(_log, LOG_LVL_WARN, "FileChannelShared first kill call " << note);
+        }
+        _removeFile(streamMutexLock);
+        return oldVal;
+    }
 }
 
 bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
@@ -446,6 +504,7 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
     LOGS(_log, LOG_LVL_TRACE, __func__ << " _fillRows " << task->getIdStr() << " end");
     _responseData->set_rowcount(rows);
     _responseData->set_transmitsize(tSize);
+    ++_headerCount;
 
     // Serialize the content of the data buffer into the Protobuf data message
     // that will be written into the output file.
@@ -509,16 +568,22 @@ bool FileChannelShared::_fillRows(lock_guard<mutex> const& tMtxLock, MYSQL_RES* 
 }
 
 void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
-    if (!_fileName.empty() && _file.is_open()) {
-        _file.close();
+    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared::_removeFile " << _fileName << " scsId=" << _scsId);
+    if (!_fileName.empty()) {
+        if (_file.is_open()) {
+            _file.close();
+        }
         boost::system::error_code ec;
+        LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared::" << __func__ << " removing " << _fileName);
         fs::remove_all(fs::path(_fileName), ec);
         if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_WARN,
                  "FileChannelShared::" << __func__ << " failed to remove the result file '" << _fileName
                                        << "', ec: " << ec << ".");
+            return;
         }
     }
+    _fileName.clear();
 }
 
 bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
@@ -548,51 +613,60 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
 
     // Prepare the response object and serialize in into a message that will
     // be sent to Czar.
+    if (!_useHttp) {
+        proto::ResponseSummary response;
+        response.set_wname(_workerId);
+        response.set_queryid(queryId);
+        response.set_jobid(jobId);
+        response.set_fileresource_xroot(task->resultFileXrootUrl());
+        response.set_fileresource_http(task->resultFileHttpUrl());
+        response.set_attemptcount(task->getAttemptCount());
+        response.set_rowcount(_rowcount);
+        response.set_transmitsize(_transmitsize);
+        string errorMsg;
+        int errorCode = 0;
+        if (!multiErr.empty()) {
+            errorMsg = multiErr.toOneLineString();
+            errorCode = multiErr.firstErrorCode();
+        } else if (cancelled) {
+            errorMsg = "cancelled";
+            errorCode = -1;
+        }
+        if (!errorMsg.empty() or (errorCode != 0)) {
+            errorMsg = "FileChannelShared::" + string(__func__) + " error(s) in result for chunk #" +
+                       to_string(task->getChunkId()) + ": " + errorMsg;
+            response.set_errormsg(errorMsg);
+            response.set_errorcode(errorCode);
+            LOGS(_log, LOG_LVL_ERROR, errorMsg);
+        }
+        response.SerializeToString(&_responseBuf);
 
-    proto::ResponseSummary response;
-    response.set_wname(_workerId);
-    response.set_queryid(queryId);
-    response.set_jobid(jobId);
-    response.set_fileresource_xroot(task->resultFileXrootUrl());
-    response.set_fileresource_http(task->resultFileHttpUrl());
-    response.set_attemptcount(task->getAttemptCount());
-    response.set_rowcount(_rowcount);
-    response.set_transmitsize(_transmitsize);
-    string errorMsg;
-    int errorCode = 0;
-    if (!multiErr.empty()) {
-        errorMsg = multiErr.toOneLineString();
-        errorCode = multiErr.firstErrorCode();
-    } else if (cancelled) {
-        errorMsg = "cancelled";
-        errorCode = -1;
-    }
-    if (!errorMsg.empty() or (errorCode != 0)) {
-        errorMsg = "FileChannelShared::" + string(__func__) + " error(s) in result for chunk #" +
-                   to_string(task->getChunkId()) + ": " + errorMsg;
-        response.set_errormsg(errorMsg);
-        response.set_errorcode(errorCode);
-        LOGS(_log, LOG_LVL_ERROR, errorMsg);
-    }
-    response.SerializeToString(&_responseBuf);
+        LOGS(_log, LOG_LVL_DEBUG,
+             __func__ << " idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size());
 
-    LOGS(_log, LOG_LVL_DEBUG,
-         __func__ << " idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size());
+        // Send the message sent out-of-band within the SSI metadata.
+        if (!_sendChannel->setMetadata(_responseBuf.data(), _responseBuf.size())) {
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in setMetadata " << idStr);
+            _kill(streamMutexLock, "setMetadata");
+            return false;
+        }
 
-    // Send the message sent out-of-band within the SSI metadata.
-    if (!_sendChannel->setMetadata(_responseBuf.data(), _responseBuf.size())) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in setMetadata " << idStr);
-        _kill(streamMutexLock, "setMetadata");
-        return false;
-    }
-
-    // Send back the empty object since no info is expected by a caller
-    // for this type of requests beyond the usual error notifications (if any).
-    // Note that this call is needed to initiate the transaction.
-    if (!_sendChannel->sendData((char const*)0, 0)) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in sendData " << idStr);
-        _kill(streamMutexLock, "sendData");
-        return false;
+        // Send back the empty object since no info is expected by a caller
+        // for this type of requests beyond the usual error notifications (if any).
+        // Note that this call is needed to initiate the transaction.
+        if (!_sendChannel->sendData((char const*)0, 0)) {
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " failed in sendData " << idStr);
+            _kill(streamMutexLock, "sendData");
+            return false;
+        }
+    } else {
+        auto ujData = _uberJobData.lock();
+        if (ujData == nullptr) {
+            LOGS(_log, LOG_LVL_WARN, __func__ << " uberJobData is nullptr for ujId=" << _uberJobId);
+            return false;
+        }
+        string httpFileUrl = task->resultFileHttpUrl();
+        ujData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
     }
     return true;
 }

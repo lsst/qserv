@@ -35,7 +35,7 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMetaSelect.h"
 #include "query/FromList.h"
@@ -68,7 +68,7 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
         : _resultDbConn(resultDbConn),
           _qMetaSelect(qMetaSelect),
           _qMetaCzarId(qMetaCzarId),
-          _messageStore(std::make_shared<qdisp::MessageStore>()),
+          _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {
     // The SQL statement should be mostly OK alredy but we need to change
@@ -104,7 +104,7 @@ UserQueryProcessList::UserQueryProcessList(bool full, sql::SqlConnection* result
         : _resultDbConn(resultDbConn),
           _qMetaSelect(qMetaSelect),
           _qMetaCzarId(qMetaCzarId),
-          _messageStore(std::make_shared<qdisp::MessageStore>()),
+          _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {
     // use ShowProcessList view with completion statistics.

@@ -41,6 +41,8 @@ class SqlConnection;
 
 namespace lsst::qserv::qmeta {
 
+class QueryMessage;
+
 /// @addtogroup qmeta
 
 /**
@@ -261,11 +263,11 @@ public:
     void saveResultQuery(QueryId queryId, std::string const& query) override;
 
     /// @see QMeta::addQueryMessages()
-    void addQueryMessages(QueryId queryId, std::shared_ptr<qdisp::MessageStore> const& msgStore) override;
+    void addQueryMessages(QueryId queryId, std::shared_ptr<qmeta::MessageStore> const& msgStore) override;
 
     /// @see QMeta::getChunkMap
-    QMeta::ChunkMap getChunkMap(std::chrono::time_point<std::chrono::system_clock> const& prevUpdateTime =
-                                        std::chrono::time_point<std::chrono::system_clock>()) override;
+    QMetaChunkMap getChunkMap(std::chrono::time_point<std::chrono::system_clock> const& prevUpdateTime =
+                                      std::chrono::time_point<std::chrono::system_clock>()) override;
 
 protected:
     ///  Check that all necessary tables exist
@@ -294,7 +296,7 @@ private:
             std::lock_guard<std::mutex> const& lock);
 
     /// Add qMsg to the permanent message table.
-    void _addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
+    void _addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qMsg, int& cancelCount,
                           int& completeCount, int& execFailCount,
                           std::map<std::string, ManyMsg>& msgCountMap);
 

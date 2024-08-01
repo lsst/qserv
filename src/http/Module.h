@@ -86,6 +86,15 @@ protected:
      */
     virtual nlohmann::json executeImpl(std::string const& subModuleName) = 0;
 
+    /**
+     * Send a response back to a requester of a service.
+     * @param content The content to be sent back.
+     * @param contentType The type of the content to be sent back.
+     */
+    virtual void sendResponse(std::string const& content, std::string const& contentType) = 0;
+
+    std::string authKey() const { return _authKey; }
+
 private:
     /**
      * Pull the raw request body and translate it into a JSON object.
