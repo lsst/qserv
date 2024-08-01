@@ -80,10 +80,6 @@ public:
     void callMarkCompleteFunc(bool success) override;  ///< call markComplete for all jobs in this UberJob.
     std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
-    void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) override {
-        ;  // Do nothing as QueryRequest is only needed for xrootd. TODO:UJ delete function.
-    }
-
     /// Return false if not ok to set the status to newState, otherwise set the state for
     /// this UberJob and all jobs it contains to newState.
     /// This is used both to set status and prevent the system from repeating operations

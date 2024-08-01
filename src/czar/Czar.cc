@@ -67,13 +67,10 @@
 #include "util/IterableFormatter.h"
 #include "util/String.h"
 #include "xrdreq/QueryManagementAction.h"
-#include "XrdSsi/XrdSsiProvider.hh"
 
 using namespace lsst::qserv;
 using namespace nlohmann;
 using namespace std;
-
-extern XrdSsiProvider* XrdSsiProviderClient;
 
 namespace {
 
@@ -208,10 +205,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     int xrootdCBThreadsInit = _czarConfig->getXrootdCBThreadsInit();
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsInit=" << xrootdCBThreadsInit);
-    XrdSsiProviderClient->SetCBThreads(xrootdCBThreadsMax, xrootdCBThreadsInit);
     int const xrootdSpread = _czarConfig->getXrootdSpread();
     LOGS(_log, LOG_LVL_INFO, "config xrootdSpread=" << xrootdSpread);
-    XrdSsiProviderClient->SetSpread(xrootdSpread);
     _queryDistributionTestVer = _czarConfig->getQueryDistributionTestVer();
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
