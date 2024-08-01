@@ -62,9 +62,6 @@ public:
 
     virtual ~JobQuery();
 
-    /// Run this job.
-    bool runJob();
-
     QueryId getQueryId() const override { return _qid; }
     JobId getJobId() const override { return _jobDescription->id(); }
     std::string const& getPayload() const override;
@@ -74,15 +71,6 @@ public:
     JobDescription::Ptr getDescription() { return _jobDescription; }
 
     qmeta::JobStatus::Ptr getStatus() override { return _jobStatus; }
-
-    void setQueryRequest(std::shared_ptr<QueryRequest> const& qr) {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        _queryRequestPtr = qr;
-    }
-    std::shared_ptr<QueryRequest> getQueryRequest() {
-        std::lock_guard<std::recursive_mutex> lock(_rmutex);
-        return _queryRequestPtr;
-    }
 
     void callMarkCompleteFunc(bool success) override;
 
@@ -157,10 +145,6 @@ protected:
     mutable std::recursive_mutex _rmutex;  ///< protects _jobDescription,
                                            ///< _queryRequestPtr, _uberJobId,
                                            ///< and _inSsi
-
-    // SSI items
-    std::shared_ptr<QueryRequest> _queryRequestPtr;
-    bool _inSsi{false};
 
     // Cancellation
     std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.
