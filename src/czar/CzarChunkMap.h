@@ -26,37 +26,30 @@
 // System headers
 #include <chrono>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <mutex>
-#include <set>
 #include <string>
 #include <sstream>
 
 // Qserv headers
 #include "global/clock_defs.h"
-#include "qmeta/QMeta.h"
 #include "util/Issue.h"
 
+namespace lsst::qserv::qmeta {
+class QMeta;
+struct QMetaChunkMap;
+}  // namespace lsst::qserv::qmeta
+
 namespace lsst::qserv::czar {
+
+class CzarFamilyMap;
 
 class ChunkMapException : public util::Issue {
 public:
     ChunkMapException(Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {}
 };
 
-/// This class is used to organize worker chunk table information so that it
-/// can be used to send jobs to the appropriate worker and inform workers
-/// what chunks they can expect to handle in shared scans.
-/// The data for the maps is provided by the Replicator and stored in the
-/// QMeta database.
-/// When the data is changed, there is a timestamp that is updated, which
-/// will cause new maps to be made by this class.
-///
-/// The maps generated are constant objects stored with shared pointers. As
-/// such, it should be possible for numerous threads to use each map
-/// simultaneously provided they have their own pointers to the maps.
-/// The pointers to the maps are mutex protected to safely allow map updates.
-///
 /// The czar is expected to heavily use the
 ///    `getMaps() -> WorkerChunkMap -> getSharedScanChunkMap()`
 /// to send jobs to workers, as that gets an ordered list of all chunks
@@ -78,11 +71,13 @@ public:
     using Ptr = std::shared_ptr<CzarChunkMap>;
     using SizeT = uint64_t;
 
-    CzarChunkMap() = delete;
     CzarChunkMap(CzarChunkMap const&) = delete;
     CzarChunkMap& operator=(CzarChunkMap const&) = delete;
 
-    static Ptr create(std::shared_ptr<qmeta::QMeta> const& qmeta) { return Ptr(new CzarChunkMap(qmeta)); }
+    // static Ptr create(std::shared_ptr<qmeta::QMeta> const& qmeta) { return Ptr(new CzarChunkMap(qmeta)); }
+    static Ptr create() { return Ptr(new CzarChunkMap()); }
+
+    ~CzarChunkMap();
 
     class WorkerChunksData;
 
@@ -103,9 +98,13 @@ public:
         /// of this chunk.
         void addToWorkerHasThis(std::shared_ptr<WorkerChunksData> const& worker);
 
+        /// Return a copy of _workerHasThisMap.
+        std::map<std::string, std::weak_ptr<WorkerChunksData>> getWorkerHasThisMapCopy() const;
+
         std::string dump() const;
 
         friend CzarChunkMap;
+        friend CzarFamilyMap;
 
     private:
         int64_t const _chunkId;  ///< The Id number for this chunk.
@@ -142,6 +141,7 @@ public:
         std::string dump() const;
 
         friend CzarChunkMap;
+        friend CzarFamilyMap;
 
     private:
         std::string const _workerId;
@@ -168,31 +168,14 @@ public:
     /// Sort the chunks in `chunksSortedBySize` in descending order by total size in bytes.
     static void sortChunks(ChunkVector& chunksSortedBySize);
 
-    /// Insert the chunk table described into the correct locations in
-    /// `wcMap` and `chunkMap`.
-    /// @param `wcMap` - WorkerChunkMap being constructed.
-    /// @param `chunkMap` - ChunkMap being constructed.
-    /// @param `workerId` - worker id where this table was found.
-    /// @param `dbName` - database name for the table being inserted.
-    /// @param `tableName` - table name for the table being inserted.
-    /// @param `chunkIdNum` - chunk id number for the table being inserted.
-    /// @param `sz` - size in bytes of the table being inserted.
-    static void insertIntoChunkMap(WorkerChunkMap& wcMap, ChunkMap& chunkMap, std::string const& workerId,
-                                   std::string const& dbName, std::string const& tableName,
-                                   int64_t chunkIdNum, SizeT sz);
-
     /// Calculate the total bytes in each chunk and then sort the resulting ChunkVector by chunk size,
     /// descending.
-    static void calcChunkMap(ChunkMap& chunkMap, ChunkVector& chunksSortedBySize);
-
-    /// Make new ChunkMap and WorkerChunkMap from the data in `qChunkMap`.
-    static std::pair<std::shared_ptr<CzarChunkMap::ChunkMap>, std::shared_ptr<CzarChunkMap::WorkerChunkMap>>
-    makeNewMaps(qmeta::QMeta::ChunkMap const& qChunkMap);
+    static void calcChunkMap(ChunkMap const& chunkMap, ChunkVector& chunksSortedBySize);
 
     /// Verify that all chunks belong to at least one worker and that all chunks are represented in shared
     /// scans.
     /// @throws ChunkMapException
-    static void verify(ChunkMap const& chunkMap, WorkerChunkMap const& wcMap);
+    void verify();
 
     static std::string dumpChunkMap(ChunkMap const& chunkMap);
 
@@ -207,29 +190,133 @@ public:
         return {_chunkMap, _workerChunkMap};
     }
 
+    /// Use the information from the registry to `organize` `_chunkMap` and `_workerChunkMap`
+    /// into their expected formats.
+    void organize();
+
 private:
-    /// Try to `_read` values for maps from `qmeta`.
-    CzarChunkMap(std::shared_ptr<qmeta::QMeta> const& qmeta);
+    CzarChunkMap();
 
-    /// Read the json worker list from the database and update the maps if there's a new
-    /// version since the `_lastUpdateTime`.
-    /// @throws `qmeta::QMetaError`
-    bool _read();
-
-    std::shared_ptr<qmeta::QMeta> _qmeta;  ///< Database connection to collect json worker list.
+    /// Return shared pointers to `_chunkMap` and `_workerChunkMap`, which should be held until
+    /// finished with the data.
+    std::pair<std::shared_ptr<CzarChunkMap::ChunkMap>, std::shared_ptr<CzarChunkMap::WorkerChunkMap>>
+    _getMaps() const {
+        std::lock_guard<std::mutex> lck(_mapMtx);
+        return {_chunkMap, _workerChunkMap};
+    }
 
     /// Map of all workers and which chunks they contain.
-    std::shared_ptr<WorkerChunkMap const> _workerChunkMap;
+    std::shared_ptr<WorkerChunkMap> _workerChunkMap{new WorkerChunkMap()};
 
     /// Map of all chunks in the system with chunkId number as the key and the values contain
     /// information about the tables in those chunks and which worker is responsible for
     /// handling the chunk in a shared scan.
-    std::shared_ptr<ChunkMap const> _chunkMap;
+    std::shared_ptr<ChunkMap> _chunkMap{new ChunkMap()};
+
+    mutable std::mutex _mapMtx;  ///< protects _workerChunkMap, _chunkMap (TODO:UJ may not be needed anymore)
+
+    friend CzarFamilyMap;
+};
+
+/// This class is used to organize worker chunk table information so that it
+/// can be used to send jobs to the appropriate worker and inform workers
+/// what chunks they can expect to handle in shared scans, focusing at the
+/// family level.
+/// The data for the maps is provided by the Replicator and stored in the
+/// QMeta database.
+/// When the data is changed, there is a timestamp that is updated, which
+/// will cause new maps to be made by this class.
+///
+/// The maps generated should be treated as constant objects stored with
+/// shared pointers. As such, it should be possible for numerous threads
+/// to use each map simultaneously provided they have their own pointers
+/// to the maps.
+/// The pointers to the maps are mutex protected to safely allow map updates.
+//
+// TODO:UJ move this to its own header file.
+//
+// TODO:UJ Currently, each family only has one database and they share a name.
+//   Once a table mapping databases to families is available, it needs to be
+//   used to map databases to families in this class.
+class CzarFamilyMap {
+public:
+    using Ptr = std::shared_ptr<CzarFamilyMap>;
+    typedef std::map<std::string, CzarChunkMap::Ptr> FamilyMapType;
+    typedef std::map<std::string, std::string> DbNameToFamilyNameType;
+
+    static Ptr create(std::shared_ptr<qmeta::QMeta> const& qmeta);
+
+    CzarFamilyMap() = delete;
+    CzarFamilyMap(CzarFamilyMap const&) = delete;
+    CzarFamilyMap& operator=(CzarFamilyMap const&) = delete;
+
+    ~CzarFamilyMap() = default;
+
+    /// For unit testing only
+    /// @param dbNameToFamilyNameType - valid map of db to family name for the unit test.
+    // TODO::UJ define member instance for `_dbNameToFamilyName`
+    CzarFamilyMap(std::shared_ptr<DbNameToFamilyNameType> const& dbNameToFamilyName) {}
+
+    std::string cName(const char* fName) const {
+        return std::string("CzarFamilyMap::") + ((fName == nullptr) ? "?" : fName);
+    }
+
+    /// Family names are unknown until a table has been added to the database, so
+    /// the dbName will be used as the family name until the table exists.
+    std::string getFamilyNameFromDbName(std::string const& dbName) const {
+        // TODO:UJ use a member instance of std::shared_ptr<DbNameToFamilyNameType>
+        //     once info is available in QMeta.
+        return dbName;
+    }
+
+    /// Return the chunk map for the database `dbName`
+    CzarChunkMap::Ptr getChunkMap(std::string const& dbName) const {
+        auto familyName = getFamilyNameFromDbName(dbName);
+        return _getChunkMap(familyName);
+    }
+
+    /// Read the registry information from the database, if not already set.
+    bool read();
+
+    /// Make a new FamilyMapType map including ChunkMap and WorkerChunkMap from the data
+    /// in `qChunkMap`. Each family has its own ChunkMap and WorkerChunkMap.
+    std::shared_ptr<FamilyMapType> makeNewMaps(qmeta::QMetaChunkMap const& qChunkMap);
+
+    /// Insert the new element described by the parameters into the `newFamilyMap` as appropriate.
+    void insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFamilyMap, std::string const& workerId,
+                        std::string const& dbName, std::string const& tableName, int64_t chunkIdNum,
+                        CzarChunkMap::SizeT sz);
+
+    /// Verify the `familyMap` does not have errors.
+    static void verify(std::shared_ptr<FamilyMapType> const& familyMap);
+
+private:
+    /// Try to `_read` values for maps from `qmeta`.
+    CzarFamilyMap(std::shared_ptr<qmeta::QMeta> const& qmeta);
+
+    /// Read the registry information from the database, stopping if
+    /// it hasn't been updated.
+    // TODO:UJ add a changed timestamp (similar to the existing updated timestamp)
+    //    to the registry database and only update when changed.
+    bool _read();
+
+    /// Return the chunk map for the `familyName`
+    CzarChunkMap::Ptr _getChunkMap(std::string const& familyName) const {
+        std::lock_guard<std::mutex> familyLock(_familyMapMtx);
+        auto iter = _familyMap->find(familyName);
+        if (iter == _familyMap->end()) {
+            return nullptr;
+        }
+        return iter->second;
+    }
+
+    std::shared_ptr<qmeta::QMeta> _qmeta;  ///< Database connection to collect json worker list.
 
     /// The last time the maps were updated with information from the replicator.
     TIMEPOINT _lastUpdateTime;  // initialized to 0;
 
-    mutable std::mutex _mapMtx;  ///< protects _workerChunkMap, _chunkMap, _timeStamp, and _qmeta.
+    std::shared_ptr<FamilyMapType const> _familyMap{new FamilyMapType()};
+    mutable std::mutex _familyMapMtx;  ///< protects _familyMap, _timeStamp, and _qmeta.
 };
 
 }  // namespace lsst::qserv::czar

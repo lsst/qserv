@@ -36,9 +36,9 @@
 
 // Qserv headers
 #include "global/stringUtil.h"
-#include "qdisp/JobStatus.h"
-#include "qdisp/MessageStore.h"
 #include "qmeta/Exceptions.h"
+#include "qmeta/JobStatus.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QMetaTransaction.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
@@ -807,14 +807,14 @@ void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
     trans->commit();
 }
 
-void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStore> const& msgStore) {
+void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> const& msgStore) {
     int msgCount = msgStore->messageCount();
     int cancelCount = 0;
     int completeCount = 0;
     int execFailCount = 0;
     map<string, ManyMsg> msgCountMap;
     for (int i = 0; i != msgCount; ++i) {
-        qdisp::QueryMessage const& qMsg = msgStore->getMessage(i);
+        qmeta::QueryMessage const& qMsg = msgStore->getMessage(i);
         try {
             _addQueryMessage(queryId, qMsg, cancelCount, completeCount, execFailCount, msgCountMap);
         } catch (qmeta::SqlError const& ex) {
@@ -823,11 +823,11 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
     }
     // Add the total number of cancel messages received.
     if (cancelCount > 0 || execFailCount > 0) {
-        qdisp::QueryMessage qm(-1, "CANCELTOTAL", 0,
+        qmeta::QueryMessage qm(-1, "CANCELTOTAL", 0,
                                string("{\"CANCEL_count\":") + to_string(cancelCount) +
                                        ", \"EXECFAIL_count\":" + to_string(execFailCount) +
                                        ", \"COMPLETE_count\":" + to_string(completeCount) + "}",
-                               qdisp::JobStatus::getNow(), MessageSeverity::MSG_INFO);
+                               qmeta::JobStatus::getNow(), MessageSeverity::MSG_INFO);
         _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
     }
 
@@ -836,16 +836,16 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<qdisp::MessageStor
             string source = string("MANY_") + elem.first;
             string desc = string("{\"msgSource\":") + elem.first +
                           ", \"count\":" + to_string(elem.second.count) + "}";
-            qdisp::QueryMessage qm(-1, source, 0, desc, qdisp::JobStatus::getNow(), elem.second.severity);
+            qmeta::QueryMessage qm(-1, source, 0, desc, qmeta::JobStatus::getNow(), elem.second.severity);
             _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
         }
     }
 }
 
-QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> const& prevUpdateTime) {
+QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> const& prevUpdateTime) {
     lock_guard<mutex> lock(_dbMutex);
 
-    QMeta::ChunkMap chunkMap;
+    QMetaChunkMap chunkMap;
 
     auto trans = QMetaTransaction::create(*_conn);
 
@@ -856,7 +856,7 @@ QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock>
             (prevUpdateTime == chrono::time_point<chrono::system_clock>()) || (prevUpdateTime < updateTime);
     if (!force) {
         trans->commit();
-        return QMeta::ChunkMap();
+        return QMetaChunkMap();
     }
 
     // Read the map itself
@@ -882,7 +882,10 @@ QMeta::ChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock>
             string const& table = row[2];
             unsigned int chunk = lsst::qserv::stoui(row[3]);
             size_t const size = stoull(row[4]);
-            chunkMap.workers[worker][database][table].push_back(ChunkMap::ChunkInfo{chunk, size});
+            chunkMap.workers[worker][database][table].push_back(QMetaChunkMap::ChunkInfo{chunk, size});
+            LOGS(_log, LOG_LVL_TRACE,
+                 "QMetaInsrt{worker=" << worker << " dbN=" << database << " tblN=" << table
+                                      << " chunk=" << chunk << " sz=" << size);
         }
         chunkMap.updateTime = updateTime;
     } catch (exception const& ex) {
@@ -896,7 +899,8 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string const tableName = "chunkMapStatus";
-    string const query = "SELECT `update_time` FROM `" + tableName + "` ORDER BY `update_time` DESC LIMIT 1";
+    string const query =
+            "SELECT TIME_TO_SEC(`update_time`) FROM `" + tableName + "` ORDER BY `update_time` DESC LIMIT 1";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (!_conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);
@@ -920,7 +924,7 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
     }
 }
 
-void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
+void QMetaMysql::_addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qMsg, int& cancelCount,
                                   int& completeCount, int& execFailCount, map<string, ManyMsg>& msgCountMap) {
     // Don't add duplicate messages.
     if (qMsg.msgSource == "DUPLICATE") return;
@@ -981,7 +985,7 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qM
     query += ", " + to_string(qMsg.code);
     query += ", \"" + _conn->escapeString(severity) + "\"";
     query += ", \"" + _conn->escapeString(qMsg.description) + "\"";
-    query += ", " + to_string(qdisp::JobStatus::timeToInt(qMsg.timestamp));
+    query += ", " + to_string(qmeta::JobStatus::timeToInt(qMsg.timestamp));
     query += ")";
     // run query
     sql::SqlErrorObject errObj;

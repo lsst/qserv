@@ -29,6 +29,7 @@ option cc_enable_arenas = true;
 
 package lsst.qserv.proto;
 
+// TODO:UJ delete when xrootd removed. ResonseSummary will need to be kept.
 // Query message sent to worker
 // One of these Task objects should be sent.
 message TaskMsg {

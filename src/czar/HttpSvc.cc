@@ -28,6 +28,7 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "czar/HttpMonitorModule.h"
+#include "czar/HttpCzarWorkerModule.h"
 #include "http/MetaModule.h"
 #include "qhttp/Server.h"
 
@@ -89,6 +90,16 @@ uint16_t HttpSvc::start() {
             {{"GET", "/status",
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
                   HttpMonitorModule::process(::serviceName, req, resp, "STATUS");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/queryjob-error",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarWorkerModule::process(::serviceName, req, resp, "QUERYJOB-ERROR");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/queryjob-ready",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpCzarWorkerModule::process(::serviceName, req, resp, "QUERYJOB-READY");
               }}});
     _httpServerPtr->start();
 

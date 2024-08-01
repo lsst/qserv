@@ -56,7 +56,7 @@
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "qdisp/Executive.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QMetaSelect.h"
 #include "qmeta/QStatusMysql.h"
@@ -225,8 +225,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     // First check for SUBMIT and strip it
     std::string query = aQuery;
 
-    // TODO: DM-43386 need to have WorkerChunkMap info at this point
-
     std::string stripped;
     bool async = false;
     if (UserQueryType::isSubmit(query, stripped)) {
@@ -305,7 +303,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             sessionValid = false;
         }
 
-        auto messageStore = std::make_shared<qdisp::MessageStore>();
+        auto messageStore = std::make_shared<qmeta::MessageStore>();
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
@@ -328,6 +326,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupMerger();
             uq->saveResultQuery();
+            executive->setUserQuerySelect(uq);
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {
