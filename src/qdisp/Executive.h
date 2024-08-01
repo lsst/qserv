@@ -52,10 +52,10 @@
 #include "util/ThreadPool.h"
 
 // TODO:UJ replace with better enable/disable feature, or just use only UberJobs
-#define uberJobsEnabled 1
+#define uberJobsEnabled 1 // &&& delete
 
-// Forward declarations
-class XrdSsiService;
+//&&& // Forward declarations
+//&&&class XrdSsiService;
 
 namespace lsst::qserv {
 
@@ -132,9 +132,6 @@ public:
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
-    /// TODO:UJ - to be deleted
-    void runJobQuery(std::shared_ptr<JobQuery> const& jobQuery);
-
     // Queue `uberJob` to be run using the QDispPool.
     void runUberJob(std::shared_ptr<UberJob> const& uberJob);
 
@@ -179,11 +176,9 @@ public:
     /// @return true if cancelled
     bool getCancelled() { return _cancelled; }
 
-    XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
+    //&&&XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
 
     std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
-
-    bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);  // TODO:UJ delete
 
     /// Add 'rowCount' to the total number of rows in the result table.
     void addResultRows(int64_t rowCount);
@@ -214,13 +209,6 @@ public:
 
     int getTotalJobs() { return _totalJobs; }
 
-    /// Set `_failedUberJob` to `val`; Setting this to true is a flag
-    /// that indicates to the Czar::_monitor that this Executive
-    /// probably has unassigned jobs that need to be placed in
-    /// new UberJobs. This `val` should only be set false by
-    /// Czar::_monitor().
-    void setFlagFailedUberJob(bool val) { _failedUberJob = val; }
-
     /// Add an error code and message that may be displayed to the user.
     void addMultiError(int errorCode, std::string const& errorMsg, int errState);
 
@@ -245,7 +233,7 @@ private:
               SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qStatus,
               std::shared_ptr<qproc::QuerySession> const& querySession);
 
-    void _setup();
+    //&&&void _setup();
     void _setupLimit();
 
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
@@ -273,9 +261,11 @@ private:
     std::atomic<bool> _empty{true};
     std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
+    /* &&&
     /// RPC interface, static to avoid getting every time a user query starts and separate
     /// from _xrdSsiService to avoid conflicts with XrdSsiServiceMock.
     XrdSsiService* _xrdSsiService;  ///< RPC interface
+    */
     JobMap _jobMap;                 ///< Contains information about all jobs.
     JobMap _incompleteJobs;         ///< Map of incomplete jobs.
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
@@ -288,7 +278,7 @@ private:
     /** Execution errors */
     util::MultiError _multiError;
 
-    std::atomic<int> _requestCount;      ///< Count of submitted jobs
+    std::atomic<int> _requestCount{0};      ///< Count of submitted jobs
     util::Flag<bool> _cancelled{false};  ///< Has execution been cancelled.
 
     // Mutexes
@@ -346,10 +336,6 @@ private:
 
     /// Weak pointer to the UserQuerySelect object for this query.
     std::weak_ptr<ccontrol::UserQuerySelect> _userQuerySelect;
-
-    /// If this is true, there are probably jobs that need to
-    /// be reassigned to new UberJobs.
-    std::atomic<bool> _failedUberJob{false};
 
     /// Flag that is set to true when ready to create and run UberJobs.
     std::atomic<bool> _readyToExecute{false};

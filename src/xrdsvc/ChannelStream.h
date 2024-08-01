@@ -40,7 +40,7 @@ namespace lsst::qserv::xrdsvc {
 
 /// ChannelStream is an implementation of an XrdSsiStream that accepts
 /// SendChannel streamed data.
-class ChannelStream : public XrdSsiStream {
+class ChannelStream : public XrdSsiStream { // &&& delete
 public:
     ChannelStream();
     virtual ~ChannelStream();

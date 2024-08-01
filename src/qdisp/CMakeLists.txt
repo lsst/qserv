@@ -9,9 +9,7 @@ target_sources(qdisp PRIVATE
     JobDescription.cc
     JobQuery.cc
     QdispPool.cc
-    QueryRequest.cc
     UberJob.cc
-    XrdSsiMocks.cc
 )
 
 target_include_directories(qdisp PRIVATE
