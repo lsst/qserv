@@ -51,10 +51,7 @@
 namespace lsst::qserv::mysql {
 class MySqlConfig;
 }
-namespace lsst::qserv::proto {
-class TaskMsg;
-class TaskMsg_Fragment;
-}  // namespace lsst::qserv::proto
+
 namespace lsst::qserv::wbase {
 class FileChannelShared;
 }
@@ -144,7 +141,6 @@ class Task : public util::CommandForThreadPool {
 public:
     static std::string const defaultUser;
     using Ptr = std::shared_ptr<Task>;
-    using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;
 
     /// Class to store constant sets and vectors.
     class DbTblsAndSubchunks {
@@ -171,9 +167,6 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    Task(TaskMsgPtr const& t, int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo,
-         size_t templateId, int subchunkId, std::shared_ptr<FileChannelShared> const& sc,
-         uint16_t resultsHttpPort = 8080);
     // TODO:UJ too many parameters.
     //  - fragmentNumber seems pointless
     //  - hasSubchunks seems redundant.
@@ -190,15 +183,6 @@ public:
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
-
-    /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
-    static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
-                                        std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-                                        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
-                                        mysql::MySqlConfig const& mySqlConfig,
-                                        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                                        std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-                                        uint16_t resultsHttpPort = 8080);
 
     /// Read json to generate a vector of one or more task for a chunk.
     static std::vector<Ptr> createTasksForChunk(
