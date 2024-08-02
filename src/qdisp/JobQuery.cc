@@ -63,7 +63,7 @@ JobQuery::~JobQuery() {
 }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
-bool JobQuery::cancel(bool superfluous) {
+bool JobQuery::cancel(bool superfluous) { /// &&& This can probably be simplified more
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
@@ -71,17 +71,7 @@ bool JobQuery::cancel(bool superfluous) {
         // If _inSsi is true then this query request has been passed to SSI and
         // _queryRequestPtr cannot be a nullptr. Cancellation is complicated.
         bool cancelled = false;
-        /* &&&
-        if (_inSsi) {
-            LOGS(_log, LOG_LVL_DEBUG, "cancel QueryRequest in progress");
-            if (_queryRequestPtr->cancel()) {
-                LOGS(_log, LOG_LVL_DEBUG, "cancelled by QueryRequest");
-                cancelled = true;
-            } else {
-                LOGS(_log, LOG_LVL_DEBUG, "QueryRequest could not cancel");
-            }
-        }
-        */
+
         if (!cancelled) {
             ostringstream os;
             os << _idStr << " cancel";
@@ -155,7 +145,7 @@ int JobQuery::getAttemptCount() const {
     return _jobDescription->getAttemptCount();
 }
 
-string const& JobQuery::getPayload() const { return _jobDescription->payload(); }
+//&&&string const& JobQuery::getPayload() const { return _jobDescription->payload(); }
 
 void JobQuery::callMarkCompleteFunc(bool success) { _markCompleteFunc->operator()(success); }
 
