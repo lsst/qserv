@@ -97,7 +97,6 @@ Executive::Executive(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> c
           _qMeta(qStatus),
           _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
-    //&&&_setup();
     _setupLimit();
     qdisp::CzarStats::get()->addQuery();
 }
@@ -523,13 +522,6 @@ string Executive::getProgressDesc() const {
     LOGS(_log, LOG_LVL_ERROR, msg_progress);
     return msg_progress;
 }
-
-/* &&&
-void Executive::_setup() {
-    _empty.store(true);
-    _requestCount = 0;
-}
-*/
 
 /** Add (jobId,r) entry to _requesters map if not here yet
  *  else leave _requesters untouched.

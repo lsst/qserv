@@ -35,28 +35,15 @@ namespace lsst::qserv::proto {
 
 /// Structure to store shared scan information for a single table.
 ///
-struct ScanTableInfo {
+struct ScanTableInfo { // &&& check if still useful
     using ListOf = std::vector<ScanTableInfo>;
 
     ScanTableInfo() = default;
     ScanTableInfo(std::string const& db_, std::string const& table_) : db(db_), table(table_) {}
     ScanTableInfo(std::string const& db_, std::string const& table_, bool lockInMemory_, int scanRating_)
             : db{db_}, table{table_}, lockInMemory{lockInMemory_}, scanRating{scanRating_} {}
-    ScanTableInfo(TaskMsg_ScanTable const& scanTbl)
-            : db{scanTbl.db()},
-              table{scanTbl.table()},
-              lockInMemory{scanTbl.lockinmemory()},
-              scanRating{scanTbl.scanrating()} {}
 
     ScanTableInfo(ScanTableInfo const&) = default;
-
-    /// Copy contents of this object into a TaskMsg_ScanTable object.
-    void copyToScanTable(TaskMsg_ScanTable* msgScanTbl) const {
-        msgScanTbl->set_db(db);
-        msgScanTbl->set_table(table);
-        msgScanTbl->set_lockinmemory(lockInMemory);
-        msgScanTbl->set_scanrating(scanRating);
-    }
 
     int compare(ScanTableInfo const& rhs) const;
 

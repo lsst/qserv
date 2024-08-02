@@ -35,8 +35,6 @@ namespace lsst::qserv::qdisp {
 
 class JobQuery;
 
-class QueryRequest;
-
 /// This class is a contains x number of jobs that need to go to the same worker
 /// from a single user query, and contact information for the worker. It also holds
 /// some information common to all jobs.
@@ -70,7 +68,7 @@ public:
     }  // TODO:UJ change name when JobBase no longer needed.
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }  // TODO:UJ relocate to JobBase
-    std::string const& getPayload() const override { return _payload; }  // TODO:UJ delete when possible.
+    //&&&std::string const& getPayload() const override { return _payload; }  // TODO:UJ delete when possible.
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() override {
         return _jobStatus;

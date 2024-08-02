@@ -35,7 +35,6 @@
 #include "global/LogContext.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
-#include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "qdisp/JobQuery.h"
 #include "qmeta/JobStatus.h"
