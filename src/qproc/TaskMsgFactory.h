@@ -50,6 +50,7 @@ class ChunkQuerySpec;
 
 /// TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
 /// All member variables must be thread safe.
+/// &&& fix doc
 class TaskMsgFactory {
 public:
     using Ptr = std::shared_ptr<TaskMsgFactory>;
@@ -57,31 +58,12 @@ public:
     TaskMsgFactory() = default;
     virtual ~TaskMsgFactory() {}
 
-    /// Construct a TaskMsg and serialize it to a stream
-    virtual void serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName, QueryId queryId,
-                              int jobId, int attemptCount, qmeta::CzarId czarId, std::ostream& os);
-
-    /// Use the provided information to fill in taskMsg.
-    /// @return true if successful.
-    bool fillTaskMsg(proto::TaskMsg* taskMsg, ChunkQuerySpec const& s, std::string const& chunkResultName,
-                     QueryId queryId, int jobId, int attemptCount, qmeta::CzarId czarId);
-
     /// Make and return the json message for a single Job.
     virtual std::shared_ptr<nlohmann::json> makeMsgJson(ChunkQuerySpec const& s,
                                                         std::string const& chunkResultName, QueryId queryId,
                                                         int jobId, int attemptCount, qmeta::CzarId czarId);
 
 private:
-    // TODO:UJ  delete when possible
-    std::shared_ptr<proto::TaskMsg> _makeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName,
-                                             QueryId queryId, int jobId, int attemptCount,
-                                             qmeta::CzarId czarId);
-
-    // TODO:UJ  delete when possible
-    void _addFragment(proto::TaskMsg& taskMsg, std::string const& resultName,
-                      DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,
-                      std::vector<std::string> const& queries);
-
     /// Make a json message for a single fragment.
     void _addFragmentJson(nlohmann::json& jsFragments, std::string const& resultName,
                           DbTableSet const& subChunkTables, std::vector<int> const& subChunkIds,

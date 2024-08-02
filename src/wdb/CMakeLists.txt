@@ -4,7 +4,6 @@ add_dependencies(wdb proto)
 target_sources(wdb PRIVATE
     ChunkResource.cc
     QueryRunner.cc
-    QuerySql.cc
     SQLBackend.cc
 )
 
@@ -40,7 +39,6 @@ ENDFUNCTION()
 wdb_tests(
     testChunkResource
     testQueryRunner
-    testQuerySql
 )
 
 set_tests_properties(testQueryRunner PROPERTIES WILL_FAIL 1)

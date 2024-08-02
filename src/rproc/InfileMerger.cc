@@ -56,7 +56,6 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
-#include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qproc/DatabaseModels.h"

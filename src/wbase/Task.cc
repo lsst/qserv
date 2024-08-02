@@ -71,17 +71,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
 
-string buildResultFileName(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMsg) {
-    return to_string(taskMsg->czarid()) + "-" + to_string(taskMsg->queryid()) + "-" +
-           to_string(taskMsg->jobid()) + "-" + to_string(taskMsg->chunkid()) + "-" +
-           to_string(taskMsg->attemptcount()) + ".proto";
-}
-
-string buildResultFilePath(string const& resultFileName, string const& resultsDirname) {
-    if (resultsDirname.empty()) return resultsDirname;
-    return fs::weakly_canonical(fs::path(resultsDirname) / resultFileName).string();
-}
-
 string buildUjResultFilePath(lsst::qserv::wbase::UberJobData::Ptr const& ujData,
                              string const& resultsDirname) {
     if (resultsDirname.empty()) return resultsDirname;
@@ -128,92 +117,6 @@ TaskScheduler::TaskScheduler() {
 }
 
 atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
-
-/// When the constructor is called, there is not enough information
-/// available to define the action to take when this task is run, so
-/// Command::setFunc() is used set the action later. This is why
-/// the util::CommandThreadPool is not called here.
-Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> const& userQueryInfo,
-           size_t templateId, int subchunkId, shared_ptr<FileChannelShared> const& sc,
-           uint16_t resultsHttpPort)
-        : _userQueryInfo(userQueryInfo),
-          _sendChannel(sc),
-          _tSeq(++taskSequence),
-          _qId(t->queryid()),
-          _templateId(templateId),
-          _hasChunkId(t->has_chunkid()),
-          _chunkId(t->has_chunkid() ? t->chunkid() : -1),
-          _subchunkId(subchunkId),
-          _jId(t->jobid()),
-          _attemptCount(t->attemptcount()),
-          _queryFragmentNum(fragmentNumber),
-          _fragmentHasSubchunks(t->fragment(fragmentNumber).has_subchunks()),
-          _db(t->has_db() ? t->db() : ""),
-          _czarId(t->has_czarid() ? t->czarid() : -1) {
-    // These attributes will be passed back to Czar in the Protobuf response
-    // to advice which result delivery channel to use.
-    auto const workerConfig = wconfig::WorkerConfig::instance();
-    _resultFileName = ::buildResultFileName(t);
-    _resultFileAbsPath = ::buildResultFilePath(_resultFileName, workerConfig->resultsDirname());
-    _resultFileHttpUrl = "http://" + _fqdn + ":" + to_string(resultsHttpPort) + "/" + _resultFileName;
-    if (t->has_user()) {
-        user = t->user();
-    } else {
-        user = defaultUser;
-    }
-
-    // Determine which major tables this task will use.
-    int const size = t->scantable_size();
-    for (int j = 0; j < size; ++j) {
-        _scanInfo.infoTables.push_back(proto::ScanTableInfo(t->scantable(j)));
-    }
-    _scanInfo.scanRating = t->scanpriority();
-    _scanInfo.sortTablesSlowestFirst();
-    _scanInteractive = t->scaninteractive();
-    _maxTableSize = t->maxtablesize_mb() * ::MB_SIZE_BYTES;
-
-    // Create sets and vectors for 'aquiring' subchunk temporary tables.
-    proto::TaskMsg_Fragment const& fragment(t->fragment(_queryFragmentNum));
-    DbTableSet dbTbls_;
-    IntVector subchunksVect_;
-    if (!_fragmentHasSubchunks) {
-        /// FUTURE: Why acquire anything if there are no subchunks in the fragment?
-        ///   This branch never seems to happen, but this needs to be proven beyond any doubt.
-        LOGS(_log, LOG_LVL_WARN, "Task::Task not _fragmentHasSubchunks");
-        for (auto const& scanTbl : t->scantable()) {
-            dbTbls_.emplace(scanTbl.db(), scanTbl.table());
-            LOGS(_log, LOG_LVL_INFO,
-                 "Task::Task scanTbl.db()=" << scanTbl.db() << " scanTbl.table()=" << scanTbl.table());
-        }
-        LOGS(_log, LOG_LVL_INFO,
-             "fragment a db=" << _db << ":" << _chunkId << " dbTbls=" << util::printable(dbTbls_));
-    } else {
-        proto::TaskMsg_Subchunk const& sc = fragment.subchunks();
-        for (int j = 0; j < sc.dbtbl_size(); j++) {
-            /// Different subchunk fragments can require different tables.
-            /// FUTURE: It may save space to store these in UserQueryInfo as it seems
-            ///         database and table names are consistent across chunks.
-            dbTbls_.emplace(sc.dbtbl(j).db(), sc.dbtbl(j).tbl());
-            LOGS(_log, LOG_LVL_TRACE,
-                 "Task::Task subchunk j=" << j << " sc.dbtbl(j).db()=" << sc.dbtbl(j).db()
-                                          << " sc.dbtbl(j).tbl()=" << sc.dbtbl(j).tbl());
-        }
-        IntVector sVect(sc.id().begin(), sc.id().end());
-        subchunksVect_ = sVect;
-        if (sc.has_database()) {
-            _db = sc.database();
-        } else {
-            _db = t->db();
-        }
-        LOGS(_log, LOG_LVL_DEBUG,
-             "fragment b db=" << _db << ":" << _chunkId << " dbTableSet" << util::printable(dbTbls_)
-                              << " subChunks=" << util::printable(subchunksVect_));
-    }
-    _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
-    if (_sendChannel == nullptr) {
-        throw util::Bug(ERR_LOC, "Task::Task _sendChannel==null " + getIdStr());
-    }
-}
 
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
@@ -297,53 +200,6 @@ Task::~Task() {
     }
 }
 
-vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
-                                    shared_ptr<wbase::FileChannelShared> const& sendChannel,
-                                    shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
-                                    mysql::MySqlConfig const& mySqlConfig,
-                                    shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-                                    shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-                                    uint16_t resultsHttpPort) {
-    QueryId qId = taskMsg->queryid();
-    QSERV_LOGCONTEXT_QUERY_JOB(qId, taskMsg->jobid());
-    vector<Task::Ptr> vect;
-
-    UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
-
-    /// Make one task for each fragment.
-    int fragmentCount = taskMsg->fragment_size();
-    if (fragmentCount < 1) {
-        throw util::Bug(ERR_LOC, "Task::createTasks No fragments to execute in TaskMsg");
-    }
-
-    string const chunkIdStr = to_string(taskMsg->chunkid());
-    for (int fragNum = 0; fragNum < fragmentCount; ++fragNum) {
-        proto::TaskMsg_Fragment const& fragment = taskMsg->fragment(fragNum);
-        for (string queryStr : fragment.query()) {
-            size_t templateId = userQueryInfo->addTemplate(queryStr);
-            if (fragment.has_subchunks() && not fragment.subchunks().id().empty()) {
-                for (auto subchunkId : fragment.subchunks().id()) {
-                    auto task = make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId,
-                                                         subchunkId, sendChannel, resultsHttpPort);
-                    vect.push_back(task);
-                }
-            } else {
-                int subchunkId = -1;  // there are no subchunks.
-                auto task = make_shared<wbase::Task>(taskMsg, fragNum, userQueryInfo, templateId, subchunkId,
-                                                     sendChannel, resultsHttpPort);
-                vect.push_back(task);
-            }
-        }
-    }
-    for (auto task : vect) {
-        // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
-        task->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig,
-                                                                  sqlConnMgr, queriesAndChunks));
-    }
-    sendChannel->setTaskCount(vect.size());
-
-    return vect;
-}
 
 std::vector<Task::Ptr> Task::createTasksForChunk(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,

@@ -93,13 +93,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     util::Timer t;
     LOGS(_log, LOG_LVL_DEBUG, "Execute request, resource=" << _resourceName);
 
-    char* reqData = nullptr;
-    int reqSize;
-    t.start();
-    reqData = req.GetRequest(reqSize);
-    t.stop();
-    LOGS(_log, LOG_LVL_DEBUG, "GetRequest took " << t.getElapsed() << " seconds");
-
     // We bind this object to the request now. This allows us to respond at any
     // time (much simpler). Though the manual forgot to say that all pending
     // events will be reflected on a different thread the moment we bind the
@@ -122,63 +115,20 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
     // Process the request
     switch (ru.unitType()) {
-        case ResourceUnit::DBCHUNK: {
+        case ResourceUnit::DBCHUNK: { // &&& delete
             // Increment the counter of the database/chunk resources in use
-            _foreman->resourceMonitor()->increment(_resourceName);
+            _foreman->resourceMonitor()->increment(_resourceName); // &&& TODO:UJ make sure this is implemented elsewhere.
 
-            // reqData has the entire request, so we can unpack it without waiting for
-            // more data.
-            LOGS(_log, LOG_LVL_DEBUG, "Decoding TaskMsg of size " << reqSize);
-            auto taskMsg = std::make_shared<proto::TaskMsg>();
-            if (!taskMsg->ParseFromArray(reqData, reqSize) || !taskMsg->IsInitialized()) {
-                reportError("Failed to decode TaskMsg on resource db=" + ru.db() +
-                            " chunkId=" + std::to_string(ru.chunk()));
-                return;
-            }
-
-            QSERV_LOGCONTEXT_QUERY_JOB(taskMsg->queryid(), taskMsg->jobid());
-
-            if (!taskMsg->has_db() || !taskMsg->has_chunkid() || (ru.db() != taskMsg->db()) ||
-                (ru.chunk() != taskMsg->chunkid())) {
-                reportError("Mismatched db/chunk in TaskMsg on resource db=" + ru.db() +
-                            " chunkId=" + std::to_string(ru.chunk()));
-                return;
-            }
-
-            if (not(taskMsg->has_queryid() && taskMsg->has_jobid() && taskMsg->has_scaninteractive() &&
-                    taskMsg->has_attemptcount() && taskMsg->has_czarid())) {
-                reportError(std::string("taskMsg missing required field ") +
-                            " queryid:" + std::to_string(taskMsg->has_queryid()) +
-                            " jobid:" + std::to_string(taskMsg->has_jobid()) +
-                            " scaninteractive:" + std::to_string(taskMsg->has_scaninteractive()) +
-                            " attemptcount:" + std::to_string(taskMsg->has_attemptcount()) +
-                            " czarid:" + std::to_string(taskMsg->has_czarid()));
-                return;
-            }
-            _channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
-                                                              _foreman->chunkInventory()->id());
-            auto const tasks = wbase::Task::createTasks(taskMsg, _channelShared, _foreman->chunkResourceMgr(),
-                                                        _foreman->mySqlConfig(), _foreman->sqlConnMgr(),
-                                                        _foreman->queriesAndChunks(), _foreman->httpPort());
-            for (auto const& task : tasks) {
-                _tasks.push_back(task);
-            }
-
-            // Now that the request is decoded (successfully or not), release the
-            // xrootd request buffer. To avoid data races, this must happen before
-            // the task is handed off to another thread for processing, as there is a
-            // reference to this SsiRequest inside the reply channel for the task,
-            // and after the call to BindRequest.
-            ReleaseRequestBuffer();
-            t.start();
-            _foreman->processTasks(tasks);  // Queues tasks to be run later.
-            t.stop();
-            LOGS(_log, LOG_LVL_DEBUG,
-                 "Enqueued TaskMsg for " << ru << " in " << t.getElapsed() << " seconds");
+            reportError("&&& DBCHUNK requests are no longer available resource db=" + ru.db() +
+                                        " chunkId=" + std::to_string(ru.chunk()));
             break;
         }
-        case ResourceUnit::QUERY: {
+        case ResourceUnit::QUERY: { // &&& delete
             LOGS(_log, LOG_LVL_DEBUG, "Parsing request details for resource=" << _resourceName);
+
+            reportError("&&& QUERY requests are no longer available");
+
+            /* &&&
             proto::QueryManagement request;
             try {
                 // reqData has the entire request, so we can unpack it without waiting for
@@ -219,16 +169,16 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             // Send back the empty response since no info is expected by a caller
             // for this type of requests beyond the usual error notifications (if any).
             this->reply((char const*)0, 0);
+            */
             break;
         }
         default:
             reportError("Unexpected unit type '" + std::to_string(ru.unitType()) +
                         "', resource name: " + _resourceName);
-            break;
     }
-
     // Note that upon exit the _finMutex will be unlocked allowing Finished()
     // to actually do something once everything is actually setup.
+
 }
 
 /// Called by SSI to free resources.
