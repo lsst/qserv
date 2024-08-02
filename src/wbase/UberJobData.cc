@@ -81,8 +81,16 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
          funcN << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize
                << " headerCount=" << headerCount);
 
+    string workerIdStr;
+    if (_foreman != nullptr) {
+        workerIdStr = _foreman->chunkInventory()->id();
+    } else {
+        workerIdStr = "dummyWorkerIdStr";
+        LOGS(_log, LOG_LVL_INFO, funcN << " _foreman was null, which should only happen in unit tests");
+    }
+
     json request = {{"version", http::MetaModule::version},
-                    {"workerid", _foreman->chunkInventory()->id()},
+                    {"workerid", workerIdStr},
                     {"auth_key", _authKey},
                     {"czar", _czarName},
                     {"czarid", _czarId},

@@ -54,9 +54,6 @@
 // TODO:UJ replace with better enable/disable feature, or just use only UberJobs
 #define uberJobsEnabled 1 // &&& delete
 
-//&&& // Forward declarations
-//&&&class XrdSsiService;
-
 namespace lsst::qserv {
 
 namespace ccontrol {
@@ -176,8 +173,6 @@ public:
     /// @return true if cancelled
     bool getCancelled() { return _cancelled; }
 
-    //&&&XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
-
     std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
 
     /// Add 'rowCount' to the total number of rows in the result table.
@@ -233,7 +228,6 @@ private:
               SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qStatus,
               std::shared_ptr<qproc::QuerySession> const& querySession);
 
-    //&&&void _setup();
     void _setupLimit();
 
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
@@ -261,11 +255,6 @@ private:
     std::atomic<bool> _empty{true};
     std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
-    /* &&&
-    /// RPC interface, static to avoid getting every time a user query starts and separate
-    /// from _xrdSsiService to avoid conflicts with XrdSsiServiceMock.
-    XrdSsiService* _xrdSsiService;  ///< RPC interface
-    */
     JobMap _jobMap;                 ///< Contains information about all jobs.
     JobMap _incompleteJobs;         ///< Map of incomplete jobs.
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.

@@ -86,7 +86,6 @@
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
-#include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
 #include "qmeta/MessageStore.h"
@@ -119,15 +118,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
 using namespace std;
 
 namespace lsst::qserv {
-
-/// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
-/// debugging purposes
-class ProtoPrinter {
-public:
-    ProtoPrinter() {}
-    virtual void operator()(std::shared_ptr<proto::TaskMsg> m) { std::cout << "Got taskmsg ok"; }
-    virtual ~ProtoPrinter() {}
-};
 
 ////////////////////////////////////////////////////////////////////////
 // UserQuerySelect implementation

@@ -39,6 +39,8 @@
 
 namespace test = boost::test_tools;
 
+//&&& delete file
+
 using lsst::qserv::proto::TaskMsg_Fragment;
 using lsst::qserv::proto::TaskMsg_Subchunk;
 using lsst::qserv::wdb::QuerySql;

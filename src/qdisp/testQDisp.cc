@@ -64,10 +64,12 @@ namespace lsst::qserv::qproc {
 class MockTaskMsgFactory : public TaskMsgFactory {
 public:
     MockTaskMsgFactory(std::string const& mockPayload_) : TaskMsgFactory(), mockPayload(mockPayload_) {}
+    /* &&&
     void serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName, QueryId queryId, int jobId,
                       int attemptCount, qmeta::CzarId czarId, std::ostream& os) override {
         os << mockPayload;
     }
+    */
 
     std::shared_ptr<nlohmann::json> makeMsgJson(ChunkQuerySpec const& s, std::string const& chunkResultName,
                                                 QueryId queryId, int jobId, int attemptCount,

@@ -128,11 +128,11 @@ public:
 
     /// Process a group of query processing tasks.
     /// @see MsgProcessor::processTasks()
-    void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override;
+    void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override; // &&& delete
 
     /// Implement the corresponding method of the base class
     /// @see MsgProcessor::processCommand()
-    void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;
+    void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override; // &&& delete
 
     /// Implement the corresponding method of the base class
     /// @see MsgProcessor::statusToJson()
