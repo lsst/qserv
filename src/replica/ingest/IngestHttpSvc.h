@@ -25,15 +25,20 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 // Qserv headers
-#include "replica/services/ServiceProvider.h"
-#include "replica/util/HttpSvc.h"
+#include "replica/util/ChttpSvc.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
 class IngestRequestMgr;
+class ServiceProvider;
 }  // namespace lsst::qserv::replica
+
+namespace httplib {
+class Server;
+}  // namespace httplib
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -47,10 +52,8 @@ namespace lsst::qserv::replica {
  *   service threads as configured in Configuration.
  * @note The implementation of the class is not thread-safe.
  */
-class IngestHttpSvc : public HttpSvc {
+class IngestHttpSvc : public ChttpSvc {
 public:
-    typedef std::shared_ptr<IngestHttpSvc> Ptr;
-
     /**
      * Create an instance of the service.
      *
@@ -59,7 +62,8 @@ public:
      *   checking consistency of the protocol).
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
+    static std::shared_ptr<IngestHttpSvc> create(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                                                 std::string const& workerName);
 
     IngestHttpSvc() = delete;
     IngestHttpSvc(IngestHttpSvc const&) = delete;
@@ -68,15 +72,12 @@ public:
     virtual ~IngestHttpSvc() = default;
 
 protected:
-    /// @see HttpSvc::context()
-    virtual std::string const& context() const;
-
     /// @see HttpSvc::registerServices()
-    virtual void registerServices();
+    virtual void registerServices(std::unique_ptr<httplib::Server> const& server) override;
 
 private:
     /// @see IngestHttpSvc::create()
-    IngestHttpSvc(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
+    IngestHttpSvc(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName);
 
     // Input parameters
     std::string const _workerName;

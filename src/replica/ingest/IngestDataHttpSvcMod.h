@@ -22,23 +22,21 @@
 #define LSST_QSERV_INGESTDATAHTTPSVCMOD_H
 
 // System headers
+#include <memory>
 #include <string>
 
 // Third party headers
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "http/QhttpModule.h"
+#include "http/ChttpModule.h"
 #include "replica/ingest/IngestFileSvc.h"
 #include "replica/ingest/TransactionContrib.h"
-#include "replica/services/ServiceProvider.h"
 
 // Forward declarations
-
-namespace lsst::qserv::qhttp {
-class Request;
-class Response;
-}  // namespace lsst::qserv::qhttp
+namespace lsst::qserv::replica {
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -49,7 +47,7 @@ namespace lsst::qserv::replica {
  * Unlike class IngestHttpSvcMod, the current class is meant to be used for ingesting
  * payloads that are pushed directly into the service over the HTTP protocol.
  */
-class IngestDataHttpSvcMod : public http::QhttpModule, public IngestFileSvc {
+class IngestDataHttpSvcMod : public http::ChttpModule, public IngestFileSvc {
 public:
     IngestDataHttpSvcMod() = delete;
     IngestDataHttpSvcMod(IngestDataHttpSvcMod const&) = delete;
@@ -74,9 +72,9 @@ public:
      * @param authType The authorization requirements for the module
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                        std::shared_ptr<qhttp::Request> const& req,
-                        std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName,
+    static void process(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                        std::string const& workerName, httplib::Request const& req, httplib::Response& resp,
+                        std::string const& subModuleName,
                         http::AuthType const authType = http::AuthType::REQUIRED);
 
 protected:
@@ -88,9 +86,8 @@ protected:
 
 private:
     /// @see method IngestDataHttpSvcMod::create()
-    IngestDataHttpSvcMod(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName,
-                         std::shared_ptr<qhttp::Request> const& req,
-                         std::shared_ptr<qhttp::Response> const& resp);
+    IngestDataHttpSvcMod(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                         std::string const& workerName, httplib::Request const& req, httplib::Response& resp);
 
     /// Process a table contribution request (SYNC).
     nlohmann::json _syncProcessData();

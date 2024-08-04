@@ -1,6 +1,7 @@
 add_library(replica_util OBJECT)
 add_dependencies(replica_util replica_proto)
 target_sources(replica_util PRIVATE
+    ChttpSvc.cc
     ChunkNumber.cc
     ChunkedTable.cc
     Common.cc

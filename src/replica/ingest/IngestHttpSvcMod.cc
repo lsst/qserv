@@ -24,8 +24,9 @@
 
 // Qserv header
 #include "http/Method.h"
-#include "qhttp/Request.h"
-#include "qhttp/Response.h"
+#include "replica/ingest/IngestRequest.h"
+#include "replica/ingest/IngestRequestMgr.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/util/Csv.h"
 
 // System headers
@@ -37,18 +38,19 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-void IngestHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider,
-                               IngestRequestMgr::Ptr const& ingestRequestMgr, string const& workerName,
-                               qhttp::Request::Ptr const& req, shared_ptr<qhttp::Response> const& resp,
+void IngestHttpSvcMod::process(shared_ptr<ServiceProvider> const& serviceProvider,
+                               shared_ptr<IngestRequestMgr> const& ingestRequestMgr, string const& workerName,
+                               httplib::Request const& req, httplib::Response& resp,
                                string const& subModuleName, http::AuthType const authType) {
     IngestHttpSvcMod module(serviceProvider, ingestRequestMgr, workerName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-IngestHttpSvcMod::IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
-                                   IngestRequestMgr::Ptr const& ingestRequestMgr, string const& workerName,
-                                   qhttp::Request::Ptr const& req, shared_ptr<qhttp::Response> const& resp)
-        : http::QhttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+IngestHttpSvcMod::IngestHttpSvcMod(shared_ptr<ServiceProvider> const& serviceProvider,
+                                   shared_ptr<IngestRequestMgr> const& ingestRequestMgr,
+                                   string const& workerName, httplib::Request const& req,
+                                   httplib::Response& resp)
+        : http::ChttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
           _serviceProvider(serviceProvider),
           _ingestRequestMgr(ingestRequestMgr),
           _workerName(workerName) {}
@@ -170,7 +172,7 @@ json IngestHttpSvcMod::_asyncTransCancelRequests() const {
     return json::object({{"contribs", contribsJson}});
 }
 
-IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
+shared_ptr<IngestRequest> IngestHttpSvcMod::_createRequest(bool async) const {
     auto const config = _serviceProvider->config();
     TransactionId const transactionId = body().required<TransactionId>("transaction_id");
     string const table = body().required<string>("table");
@@ -226,13 +228,13 @@ IngestRequest::Ptr IngestHttpSvcMod::_createRequest(bool async) const {
     debug(__func__, "max_num_warnings: " + to_string(maxNumWarnings));
     debug(__func__, "max_retries: " + to_string(maxRetries));
 
-    IngestRequest::Ptr const request = IngestRequest::create(
-            _serviceProvider, _workerName, transactionId, table, chunk, isOverlap, url, charsetName, async,
-            dialectInput, httpMethod, httpData, httpHeaders, maxNumWarnings, maxRetries);
+    auto const request = IngestRequest::create(_serviceProvider, _workerName, transactionId, table, chunk,
+                                               isOverlap, url, charsetName, async, dialectInput, httpMethod,
+                                               httpData, httpHeaders, maxNumWarnings, maxRetries);
     return request;
 }
 
-IngestRequest::Ptr IngestHttpSvcMod::_createRetry(bool async) const {
+shared_ptr<IngestRequest> IngestHttpSvcMod::_createRetry(bool async) const {
     unsigned int const id = stoul(params().at("id"));
     debug(__func__, "id: " + to_string(id));
     return IngestRequest::createRetry(_serviceProvider, _workerName, id, async);
