@@ -28,10 +28,14 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "http/QhttpModule.h"
-#include "replica/ingest/IngestRequest.h"
-#include "replica/ingest/IngestRequestMgr.h"
-#include "replica/services/ServiceProvider.h"
+#include "http/ChttpModule.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class IngestRequest;
+class IngestRequestMgr;
+class ServiceProvider;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -40,7 +44,7 @@ namespace lsst::qserv::replica {
  * Class IngestHttpSvcMod processes chunk/table contribution requests made over HTTP.
  * The class is used by the HTTP server built into the worker Ingest service.
  */
-class IngestHttpSvcMod : public http::QhttpModule {
+class IngestHttpSvcMod : public http::ChttpModule {
 public:
     IngestHttpSvcMod() = delete;
     IngestHttpSvcMod(IngestHttpSvcMod const&) = delete;
@@ -77,10 +81,10 @@ public:
      * @param authType The authorization requirements for the module
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
-    static void process(ServiceProvider::Ptr const& serviceProvider,
-                        IngestRequestMgr::Ptr const& ingestRequestMgr, std::string const& workerName,
-                        std::shared_ptr<qhttp::Request> const& req,
-                        std::shared_ptr<qhttp::Response> const& resp, std::string const& subModuleName,
+    static void process(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                        std::shared_ptr<IngestRequestMgr> const& ingestRequestMgr,
+                        std::string const& workerName, httplib::Request const& req, httplib::Response& resp,
+                        std::string const& subModuleName,
                         http::AuthType const authType = http::AuthType::REQUIRED);
 
 protected:
@@ -92,10 +96,9 @@ protected:
 
 private:
     /// @see method IngestHttpSvcMod::create()
-    IngestHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
-                     IngestRequestMgr::Ptr const& ingestRequestMgr, std::string const& workerName,
-                     std::shared_ptr<qhttp::Request> const& req,
-                     std::shared_ptr<qhttp::Response> const& resp);
+    IngestHttpSvcMod(std::shared_ptr<ServiceProvider> const& serviceProvider,
+                     std::shared_ptr<IngestRequestMgr> const& ingestRequestMgr, std::string const& workerName,
+                     httplib::Request const& req, httplib::Response& resp);
 
     /// Process a table contribution request (SYNC).
     nlohmann::json _syncProcessRequest() const;
@@ -131,7 +134,7 @@ private:
      * @param async The optional type of a request to be created.
      * @return A pointer to the created request.
      */
-    IngestRequest::Ptr _createRequest(bool async = false) const;
+    std::shared_ptr<IngestRequest> _createRequest(bool async = false) const;
 
     /**
      * Locate and evaluate the specified table contribution request, and if it's
@@ -140,11 +143,11 @@ private:
      *  with parameters request creation, or database services interactions.
      * @return A pointer to the prepared request.
      */
-    IngestRequest::Ptr _createRetry(bool async = false) const;
+    std::shared_ptr<IngestRequest> _createRetry(bool async = false) const;
 
     // Input parameters
-    ServiceProvider::Ptr const _serviceProvider;
-    IngestRequestMgr::Ptr const _ingestRequestMgr;
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
+    std::shared_ptr<IngestRequestMgr> const _ingestRequestMgr;
     std::string const _workerName;
 };
 
