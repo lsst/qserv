@@ -352,6 +352,14 @@ json const ConfigurationSchema::_schemaJson = json::object(
               "The maximum length of the queue of pending connections sent to the Replication worker's"
               " HTTP-based ingest service. Must be greater than 0."},
              {"default", max_listen_connections}}},
+           {"http-max-queued-requests",
+            {{"description",
+              "The maximum number of pending requests, i.e. requests accept()ed by"
+              " the listener but still waiting to be routed by the HTTP server."
+              " If set to 0 then no specific limit will be enforced. It's recommented to keep"
+              " the default value unless there are specific reasons to change it."},
+             {"empty-allowed", 1},
+             {"default", 0}}},
            {"svc-port",
             {{"description", "The port number for the worker's replication service."}, {"default", 25000}}},
            {"fs-port",
