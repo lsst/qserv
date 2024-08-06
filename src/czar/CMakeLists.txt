@@ -2,6 +2,7 @@ add_library(czar OBJECT)
 add_dependencies(czar proto)
 
 target_sources(czar PRIVATE
+    ActiveWorker.cc
     ChttpModule.cc
     Czar.cc
     CzarChunkMap.cc

@@ -64,7 +64,6 @@ public:
 
     QueryId getQueryId() const override { return _qid; }
     JobId getJobId() const override { return _jobDescription->id(); }
-    //&&&std::string const& getPayload() const override;
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _jobDescription->respHandler(); }
     bool getScanInteractive() const override { return _jobDescription->getScanInteractive(); }

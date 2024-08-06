@@ -39,6 +39,7 @@ namespace lsst::qserv::xrdreq {
  * Class QueryManagementAction is an interface for managing query completion/cancellation
  * at all Qserv workers that are connected as "publishers" to the XROOTD redirector.
  */
+// &&& need to get the same functionality using json messages, and not in xrdreq.
 class QueryManagementAction : public std::enable_shared_from_this<QueryManagementAction> {
 public:
     /// The reponse type represents errors reported by the workers, where worker
