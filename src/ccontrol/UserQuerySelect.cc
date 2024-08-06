@@ -528,6 +528,7 @@ QueryState UserQuerySelect::join() {
     auto const czarConfig = cconfig::CzarConfig::instance();
     if (czarConfig->notifyWorkersOnQueryFinish()) {
         try {
+            // &&& do this another way, also see executive::squash
             xrdreq::QueryManagementAction::notifyAllWorkers(czarConfig->getXrootdFrontendUrl(), operation,
                                                             _qMetaCzarId, _qMetaQueryId);
         } catch (std::exception const& ex) {

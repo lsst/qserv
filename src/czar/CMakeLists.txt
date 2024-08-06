@@ -1,6 +1,7 @@
 add_library(czar SHARED)
 
 target_sources(czar PRIVATE
+    ActiveWorker.cc
     ChttpModule.cc
     Czar.cc
     CzarChunkMap.cc
