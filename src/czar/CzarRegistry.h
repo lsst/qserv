@@ -34,6 +34,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "czar/ActiveWorker.h"
 #include "global/clock_defs.h"
 
 namespace lsst::qserv::cconfig {
@@ -66,6 +67,7 @@ public:
 
     ~CzarRegistry();
 
+    /* &&&
     struct WorkerContactInfo {
         using Ptr = std::shared_ptr<WorkerContactInfo>;
 
@@ -89,6 +91,7 @@ public:
         }
         std::string dump() const;
     };
+    */
 
     using WorkerContactMap = std::unordered_map<std::string, WorkerContactInfo::Ptr>;
     using WorkerContactMapPtr = std::shared_ptr<WorkerContactMap>;
