@@ -149,7 +149,8 @@ CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
         int wPort = jsQserv.at("management-port").get<int>();
         uint64_t updateTimeInt = jsQserv.at("update-time-ms").get<uint64_t>();
         TIMEPOINT updateTime = TIMEPOINT(chrono::milliseconds(updateTimeInt));
-        auto wInfo = make_shared<WorkerContactInfo>(key, wHost, wManagementHost, wPort, updateTime);
+        //&&&auto wInfo = make_shared<WorkerContactInfo>(key, wHost, wManagementHost, wPort, updateTime);
+        auto wInfo = make_shared<WorkerContactInfo>(key, wHost, wManagementHost, wPort);
         LOGS(_log, LOG_LVL_DEBUG,
              __func__ << " wHost=" << wHost << " wPort=" << wPort << " updateTime=" << updateTimeInt);
         auto iter = wMap->find(key);
@@ -186,13 +187,6 @@ bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
         }
     }
     return true;
-}
-
-string CzarRegistry::WorkerContactInfo::dump() const {
-    stringstream os;
-    os << "workerContactInfo{"
-       << "id=" << wId << " host=" << wHost << " mgHost=" << wManagementHost << " port=" << wPort << "}";
-    return os.str();
 }
 
 }  // namespace lsst::qserv::czar
