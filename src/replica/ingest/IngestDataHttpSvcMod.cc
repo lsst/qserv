@@ -26,10 +26,9 @@
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/Method.h"
-#include "qhttp/Request.h"
-#include "qhttp/Response.h"
 #include "replica/config/Configuration.h"
 #include "replica/services/DatabaseServices.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/util/Csv.h"
 #include "util/String.h"
 
@@ -38,18 +37,14 @@
 #include <stdexcept>
 #include <vector>
 
+// Third party headers
+#include "httplib.h"
+
 using namespace std;
 using json = nlohmann::json;
-namespace qhttp = lsst::qserv::qhttp;
 namespace util = lsst::qserv::util;
 
 namespace {
-/// @return requestor's IP address
-string senderIpAddr(shared_ptr<qhttp::Request> const& req) {
-    ostringstream ss;
-    ss << req->remoteAddr.address();
-    return ss.str();
-}
 
 /// These keywords are found in all known binary columns types of MySQL.
 vector<string> const binColTypePatterns = {"BIT", "BINARY", "BLOB"};
@@ -70,18 +65,18 @@ bool isBinaryColumnType(string const& type) {
 
 namespace lsst::qserv::replica {
 
-void IngestDataHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, string const& workerName,
-                                   shared_ptr<qhttp::Request> const& req,
-                                   shared_ptr<qhttp::Response> const& resp, string const& subModuleName,
+void IngestDataHttpSvcMod::process(shared_ptr<ServiceProvider> const& serviceProvider,
+                                   string const& workerName, httplib::Request const& req,
+                                   httplib::Response& resp, string const& subModuleName,
                                    http::AuthType const authType) {
     IngestDataHttpSvcMod module(serviceProvider, workerName, req, resp);
     module.execute(subModuleName, authType);
 }
 
-IngestDataHttpSvcMod::IngestDataHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
-                                           string const& workerName, shared_ptr<qhttp::Request> const& req,
-                                           shared_ptr<qhttp::Response> const& resp)
-        : http::QhttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+IngestDataHttpSvcMod::IngestDataHttpSvcMod(shared_ptr<ServiceProvider> const& serviceProvider,
+                                           string const& workerName, httplib::Request const& req,
+                                           httplib::Response& resp)
+        : http::ChttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
           IngestFileSvc(serviceProvider, workerName) {}
 
 string IngestDataHttpSvcMod::context() const { return "INGEST-DATA-HTTP-SVC "; }
@@ -112,7 +107,7 @@ json IngestDataHttpSvcMod::_syncProcessData() {
     _contrib.worker = workerName();
 
     // To indicate the JSON-formatted data were streamed directly into the service
-    _contrib.url = "data-json://" + ::senderIpAddr(req()) + "/";
+    _contrib.url = "data-json://" + req().remote_addr + "/";
     _contrib.charsetName =
             body().optional<string>("charset_name", config->get<string>("worker", "ingest-charset-name"));
 
