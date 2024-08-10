@@ -212,6 +212,9 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         pip \
         tree \
         vim \
+        lsof \
+        strace \
+        net-tools \
     && dnf install -y mysql \
     && dnf clean all \
     && rm -rf /var/cache/yum
