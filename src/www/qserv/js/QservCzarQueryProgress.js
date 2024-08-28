@@ -19,6 +19,9 @@ function(CSSLoader,
 
     class QservCzarQueryProgress extends FwkApplication {
 
+        // Return the default number of the last seconds to track in the query history
+        static last_seconds() { return 15 * 60; }
+
         constructor(name) {
             super(name);
             this._data = undefined;
@@ -97,8 +100,8 @@ function(CSSLoader,
            data-placement="top">
         <label for="horizontal-scale">Horizontal scale:</label>
         <select id="horizontal-scale" class="form-control form-control-viewer">
-          <option selected value="">&nbsp;</option>
-          <option value="auto-zoom-in">auto-zoom-in</option>
+          <option value="">&nbsp;</option>
+          <option selected value="auto-zoom-in">auto-zoom-in</option>
         </select>
       </div>
       <div class="form-group col-md">
@@ -126,7 +129,7 @@ function(CSSLoader,
 `;
             let cont = this.fwk_app_container.html(html);
             cont.find('[data-toggle="tooltip"]').tooltip();
-            this._set_last_seconds(900);
+            this._set_last_seconds(QservCzarQueryProgress.last_seconds());
             cont.find(".form-control-selector").change(() => {
                 this._load();
             });
@@ -137,9 +140,9 @@ function(CSSLoader,
             cont.find("button#reset-form").click(() => {
                 this._set_update_interval_sec(10);
                 this._set_query_id(0);
-                this._set_last_seconds(15 * 60);
+                this._set_last_seconds(QservCzarQueryProgress.last_seconds());
                 this._set_vertical_scale('logarithmic');
-                this._set_horizontal_scale('');
+                this._set_horizontal_scale('auto-zoom-in');
                 this._load();
             });
         }
