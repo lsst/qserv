@@ -513,13 +513,16 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
 
 json HttpQservMonitorModule::_pastQueries() {
     debug(__func__);
-    checkApiVersion(__func__, 25);
+    checkApiVersion(__func__, 36);
 
     auto const config = controller()->serviceProvider()->config();
     string const queryStatus = query().optionalString("query_status", string());
     string const queryType = query().optionalString("query_type", string());
     unsigned int const queryAgeSec = query().optionalUInt("query_age", 0);
     unsigned int const minElapsedSec = query().optionalUInt("min_elapsed_sec", 0);
+    unsigned int const minNumChunks = query().optionalUInt("min_num_chunks", 0);
+    unsigned int const minCollectedBytes = query().optionalUInt("min_collected_bytes", 0);
+    unsigned int const minFinalRows = query().optionalUInt("min_final_rows", 0);
     unsigned int const limit4past = query().optionalUInt("limit4past", 1);
     string const searchPattern = query().optionalString("search_pattern", string());
     bool const searchRegexpMode = query().optionalUInt("search_regexp_mode", 0) != 0;
@@ -529,6 +532,9 @@ json HttpQservMonitorModule::_pastQueries() {
     debug(__func__, "query_type=" + queryType);
     debug(__func__, "query_age=" + to_string(queryAgeSec));
     debug(__func__, "min_elapsed_sec=" + to_string(minElapsedSec));
+    debug(__func__, "min_num_chunks=" + to_string(minNumChunks));
+    debug(__func__, "min_collected_bytes=" + to_string(minCollectedBytes));
+    debug(__func__, "min_final_rows=" + to_string(minFinalRows));
     debug(__func__, "limit4past=" + to_string(limit4past));
     debug(__func__, "search_pattern=" + searchPattern);
     debug(__func__, "search_regexp_mode=" + bool2str(searchRegexpMode));
@@ -555,6 +561,18 @@ json HttpQservMonitorModule::_pastQueries() {
     }
     if (minElapsedSec > 0) {
         string const cond = g.gt(g.TIMESTAMPDIFF("SECOND", "submitted", "completed"), minElapsedSec);
+        g.packCond(constraints, cond);
+    }
+    if (minNumChunks > 0) {
+        string const cond = g.gt("chunkCount", minNumChunks);
+        g.packCond(constraints, cond);
+    }
+    if (minCollectedBytes > 0) {
+        string const cond = g.gt("collectedBytes", minCollectedBytes);
+        g.packCond(constraints, cond);
+    }
+    if (minFinalRows > 0) {
+        string const cond = g.gt("finalRows", minFinalRows);
         g.packCond(constraints, cond);
     }
     if (!searchPattern.empty()) {

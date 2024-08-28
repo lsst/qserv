@@ -17,7 +17,7 @@ function(sqlFormatter,
             }
         }
         static _sqlFormatterConfig = {"language":"mysql", "uppercase:":true, "indent":"  "};
-        static _max_compact_length = 120;
+        static _max_compact_length = 104;
         static _ivals = [
             {value:   2, name:  '2 sec'},
             {value:   5, name:  '5 sec'},

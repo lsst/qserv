@@ -70,7 +70,6 @@ function(CSSLoader,
             let html = `
 <div class="row" id="fwk-status-past-queries-controls">
   <div class="col">
-    <h3>Search queries</h3>
     <div class="form-row">
       <div class="form-group col-md-2">
         <label for="query-age">Submitted:</label>
@@ -90,24 +89,20 @@ function(CSSLoader,
         </select>
       </div>
       <div class="form-group col-md-1">
+        <label for="query-type">Type:</label>
+        <select id="query-type" class="form-control form-control-selector">
+          <option value="" selected></option>
+          <option value="SYNC">SYNC</option>
+          <option value="ASYNC">ASYNC</option>
+        </select>
+      </div>
+      <div class="form-group col-md-1">
         <label for="query-status">Status:</label>
         <select id="query-status" class="form-control form-control-selector">
           <option value="" selected></option>
           <option value="COMPLETED">COMPLETED</option>
           <option value="FAILED">FAILED</option>
           <option value="ABORTED">ABORTED</option>
-        </select>
-      </div>
-      <div class="form-group col-md-1">
-        <label for="min-elapsed">Min.elapsed [sec]:</label>
-        <input type="number" id="min-elapsed" class="form-control form-control-selector" value="0">
-      </div>
-      <div class="form-group col-md-1">
-        <label for="query-type">Type:</label>
-        <select id="query-type" class="form-control form-control-selector">
-          <option value="" selected></option>
-          <option value="SYNC">SYNC</option>
-          <option value="ASYNC">ASYNC</option>
         </select>
       </div>
       <div class="form-group col-md-2">
@@ -120,6 +115,24 @@ function(CSSLoader,
           <option value="LIKE" selected>LIKE</option>
           <option value="REGEXP">REGEXP</option>
         </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group col-md-1">
+        <label for="min-elapsed">Min.elapsed.sec:</label>
+        <input type="number" id="min-elapsed" class="form-control form-control-selector" value="0">
+      </div>
+      <div class="form-group col-md-1">
+        <label for="min-chunks">Min.chunks:</label>
+        <input type="number" id="min-chunks" class="form-control form-control-selector" value="0">
+      </div>
+      <div class="form-group col-md-1">
+        <label for="min-bytes">Min.bytes:</label>
+        <input type="number" id="min-bytes" class="form-control form-control-selector" value="0">
+      </div>
+      <div class="form-group col-md-1">
+        <label for="min-rows">Min.rows:</label>
+        <input type="number" id="min-rows" class="form-control form-control-selector" value="0">
       </div>
       <div class="form-group col-md-1">
         <label for="max-queries">Max.queries:</label>
@@ -153,9 +166,9 @@ function(CSSLoader,
       <thead class="thead-light">
         <tr>
           <th class="sticky">Submitted</th>
+          <th class="sticky">Type</th>
           <th class="sticky">Status</th>
           <th class="sticky" style="text-align:right;">Elapsed</th>
-          <th class="sticky">Type</th>
           <th class="sticky" style="text-align:right;">Chunks</th>
           <th class="sticky" style="text-align:right;">Ch/min</th>
           <th class="sticky" style="text-align:right;">&sum;&nbsp;Bytes</th>
@@ -180,6 +193,9 @@ function(CSSLoader,
                 this._set_query_age("0");
                 this._set_query_status("");
                 this._set_min_elapsed("0");
+                this._set_min_chunks("0");
+                this._set_min_bytes("0");
+                this._set_min_rows("0");
                 this._set_query_type("");
                 this._set_query_search_pattern("");
                 this._set_query_search_mode("LIKE");
@@ -215,6 +231,15 @@ function(CSSLoader,
         _get_min_elapsed()     { return this._form_control('input', 'min-elapsed').val(); }
         _set_min_elapsed(val)  { this._form_control('input', 'min-elapsed').val(val); }
 
+        _get_min_chunks()     { return this._form_control('input', 'min-chunks').val(); }
+        _set_min_chunks(val)  { this._form_control('input', 'min-chunks').val(val); }
+
+        _get_min_bytes()     { return this._form_control('input', 'min-bytes').val(); }
+        _set_min_bytes(val)  { this._form_control('input', 'min-bytes').val(val); }
+
+        _get_min_rows()     { return this._form_control('input', 'min-rows').val(); }
+        _set_min_rows(val)  { this._form_control('input', 'min-rows').val(val); }
+
         _get_query_type()      { return this._form_control('select', 'query-type').val(); }
         _set_query_type(val)   { this._form_control('select', 'query-type').val(val); }
 
@@ -243,6 +268,9 @@ function(CSSLoader,
                     query_age: this._get_query_age(),
                     query_status: this._get_query_status(),
                     min_elapsed_sec: this._get_min_elapsed(),
+                    min_num_chunks: this._get_min_chunks(),
+                    min_collected_bytes: this._get_min_bytes(),
+                    min_final_rows: this._get_min_rows(),
                     query_type: this._get_query_type(),
                     search_pattern: this._get_query_search_pattern(),
                     search_regexp_mode: this._get_query_search_mode() == "REGEXP" ? 1 : 0,
@@ -305,10 +333,10 @@ function(CSSLoader,
                 let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
                 html += `
 <tr class="${failed_query_class}" id="${query.queryId}">
-  <td style="padding-right:10px;"><pre>` + query.submitted + `</pre></td>
+  <td style="padding-right:10px;"><pre>${query.submitted}</pre></td>
+  <td><pre>${query.qType}</pre></td>
   <td style="padding-right:10px;"><pre>${query.status}</pre></td>
   <th style="text-align:right; padding-top:0;">${elapsed}</th>
-  <td><pre>` + query.qType + `</pre></td>
   <th style="text-align:right;"><pre>${query.chunkCount}</pre></th>
   <td style="text-align:right;" ><pre>${performance > 0 ? performance : ''}</pre></td>
   <th style="text-align:right;"><pre>${query.collectedBytes}</pre></th>
