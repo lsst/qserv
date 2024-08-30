@@ -43,6 +43,7 @@
 #include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
+#include "czar/ActiveWorker.h"
 #include "czar/CzarChunkMap.h"
 #include "czar/CzarErrors.h"
 #include "czar/HttpSvc.h"
@@ -96,10 +97,13 @@ void Czar::_monitor() {
         /// Check database for changes in worker chunk assignments and aliveness
         _czarFamilyMap->read();
 
-        // TODO:UJ DM-45470 If there were changes in `_czarFamilyMap`,
+        // old TODO:UJ DM-45470 If there were changes in `_czarFamilyMap`,
         // see if any workers went down. If any did, `_unassign` all
         // Jobs in UberJobs for the downed workers. The `_unassigned`
         // Jobs should get reassigned in the next section `assignJobsToUberJobs`.
+
+        // &&& Send appropriate messages to all ActiveWorkers
+        _czarRegistry->sendActiveWorkersMessages();
 
         /// Create new UberJobs (if possible) for all jobs that are
         /// unassigned for any reason.
@@ -139,6 +143,11 @@ void Czar::_monitor() {
         //     the czar about a cancelled user query, or the executive for that
         //     query cannot be found, the worker should cancel all Tasks associated
         //     with that queryId.
+        // &&& Go through the ActiveWorkerMap. Each ActiveWorker instance has a list of QueryIds
+        //     that have not yet been acknowledged by the worker, so send a message to each worker
+        //     with that list.
+
+
     }
 }
 
@@ -148,7 +157,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _czarConfig(cconfig::CzarConfig::create(configFilePath, czarName)),
           _idCounter(),
           _uqFactory(),
-          _clientToQuery() {
+          _clientToQuery(),
+          _activeWorkerMap(new ActiveWorkerMap()){
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);

@@ -39,6 +39,7 @@ typedef std::vector<int32_t> Int32Vector;
 typedef std::uint64_t QueryId;
 typedef std::int64_t JobId;
 typedef JobId UberJobId;  // These must be the same type.
+typedef std::uint32_t CzarIdType; // TODO:UJ remove qmeta::CzarId and rename this CzarId
 
 /// Class to provide a consistent format for QueryIds in the log file
 class QueryIdHelper {
