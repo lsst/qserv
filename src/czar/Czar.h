@@ -52,6 +52,7 @@ class CzarConfig;
 }  // namespace lsst::qserv::cconfig
 
 namespace lsst::qserv::czar {
+class ActiveWorkerMap;
 class HttpSvc;
 }  // namespace lsst::qserv::czar
 
@@ -215,8 +216,11 @@ private:
 
     /// Set to false on system shutdown to stop _monitorThrd.
     std::atomic<bool> _monitorLoop{true};
-    std::chrono::milliseconds _monitorSleepTime{
-            15000};  ///< Wait time between checks. TODO:UJ set from config
+
+    /// Wait time between checks. TODO:UJ set from config
+    std::chrono::milliseconds _monitorSleepTime{15000};
+
+    std::unique_ptr<ActiveWorkerMap> _activeWorkerMap;
 };
 
 }  // namespace lsst::qserv::czar
