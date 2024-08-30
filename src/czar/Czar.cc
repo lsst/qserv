@@ -116,6 +116,9 @@ void Czar::_monitor() {
         // check if workers have died by timeout.
         _czarRegistry->sendActiveWorkersMessages();
 
+        // &&& Send appropriate messages to all ActiveWorkers
+        _czarRegistry->sendActiveWorkersMessages();
+
         /// Create new UberJobs (if possible) for all jobs that are
         /// unassigned for any reason.
         map<QueryId, shared_ptr<qdisp::Executive>> execMap;
