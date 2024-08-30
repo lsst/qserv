@@ -103,6 +103,9 @@ void CzarRegistry::_registryUpdateLoop() {
 
 void CzarRegistry::_registryWorkerInfoLoop() {
     // Get worker information from the registry
+    string const replicationInstanceId = _czarConfig->replicationInstanceId();
+    string const replicationAuthKey = _czarConfig->replicationAuthKey();
+
     vector<string> const headers;
     auto const method = http::Method::GET;
     string const url = "http://" + _czarConfig->replicationRegistryHost() + ":" +
@@ -119,13 +122,16 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                 LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
                 // TODO: Is there a better thing to do than just log this here?
             } else {
-                WorkerContactMapPtr wMap = _buildMapFromJson(response);
+                http::WorkerContactInfo::WCMapPtr wMap = _buildMapFromJson(response);
                 // Compare the new map to the existing map and replace if different.
                 {
+                    auto czInfo = http::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(), _czarConfig->replicationHttpPort(), util::get_current_host_fqdn());
                     lock_guard<mutex> lck(_mapMtx);
-                    if (wMap != nullptr && !_compareMap(*wMap)) {
+                    if (wMap != nullptr && !_compareMapContactInfo(*wMap)) {
                         _contactMap = wMap;
-                        _latestUpdate = CLOCK::now();
+                        _latestMapUpdate = CLOCK::now();
+                        _activeWorkerMap.updateMap(*_contactMap, czInfo, replicationInstanceId, replicationAuthKey);
+
                     }
                 }
             }
@@ -137,10 +143,10 @@ void CzarRegistry::_registryWorkerInfoLoop() {
     }
 }
 
-CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {
+http::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {
     auto const& jsServices = response.at("services");
     auto const& jsWorkers = jsServices.at("workers");
-    auto wMap = WorkerContactMapPtr(new WorkerContactMap());
+    auto wMap = http::WorkerContactInfo::WCMapPtr(new http::WorkerContactInfo::WCMap());
     for (auto const& [key, value] : jsWorkers.items()) {
         auto const& jsQserv = value.at("qserv");
         LOGS(_log, LOG_LVL_DEBUG, __func__ << " key=" << key << " jsQ=" << jsQserv);
@@ -149,14 +155,13 @@ CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
         int wPort = jsQserv.at("management-port").get<int>();
         uint64_t updateTimeInt = jsQserv.at("update-time-ms").get<uint64_t>();
         TIMEPOINT updateTime = TIMEPOINT(chrono::milliseconds(updateTimeInt));
-        //&&&auto wInfo = make_shared<WorkerContactInfo>(key, wHost, wManagementHost, wPort, updateTime);
-        auto wInfo = make_shared<WorkerContactInfo>(key, wHost, wManagementHost, wPort);
+        auto wInfo = make_shared<http::WorkerContactInfo>(key, wHost, wManagementHost, wPort, updateTime);
         LOGS(_log, LOG_LVL_DEBUG,
              __func__ << " wHost=" << wHost << " wPort=" << wPort << " updateTime=" << updateTimeInt);
         auto iter = wMap->find(key);
         if (iter != wMap->end()) {
             LOGS(_log, LOG_LVL_ERROR, __func__ << " duplicate key " << key << " in " << response);
-            if (!wInfo->sameContactInfo(*(iter->second))) {
+            if (!wInfo->isSameContactInfo(*(iter->second))) {
                 LOGS(_log, LOG_LVL_ERROR, __func__ << " incongruent key " << key << " in " << response);
                 return nullptr;
             }
@@ -168,7 +173,7 @@ CzarRegistry::WorkerContactMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
     return wMap;
 }
 
-bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
+bool CzarRegistry::_compareMapContactInfo(http::WorkerContactInfo::WCMap const& other) const {
     if (_contactMap == nullptr) {
         // If _contactMap is null, it needs to be replaced.
         return false;
@@ -181,12 +186,18 @@ bool CzarRegistry::_compareMap(WorkerContactMap const& other) const {
         if (iter == other.end()) {
             return false;
         } else {
-            if (!(iter->second->sameContactInfo(*wInfo))) {
+            if (!(iter->second->isSameContactInfo(*wInfo))) {
                 return false;
             }
         }
     }
     return true;
+}
+
+void CzarRegistry::sendActiveWorkersMessages() {
+    // Send messages to each active worker as needed
+    lock_guard<mutex> lck(_mapMtx);
+    _activeWorkerMap.sendActiveWorkersMessages();
 }
 
 }  // namespace lsst::qserv::czar

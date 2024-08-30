@@ -89,6 +89,7 @@ json HttpWorkerCzarModule::executeImpl(string const& subModuleName) {
     enforceInstanceId(func, wconfig::WorkerConfig::instance()->replicationInstanceId());
     enforceWorkerId(func);
     if (subModuleName == "QUERYJOB") return _queryJob();
+    if (subModuleName == "QUERYSTATUS") return _queryStatus();
     throw invalid_argument(context() + func + " unsupported sub-module");
 }
 
@@ -209,5 +210,19 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     }
     return jsRet;
 }
+
+json HttpWorkerCzarModule::_queryStatus() {
+    debug(__func__);
+    checkApiVersion(__func__, 34);
+    // At this point, API version, correct worker, and auth have been checked.
+    json jsRet = _handleQueryStatus(__func__);
+    return jsRet;
+}
+
+json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
+    LOGS(_log, LOG_LVL_ERROR, "&&& NEED CODE HttpWorkerCzarModule::_handleQueryStatus");
+    throw util::Bug(ERR_LOC, "&&& NEED CODE HttpWorkerCzarModule::_handleQueryStatus");
+}
+
 
 }  // namespace lsst::qserv::xrdsvc
