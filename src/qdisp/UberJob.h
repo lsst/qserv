@@ -67,7 +67,7 @@ public:
         return _uberJobId;
     }  // TODO:UJ change name when JobBase no longer needed.
     std::string const& getIdStr() const override { return _idStr; }
-    std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }  // TODO:UJ relocate to JobBase
+    std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
     //&&&std::string const& getPayload() const override { return _payload; }  // TODO:UJ delete when possible.
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() override {
@@ -95,7 +95,7 @@ public:
 
     /// Set the worker information needed to send messages to the worker believed to
     /// be responsible for the chunks handled in this UberJob.
-    void setWorkerContactInfo(czar::WorkerContactInfo::Ptr const& wContactInfo) { // Change to ActiveWorker &&& ???
+    void setWorkerContactInfo(http::WorkerContactInfo::Ptr const& wContactInfo) { // Change to ActiveWorker &&& ???
         _wContactInfo = wContactInfo;
     }
 
@@ -159,7 +159,7 @@ private:
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed
 
     // Contact information for the target worker.
-    czar::WorkerContactInfo::Ptr _wContactInfo; // Change to ActiveWorker &&& ???
+    http::WorkerContactInfo::Ptr _wContactInfo; // Change to ActiveWorker &&& ???
 };
 
 }  // namespace lsst::qserv::qdisp
