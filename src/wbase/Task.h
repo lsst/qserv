@@ -175,7 +175,7 @@ public:
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
 
-    /// Create Tasks needed to run unit tests.
+   /// Create Tasks needed to run unit tests.
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
             std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
