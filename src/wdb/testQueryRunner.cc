@@ -187,7 +187,6 @@ struct Fixture {
                               {"tblScanRating", mInfo.scanRating}};
         chunkScanTables.push_back(move(cst));
 
-
         auto& jsFragments = jsJobMsg["queryFragments"];
         /* &&&
         if (chunkQuerySpec.nextFragment.get()) {
@@ -211,8 +210,8 @@ struct Fixture {
             for (unsigned int t = 0; t < (chunkQuerySpec.queries).size(); t++) {
                 LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
             }
-            _addFragmentJson(jsFragments, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
-                             chunkQuerySpec.queries);
+            _addFragmentJson(jsFragments, resultTable, chunkQuerySpec.subChunkTables,
+        chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
         }
         */
         nlohmann::json jsFrag = {{"resultTable", mInfo.resultName},
@@ -282,22 +281,20 @@ BOOST_AUTO_TEST_CASE(Simple) {
     MsgInfo mInfo;
     auto msgJson = newTaskJson(mInfo);
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
-    auto sc = FileChannelShared::create(sendC, mInfo.czarId);
+    auto sChannel = FileChannelShared::create(sendC, mInfo.czarId);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
     auto const queries = queriesAndChunks();
     auto ujData = lsst::qserv::wbase::UberJobData::create(mInfo.uberJobId, mInfo.czarName, mInfo.czarId,
-            mInfo.czarHostName, mInfo.czarPort, mInfo.queryId, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+                                                          mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+                                                          mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     lsst::qserv::proto::ScanInfo scanInfo;
     scanInfo.scanRating = mInfo.scanRating;
     scanInfo.infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
-    vector<Task::Ptr> taskVect = Task::createTasksForChunk(
-            ujData, *msgJson, sc, scanInfo,
-            mInfo.scanInteractive, mInfo.maxTableSize,
-            crm,
-            newMySqlConfig(), sqlConnMgr,
-            queries);
+    vector<Task::Ptr> taskVect =
+            Task::createTasksForChunk(ujData, *msgJson, sChannel, scanInfo, mInfo.scanInteractive,
+                                      mInfo.maxTableSize, crm, newMySqlConfig(), sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
     BOOST_CHECK(a->runQuery());
@@ -340,20 +337,17 @@ BOOST_AUTO_TEST_CASE(Output) {
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
     auto const queries = queriesAndChunks();
     auto ujData = lsst::qserv::wbase::UberJobData::create(mInfo.uberJobId, mInfo.czarName, mInfo.czarId,
-            mInfo.czarHostName, mInfo.czarPort, mInfo.queryId, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+                                                          mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+                                                          mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     lsst::qserv::proto::ScanInfo scanInfo;
     scanInfo.scanRating = mInfo.scanRating;
     scanInfo.infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
-    vector<Task::Ptr> taskVect = Task::createTasksForChunk(
-            ujData, *msgJson, sc, scanInfo,
-            mInfo.scanInteractive, mInfo.maxTableSize,
-            crm,
-            newMySqlConfig(), sqlConnMgr,
-            queries);
+    vector<Task::Ptr> taskVect =
+            Task::createTasksForChunk(ujData, *msgJson, sc, scanInfo, mInfo.scanInteractive,
+                                      mInfo.maxTableSize, crm, newMySqlConfig(), sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
     BOOST_CHECK(a->runQuery());
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
