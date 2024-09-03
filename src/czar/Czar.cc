@@ -150,7 +150,6 @@ void Czar::_monitor() {
         // a separate message (see WorkerCzarComIssue) saying it killed everything that this
         // czar gave it. Upon getting this message from a worker, this czar will reassign
         // everything it had sent to that worker.
-
         // TODO:UJ How long should queryId's remain on this list?
     }
 }
@@ -180,9 +179,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
-    // This will block until there is a successful read of the database tables.
-    _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
-
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar databases before the restart.
     // The id will be used as the high-watermark for queries that need to be cancelled.
@@ -197,6 +193,9 @@ Czar::Czar(string const& configFilePath, string const& czarName)
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }
     }
+
+    // This will block until there is a successful read of the database tables.
+    _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
 
     // This will block until there is a successful read of the database tables.
     _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);

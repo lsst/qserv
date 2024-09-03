@@ -255,7 +255,7 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     }
 }
 
-void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
+void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) { // &&& put file collect in the pool ???
     if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 3);
     } else {
@@ -264,20 +264,15 @@ void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
 }
 
 void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
-    /// TODO:UJ delete useqdisppool, only set to false if problems during testing
-    bool const useqdisppool = true;
-    if (useqdisppool) {
-        auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
 
-        auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(runUberJobFunc));
-        _jobStartCmdList.push_back(cmd);
-        if (_scanInteractive) {
-            _qdispPool->queCmd(cmd, 0);
-        } else {
-            _qdispPool->queCmd(cmd, 1);
-        }
+    auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
+
+    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
+    _jobStartCmdList.push_back(cmd);
+    if (_scanInteractive) {
+        _qdispPool->queCmd(cmd, 0);
     } else {
-        uberJob->runUberJob();
+        _qdispPool->queCmd(cmd, 1);
     }
 }
 
@@ -359,6 +354,27 @@ void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsTo
     for (auto const& uJob : uJobsToAdd) {
         UberJobId ujId = uJob->getJobId();
         _uberJobsMap[ujId] = uJob;
+    }
+}
+
+void Executive::killIncompleteUberJobsOn(std::string const& restartedWorkerId) {
+    // Work with a copy to reduce lock time.
+    std::map<UberJobId, std::shared_ptr<UberJob>> ujobsMap;
+    {
+        lock_guard<mutex> lck(_uberJobsMapMtx);
+        ujobsMap = _uberJobsMap;
+    }
+    for (auto&& [ujKey, uj] : ujobsMap) {
+        if (uj == nullptr) continue;
+        auto wContactInfo = uj->getWorkerContactInfo();
+        if (wContactInfo->wId == restartedWorkerId) {
+            if (uj->getStatus()->getState() != qmeta::JobStatus::COMPLETE) {
+                // All jobs in the uberjob will be set as unassigned, which
+                // will lead to Czar::_monitor() reassigning them to new
+                // UberJobs. (Unless this query was cancelled.)
+                uj->killUberJob();
+            }
+        }
     }
 }
 
@@ -610,14 +626,10 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
     }
 }
 
-void Executive::sendWorkerCancelMsg(bool deleteResults) {
-    // TODO:UJ need to send a message to the worker that the query is cancelled and all result files
-    //    should be delete
-    LOGS(_log, LOG_LVL_ERROR,
-         "TODO:UJ NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId "
-         "+ "
-         "queryId. "
+void Executive::sendWorkersEndMsg(bool deleteResults) {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " terminating this query deleteResults="
                  << deleteResults);
+    czar::Czar::getCzar()->getCzarRegistry()->endUserQueryOnWorkers(_id, deleteResults);
 }
 
 int Executive::getNumInflight() const {

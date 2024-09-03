@@ -530,6 +530,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
 }
 
 void UserQuerySelect::buildAndSendUberJobs() {
+    // &&& NEED CODE - this function should check if the worker is DEAD. TODO:UJ
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start");
 
@@ -566,8 +567,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
     auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();
     // Make a map of all jobs in the executive.
     // TODO:UJ Maybe a check should be made that all databases are in the same family?
-
-
 
     // keep cycling through workers until no more chunks to place.
     //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
@@ -657,8 +656,9 @@ void UserQuerySelect::buildAndSendUberJobs() {
         LOGS(_log, LOG_LVL_ERROR, errStr);
     }
 
-    // Add worker contact info to UberJobs.
-    auto const wContactMap = czRegistry->getWorkerContactMap();
+    // Add worker contact info to UberJobs. The czar can't do anything without
+    // the contact map, so it will wait. This should only ever be an issue at startup.
+    auto const wContactMap = czRegistry->waitForWorkerContactMap();
     LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
     for (auto const& [wIdKey, ujVect] : workerJobMap) {
         auto iter = wContactMap->find(wIdKey);
