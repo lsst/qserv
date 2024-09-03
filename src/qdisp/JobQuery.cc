@@ -63,7 +63,7 @@ JobQuery::~JobQuery() {
 }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
-bool JobQuery::cancel(bool superfluous) { /// &&& This can probably be simplified more
+bool JobQuery::cancel(bool superfluous) {  /// &&& This can probably be simplified more
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {

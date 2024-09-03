@@ -365,15 +365,9 @@ bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared
         }
         return true;
     } else {
-        auto ujData = _uberJobData.lock();
-        if (ujData == nullptr) {
-            LOGS(_log, LOG_LVL_WARN,
-                 __func__ << " not sending error as ujData is null " << multiErr.toString());
-            return false;
-        }
         // Delete the result file as nobody will come looking for it.
         _kill(tMtxLock, " buildAndTransmitError");
-        return ujData->responseError(multiErr, task, cancelled);
+        return _uberJobData->responseError(multiErr, task, cancelled);
     }
     return false;
 }
@@ -660,13 +654,8 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
             return false;
         }
     } else {
-        auto ujData = _uberJobData.lock();
-        if (ujData == nullptr) {
-            LOGS(_log, LOG_LVL_WARN, __func__ << " uberJobData is nullptr for ujId=" << _uberJobId);
-            return false;
-        }
         string httpFileUrl = task->resultFileHttpUrl();
-        ujData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
+        _uberJobData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
     }
     return true;
 }
