@@ -567,8 +567,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
     // Make a map of all jobs in the executive.
     // TODO:UJ Maybe a check should be made that all databases are in the same family?
 
-
-
     // keep cycling through workers until no more chunks to place.
     //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
     //  - for chunkId in `unassignedChunksInQuery`

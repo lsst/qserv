@@ -610,14 +610,20 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
     }
 }
 
-void Executive::sendWorkerCancelMsg(bool deleteResults) {
+void Executive::sendWorkerCancelMsg(bool deleteResults) {  // &&&QM rename sendEndMsgs
     // TODO:UJ need to send a message to the worker that the query is cancelled and all result files
     //    should be delete
+    // &&&QM
+    // TODO:UJ &&& worker needs to monitor registry to see if czar dies
+    //         &&& - worker will need to kill related queries/uberjobs and store info to send to the
+    //         &&&   dead czar in case it comes back to life.
     LOGS(_log, LOG_LVL_ERROR,
          "TODO:UJ NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId "
          "+ "
          "queryId. "
                  << deleteResults);
+
+    czar::Czar::getCzar()->getCzarRegistry()->endUserQuery(_id, deleteResults);  // &&&QM
 }
 
 int Executive::getNumInflight() const {

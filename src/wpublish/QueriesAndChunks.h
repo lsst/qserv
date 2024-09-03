@@ -202,6 +202,10 @@ public:
     /// @see _addQueryId
     QueryStatistics::Ptr addQueryId(QueryId qId, CzarIdType czarId);
 
+    /// Return the statistics for a user query, creating if needed.
+    /// @see getStats()
+    QueryStatistics::Ptr addQueryId(QueryId qId);
+
     void addTask(wbase::Task::Ptr const& task);
     void addTasks(std::vector<wbase::Task::Ptr> const& tasks, std::vector<util::Command::Ptr>& cmds);
     void queuedTask(wbase::Task::Ptr const& task);

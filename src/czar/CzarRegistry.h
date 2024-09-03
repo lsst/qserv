@@ -99,6 +99,9 @@ public:
     /// &&& doc
     void sendActiveWorkersMessages();
 
+    /// &&& doc
+    void endUserQuery(QueryId qId, bool deleteWorkerResults);
+
 private:
     CzarRegistry() = delete;
     CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
