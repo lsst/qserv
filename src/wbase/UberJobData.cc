@@ -185,4 +185,12 @@ bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task
     return transmitSuccess;
 }
 
+void UberJobData::cancelAllTasks() {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__));
+    lock_guard<mutex> lg(_ujTasksMtx);
+    for (auto const& task : _ujTasks) {
+        task->cancel();
+    }
+}
+
 }  // namespace lsst::qserv::wbase

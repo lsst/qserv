@@ -364,8 +364,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
     // Make a map of all jobs in the executive.
     // TODO:UJ Maybe a check should be made that all databases are in the same family?
 
-
-
     // keep cycling through workers until no more chunks to place.
     //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
     //  - for chunkId in `unassignedChunksInQuery`
@@ -509,7 +507,7 @@ QueryState UserQuerySelect::join() {
     if (finalRows < 0) finalRows = collectedRows;
     // Notify workers on the query completion/cancellation to ensure
     // resources are properly cleaned over there as well.
-    proto::QueryManagement::Operation operation = proto::QueryManagement::COMPLETE;
+    proto::QueryManagement::Operation operation = proto::QueryManagement::COMPLETE;  //&&&QM
     QueryState state = SUCCESS;
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes, finalRows);
@@ -517,18 +515,18 @@ QueryState UserQuerySelect::join() {
     } else if (_killed) {
         // status is already set to ABORTED
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed)");
-        operation = proto::QueryManagement::CANCEL;
+        operation = proto::QueryManagement::CANCEL;  //&&&QM
         state = ERROR;
     } else {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED, collectedRows, collectedBytes, finalRows);
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
-        operation = proto::QueryManagement::CANCEL;
+        operation = proto::QueryManagement::CANCEL;  //&&&QM
         state = ERROR;
     }
     auto const czarConfig = cconfig::CzarConfig::instance();
     if (czarConfig->notifyWorkersOnQueryFinish()) {
         try {
-            // &&& do this another way, also see executive::squash
+            // &&& do this another way, also see executive::squash &&&QM
             xrdreq::QueryManagementAction::notifyAllWorkers(czarConfig->getXrootdFrontendUrl(), operation,
                                                             _qMetaCzarId, _qMetaQueryId);
         } catch (std::exception const& ex) {

@@ -102,8 +102,8 @@ bool JobDescription::getScanInteractive() const { return _chunkQuerySpec->scanIn
 int JobDescription::getScanRating() const { return _chunkQuerySpec->scanInfo.scanRating; }
 
 ostream& operator<<(ostream& os, JobDescription const& jd) {
-    os << "job(id=" << jd._jobId << " ru=" << jd._resource.path()
-       << " attemptCount=" << jd._attemptCount << ")";
+    os << "job(id=" << jd._jobId << " ru=" << jd._resource.path() << " attemptCount=" << jd._attemptCount
+       << ")";
     return os;
 }
 

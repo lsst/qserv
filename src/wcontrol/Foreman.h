@@ -66,6 +66,7 @@ class QueryRunner;
 namespace lsst::qserv::wpublish {
 class ChunkInventory;
 class QueriesAndChunks;
+class QueryStatistics;
 }  // namespace lsst::qserv::wpublish
 
 // This header declarations
@@ -128,11 +129,14 @@ public:
 
     /// Process a group of query processing tasks.
     /// @see MsgProcessor::processTasks()
-    void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override; // &&& delete
+    void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override;  // &&& delete
 
     /// Implement the corresponding method of the base class
     /// @see MsgProcessor::processCommand()
-    void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override; // &&& delete
+    void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;  // &&& delete
+
+    /// &&& doc
+    std::shared_ptr<wpublish::QueryStatistics> addQueryId(QueryId qId);
 
     /// Implement the corresponding method of the base class
     /// @see MsgProcessor::statusToJson()

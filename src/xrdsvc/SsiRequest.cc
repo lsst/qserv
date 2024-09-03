@@ -115,20 +115,22 @@ void SsiRequest::execute(XrdSsiRequest& req) {
 
     // Process the request
     switch (ru.unitType()) {
-        case ResourceUnit::DBCHUNK: { // &&& delete
+        case ResourceUnit::DBCHUNK: {  // &&& delete
             // Increment the counter of the database/chunk resources in use
-            _foreman->resourceMonitor()->increment(_resourceName); // &&& TODO:UJ make sure this is implemented elsewhere.
+            _foreman->resourceMonitor()->increment(
+                    _resourceName);  // &&& TODO:UJ make sure this is implemented elsewhere.
 
             reportError("&&& DBCHUNK requests are no longer available resource db=" + ru.db() +
-                                        " chunkId=" + std::to_string(ru.chunk()));
+                        " chunkId=" + std::to_string(ru.chunk()));
+            throw util::Bug(ERR_LOC, "&&& ResourceUnit::DBCHUNK");
             break;
         }
-        case ResourceUnit::QUERY: { // &&& delete
+        case ResourceUnit::QUERY: {  // &&& delete
             LOGS(_log, LOG_LVL_DEBUG, "Parsing request details for resource=" << _resourceName);
 
             reportError("&&& QUERY requests are no longer available");
 
-            /* &&&
+            /* &&&QM
             proto::QueryManagement request;
             try {
                 // reqData has the entire request, so we can unpack it without waiting for
@@ -178,7 +180,6 @@ void SsiRequest::execute(XrdSsiRequest& req) {
     }
     // Note that upon exit the _finMutex will be unlocked allowing Finished()
     // to actually do something once everything is actually setup.
-
 }
 
 /// Called by SSI to free resources.

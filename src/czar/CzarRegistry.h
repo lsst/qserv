@@ -77,6 +77,9 @@ public:
     /// &&& doc
     void sendActiveWorkersMessages();
 
+    /// &&& doc
+    void endUserQuery(QueryId qId, bool deleteWorkerResults);
+
 private:
     CzarRegistry() = delete;
     CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig);
@@ -105,9 +108,10 @@ private:
 
     /// Pointer to the map of worker contact information.
     http::WorkerContactInfo::WCMapPtr _contactMap;
-    TIMEPOINT _latestMapUpdate;  ///< The last time the _contactMap was updated, unrelated to WorkerContactInfo update.
+    TIMEPOINT _latestMapUpdate;  ///< The last time the _contactMap was updated, unrelated to
+                                 ///< WorkerContactInfo update.
     // &&& review how this _mapMtx is used, probably locks for too long a period.
-    std::mutex _mapMtx;       /// Protects _contactMap, _latestUpdate, _activeWorkerMap
+    std::mutex _mapMtx;  /// Protects _contactMap, _latestUpdate, _activeWorkerMap
 
     ActiveWorkerMap _activeWorkerMap;  ///< Map of workers czar considers active.
 };

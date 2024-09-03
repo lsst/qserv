@@ -52,7 +52,7 @@
 #include "util/ThreadPool.h"
 
 // TODO:UJ replace with better enable/disable feature, or just use only UberJobs
-#define uberJobsEnabled 1 // &&& delete
+#define uberJobsEnabled 1  // &&& delete
 
 namespace lsst::qserv {
 
@@ -255,8 +255,8 @@ private:
     std::atomic<bool> _empty{true};
     std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
-    JobMap _jobMap;                 ///< Contains information about all jobs.
-    JobMap _incompleteJobs;         ///< Map of incomplete jobs.
+    JobMap _jobMap;          ///< Contains information about all jobs.
+    JobMap _incompleteJobs;  ///< Map of incomplete jobs.
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
@@ -267,7 +267,7 @@ private:
     /** Execution errors */
     util::MultiError _multiError;
 
-    std::atomic<int> _requestCount{0};      ///< Count of submitted jobs
+    std::atomic<int> _requestCount{0};   ///< Count of submitted jobs
     util::Flag<bool> _cancelled{false};  ///< Has execution been cancelled.
 
     // Mutexes

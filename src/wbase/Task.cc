@@ -122,13 +122,21 @@ atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
+/* &&&
 Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
            shared_ptr<UserQueryInfo> const& userQueryInfo, size_t templateId, bool hasSubchunks,
            int subchunkId, string const& db, proto::ScanInfo const& scanInfo, bool scanInteractive,
            int maxTableSize, vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
-           shared_ptr<FileChannelShared> const& sc, uint16_t resultsHttpPort)
-        : _userQueryInfo(userQueryInfo),
-          _sendChannel(sc),
+           shared_ptr<FileChannelShared> const& sc, std::shared_ptr<wpublish::QueryStatistics> const&
+queryStats_, uint16_t resultsHttpPort) : _userQueryInfo(userQueryInfo),
+*/
+Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
+           size_t templateId, bool hasSubchunks, int subchunkId, string const& db,
+           proto::ScanInfo const& scanInfo, bool scanInteractive, int maxTableSize,
+           vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
+           shared_ptr<FileChannelShared> const& sc,
+           std::shared_ptr<wpublish::QueryStatistics> const& queryStats_, uint16_t resultsHttpPort)
+        : _sendChannel(sc),
           _tSeq(++taskSequence),
           _qId(ujData->getQueryId()),
           _templateId(templateId),
@@ -143,6 +151,7 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
           _czarId(ujData->getCzarId()),
           _scanInfo(scanInfo),
           _scanInteractive(scanInteractive),
+          _queryStats(queryStats_),
           _maxTableSize(maxTableSize * ::MB_SIZE_BYTES) {
     // These attributes will be passed back to Czar in the Protobuf response
     // to advice which result delivery channel to use.
@@ -193,13 +202,14 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
 }
 
 Task::~Task() {
+    /* &&&
     _userQueryInfo.reset();
     UserQueryInfo::uqMapErase(_qId);
     if (UserQueryInfo::uqMapGet(_qId) == nullptr) {
         LOGS(_log, LOG_LVL_TRACE, "~Task Cleared uqMap entry for _qId=" << _qId);
     }
+    */
 }
-
 
 std::vector<Task::Ptr> Task::createTasksForChunk(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
@@ -211,7 +221,9 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
     QueryId qId = ujData->getQueryId();
     UberJobId ujId = ujData->getUberJobId();
 
-    UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
+    //&&&UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
+    wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId);
+    UserQueryInfo::Ptr userQueryInfo = queryStats->getUserQueryInfo();
 
     string funcN(__func__);
     funcN += " QID=" + to_string(qId) + " ";
@@ -276,19 +288,35 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
+                    /* &&&
                     auto task = Task::Ptr(new Task(
                             ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, userQueryInfo,
                             templateId, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive,
-                            maxTableSizeMb, fragSubTables, fragSubchunkIds, sendChannel, resultsHttpPort));
+                            maxTableSizeMb, fragSubTables, fragSubchunkIds, sendChannel, queryStats,
+                    resultsHttpPort));
+                    */
+                    auto task = Task::Ptr(new Task(
+                            ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, templateId,
+                            noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
+                            fragSubTables, fragSubchunkIds, sendChannel, queryStats, resultsHttpPort));
+
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
                         auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
+                                                       fragmentNumber, templateId, hasSubchunks, subchunkId,
+                                                       jdQuerySpecDb, scanInfo, scanInteractive,
+                                                       maxTableSizeMb, fragSubTables, fragSubchunkIds,
+                                                       sendChannel, queryStats, resultsHttpPort));
+                        /* &&&
+                        auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
                                                        fragmentNumber, userQueryInfo, templateId,
                                                        hasSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
                                                        scanInteractive, maxTableSizeMb, fragSubTables,
-                                                       fragSubchunkIds, sendChannel, resultsHttpPort));
+                                                       fragSubchunkIds, sendChannel, queryStats,
+                        resultsHttpPort));
+                        */
                         vect.push_back(task);
                     }
                 }
@@ -342,13 +370,30 @@ void Task::action(util::CmdData* data) {
 }
 
 string Task::getQueryString() const {
-    string qs = _userQueryInfo->getTemplate(_templateId);
+    //&&&string qs = _userQueryInfo->getTemplate(_templateId);
+    auto qStats = _queryStats.lock();
+    if (qStats == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _queryStats could not be locked");
+        return string("");
+    }
+
+    // auto uQInfo = _userQueryInfo.lock();
+    auto uQInfo = qStats->getUserQueryInfo();
+    /* &&&
+    if (uQInfo == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _userQueryInfo could not be locked");
+        return string("");
+    }
+    */
+    string qs = uQInfo->getTemplate(_templateId);
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& a qs=" << qs);
     boost::algorithm::replace_all(qs, CHUNK_TAG, to_string(_chunkId));
     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, to_string(_subchunkId));
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& b qs=" << qs);
     return qs;
 }
 
-void Task::setQueryStatistics(wpublish::QueryStatistics::Ptr const& qStats) { _queryStats = qStats; }
+//&&&void Task::setQueryStatistics(wpublish::QueryStatistics::Ptr const& qStats) { _queryStats = qStats; }
 
 wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
     auto qStats = _queryStats.lock();

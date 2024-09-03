@@ -193,8 +193,13 @@ public:
     void removeDead();
     void removeDead(QueryStatistics::Ptr const& queryStats);
 
-    /// Return the statistics for a user query.
+    /// Return the statistics for a user query, may be nullptr
+    /// @see addQueryId()
     QueryStatistics::Ptr getStats(QueryId const& qId) const;
+
+    /// Return the statistics for a user query, creating if needed.
+    /// @see getStats()
+    QueryStatistics::Ptr addQueryId(QueryId qId);
 
     void addTask(wbase::Task::Ptr const& task);
     void queuedTask(wbase::Task::Ptr const& task);

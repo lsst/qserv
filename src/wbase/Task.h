@@ -167,18 +167,29 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
+    std::string cName(const char* func) const { return std::string("Task::") + func; }
+
     // TODO:UJ too many parameters.
     //  - fragmentNumber seems pointless
     //  - hasSubchunks seems redundant.
     //  Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
     //  Candidates: scanInfo, maxTableSizeMb, FileChannelShared, resultsHttpPort.
     //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
+    /* &&&
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo, size_t templateId,
          bool hasSubchunks, int subchunkId, std::string const& db, proto::ScanInfo const& scanInfo,
          bool scanInteractive, int maxTableSizeMb, std::vector<TaskDbTbl> const& fragSubTables,
          std::vector<int> const& fragSubchunkIds, std::shared_ptr<FileChannelShared> const& sc,
+         std::shared_ptr<wpublish::QueryStatistics> const& queryStats_,
          uint16_t resultsHttpPort = 8080);
+    */
+    Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
+         int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
+         proto::ScanInfo const& scanInfo, bool scanInteractive, int maxTableSizeMb,
+         std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
+         std::shared_ptr<FileChannelShared> const& sc,
+         std::shared_ptr<wpublish::QueryStatistics> const& queryStats_, uint16_t resultsHttpPort = 8080);
 
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
@@ -194,7 +205,7 @@ public:
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
             uint16_t resultsHttpPort = 8080);
 
-    void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
+    //&&&void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
 
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
     void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for FileChannelShared
@@ -333,7 +344,7 @@ public:
     }
 
 private:
-    std::shared_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
+    //&&&std::weak_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
     std::shared_ptr<FileChannelShared> _sendChannel;  ///< Send channel.
 
     uint64_t const _tSeq = 0;          ///< identifier for the specific task
@@ -370,6 +381,10 @@ private:
     bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
+
+    /// Stores information on the query's resource usage.
+    std::weak_ptr<wpublish::QueryStatistics> const _queryStats;
+
     int64_t _maxTableSize = 0;
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
     memman::MemMan::Ptr _memMan;
@@ -384,9 +399,6 @@ private:
     std::chrono::system_clock::time_point _queryTime;      ///< MySQL finished executing queries
     std::chrono::system_clock::time_point _finishTime;     ///< data transmission to Czar fiished
     size_t _totalSize = 0;                                 ///< Total size of the result so far.
-
-    /// Stores information on the query's resource usage.
-    std::weak_ptr<wpublish::QueryStatistics> _queryStats;
 
     std::atomic<unsigned long> _mysqlThreadId{0};  ///< 0 if not connected to MySQL
 
