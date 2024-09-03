@@ -36,6 +36,7 @@
 #include "http/MetaModule.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
+#include "http/WorkerQueryStatusData.h"
 #include "mysql/MySqlUtils.h"
 #include "protojson/UberJobMsg.h"
 #include "protojson/WorkerQueryStatusData.h"
@@ -243,6 +244,12 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
 
     auto const czInfo = wqsData->getCzInfo();
     LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
+    CzarIdType czId = czInfo->czId;
+    wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
+    wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);
+    wCzarInfo->czarMsgReceived(CLOCK::now());
+
+    auto const czInfo = wqsData->getCzInfo();
     CzarIdType czId = czInfo->czId;
     wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
     wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);

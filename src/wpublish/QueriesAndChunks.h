@@ -202,6 +202,13 @@ public:
     /// @see _addQueryId
     QueryStatistics::Ptr addQueryId(QueryId qId, CzarIdType czarId);
 
+    /// Return the statistics for a user query, creating if needed.
+    /// Since it is possible to get messages out of order, there
+    /// are several case where something like a cancellation
+    /// message arrives before any tasks have been created.
+    /// @see getStats()
+    QueryStatistics::Ptr addQueryId(QueryId qId, CzarIdType czarId);
+
     void addTask(wbase::Task::Ptr const& task);
     void addTasks(std::vector<wbase::Task::Ptr> const& tasks, std::vector<util::Command::Ptr>& cmds);
     void queuedTask(wbase::Task::Ptr const& task);
