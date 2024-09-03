@@ -150,7 +150,7 @@ uint16_t HttpSvc::start() {
     _httpServerPtr->addHandlers(
             {{"POST", "/querystatus",
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
-                  HttpWorkerCzarModule::process(::serviceName, self->_foreman, req, resp, "QUERYSTATUS",
+                  HttpWorkerCzarModule::process(::serviceName, self->_foreman, req, resp, "/querystatus",
                                                 http::AuthType::REQUIRED);
               }}});
     _httpServerPtr->start();
