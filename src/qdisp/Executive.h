@@ -140,7 +140,7 @@ public:
     void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
 
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
-    void queueFileCollect(PriorityCommand::Ptr const& cmd);
+    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd); // &&& delete ???
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.

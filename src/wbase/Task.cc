@@ -280,8 +280,11 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks, uint16_t resultsHttpPort) {
     QueryId qId = ujData->getQueryId();
     UberJobId ujId = ujData->getUberJobId();
+    CzarIdType czId = ujData->getCzarId();
 
-    UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
+    //&&&UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
+    wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
+    UserQueryInfo::Ptr userQueryInfo = queryStats->getUserQueryInfo();
 
     string funcN(__func__);
     funcN += " QID=" + to_string(qId) + " ";
@@ -346,19 +349,35 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
+                    /* &&&
                     auto task = Task::Ptr(new Task(
                             ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, userQueryInfo,
                             templateId, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive,
-                            maxTableSizeMb, fragSubTables, fragSubchunkIds, sendChannel, resultsHttpPort));
+                            maxTableSizeMb, fragSubTables, fragSubchunkIds, sendChannel, queryStats,
+                    resultsHttpPort));
+                    */
+                    auto task = Task::Ptr(new Task(
+                            ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, templateId,
+                            noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
+                            fragSubTables, fragSubchunkIds, sendChannel, queryStats, resultsHttpPort));
+
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
                         auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
+                                                       fragmentNumber, templateId, hasSubchunks, subchunkId,
+                                                       jdQuerySpecDb, scanInfo, scanInteractive,
+                                                       maxTableSizeMb, fragSubTables, fragSubchunkIds,
+                                                       sendChannel, queryStats, resultsHttpPort));
+                        /* &&&
+                        auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
                                                        fragmentNumber, userQueryInfo, templateId,
                                                        hasSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
                                                        scanInteractive, maxTableSizeMb, fragSubTables,
-                                                       fragSubchunkIds, sendChannel, resultsHttpPort));
+                                                       fragSubchunkIds, sendChannel, queryStats,
+                        resultsHttpPort));
+                        */
                         vect.push_back(task);
                     }
                 }
