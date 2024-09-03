@@ -32,73 +32,11 @@
 #include "nlohmann/json.hpp"
 
 // qserv headers
-// &&& #include "global/clock_defs.h"
-// &&& #include "global/intTypes.h"
 #include "http/WorkerQueryStatusData.h"
-
+#include "util/Bug.h"
 
 // This header declarations
 namespace lsst::qserv::czar {
-
-
-/* &&&
-/// &&& doc This class just contains the worker id and network communication
-///     information, but it may be desirable to store connections to the
-///     worker here as well.
-class WorkerContactInfo {
-public:
-    using Ptr = std::shared_ptr<WorkerContactInfo>;
-
-    using WCMap = std::unordered_map<std::string, Ptr>;
-    using WCMapPtr = std::shared_ptr<WCMap>;
-
-    WorkerContactInfo(std::string const& wId_, std::string const& wHost_,
-            std::string const& wManagementHost_, int wPort_, TIMEPOINT updateTime_)
-    : wId(wId_),
-      wHost(wHost_),
-      wManagementHost(wManagementHost_),
-      wPort(wPort_) {
-        regUpdateTime(updateTime_);
-    }
-    std::string const wId;              ///< key
-    std::string const wHost;            ///< "host-addr" entry.
-    std::string const wManagementHost;  ///< "management-host-name" entry.
-    int const wPort;                    ///< "management-port" entry.
-
-
-    /// Return true if all members, aside from updateTime, are equal.
-    bool isSameContactInfo(WorkerContactInfo const& other) const {
-        return (wId == other.wId && wHost == other.wHost && wManagementHost == other.wManagementHost &&
-                wPort == other.wPort);
-    }
-
-    void regUpdateTime(TIMEPOINT updateTime) {
-        std::lock_guard<std::mutex> lg(_rMtx);
-        _regUpdate = updateTime;
-    }
-
-    double timeSinceRegUpdateSeconds() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
-        double secs = std::chrono::duration<double>(CLOCK::now() - _regUpdate).count();
-        return secs;
-    }
-
-    TIMEPOINT getRegUpdate() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
-        return _regUpdate;
-    }
-
-    std::string dump() const;
-
-private:
-    /// Last time the registry heard from this worker. The ActiveWorker class
-    /// will use this to determine the worker's state.
-    /// &&& Store in seconds since epoch to make atomic?
-    TIMEPOINT _regUpdate;
-
-    mutable std::mutex _rMtx; ///< protects _regUpdate
-};
-*/
 
 /// &&& doc  - maintain list of done/cancelled queries for an active worker, and send
 ///            that list to the worker. Once the worker has accepted the list, remove
@@ -137,11 +75,7 @@ class ActiveWorker : public std::enable_shared_from_this<ActiveWorker> {
 public:
     using Ptr = std::shared_ptr<ActiveWorker>;
 
-    enum State {
-        ALIVE = 0,
-        QUESTIONABLE,
-        DEAD
-    };
+    enum State { ALIVE = 0, QUESTIONABLE, DEAD };
 
     ActiveWorker() = delete;
     ActiveWorker(ActiveWorker const&) = delete;
@@ -154,8 +88,16 @@ public:
     static std::string getStateStr(State st);
 
     static Ptr create(http::WorkerContactInfo::Ptr const& wInfo, http::CzarContactInfo::Ptr const& czInfo,
-            std::string const& replicationInstanceId, std::string const& replicationAuthKey) {
+                      std::string const& replicationInstanceId, std::string const& replicationAuthKey) {
         return Ptr(new ActiveWorker(wInfo, czInfo, replicationInstanceId, replicationAuthKey));
+    }
+
+    /// This function should only be called before the _monitor thread is started
+    /// and shortly after czar startup: it tells all workers to delete all
+    /// query information for queries with czarId `czId` and queryId less than
+    /// or equal to `lastQId`.
+    void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId) {
+        _wqsData->setCzarCancelAfterRestart(czId, lastQId);
     }
 
     http::WorkerContactInfo::Ptr getWInfo() const {
@@ -173,13 +115,27 @@ public:
     /// &&& doc
     void updateStateAndSendMessages(double timeoutAliveSecs, double timeoutDeadSecs, double maxLifetime);
 
+    /// &&& doc
+    void addToDoneDeleteFiles(QueryId qId);
+
+    /// &&& doc
+    void addToDoneKeepFiles(QueryId qId);
+
+    /// &&& doc
+    void removeDeadUberJobsFor(QueryId qId);
+
     std::string dump() const;
 
 private:
     ///&&&ActiveWorker(WorkerContactInfo::Ptr const& wInfo) : _wInfo(wInfo) {}
     ActiveWorker(http::WorkerContactInfo::Ptr const& wInfo, http::CzarContactInfo::Ptr const& czInfo,
-            std::string const& replicationInstanceId, std::string const& replicationAuthKey)
-    : _wqsData(http::WorkerQueryStatusData::create(wInfo, czInfo, replicationInstanceId, replicationAuthKey)) {}
+                 std::string const& replicationInstanceId, std::string const& replicationAuthKey)
+            : _wqsData(http::WorkerQueryStatusData::create(wInfo, czInfo, replicationInstanceId,
+                                                           replicationAuthKey)) {
+        if (_wqsData == nullptr) {
+            throw util::Bug(ERR_LOC, "ActiveWorker _wqsData null");
+        }
+    }
 
     /// &&& doc
     /// _aMtx must be held before calling.
@@ -192,21 +148,13 @@ private:
     /// _aMtx must be held before calling.
     std::string _dump() const;
 
-    /* &&&
-    std::map<QueryId, TIMEPOINT> _qIdDoneKeepFiles;  ///< &&& doc - limit reached
-    std::map<QueryId, TIMEPOINT> _qIdDoneDeleteFiles;  ///< &&& doc -cancelled/finished
-    std::map<QueryId, std::map<UberJobId, TIMEPOINT>> _qIdDeadUberJobs; ///< &&& doc
+    /// Contains data that needs to be sent to workers about finished/cancelled
+    /// user queries and UberJobs. It must not be null.
+    http::WorkerQueryStatusData::Ptr const _wqsData;
 
-    /// &&& TODO:UJ Worth the effort to inform worker of killed UberJobs?
-    //std::map<QueryId, std::set<UberJobId>> _killedUberJobs;
+    State _state{QUESTIONABLE};  ///< current state of this worker.
 
-    WorkerContactInfo::Ptr _wInfo; ///< &&& doc
-    */
-    http::WorkerQueryStatusData::Ptr _wqsData; ///< &&& doc
-
-    State _state{QUESTIONABLE}; ///< current state of this worker.
-
-    mutable std::mutex _aMtx; ///< protects _wInfo, _state, _qIdDoneKeepFiles, _qIdDoneDeleteFiles
+    mutable std::mutex _aMtx;  ///< protects _wInfo, _state, _qIdDoneKeepFiles, _qIdDoneDeleteFiles
 
     /// The number of communication threads currently in use by this class instance.
     std::atomic<int> _conThreadCount{0};
@@ -214,7 +162,7 @@ private:
 
     /// &&& doc
     /// @throws std::invalid_argument
-    bool _parse(nlohmann::json const& jsWorkerReq); // &&& delete after basic testing
+    bool _parse(nlohmann::json const& jsWorkerReq);  // &&& delete after basic testing
 };
 
 /// &&& doc
@@ -229,26 +177,38 @@ public:
     ActiveWorkerMap operator=(ActiveWorkerMap const&) = delete;
     ~ActiveWorkerMap() = default;
 
-    std::string cName(const char* fName) {
-        return std::string("ActiveWorkerMap::") + fName + " ";
-    }
+    std::string cName(const char* fName) { return std::string("ActiveWorkerMap::") + fName + " "; }
 
     /// &&& doc
-    void updateMap(http::WorkerContactInfo::WCMap const& wcMap, http::CzarContactInfo::Ptr const& czInfo, std::string const& replicationInstanceId, std::string const& replicationAuthKey);
+    void updateMap(http::WorkerContactInfo::WCMap const& wcMap, http::CzarContactInfo::Ptr const& czInfo,
+                   std::string const& replicationInstanceId, std::string const& replicationAuthKey);
 
-    //&&&void pruneMap(); /// &&& may not be needed ???
+    /// If this is to be called, it must be called before Czar::_monitor is started:
+    /// It tells the workers all queries from `czId` with QueryIds less than `lastQId`
+    /// should be cancelled.
+    void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId);
 
     // &&& doc
     void sendActiveWorkersMessages();
 
+    /// &&& doc
+    void addToDoneDeleteFiles(QueryId qId);
+
+    /// &&& doc
+    void addToDoneKeepFiles(QueryId qId);
+
 private:
     std::map<std::string, ActiveWorker::Ptr> _awMap;
-    std::mutex _awMapMtx; ///< protects _awMap;
+    std::mutex _awMapMtx;  ///< protects _awMap;
 
     //&&&double const _maxDeadTimeSeconds = 60.0 * 15.0; ///< &&& set from config.
-    double _timeoutAliveSecs = 60.0 * 5.0; ///< &&& set from config. 5min
-    double _timeoutDeadSecs = 60.0 * 10.0; ///< &&& set from config. 10min
-    double _maxLifetime = 60.0 * 60.0; ///< &&& set from config. 1hr
+    double _timeoutAliveSecs = 60.0 * 5.0;  ///< &&& set from config. 5min
+    double _timeoutDeadSecs = 60.0 * 10.0;  ///< &&& set from config. 10min
+    double _maxLifetime = 60.0 * 60.0;      ///< &&& set from config. 1hr
+
+    bool _czarCancelAfterRestart = false;
+    CzarIdType _czarCancelAfterRestartCzId = 0;
+    QueryId _czarCancelAfterRestartQId = 0;
 };
 
 }  // namespace lsst::qserv::czar

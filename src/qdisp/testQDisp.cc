@@ -337,7 +337,8 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     {
         LOGS_DEBUG("ExecutiveCancel: squash it test");
         SetupTest tEnv("respdata");
-        //&&&qdisp::XrdSsiServiceMock::setGo(false);  // Can't let jobs run or they are untracked before squash
+        //&&&qdisp::XrdSsiServiceMock::setGo(false);  // Can't let jobs run or they are untracked before
+        //squash
         SequentialInt sequence(0);
         tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
         tEnv.ex->squash();
@@ -355,7 +356,8 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
     {
         LOGS_DEBUG("ExecutiveCancel: squash 20 test");
         SetupTest tEnv("respdata");
-        //&&&qdisp::XrdSsiServiceMock::setGo(false);  // Can't let jobs run or they are untracked before squash
+        //&&&qdisp::XrdSsiServiceMock::setGo(false);  // Can't let jobs run or they are untracked before
+        //squash
         SequentialInt sequence(0);
         executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 20);
         tEnv.ex->squash();

@@ -89,7 +89,7 @@ message WorkerCommandStatus {
     optional string error = 2 [default = ""];   // Optional error message (depends on the code)
 }
 
-// &&& try to eliminate this
+// &&&QM try to eliminate this
 message QueryManagement {
     enum Operation {
         CANCEL_AFTER_RESTART = 1;   // Cancel older queries before the specified query (excluding that one).

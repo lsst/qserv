@@ -41,10 +41,12 @@
 #include "global/intTypes.h"
 #include "wbase/Task.h"
 #include "wsched/SchedulerBase.h"
+#include "util/InstanceCount.h"  //&&&
 
 namespace lsst::qserv::wbase {
-class Histogram;
-}
+//&&&class Histogram;
+class UserQueryInfo;
+}  // namespace lsst::qserv::wbase
 
 // This header declarations
 namespace lsst::qserv::wpublish {
@@ -73,6 +75,8 @@ public:
         return _queryBooted;
     }
 
+    std::shared_ptr<wbase::UserQueryInfo> getUserQueryInfo() const { return _userQueryInfo; }
+
     void setQueryBooted(bool booted, TIMEPOINT now);
 
     /// Add statistics related to the running of the query in the task.
@@ -93,6 +97,7 @@ public:
     void addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted,
                          double bufferFillSecs);
 
+    //&&&void touch(TIMEPOINT const now);
     void addTask(TIMEPOINT const now);
     void addTaskRunning(TIMEPOINT const now);
     bool addTaskCompleted(TIMEPOINT const now, double const taskDuration);
@@ -194,6 +199,9 @@ private:
     std::shared_ptr<util::Histogram> _histRowsPerTask;              ///< Histogram of rows per Task.
 
     SchedTasksInfoMap _taskSchedInfoMap;  ///< Map of task information ordered by scheduler name.
+
+    std::shared_ptr<wbase::UserQueryInfo> const _userQueryInfo;  ///< &&& doc
+    util::InstanceCount _ic{"QueryStatiscs_&&&"};
 };
 
 }  // namespace lsst::qserv::wpublish
