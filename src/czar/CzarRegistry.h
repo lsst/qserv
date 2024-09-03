@@ -96,8 +96,18 @@ public:
         return _contactMap;
     }
 
+    /// Return _contactMap, the object that the returned pointer points to is
+    /// constant and no attempts should be made to change it. This
+    /// function will wait forever for a valid contact map to be ready.
+    http::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
+
     /// &&& doc
     void sendActiveWorkersMessages();
+
+    /// Add the query id to the list of queries to end on workers and
+    /// send the messages, deleting all result files if
+    /// `deleteWorkerResults` is true.
+    void endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults);
 
 private:
     CzarRegistry() = delete;
