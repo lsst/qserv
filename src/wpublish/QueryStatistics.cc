@@ -189,6 +189,13 @@ QueryStatistics::SchedTasksInfoMap QueryStatistics::getSchedulerTasksInfoMap() {
     return _taskSchedInfoMap;
 }
 
+/* &&&
+void QueryStatistics::touch(TIMEPOINT const now) {
+    lock_guard<mutex> lock(_qStatsMtx);
+    _touched = now;
+}
+*/
+
 void QueryStatistics::addTask(TIMEPOINT const now) {
     lock_guard<mutex> lock(_qStatsMtx);
     _touched = now;
