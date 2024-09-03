@@ -125,13 +125,15 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                 http::WorkerContactInfo::WCMapPtr wMap = _buildMapFromJson(response);
                 // Compare the new map to the existing map and replace if different.
                 {
-                    auto czInfo = http::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(), _czarConfig->replicationHttpPort(), util::get_current_host_fqdn());
+                    auto czInfo = http::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(),
+                                                                _czarConfig->replicationHttpPort(),
+                                                                util::get_current_host_fqdn());
                     lock_guard<mutex> lck(_mapMtx);
                     if (wMap != nullptr && !_compareMapContactInfo(*wMap)) {
                         _contactMap = wMap;
                         _latestMapUpdate = CLOCK::now();
-                        _activeWorkerMap.updateMap(*_contactMap, czInfo, replicationInstanceId, replicationAuthKey);
-
+                        _activeWorkerMap.updateMap(*_contactMap, czInfo, replicationInstanceId,
+                                                   replicationAuthKey);
                     }
                 }
             }
@@ -197,6 +199,19 @@ bool CzarRegistry::_compareMapContactInfo(http::WorkerContactInfo::WCMap const& 
 void CzarRegistry::sendActiveWorkersMessages() {
     // Send messages to each active worker as needed
     lock_guard<mutex> lck(_mapMtx);
+    _activeWorkerMap.sendActiveWorkersMessages();
+}
+
+void CzarRegistry::endUserQuery(QueryId qId, bool deleteWorkerResults) {
+    lock_guard<mutex> lck(_mapMtx);
+    // Add query id to the appropriate list.
+    if (deleteWorkerResults) {
+        _activeWorkerMap.addToDoneDeleteFiles(qId);
+    } else {
+        _activeWorkerMap.addToDoneKeepFiles(qId);
+    }
+
+    // With lists updated, send out messages.
     _activeWorkerMap.sendActiveWorkersMessages();
 }
 

@@ -50,7 +50,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueriesAndChunks");
 
 namespace lsst::qserv::wpublish {
 
-QueryStatistics::QueryStatistics(QueryId const& qId_) : creationTime(CLOCK::now()), queryId(qId_) {
+QueryStatistics::QueryStatistics(QueryId const& qId_)
+        : creationTime(CLOCK::now()), queryId(qId_), _userQueryInfo(wbase::UserQueryInfo::create(qId_)) {
     /// For all of the histograms, all entries should be kept at least until the work is finished.
     string qidStr = to_string(queryId);
     _histSizePerTask = util::Histogram::Ptr(new util::Histogram(
@@ -185,6 +186,13 @@ QueryStatistics::SchedTasksInfoMap QueryStatistics::getSchedulerTasksInfoMap() {
     lock_guard<mutex> lockG(_qStatsMtx);
     return _taskSchedInfoMap;
 }
+
+/* &&&
+void QueryStatistics::touch(TIMEPOINT const now) {
+    lock_guard<mutex> lock(_qStatsMtx);
+    _touched = now;
+}
+*/
 
 void QueryStatistics::addTask(TIMEPOINT const now) {
     lock_guard<mutex> lock(_qStatsMtx);

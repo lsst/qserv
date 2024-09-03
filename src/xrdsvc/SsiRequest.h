@@ -60,7 +60,8 @@ class StreamBuffer;
 /// qserv worker services. The SSI interface encourages such an approach, and
 /// object lifetimes are explicitly stated in the documentation which we
 /// adhere to using BindRequest() and UnBindRequest() responder methods.
-class SsiRequest : public XrdSsiResponder, public std::enable_shared_from_this<SsiRequest> { // &&& delete if possible
+class SsiRequest : public XrdSsiResponder,
+                   public std::enable_shared_from_this<SsiRequest> {  // &&& delete if possible
 public:
     // Smart pointer definitions
 

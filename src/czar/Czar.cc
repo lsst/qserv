@@ -146,8 +146,6 @@ void Czar::_monitor() {
         // &&& Go through the ActiveWorkerMap. Each ActiveWorker instance has a list of QueryIds
         //     that have not yet been acknowledged by the worker, so send a message to each worker
         //     with that list.
-
-
     }
 }
 
@@ -158,7 +156,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _idCounter(),
           _uqFactory(),
           _clientToQuery(),
-          _activeWorkerMap(new ActiveWorkerMap()){
+          _activeWorkerMap(new ActiveWorkerMap()) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -175,9 +173,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
-    // This will block until there is a successful read of the database tables.
-    _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
-
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar database before the restart.
     // The id will be used as the high-watermark for queries that need to be cancelled.
@@ -186,6 +181,18 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //
     if (_czarConfig->notifyWorkersOnCzarRestart()) {
         try {
+            QueryId lastQId = _lastQueryIdBeforeRestart();
+            _activeWorkerMap->setCzarCancelAfterRestart(_czarConfig->id(), lastQId);
+        } catch (std::exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, ex.what());
+        }
+    }
+    /* &&& (moved this and czar crashed instantly, why?)
+
+    if (_czarConfig->notifyWorkersOnCzarRestart()) {
+        try {
+            // &&&QM use http - Add flag to each worker in _activeWorkerMap
+            // TODO:UJ - Workers need to contact the registry and kill queries if the associated czar dies.
             xrdreq::QueryManagementAction::notifyAllWorkers(_czarConfig->getXrootdFrontendUrl(),
                                                             proto::QueryManagement::CANCEL_AFTER_RESTART,
                                                             _czarConfig->id(), _lastQueryIdBeforeRestart());
@@ -193,6 +200,10 @@ Czar::Czar(string const& configFilePath, string const& czarName)
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }
     }
+    */
+
+    // This will block until there is a successful read of the database tables.
+    _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
 
     int qPoolSize = _czarConfig->getQdispPoolSize();
     int maxPriority = std::max(0, _czarConfig->getQdispMaxPriority());

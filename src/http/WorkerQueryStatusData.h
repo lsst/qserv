@@ -35,7 +35,6 @@
 #include "global/clock_defs.h"
 #include "global/intTypes.h"
 
-
 // This header declarations
 namespace lsst::qserv::http {
 
@@ -43,9 +42,7 @@ namespace lsst::qserv::http {
 class CzarContactInfo {
 public:
     using Ptr = std::shared_ptr<CzarContactInfo>;
-    std::string cName(const char* fnc) const {
-        return std::string("CzarContactInfo") + fnc;
-    }
+    std::string cName(const char* fnc) const { return std::string("CzarContactInfo") + fnc; }
 
     CzarContactInfo() = delete;
     CzarContactInfo(CzarContactInfo const&) = default;
@@ -53,19 +50,21 @@ public:
 
     /// &&& doc
     bool compare(CzarContactInfo const& other) {
-        return (czName == other.czName && czId == other.czId && czPort == other.czPort && czHostName == other.czHostName);
+        return (czName == other.czName && czId == other.czId && czPort == other.czPort &&
+                czHostName == other.czHostName);
     }
 
-    static Ptr create(std::string const& czName_, CzarIdType czId_, int czPort_, std::string const& czHostName_) {
+    static Ptr create(std::string const& czName_, CzarIdType czId_, int czPort_,
+                      std::string const& czHostName_) {
         return Ptr(new CzarContactInfo(czName_, czId_, czPort_, czHostName_));
     }
 
     static Ptr createJson(nlohmann::json const& czarJson);
 
-    std::string const czName;  ///< czar "name"
-    CzarIdType const czId;  ///< czar "id"
-    int const czPort;     ///< czar "management-port"
-    std::string const czHostName; ///< czar "management-host-name"
+    std::string const czName;      ///< czar "name"
+    CzarIdType const czId;         ///< czar "id"
+    int const czPort;              ///< czar "management-port"
+    std::string const czHostName;  ///< czar "management-host-name"
 
     /// &&& doc
     nlohmann::json serializeJson() const;
@@ -83,9 +82,8 @@ public:
     */
 private:
     CzarContactInfo(std::string const& czName_, CzarIdType czId_, int czPort_, std::string const& czHostName_)
-        : czName(czName_), czId(czId_), czPort(czPort_), czHostName(czHostName_) {}
+            : czName(czName_), czId(czId_), czPort(czPort_), czHostName(czHostName_) {}
 };
-
 
 /// &&& doc This class just contains the worker id and network communication
 ///     information, but it may be desirable to store connections to the
@@ -97,10 +95,9 @@ public:
     using WCMap = std::unordered_map<std::string, Ptr>;
     using WCMapPtr = std::shared_ptr<WCMap>;
 
-    static Ptr create(std::string const& wId_, std::string const& wHost_,
-            std::string const& wManagementHost_, int wPort_, TIMEPOINT updateTime_) {
-        return Ptr(new WorkerContactInfo(wId_, wHost_,
-             wManagementHost_, wPort_, updateTime_));
+    static Ptr create(std::string const& wId_, std::string const& wHost_, std::string const& wManagementHost_,
+                      int wPort_, TIMEPOINT updateTime_) {
+        return Ptr(new WorkerContactInfo(wId_, wHost_, wManagementHost_, wPort_, updateTime_));
     }
 
     /// &&& doc
@@ -112,19 +109,15 @@ public:
     std::string cName(const char* fn) { return std::string("WorkerContactInfo::") + fn; }
 
     /// &&& make private
-    WorkerContactInfo(std::string const& wId_, std::string const& wHost_,
-            std::string const& wManagementHost_, int wPort_, TIMEPOINT updateTime_)
-    : wId(wId_),
-      wHost(wHost_),
-      wManagementHost(wManagementHost_),
-      wPort(wPort_) {
+    WorkerContactInfo(std::string const& wId_, std::string const& wHost_, std::string const& wManagementHost_,
+                      int wPort_, TIMEPOINT updateTime_)
+            : wId(wId_), wHost(wHost_), wManagementHost(wManagementHost_), wPort(wPort_) {
         regUpdateTime(updateTime_);
     }
     std::string const wId;              ///< key
     std::string const wHost;            ///< "host-addr" entry.
     std::string const wManagementHost;  ///< "management-host-name" entry.
     int const wPort;                    ///< "management-port" entry.
-
 
     /// Return true if all members, aside from updateTime, are equal.
     bool isSameContactInfo(WorkerContactInfo const& other) const {
@@ -156,42 +149,31 @@ private:
     /// &&& Store in seconds since epoch to make atomic?
     TIMEPOINT _regUpdate;
 
-    mutable std::mutex _rMtx; ///< protects _regUpdate
+    mutable std::mutex _rMtx;  ///< protects _regUpdate
 };
 
-
 /// &&& doc
-class WorkerQueryStatusData  {
+class WorkerQueryStatusData {
 public:
     using Ptr = std::shared_ptr<WorkerQueryStatusData>;
-
-    /* &&&
-    enum State {
-        ALIVE = 0,
-        QUESTIONABLE,
-        DEAD
-    };
-    */
 
     WorkerQueryStatusData() = delete;
     WorkerQueryStatusData(WorkerQueryStatusData const&) = delete;
     WorkerQueryStatusData& operator=(WorkerQueryStatusData const&) = delete;
 
     std::string cName(const char* fName) {
-        return std::string("WorkerQueryStatusData::") + fName + " " + ((_wInfo == nullptr) ? "?" : _wInfo->wId);
+        return std::string("WorkerQueryStatusData::") + fName + " " +
+               ((_wInfo == nullptr) ? "?" : _wInfo->wId);
     }
 
-    //&&&static std::string getStateStr(State st);
-
     static Ptr create(WorkerContactInfo::Ptr const& wInfo, CzarContactInfo::Ptr const& czInfo,
-            std::string const& replicationInstanceId, std::string const& replicationAuthKey) {
+                      std::string const& replicationInstanceId, std::string const& replicationAuthKey) {
         return Ptr(new WorkerQueryStatusData(wInfo, czInfo, replicationInstanceId, replicationAuthKey));
     }
 
     /// &&& doc
-    static Ptr createJson(nlohmann::json const& czarJson,
-            std::string const& replicationInstanceId, std::string const& replicationAuthKey, TIMEPOINT updateTm);
-
+    static Ptr createJson(nlohmann::json const& czarJson, std::string const& replicationInstanceId,
+                          std::string const& replicationAuthKey, TIMEPOINT updateTm);
 
     ~WorkerQueryStatusData() = default;
 
@@ -200,33 +182,79 @@ public:
     /// &&& doc
     void addDeadUberJobs(QueryId qId, std::vector<UberJobId> ujIds, TIMEPOINT tm);
 
-    std::string dump() const;
-
-//&&&private:
-    WorkerQueryStatusData(WorkerContactInfo::Ptr const& wInfo, CzarContactInfo::Ptr const& czInfo,
-            std::string const& replicationInstanceId, std::string const& replicationAuthKey)
-        : _wInfo(wInfo), _czInfo(czInfo),
-          _replicationInstanceId(replicationInstanceId), _replicationAuthKey(replicationAuthKey) {}
-
-    std::map<QueryId, TIMEPOINT> _qIdDoneKeepFiles;  ///< &&& doc - limit reached
-    std::map<QueryId, TIMEPOINT> _qIdDoneDeleteFiles;  ///< &&& doc -cancelled/finished
-    std::map<QueryId, std::map<UberJobId, TIMEPOINT>> _qIdDeadUberJobs; ///< &&& doc
-
-    /// &&& TODO:UJ Worth the effort to inform worker of killed UberJobs?
-    //std::map<QueryId, std::set<UberJobId>> _killedUberJobs;
-
-    WorkerContactInfo::Ptr _wInfo; ///< &&& doc
-    CzarContactInfo::Ptr _czInfo; //< &&& doc
-
-    std::string const _replicationInstanceId; ///< &&& doc
-    std::string const _replicationAuthKey;  ///< &&& doc
+    /// &&& doc
+    void addToDoneDeleteFiles(QueryId qId);
 
     /// &&& doc
-    std::shared_ptr<nlohmann::json> serializeJson(double timeoutAliveSecs, double timeoutDeadSecs, double maxLifetime);
+    void addToDoneKeepFiles(QueryId qId);
+
+    /// &&& doc
+    void removeDeadUberJobsFor(QueryId qId);
+
+    void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId) {
+        std::lock_guard<std::mutex> mapLg(_mapMtx);
+        _czarCancelAfterRestart = true;
+        _czarCancelAfterRestartCzId = czId;
+        _czarCancelAfterRestartQId = lastQId;
+    }
+
+    bool isCzarRestart() const { return _czarCancelAfterRestart; }
+    CzarIdType getCzarRestartCzarId() const { return _czarCancelAfterRestartCzId; }
+    QueryId getCzarRestartQueryId() const { return _czarCancelAfterRestartQId; }
+
+    std::string dump() const;
+
+    //&&&private:  // &&& Most of this needs to be made private again.
+    WorkerQueryStatusData(WorkerContactInfo::Ptr const& wInfo, CzarContactInfo::Ptr const& czInfo,
+                          std::string const& replicationInstanceId, std::string const& replicationAuthKey)
+            : _wInfo(wInfo),
+              _czInfo(czInfo),
+              _replicationInstanceId(replicationInstanceId),
+              _replicationAuthKey(replicationAuthKey) {}
+
+    std::map<QueryId, TIMEPOINT> _qIdDoneKeepFiles;                      ///< &&& doc - limit reached
+    std::map<QueryId, TIMEPOINT> _qIdDoneDeleteFiles;                    ///< &&& doc -cancelled/finished
+    std::map<QueryId, std::map<UberJobId, TIMEPOINT>> _qIdDeadUberJobs;  ///< &&& doc
+    std::atomic<bool> _czarCancelAfterRestart = false;
+    CzarIdType _czarCancelAfterRestartCzId = 0;
+    QueryId _czarCancelAfterRestartQId = 0;
+
+    /// Protects _qIdDoneKeepFiles, _qIdDoneDeleteFiles, _qIdDeadUberJobs,
+    /// and czarCancelAfter variables.
+    mutable std::mutex _mapMtx;
+
+    WorkerContactInfo::Ptr _wInfo;  ///< &&& doc make const???
+    CzarContactInfo::Ptr _czInfo;   //< &&& doc make const???
+
+    std::string const _replicationInstanceId;  ///< &&& doc
+    std::string const _replicationAuthKey;     ///< &&& doc
+
+    /// Create a json object held by a shared pointer to use as a message.
+    /// Old objects in this instance will be removed after being added to the
+    /// json message.
+    std::shared_ptr<nlohmann::json> serializeJson(double maxLifetime);
+
+    /// Add contents of qIdDoneKeepFiles, _qIdDoneDeleteFiles, and _qIdDeadUberJobs to `jsWR`
+    void addListsToJson(nlohmann::json& jsWR, TIMEPOINT tm, double maxLifetime);
 
     /// &&& doc
     /// @throws std::invalid_argument
-    bool _parseLists(nlohmann::json const& jsWorkerReq, TIMEPOINT updateTm); // &&& delete after basic testing
+    void parseLists(nlohmann::json const& jsWR, TIMEPOINT updateTm);
+
+    /// &&& doc
+    nlohmann::json serializeResponseJson();
+
+    /// &&& doc
+    bool handleResponseJson(nlohmann::json const& jsResp);
+
+    /// &&& doc
+    ///&&&void handleCzarRestart();
+
+    /// &&& doc
+    static void parseListsInto(nlohmann::json const& jsWR, TIMEPOINT updateTm,
+                               std::map<QueryId, TIMEPOINT>& doneKeepF,
+                               std::map<QueryId, TIMEPOINT>& doneDeleteF,
+                               std::map<QueryId, std::map<UberJobId, TIMEPOINT>>& deadUberJobs);
 };
 
 }  // namespace lsst::qserv::http

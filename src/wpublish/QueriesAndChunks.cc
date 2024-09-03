@@ -119,21 +119,39 @@ void QueriesAndChunks::setBlendScheduler(shared_ptr<wsched::BlendScheduler> cons
 
 void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) { _requiredTasksCompleted = value; }
 
+QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId) {
+    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+    auto itr = _queryStatsMap.find(qId);
+    QueryStatistics::Ptr stats;
+    if (_queryStatsMap.end() == itr) {
+        stats = QueryStatistics::create(qId);
+        _queryStatsMap[qId] = stats;
+    } else {
+        stats = itr->second;
+    }
+    return stats;
+}
+
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
+#if 0  // &&& delete upper block
     unique_lock<mutex> guardStats(_queryStatsMapMtx);
     auto itr = _queryStatsMap.find(qid);
     QueryStatistics::Ptr stats;
     if (_queryStatsMap.end() == itr) {
         stats = QueryStatistics::create(qid);
         _queryStatsMap[qid] = stats;
+        throw util::Bug(ERR_LOC, "&&& QueriesAndChunks::addTask entry should already be there"); // &&& replace with error message ???
     } else {
         stats = itr->second;
     }
     guardStats.unlock();
+#else  // &&&
+    auto stats = addQueryId(qid);
+#endif  // &&&
     stats->addTask(task);
-    task->setQueryStatistics(stats);
+    //&&&task->setQueryStatistics(stats);
 }
 
 /// Update statistics for the Task that was just queued.

@@ -42,21 +42,23 @@ class WorkerCommand;
 namespace lsst::qserv::wbase {
 
 /// MsgProcessor implementations handle incoming Task objects.
-struct MsgProcessor { // &&& delete file if possible
+struct MsgProcessor {  // &&& delete file if possible
     virtual ~MsgProcessor() {}
 
     /// Process a group of query processing tasks.
-    virtual void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) = 0; // &&& delete
+    virtual void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) = 0;  // &&& delete
 
     /// Process a managememt command
-    virtual void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) = 0; // &&& can this be deleted
+    virtual void processCommand(
+            std::shared_ptr<wbase::WorkerCommand> const& command) = 0;  // &&& can this be deleted
 
     /**
      * Retreive the status of queries being processed by the worker.
      * @param taskSelector Task selection criterias.
      * @return a JSON representation of the object's status for the monitoring
      */
-    virtual nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector) = 0; // &&& can this be deleted
+    virtual nlohmann::json statusToJson(
+            wbase::TaskSelector const& taskSelector) = 0;  // &&& can this be deleted
 };
 
 }  // namespace lsst::qserv::wbase

@@ -81,6 +81,7 @@ public:
 
     /// Add the tasks defined in the UberJob to this UberJobData object.
     void addTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
+        std::lock_guard<std::mutex> tLg(_ujTasksMtx);
         _ujTasks.insert(_ujTasks.end(), tasks.begin(), tasks.end());
     }
 
@@ -93,6 +94,9 @@ public:
 
     std::string getIdStr() const { return _idStr; }
     std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
+
+    /// &&& doc
+    void cancelAllTasks();
 
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
@@ -112,6 +116,8 @@ private:
 
     std::vector<std::shared_ptr<wbase::Task>> _ujTasks;
     std::shared_ptr<FileChannelShared> _fileChannelShared;
+
+    std::mutex _ujTasksMtx;  ///< Protects _ujTasks.
 
     std::string const _idStr;
 };

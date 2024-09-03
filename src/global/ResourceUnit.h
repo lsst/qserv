@@ -42,7 +42,7 @@ namespace lsst::qserv {
 /// construction, the code for generating a path that includes the key-value
 /// portion is not implemented. It is unclear whether we need the generation
 /// capability, now that key-value pairs can be packed in protobufs messages.
-class ResourceUnit {
+class ResourceUnit {  // TODO:UJ &&& delete if possible
 public:
     class Checker;
     enum UnitType { GARBAGE, DBCHUNK, UNKNOWN, QUERY };

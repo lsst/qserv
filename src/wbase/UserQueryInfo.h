@@ -24,6 +24,7 @@
 #define LSST_QSERV_WBASE_USERQUERYINFO_H
 
 // System headers
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -44,19 +45,17 @@ public:
     using Ptr = std::shared_ptr<UserQueryInfo>;
     using Map = std::map<QueryId, std::weak_ptr<UserQueryInfo>>;
 
-    static Ptr uqMapInsert(QueryId qId);
-    static Ptr uqMapGet(QueryId qId);
-    /// Erase the entry for `qId` in the map, as long as there are only
-    /// weak references to the UserQueryInfoObject.
-    /// Clear appropriate local and member references before calling this.
-    static void uqMapErase(QueryId qId);
-
-    UserQueryInfo(QueryId qId);
     UserQueryInfo() = delete;
     UserQueryInfo(UserQueryInfo const&) = delete;
     UserQueryInfo& operator=(UserQueryInfo const&) = delete;
 
+    static Ptr create(QueryId qId) { return std::shared_ptr<UserQueryInfo>(new UserQueryInfo(qId)); }
+
     ~UserQueryInfo() = default;
+
+    std::string cName(const char* func) {
+        return std::string("UserQueryInfo::") + func + " qId=" + std::to_string(_qId);
+    }
 
     /// Add a query template to the map of templates for this user query.
     size_t addTemplate(std::string const& templateStr);
@@ -68,9 +67,21 @@ public:
     /// Add an UberJobData object to the UserQueryInfo.
     void addUberJob(std::shared_ptr<UberJobData> const& ujData);
 
+    /// &&& doc
+    bool getCancelledByCzar() const { return _cancelledByCzar; }
+
+    /// &&& doc
+    void cancelFromCzar();
+
+    /// &&& doc
+    void cancelUberJob(UberJobId ujId);
+
+    bool isUberJobDead(UberJobId ujId) const;
+
+    QueryId getQueryId() const { return _qId; }
+
 private:
-    static Map _uqMap;
-    static std::mutex _uqMapMtx;  ///< protects _uqMap
+    UserQueryInfo(QueryId qId);
 
     QueryId const _qId;  ///< The User Query Id number.
 
@@ -78,11 +89,14 @@ private:
     /// This must be a vector. New entries are always added to the end so as not
     /// to alter existing indexes into the vector.
     std::vector<std::string> _templates;
-    std::mutex _uqMtx;  ///< protects _templates;
+    std::mutex _uqMtx;  ///< protects _templates
 
     /// Map of all UberJobData objects on this worker for this User Query.
-    std::map<UberJobId, std::shared_ptr<UberJobData>> _uberJobMap;
-    std::mutex _uberJobMapMtx;  ///< protects _uberJobMap;
+    std::map<UberJobId, std::weak_ptr<UberJobData>> _uberJobMap;
+    std::set<UberJobId> _deadUberJobSet;  ///< Set of cancelled UberJob Ids.
+    mutable std::mutex _uberJobMapMtx;    ///< protects _uberJobMap, _deadUberJobSet
+
+    std::atomic<bool> _cancelledByCzar{false};
 };
 
 }  // namespace lsst::qserv::wbase

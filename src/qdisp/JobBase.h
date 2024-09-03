@@ -59,7 +59,8 @@ public:
     virtual UberJobId getJobId() const = 0;
     virtual std::string const& getIdStr() const = 0;
     virtual std::shared_ptr<QdispPool> getQdispPool() = 0;
-    //&&& virtual std::string const& getPayload() const = 0;  ///< const& in return type is essential for xrootd
+    //&&& virtual std::string const& getPayload() const = 0;  ///< const& in return type is essential for
+    //xrootd
     virtual std::shared_ptr<ResponseHandler> getRespHandler() = 0;
     virtual std::shared_ptr<qmeta::JobStatus> getStatus() = 0;
     virtual bool getScanInteractive() const = 0;
