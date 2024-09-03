@@ -44,16 +44,15 @@ using namespace lsst::qserv::http;
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(CzarContactInfo) {
-
     string const replicationInstanceId = "repliInstId";
     string const replicationAuthKey = "repliIAuthKey";
 
-    string const cName("czar_name");
-    lsst::qserv::CzarIdType const cId = 32;
-    int cPort = 2022;
-    string const cHost("cz_host");
+    string const czrName("czar_name");
+    lsst::qserv::CzarIdType const czrId = 32;
+    int czrPort = 2022;
+    string const czrHost("cz_host");
 
-    auto czarA = lsst::qserv::http::CzarContactInfo::create(cName, cId, cPort, cHost);
+    auto czarA = lsst::qserv::http::CzarContactInfo::create(czrName, czrId, czrPort, czrHost);
     LOGS_ERROR("&&& a czarA=" << czarA->dump());
 
     auto czarAJs = czarA->serializeJson();
@@ -63,7 +62,7 @@ BOOST_AUTO_TEST_CASE(CzarContactInfo) {
     LOGS_ERROR("&&& c czarB=" << czarB);
     BOOST_REQUIRE(czarA->compare(*czarB));
 
-    auto czarC = lsst::qserv::http::CzarContactInfo::create("different", cId, cPort, cHost);
+    auto czarC = lsst::qserv::http::CzarContactInfo::create("different", czrId, czrPort, czrHost);
     BOOST_REQUIRE(!czarA->compare(*czarC));
 
     auto start = lsst::qserv::CLOCK::now();
@@ -80,29 +79,30 @@ BOOST_AUTO_TEST_CASE(CzarContactInfo) {
     BOOST_REQUIRE(workerA->isSameContactInfo(*workerA1));
 
     // WorkerQueryStatusData
-    auto wqsdA = lsst::qserv::http::WorkerQueryStatusData::create(workerA, czarA, replicationInstanceId, replicationAuthKey);
+    auto wqsdA = lsst::qserv::http::WorkerQueryStatusData::create(workerA, czarA, replicationInstanceId,
+                                                                  replicationAuthKey);
     LOGS_ERROR("&&& g wqsdA=" << wqsdA->dump());
 
-    double timeoutAliveSecs = 100.0;
-    double timeoutDeadSecs = 2*timeoutAliveSecs;
+    //&&&double timeoutAliveSecs = 100.0;
+    //&&&double timeoutDeadSecs = 2*timeoutAliveSecs;
     double maxLifetime = 300.0;
-    auto jsDataA = wqsdA->serializeJson(timeoutAliveSecs, timeoutDeadSecs, maxLifetime);
+    auto jsDataA = wqsdA->serializeJson(maxLifetime);
     LOGS_ERROR("&&& h jsDataA=" << *jsDataA);
 
     // Check that empty lists work.
-    auto wqsdA1 = lsst::qserv::http::WorkerQueryStatusData::createJson(*jsDataA, replicationInstanceId, replicationAuthKey, start1Sec);
+    auto wqsdA1 = lsst::qserv::http::WorkerQueryStatusData::createJson(*jsDataA, replicationInstanceId,
+                                                                       replicationAuthKey, start1Sec);
     LOGS_ERROR("&&& i wqsdA1=" << wqsdA1->dump());
-    auto jsDataA1 = wqsdA1->serializeJson(timeoutAliveSecs, timeoutDeadSecs, maxLifetime);
+    auto jsDataA1 = wqsdA1->serializeJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsDataA1);
 
-
-    vector<lsst::qserv::QueryId> qIdsDelFiles = { 7, 8, 9, 15, 25, 26, 27, 30 };
-    vector<lsst::qserv::QueryId> qIdsKeepFiles = { 1, 2, 3, 4, 6, 10, 13, 19, 33 };
+    vector<lsst::qserv::QueryId> qIdsDelFiles = {7, 8, 9, 15, 25, 26, 27, 30};
+    vector<lsst::qserv::QueryId> qIdsKeepFiles = {1, 2, 3, 4, 6, 10, 13, 19, 33};
     for (auto const qIdDF : qIdsDelFiles) {
         wqsdA->_qIdDoneDeleteFiles[qIdDF] = start;
     }
 
-    jsDataA = wqsdA->serializeJson(timeoutAliveSecs, timeoutDeadSecs, maxLifetime);
+    jsDataA = wqsdA->serializeJson(maxLifetime);
     LOGS_ERROR("&&& j jsDataA=" << jsDataA);
     BOOST_REQUIRE(*jsDataA != *jsDataA1);
 
@@ -114,27 +114,42 @@ BOOST_AUTO_TEST_CASE(CzarContactInfo) {
 
     LOGS_ERROR("&&& i wqsdA=" << wqsdA->dump());
 
-    jsDataA = wqsdA->serializeJson(timeoutAliveSecs, timeoutDeadSecs, maxLifetime);
+    jsDataA = wqsdA->serializeJson(maxLifetime);
     LOGS_ERROR("&&& j jsDataA=" << *jsDataA);
 
     auto start5Sec = start + 5s;
-    auto workerAFromJson = lsst::qserv::http::WorkerQueryStatusData::createJson(*jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
-    auto jsWorkerAFromJson = workerAFromJson->serializeJson(timeoutAliveSecs, timeoutDeadSecs, maxLifetime);
+    auto workerAFromJson = lsst::qserv::http::WorkerQueryStatusData::createJson(
+            *jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
+    auto jsWorkerAFromJson = workerAFromJson->serializeJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
 
     wqsdA->addDeadUberJobs(12, {34}, start5Sec);
     wqsdA->addDeadUberJobs(91, {77}, start5Sec);
     wqsdA->addDeadUberJobs(1059, {1, 4, 6, 7, 8, 10, 3, 22, 93}, start5Sec);
 
-    jsDataA = wqsdA->serializeJson(timeoutAliveSecs, timeoutDeadSecs, maxLifetime);
+    jsDataA = wqsdA->serializeJson(maxLifetime);
     LOGS_ERROR("&&& k jsDataA=" << *jsDataA);
     BOOST_REQUIRE(*jsDataA != *jsWorkerAFromJson);
 
-    workerAFromJson = lsst::qserv::http::WorkerQueryStatusData::createJson(*jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
-    jsWorkerAFromJson = workerAFromJson->serializeJson(timeoutAliveSecs, timeoutDeadSecs, maxLifetime);
+    workerAFromJson = lsst::qserv::http::WorkerQueryStatusData::createJson(*jsDataA, replicationInstanceId,
+                                                                           replicationAuthKey, start5Sec);
+    jsWorkerAFromJson = workerAFromJson->serializeJson(maxLifetime);
     LOGS_ERROR("&&& l jsWorkerAFromJson=" << *jsWorkerAFromJson);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
 
+    // Make the response, which contains lists of the items handled by the workers.
+    auto jsWorkerResp = workerAFromJson->serializeResponseJson();
+
+    // test removal of elements after response.
+    BOOST_REQUIRE(!wqsdA->_qIdDoneDeleteFiles.empty());
+    BOOST_REQUIRE(!wqsdA->_qIdDoneKeepFiles.empty());
+    BOOST_REQUIRE(!wqsdA->_qIdDeadUberJobs.empty());
+
+    wqsdA->handleResponseJson(jsWorkerResp);
+
+    BOOST_REQUIRE(wqsdA->_qIdDoneDeleteFiles.empty());
+    BOOST_REQUIRE(wqsdA->_qIdDoneKeepFiles.empty());
+    BOOST_REQUIRE(wqsdA->_qIdDeadUberJobs.empty());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

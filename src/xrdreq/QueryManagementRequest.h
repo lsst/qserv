@@ -41,7 +41,7 @@ namespace lsst::qserv::xrdreq {
  * the error messages in case of any problems in delivering or processing
  * notifications.
  */
-class QueryManagementRequest : public QservRequest {
+class QueryManagementRequest : public QservRequest {  //&&&QM
 public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<QueryManagementRequest> Ptr;
