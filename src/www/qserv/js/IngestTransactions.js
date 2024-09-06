@@ -323,8 +323,10 @@ function(CSSLoader,
             );
             tbody.find("button.contrib").click(
                 (e) => {
+                    const worker = undefined;
+                    const table = undefined;
                     const transactionId = $(e.currentTarget).attr("id");
-                    Fwk.find("Ingest", "Contributions").set_transaction(this._get_database_status(), this._databases, this._get_database(), this._transactions, transactionId);
+                    Fwk.find("Ingest", "Contributions").search(worker, this._get_database(), table, transactionId);
                     Fwk.show("Ingest", "Contributions");
                 }
             );

@@ -314,7 +314,7 @@ function(CSSLoader,
         _load_contrib(contrib_id) {
             Fwk.web_service_GET(
                 "/ingest/trans/contrib/" + contrib_id,
-                {include_warnings: 1, include_retries: 1, version: Common.RestAPIVersion},
+                {include_extensions: 1, include_warnings: 1, include_retries: 1, version: Common.RestAPIVersion},
                 (data) => {
                     console.log(data["contribution"]);
                     if (!data.success) {
