@@ -211,6 +211,11 @@ private:
     /// @see method IngestRequest::test()
     IngestRequest(TransactionContribInfo const& contrib);
 
+    /// Update the contribution object. The method is thread-safe. It's required
+    /// to be called from any method but the constructors when the contribution
+    /// state needs to be updated.
+    void _updateTransactionContribInfo(TransactionContribInfo const& contrib);
+
     // Three processing stages of the request
 
     void _processStart();
@@ -238,10 +243,6 @@ private:
     /// Mutex guarding internal state.
     mutable replica::Mutex _mtx;
 
-    /// The descriptor is build by the c-tor after validating the input
-    /// parameters of the request.
-    TransactionContribInfo _contrib;
-
     // These variables are set by the constructors after completing parameter validation.
     std::unique_ptr<http::Url> _resource;
     csv::Dialect _dialect;
@@ -255,6 +256,48 @@ private:
     /// Set by calling the public method cancel(). Setting the flag will interrupt
     /// request processing (if the one is still going on).
     std::atomic<bool> _cancelled{false};
+
+    /// Mutex guarding transitions of the transaction contribution object _contrib.
+    mutable replica::Mutex _contribMtx;
+
+    /**
+     * The descriptor is initialized either from a value passed into the corresponding
+     * constructor or it's built from scratch by another constructor after validating
+     * input parameters of a request.
+     *
+     * In order to understand how the descriptor gets evolved during the lifecycle of
+     * a request object one has to keep in mind that the descriptor is used in 5 different
+     * contexts:
+     * - It represents the current state of an ingest request (current class), and
+     *   it changes during subsequent request processing after it starts.
+     * - It's used in communications with the Replication system's database API
+     *   when the persistent state of the ingest request needs to be updated.
+     * - It's used for coordinating and managing the request processing by the ingest
+     *   requests manager (class IngestRequestMgr).
+     * - It's used for resuming the request processing after a restart of
+     *   the Replication worker.
+     * - It's used by the worker's REST API for providing the status of the request
+     *   to the clients.
+     *
+     * Altogether these requirements led to the following "copy-on-write" state management
+     * strategy for the descriptor in the implementation of the current class:
+     * - The descriptor is guarded by the mutex _contribMtx.
+     * - Values of non-changing attributes of the descriptor initialized by the c-tor can
+     *   be read by any method of the current class w/o any synchronization.
+     * - Any changes to other attributes of the descriptior made by methods of the current
+     *   class should be done in the transactional mode by the following sequence
+     *   of operations:
+     *   1. Obtaining a copy of the descriptor by calling method transactionContribInfo()
+     *      (that is protected by the mutex).
+     *   2. Modifying the copy of the descriptor.
+     *   3. Updating the descriptor by calling method _updateTransactionContribInfo()
+     *      (that is protected by the mutex).
+     *
+     * This sequence ensures that clients of the request object will always get the consistent
+     * state of the transaction contribution descriptor, and the descriptor retrieval won't
+     * be blocked by any stage of the request processing.
+     */
+    TransactionContribInfo _contrib;
 };
 
 }  // namespace lsst::qserv::replica
