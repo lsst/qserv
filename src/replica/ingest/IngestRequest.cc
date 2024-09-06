@@ -347,11 +347,10 @@ void IngestRequest::_processStart() {
     string const context = ::context_ + string(__func__) + " ";
     replica::Lock const lock(_mtx, context);
 
-    if (_processing) {
+    if (_processing.exchange(true)) {
         throw logic_error(context + "the contribution request " + to_string(_contrib.id) +
                           " is already being processed or has been processed.");
     }
-    _processing = true;
 
     bool const failed = true;
     auto const databaseServices = serviceProvider()->databaseServices();

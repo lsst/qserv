@@ -242,7 +242,7 @@ private:
     /// parameters of the request.
     TransactionContribInfo _contrib;
 
-    // These variables are set after completing parameter validation
+    // These variables are set by the constructors after completing parameter validation.
     std::unique_ptr<http::Url> _resource;
     csv::Dialect _dialect;
 
@@ -250,11 +250,11 @@ private:
     /// reset. The flag is used for coordinating state change with other methods
     /// of the class. In particular, setting this flag would prevent executing
     /// the request more than one time.
-    bool _processing = false;
+    std::atomic<bool> _processing{false};
 
-    // Setting the flag will interrupt request processing (if the one is
-    // still going on).
-    std::atomic<bool> _cancelled{false};  ///< Set by calling the public method cancel()
+    /// Set by calling the public method cancel(). Setting the flag will interrupt
+    /// request processing (if the one is still going on).
+    std::atomic<bool> _cancelled{false};
 };
 
 }  // namespace lsst::qserv::replica
