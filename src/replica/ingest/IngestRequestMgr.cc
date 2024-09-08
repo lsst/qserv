@@ -74,7 +74,7 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
     auto const transactions = databaseServices->transactions(TransactionInfo::State::STARTED);
     for (auto const& trans : transactions) {
         auto const contribs = databaseServices->transactionContribs(
-                trans.id, TransactionContribInfo::Status::IN_PROGRESS, anyTable, workerName,
+                trans.id, anyTable, workerName, {TransactionContribInfo::Status::IN_PROGRESS},
                 TransactionContribInfo::TypeSelector::ASYNC);
         contribsByCreateTimeDESC.insert(contribsByCreateTimeDESC.end(), contribs.cbegin(), contribs.cend());
     }

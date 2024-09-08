@@ -128,6 +128,20 @@ json JobInfo::toJson() const {
     return info;
 }
 
+set<TransactionInfo::State> const TransactionInfo::allStates = {
+        TransactionInfo::State::IS_STARTING,  TransactionInfo::State::STARTED,
+        TransactionInfo::State::IS_FINISHING, TransactionInfo::State::IS_ABORTING,
+        TransactionInfo::State::FINISHED,     TransactionInfo::State::ABORTED,
+        TransactionInfo::State::START_FAILED, TransactionInfo::State::FINISH_FAILED,
+        TransactionInfo::State::ABORT_FAILED};
+
+set<string> TransactionInfo::toStrings(set<State> const& coll) {
+    set<string> result;
+    for (auto const& s : coll) {
+        result.insert(state2string(s));
+    }
+    return result;
+}
 TransactionInfo::State TransactionInfo::string2state(string const& str) {
     if ("IS_STARTING" == str) return State::IS_STARTING;
     if ("STARTED" == str) return State::STARTED;
@@ -138,8 +152,8 @@ TransactionInfo::State TransactionInfo::string2state(string const& str) {
     if ("START_FAILED" == str) return State::START_FAILED;
     if ("FINISH_FAILED" == str) return State::FINISH_FAILED;
     if ("ABORT_FAILED" == str) return State::ABORT_FAILED;
-    throw runtime_error("DatabaseServices::" + string(__func__) + "  unknown transaction state: '" + str +
-                        "'");
+    throw invalid_argument("DatabaseServices::" + string(__func__) + "  unknown transaction state: '" + str +
+                           "'");
 }
 
 string TransactionInfo::state2string(State state) {

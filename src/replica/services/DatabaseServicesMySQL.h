@@ -144,8 +144,9 @@ public:
 
     TransactionInfo transaction(TransactionId id, bool includeContext = false, bool includeLog = false) final;
 
-    std::vector<TransactionInfo> transactions(std::string const& databaseName = std::string(),
-                                              bool includeContext = false, bool includeLog = false) final;
+    std::vector<TransactionInfo> transactions(
+            std::string const& databaseName = std::string(), bool includeContext = false,
+            bool includeLog = false, std::set<TransactionInfo::State> const& stateSelector = {}) final;
 
     std::vector<TransactionInfo> transactions(TransactionInfo::State state, bool includeContext = false,
                                               bool includeLog = false) final;
@@ -163,29 +164,26 @@ public:
     TransactionInfo updateTransaction(TransactionId id,
                                       std::unordered_map<std::string, nlohmann::json> const& events) final;
 
-    TransactionContribInfo transactionContrib(unsigned int id, bool includeWarnings = false,
+    TransactionContribInfo transactionContrib(unsigned int id, bool includeExtensions = false,
+                                              bool includeWarnings = false,
                                               bool includeRetries = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
-            TransactionId transactionId, std::string const& table = std::string(),
-            std::string const& workerName = std::string(),
+            TransactionId transactionId, std::string const& table, std::string const& workerName,
+            std::set<TransactionContribInfo::Status> const& statusSelector = {},
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false, bool includeRetries = false) final;
+            int chunkSelector = -1, bool includeExtensions = false, bool includeWarnings = false,
+            bool includeRetries = false, size_t minRetries = 0, size_t minWarnings = 0,
+            size_t maxEntries = 0) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
-            TransactionId transactionId, TransactionContribInfo::Status status,
-            std::string const& table = std::string(), std::string const& workerName = std::string(),
+            std::string const& database, std::string const& table, std::string const& workerName,
+            std::set<TransactionContribInfo::Status> const& statusSelector = {},
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false, bool includeRetries = false) final;
-
-    std::vector<TransactionContribInfo> transactionContribs(
-            std::string const& database, std::string const& table = std::string(),
-            std::string const& workerName = std::string(),
-            TransactionContribInfo::TypeSelector typeSelector =
-                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false, bool includeRetries = false) final;
+            bool includeExtensions = false, bool includeWarnings = false, bool includeRetries = false,
+            size_t minRetries = 0, size_t minWarnings = 0, size_t maxEntries = 0) final;
 
     TransactionContribInfo createdTransactionContrib(
             TransactionContribInfo const& info, bool failed = false,
@@ -347,18 +345,17 @@ private:
                                                        std::string const& predicate, bool includeContext,
                                                        bool includeLog);
 
-    std::vector<TransactionContribInfo> _transactionContribs(replica::Lock const& lock,
-                                                             std::string const& predicate,
-                                                             bool includeWarnings = false,
-                                                             bool includeRetries = false);
+    std::vector<TransactionContribInfo> _transactionContribs(
+            replica::Lock const& lock, std::string const& predicate, bool includeExtensions = false,
+            bool includeWarnings = false, bool includeRetries = false, size_t maxEntries = 0);
 
     TransactionContribInfo _transactionContribImpl(replica::Lock const& lock, std::string const& predicate,
+                                                   bool includeExtensions = false,
                                                    bool includeWarnings = false, bool includeRetries = false);
 
-    std::vector<TransactionContribInfo> _transactionContribsImpl(replica::Lock const& lock,
-                                                                 std::string const& predicate,
-                                                                 bool includeWarnings = false,
-                                                                 bool includeRetries = false);
+    std::vector<TransactionContribInfo> _transactionContribsImpl(
+            replica::Lock const& lock, std::string const& predicate, bool includeExtensions = false,
+            bool includeWarnings = false, bool includeRetries = false, size_t maxEntries = 0);
 
     DatabaseIngestParam _ingestParamImpl(replica::Lock const& lock, std::string const& predicate);
 
