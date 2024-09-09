@@ -112,8 +112,8 @@ BOOST_AUTO_TEST_CASE(SplitStringTest) {
     {
         std::string const emptyStr;
         std::string const delimiter = " ";
-        bool const greedy = true;
-        auto const vect = util::String::split(emptyStr, delimiter, greedy);
+        bool const skipEmpty = true;
+        auto const vect = util::String::split(emptyStr, delimiter, skipEmpty);
         LOGS_ERROR("vect=" << util::String::toString(vect, delimiter, "'", "'"));
         BOOST_CHECK_EQUAL(vect.size(), 0UL);
     }
@@ -144,8 +144,8 @@ BOOST_AUTO_TEST_CASE(SplitStringTest) {
         BOOST_CHECK_EQUAL(vect.size(), j);
     }
     {
-        bool const greedy = true;
-        auto const vect = util::String::split(" a b  cd   e f  ", " ", greedy);
+        bool const skipEmpty = true;
+        auto const vect = util::String::split(" a b  cd   e f  ", " ", skipEmpty);
         LOGS_ERROR("vect=" << util::String::toString(vect, " ", "'", "'"));
         size_t j = 0;
         BOOST_CHECK_EQUAL(vect[j++], "a");
@@ -233,19 +233,19 @@ BOOST_AUTO_TEST_CASE(GetVecFromStrTest) {
         auto const vect = util::String::parseToVectInt(str2, ":", false, defaultVal);
         LOGS_ERROR("vect=" << util::String::toString(vect, " ", "'", "'"));
         size_t j = 0;
-        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-greedy mode
+        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-skipEmpty mode
         BOOST_CHECK_EQUAL(vect[j++], 987);
         BOOST_CHECK_EQUAL(vect[j++], 23);
         BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // Couldn't parse "x8owlq" as a number
         BOOST_CHECK_EQUAL(vect[j++], 1);
         BOOST_CHECK_EQUAL(vect[j++], -123);
-        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-greedy mode
+        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-skipEmpty mode
         BOOST_CHECK_EQUAL(vect.size(), j);
     }
     {
         int const defaultVal = 99;
-        bool const greedy = true;
-        auto const vect = util::String::parseToVectInt(str2, ":", false, defaultVal, greedy);
+        bool const skipEmpty = true;
+        auto const vect = util::String::parseToVectInt(str2, ":", false, defaultVal, skipEmpty);
         LOGS_ERROR("vect=" << util::String::toString(vect, " ", "'", "'"));
         size_t j = 0;
         BOOST_CHECK_EQUAL(vect[j++], 987);
@@ -258,8 +258,8 @@ BOOST_AUTO_TEST_CASE(GetVecFromStrTest) {
     std::string const str3 = ":123456789123123:23:x8owlq::1:-123:";
     {
         auto const defaultVal = std::numeric_limits<std::uint64_t>::max();
-        bool const greedy = true;
-        auto const vect = util::String::parseToVectUInt64(str3, ":", false, defaultVal, greedy);
+        bool const skipEmpty = true;
+        auto const vect = util::String::parseToVectUInt64(str3, ":", false, defaultVal, skipEmpty);
         LOGS_ERROR("vect=" << util::String::toString(vect, " ", "'", "'"));
         size_t j = 0;
         BOOST_CHECK_EQUAL(vect[j++], 123456789123123ULL);
@@ -274,14 +274,14 @@ BOOST_AUTO_TEST_CASE(GetVecFromStrTest) {
         auto const vect = util::String::parseToVectUInt64(str3, ":", false, defaultVal);
         LOGS_ERROR("vect=" << util::String::toString(vect, " ", "'", "'"));
         size_t j = 0;
-        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-greedy mode
+        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-skipEmpty mode
         BOOST_CHECK_EQUAL(vect[j++], 123456789123123ULL);
         BOOST_CHECK_EQUAL(vect[j++], 23ULL);
         BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // Couldn't parse "x8owlq" as a number
-        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-greedy mode
+        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-skipEmpty mode
         BOOST_CHECK_EQUAL(vect[j++], 1ULL);
         BOOST_CHECK_EQUAL(vect[j++], -123LL);
-        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-greedy mode
+        BOOST_CHECK_EQUAL(vect[j++], defaultVal);  // The empty string in the non-skipEmpty mode
         BOOST_CHECK_EQUAL(vect.size(), j);
     }
 }

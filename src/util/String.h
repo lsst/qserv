@@ -38,18 +38,18 @@ public:
      * Split the input string into substrings using the specified delimiter.
      * @param str The input string to be parsed.
      * @param delimiter A delimiter.
-     * @param greedy The optional flag that if 'true' would eliminate empty strings from
+     * @param skipEmpty The optional flag that if 'true' would eliminate empty strings from
      *   the result. Otherwise the empty strings found between the delimiter will
      *   be preserved in the result.
-     * @note The result filtering requested by a value of the parameter 'greedy'
+     * @note The result filtering requested by a value of the parameter 'skipEmpty'
      *   also applies to a secenario when the input string is empty. In particular,
-     *   in the 'greedy' mode the output collection will be empty. Otherwise, the collection
+     *   in the 'skipEmpty' mode the output collection will be empty. Otherwise, the collection
      *   will have exactly one element - the empty string.
      * @return A collection of strings resulting from splitting the input string into
      *   sub-strings using the delimiter. The delimiter won't be included into the substrings.
      */
     static std::vector<std::string> split(std::string const& str, std::string const& delimiter,
-                                          bool greedy = false);
+                                          bool skipEmpty = false);
 
     /**
      * Parse the input string into a collection of numbers (int).
@@ -59,7 +59,7 @@ public:
      *   from substrings to numbers fail. If the flag is set to 'true' then an exception
      *   will be thrown. Otherwise, the default value will be placed into the output collection.
      * @param defaultVal The optional default value to be injected where applies.
-     * @param greedy The optional flag that if 'true' would eliminate empty substrings from
+     * @param skipEmpty The optional flag that if 'true' would eliminate empty substrings from
      *   parsing into the the numeric result. Otherwise the behavior of the methjod will be driven
      *   by a value of the parameter 'throwOnError'.
      * @return A collection of numbers found in the input string.
@@ -68,7 +68,8 @@ public:
      * @see function split
      */
     static std::vector<int> parseToVectInt(std::string const& str, std::string const& delimiter,
-                                           bool throwOnError = true, int defaultVal = 0, bool greedy = false);
+                                           bool throwOnError = true, int defaultVal = 0,
+                                           bool skipEmpty = false);
 
     /**
      * Parse the input string into a collection of numbers (std::uint64_t).
@@ -76,7 +77,8 @@ public:
      */
     static std::vector<std::uint64_t> parseToVectUInt64(std::string const& str, std::string const& delimiter,
                                                         bool throwOnError = true,
-                                                        std::uint64_t defaultVal = 0ULL, bool greedy = false);
+                                                        std::uint64_t defaultVal = 0ULL,
+                                                        bool skipEmpty = false);
 
     /**
      * Pack an iterable collection into a string.

@@ -80,16 +80,16 @@ char const hexCharsLC[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '
 
 namespace lsst::qserv::util {
 
-vector<string> String::split(string const& original, string const& delimiter, bool greedy) {
-    // Apply trivial optimizations. Note that the specified "greedy" behavior
+vector<string> String::split(string const& original, string const& delimiter, bool skipEmpty) {
+    // Apply trivial optimizations. Note that the specified "skipEmpty" behavior
     // must be preserved during the optimisations.
     vector<string> result;
     if (original.empty()) {
-        if (!greedy) result.push_back(original);
+        if (!skipEmpty) result.push_back(original);
         return result;
     }
     if (delimiter.empty()) {
-        if (!original.empty() || !greedy) result.push_back(original);
+        if (!original.empty() || !skipEmpty) result.push_back(original);
         return result;
     }
     string str(original);
@@ -101,23 +101,23 @@ vector<string> String::split(string const& original, string const& delimiter, bo
             loop = false;
         }
         auto const candidate = str.substr(0, pos);
-        if (!candidate.empty() || !greedy) result.push_back(candidate);
+        if (!candidate.empty() || !skipEmpty) result.push_back(candidate);
         str = str.substr(pos + delimiter.length());
     }
     return result;
 }
 
 vector<int> String::parseToVectInt(string const& str, string const& delimiter, bool throwOnError,
-                                   int defaultVal, bool greedy) {
+                                   int defaultVal, bool skipEmpty) {
     auto const parseNumber = [](string const& str, size_t& sz) -> int { return stoi(str, &sz); };
-    return ::getNumericVectFromStr<int>(__func__, split(str, delimiter, greedy), parseNumber, throwOnError,
+    return ::getNumericVectFromStr<int>(__func__, split(str, delimiter, skipEmpty), parseNumber, throwOnError,
                                         defaultVal);
 }
 
 vector<uint64_t> String::parseToVectUInt64(string const& str, string const& delimiter, bool throwOnError,
-                                           uint64_t defaultVal, bool greedy) {
+                                           uint64_t defaultVal, bool skipEmpty) {
     auto const parseNumber = [](string const& str, size_t& sz) -> uint64_t { return stoull(str, &sz); };
-    return ::getNumericVectFromStr<uint64_t>(__func__, split(str, delimiter, greedy), parseNumber,
+    return ::getNumericVectFromStr<uint64_t>(__func__, split(str, delimiter, skipEmpty), parseNumber,
                                              throwOnError, defaultVal);
 }
 
