@@ -96,6 +96,11 @@ public:
         return _contactMap;
     }
 
+    /// Return _contactMap, the object that the returned pointer points to is
+    /// constant and no attempts should be made to change it. This
+    /// function will wait forever for a valid contact map to be ready.
+    http::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
+
     /// &&& doc
     void sendActiveWorkersMessages();
 

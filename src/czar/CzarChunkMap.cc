@@ -344,8 +344,6 @@ bool CzarFamilyMap::_read() {
 
     // &&& TODO:UJ Before makeNewMaps(), get a list of workers considered to be alive by
     // czar::_activeWorkerMap
-    //             give that list to makeNewMaps, and don't and workers to the maps that aren't on the
-    //             list.&&& !!!
 
     // Make the new maps.
     auto czConfig = cconfig::CzarConfig::instance();

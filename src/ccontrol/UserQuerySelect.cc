@@ -656,7 +656,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
     }
 
     // Add worker contact info to UberJobs.
-    auto const wContactMap = czRegistry->getWorkerContactMap();
+    //&&& auto const wContactMap = czRegistry->getWorkerContactMap();
+    auto const wContactMap = czRegistry->waitForWorkerContactMap();  //&&&Z
     LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
     for (auto const& [wIdKey, ujVect] : workerJobMap) {
         auto iter = wContactMap->find(wIdKey);

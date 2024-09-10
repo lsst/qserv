@@ -236,6 +236,15 @@ bool UberJob::isQueryCancelled() {
     return exec->getCancelled();
 }
 
+bool UberJob::getScanInteractive() const {
+    auto exec = _executive.lock();
+    if (exec == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " _executive == nullptr");
+        return false;  // Safer to assume the worst.
+    }
+    return exec->getScanInteractive();
+}
+
 bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg) {
     // must be locked _jobsMtx
     auto currentState = _jobStatus->getState();
@@ -724,6 +733,37 @@ nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& e
 
     json jsRet = {{"success", 1}, {"deletedata", deleteData}, {"errortype", ""}, {"note", ""}};
     return jsRet;
+}
+
+void UberJob::killUberJob() {
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " stopping this UberJob and re-assigning jobs.");
+
+    auto exec = _executive.lock();
+    if (exec == nullptr || isQueryCancelled()) {
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled");
+        return;
+    }
+
+    if (exec->isLimitRowComplete()) {
+        int dataIgnored = exec->incrDataIgnoredCount();
+        if ((dataIgnored - 1) % 1000 == 0) {
+            LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ignoring, enough rows already.");
+        }
+        return;
+    }
+
+    // Put this UberJob on the list of UberJobs that the worker should drop.
+    auto activeWorkerMap = czar::Czar::getCzar()->getActiveWorkerMap();
+    auto activeWorker = activeWorkerMap->getActiveWorker(_wContactInfo->wId);
+    if (activeWorker != nullptr) {
+        activeWorker->addDeadUberJob(_queryId, _uberJobId);
+    }
+
+    _unassignJobs();
+    // Let Czar::_monitor reassign jobs - other UberJobs are probably being killed
+    // so waiting probably gets a better distribution. If this is deemed to slow,
+    // then exec->assignJobsToUberJobs() could be called here.
+    return;
 }
 
 std::ostream& UberJob::dumpOS(std::ostream& os) const {

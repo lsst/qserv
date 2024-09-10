@@ -194,7 +194,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }
     }
-    */
 
     // This will block until there is a successful read of the database tables.
     _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
