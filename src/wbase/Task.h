@@ -111,28 +111,6 @@ public:
     util::HistogramRolling::Ptr histTimeOfTransmittingTasks;  ///< Store information about transmitting tasks.
 };
 
-/// Used to find tasks that are in process for debugging with Task::_idStr.
-/// This is largely meant to track down incomplete tasks in a possible intermittent
-/// failure and should probably be removed when it is no longer needed.
-/// It depends on code in BlendScheduler to work. If the decision is made to keep it
-/// forever, dependency on BlendScheduler needs to be re-worked.
-struct IdSet {  // TODO:UJ delete if possible
-    void add(std::string const& id) {
-        std::lock_guard<std::mutex> lock(mx);
-        _ids.insert(id);
-    }
-    void remove(std::string const& id) {
-        std::lock_guard<std::mutex> lock(mx);
-        _ids.erase(id);
-    }
-    std::atomic<int> maxDisp{5};  //< maximum number of entries to show with operator<<
-    friend std::ostream& operator<<(std::ostream& os, IdSet const& idSet);
-
-private:
-    std::set<std::string> _ids;
-    mutable std::mutex mx;
-};
-
 /// class Task defines a query task to be done, containing a TaskMsg
 /// (over-the-wire) additional concrete info related to physical
 /// execution conditions.
@@ -175,15 +153,6 @@ public:
     //  Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
     //  Candidates: scanInfo, maxTableSizeMb, FileChannelShared, resultsHttpPort.
     //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
-    /* &&&
-    Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
-         int fragmentNumber, std::shared_ptr<UserQueryInfo> const& userQueryInfo, size_t templateId,
-         bool hasSubchunks, int subchunkId, std::string const& db, proto::ScanInfo const& scanInfo,
-         bool scanInteractive, int maxTableSizeMb, std::vector<TaskDbTbl> const& fragSubTables,
-         std::vector<int> const& fragSubchunkIds, std::shared_ptr<FileChannelShared> const& sc,
-         std::shared_ptr<wpublish::QueryStatistics> const& queryStats_,
-         uint16_t resultsHttpPort = 8080);
-    */
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
          proto::ScanInfo const& scanInfo, bool scanInteractive, int maxTableSizeMb,
@@ -205,8 +174,6 @@ public:
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
             uint16_t resultsHttpPort = 8080);
 
-    //&&&void setQueryStatistics(std::shared_ptr<wpublish::QueryStatistics> const& qC);
-
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
     void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for FileChannelShared
     std::string user;                                  ///< Incoming username
@@ -218,19 +185,18 @@ public:
     void action(util::CmdData* data) override;
 
     /// Cancel the query in progress and set _cancelled.
-    /// Query cancellation on the worker is fairly complicated. This
-    /// function usually called by `SsiRequest::Finished` when xrootd
-    /// indicates the job is cancelled. This may come from:
-    /// - xrootd - in the case of communications issues
+    /// Query cancellation on the worker is fairly complicated.
+    /// This may come from:
     /// - czar - user query was cancelled, an error, or limit reached.
     /// This function may also be called by `Task::checkCancelled()` - `_sendChannel`
-    ///    has been killed, usually a result of failed communication with xrootd.
+    /// has been killed, usually a result of failed czar communication.
     /// If a `QueryRunner` object for this task exists, it must
     /// be cancelled to free up threads and other resources.
     /// Otherwise `_cancelled` is set so that an attempt
     /// to run this `Task` will result in a rapid exit.
     /// This functional also attempts to inform the scheduler for this
-    /// `Task` that is has been cancelled (scheduler currently does nothing in this case).
+    /// `Task` that is has been cancelled. The scheduler currently does
+    /// nothing in this case.
     void cancel();
 
     /// Check if this task should be cancelled and call cancel() as needed.
@@ -271,8 +237,6 @@ public:
     void waitForMemMan();
     bool getSafeToMoveRunning() { return _safeToMoveRunning; }
     void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; }  ///< For testing only.
-
-    static IdSet allIds;  // set of all task jobId numbers that are not complete.
 
     /// @return true if qId and jId match this task's query and job ids.
     bool idsMatch(QueryId qId, int jId, uint64_t tseq) const {

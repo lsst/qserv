@@ -69,10 +69,15 @@ public:
 
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it.
-    http::WorkerContactInfo::WCMapPtr getWorkerContactMap() {
+    http::WorkerContactInfo::WCMapPtr getWorkerContactMap() const {
         std::lock_guard<std::mutex> lockG(_mapMtx);
         return _contactMap;
     }
+
+    /// Return _contactMap, the object that the returned pointer points to is
+    /// constant and no attempts should be made to change it. This
+    /// function will wait forever for a valid contact map to be ready.
+    http::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
 
     /// &&& doc
     void sendActiveWorkersMessages();
@@ -111,7 +116,7 @@ private:
     TIMEPOINT _latestMapUpdate;  ///< The last time the _contactMap was updated, unrelated to
                                  ///< WorkerContactInfo update.
     // &&& review how this _mapMtx is used, probably locks for too long a period.
-    std::mutex _mapMtx;  /// Protects _contactMap, _latestUpdate, _activeWorkerMap
+    mutable std::mutex _mapMtx;  /// Protects _contactMap, _latestUpdate, _activeWorkerMap
 
     ActiveWorkerMap _activeWorkerMap;  ///< Map of workers czar considers active.
 };

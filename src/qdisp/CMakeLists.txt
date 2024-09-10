@@ -44,7 +44,6 @@ target_link_libraries(testQDisp
     qmeta
     query
     rproc
-    xrdreq
     Boost::unit_test_framework
     Threads::Threads
 )

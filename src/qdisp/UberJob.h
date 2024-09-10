@@ -57,10 +57,13 @@ public:
 
     virtual ~UberJob() {};
 
+    std::string cName(const char* funcN) const { return std::string("UberJob::") + funcN + " " + getIdStr(); }
+
     bool addJob(std::shared_ptr<JobQuery> const& job);
     bool runUberJob();
 
-    std::string cName(const char* funcN) const { return std::string("UberJob::") + funcN + " " + getIdStr(); }
+    /// &&&doc
+    void killUberJob();
 
     QueryId getQueryId() const override { return _queryId; }
     UberJobId getJobId() const override {
@@ -68,13 +71,12 @@ public:
     }  // TODO:UJ change name when JobBase no longer needed.
     std::string const& getIdStr() const override { return _idStr; }
     std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
-    //&&&std::string const& getPayload() const override { return _payload; }  // TODO:UJ delete when possible.
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() override {
         return _jobStatus;
-    }  // TODO:UJ relocate to JobBase
-    bool getScanInteractive() const override { return false; }  ///< UberJobs are never interactive.
-    bool isQueryCancelled() override;                           // TODO:UJ relocate to JobBase
+    }                                                  // TODO:UJ relocate to JobBase
+    bool getScanInteractive() const override;          ///< probably not called TODO:UJ
+    bool isQueryCancelled() override;                  // TODO:UJ relocate to JobBase
     void callMarkCompleteFunc(bool success) override;  ///< call markComplete for all jobs in this UberJob.
     std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
@@ -95,10 +97,11 @@ public:
 
     /// Set the worker information needed to send messages to the worker believed to
     /// be responsible for the chunks handled in this UberJob.
-    void setWorkerContactInfo(
-            http::WorkerContactInfo::Ptr const& wContactInfo) {  // Change to ActiveWorker &&& ???
+    void setWorkerContactInfo(http::WorkerContactInfo::Ptr const& wContactInfo) {
         _wContactInfo = wContactInfo;
     }
+
+    http::WorkerContactInfo::Ptr getWorkerContactInfo() { return _wContactInfo; }
 
     /// Get the data for the worker that should handle this UberJob.
     czar::CzarChunkMap::WorkerChunksData::Ptr getWorkerData() { return _workerData; }

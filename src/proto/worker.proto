@@ -66,36 +66,3 @@ message ResponseData {
     required uint32 rowcount = 2;
     required uint64 transmitsize = 3;
 }
-
-/////////////////////////////////////////////////////////////////
-// Protocol definition for the query management requests. These
-// requests do not require any response messages to be explicitly
-// sent by workers.
-//
-// ATTENTION: each message sent to a worker must be preceeded by
-// an int32 size (network-byte-ordered) word carrying a size
-// of the message.
-////////////////////////////////////////////////////////////////
-
-// &&& try to eliminate this
-// The completion status to be sent back with responses to the query management requests.
-message WorkerCommandStatus {
-    enum Code {
-        SUCCESS = 1;    // The successful completion of a request.
-        ERROR   = 2;    // An error occurred during request execution.
-    }
-    optional Code code = 3 [default = SUCCESS];
-    optional string error = 2 [default = ""];   // Optional error message (depends on the code)
-}
-
-// &&&QM try to eliminate this
-message QueryManagement {
-    enum Operation {
-        CANCEL_AFTER_RESTART = 1;   // Cancel older queries before the specified query (excluding that one).
-        CANCEL = 2;                 // Cancel a specific query.
-        COMPLETE = 3;               // Notify workers on the completion of the specified query.
-    }
-    required Operation op = 1;
-    required uint64 czar_id = 3;
-    required uint64 query_id = 2;
-}

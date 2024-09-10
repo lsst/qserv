@@ -46,7 +46,6 @@
 #include "util/ResultFileNameParser.h"
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
-#include "xrdsvc/StreamBuffer.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -636,6 +635,7 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     LOGS(_log, LOG_LVL_WARN,
              __func__ << "&&& idStr=" << idStr << ", _responseBuf.size()=" << _responseBuf.size() << " useHttp=" << _useHttp);
     if (!_useHttp) {
+#if 0   //&&&
         proto::ResponseSummary response;
         response.set_wname(_workerId);
         response.set_queryid(queryId);
@@ -681,6 +681,7 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
             _kill(streamMutexLock, "sendData");
             return false;
         }
+#endif  //&&&
     } else {
         string httpFileUrl = task->resultFileHttpUrl();
         _uberJobData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
