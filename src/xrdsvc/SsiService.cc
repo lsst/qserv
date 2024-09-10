@@ -70,7 +70,6 @@
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
 #include "xrdsvc/HttpSvc.h"
-#include "xrdsvc/SsiRequest.h"
 #include "xrdsvc/XrdName.h"
 
 using namespace lsst::qserv;
@@ -178,9 +177,6 @@ SsiService::SsiService(XrdSsiLogger* log) {
         throw wconfig::WorkerConfigError("Unrecognized memory manager.");
     }
 
-    int64_t bufferMaxTotalBytes = workerConfig->getBufferMaxTotalGB() * 1'000'000'000LL;
-    StreamBuffer::setMaxTotalBytes(bufferMaxTotalBytes);
-
     // Set thread pool size.
     unsigned int poolSize = ranges::max({wsched::BlendScheduler::getMinPoolSize(),
                                          workerConfig->getThreadPoolSize(), thread::hardware_concurrency()});
@@ -240,8 +236,9 @@ SsiService::SsiService(XrdSsiLogger* log) {
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
-    _foreman = make_shared<wcontrol::Foreman>(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries,
-                                              ::makeChunkInventory(mySqlConfig), sqlConnMgr);
+    _foreman = wcontrol::Foreman::Ptr(new wcontrol::Foreman(blendSched, poolSize, maxPoolThreads, mySqlConfig,
+                                                            queries, ::makeChunkInventory(mySqlConfig),
+                                                            sqlConnMgr));
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
@@ -282,6 +279,7 @@ SsiService::~SsiService() {
 }
 
 void SsiService::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
+#if 0  //&&&
     LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
     auto request = SsiRequest::newSsiRequest(resRef.rName, _foreman);
 
@@ -289,6 +287,9 @@ void SsiService::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
     // Object deletes itself when finished is called.
     //
     request->execute(reqRef);
+#else  //&&&
+    LOGS(_log, LOG_LVL_ERROR, "SsiService::ProcessRequest got called");
+#endif  //&&&
 }
 
 }  // namespace lsst::qserv::xrdsvc

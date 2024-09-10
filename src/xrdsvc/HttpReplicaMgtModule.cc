@@ -78,10 +78,13 @@ HttpReplicaMgtModule::HttpReplicaMgtModule(string const& context,
                                            shared_ptr<wcontrol::Foreman> const& foreman,
                                            shared_ptr<qhttp::Request> const& req,
                                            shared_ptr<qhttp::Response> const& resp)
+        : HttpModule(context, foreman, req, resp) {}
+/* &&&
         : HttpModule(context, foreman, req, resp),
           _providerServer(dynamic_cast<xrdsvc::SsiProviderServer*>(XrdSsiProviderLookup)),
           _clusterManager(_providerServer->GetClusterManager()),
           _dataContext(_clusterManager->DataContext()) {}
+          */
 
 json HttpReplicaMgtModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
@@ -334,12 +337,12 @@ void HttpReplicaMgtModule::_modifyChunk(string const& func, int chunk, string co
         // copy of the inventory. After that modify both (persistent and
         // transient) inventories.
         if (Direction::ADD == direction) {
-            _clusterManager->Added(resource.data());
-            if (_dataContext) _providerServer->GetChunkInventory().add(database, chunk);
+            //&&&_clusterManager->Added(resource.data());
+            //&&&if (_dataContext) _providerServer->GetChunkInventory().add(database, chunk);
             foreman()->chunkInventory()->add(database, chunk, foreman()->mySqlConfig());
         } else {
-            _clusterManager->Removed(resource.data());
-            if (_dataContext) _providerServer->GetChunkInventory().remove(database, chunk);
+            //&&&_clusterManager->Removed(resource.data());
+            //&&&if (_dataContext) _providerServer->GetChunkInventory().remove(database, chunk);
             foreman()->chunkInventory()->remove(database, chunk, foreman()->mySqlConfig());
         }
     } catch (wpublish::InvalidParamError const& ex) {
