@@ -8,7 +8,6 @@ target_sources(wbase PRIVATE
     Task.cc
     UberJobData.cc
     UserQueryInfo.cc
-    WorkerCommand.cc
 )
 
 target_include_directories(wbase PRIVATE

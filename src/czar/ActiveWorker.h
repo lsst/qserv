@@ -102,7 +102,7 @@ public:
 
     http::WorkerContactInfo::Ptr getWInfo() const {
         if (_wqsData == nullptr) return nullptr;
-        return _wqsData->_wInfo;
+        return _wqsData->getWInfo();
     }
 
     ~ActiveWorker() = default;
@@ -121,13 +121,15 @@ public:
     /// &&& doc
     void addToDoneKeepFiles(QueryId qId);
 
+    /// &&&doc
+    void addDeadUberJob(QueryId qId, UberJobId ujId);
+
     /// &&& doc
     void removeDeadUberJobsFor(QueryId qId);
 
     std::string dump() const;
 
 private:
-    ///&&&ActiveWorker(WorkerContactInfo::Ptr const& wInfo) : _wInfo(wInfo) {}
     ActiveWorker(http::WorkerContactInfo::Ptr const& wInfo, http::CzarContactInfo::Ptr const& czInfo,
                  std::string const& replicationInstanceId, std::string const& replicationAuthKey)
             : _wqsData(http::WorkerQueryStatusData::create(wInfo, czInfo, replicationInstanceId,
@@ -142,7 +144,8 @@ private:
     void _changeStateTo(State newState, double secsSinceUpdate, std::string const& note);
 
     /// &&& doc
-    void _sendStatusMsg(std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr);
+    void _sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
+                        std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr);
 
     /// &&& doc
     /// _aMtx must be held before calling.
@@ -160,9 +163,11 @@ private:
     std::atomic<int> _conThreadCount{0};
     int _maxConThreadCount{2};
 
+    /* &&&
     /// &&& doc
     /// @throws std::invalid_argument
     bool _parse(nlohmann::json const& jsWorkerReq);  // &&& delete after basic testing
+    */
 };
 
 /// &&& doc
@@ -188,6 +193,9 @@ public:
     /// should be cancelled.
     void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId);
 
+    /// &&& doc
+    ActiveWorker::Ptr getActiveWorker(std::string const& workerId) const;
+
     // &&& doc
     void sendActiveWorkersMessages();
 
@@ -198,10 +206,9 @@ public:
     void addToDoneKeepFiles(QueryId qId);
 
 private:
-    std::map<std::string, ActiveWorker::Ptr> _awMap;
-    std::mutex _awMapMtx;  ///< protects _awMap;
+    std::map<std::string, ActiveWorker::Ptr> _awMap;  ///< Key is worker id.
+    mutable std::mutex _awMapMtx;                     ///< protects _awMap;
 
-    //&&&double const _maxDeadTimeSeconds = 60.0 * 15.0; ///< &&& set from config.
     double _timeoutAliveSecs = 60.0 * 5.0;  ///< &&& set from config. 5min
     double _timeoutDeadSecs = 60.0 * 10.0;  ///< &&& set from config. 10min
     double _maxLifetime = 60.0 * 60.0;      ///< &&& set from config. 1hr
