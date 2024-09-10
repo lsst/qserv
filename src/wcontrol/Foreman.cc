@@ -39,7 +39,6 @@
 #include "qhttp/Response.h"
 #include "qhttp/Server.h"
 #include "qhttp/Status.h"
-#include "wbase/WorkerCommand.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/ResourceMonitor.h"
 #include "wcontrol/SqlConnMgr.h"
@@ -147,10 +146,6 @@ void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
         cmds.push_back(task);
     }
     _scheduler->queCmd(cmds);
-}
-
-void Foreman::processCommand(shared_ptr<wbase::WorkerCommand> const& command) {
-    _workerCommandQueue->queCmd(command);
 }
 
 uint16_t Foreman::httpPort() const { return _httpServer->getPort(); }

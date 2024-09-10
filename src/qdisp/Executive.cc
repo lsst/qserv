@@ -294,6 +294,27 @@ void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsTo
     }
 }
 
+void Executive::killIncompleteUberJobsOn(std::string const& restartedWorkerId) {
+    // Work with a copy to reduce lock time.
+    std::map<UberJobId, std::shared_ptr<UberJob>> ujobsMap;
+    {
+        lock_guard<mutex> lck(_uberJobsMapMtx);
+        ujobsMap = _uberJobsMap;
+    }
+    for (auto&& [ujKey, uj] : ujobsMap) {
+        if (uj == nullptr) continue;
+        auto wContactInfo = uj->getWorkerContactInfo();
+        if (wContactInfo->wId == restartedWorkerId) {
+            if (uj->getStatus()->getState() != qmeta::JobStatus::COMPLETE) {
+                // All jobs in the uberjob will be set as unassigned, which
+                // will lead to Czar::_monitor() reassigning them to new
+                // UberJobs. (Unless this query was cancelled.)
+                uj->killUberJob();
+            }
+        }
+    }
+}
+
 string Executive::dumpUberJobCounts() const {
     stringstream os;
     os << "exec=" << getIdStr();

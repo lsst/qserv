@@ -89,7 +89,6 @@ add_subdirectory(wpublish)
 add_subdirectory(wsched)
 add_subdirectory(www)
 add_subdirectory(xrdlog)
-add_subdirectory(xrdreq)
 add_subdirectory(xrdsvc)
 
 #-----------------------------------------------------------------------------
@@ -143,7 +142,6 @@ target_link_libraries(qserv_czar PUBLIC
     rproc
     qserv_css
     qserv_meta
-    xrdreq
 )
 
 install(

@@ -67,7 +67,6 @@
 #include "util/FileMonitor.h"
 #include "util/IterableFormatter.h"
 #include "util/String.h"
-#include "xrdreq/QueryManagementAction.h"
 
 using namespace lsst::qserv;
 using namespace nlohmann;
@@ -82,6 +81,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 namespace lsst::qserv::czar {
 
 Czar::Ptr Czar::_czar;
+uint64_t const Czar::czarStartupTime = millisecSinceEpoch(CLOCK::now());
 
 Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName) {
     _czar.reset(new Czar(configFilePath, czarName));
@@ -187,20 +187,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }
     }
-    /* &&& (moved this and czar crashed instantly, why?)
-
-    if (_czarConfig->notifyWorkersOnCzarRestart()) {
-        try {
-            // &&&QM use http - Add flag to each worker in _activeWorkerMap
-            // TODO:UJ - Workers need to contact the registry and kill queries if the associated czar dies.
-            xrdreq::QueryManagementAction::notifyAllWorkers(_czarConfig->getXrootdFrontendUrl(),
-                                                            proto::QueryManagement::CANCEL_AFTER_RESTART,
-                                                            _czarConfig->id(), _lastQueryIdBeforeRestart());
-        } catch (std::exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, ex.what());
-        }
-    }
-    */
 
     // This will block until there is a successful read of the database tables.
     _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
@@ -707,6 +693,24 @@ std::shared_ptr<qdisp::Executive> Czar::getExecutiveFromMap(QueryId qId) {
         _executiveMap.erase(iter);
     }
     return exec;
+}
+
+void Czar::killIncompleteUbjerJobsOn(std::string const& restartedWorkerId) {
+    // Copy list of executives so the mutex isn't held forever.
+    std::map<QueryId, std::weak_ptr<qdisp::Executive>> execMap;
+    {
+        lock_guard<mutex> lgMap(_executiveMapMtx);
+        execMap = _executiveMap;
+    }
+
+    // For each executive, go through its list of uberjobs and cancel those jobs
+    // with workerId == restartedWorkerId && <not finished>
+    for (auto const& [eKey, wPtrExec] : execMap) {
+        auto exec = wPtrExec.lock();
+        if (exec != nullptr) {
+            exec->killIncompleteUberJobsOn(restartedWorkerId);
+        }
+    }
 }
 
 }  // namespace lsst::qserv::czar
