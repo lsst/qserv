@@ -40,7 +40,6 @@
 #include "util/EventThread.h"
 #include "util/HoldTrack.h"
 #include "wbase/Base.h"
-#include "wbase/MsgProcessor.h"
 #include "wbase/Task.h"
 
 // Forward declarations
@@ -96,8 +95,9 @@ public:
 /// Foreman is used to maintain a thread pool and schedule Tasks for the thread pool.
 /// It also manages sub-chunk tables with the ChunkResourceMgr.
 /// The schedulers may limit the number of threads they will use from the thread pool.
-class Foreman : public wbase::MsgProcessor {
+class Foreman {
 public:
+    using Ptr = std::shared_ptr<Foreman>;
     /**
      * @param scheduler              - pointer to the scheduler
      * @param poolSize               - size of the thread pool
@@ -111,7 +111,8 @@ public:
             std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
             std::shared_ptr<SqlConnMgr> const& sqlConnMgr);
 
-    virtual ~Foreman() override;
+    //&&& virtual ~Foreman() override;
+    ~Foreman();
 
     // This class doesn't have the default construction or copy semantics
     Foreman() = delete;
@@ -128,21 +129,21 @@ public:
     uint16_t httpPort() const;
 
     /// Process a group of query processing tasks.
-    /// @see MsgProcessor::processTasks()
-    void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) override;  // &&& delete
-
-    /// Implement the corresponding method of the base class
-    /// @see MsgProcessor::processCommand()
-    void processCommand(std::shared_ptr<wbase::WorkerCommand> const& command) override;  // &&& delete
+    void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks);
 
     /// &&& doc
     std::shared_ptr<wpublish::QueryStatistics> addQueryId(QueryId qId);
 
     /// Implement the corresponding method of the base class
-    /// @see MsgProcessor::statusToJson()
-    virtual nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector) override;
+    nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector);
+
+    uint64_t getWorkerStartupTime() const { return _workerStartupTime; }
 
 private:
+    /// Startup time of worker, sent to czars so they can detect that the worker was
+    /// was restarted when this value changes.
+    uint64_t const _workerStartupTime = millisecSinceEpoch(CLOCK::now());
+
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
 
     util::ThreadPool::Ptr _pool;

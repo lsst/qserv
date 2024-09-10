@@ -38,6 +38,7 @@
 #include "ccontrol/UserQuery.h"
 #include "ccontrol/UserQueryFactory.h"
 #include "czar/SubmitResult.h"
+#include "global/clock_defs.h"
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
@@ -144,6 +145,15 @@ public:
     /// Get the executive associated with `qId`, this may be nullptr.
     std::shared_ptr<qdisp::Executive> getExecutiveFromMap(QueryId qId);
 
+    std::shared_ptr<ActiveWorkerMap> getActiveWorkerMap() const { return _activeWorkerMap; }
+
+    /// &&& doc
+    void killIncompleteUbjerJobsOn(std::string const& workerId);
+
+    /// Startup time of czar, sent to workers so they can detect that the czar was
+    /// was restarted when this value changes.
+    static uint64_t const czarStartupTime;
+
 private:
     /// Private constructor for singleton.
     Czar(std::string const& configFilePath, std::string const& czarName);
@@ -220,7 +230,7 @@ private:
     /// Wait time between checks. TODO:UJ set from config
     std::chrono::milliseconds _monitorSleepTime{15000};
 
-    std::unique_ptr<ActiveWorkerMap> _activeWorkerMap;
+    std::shared_ptr<ActiveWorkerMap> _activeWorkerMap;
 };
 
 }  // namespace lsst::qserv::czar

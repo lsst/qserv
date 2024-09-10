@@ -105,6 +105,7 @@ void CzarRegistry::_registryWorkerInfoLoop() {
     // Get worker information from the registry
     string const replicationInstanceId = _czarConfig->replicationInstanceId();
     string const replicationAuthKey = _czarConfig->replicationAuthKey();
+    uint64_t const czarStartTime = Czar::czarStartupTime;
 
     vector<string> const headers;
     auto const method = http::Method::GET;
@@ -127,7 +128,7 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                 {
                     auto czInfo = http::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(),
                                                                 _czarConfig->replicationHttpPort(),
-                                                                util::get_current_host_fqdn());
+                                                                util::get_current_host_fqdn(), czarStartTime);
                     lock_guard<mutex> lck(_mapMtx);
                     if (wMap != nullptr && !_compareMapContactInfo(*wMap)) {
                         _contactMap = wMap;
@@ -152,14 +153,11 @@ http::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
     for (auto const& [key, value] : jsWorkers.items()) {
         auto const& jsQserv = value.at("qserv");
         LOGS(_log, LOG_LVL_DEBUG, __func__ << " key=" << key << " jsQ=" << jsQserv);
-        string wHost = jsQserv.at("host-addr").get<string>();
-        string wManagementHost = jsQserv.at("management-host-name").get<string>();
-        int wPort = jsQserv.at("management-port").get<int>();
-        uint64_t updateTimeInt = jsQserv.at("update-time-ms").get<uint64_t>();
-        TIMEPOINT updateTime = TIMEPOINT(chrono::milliseconds(updateTimeInt));
-        auto wInfo = make_shared<http::WorkerContactInfo>(key, wHost, wManagementHost, wPort, updateTime);
-        LOGS(_log, LOG_LVL_DEBUG,
-             __func__ << " wHost=" << wHost << " wPort=" << wPort << " updateTime=" << updateTimeInt);
+
+        // The names for items here are different than the names used by workers.
+        auto wInfo = http::WorkerContactInfo::createFromJsonRegistry(key, jsQserv);
+
+        LOGS(_log, LOG_LVL_DEBUG, __func__ << " wInfot=" << wInfo->dump());
         auto iter = wMap->find(key);
         if (iter != wMap->end()) {
             LOGS(_log, LOG_LVL_ERROR, __func__ << " duplicate key " << key << " in " << response);
@@ -194,6 +192,22 @@ bool CzarRegistry::_compareMapContactInfo(http::WorkerContactInfo::WCMap const& 
         }
     }
     return true;
+}
+
+http::WorkerContactInfo::WCMapPtr CzarRegistry::waitForWorkerContactMap() const {
+    http::WorkerContactInfo::WCMapPtr contMap = nullptr;
+    while (contMap == nullptr) {
+        {
+            std::lock_guard<std::mutex> lockG(_mapMtx);
+            contMap = _contactMap;
+        }
+        if (contMap == nullptr) {
+            // This should only ever happen at startup if there's trouble getting data.
+            LOGS(_log, LOG_LVL_WARN, "waitForWorkerContactMap() _contactMap unavailable waiting for info");
+            this_thread::sleep_for(1s);
+        }
+    }
+    return contMap;
 }
 
 void CzarRegistry::sendActiveWorkersMessages() {

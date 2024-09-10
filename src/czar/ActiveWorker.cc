@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
+#include "czar/Czar.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "util/common.h"
@@ -43,15 +44,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.ActiveWorker");
 
 namespace lsst::qserv::czar {
 
-/* &&&
-string WorkerContactInfo::dump() const {
-    stringstream os;
-    os << "workerContactInfo{"
-       << "id=" << wId << " host=" << wHost << " mgHost=" << wManagementHost << " port=" << wPort << "}";
-    return os.str();
-}
-*/
-
 string ActiveWorker::getStateStr(State st) {
     switch (st) {
         case ALIVE:
@@ -66,13 +58,15 @@ string ActiveWorker::getStateStr(State st) {
 
 bool ActiveWorker::compareContactInfo(http::WorkerContactInfo const& wcInfo) const {
     lock_guard<mutex> lg(_aMtx);
-    return _wqsData->_wInfo->isSameContactInfo(wcInfo);
+    auto wInfo_ = _wqsData->getWInfo();
+    if (wInfo_ == nullptr) return false;
+    return wInfo_->isSameContactInfo(wcInfo);
 }
 
 void ActiveWorker::setWorkerContactInfo(http::WorkerContactInfo::Ptr const& wcInfo) {
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " new info=" << wcInfo->dump());
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " new info=" << wcInfo->dump());
     lock_guard<mutex> lg(_aMtx);
-    _wqsData->_wInfo = wcInfo;
+    _wqsData->setWInfo(wcInfo);
 }
 
 void ActiveWorker::_changeStateTo(State newState, double secsSinceUpdate, string const& note) {
@@ -85,45 +79,64 @@ void ActiveWorker::_changeStateTo(State newState, double secsSinceUpdate, string
 
 void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double timeoutDeadSecs,
                                               double maxLifetime) {
-    lock_guard<mutex> lg(_aMtx);
-    double secsSinceUpdate = _wqsData->_wInfo->timeSinceRegUpdateSeconds();
-    // Update the last time the registry contacted this worker.
-    switch (_state) {
-        case ALIVE: {
-            if (secsSinceUpdate > timeoutAliveSecs) {
-                _changeStateTo(QUESTIONABLE, secsSinceUpdate, cName(__func__));
-                // &&& Anything else that should be done here?
-            }
-            break;
+    bool newlyDeadWorker = false;
+    http::WorkerContactInfo::Ptr wInfo_;
+    {
+        lock_guard<mutex> lg(_aMtx);
+        wInfo_ = _wqsData->getWInfo();
+        if (wInfo_ == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " no WorkerContactInfo");
+            return;
         }
-        case QUESTIONABLE: {
-            if (secsSinceUpdate < timeoutAliveSecs) {
-                _changeStateTo(ALIVE, secsSinceUpdate, cName(__func__));
+        double secsSinceUpdate = (wInfo_ == nullptr) ? timeoutDeadSecs : wInfo_->timeSinceRegUpdateSeconds();
+
+        // Update the last time the registry contacted this worker.
+        switch (_state) {
+            case ALIVE: {
+                if (secsSinceUpdate >= timeoutAliveSecs) {
+                    _changeStateTo(QUESTIONABLE, secsSinceUpdate, cName(__func__));
+                    // &&& Anything else that should be done here?
+                }
+                break;
             }
-            if (secsSinceUpdate > timeoutDeadSecs) {
-                _changeStateTo(DEAD, secsSinceUpdate, cName(__func__));
-                // &&& TODO:UJ all uberjobs for this worker need to die.
+            case QUESTIONABLE: {
+                if (secsSinceUpdate < timeoutAliveSecs) {
+                    _changeStateTo(ALIVE, secsSinceUpdate, cName(__func__));
+                }
+                if (secsSinceUpdate >= timeoutDeadSecs) {
+                    _changeStateTo(DEAD, secsSinceUpdate, cName(__func__));
+                    // All uberjobs for this worker need to die.
+                    newlyDeadWorker = true;
+                }
+                break;
             }
-            break;
+            case DEAD: {
+                if (secsSinceUpdate < timeoutAliveSecs) {
+                    _changeStateTo(ALIVE, secsSinceUpdate, cName(__func__));
+                } else {
+                    // Don't waste time on this worker until the registry has heard from it.
+                    // &&& If it's been a really really long time, maybe delete this entry ???
+                    return;
+                }
+                break;
+            }
         }
-        case DEAD: {
-            LOGS(_log, LOG_LVL_ERROR, "&&& NEED CODE");
-            if (secsSinceUpdate < timeoutAliveSecs) {
-                _changeStateTo(ALIVE, secsSinceUpdate, cName(__func__));
-            } else {
-                // Don't waste time on this worker until the registry has heard from it.
-                return;
-            }
-            break;
-        }
+    }
+
+    // _aMtx must not be held when calling this.
+    if (newlyDeadWorker) {
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " worker " << wInfo_->wId << " appears to have died, reassigning its jobs.");
+        czar::Czar::getCzar()->killIncompleteUbjerJobsOn(wInfo_->wId);
     }
 
     shared_ptr<json> jsWorkerReqPtr;
     {
-        lock_guard<mutex> mapLg(_wqsData->_mapMtx);
+        lock_guard<mutex> lg(_aMtx);  //&&&  needed ???
+        lock_guard<mutex> mapLg(_wqsData->mapMtx);
         // Check how many messages are currently being sent to the worker, if at the limit, return
-        if (_wqsData->_qIdDoneKeepFiles.empty() && _wqsData->_qIdDoneDeleteFiles.empty() &&
-            _wqsData->_qIdDeadUberJobs.empty()) {
+        if (_wqsData->qIdDoneKeepFiles.empty() && _wqsData->qIdDoneDeleteFiles.empty() &&
+            _wqsData->qIdDeadUberJobs.empty()) {
             return;
         }
         int tCount = _conThreadCount;
@@ -141,14 +154,20 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
     // &&& Maybe only send the status message if the lists are not empty ???
     // Start a thread to send the message. (Maybe these should go on the qdisppool? &&&)
     // put this in a different function and start the thread.&&&;
-    _sendStatusMsg(jsWorkerReqPtr);
+    _sendStatusMsg(wInfo_, jsWorkerReqPtr);
 }
 
-void ActiveWorker::_sendStatusMsg(std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr) {
+void ActiveWorker::_sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
+                                  std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr) {
     auto& jsWorkerReq = *jsWorkerReqPtr;
     auto const method = http::Method::POST;
-    auto const& wInf = _wqsData->_wInfo;
-    string const url = "http://" + wInf->wHost + ":" + to_string(wInf->wPort) + "/querystatus";
+    //&&&auto const wInf = _wqsData->getWInfo();
+    if (wInf == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " wInfo was null.");
+        return;
+    }
+    auto [ciwId, ciwHost, ciwManag, ciwPort] = wInf->getAll();
+    string const url = "http://" + ciwHost + ":" + to_string(ciwPort) + "/querystatus";
     vector<string> const headers = {"Content-Type: application/json"};
     auto const& czarConfig = cconfig::CzarConfig::instance();
 
@@ -163,7 +182,13 @@ void ActiveWorker::_sendStatusMsg(std::shared_ptr<nlohmann::json> const& jsWorke
     try {
         json const response = client.readAsJson();
         if (0 != response.at("success").get<int>()) {
-            transmitSuccess = _wqsData->handleResponseJson(response);
+            bool startupTimeChanged = false;
+            tie(transmitSuccess, startupTimeChanged) = _wqsData->handleResponseJson(response);
+            if (startupTimeChanged) {
+                LOGS(_log, LOG_LVL_WARN, cName(__func__) << " worker startupTime changed, likely rebooted.");
+                // kill all incomplete UberJobs on this worker.
+                czar::Czar::getCzar()->killIncompleteUbjerJobsOn(wInf->wId);
+            }
         } else {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " response success=0");
         }
@@ -181,6 +206,11 @@ void ActiveWorker::addToDoneDeleteFiles(QueryId qId) { _wqsData->addToDoneDelete
 void ActiveWorker::addToDoneKeepFiles(QueryId qId) { _wqsData->addToDoneKeepFiles(qId); }
 
 void ActiveWorker::removeDeadUberJobsFor(QueryId qId) { _wqsData->removeDeadUberJobsFor(qId); }
+
+void ActiveWorker::addDeadUberJob(QueryId qId, UberJobId ujId) {
+    auto now = CLOCK::now();
+    _wqsData->addDeadUberJob(qId, ujId, now);
+}
 
 string ActiveWorker::dump() const {
     lock_guard<mutex> lg(_aMtx);
@@ -214,30 +244,24 @@ void ActiveWorkerMap::updateMap(http::WorkerContactInfo::WCMap const& wcMap,
                 LOGS(_log, LOG_LVL_WARN,
                      cName(__func__) << " worker contact info changed for " << wcKey
                                      << " new=" << wcVal->dump() << " old=" << aWorker->dump());
+                // If there is existing information, only host and port values will change.
                 aWorker->setWorkerContactInfo(wcVal);
             }
         }
     }
 }
 
-/* &&&
-void ActiveWorkerMap::pruneMap() {
-    lock_guard<mutex> awLg(_awMapMtx);
-    for (auto iter = _awMap.begin(); iter != _awMap.end();) {
-        auto aWorker = iter->second;
-        if (aWorker->getWInfo()->timeSinceTouchSeconds() > _maxDeadTimeSeconds) {
-            iter = _awMap.erase(iter);
-        } else {
-            ++iter;
-        }
-    }
-}
-*/
-
 void ActiveWorkerMap::setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId) {
     _czarCancelAfterRestart = true;
     _czarCancelAfterRestartCzId = czId;
     _czarCancelAfterRestartQId = lastQId;
+}
+
+ActiveWorker::Ptr ActiveWorkerMap::getActiveWorker(string const& workerId) const {
+    lock_guard<mutex> lck(_awMapMtx);
+    auto iter = _awMap.find(workerId);
+    if (iter == _awMap.end()) return nullptr;
+    return iter->second;
 }
 
 void ActiveWorkerMap::sendActiveWorkersMessages() {
@@ -248,7 +272,6 @@ void ActiveWorkerMap::sendActiveWorkersMessages() {
     }
 }
 
-/// &&& doc
 void ActiveWorkerMap::addToDoneDeleteFiles(QueryId qId) {
     lock_guard<mutex> lck(_awMapMtx);
     for (auto const& [wName, awPtr] : _awMap) {
@@ -257,7 +280,6 @@ void ActiveWorkerMap::addToDoneDeleteFiles(QueryId qId) {
     }
 }
 
-/// &&& doc
 void ActiveWorkerMap::addToDoneKeepFiles(QueryId qId) {
     lock_guard<mutex> lck(_awMapMtx);
     for (auto const& [wName, awPtr] : _awMap) {
@@ -265,15 +287,5 @@ void ActiveWorkerMap::addToDoneKeepFiles(QueryId qId) {
         awPtr->removeDeadUberJobsFor(qId);
     }
 }
-
-/* &&&
-/// &&& doc
-void ActiveWorkerMap::removeDeadUberJobsFor(QueryId qId) {
-    lock_guard<mutex> lck(_awMapMtx);
-    for (auto const& [wName, awPtr] : _awMap) {
-        awPtr->removeDeadUberJobsFor(qId);
-    }
-}
-*/
 
 }  // namespace lsst::qserv::czar

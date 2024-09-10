@@ -69,7 +69,6 @@
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wpublish/QueriesAndChunks.h"
-#include "xrdsvc/StreamBuffer.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
@@ -130,18 +129,6 @@ void QueryRunner::_setDb() {
         _dbName = _task->getDb();
         LOGS(_log, LOG_LVL_DEBUG, "QueryRunner overriding dbName with " << _dbName);
     }
-}
-
-size_t QueryRunner::_getDesiredLimit() {
-    double percent = xrdsvc::StreamBuffer::percentOfMaxTotalBytesUsed();
-    size_t minLimit = 1'000'000;
-    size_t maxLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
-    if (percent < 0.1) return maxLimit;
-    double reduce = 1.0 - (percent + 0.2);  // force minLimit when 80% of memory used.
-    if (reduce < 0.0) reduce = 0.0;
-    size_t lim = maxLimit * reduce;
-    if (lim < minLimit) lim = minLimit;
-    return lim;
 }
 
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
@@ -362,6 +349,7 @@ void QueryRunner::cancel() {
         }
     }
 
+    /* &&&
     auto streamB = _streamBuf.lock();
     if (streamB != nullptr) {
         streamB->cancel();
@@ -369,6 +357,7 @@ void QueryRunner::cancel() {
 
     // The send channel will die naturally on its own when xrootd stops talking to it
     // or other tasks call _transmitCancelledError().
+    */
 }
 
 QueryRunner::~QueryRunner() {}

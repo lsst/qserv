@@ -108,7 +108,6 @@
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
 #include "util/ThreadPriority.h"
-#include "xrdreq/QueryManagementAction.h"
 #include "qdisp/UberJob.h"
 
 namespace {
@@ -453,7 +452,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
     }
 
     // Add worker contact info to UberJobs.
-    auto const wContactMap = czRegistry->getWorkerContactMap();
+    //&&& auto const wContactMap = czRegistry->getWorkerContactMap();
+    auto const wContactMap = czRegistry->waitForWorkerContactMap();  //&&&Z
     LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
     for (auto const& [wIdKey, ujVect] : workerJobMap) {
         auto iter = wContactMap->find(wIdKey);
@@ -505,9 +505,7 @@ QueryState UserQuerySelect::join() {
     // finalRows < 0 indicates there was no postprocessing, so collected rows and final rows should be the
     // same.
     if (finalRows < 0) finalRows = collectedRows;
-    // Notify workers on the query completion/cancellation to ensure
-    // resources are properly cleaned over there as well.
-    proto::QueryManagement::Operation operation = proto::QueryManagement::COMPLETE;  //&&&QM
+
     QueryState state = SUCCESS;
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes, finalRows);
@@ -515,24 +513,17 @@ QueryState UserQuerySelect::join() {
     } else if (_killed) {
         // status is already set to ABORTED
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed)");
-        operation = proto::QueryManagement::CANCEL;  //&&&QM
         state = ERROR;
     } else {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED, collectedRows, collectedBytes, finalRows);
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
-        operation = proto::QueryManagement::CANCEL;  //&&&QM
         state = ERROR;
     }
     auto const czarConfig = cconfig::CzarConfig::instance();
-    if (czarConfig->notifyWorkersOnQueryFinish()) {
-        try {
-            // &&& do this another way, also see executive::squash &&&QM
-            xrdreq::QueryManagementAction::notifyAllWorkers(czarConfig->getXrootdFrontendUrl(), operation,
-                                                            _qMetaCzarId, _qMetaQueryId);
-        } catch (std::exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, ex.what());
-        }
-    }
+
+    // Notify workers on the query completion/cancellation to ensure
+    // resources are properly cleaned over there as well.
+    czar::Czar::getCzar()->getActiveWorkerMap()->addToDoneDeleteFiles(_executive->getId());
     return state;
 }
 

@@ -163,6 +163,7 @@ public:
     std::string const& getIdStr() const { return _idStr; }
 
     void setScanInteractive(bool interactive) { _scanInteractive = interactive; }
+    bool getScanInteractive() const { return _scanInteractive; }
 
     /// @return number of jobs in flight.
     int getNumInflight() const;
@@ -222,6 +223,9 @@ public:
     /// Send a message to all workers to cancel this query.
     /// @param deleteResults - If true, delete all result files for this query on the workers.
     void sendWorkerCancelMsg(bool deleteResults);
+
+    /// &&& doc
+    void killIncompleteUberJobsOn(std::string const& restartedWorkerId);
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
@@ -292,7 +296,8 @@ private:
     std::chrono::seconds _secondsBetweenQMetaUpdates{60};
     std::mutex _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
 
-    bool _scanInteractive = false;  ///< true for interactive scans.
+    /// true for interactive scans, once set it doesn't change.
+    bool _scanInteractive = false;
 
     // Add a job to the _chunkToJobMap
     // TODO:UJ This may need review as large changes were made to this part of the code.
@@ -330,7 +335,7 @@ private:
     std::atomic<bool> _readyToExecute{false};
 };
 
-/// TODO:UJ delete - MarkCompleteFunc is not needed with uberjobs.
+/// TODO:UJ delete - MarkCompleteFunc is not needed with uberjobs.  //&&&QM
 class MarkCompleteFunc {
 public:
     typedef std::shared_ptr<MarkCompleteFunc> Ptr;

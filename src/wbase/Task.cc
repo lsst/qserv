@@ -364,25 +364,17 @@ void Task::action(util::CmdData* data) {
     // 'task' contains statistics that are still useful. However, the resources used
     // by sendChannel need to be freed quickly.
     LOGS(_log, LOG_LVL_DEBUG, __func__ << " calling resetSendChannel() for " << tIdStr);
-    resetSendChannel();  // Frees its xrdsvc::SsiRequest object.
+    resetSendChannel();  // Frees the SendChannel instance
 }
 
 string Task::getQueryString() const {
-    //&&&string qs = _userQueryInfo->getTemplate(_templateId);
     auto qStats = _queryStats.lock();
     if (qStats == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _queryStats could not be locked");
         return string("");
     }
 
-    // auto uQInfo = _userQueryInfo.lock();
     auto uQInfo = qStats->getUserQueryInfo();
-    /* &&&
-    if (uQInfo == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _userQueryInfo could not be locked");
-        return string("");
-    }
-    */
     string qs = uQInfo->getTemplate(_templateId);
     LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& a qs=" << qs);
     boost::algorithm::replace_all(qs, CHUNK_TAG, to_string(_chunkId));
@@ -390,8 +382,6 @@ string Task::getQueryString() const {
     LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& b qs=" << qs);
     return qs;
 }
-
-//&&&void Task::setQueryStatistics(wpublish::QueryStatistics::Ptr const& qStats) { _queryStats = qStats; }
 
 wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
     auto qStats = _queryStats.lock();
@@ -597,25 +587,6 @@ ostream& operator<<(ostream& os, Task const& t) {
     os << "Task: "
        << "msg: " << t.getIdStr() << " chunk=" << t._chunkId << " db=" << t._db << " " << t.getQueryString();
 
-    return os;
-}
-
-ostream& operator<<(ostream& os, IdSet const& idSet) {
-    // Limiting output as number of entries can be very large.
-    int maxDisp = idSet.maxDisp;  // only affects the amount of data printed.
-    lock_guard<mutex> lock(idSet.mx);
-    os << "showing " << maxDisp << " of count=" << idSet._ids.size() << " ";
-    bool first = true;
-    int i = 0;
-    for (auto id : idSet._ids) {
-        if (!first) {
-            os << ", ";
-        } else {
-            first = false;
-        }
-        os << id;
-        if (++i >= maxDisp) break;
-    }
     return os;
 }
 

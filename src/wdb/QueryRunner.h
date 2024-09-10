@@ -45,10 +45,6 @@
 #include "wbase/Task.h"
 #include "wdb/ChunkResource.h"
 
-namespace lsst::qserv::xrdsvc {
-class StreamBuffer;
-}  // namespace lsst::qserv::xrdsvc
-
 namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
 }  // namespace lsst::qserv::wcontrol
@@ -79,8 +75,8 @@ public:
     /// by Task::cancel(), so if this needs to be cancelled elsewhere,
     /// call Task::cancel().
     /// This should kill an in progress SQL command.
-    /// It also tries to unblock `_streamBuf` to keep the thread
-    /// from being blocked forever.
+    //&&&/// It also tries to unblock `_streamBuf` to keep the thread
+    //&&&/// from being blocked forever.
     void cancel() override;
 
 protected:
@@ -97,7 +93,7 @@ private:
     bool _dispatchChannel();
     MYSQL_RES* _primeResult(std::string const& query);  ///< Obtain a result handle for a query.
 
-    static size_t _getDesiredLimit();
+    //&&&static size_t _getDesiredLimit();
 
     wbase::Task::Ptr const _task;  ///< Actual task
 
@@ -107,7 +103,6 @@ private:
     ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::string _dbName;
     std::atomic<bool> _cancelled{false};
-    std::weak_ptr<xrdsvc::StreamBuffer> _streamBuf;  ///< used release condition variable on cancel.
     std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;

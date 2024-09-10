@@ -243,8 +243,8 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     auto const replicationAuthKey = workerConfig->replicationAuthKey();
 
     auto const& jsReq = body().objJson;
-    auto wqsData =
-            http::WorkerQueryStatusData::createJson(jsReq, replicationInstanceId, replicationAuthKey, now);
+    auto wqsData = http::WorkerQueryStatusData::createFromJson(jsReq, replicationInstanceId,
+                                                               replicationAuthKey, now);
 
     // For all queryId and czarId items, if the item can't be found, it is simply ignored. Anything that
     // is missed will eventually be picked up by other mechanisms, such as results being rejected
@@ -265,8 +265,8 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     auto const queriesAndChunks = foreman()->queriesAndChunks();
     vector<wbase::UserQueryInfo::Ptr> cancelledList;
     // Cancelled queries where we want to keep the files
-    lock_guard<mutex> mapLg(wqsData->_mapMtx);
-    for (auto const& [dkQid, dkTm] : wqsData->_qIdDoneKeepFiles) {
+    lock_guard<mutex> mapLg(wqsData->mapMtx);
+    for (auto const& [dkQid, dkTm] : wqsData->qIdDoneKeepFiles) {
         auto qStats = queriesAndChunks->addQueryId(dkQid);
         if (qStats != nullptr) {
             auto uqInfo = qStats->getUserQueryInfo();
@@ -279,7 +279,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     }
 
     vector<wbase::UserQueryInfo::Ptr> deleteFilesList;
-    for (auto const& [dkQid, dkTm] : wqsData->_qIdDoneDeleteFiles) {
+    for (auto const& [dkQid, dkTm] : wqsData->qIdDoneDeleteFiles) {
         auto qStats = queriesAndChunks->addQueryId(dkQid);
         if (qStats != nullptr) {
             auto uqInfo = qStats->getUserQueryInfo();
@@ -301,7 +301,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     // UserQueryInfo will cancel the tasks in the uberjobs if they exist.
     // New UberJob Id's will be checked against the list, and immediately be
     // killed if they are on it. (see HttpWorkerCzarModule::_handleQueryJob)
-    for (auto const& [ujQid, ujIdMap] : wqsData->_qIdDeadUberJobs) {
+    for (auto const& [ujQid, ujIdMap] : wqsData->qIdDeadUberJobs) {
         auto qStats = queriesAndChunks->addQueryId(ujQid);
         if (qStats != nullptr) {
             auto uqInfo = qStats->getUserQueryInfo();
@@ -316,7 +316,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     }
 
     // Delete files that should be deleted
-    CzarIdType czarId = wqsData->_czInfo->czId;
+    CzarIdType czarId = wqsData->getCzInfo()->czId;
     for (wbase::UserQueryInfo::Ptr uqiPtr : deleteFilesList) {
         if (uqiPtr == nullptr) continue;
         QueryId qId = uqiPtr->getQueryId();
@@ -326,7 +326,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     // Syntax errors in the message would throw invalid_argument, which is handled elsewhere.
 
     // Return a message containing lists of the queries that were cancelled.
-    jsRet = wqsData->serializeResponseJson();
+    jsRet = wqsData->serializeResponseJson(foreman()->getWorkerStartupTime());
     return jsRet;
 }
 
