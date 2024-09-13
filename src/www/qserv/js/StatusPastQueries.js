@@ -23,6 +23,7 @@ function(CSSLoader,
             this._queryId2Expanded = {};  // Store 'true' to allow persistent state for the expanded
                                           // queries between updates.
             this._id2query = {};          // Store query text for each identifier
+            this._id2url = {};            // Store URL to the query blob for each identifier
         }
 
         /**
@@ -177,6 +178,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">Czar</th>
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-download"></i></th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
           <th class="sticky">Query</th>
         </tr>
@@ -295,8 +297,12 @@ function(CSSLoader,
         }
         _display(data) {
             this._id2query = {};
+            for (let id in this._id2url) {
+                URL.revokeObjectURL(this._id2url[id]);
+            }
             const queryToggleTitle = "Click to toggle query formatting.";
             const queryCopyTitle = "Click to copy the query text to the clipboard.";
+            const queryDownloadTitle = "Click to download the query text to your computer.";
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
             const queryStyle = "color:#4d4dff;";
             let html = '';
@@ -327,6 +333,7 @@ function(CSSLoader,
             for (let i in data.queries_past) {
                 let query = data.queries_past[i];
                 this._id2query[query.queryId] = query.query;
+                this._id2url[query.queryId] = URL.createObjectURL(new Blob([query.query], {type: "text/plain"}));
                 let elapsed = this._elapsed(query.completed_sec - query.submitted_sec);
                 let failed_query_class = query.status !== "COMPLETED" ? "table-danger" : "";
                 let performance = this._performance(query.chunkCount, query.completed_sec - query.submitted_sec);
@@ -346,6 +353,9 @@ function(CSSLoader,
   <th style="text-align:right;"><pre>${query.queryId}</pre></th>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
+  </td>
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
+    <a class="btn btn-outline-dark btn-sm" style="height:20px; margin:0px;" title="${queryDownloadTitle}" href="${this._id2url[query.queryId]}" download></a>
   </td>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>

@@ -9,7 +9,18 @@ function(sqlFormatter,
         static RestAPIVersion = 36;
         static query2text(query, expanded) {
             if (expanded) {
-                return sqlFormatter.format(query, Common._sqlFormatterConfig);
+                if (query.length > Common._max_expanded_length) {
+                    return sqlFormatter.format(
+                        "************* ATTENTION **************;" +
+                        "*Query has been truncated at " + Common._max_expanded_length + " bytes since it is too long*;" +
+                        "*Click the download button to see the full text of the query*;" +
+                        "********************************;" +
+                        ";" + 
+                        query.substring(0, Common._max_expanded_length) + "...",
+                        Common._sqlFormatterConfig);
+                } else {
+                    return sqlFormatter.format(query, Common._sqlFormatterConfig);
+                }
             } else if (query.length > Common._max_compact_length) {
                 return query.substring(0, Common._max_compact_length) + "...";
             } else {
@@ -18,6 +29,7 @@ function(sqlFormatter,
         }
         static _sqlFormatterConfig = {"language":"mysql", "uppercase:":true, "indent":"  "};
         static _max_compact_length = 104;
+        static _max_expanded_length = 4096;
         static _ivals = [
             {value:   2, name:  '2 sec'},
             {value:   5, name:  '5 sec'},

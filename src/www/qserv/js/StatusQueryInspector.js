@@ -23,6 +23,7 @@ function(CSSLoader,
             // Store 'true' to allow persistent state of the query display for
             // the expanded queries between updates.
             this._expanded = {'query': false, 'qTemplate': false, 'qMerge': false, 'resultQuery': false};
+            this._download_url = {};
         }
 
         /**
@@ -77,6 +78,7 @@ function(CSSLoader,
             if (this._initialized) return;
             this._initialized = true;
             const queryCopyTitle = "Click to copy the query text to the clipboard.";
+            const queryDownloadTitle = "Click to download the query text to your computer.";
             const queryToggleTitle = "Click to toggle query formatting.";
             let html = `
 <div class="form-row" id="fwk-status-query-controls">
@@ -139,7 +141,8 @@ function(CSSLoader,
       <thead>
         <tr>
           <th class="borderless">&nbsp;</th>
-          <th class="borderless"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="borderless "style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="borderless" style="text-align:center;"><i class="bi bi-download"></i></th>
           <th class="borderless">&nbsp;</th>
         </tr>
       </thead>
@@ -149,12 +152,18 @@ function(CSSLoader,
           <td style="text-align:center; padding-top:0; padding-bottom:0">
             <button class="btn btn-outline-dark btn-sm copy-query" title="${queryCopyTitle}" target="query"></button>
           </td>
+          <td style="text-align:center; padding-top:0; padding-bottom:0">
+            <a class="btn btn-outline-dark btn-sm download-query" title="${queryDownloadTitle}" download target="query"></a>
+          </td>
           <td style="text-align:left"><pre class="query_toggler" title="${queryToggleTitle}" id="query"></pre></td>
         </tr>
         <tr>
           <th style="text-align:left" scope="row">Template</th>
           <td style="text-align:center; padding-top:0; padding-bottom:0">
             <button class="btn btn-outline-dark btn-sm copy-query" title="${queryCopyTitle}" target="qTemplate"></button>
+          </td>
+          <td style="text-align:center; padding-top:0; padding-bottom:0">
+            <a class="btn btn-outline-dark btn-sm download-query" title="${queryDownloadTitle}" download target="qTemplate"></a>
           </td>
           <td style="text-align:left"><pre class="query_toggler" title="${queryToggleTitle}" id="qTemplate"></pre></td>
         </tr>
@@ -163,12 +172,18 @@ function(CSSLoader,
           <td style="text-align:center; padding-top:0; padding-bottom:0">
             <button class="btn btn-outline-dark btn-sm copy-query" title="${queryCopyTitle}" target="qMerge"></button>
           </td>
+          <td style="text-align:center; padding-top:0; padding-bottom:0">
+            <a class="btn btn-outline-dark btn-sm download-query" title="${queryDownloadTitle}" download target="qMerge"></a>
+          </td>
           <td style="text-align:left"><pre class="query_toggler" title="${queryToggleTitle}" id="qMerge"></pre></td>
         </tr>
         <tr>
           <th style="text-align:left" scope="row">Result</th>
           <td style="text-align:center; padding-top:0; padding-bottom:0">
             <button class="btn btn-outline-dark btn-sm copy-query" title="${queryCopyTitle}" target="resultQuery"></button>
+          </td>
+          <td style="text-align:center; padding-top:0; padding-bottom:0">
+            <a class="btn btn-outline-dark btn-sm download-query" title="${queryDownloadTitle}" download target="resultQuery"></a>
           </td>
           <td style="text-align:left"><pre class="query_toggler" title="${queryToggleTitle}" id="resultQuery"></pre></td>
         </tr>
@@ -311,6 +326,11 @@ function(CSSLoader,
             this._status().removeClass('updating');
             this._loading = false;
         }
+        _set_query_download_url(target, query) {
+            if (!_.isUndefined(this._download_url[target])) URL.revokeObjectURL(this._download_url[target]);
+            this._download_url[target] = URL.createObjectURL(new Blob([query]));
+            this._query_status().find("a.download-query[target='" + target + "']").attr("href", this._download_url[target], {type: "text/plain"});
+        }
         _display(info) {
             this._info = info;
             this._set_query_info_state("status", `<pre class="${this._status2class(info.status)}">${info.status}</pre>`);
@@ -323,9 +343,13 @@ function(CSSLoader,
             this._set_query_info("completed", info.completed ? (new Date(info.completed)).toLocalTimeString('iso') : "");
             this._set_query_info("returned", info.returned ? (new Date(info.returned)).toLocalTimeString('iso') : "");
             this._set_query_info("query", Common.query2text(info.query, this._expanded["query"]));
+            this._set_query_download_url("query", info.query);
             this._set_query_info("qTemplate", Common.query2text(info.qTemplate, this._expanded["qTemplate"]));
+            this._set_query_download_url("qTemplate", info.qTemplate);
             this._set_query_info("qMerge", Common.query2text(info.qMerge, this._expanded["qMerge"]));
+            this._set_query_download_url("qMerge", info.qMerge);
             this._set_query_info("resultQuery", Common.query2text(info.resultQuery, this._expanded["resultQuery"]));
+            this._set_query_download_url("resultQuery", info.resultQuery);
             let html = '';
             for (let i in info.messages) {
                 let msg = info.messages[i];

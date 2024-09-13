@@ -28,6 +28,10 @@
     height:20px;
     margin-top: 7px;
 }
+#fwk-status-query-info tbody > tr > td > a.download-query {
+    height:20px;
+    margin-top: 7px;
+}
 #fwk-status-query-info tbody > tr > td > pre.query_toggler {
     color:#4d4dff;
 }

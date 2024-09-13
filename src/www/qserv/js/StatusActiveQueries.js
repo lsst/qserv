@@ -23,6 +23,7 @@ function(CSSLoader,
             this._queryId2Expanded = {};  // Store 'true' to allow persistent state for the expanded
                                           // queries between updates.
             this._id2query = {};          // Store query text for each identifier
+            this._id2url = {};            // Store URL to the query blob for each identifier
         }
 
         /**
@@ -108,6 +109,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">Czar</th>
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-download"></i></th>
           <th class="sticky" class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
           <th class="sticky" class="sticky" style="text-align:center;"><i class="bi bi-bar-chart-steps"></i></th>
           <th class="sticky">Query</th>
@@ -184,8 +186,12 @@ function(CSSLoader,
         }
         _display(data) {
             this._id2query = {};
+            for (let id in this._id2url) {
+                URL.revokeObjectURL(this._id2url[id]);
+            }
             const queryToggleTitle = "Click to toggle query formatting.";
             const queryCopyTitle = "Click to copy the query text to the clipboard.";
+            const queryDownloadTitle = "Click to download the query text to your computer.";
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
             const queryProgressTitle = "Click to see query progression plot.";
             const queryStyle = "color:#4d4dff;";
@@ -193,6 +199,7 @@ function(CSSLoader,
             for (let i in data.queries) {
                 let query = data.queries[i];
                 this._id2query[query.queryId] = query.query;
+                this._id2url[query.queryId] = URL.createObjectURL(new Blob([query.query], {type: "text/plain"}));
                 const progress = Math.floor(100. * query.completedChunks  / query.totalChunks);
                 const scheduler = _.isUndefined(query.scheduler) ? 'Loading...' : query.scheduler.substring('Sched'.length);
                 const scheduler_color = _.has(this._scheduler2color, scheduler) ?
@@ -230,6 +237,9 @@ function(CSSLoader,
   <th scope="row" style="text-align:right;"><pre>${query.queryId}</pre></th>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
+  </td>
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
+    <a class="btn btn-outline-dark btn-sm" style="height:20px; margin:0px;" title="${queryDownloadTitle}" href="${this._id2url[query.queryId]}" download></a>
   </td>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
