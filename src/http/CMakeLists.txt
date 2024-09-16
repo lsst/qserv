@@ -11,6 +11,7 @@ target_sources(http PRIVATE
     ClientConfig.cc
     ClientConnPool.cc
     Exceptions.cc
+    FileUploadModule.cc
     MetaModule.cc
     Method.cc
     Module.cc
