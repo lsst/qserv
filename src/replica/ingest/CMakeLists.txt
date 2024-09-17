@@ -3,6 +3,7 @@ add_dependencies(replica_ingest replica_proto)
 target_sources(replica_ingest PRIVATE
     IngestClient.cc
     IngestDataHttpSvcMod.cc
+    IngestFileHttpSvcMod.cc
     IngestFileSvc.cc
     IngestHttpSvc.cc
     IngestHttpSvcMod.cc

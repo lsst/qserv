@@ -62,6 +62,7 @@ void FileUploadModule::execute(string const& subModuleName, http::AuthType const
                 [&](httplib::MultipartFormData const& file) -> bool {
                     processEndOfEntry();
                     if (!file.filename.empty()) {
+                        enforceAuthorization(authType);
                         onStartOfFile(file.name, file.filename, file.content_type);
                     }
                     currentFile.reset(new httplib::MultipartFormData(file));

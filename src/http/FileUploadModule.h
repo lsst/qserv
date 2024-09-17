@@ -129,7 +129,7 @@ protected:
      * @param data  The data of the file.
      * @param length  The length of the data.
      */
-    virtual void onFileData(char const* data, size_t length) = 0;
+    virtual void onFileData(char const* data, std::size_t length) = 0;
 
     /**
      * Is called when the file parsing is finished.
