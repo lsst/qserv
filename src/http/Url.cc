@@ -36,27 +36,27 @@ namespace lsst::qserv::http {
 Url::Url(string const& url) : _url(url) { _translate(); }
 
 string const& Url::fileHost() const {
-    if ((_scheme == DATA_JSON) || (_scheme == FILE)) return _fileHost;
+    if ((_scheme == DATA_JSON) || (_scheme == DATA_CSV) || (_scheme == FILE)) return _fileHost;
     throw logic_error(_error(__func__, "not a file resource."));
 }
 
 string const& Url::filePath() const {
-    if ((_scheme == DATA_JSON) || (_scheme == FILE)) return _filePath;
+    if ((_scheme == DATA_JSON) || (_scheme == DATA_CSV) || (_scheme == FILE)) return _filePath;
     throw logic_error(_error(__func__, "not a file resource."));
 }
 
 string const& Url::host() const {
-    if ((_scheme != DATA_JSON) && (_scheme != FILE)) return _host;
+    if ((_scheme == HTTP) || (_scheme == HTTPS)) return _host;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
 
 uint16_t Url::port() const {
-    if ((_scheme != DATA_JSON) && (_scheme != FILE)) return _port;
+    if ((_scheme == HTTP) || (_scheme == HTTPS)) return _port;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
 
 string const& Url::target() const {
-    if ((_scheme != DATA_JSON) && (_scheme != FILE)) return _target;
+    if ((_scheme == HTTP) || (_scheme == HTTPS)) return _target;
     throw logic_error(_error(__func__, "not an HTTP/HTTPS resource."));
 }
 
@@ -66,6 +66,7 @@ void Url::_translate() {
     if (_url.empty()) throw invalid_argument(_error(__func__, "url is empty."));
 
     static map<string, Scheme> const schemes = {{"data-json://", Scheme::DATA_JSON},
+                                                {"data-csv://", Scheme::DATA_CSV},
                                                 {"file://", Scheme::FILE},
                                                 {"http://", Scheme::HTTP},
                                                 {"https://", Scheme::HTTPS}};
@@ -82,6 +83,28 @@ void Url::_translate() {
                         _scheme = scheme;
                         _fileHost = hostFilePath.substr(0, pos);
                         return;
+                    }
+                }
+            } else if (Scheme::DATA_CSV == scheme) {
+                // This scheme assumes the following format: "data-csv://<host>/[<file>]"
+                string const hostFilePath = _url.substr(prefix.length());
+                string::size_type const pos = hostFilePath.find_first_of('/');
+                if (pos != string::npos) {
+                    if (pos == 0) {
+                        // This URL doesn't have the host name: data-csv:///<path>
+                        if (hostFilePath.length() > 1) {
+                            _scheme = scheme;
+                            _filePath = hostFilePath;
+                            return;
+                        }
+                    } else {
+                        // This URL has the host name: file://<host>/<path>
+                        if (hostFilePath.length() > pos + 1) {
+                            _scheme = scheme;
+                            _fileHost = hostFilePath.substr(0, pos);
+                            _filePath = hostFilePath.substr(pos);
+                            return;
+                        }
                     }
                 }
             } else if (Scheme::FILE == scheme) {
