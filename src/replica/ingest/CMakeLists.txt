@@ -13,6 +13,7 @@ target_sources(replica_ingest PRIVATE
     IngestResourceMgrT.cc
     IngestSvc.cc
     IngestSvcConn.cc
+    IngestUtils.cc
     TransactionContrib.cc
 )
 target_link_libraries(replica_ingest PUBLIC

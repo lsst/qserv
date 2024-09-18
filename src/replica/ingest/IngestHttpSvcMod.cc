@@ -26,6 +26,7 @@
 #include "http/Method.h"
 #include "replica/ingest/IngestRequest.h"
 #include "replica/ingest/IngestRequestMgr.h"
+#include "replica/ingest/IngestUtils.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Csv.h"
 
@@ -183,23 +184,7 @@ shared_ptr<IngestRequest> IngestHttpSvcMod::_createRequest(bool async) const {
     string const url = body().required<string>("url");
     string const charsetName =
             body().optional<string>("charset_name", config->get<string>("worker", "ingest-charset-name"));
-
-    csv::DialectInput dialectInput;
-    // Allow an empty string in the input. Simply replace the one (if present) with
-    // the corresponding default value of the parameter.
-    auto const getDialectParam = [&](string const& param, string const& defaultValue) -> string {
-        string val = body().optional<string>(param, defaultValue);
-        if (val.empty()) val = defaultValue;
-        return val;
-    };
-    dialectInput.fieldsTerminatedBy =
-            getDialectParam("fields_terminated_by", csv::Dialect::defaultFieldsTerminatedBy);
-    dialectInput.fieldsEnclosedBy =
-            getDialectParam("fields_enclosed_by", csv::Dialect::defaultFieldsEnclosedBy);
-    dialectInput.fieldsEscapedBy = getDialectParam("fields_escaped_by", csv::Dialect::defaultFieldsEscapedBy);
-    dialectInput.linesTerminatedBy =
-            getDialectParam("lines_terminated_by", csv::Dialect::defaultLinesTerminatedBy);
-
+    auto const dialectInput = parseDialectInput(body());
     auto const httpMethod = http::string2method(body().optional<string>("http_method", "GET"));
     string const httpData = body().optional<string>("http_data", string());
     vector<string> const httpHeaders = body().optionalColl<string>("http_headers", vector<string>());
