@@ -90,6 +90,18 @@ public:
         return required<T>(objJson, name);
     }
 
+    // The following methods are used to extract the values of the parameters from the JSON object
+    // where they could be stored as a string or as a number. The methods will try to convert the
+    // value to the desired type if it's a string.
+    // The methods will throw an exception if the parameter wasn't found, or if its value
+    // is not an integer.
+
+    unsigned int requiredUInt(std::string const& name) const;
+    unsigned int optionalUInt(std::string const& name, unsigned int defaultValue = 0) const;
+
+    int requiredInt(std::string const& name) const;
+    int optionalInt(std::string const& name, int defaultValue = 0) const;
+
     /**
      * Return a value of a required parameter. Also ensure that the value is permitted.
      * @param name  The name of a parameter.
@@ -184,6 +196,15 @@ private:
         return permitted.empty() or
                std::find(permitted.cbegin(), permitted.cend(), value) != permitted.cend();
     }
+
+    /**
+     * The helper method for finding and returning a value of a required parameter.
+     * @param func  The name of the calling context.
+     * @param name  The name of a parameter.
+     * @return  A value of the parameter.
+     * @throw std::invalid_argument  If the parameter wasn't found.
+     */
+    nlohmann::json _get(std::string const& func, std::string const& name) const;
 };
 
 }  // namespace lsst::qserv::http

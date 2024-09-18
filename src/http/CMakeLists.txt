@@ -47,6 +47,7 @@ endfunction()
 
 http_tests(
     testAsyncReq
+    testRequestBodyJSON
     testRequestQuery
     testUrl
 )
