@@ -163,11 +163,6 @@ private:
     std::atomic<int> _conThreadCount{0};
     int _maxConThreadCount{2};
 
-    /* &&&
-    /// &&& doc
-    /// @throws std::invalid_argument
-    bool _parse(nlohmann::json const& jsWorkerReq);  // &&& delete after basic testing
-    */
 };
 
 /// &&& doc

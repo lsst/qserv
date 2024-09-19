@@ -41,6 +41,7 @@
 #include "qmeta/JobStatus.h"
 #include "util/Bug.h"
 #include "util/common.h"
+#include "util/QdispPool.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -52,7 +53,7 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.UberJob");
 }
 
-namespace lsst { namespace qserv { namespace qdisp {
+namespace lsst::qserv::qdisp {
 
 UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
@@ -335,7 +336,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         ujPtr->_importResultFinish(resultRows);
     };
 
-    auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(fileCollectFunc));
+    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(fileCollectFunc));
     exec->queueFileCollect(cmd);
 
     // If the query meets the limit row complete complete criteria, it will start
@@ -508,4 +509,4 @@ std::ostream& UberJob::dumpOS(std::ostream& os) const {
     return os;
 }
 
-}}}  // namespace lsst::qserv::qdisp
+}  // namespace lsst::qserv::qdisp

@@ -31,6 +31,8 @@
 // Third-party headers
 #include <string>
 
+/// &&& file seems unused, delete if possible
+
 namespace lsst::qserv::util {
 
 std::string makeUrl(char const* hostport, char const* typeStr, int chunk);

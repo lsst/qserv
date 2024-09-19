@@ -74,6 +74,7 @@
 #include "util/AsyncTimer.h"
 #include "util/Bug.h"
 #include "util/EventThread.h"
+#include "util/QdispPool.h"
 
 using namespace std;
 
@@ -226,7 +227,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     return jobQuery;
 }
 
-void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
+void Executive::queueJobStart(util::PriorityCommand::Ptr const& cmd) {
     _jobStartCmdList.push_back(cmd);
     if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 0);
@@ -235,7 +236,7 @@ void Executive::queueJobStart(PriorityCommand::Ptr const& cmd) {
     }
 }
 
-void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
+void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) { // &&& put file collect in the pool ???
     if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 3);
     } else {
@@ -244,20 +245,15 @@ void Executive::queueFileCollect(PriorityCommand::Ptr const& cmd) {
 }
 
 void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
-    /// TODO:UJ delete useqdisppool, only set to false if problems during testing
-    bool const useqdisppool = true;
-    if (useqdisppool) {
-        auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
 
-        auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(runUberJobFunc));
-        _jobStartCmdList.push_back(cmd);
-        if (_scanInteractive) {
-            _qdispPool->queCmd(cmd, 0);
-        } else {
-            _qdispPool->queCmd(cmd, 1);
-        }
+    auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
+
+    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
+    _jobStartCmdList.push_back(cmd);
+    if (_scanInteractive) {
+        _qdispPool->queCmd(cmd, 0);
     } else {
-        uberJob->runUberJob();
+        _qdispPool->queCmd(cmd, 1);
     }
 }
 
@@ -476,7 +472,7 @@ void Executive::squash() {
     //           Any message to this czar about this query should result in an error sent back to
     //           the worker as soon it can't locate an executive or the executive says cancelled.
     bool const deleteResults = true;
-    sendWorkerCancelMsg(deleteResults);
+    sendWorkersEndMsg(deleteResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
 }
 
@@ -506,24 +502,14 @@ void Executive::_squashSuperfluous() {
     }
 
     bool const keepResults = false;
-    sendWorkerCancelMsg(keepResults);
+    sendWorkersEndMsg(keepResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done");
 }
 
-void Executive::sendWorkerCancelMsg(bool deleteResults) {  // &&&QM rename sendEndMsgs
-    // TODO:UJ need to send a message to the worker that the query is cancelled and all result files
-    //    should be delete
-    // &&&QM
-    // TODO:UJ &&& worker needs to monitor registry to see if czar dies
-    //         &&& - worker will need to kill related queries/uberjobs and store info to send to the
-    //         &&&   dead czar in case it comes back to life.
-    LOGS(_log, LOG_LVL_ERROR,
-         "TODO:UJ NEED CODE Executive::sendWorkerCancelMsg to send messages to workers to cancel this czarId "
-         "+ "
-         "queryId. "
+void Executive::sendWorkersEndMsg(bool deleteResults) {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " terminating this query deleteResults="
                  << deleteResults);
-
-    czar::Czar::getCzar()->getCzarRegistry()->endUserQuery(_id, deleteResults);  // &&&QM
+    czar::Czar::getCzar()->getCzarRegistry()->endUserQueryOnWorkers(_id, deleteResults);
 }
 
 int Executive::getNumInflight() const {

@@ -49,7 +49,7 @@ public:
     UserQueryInfo(UserQueryInfo const&) = delete;
     UserQueryInfo& operator=(UserQueryInfo const&) = delete;
 
-    static Ptr create(QueryId qId) { return std::shared_ptr<UserQueryInfo>(new UserQueryInfo(qId)); }
+    static Ptr create(QueryId qId, CzarIdType czarId) { return std::shared_ptr<UserQueryInfo>(new UserQueryInfo(qId, czarId)); }
 
     ~UserQueryInfo() = default;
 
@@ -70,8 +70,14 @@ public:
     /// &&& doc
     bool getCancelledByCzar() const { return _cancelledByCzar; }
 
-    /// &&& doc
+    /// The czar has cancelled this user query, all tasks need to
+    /// be killed but there's no need to track UberJob id's anymore.
     void cancelFromCzar();
+
+    /// Cancel all associated tasks and track the killed UberJob id's
+    /// The user query itself may still be alive, so the czar may need
+    /// information about which UberJobs are dead.
+    void cancelAllUberJobs();
 
     /// &&& doc
     void cancelUberJob(UberJobId ujId);
@@ -80,10 +86,13 @@ public:
 
     QueryId getQueryId() const { return _qId; }
 
+    CzarIdType getCzarId() const { return _czarId; }
+
 private:
-    UserQueryInfo(QueryId qId);
+    UserQueryInfo(QueryId qId, CzarIdType czId);
 
     QueryId const _qId;  ///< The User Query Id number.
+    CzarIdType const _czarId;
 
     /// List of template strings. This is expected to be short, 1 or 2 entries.
     /// This must be a vector. New entries are always added to the end so as not
