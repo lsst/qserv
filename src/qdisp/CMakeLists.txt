@@ -8,7 +8,6 @@ target_sources(qdisp PRIVATE
     JobBase.cc
     JobDescription.cc
     JobQuery.cc
-    QdispPool.cc
     UberJob.cc
 )
 

@@ -29,8 +29,8 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
-#include "qdisp/QdispPool.h"
 #include "util/Bug.h"
+#include "util/QdispPool.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
@@ -48,7 +48,7 @@ namespace lsst::qserv::qdisp {
 CzarStats::Ptr CzarStats::_globalCzarStats;
 util::Mutex CzarStats::_globalMtx;
 
-void CzarStats::setup(qdisp::QdispPool::Ptr const& qdispPool) {
+void CzarStats::setup(util::QdispPool::Ptr const& qdispPool) {
     std::lock_guard<util::Mutex> lg(_globalMtx);
     if (_globalCzarStats != nullptr || qdispPool == nullptr) {
         throw util::Bug(ERR_LOC, "Error CzarStats::setup called after global pointer set or qdispPool=null.");
@@ -56,7 +56,7 @@ void CzarStats::setup(qdisp::QdispPool::Ptr const& qdispPool) {
     _globalCzarStats = Ptr(new CzarStats(qdispPool));
 }
 
-CzarStats::CzarStats(qdisp::QdispPool::Ptr const& qdispPool)
+CzarStats::CzarStats(util::QdispPool::Ptr const& qdispPool)
         : _qdispPool(qdispPool), _startTimeMs(util::TimeUtils::now()) {
     auto bucketValsRates = {128'000.0,       512'000.0,       1'024'000.0,     16'000'000.0,
                             128'000'000.0,   256'000'000.0,   512'000'000.0,   768'000'000.0,

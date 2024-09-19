@@ -56,7 +56,6 @@
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
-#include "qdisp/QdispPool.h"
 #include "qdisp/SharedResources.h"
 #include "qproc/DatabaseModels.h"
 #include "rproc/InfileMerger.h"
@@ -66,6 +65,7 @@
 #include "util/common.h"
 #include "util/FileMonitor.h"
 #include "util/IterableFormatter.h"
+#include "util/QdispPool.h"
 #include "util/String.h"
 
 using namespace lsst::qserv;
@@ -97,12 +97,9 @@ void Czar::_monitor() {
         /// Check database for changes in worker chunk assignments and aliveness
         _czarFamilyMap->read();
 
-        // old TODO:UJ DM-45470 If there were changes in `_czarFamilyMap`,
-        // see if any workers went down. If any did, `_unassign` all
-        // Jobs in UberJobs for the downed workers. The `_unassigned`
-        // Jobs should get reassigned in the next section `assignJobsToUberJobs`.
-
-        // &&& Send appropriate messages to all ActiveWorkers
+        // Send appropriate messages to all ActiveWorkers. This will
+        // check if workers have died by timeout. The reponse
+        // from the worker include
         _czarRegistry->sendActiveWorkersMessages();
 
         /// Create new UberJobs (if possible) for all jobs that are
@@ -111,6 +108,7 @@ void Czar::_monitor() {
         {
             // Make a copy of all valid Executives
             lock_guard<mutex> execMapLock(_executiveMapMtx);
+            // Use an iterator so it's easy/quick to delete dead weak pointers.
             auto iter = _executiveMap.begin();
             while (iter != _executiveMap.end()) {
                 auto qIdKey = iter->first;
@@ -129,23 +127,15 @@ void Czar::_monitor() {
         }
 
         // TODO:UJ DM-45470 Maybe get missing results from workers.
-        //    This would be files that workers sent messages to the czar to
-        //    collect, but there was a communication problem and the czar didn't get the message
-        //    or didn't collect the file. to retrieve complete files that haven't been
-        //    collected.
-        //    Basically, is there a reasonable way to check that all UberJobs are being handled
-        //    and nothing has fallen through the cracks?
+        //    To prevent anything from slipping through the cracks:
+        //    Workers will keep trying to transmit results until they think the czar is dead.
+        //    If a worker thinks the czar died, it will cancel all related jobs that it has,
+        //    and if the czar sends a status message to that worker, that worker will send back
+        //    a separate message saying it killed everything that this czar gave it. Upon
+        //    getting this message from a worker, this czar will reassign everything it had
+        //    sent to that worker.
 
-        // TODO:UJ Maybe send a list of cancelled and completed queries to the workers?
-        //     How long should queryId's remain on this list?
-        //     It's probably better to have the executive for a query to send out
-        //     messages to worker that a user query was cancelled. If a worker sends
-        //     the czar about a cancelled user query, or the executive for that
-        //     query cannot be found, the worker should cancel all Tasks associated
-        //     with that queryId.
-        // &&& Go through the ActiveWorkerMap. Each ActiveWorker instance has a list of QueryIds
-        //     that have not yet been acknowledged by the worker, so send a message to each worker
-        //     with that list.
+        // TODO:UJ How long should queryId's remain on this list?
     }
 }
 
@@ -202,11 +192,12 @@ Czar::Czar(string const& configFilePath, string const& czarName)
                                         << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
                                         << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
                                         << util::prettyCharList(vectMinRunningSizes));
-    qdisp::QdispPool::Ptr qdispPool =
-            make_shared<qdisp::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
-    qdisp::CzarStats::setup(qdispPool);
+    _qdispPool =
+            make_shared<util::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
 
-    _qdispSharedResources = qdisp::SharedResources::create(qdispPool);
+    qdisp::CzarStats::setup(_qdispPool);
+
+    _qdispSharedResources = qdisp::SharedResources::create(_qdispPool);
 
     int xrootdCBThreadsMax = _czarConfig->getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig->getXrootdCBThreadsInit();
