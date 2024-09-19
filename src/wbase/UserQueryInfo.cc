@@ -37,7 +37,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.UserQueryInfo");
 
 namespace lsst::qserv::wbase {
 
-UserQueryInfo::UserQueryInfo(QueryId qId) : _qId(qId) {}
+UserQueryInfo::UserQueryInfo(QueryId qId, CzarIdType czarId) : _qId(qId), _czarId(czarId) {}
 
 size_t UserQueryInfo::addTemplate(std::string const& templateStr) {
     size_t j = 0;
@@ -69,7 +69,7 @@ void UserQueryInfo::addUberJob(std::shared_ptr<UberJobData> const& ujData) {
     _uberJobMap[ujId] = ujData;
 }
 
-/// &&& doc
+
 void UserQueryInfo::cancelFromCzar() {
     if (_cancelledByCzar.exchange(true)) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " already cancelledByCzar");
@@ -85,7 +85,6 @@ void UserQueryInfo::cancelFromCzar() {
     }
 }
 
-/// &&& doc
 void UserQueryInfo::cancelUberJob(UberJobId ujId) {
     LOGS(_log, LOG_LVL_INFO, cName(__func__) << " cancelling ujId=" << ujId);
     lock_guard<mutex> lockUq(_uberJobMapMtx);
@@ -93,6 +92,17 @@ void UserQueryInfo::cancelUberJob(UberJobId ujId) {
     auto iter = _uberJobMap.find(ujId);
     if (iter != _uberJobMap.end()) {
         auto weakUjPtr = iter->second;
+        auto ujPtr = weakUjPtr.lock();
+        if (ujPtr != nullptr) {
+            ujPtr->cancelAllTasks();
+        }
+    }
+}
+
+void UserQueryInfo::cancelAllUberJobs() {
+    lock_guard<mutex> lockUq(_uberJobMapMtx);
+    for (auto const& [ujKey, weakUjPtr] : _uberJobMap) {
+        _deadUberJobSet.insert(ujKey);
         auto ujPtr = weakUjPtr.lock();
         if (ujPtr != nullptr) {
             ujPtr->cancelAllTasks();

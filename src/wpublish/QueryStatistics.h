@@ -58,8 +58,8 @@ public:
     using Ptr = std::shared_ptr<QueryStatistics>;
 
     /// Force shared_ptr creation for data integrity.
-    static Ptr create(QueryId const& queryId) {
-        return std::shared_ptr<QueryStatistics>(new QueryStatistics(queryId));
+    static Ptr create(QueryId queryId_, CzarIdType czarId_) {
+        return std::shared_ptr<QueryStatistics>(new QueryStatistics(queryId_, czarId_));
     }
 
     QueryStatistics() = delete;
@@ -172,7 +172,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
 
 private:
-    explicit QueryStatistics(QueryId const& queryId);
+    explicit QueryStatistics(QueryId queryId, CzarIdType czarId);
     bool _isMostlyDead() const;
 
     mutable std::mutex _qStatsMtx;
@@ -201,7 +201,6 @@ private:
     SchedTasksInfoMap _taskSchedInfoMap;  ///< Map of task information ordered by scheduler name.
 
     std::shared_ptr<wbase::UserQueryInfo> const _userQueryInfo;  ///< &&& doc
-    util::InstanceCount _ic{"QueryStatiscs_&&&"};
 };
 
 }  // namespace lsst::qserv::wpublish

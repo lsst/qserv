@@ -44,6 +44,7 @@
 #include "qmeta/MessageStore.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
+#include "util/QdispPool.h"
 #include "util/threadSafe.h"
 
 namespace test = boost::test_tools;
@@ -64,12 +65,6 @@ namespace lsst::qserv::qproc {
 class MockTaskMsgFactory : public TaskMsgFactory {
 public:
     MockTaskMsgFactory(std::string const& mockPayload_) : TaskMsgFactory(), mockPayload(mockPayload_) {}
-    /* &&&
-    void serializeMsg(ChunkQuerySpec const& s, std::string const& chunkResultName, QueryId queryId, int jobId,
-                      int attemptCount, qmeta::CzarId czarId, std::ostream& os) override {
-        os << mockPayload;
-    }
-    */
 
     std::shared_ptr<nlohmann::json> makeMsgJson(ChunkQuerySpec const& s, std::string const& chunkResultName,
                                                 QueryId queryId, int jobId, int attemptCount,
@@ -161,7 +156,7 @@ public:
     std::string str;
     qdisp::ExecutiveConfig::Ptr conf;
     std::shared_ptr<qmeta::MessageStore> ms;
-    qdisp::QdispPool::Ptr qdispPool;
+    util::QdispPool::Ptr qdispPool;
     qdisp::SharedResources::Ptr sharedResources;
     qdisp::Executive::Ptr ex;
     std::shared_ptr<qdisp::JobQuery> jqTest;  // used only when needed
@@ -169,11 +164,10 @@ public:
 
     SetupTest(const char* request) {
         qrMsg = request;
-        //&&& qdisp::XrdSsiServiceMock::Reset();
         str = qdisp::ExecutiveConfig::getMockStr();
         conf = std::make_shared<qdisp::ExecutiveConfig>(str, 0);  // No updating of QMeta.
         ms = std::make_shared<qmeta::MessageStore>();
-        qdispPool = std::make_shared<qdisp::QdispPool>(true);
+        qdispPool = std::make_shared<util::QdispPool>(true);
         sharedResources = qdisp::SharedResources::create(qdispPool);
 
         std::shared_ptr<qmeta::QStatus> qStatus;  // No updating QStatus, nullptr
@@ -200,7 +194,6 @@ BOOST_AUTO_TEST_CASE(Executive) {
     int jobs = 0;
     _log.setLevel(LOG_LVL_DEBUG);  // Ugly but boost test suite forces this
     std::thread timeoutT(&timeoutFunc, std::ref(done), millisInt);
-    //&&& qdisp::XrdSsiServiceMock::setRName("/chk/Mock/1234");
 
     // Test single instance
     {
@@ -234,19 +227,10 @@ BOOST_AUTO_TEST_CASE(Executive) {
         LOGS_DEBUG("Executive detect non-empty job queue test");
         SetupTest tEnv("respdata");
         SequentialInt sequence(0);
-        //&&&qdisp::XrdSsiServiceMock::setGo(false);
         executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 5);
         jobs += 5;
-        /* &&&
-        while (qdisp::XrdSsiServiceMock::getCount() < jobs) {
-            LOGS_DEBUG("waiting for _count(" << qdisp::XrdSsiServiceMock::getCount() << ") == jobs(" << jobs
-                                             << ")");
-            usleep(10000);
-        }
-        */
 
         BOOST_CHECK(tEnv.ex->getEmpty() == false);
-        //&&&qdisp::XrdSsiServiceMock::setGo(true);
         LOGS_DEBUG("ex->joining()");
         tEnv.ex->join();
         LOGS_DEBUG("ex->join() joined");
