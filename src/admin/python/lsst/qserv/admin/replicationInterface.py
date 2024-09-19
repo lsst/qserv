@@ -339,7 +339,8 @@ class ReplicationInterface:
         worker_host: str,
         worker_port: str,
         data_file: str,
-        table: LoadTable
+        table: LoadTable,
+        load_http: bool,
     ) -> None:
         """Ingest table data from a file.
 
@@ -355,9 +356,13 @@ class ReplicationInterface:
             The path to the data file to ingest.
         table : `LoadTable`
             Table descriptor, including its name, ingest configuration, etc.
+        load_http : `bool`
+            The protocol to use for loading the data.
         """
         if not self.auth_key:
             raise RuntimeError("auth_key must be set to ingest a data file.")
+        if load_http:
+            raise NotImplementedError("HTTP-based table data loading protocol not implemented.")
         args = [
             "qserv-replica-file",
             "INGEST",
@@ -435,6 +440,7 @@ class ReplicationInterface:
         table: LoadTable,
         chunks_folder: str,
         chunk_info_file: str,
+        load_http: bool,
     ) -> None:
         """Ingest chunk data that was partitioned using sph-partition.
 
@@ -448,6 +454,8 @@ class ReplicationInterface:
             The absolute path to the folder containing the chunk files to be ingested.
         chunks_info_file : `str`
             The absolute path to the file containing information about the chunks to be ingested.
+        load_http : `bool`
+            The protocol to use for loading the data.
         """
         _log.debug(
             "ingest_chunks_data transaction_id: %s table_name: %s chunks_folder: %s",
@@ -492,9 +500,15 @@ class ReplicationInterface:
                 port,
                 data_file=_file,
                 table=table,
+                load_http=load_http
             )
 
-    def ingest_table_data(self, transaction_id: int, table: LoadTable, data_file: str) -> None:
+    def ingest_table_data(
+        self, transaction_id: int,
+        table: LoadTable,
+        data_file: str,
+        load_http: bool,
+    ) -> None:
         """Ingest data for a non-partitioned table.
 
         Parameters
@@ -505,6 +519,8 @@ class ReplicationInterface:
             Table descriptor, including its name, ingest configuration, etc.
         data_file : `str`
             The absolute path to the file containing the table data.
+        load_http : `bool`
+            The protocol to use for loading the data.
         """
         _log.debug(
             "ingest_table_data: transaction_id: %s table.table_name: %s data_file: %s",
@@ -527,6 +543,7 @@ class ReplicationInterface:
                 location.port,
                 data_file=data_file,
                 table=table,
+                load_http=load_http,
             )
 
     def delete_database(

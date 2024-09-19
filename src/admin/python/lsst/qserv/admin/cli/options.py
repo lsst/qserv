@@ -266,6 +266,12 @@ option_reload = partial(
     is_flag=True,
 )
 
+option_load_http = partial(
+    click.option,
+    "--load-http",
+    help="HTTP-based table loading protocol. Used with --load and --reload",
+    is_flag=True,
+)
 
 option_run_tests = partial(
     click.option,
