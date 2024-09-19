@@ -38,6 +38,7 @@
 #include "qmeta/types.h"
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
+#include "util/InstanceCount.h"
 
 namespace lsst::qserv {
 
@@ -140,6 +141,8 @@ public:
     std::string getIdStr() const { return _idStr; }
     std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
 
+    bool getCancelled() const { return _cancelled; }
+
     /// &&& doc
     void cancelAllTasks();
 
@@ -157,6 +160,10 @@ private:
     void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
                           std::string const& url_, std::string const& requestContext_,
                           std::string const& requestStr_);
+
+    /// &&& doc
+    void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_, std::string const& url_, std::string const& requestContext_, std::string const& requestStr_);
+
 
     UberJobId const _uberJobId;
     std::string const _czarName;

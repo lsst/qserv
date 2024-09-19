@@ -53,7 +53,7 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
           _jobStatus(jobStatus),
           _qid(qid),
           _idStr(QueryIdHelper::makeIdStr(qid, getJobId())) {
-    _qdispPool = executive->getQdispPool();
+    //&&&_qdispPool = executive->getQdispPool();
     LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
 

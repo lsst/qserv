@@ -605,7 +605,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         ujPtr->_importResultFinish(resultRows);
     };
 
-    auto cmd = qdisp::PriorityCommand::Ptr(new qdisp::PriorityCommand(fileCollectFunc));
+    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(fileCollectFunc));
     exec->queueFileCollect(cmd);
 
     // If the query meets the limit row complete complete criteria, it will start

@@ -176,7 +176,7 @@ Foreman::~Foreman() {
     _httpServer->stop();
 }
 
-wpublish::QueryStatistics::Ptr Foreman::addQueryId(QueryId qId) { return _queries->addQueryId(qId); }
+//&&& wpublish::QueryStatistics::Ptr Foreman::addQueryId(QueryId qId) { return _queries->addQueryId(qId); }
 
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
     std::vector<util::Command::Ptr> cmds;

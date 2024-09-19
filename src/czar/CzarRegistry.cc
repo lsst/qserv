@@ -237,7 +237,7 @@ void CzarRegistry::endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults) 
     _activeWorkerMap->sendActiveWorkersMessages();
 }
 
-void CzarRegistry::endUserQuery(QueryId qId, bool deleteWorkerResults) {
+void CzarRegistry::endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults) {
     lock_guard<mutex> lck(_mapMtx);
     // Add query id to the appropriate list.
     if (deleteWorkerResults) {

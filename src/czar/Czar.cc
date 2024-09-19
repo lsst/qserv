@@ -150,7 +150,6 @@ void Czar::_monitor() {
         // a separate message (see WorkerCzarComIssue) saying it killed everything that this
         // czar gave it. Upon getting this message from a worker, this czar will reassign
         // everything it had sent to that worker.
-
         // TODO:UJ How long should queryId's remain on this list?
     }
 }

@@ -346,14 +346,21 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
     // &&& Maybe only send the status message if the lists are not empty ???
     // Start a thread to send the message. (Maybe these should go on the qdisppool? &&&)
     // put this in a different function and start the thread.&&&;
-    _sendStatusMsg(wInfo_, jsWorkerReqPtr);
+    //&&& _sendStatusMsg(wInfo_, jsWorkerReqPtr);
+    Ptr thisPtr = shared_from_this();
+    auto sendStatusMsgFunc = [thisPtr, wInfo_, jsWorkerReqPtr](util::CmdData*) {
+        thisPtr->_sendStatusMsg(wInfo_, jsWorkerReqPtr);
+    };
+
+    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(sendStatusMsgFunc));
+    auto qdisppool = czar::Czar::getCzar()->getQdispPool();
+    qdisppool->queCmd(cmd, 1);
 }
 
 void ActiveWorker::_sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
                                   std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr) {
     auto& jsWorkerReq = *jsWorkerReqPtr;
     auto const method = http::Method::POST;
-    //&&&auto const wInf = _wqsData->getWInfo();
     if (wInf == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " wInfo was null.");
         return;

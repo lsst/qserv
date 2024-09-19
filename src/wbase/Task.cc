@@ -279,9 +279,10 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks, uint16_t resultsHttpPort) {
     QueryId qId = ujData->getQueryId();
     UberJobId ujId = ujData->getUberJobId();
+    CzarIdType czId = ujData->getCzarId();
 
     //&&&UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
-    wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId);
+    wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
     UserQueryInfo::Ptr userQueryInfo = queryStats->getUserQueryInfo();
 
     string funcN(__func__);

@@ -104,8 +104,10 @@ public:
     /// &&& doc
     void sendActiveWorkersMessages();
 
-    /// &&& doc
-    void endUserQuery(QueryId qId, bool deleteWorkerResults);
+    /// Add the query id to the list of queries to end on workers and
+    /// send the messages, deleting all result files if
+    /// `deleteWorkerResults` is true.
+    void endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults);
 
 private:
     CzarRegistry() = delete;
