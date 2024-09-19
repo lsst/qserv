@@ -42,7 +42,6 @@
 #include "qdisp/JobDescription.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/SharedResources.h"
-#include "qdisp/QdispPool.h"
 #include "qdisp/UberJob.h"
 #include "qmeta/JobStatus.h"
 #include "util/EventThread.h"
@@ -80,6 +79,8 @@ class InfileMerger;
 
 namespace util {
 class AsyncTimer;
+class PriorityCommand;
+class QdispPool;
 }
 
 namespace qdisp {
@@ -133,10 +134,10 @@ public:
     void runUberJob(std::shared_ptr<UberJob> const& uberJob);
 
     /// Queue a job to be sent to a worker so it can be started.
-    void queueJobStart(PriorityCommand::Ptr const& cmd);
+    void queueJobStart(std::shared_ptr<util::PriorityCommand> const& cmd); // &&& delete ???
 
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
-    void queueFileCollect(PriorityCommand::Ptr const& cmd);
+    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd); // &&& delete ???
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
@@ -174,7 +175,7 @@ public:
     /// @return true if cancelled
     bool getCancelled() { return _cancelled; }
 
-    std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
+    std::shared_ptr<util::QdispPool> getQdispPool() { return _qdispPool; }
 
     /// Add 'rowCount' to the total number of rows in the result table.
     void addResultRows(int64_t rowCount);
@@ -222,7 +223,7 @@ public:
 
     /// Send a message to all workers to cancel this query.
     /// @param deleteResults - If true, delete all result files for this query on the workers.
-    void sendWorkerCancelMsg(bool deleteResults);
+    void sendWorkersEndMsg(bool deleteResults);
 
     /// &&& doc
     void killIncompleteUberJobsOn(std::string const& restartedWorkerId);
@@ -264,9 +265,9 @@ private:
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
-    QdispPool::Ptr _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
+    std::shared_ptr<util::QdispPool> _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
 
-    std::deque<PriorityCommand::Ptr> _jobStartCmdList;  ///< list of jobs to start.
+    std::deque<std::shared_ptr<util::PriorityCommand>> _jobStartCmdList;  ///< list of jobs to start.
 
     /** Execution errors */
     util::MultiError _multiError;

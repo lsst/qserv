@@ -150,6 +150,8 @@ public:
     /// &&& doc
     void killIncompleteUbjerJobsOn(std::string const& workerId);
 
+    std::shared_ptr<util::QdispPool> getQdispPool() const { return _qdispPool; }
+
     /// Startup time of czar, sent to workers so they can detect that the czar was
     /// was restarted when this value changes.
     static uint64_t const czarStartupTime;
@@ -230,7 +232,13 @@ private:
     /// Wait time between checks. TODO:UJ set from config
     std::chrono::milliseconds _monitorSleepTime{15000};
 
+    /// Keeps track of all workers (alive or otherwise) that this czar
+    /// may communicate with. Once created, the pointer never changes.
     std::shared_ptr<ActiveWorkerMap> _activeWorkerMap;
+
+    /// A combined priority queue and thread pool to regulate czar communications
+    /// with workers. Once created, the pointer never changes.
+    std::shared_ptr<util::QdispPool> _qdispPool;
 };
 
 }  // namespace lsst::qserv::czar

@@ -44,9 +44,12 @@
 // Third party headers
 #include <nlohmann/json.hpp>
 
-namespace lsst::qserv::qdisp {
 
+namespace lsst::qserv::util {
 class QdispPool;
+}
+
+namespace lsst::qserv::qdisp {
 
 /// This class is used to track statistics for the czar.
 /// setup() needs to be called before get().
@@ -79,7 +82,7 @@ public:
 
     /// Setup the global CzarStats instance
     /// @throws Bug if global has already been set or qdispPool is null.
-    static void setup(std::shared_ptr<qdisp::QdispPool> const& qdispPool);
+    static void setup(std::shared_ptr<util::QdispPool> const& qdispPool);
 
     /// Return a pointer to the global CzarStats instance.
     /// @throws Bug if get() is called before setup()
@@ -206,13 +209,13 @@ public:
     nlohmann::json getTransmitStatsJson() const;
 
 private:
-    CzarStats(std::shared_ptr<qdisp::QdispPool> const& qdispPool);
+    CzarStats(std::shared_ptr<util::QdispPool> const& qdispPool);
 
     static Ptr _globalCzarStats;    ///< Pointer to the global instance.
     static util::Mutex _globalMtx;  ///< Protects `_globalCzarStats`
 
     /// Connection to get information about the czar's pool of dispatch threads.
-    std::shared_ptr<qdisp::QdispPool> _qdispPool;
+    std::shared_ptr<util::QdispPool> _qdispPool;
 
     /// The start up time (milliseconds since the UNIX EPOCH) of the status collector.
     uint64_t const _startTimeMs = 0;

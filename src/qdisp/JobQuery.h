@@ -40,7 +40,7 @@
 
 namespace lsst::qserv::qdisp {
 
-class QdispPool;
+//&&&class QdispPool;
 class QueryRequest;
 
 /// This class is used to describe, monitor, and control a single query to a worker.
@@ -78,7 +78,7 @@ public:
 
     std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
-    std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
+    //&&&std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
 
     std::ostream& dumpOS(std::ostream& os) const override;
 
@@ -148,7 +148,7 @@ protected:
     // Cancellation
     std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.
 
-    std::shared_ptr<QdispPool> _qdispPool;
+    //&&& std::shared_ptr<util::QdispPool> _qdispPool;
 
     /// The UberJobId that this job is assigned to. Values less than zero
     /// indicate this job is unassigned. To prevent race conditions,

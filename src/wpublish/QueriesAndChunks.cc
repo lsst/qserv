@@ -119,12 +119,12 @@ void QueriesAndChunks::setBlendScheduler(shared_ptr<wsched::BlendScheduler> cons
 
 void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) { _requiredTasksCompleted = value; }
 
-QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId) {
+QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId, CzarIdType czarId) {
     unique_lock<mutex> guardStats(_queryStatsMapMtx);
     auto itr = _queryStatsMap.find(qId);
     QueryStatistics::Ptr stats;
     if (_queryStatsMap.end() == itr) {
-        stats = QueryStatistics::create(qId);
+        stats = QueryStatistics::create(qId, czarId);
         _queryStatsMap[qId] = stats;
     } else {
         stats = itr->second;
@@ -135,6 +135,7 @@ QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId) {
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
+    auto czId = task->getCzarId();
 #if 0  // &&& delete upper block
     unique_lock<mutex> guardStats(_queryStatsMapMtx);
     auto itr = _queryStatsMap.find(qid);
@@ -148,7 +149,7 @@ void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     }
     guardStats.unlock();
 #else  // &&&
-    auto stats = addQueryId(qid);
+    auto stats = addQueryId(qid, czId);
 #endif  // &&&
     stats->addTask(task);
     //&&&task->setQueryStatistics(stats);
@@ -275,7 +276,7 @@ void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
     _queryStatsMap.erase(qId);
 }
 
-QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
+QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId qId) const {
     lock_guard<mutex> lockG(_queryStatsMapMtx);
     return _getStats(qId);
 }
@@ -688,6 +689,23 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
     moveTasks(true);
 
     return removedList;
+}
+
+void QueriesAndChunks::killAllQueriesFromCzar(CzarIdType czarId) {
+    std::map<QueryId, QueryStatistics::Ptr> qsMap;
+    {
+        lock_guard<mutex>  lgQsm(_queryStatsMapMtx);
+        qsMap = _queryStatsMap;
+    }
+
+    for (auto const& [qsKey, qsPtr] : qsMap) {
+        if (qsPtr != nullptr) {
+            auto uqInfo = qsPtr->getUserQueryInfo();
+            if (uqInfo != nullptr && uqInfo->getCzarId() == czarId) {
+                uqInfo->cancelAllUberJobs();
+            }
+        }
+    }
 }
 
 ostream& operator<<(ostream& os, QueriesAndChunks const& qc) {

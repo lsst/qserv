@@ -291,7 +291,6 @@ private:
     uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
     uint64_t _headerCount = 0;   ///< Count of headers received.
 
-    bool const _useHttp = false;     ///< to be eliminated when xrootd is no longer used.
     std::atomic<bool> _dead{false};  ///< Set to true when the contents of the file are no longer useful.
 };
 

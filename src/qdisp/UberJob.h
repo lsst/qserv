@@ -30,7 +30,10 @@
 #include "qdisp/JobBase.h"
 #include "qmeta/JobStatus.h"
 
-// This header declarations
+namespace lsst::qserv::util {
+class QdispPool;
+}
+
 namespace lsst::qserv::qdisp {
 
 class JobQuery;
@@ -70,7 +73,8 @@ public:
         return _uberJobId;
     }  // TODO:UJ change name when JobBase no longer needed.
     std::string const& getIdStr() const override { return _idStr; }
-    std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
+    //&&&std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
+    //&&&std::shared_ptr<util::QdispPool> getQdispPool() { return _qdispPool; }
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() override {
         return _jobStatus;
@@ -157,7 +161,7 @@ private:
     qmeta::CzarId const _czarId;
 
     std::string const _idStr;
-    std::shared_ptr<QdispPool> _qdispPool;  // TODO:UJ remove when possible.
+    std::shared_ptr<util::QdispPool> _qdispPool;  // TODO:UJ remove when possible. &&& delete
 
     // Map of workerData
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed

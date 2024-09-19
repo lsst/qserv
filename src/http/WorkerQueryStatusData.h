@@ -106,11 +106,7 @@ public:
 
     std::string cName(const char* fn) { return std::string("WorkerContactInfo::") + fn; }
 
-    // &&&QM  &&&HERE should all of these be constant???
-    std::string const wId;  ///< key
-    //&&&std::string const wHost;            ///< "host-addr" entry.
-    //&&&std::string const wManagementHost;  ///< "management-host-name" entry.
-    //&&&int const wPort;                    ///< "management-port" entry.
+    std::string const wId;  ///< key, this is the one thing that cannot change.
 
     std::string getWHost() const {
         std::lock_guard<std::mutex> lg(_rMtx);

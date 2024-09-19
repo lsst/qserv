@@ -25,19 +25,23 @@
 // System headers
 #include <memory>
 
-namespace lsst::qserv::qdisp {
-
+namespace lsst::qserv::util { // &&& delete
 class QdispPool;
+}
+
+namespace lsst::qserv::qdisp {
 
 /// Put resources that all Executives need to share in one class to reduce
 /// the number of arguments passed.
 /// This class should be kept simple so it can easily be included in headers
 /// without undue compiler performances problems.
+    // &&& there's nothing in here but qdisppool!? Try to delete, but there
+    // &&& will probably be unit test issues.
 class SharedResources {
 public:
     using Ptr = std::shared_ptr<SharedResources>;
 
-    static Ptr create(std::shared_ptr<qdisp::QdispPool> const& qdispPool) {
+    static Ptr create(std::shared_ptr<util::QdispPool> const& qdispPool) {
         return Ptr(new SharedResources(qdispPool));
     }
 
@@ -46,13 +50,13 @@ public:
     SharedResources& operator=(SharedResources const&) = delete;
     ~SharedResources() = default;
 
-    std::shared_ptr<qdisp::QdispPool> getQdispPool() { return _qdispPool; }
+    std::shared_ptr<util::QdispPool> getQdispPool() { return _qdispPool; } //&&& delete
 
 private:
-    SharedResources(std::shared_ptr<qdisp::QdispPool> const& qdispPool) : _qdispPool(qdispPool) {}
+    SharedResources(std::shared_ptr<util::QdispPool> const& qdispPool) : _qdispPool(qdispPool) {}
 
     /// Thread pool for handling Responses from XrdSsi.
-    std::shared_ptr<qdisp::QdispPool> _qdispPool;
+    std::shared_ptr<util::QdispPool> _qdispPool;
 };
 
 }  // namespace lsst::qserv::qdisp
