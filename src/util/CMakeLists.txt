@@ -20,6 +20,7 @@ target_sources(util PRIVATE
     Issue.cc
     MultiError.cc
     Mutex.cc
+    QdispPool.cc
     ResultFileNameParser.cc
     SemaMgr.cc
     StringHash.cc

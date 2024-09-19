@@ -236,9 +236,12 @@ SsiService::SsiService(XrdSsiLogger* log) {
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
+    /* &&&
     _foreman = wcontrol::Foreman::Ptr(new wcontrol::Foreman(blendSched, poolSize, maxPoolThreads, mySqlConfig,
                                                             queries, ::makeChunkInventory(mySqlConfig),
                                                             sqlConnMgr));
+                                                            */
+    _foreman = wcontrol::Foreman::create(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries, ::makeChunkInventory(mySqlConfig), sqlConnMgr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log

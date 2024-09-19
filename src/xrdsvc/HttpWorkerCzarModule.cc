@@ -45,8 +45,9 @@
 #include "wbase/Task.h"
 #include "wbase/UberJobData.h"
 #include "wbase/UserQueryInfo.h"
-#include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
+#include "wcontrol/WCzarInfoMap.h"
+#include "wconfig/WorkerConfig.h"
 #include "wcontrol/ResourceMonitor.h"
 #include "wpublish/ChunkInventory.h"
 #include "wpublish/QueriesAndChunks.h"
@@ -130,7 +131,8 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
              __func__ << " uj qid=" << ujQueryId << " ujid=" << ujId << " czid=" << ujCzarId);
 
         // Get or create QueryStatistics and UserQueryInfo instances.
-        auto queryStats = foreman()->addQueryId(ujQueryId);
+        //&&&auto queryStats = foreman()->addQueryId(ujQueryId);
+        auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzarId);
         auto userQueryInfo = queryStats->getUserQueryInfo();
 
         if (userQueryInfo->getCancelledByCzar()) {
@@ -197,6 +199,8 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
             scanInfo.scanRating = jdScanPriority;
         }
 
+        ujData->setScanInteractive(jdScanInteractive);
+
         // create tasks and add them to ujData
         auto chunkTasks = wbase::Task::createTasksForChunk(
                 ujData, ujJobs, channelShared, scanInfo, jdScanInteractive, jdMaxTableSize,
@@ -206,6 +210,12 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
 
         channelShared->setTaskCount(ujTasks.size());
         ujData->addTasks(ujTasks);
+
+        // At this point, it looks like the message was sent successfully, update
+        // czar touched time.
+        wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
+        wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czarId);
+        wCzarInfo->czarMsgReceived(CLOCK::now());
 
         util::Timer timer;
         timer.start();
@@ -246,11 +256,17 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     auto wqsData = http::WorkerQueryStatusData::createFromJson(jsReq, replicationInstanceId,
                                                                replicationAuthKey, now);
 
+    auto const czInfo = wqsData->getCzInfo();
+    CzarIdType czId = czInfo->czId;
+    wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
+    wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);
+    wCzarInfo->czarMsgReceived(CLOCK::now());
+
     // For all queryId and czarId items, if the item can't be found, it is simply ignored. Anything that
     // is missed will eventually be picked up by other mechanisms, such as results being rejected
     // by the czar.
 
-    // If a czar was restarted, cancel and/or delete the abandoned items.
+    // If a czar was restarted, cancel and delete the abandoned items.
     if (wqsData->isCzarRestart()) {
         auto restartCzarId = wqsData->getCzarRestartCzarId();
         auto restartQId = wqsData->getCzarRestartQueryId();
@@ -267,7 +283,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     // Cancelled queries where we want to keep the files
     lock_guard<mutex> mapLg(wqsData->mapMtx);
     for (auto const& [dkQid, dkTm] : wqsData->qIdDoneKeepFiles) {
-        auto qStats = queriesAndChunks->addQueryId(dkQid);
+        auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
         if (qStats != nullptr) {
             auto uqInfo = qStats->getUserQueryInfo();
             if (uqInfo != nullptr) {
@@ -280,7 +296,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
 
     vector<wbase::UserQueryInfo::Ptr> deleteFilesList;
     for (auto const& [dkQid, dkTm] : wqsData->qIdDoneDeleteFiles) {
-        auto qStats = queriesAndChunks->addQueryId(dkQid);
+        auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
         if (qStats != nullptr) {
             auto uqInfo = qStats->getUserQueryInfo();
             if (uqInfo != nullptr) {
@@ -302,7 +318,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     // New UberJob Id's will be checked against the list, and immediately be
     // killed if they are on it. (see HttpWorkerCzarModule::_handleQueryJob)
     for (auto const& [ujQid, ujIdMap] : wqsData->qIdDeadUberJobs) {
-        auto qStats = queriesAndChunks->addQueryId(ujQid);
+        auto qStats = queriesAndChunks->addQueryId(ujQid, czId);
         if (qStats != nullptr) {
             auto uqInfo = qStats->getUserQueryInfo();
             if (uqInfo != nullptr) {

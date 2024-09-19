@@ -71,7 +71,6 @@
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
 
-#include "qdisp/QdispPool.h"
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -107,6 +106,7 @@
 #include "sql/Schema.h"
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
+#include "util/QdispPool.h"
 #include "util/ThreadPriority.h"
 #include "qdisp/UberJob.h"
 
@@ -326,6 +326,7 @@ void UserQuerySelect::submit() {
 }
 
 void UserQuerySelect::buildAndSendUberJobs() {
+    // &&& NEED CODE - this function should check if the worker is DEAD. TODO:UJ
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start");
 
@@ -451,9 +452,9 @@ void UserQuerySelect::buildAndSendUberJobs() {
         LOGS(_log, LOG_LVL_ERROR, errStr);
     }
 
-    // Add worker contact info to UberJobs.
-    //&&& auto const wContactMap = czRegistry->getWorkerContactMap();
-    auto const wContactMap = czRegistry->waitForWorkerContactMap();  //&&&Z
+    // Add worker contact info to UberJobs. The czar can't do anything without
+    // the contact map, so it will wait. This should only ever be an issue at startup.
+    auto const wContactMap = czRegistry->waitForWorkerContactMap();
     LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
     for (auto const& [wIdKey, ujVect] : workerJobMap) {
         auto iter = wContactMap->find(wIdKey);
