@@ -138,120 +138,102 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrSimpleTest) {
             });
 
     // Instantiate the manager.
-    shared_ptr<IngestRequestMgr> requestScheduler;
-    BOOST_REQUIRE_NO_THROW({ requestScheduler = IngestRequestMgr::test(); });
-    BOOST_CHECK(requestScheduler != nullptr);
+    shared_ptr<IngestRequestMgr> requestManager;
+    BOOST_REQUIRE_NO_THROW({ requestManager = IngestRequestMgr::test(); });
+    BOOST_CHECK(requestManager != nullptr);
 
     // Test if the queues are empty
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
     auto const inContrib1 = ::makeContrib(1, "db1");
 
     // Test if non-existing requests (provided by their unique identifiers)
     // are rejected by the manager.
-    BOOST_REQUIRE_THROW({ requestScheduler->find(inContrib1.id); }, IngestRequestNotFound);
-    BOOST_REQUIRE_THROW({ requestScheduler->cancel(inContrib1.id); }, IngestRequestNotFound);
-    BOOST_REQUIRE_THROW({ requestScheduler->completed(inContrib1.id); }, IngestRequestNotFound);
+    BOOST_REQUIRE_THROW({ requestManager->find(inContrib1.id); }, IngestRequestNotFound);
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK(!requestManager->cancel(inContrib1.id)); });
+    BOOST_REQUIRE_THROW({ requestManager->completed(inContrib1.id); }, IngestRequestNotFound);
 
     // Null objects can't be submitted.
     // The queues shall not be affected by this.
-    BOOST_REQUIRE_THROW({ requestScheduler->submit(nullptr); }, std::invalid_argument);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_REQUIRE_THROW({ requestManager->submit(nullptr); }, std::invalid_argument);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
     // Test submitting the first (and the only) request.
     shared_ptr<IngestRequest> inRequest1;
     BOOST_REQUIRE_NO_THROW({ inRequest1 = IngestRequest::test(inContrib1); });
     BOOST_CHECK(inRequest1 != nullptr);
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(inRequest1); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(inContrib1.database), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(inRequest1); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(inContrib1.database), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
     // The request shall be known to the manager. And request finder shall
     // not affect the queues.
     TransactionContribInfo outContrib1;
-    BOOST_REQUIRE_NO_THROW({ outContrib1 = requestScheduler->find(inContrib1.id); });
+    BOOST_REQUIRE_NO_THROW({ outContrib1 = requestManager->find(inContrib1.id); });
     BOOST_CHECK_EQUAL(outContrib1.id, inContrib1.id);
     BOOST_CHECK_EQUAL(outContrib1.createTime, inContrib1.createTime);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(inContrib1.database), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(inContrib1.database), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
     // Cancel the request while it's in the input queue.
     // The cancelled request shall move into the output queue.
-    BOOST_REQUIRE_NO_THROW({ outContrib1 = requestScheduler->cancel(inContrib1.id); });
-    BOOST_CHECK_EQUAL(outContrib1.id, inContrib1.id);
-    BOOST_CHECK_EQUAL(outContrib1.createTime, inContrib1.createTime);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 1U);
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK(requestManager->cancel(inContrib1.id)); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
     // Register the second request.
     auto const inContrib2 = ::makeContrib(2, "db1");
-    BOOST_REQUIRE_THROW({ requestScheduler->find(inContrib2.id); }, IngestRequestNotFound);
-    BOOST_REQUIRE_THROW({ requestScheduler->cancel(inContrib2.id); }, IngestRequestNotFound);
-    BOOST_REQUIRE_THROW({ requestScheduler->completed(inContrib2.id); }, IngestRequestNotFound);
+    BOOST_REQUIRE_THROW({ requestManager->find(inContrib2.id); }, IngestRequestNotFound);
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK(!requestManager->cancel(inContrib2.id)); });
+    BOOST_REQUIRE_THROW({ requestManager->completed(inContrib2.id); }, IngestRequestNotFound);
     shared_ptr<IngestRequest> inRequest2;
     BOOST_REQUIRE_NO_THROW({ inRequest2 = IngestRequest::test(inContrib2); });
     BOOST_CHECK(inRequest2 != nullptr);
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(inRequest2); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(inContrib2.database), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 1U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(inRequest2); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(inContrib2.database), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
     // Pull the request for processing.
     // The request shall move from the input queue into the in-progress one.
     shared_ptr<IngestRequest> outRequest2;
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest2 = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest2 = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK(outRequest2 != nullptr);
     BOOST_CHECK_EQUAL(outRequest2->transactionContribInfo().id, inContrib2.id);
     BOOST_CHECK_EQUAL(outRequest2->transactionContribInfo().createTime, inContrib2.createTime);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(inContrib2.database), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(inContrib2.database), 1U);
 
     // Make sure any further attepts to pull requests from the empty input queue
     // will time out.
-    BOOST_REQUIRE_THROW({ outRequest2 = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW({ outRequest2 = requestManager->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Cancel the request while it's in the in-progress queue.
     // The cancelled request will remain in the queue because of
     // the advisory cancellation.
     TransactionContribInfo outContrib2;
-    BOOST_REQUIRE_NO_THROW({ outContrib2 = requestScheduler->cancel(inContrib2.id); });
-    BOOST_CHECK_EQUAL(outContrib2.id, inContrib2.id);
-    BOOST_CHECK_EQUAL(outContrib2.createTime, inContrib2.createTime);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(inContrib2.database), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 1U);
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK(requestManager->cancel(inContrib2.id)); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(inContrib2.database), 1U);
 
     // Notify the manager that the request processing has finished.
     // The request shall move from the in-progress queue into the output one.
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->completed(inContrib2.id); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 2U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->completed(inContrib2.id); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
-    // Cancel the request while it's in the output queue.
-    // The cancelled request will remain in the queue.
-    BOOST_REQUIRE_NO_THROW({ outContrib2 = requestScheduler->cancel(inContrib2.id); });
-    BOOST_CHECK_EQUAL(outContrib2.id, inContrib2.id);
-    BOOST_CHECK_EQUAL(outContrib2.createTime, inContrib2.createTime);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 2U);
+    // Cancel the request that has already finished.
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK(!requestManager->cancel(inContrib2.id)); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
     // Cleanup the BOOST ASIO service to prevent the nasty SIGABRT of the process.
     io_service.stop();
@@ -289,7 +271,7 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
             });
 
     shared_ptr<IngestResourceMgrT> const resourceMgr = IngestResourceMgrT::create();
-    shared_ptr<IngestRequestMgr> const requestScheduler = IngestRequestMgr::test(resourceMgr);
+    shared_ptr<IngestRequestMgr> const requestManager = IngestRequestMgr::test(resourceMgr);
 
     // The concurrency limit of 2 set below for the database should be set
     // before registering requests. Otherwise, the limit won't be recognised.
@@ -301,149 +283,136 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
     auto const inContrib_1_of_db1 = ::makeContrib(1001, db1);
     auto const inContrib_2_of_db1 = ::makeContrib(1002, db1);
     auto const inContrib_3_of_db1 = ::makeContrib(1003, db1);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_1_of_db1)); });
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_2_of_db1)); });
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_3_of_db1)); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_1_of_db1)); });
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_2_of_db1)); });
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_3_of_db1)); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 0U);
 
     // Schedule two requests. The scheduler should not block the current thread.
     shared_ptr<IngestRequest> outRequest;
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_1_of_db1.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 1U);
 
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_2_of_db1.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
 
     // This attempt should block since we're about to exceed the concurrency limit
     // specified for the database.
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW({ outRequest = requestManager->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Submit 3 more requests in a scope of a different database.
     char const* db2 = "db2";
     auto const inContrib_1_of_db2 = ::makeContrib(2001, db2);
     auto const inContrib_2_of_db2 = ::makeContrib(2002, db2);
     auto const inContrib_3_of_db2 = ::makeContrib(2003, db2);
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_1_of_db2)); });
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_2_of_db2)); });
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_3_of_db2)); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 4U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_1_of_db2)); });
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_2_of_db2)); });
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_3_of_db2)); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 4U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db2), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 0U);
 
     // Schedule three requests. The scheduler should not block the current thread.
     // All scheduled requests should belong to the second database that has no
     // resource limit.
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_1_of_db2.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db2), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db2), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 1U);
 
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_2_of_db2.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db2), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 4U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db2), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 4U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 2U);
 
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_3_of_db2.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db2), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 5U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db2), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 5U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     // This attempt should block since we've run out of the resource unconstrained
     // requests of the second database, and we would still exceed the concurrency limit
     // specified for the first database.
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW({ outRequest = requestManager->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Now declare one in-progress request of tht first database
     // as completed. This should unblock us from scheduling the remaing
     // request of the database.
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->completed(inContrib_1_of_db1.id); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db2), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 4U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 1U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->completed(inContrib_1_of_db1.id); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db2), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 4U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_3_of_db1.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 5U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 5U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     // Submit more requests in a scope of the first database.
     auto const inContrib_4_of_db1 = ::makeContrib(1004, db1);
     auto const inContrib_5_of_db1 = ::makeContrib(1005, db1);
     auto const inContrib_6_of_db1 = ::makeContrib(1006, db1);
     auto const inContrib_7_of_db1 = ::makeContrib(1007, db1);
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_4_of_db1)); });
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_5_of_db1)); });
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_6_of_db1)); });
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_7_of_db1)); });
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_4_of_db1)); });
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_5_of_db1)); });
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_6_of_db1)); });
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_7_of_db1)); });
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 4U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 4U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 5U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 4U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 4U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 5U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     // Furher increase concurrency limit of the first database. This should *NOT*
     // unblock the scheduler because the change gets into affect when
@@ -452,67 +421,59 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
     // the input queue, finishing request processing.
     resourceMgr->setAsyncProcLimit(db1, 3);
 
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 4U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 4U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 5U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 1U);
+    BOOST_REQUIRE_THROW({ outRequest = requestManager->next(expirationIvalMs); }, IngestRequestTimerExpired);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 4U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 4U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 5U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     // Test the above-mentioned condition by cancelling one of the input
     // requests of the first database.
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->cancel(inContrib_4_of_db1.id); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 5U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 2U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->cancel(inContrib_4_of_db1.id); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 5U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_5_of_db1.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 6U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 6U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     // Now we should be locked up since the number of in-progress requests
     // for the first database has reached the extended by 1 limit.
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW({ outRequest = requestManager->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Mark one of those requests as completed and make another try.
     // The scheduler should let us move by one request only and then get
     // locked again.
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->completed(inContrib_2_of_db1.id); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 5U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 3U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->completed(inContrib_2_of_db1.id); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 5U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_6_of_db1.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 6U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 6U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW({ outRequest = requestManager->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Extend the limit byy 2 and add one more request for the for database.
     // This will allow the scheduler to schedule 2 requests because the limits
@@ -521,40 +482,36 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
     resourceMgr->setAsyncProcLimit(db1, 5);
 
     auto const inContrib_8_of_db1 = ::makeContrib(1008, db1);
-    BOOST_REQUIRE_NO_THROW({ requestScheduler->submit(IngestRequest::test(inContrib_8_of_db1)); });
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 2U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 6U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 3U);
+    BOOST_REQUIRE_NO_THROW({ requestManager->submit(IngestRequest::test(inContrib_8_of_db1)); });
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 2U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 6U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_7_of_db1.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 1U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 7U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 4U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(db1), 1U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 7U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 4U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     timer->start();
-    BOOST_REQUIRE_NO_THROW({ outRequest = requestScheduler->next(); });
+    BOOST_REQUIRE_NO_THROW({ outRequest = requestManager->next(); });
     timer->cancel();
     BOOST_CHECK_EQUAL(outRequest->transactionContribInfo().id, inContrib_8_of_db1.id);
 
-    BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 0U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 8U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db1), 5U);
-    BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
-    BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 3U);
+    BOOST_CHECK_EQUAL(requestManager->inputQueueSize(), 0U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(), 8U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db1), 5U);
+    BOOST_CHECK_EQUAL(requestManager->inProgressQueueSize(db2), 3U);
 
     // No more input requests are available at this point.
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW({ outRequest = requestManager->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Cleanup the BOOST ASIO service to prevent the nasty SIGABRT of the process.
     io_service.stop();
