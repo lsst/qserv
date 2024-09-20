@@ -171,7 +171,8 @@ RUN pip3 install \
     sqlalchemy \
     sqlalchemy-stubs \
     types-PyYAML \
-    types-requests
+    types-requests \
+    requests_toolbelt
 
 RUN useradd --create-home --uid 1000 --shell /bin/bash qserv
 
@@ -282,4 +283,5 @@ RUN pip3 install \
     "mysql-connector-python==8.0.31" \
     pyyaml \
     requests \
+    requests_toolbelt \
     sqlalchemy
