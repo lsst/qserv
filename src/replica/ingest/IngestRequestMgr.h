@@ -147,10 +147,10 @@ public:
     void submit(std::shared_ptr<IngestRequest> const& request);
 
     /**
-     * Cancel a request by its unique identifier.
+     * Cancel a request by its unique identifier if the request is still queued or processed.
      *
-     * - The request has to exist and be found in any of three collections.
-     * - Requests found in the output queue can't be cancelled.
+     * - The request has to exist and be found in any of those collections.
+     * - Completed or previously cancelled requests can't be cancelled.
      * - Requests in the final stage of the processing while the data are already being
      *   ingested into the corresponding MySQL table can't be cancelled as well.
      * - Upon successful completion of the operation the status of the request
@@ -158,16 +158,15 @@ public:
      *   had been found completed by the time when the cancellation request was
      *   made the current status of the request will be retained. Cancellation operations
      *   for requests in the latter states are also considered as successful.
-     *   It's up to a caller of the method to inspect the returned object descriptor to
-     *   see the actual status of the request.
+     *   It's up to a caller of the method to use the request lookup method find() and
+     *   inspect the returned object descriptor to see the actual status of the request.
      * - The method may also throw exception should any problem happened while
      *   the method using other services (the Replication system's database, etc.).
      *
      * @param id The unique identifier of a request to be cancelled.
-     * @return The updated descriptor of the request.
-     * @throw IngestRequestNotFound If the request is unknown to the manager.
+     * @return 'true' if the request was found and successfully cancelled (or marked for cancellation).
      */
-    TransactionContribInfo cancel(unsigned int id);
+    bool cancel(unsigned int id);
 
     /**
      * Retrieves the next request from the input queue or block the calling
@@ -228,9 +227,6 @@ public:
      */
     size_t inProgressQueueSize(std::string const& databaseName = std::string()) const;
 
-    /// @return The number of the completed/failed/cancelled requests in the output queue.
-    size_t outputQueueSize() const;
-
 private:
     /// @see method IngestRequestMgr::create()
     IngestRequestMgr(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& workerName);
@@ -275,8 +271,9 @@ private:
     /// elements are added to the back of the queues.
     std::map<std::string, std::list<std::shared_ptr<IngestRequest>>> _input;
 
+    /// Requests that are being processed by the threads are indexed by their unique
+    /// identifiers.
     std::map<unsigned int, std::shared_ptr<IngestRequest>> _inProgress;
-    std::map<unsigned int, std::shared_ptr<IngestRequest>> _output;
 
     /// The maximum number of concurrent requests to be processed for a database.
     /// A value of 0 means there is no limit.

@@ -128,8 +128,8 @@ json IngestHttpSvcMod::_asyncCancelRequest() const {
     checkApiVersion(__func__, 13);
 
     auto const id = stoul(params().at("id"));
-    auto const contrib = _ingestRequestMgr->cancel(id);
-    return json::object({{"contrib", contrib.toJson()}});
+    _ingestRequestMgr->cancel(id);
+    return json::object({{"contrib", _ingestRequestMgr->find(id).toJson()}});
 }
 
 json IngestHttpSvcMod::_asyncTransRequests() const {
@@ -158,7 +158,8 @@ json IngestHttpSvcMod::_asyncTransCancelRequests() const {
     json contribsJson = json::array();
     for (auto& contrib : contribs) {
         try {
-            contribsJson.push_back(_ingestRequestMgr->cancel(contrib.id).toJson());
+            _ingestRequestMgr->cancel(contrib.id);
+            contribsJson.push_back(_ingestRequestMgr->find(contrib.id).toJson());
         } catch (IngestRequestNotFound const& ex) {
             // Ignore the false-positive error condition for the inactive requests that don't
             // have in-memory representation. These requests only exist in the persistent state

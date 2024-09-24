@@ -215,11 +215,6 @@ size_t IngestRequestMgr::inProgressQueueSize(string const& databaseName) const {
     return itr->second;
 }
 
-size_t IngestRequestMgr::outputQueueSize() const {
-    unique_lock<mutex> lock(_mtx);
-    return _output.size();
-}
-
 IngestRequestMgr::IngestRequestMgr(shared_ptr<ServiceProvider> const& serviceProvider,
                                    string const& workerName)
         : _serviceProvider(serviceProvider),
@@ -240,10 +235,6 @@ TransactionContribInfo IngestRequestMgr::find(unsigned int id) {
     auto const inProgressItr = _inProgress.find(id);
     if (inProgressItr != _inProgress.cend()) {
         return inProgressItr->second->transactionContribInfo();
-    }
-    auto const outputItr = _output.find(id);
-    if (outputItr != _output.cend()) {
-        return outputItr->second->transactionContribInfo();
     }
     try {
         // This extra test is needed to allow unit testing the class w/o
@@ -288,7 +279,7 @@ void IngestRequestMgr::submit(shared_ptr<IngestRequest> const& request) {
     }
 }
 
-TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
+bool IngestRequestMgr::cancel(unsigned int id) {
     unique_lock<mutex> lock(_mtx);
     // Scan input queues of all active databases.
     for (auto&& databaseItr : _input) {
@@ -304,7 +295,6 @@ TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
             shared_ptr<IngestRequest> const request = *itr;
             request->cancel();
             queue.erase(itr);
-            _output[id] = request;
             // Clear the queue and the dictionary if this was the very last element
             // in a scope of the database. Otherwise, refresh the concurrency limit
             // for the database in case if it was updated by the ingest workflow.
@@ -318,7 +308,7 @@ TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
                     _cv.notify_all();
                 }
             }
-            return request->transactionContribInfo();
+            return true;
         }
     }
     auto const inProgressItr = _inProgress.find(id);
@@ -329,15 +319,10 @@ TransactionContribInfo IngestRequestMgr::cancel(unsigned int id) {
         // may be involved into the blocking operations such as reading/writing
         // from disk, network, or interacting with MySQL at this time.
         inProgressItr->second->cancel();
-        return inProgressItr->second->transactionContribInfo();
+        return true;
     }
-    auto const outputItr = _output.find(id);
-    if (outputItr != _output.cend()) {
-        // No cancellation needed for contributions that have already been processed.
-        // A client will receive the actual completion status of the request.
-        return outputItr->second->transactionContribInfo();
-    }
-    throw IngestRequestNotFound(context_ + string(__func__) + " request " + to_string(id) + " was not found");
+    // No such request found, or the request was already completed.
+    return false;
 }
 
 shared_ptr<IngestRequest> IngestRequestMgr::next() {
@@ -381,7 +366,6 @@ void IngestRequestMgr::completed(unsigned int id) {
                                     " was not found");
     }
     shared_ptr<IngestRequest> const request = inProgressItr->second;
-    _output[id] = request;
     _inProgress.erase(id);
     string const databaseName = request->transactionContribInfo().database;
     --(_concurrency[databaseName]);
