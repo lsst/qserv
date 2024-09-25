@@ -140,6 +140,16 @@ RUN cd /tmp \
     && cd /tmp \
     && rm -rf cpp-httplib
 
+RUN cd /tmp \
+    && git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp \
+    && mkdir aws-sdk-cpp/build \
+    && cd aws-sdk-cpp/build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_ONLY="s3" -DUSE_TLS_V1_3=on -DCPP_STANDARD=17 \
+    && cmake --build . \
+    && cmake --install . \
+    && cd /tmp \
+    && rm -rf aws-sdk-cpp
+
 RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && echo /usr/local/lib64 >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
@@ -256,6 +266,9 @@ COPY --from=lite-build /usr/local/bin/xrootd /usr/local/bin/
 COPY --from=lite-build /usr/local/bin/cmsd /usr/local/bin/
 COPY --from=lite-build /usr/local/bin/xrdfs /usr/local/bin/
 COPY --from=lite-build /usr/local/lib64/libcpp-httplib.so /usr/local/lib64/
+
+COPY --from=lite-build /usr/local/lib64/libaws-*.so /usr/local/lib64/
+COPY --from=lite-build /usr/local/lib64/libs2n.so /usr/local/lib64/
 
 RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && echo /usr/local/lib64 >> /etc/ld.so.conf.d/local.conf \
