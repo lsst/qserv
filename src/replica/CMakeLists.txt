@@ -41,6 +41,8 @@ target_link_libraries(replica PUBLIC
     crypto
     curl
     cpp-httplib
+    aws-cpp-sdk-core
+    aws-cpp-sdk-s3
 )
 
 function(REPLICA_UTILS)
