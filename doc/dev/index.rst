@@ -5,9 +5,9 @@
 
 .. highlight:: sql
 
-###############
-Developer Guide
-###############
+#################
+Developer's Guide
+#################
 
 .. toctree::
    :maxdepth: 2

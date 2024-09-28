@@ -3,13 +3,12 @@
    **Information in this guide is known to be outdated.** A documentation sprint is underway which will
    include updates and revisions to this guide.
 
-####################
-Administration Guide
-####################
+#####################
+Administrator's Guide
+#####################
 
 .. toctree::
    :maxdepth: 4
 
    k8s
-   qserv-ingest/index
    test-set
