@@ -7,58 +7,96 @@
   <p> Welcome! This is the documentation for Qserv {{ version|e }}, last updated {{ last_updated|e }}. </p>
 
   <p>Qserv is an open source <a href="reference/glossary.html#term-MPP">MPP</a> SQL database system designed
-  originally to host the astronomical catalogs of the <a href="reference/glossary.html#term-LSST">Legacy
-  Survey of Space and Time</a> to be conducted by the
-  <a href="https://www.lsst.org/about"> Rubin Observatory</a>.</p>
+  originally to host the astronomical catalogs of the <a href="https://rubinobservatory.org/explore/lsst" target="_blank">Legacy
+  Survey of Space and Time</a>&nbsp;<i class="fa fa-external-link"></i> to be conducted by the
+  <a href="https://www.lsst.org/about" target="_blank"> Rubin Observatory</a>&nbsp;<i class="fa fa-external-link"></i>.</p>
 
-  <p><strong>General documentation for Qserv:</strong></p>
-
-  <table class="contentstable"><tr>
-    <td width="40%" style="padding-left:2em;">
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto('intro/index') }}">Introduction</a><br/>
-        <span class="linkdescr">start here</span>
-      </p>
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto('admin/index') }}">Administration Guide</a><br/>
-        <span class="linkdescr">requirements, installation, montitoring, and tuning</span>
-      </p>
-    </td>
-    <td width="40%" style="padding-left:2em;">
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto('user/index') }}">User Guide</a><br/>
-        <span class="linkdescr">how to ingest and query data</span>
-      </p>
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto('dev/index') }}">Developer Guide</a><br/>
-        <span class="linkdescr">under the hood</span>
-      </p>
-    </td>
-  </tr></table>
-  <br>
-
-  <p><strong>Indices and tables:</strong></p>
-
-  <table class="contentstable"><tr>
-    <td width="40%" style="padding-left:2em;">
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto('genindex') }}">General index</a><br/>
-        <span class="linkdescr">all terms and concepts, alphabetically</span>
-      </p>
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto('reference/glossary') }}">Glossary</a><br/>
-        <span class="linkdescr">Qserv terms explained</span>
-      </p>
-    </td>
-    <td width="40%" style="padding-left:2em;">
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto('reference/contents') }}">Full table of contents</a><br/>
-        <span class="linkdescr">a list of all sections and subsections</span>
-      </p>
-    </td>
-  </tr></table>
-  <br>
-
-  <p><strong>External links:</strong></p>
+  <h2 style="margin-top:1em">General documentation for Qserv</h2>
+  <table class="contentstable">
+    <tbody>
+      <tr>
+        <td width="30%">
+          <a class="biglink" href="{{ pathto('intro/index') }}">Introduction</a>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; what Qserv is and what makes it different from other RDBMS
+        </td>
+      </tr>
+      <tr>
+        <td width="30%">
+          <a class="biglink" href="{{ pathto('user/index') }}">User's Guide</a>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; submitting queries and interpreting results
+        </td>
+      </tr>
+      <tr>
+        <td width="30%">
+          <a class="biglink" href="{{ pathto('admin/index') }}">Administrator's Guide</a>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; installing, configuring and managing Qserv
+        </td>
+      </tr>
+      <tr></tr>
+        <td width="30%">
+          <a class="biglink" href="{{ pathto('ingest/index') }}">Ingesting Catalogs</a>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; interfaces and tools for ingesting and managing data in Qserv
+        </td>
+      </tr>
+      <tr>
+        <td width="30%">
+          <a class="biglink" href="{{ pathto('dev/index') }}">Developer's Guide</a>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; how Qserv is implemented and how to contribute into it
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <h2 style="margin-top:1em">Indices and tables</h2>
+  <table class="contentstable">
+    <tbody>
+      <tr>
+        <td width="30%">
+          <p><a class="biglink" href="{{ pathto('genindex') }}">General index</a></p>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; presents all terms and concepts, alphabetically
+        </td>
+      </tr>
+      <tr>
+        <td width="30%">
+          <p><a class="biglink" href="{{ pathto('reference/glossary') }}">Glossary</a></p>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; Qserv terms explained
+        </td>
+      </tr>
+      <tr>
+        <td width="30%">
+          <p><a class="biglink" href="{{ pathto('reference/contents') }}">Full table of contents</a></p>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; list all sections and subsections
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <h2 style="margin-top:1em">External links</h2>
+  <table class="contentstable">
+    <tbody>
+      <tr>
+        <td width="30%">
+          <p><a class="biglink" href="https://github.com/lsst/qserv" target="_blank">Source code</a>&nbsp;<i class="fa fa-external-link"></i></p>
+        </td>
+        <td style="padding-left:1em;">
+          &ndash; the source code on GitHub
+        </td>
+      </tr>
+    </tbody>
+  </table>
 
 {% endblock %}
