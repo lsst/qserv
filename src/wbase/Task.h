@@ -181,6 +181,18 @@ public:
             std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
 
+    //&&&
+    static std::vector<Ptr> createTasksForUnitTest(
+            std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
+            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
+            protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
+            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr
+            //&&&mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const&
+            // sqlConnMgr,
+            //&&&std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
+            //&&&uint16_t resultsHttpPort = 8080);
+    );
+
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
     std::string user;  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
