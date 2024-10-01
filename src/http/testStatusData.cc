@@ -43,7 +43,7 @@ using namespace lsst::qserv::http;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-BOOST_AUTO_TEST_CASE(CzarContactInfo) {
+BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     string const replicationInstanceId = "repliInstId";
     string const replicationAuthKey = "repliIAuthKey";
 
@@ -164,6 +164,54 @@ BOOST_AUTO_TEST_CASE(CzarContactInfo) {
     BOOST_REQUIRE(wqsdA->qIdDoneDeleteFiles.empty());
     BOOST_REQUIRE(wqsdA->qIdDoneKeepFiles.empty());
     BOOST_REQUIRE(wqsdA->qIdDeadUberJobs.empty());
+}
+
+BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
+    string const replicationInstanceId = "repliInstId";
+    string const replicationAuthKey = "repliIAuthKey";
+
+    uint64_t cxrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 5s);
+
+    string const czrName("czar_name");
+    lsst::qserv::CzarIdType const czrId = 32;
+    int czrPort = 2022;
+    string const czrHost("cz_host");
+
+    auto czarA = lsst::qserv::http::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
+    LOGS_ERROR("&&&i a czarA=" << czarA->dump());
+    auto czarAJs = czarA->serializeJson();
+    LOGS_ERROR("&&&i b czarAJs=" << czarAJs);
+
+    auto start = lsst::qserv::CLOCK::now();
+    auto workerA = WorkerContactInfo::create("sd_workerA", "host_w1", "mgmhost_a", 3421, start);
+    LOGS_ERROR("&&&i d workerA=" << workerA->dump());
+    auto jsWorkerA = workerA->serializeJson();
+    LOGS_ERROR("&&&i e jsWorkerA=" << jsWorkerA);
+
+    // WorkerCzarComIssue
+    //&&&auto wccIssueA = lsst::qserv::http::WorkerCzarComIssue::create(workerA, czarA, replicationInstanceId,
+    //replicationAuthKey);
+    auto wccIssueA = lsst::qserv::http::WorkerCzarComIssue::create(replicationInstanceId, replicationAuthKey);
+    wccIssueA->setContactInfo(workerA, czarA);
+    BOOST_REQUIRE(wccIssueA->needToSend() == false);
+    wccIssueA->setThoughtCzarWasDead(true);
+    BOOST_REQUIRE(wccIssueA->needToSend() == true);
+
+    LOGS_ERROR("&&&i f wccIssue=" << wccIssueA->dump());
+
+    auto jsIssueA = wccIssueA->serializeJson();
+    LOGS_ERROR("&&&i g jsIssue=" << *jsIssueA);
+
+    auto wccIssueA1 = lsst::qserv::http::WorkerCzarComIssue::createFromJson(*jsIssueA, replicationInstanceId,
+                                                                            replicationAuthKey);
+    LOGS_ERROR("&&&i i wccIssueA1=" << wccIssueA1->dump());
+    LOGS_ERROR("&&&i i wccIssueA=" << wccIssueA->dump());
+    auto jsIssueA1 = wccIssueA1->serializeJson();
+    LOGS_ERROR("&&&i i jsIssueA1=" << *jsIssueA1);
+    LOGS_ERROR("&&&i i jsIssueA=" << *jsIssueA);
+    BOOST_REQUIRE(*jsIssueA == *jsIssueA1);
+
+    // &&& Test with items in lists.
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -69,7 +69,6 @@ void UserQueryInfo::addUberJob(std::shared_ptr<UberJobData> const& ujData) {
     _uberJobMap[ujId] = ujData;
 }
 
-
 void UserQueryInfo::cancelFromCzar() {
     if (_cancelledByCzar.exchange(true)) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " already cancelledByCzar");

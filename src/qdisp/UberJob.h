@@ -73,8 +73,6 @@ public:
         return _uberJobId;
     }  // TODO:UJ change name when JobBase no longer needed.
     std::string const& getIdStr() const override { return _idStr; }
-    //&&&std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
-    //&&&std::shared_ptr<util::QdispPool> getQdispPool() { return _qdispPool; }
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() override {
         return _jobStatus;
@@ -131,7 +129,7 @@ private:
     bool _setStatusIfOk(qmeta::JobStatus::State newState, std::string const& msg);
 
     /// unassign all Jobs in this UberJob and set the Executive flag to indicate that Jobs need
-    /// reassignment.
+    /// reassignment. The list of _jobs is cleared, so multiple calls of this should be harmless.
     void _unassignJobs();
 
     /// Import and error from trying to collect results.

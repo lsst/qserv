@@ -39,7 +39,7 @@
 namespace lsst::qserv::http {
 
 /// This class just contains the czar id and network contact information.
-class CzarContactInfo {
+class CzarContactInfo : public std::enable_shared_from_this<CzarContactInfo> {
 public:
     using Ptr = std::shared_ptr<CzarContactInfo>;
     std::string cName(const char* fnc) const { return std::string("CzarContactInfo") + fnc; }
@@ -163,19 +163,6 @@ public:
         std::lock_guard<std::mutex> lg(_rMtx);
         return _regUpdate;
     }
-
-    /* &&&
-    /// Sets _wStartupTime to startupTime, but only if _wStartupTime was 0.
-    /// @returns true if _wStartupTime was set.
-    bool setWStartupTime(uint64_t startupTime) { //&&& del if not used
-        std::lock_guard<std::mutex> lg(_rMtx);
-        if (_wStartupTime == 0) {
-            _wStartupTime = startupTime;
-            return true;
-        }
-        return false;
-    }
-    */
 
     /// @return true if startupTime equals _wStartupTime or _wStartupTime was never set,
     ///   if _wStartupTime was never set, it is set to startupTime.
@@ -317,15 +304,10 @@ public:
     void parseLists(nlohmann::json const& jsWR, TIMEPOINT updateTm);
 
     /// &&& doc
-    //&&&nlohmann::json serializeResponseJson();
     nlohmann::json serializeResponseJson(uint64_t workerStartupTime);
 
     /// &&& doc
-    //&&&bool handleResponseJson(nlohmann::json const& jsResp);
     std::pair<bool, bool> handleResponseJson(nlohmann::json const& jsResp);
-
-    /// &&& doc
-    ///&&&void handleCzarRestart();
 
     /// &&& doc
     static void parseListsInto(nlohmann::json const& jsWR, TIMEPOINT updateTm,
@@ -364,6 +346,94 @@ private:
 
     /// _infoMtx must be locked before calling.
     std::string _dump() const;
+};
+
+/// &&& doc
+/// This class is used to send/receive a message from the worker to a specific
+/// czar when there has been a communication issue with the worker sending UberJob
+/// file ready messages. If there have been timeouts, the worker will send this
+/// message to the czar immediately after the worker receives a
+/// WorkerQueryStatusData message from the czar (indicating that communication
+/// is now possible).
+/// If communication with the czar has failed for a long time, the worker
+/// will set "_thoughtCzarWasDead" and delete all incomplete work associated
+/// with that czar. Result files will remain until garbage cleanup or the czar
+/// calls for their removal.
+/// TODO:UJ &&& UberJob complete messages that failed to be sent to the czar
+/// TODO:UJ &&& will be added to this message.
+/// Upon successful completion, the worker will clear all values set by the
+/// the czar.
+/// This message is expected to only be needed rarely.
+class WorkerCzarComIssue {
+public:
+    using Ptr = std::shared_ptr<WorkerCzarComIssue>;
+
+    WorkerCzarComIssue() = delete;
+    ~WorkerCzarComIssue() = default;
+
+    std::string cName(const char* funcN) { return std::string("WorkerCzarComIssue") + funcN; }
+
+    static Ptr create(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_) {
+        return Ptr(new WorkerCzarComIssue(replicationInstanceId_, replicationAuthKey_));
+    }
+
+    static Ptr createFromJson(nlohmann::json const& workerJson, std::string const& replicationInstanceId_,
+                              std::string const& replicationAuthKey_);
+
+    void setThoughtCzarWasDead(bool wasDead) {
+        std::lock_guard lg(_wciMtx);
+        _thoughtCzarWasDead = wasDead;
+    }
+
+    bool getThoughtCzarWasDead() const { return _thoughtCzarWasDead; }
+
+    /// &&& doc
+    bool needToSend() const {
+        std::lock_guard lg(_wciMtx);
+        return _thoughtCzarWasDead;  // &&& or list of failed transmits not empty.
+    }
+
+    /// &&& doc
+    void setContactInfo(WorkerContactInfo::Ptr const& wInfo_, CzarContactInfo::Ptr const& czInfo_) {
+        std::lock_guard lgWci(_wciMtx);
+        if (_wInfo == nullptr && wInfo_ != nullptr) _wInfo = wInfo_;
+        if (_czInfo == nullptr && czInfo_ != nullptr) _czInfo = czInfo_;
+    }
+
+    CzarContactInfo::Ptr getCzarInfo() const {
+        std::lock_guard lgWci(_wciMtx);
+        return _czInfo;
+    }
+
+    WorkerContactInfo::Ptr getWorkerInfo() const {
+        std::lock_guard lgWci(_wciMtx);
+        return _wInfo;
+    }
+
+    /// &&& doc
+    std::shared_ptr<nlohmann::json> serializeJson();
+
+    /// &&& doc
+    nlohmann::json serializeResponseJson();
+
+    std::string dump() const;
+
+private:
+    WorkerCzarComIssue(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_)
+            : _replicationInstanceId(replicationInstanceId_), _replicationAuthKey(replicationAuthKey_) {}
+
+    std::string _dump() const;
+
+    WorkerContactInfo::Ptr _wInfo;
+    CzarContactInfo::Ptr _czInfo;
+    std::string const _replicationInstanceId;  ///< &&& doc
+    std::string const _replicationAuthKey;     ///< &&& doc
+
+    /// Set to by the worker true if the czar was considered dead, and reset to false
+    /// after the czar has acknowledged successful reception of this message.
+    bool _thoughtCzarWasDead = false;
+
+    mutable std::mutex _wciMtx;  ///< protects all members.
 };
 
 }  // namespace lsst::qserv::http

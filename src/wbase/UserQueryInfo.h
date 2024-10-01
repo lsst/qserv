@@ -49,7 +49,9 @@ public:
     UserQueryInfo(UserQueryInfo const&) = delete;
     UserQueryInfo& operator=(UserQueryInfo const&) = delete;
 
-    static Ptr create(QueryId qId, CzarIdType czarId) { return std::shared_ptr<UserQueryInfo>(new UserQueryInfo(qId, czarId)); }
+    static Ptr create(QueryId qId, CzarIdType czarId) {
+        return std::shared_ptr<UserQueryInfo>(new UserQueryInfo(qId, czarId));
+    }
 
     ~UserQueryInfo() = default;
 

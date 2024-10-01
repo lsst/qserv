@@ -343,6 +343,18 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
 
     // Return a message containing lists of the queries that were cancelled.
     jsRet = wqsData->serializeResponseJson(foreman()->getWorkerStartupTime());
+
+    // &&& queue sending WorkerCzarComIssue if needed.
+    /* &&&
+    auto const wczComIssue = wCzarInfo->getWorkerCzarComIssue();
+    if (wczComIssue != nullptr && wczComIssue->needToSend()) {
+        LOGS(_log, LOG_LVL_ERROR, "&&& NEED CODE to queue wczComIssue message, do not queue more than one at a
+    time.");
+        // Limit the sending to happening after czar sends status
+    }
+    */
+    wCzarInfo->sendWorkerCzarComIssueIfNeeded(wqsData->getWInfo(), wqsData->getCzInfo());
+
     return jsRet;
 }
 

@@ -147,6 +147,8 @@ public:
 
     std::shared_ptr<ActiveWorkerMap> getActiveWorkerMap() const { return _activeWorkerMap; }
 
+    std::map<QueryId, std::weak_ptr<qdisp::Executive>> getExecMapCopy() const;
+
     /// &&& doc
     void killIncompleteUbjerJobsOn(std::string const& workerId);
 
@@ -220,7 +222,7 @@ private:
     /// Connection to the registry to register the czar and get worker contact information.
     std::shared_ptr<CzarRegistry> _czarRegistry;
 
-    std::mutex _executiveMapMtx;  ///< protects _executiveMap
+    mutable std::mutex _executiveMapMtx;  ///< protects _executiveMap
     std::map<QueryId, std::weak_ptr<qdisp::Executive>>
             _executiveMap;  ///< Map of executives for queries in progress.
 

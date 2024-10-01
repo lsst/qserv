@@ -112,9 +112,10 @@ public:
      * @param sqlConnMgr             - for limiting the number of MySQL connections used for tasks
      */
     static Ptr create(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
-            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
-            std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-            std::shared_ptr<SqlConnMgr> const& sqlConnMgr);
+                      mysql::MySqlConfig const& mySqlConfig,
+                      std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
+                      std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+                      std::shared_ptr<SqlConnMgr> const& sqlConnMgr);
 
     ~Foreman();
 
@@ -134,11 +135,6 @@ public:
 
     /// Process a group of query processing tasks.
     void processTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks);
-
-    /* &&&
-    /// &&& doc
-    std::shared_ptr<wpublish::QueryStatistics> addQueryId(QueryId qId);
-    */
 
     /// Implement the corresponding method of the base class
     nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector);
@@ -194,7 +190,7 @@ private:
     /// Map of czar information for all czars that have contacted this worker.
     std::shared_ptr<wcontrol::WCzarInfoMap> const _wCzarInfoMap;
 
-    static Ptr _globalForeman; ///< Pointer to the global instance.
+    static Ptr _globalForeman;  ///< Pointer to the global instance.
 };
 
 }  // namespace lsst::qserv::wcontrol
