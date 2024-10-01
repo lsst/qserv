@@ -391,6 +391,7 @@ std::vector<std::string> QuerySession::_buildChunkQueries(query::QueryTemplate::
     }
 
     for (auto&& queryTemplate : queryTemplates) {
+        LOGS(_log, LOG_LVL_WARN, "&&&uj QuerySession::_buildChunkQueries qt=" << queryTemplate.dump());
         std::string str = _context->queryMapping->apply(chunkSpec, queryTemplate);
         chunkQueries.push_back(std::move(str));
     }

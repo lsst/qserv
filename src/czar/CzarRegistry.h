@@ -38,7 +38,6 @@
 #include "global/clock_defs.h"
 #include "util/Mutex.h"
 
-
 namespace lsst::qserv::cconfig {
 class CzarConfig;
 }  // namespace lsst::qserv::cconfig
@@ -99,9 +98,11 @@ public:
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it. This
     /// function will wait forever for a valid contact map to be ready.
-    http::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
+    protojson::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
 
-    /// &&& doc
+    /// Send all live workers the `WorkerQueryStatusData` message for
+    /// that worker. This may result in the worker sending back the
+    /// `WorkerCzarComIssue` message if there were communication problems.
     void sendActiveWorkersMessages();
 
     /// Add the query id to the list of queries to end on workers and
@@ -113,7 +114,6 @@ private:
     CzarRegistry() = delete;
     CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
                  std::shared_ptr<ActiveWorkerMap> const& activeWorkerMap);
-
 
     /// This function will keep periodically updating Czar's info in the Replication System's Registry
     /// until _loop is set to false.

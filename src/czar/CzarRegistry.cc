@@ -75,7 +75,6 @@ protojson::WorkerContactInfo::WCMapPtr CzarRegistry::getWorkerContactMap() const
     return _contactMap;
 }
 
-
 void CzarRegistry::_registryUpdateLoop() {
     auto const method = http::Method::POST;
     string const url = "http://" + _czarConfig->replicationRegistryHost() + ":" +
@@ -181,7 +180,6 @@ protojson::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann:
     return wMap;
 }
 
-
 bool CzarRegistry::_compareMapContactInfo(protojson::WorkerContactInfo::WCMap const& other) const {
     VMUTEX_HELD(_cmapMtx);
     if (_contactMap == nullptr) {
@@ -238,16 +236,15 @@ void CzarRegistry::endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults) 
 }
 
 void CzarRegistry::endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults) {
-    lock_guard<mutex> lck(_mapMtx);
     // Add query id to the appropriate list.
     if (deleteWorkerResults) {
-        _activeWorkerMap.addToDoneDeleteFiles(qId);
+        _activeWorkerMap->addToDoneDeleteFiles(qId);
     } else {
-        _activeWorkerMap.addToDoneKeepFiles(qId);
+        _activeWorkerMap->addToDoneKeepFiles(qId);
     }
 
     // With lists updated, send out messages.
-    _activeWorkerMap.sendActiveWorkersMessages();
+    _activeWorkerMap->sendActiveWorkersMessages();
 }
 
 }  // namespace lsst::qserv::czar
