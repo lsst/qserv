@@ -36,6 +36,8 @@
 #include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
 #include "util/Bug.h"
+#include "util/InstanceCount.h"  //&&&
+#include "util/Histogram.h"      //&&&
 #include "util/TimeUtils.h"
 
 using namespace std;
@@ -332,7 +334,7 @@ bool CzarFamilyMap::_read() {
     LOGS(_log, LOG_LVL_TRACE, "CzarFamilyMap::_read() start");
     // If replacing the map, this may take a bit of time, but it's probably
     // better to wait for new maps if something changed.
-    std::lock_guard gLock(_familyMapMtx);
+    std::lock_guard gLock(_familyMapMtx); // &&& check waiting is really needed
     qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap(_lastUpdateTime);
     if (_lastUpdateTime == qChunkMap.updateTime) {
         LOGS(_log, LOG_LVL_DEBUG,
@@ -341,9 +343,6 @@ bool CzarFamilyMap::_read() {
                              << " db=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
         return false;
     }
-
-    // &&& TODO:UJ Before makeNewMaps(), get a list of workers considered to be alive by
-    // czar::_activeWorkerMap
 
     // Make the new maps.
     auto czConfig = cconfig::CzarConfig::instance();
@@ -360,9 +359,13 @@ bool CzarFamilyMap::_read() {
     return true;
 }
 
+util::HistogramRolling histoMakeNewMaps("&&&uj histoMakeNewMaps", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+
 std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
         qmeta::QMetaChunkMap const& qChunkMap, bool usingChunkSize) {
     // Create new maps.
+    util::InstanceCount ic("CzarFamilyMap::makeNewMaps&&&");
+    auto startMakeMaps = CLOCK::now();  //&&&
     std::shared_ptr<FamilyMapType> newFamilyMap = make_shared<FamilyMapType>();
 
     // Workers -> Databases map
@@ -419,6 +422,10 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
         }
     }
 
+    auto endMakeMaps = CLOCK::now();                                           //&&&
+    std::chrono::duration<double> secsMakeMaps = endMakeMaps - startMakeMaps;  // &&&
+    histoMakeNewMaps.addEntry(endMakeMaps, secsMakeMaps.count());              //&&&
+    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoMakeNewMaps.getString(""));
     return newFamilyMap;
 }
 
