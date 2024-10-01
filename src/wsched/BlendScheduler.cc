@@ -270,6 +270,7 @@ void BlendScheduler::commandStart(util::Command::Ptr const& cmd) {
         LOGS(_log, LOG_LVL_ERROR, "BlendScheduler::commandStart scheduler not found");
     }
     _infoChanged = true;
+    LOGS(_log, LOG_LVL_DEBUG, "BlendScheduler::commandStart &&& end");
 }
 
 void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
