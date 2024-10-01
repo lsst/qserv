@@ -1,7 +1,5 @@
-.. warning::
 
-   **Information in this guide is known to be outdated.** A documentation sprint is underway which will
-   include updates and revisions to this guide.
+.. _admin:
 
 #####################
 Administrator's Guide
@@ -11,3 +9,6 @@ Administrator's Guide
    :maxdepth: 4
 
    k8s
+   row-counters
+   data-table-indexes
+   director-index

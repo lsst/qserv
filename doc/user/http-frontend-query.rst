@@ -40,26 +40,9 @@ Where:
   The optional name of the default database for queries where no such name was provided explicitly.
 
 ``binary_encoding`` : *string* = ``hex``
-  The optional format for encoding the binary data into JSON:
+  The optional binary encoding of the binary data in the table. For further details see:
 
-  - ``hex`` - for serializing each byte into the hexadecimal format of 2 ASCII characters per each byte of
-    the binary data, where the encoded characters will be in a range of ``0 .. F``. In this case,
-    the encoded value will be packaged into the JSON string.
-  - ``b64`` - for serializing bytes into a string using the Base64 algorithm with
-    padding (to ensure 4-byte alignment).
-  - ``array`` - for serializing bytes into the JSON array of numbers in a range of ``0 … 255``.
-
-  Here is an example of the same sequence of 4-bytes encoded into the hexadecimal format:
-
-  .. code-block::
-
-    "0A11FFD2"
-
-  The array representation of the same binary sequence would look like this:
-
-  .. code-block::
-
-    [10,17,255,210]
+  - :ref:`ingest-general-binary-encoding`
 
 A call to this service will block a client application until one of the following events will happen:
 
