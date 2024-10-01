@@ -255,7 +255,7 @@ bool ActiveWorker::compareContactInfo(http::WorkerContactInfo const& wcInfo) con
     return wInfo_->isSameContactInfo(wcInfo);
 }
 
-void ActiveWorker::setWorkerContactInfo(http::WorkerContactInfo::Ptr const& wcInfo) {
+void ActiveWorker::setWorkerContactInfo(protojson::WorkerContactInfo::Ptr const& wcInfo) {
     LOGS(_log, LOG_LVL_INFO, cName(__func__) << " new info=" << wcInfo->dump());
     lock_guard<mutex> lg(_aMtx);
     _wqsData->setWInfo(wcInfo);
@@ -271,8 +271,9 @@ void ActiveWorker::_changeStateTo(State newState, double secsSinceUpdate, string
 
 void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double timeoutDeadSecs,
                                               double maxLifetime) {
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " start");
     bool newlyDeadWorker = false;
-    http::WorkerContactInfo::Ptr wInfo_;
+    protojson::WorkerContactInfo::Ptr wInfo_;
     {
         lock_guard<mutex> lg(_aMtx);
         wInfo_ = _wqsData->getWInfo();
@@ -280,14 +281,18 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " no WorkerContactInfo");
             return;
         }
-        double secsSinceUpdate = (wInfo_ == nullptr) ? timeoutDeadSecs : wInfo_->timeSinceRegUpdateSeconds();
+        double secsSinceUpdate = wInfo_->timeSinceRegUpdateSeconds();
+        LOGS(_log, LOG_LVL_TRACE,
+             cName(__func__) << " wInfo=" << wInfo_->dump()
+                             << " secsSince=" << wInfo_->timeSinceRegUpdateSeconds()
+                             << " secsSinceUpdate=" << secsSinceUpdate);
 
         // Update the last time the registry contacted this worker.
+        // TODO:UJ - This needs to be added to the dashboard.
         switch (_state) {
             case ALIVE: {
                 if (secsSinceUpdate >= timeoutAliveSecs) {
                     _changeStateTo(QUESTIONABLE, secsSinceUpdate, cName(__func__));
-                    // &&& Anything else that should be done here?
                 }
                 break;
             }
@@ -307,7 +312,6 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
                     _changeStateTo(ALIVE, secsSinceUpdate, cName(__func__));
                 } else {
                     // Don't waste time on this worker until the registry has heard from it.
-                    // &&& If it's been a really really long time, maybe delete this entry ???
                     return;
                 }
                 break;
@@ -324,29 +328,13 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
 
     shared_ptr<json> jsWorkerReqPtr;
     {
-        lock_guard<mutex> lg(_aMtx);  //&&&  needed ???
-        lock_guard<mutex> mapLg(_wqsData->mapMtx);
-        // Check how many messages are currently being sent to the worker, if at the limit, return
-        if (_wqsData->qIdDoneKeepFiles.empty() && _wqsData->qIdDoneDeleteFiles.empty() &&
-            _wqsData->qIdDeadUberJobs.empty()) {
-            return;
-        }
-        int tCount = _conThreadCount;
-        if (tCount > _maxConThreadCount) {
-            LOGS(_log, LOG_LVL_DEBUG,
-                 cName(__func__) << " not sending message since at max threads " << tCount);
-            return;
-        }
-
         // Go through the _qIdDoneKeepFiles, _qIdDoneDeleteFiles, and _qIdDeadUberJobs lists to build a
         // message to send to the worker.
         jsWorkerReqPtr = _wqsData->serializeJson(maxLifetime);
     }
 
-    // &&& Maybe only send the status message if the lists are not empty ???
-    // Start a thread to send the message. (Maybe these should go on the qdisppool? &&&)
-    // put this in a different function and start the thread.&&&;
-    //&&& _sendStatusMsg(wInfo_, jsWorkerReqPtr);
+    // Always send the message as it's a way to inform the worker that this
+    // czar is functioning and capable of receiving requests.
     Ptr thisPtr = shared_from_this();
     auto sendStatusMsgFunc = [thisPtr, wInfo_, jsWorkerReqPtr](util::CmdData*) {
         thisPtr->_sendStatusMsg(wInfo_, jsWorkerReqPtr);
@@ -354,10 +342,11 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(sendStatusMsgFunc));
     auto qdisppool = czar::Czar::getCzar()->getQdispPool();
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " queuing message");
     qdisppool->queCmd(cmd, 1);
 }
 
-void ActiveWorker::_sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
+void ActiveWorker::_sendStatusMsg(protojson::WorkerContactInfo::Ptr const& wInf,
                                   std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr) {
     auto& jsWorkerReq = *jsWorkerReqPtr;
     auto const method = http::Method::POST;
@@ -378,25 +367,30 @@ void ActiveWorker::_sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
     http::Client client(method, url, jsWorkerReq.dump(), headers);
     bool transmitSuccess = false;
     string exceptionWhat;
+    json response;
     try {
-        json const response = client.readAsJson();
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read start");
+        response = client.readAsJson();
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
         if (0 != response.at("success").get<int>()) {
             bool startupTimeChanged = false;
-            tie(transmitSuccess, startupTimeChanged) = _wqsData->handleResponseJson(response);
+            startupTimeChanged = _wqsData->handleResponseJson(response);
+            transmitSuccess = true;
             if (startupTimeChanged) {
                 LOGS(_log, LOG_LVL_WARN, cName(__func__) << " worker startupTime changed, likely rebooted.");
                 // kill all incomplete UberJobs on this worker.
                 czar::Czar::getCzar()->killIncompleteUbjerJobsOn(wInf->wId);
             }
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " response success=0");
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure response success=0 " << response);
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        LOGS(_log, LOG_LVL_ERROR, requestContext + " transmit failure, ex: " + ex.what());
         exceptionWhat = ex.what();
     }
     if (!transmitSuccess) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure");
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << " transmit failure " << jsWorkerReq.dump() << " resp=" << response);
     }
 }
 
@@ -411,6 +405,17 @@ void ActiveWorker::addDeadUberJob(QueryId qId, UberJobId ujId) {
     _wqsData->addDeadUberJob(qId, ujId, now);
 }
 
+protojson::WorkerContactInfo::Ptr ActiveWorker::getWInfo() const {
+    std::lock_guard lg(_aMtx);
+    if (_wqsData == nullptr) return nullptr;
+    return _wqsData->getWInfo();
+}
+
+ActiveWorker::State ActiveWorker::getState() const {
+    std::lock_guard lg(_aMtx);
+    return _state;
+}
+
 string ActiveWorker::dump() const {
     lock_guard<mutex> lg(_aMtx);
     return _dump();
@@ -422,8 +427,13 @@ string ActiveWorker::_dump() const {
     return os.str();
 }
 
-void ActiveWorkerMap::updateMap(http::WorkerContactInfo::WCMap const& wcMap,
-                                http::CzarContactInfo::Ptr const& czInfo,
+ActiveWorkerMap::ActiveWorkerMap(std::shared_ptr<cconfig::CzarConfig> const& czarConfig)
+        : _timeoutAliveSecs(czarConfig->getActiveWorkerTimeoutAliveSecs()),
+          _timeoutDeadSecs(czarConfig->getActiveWorkerTimeoutDeadSecs()),
+          _maxLifetime(czarConfig->getActiveWorkerMaxLifetimeSecs()) {}
+
+void ActiveWorkerMap::updateMap(protojson::WorkerContactInfo::WCMap const& wcMap,
+                                protojson::CzarContactInfo::Ptr const& czInfo,
                                 std::string const& replicationInstanceId,
                                 std::string const& replicationAuthKey) {
     // Go through wcMap, update existing entries in _awMap, create new entries for those that don't exist,
@@ -432,6 +442,7 @@ void ActiveWorkerMap::updateMap(http::WorkerContactInfo::WCMap const& wcMap,
         auto iter = _awMap.find(wcKey);
         if (iter == _awMap.end()) {
             auto newAW = ActiveWorker::create(wcVal, czInfo, replicationInstanceId, replicationAuthKey);
+            LOGS(_log, LOG_LVL_INFO, cName(__func__) << " AciveWorker created for " << wcKey);
             _awMap[wcKey] = newAW;
             if (_czarCancelAfterRestart) {
                 newAW->setCzarCancelAfterRestart(_czarCancelAfterRestartCzId, _czarCancelAfterRestartQId);
@@ -446,6 +457,7 @@ void ActiveWorkerMap::updateMap(http::WorkerContactInfo::WCMap const& wcMap,
                 // If there is existing information, only host and port values will change.
                 aWorker->setWorkerContactInfo(wcVal);
             }
+            aWorker->getWInfo()->setRegUpdateTime(wcVal->getRegUpdateTime());
         }
     }
 }
