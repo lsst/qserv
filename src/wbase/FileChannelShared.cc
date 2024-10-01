@@ -328,9 +328,7 @@ bool FileChannelShared::kill(string const& note) {
     return _kill(streamMutexLock, note);
 }
 
-bool FileChannelShared::isDead() {
-    return _dead;
-}
+bool FileChannelShared::isDead() { return _dead; }
 
 string FileChannelShared::makeIdStr(int qId, int jId) {
     string str("QID" + (qId == 0 ? "" : to_string(qId) + "#" + to_string(jId)));

@@ -81,7 +81,7 @@ namespace util {
 class AsyncTimer;
 class PriorityCommand;
 class QdispPool;
-}
+}  // namespace util
 
 namespace qdisp {
 
@@ -134,10 +134,10 @@ public:
     void runUberJob(std::shared_ptr<UberJob> const& uberJob);
 
     /// Queue a job to be sent to a worker so it can be started.
-    void queueJobStart(std::shared_ptr<util::PriorityCommand> const& cmd); // &&& delete ???
+    void queueJobStart(std::shared_ptr<util::PriorityCommand> const& cmd);  // &&& delete ???
 
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
-    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd); // &&& delete ???
+    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);  // &&& delete ???
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
@@ -152,6 +152,9 @@ public:
 
     /// Squash all the jobs.
     void squash();
+
+    /// &&& doc
+    void killIncompleteUberJobsOnWorker(std::string const& workerId);
 
     bool getEmpty() { return _empty; }
 
@@ -265,7 +268,8 @@ private:
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
-    std::shared_ptr<util::QdispPool> _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
+    std::shared_ptr<util::QdispPool>
+            _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
 
     std::deque<std::shared_ptr<util::PriorityCommand>> _jobStartCmdList;  ///< list of jobs to start.
 

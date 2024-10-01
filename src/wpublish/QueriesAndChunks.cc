@@ -136,23 +136,8 @@ QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId, CzarIdType czarId
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
     auto czId = task->getCzarId();
-#if 0  // &&& delete upper block
-    unique_lock<mutex> guardStats(_queryStatsMapMtx);
-    auto itr = _queryStatsMap.find(qid);
-    QueryStatistics::Ptr stats;
-    if (_queryStatsMap.end() == itr) {
-        stats = QueryStatistics::create(qid);
-        _queryStatsMap[qid] = stats;
-        throw util::Bug(ERR_LOC, "&&& QueriesAndChunks::addTask entry should already be there"); // &&& replace with error message ???
-    } else {
-        stats = itr->second;
-    }
-    guardStats.unlock();
-#else  // &&&
     auto stats = addQueryId(qid, czId);
-#endif  // &&&
     stats->addTask(task);
-    //&&&task->setQueryStatistics(stats);
 }
 
 /// Update statistics for the Task that was just queued.
@@ -694,7 +679,7 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
 void QueriesAndChunks::killAllQueriesFromCzar(CzarIdType czarId) {
     std::map<QueryId, QueryStatistics::Ptr> qsMap;
     {
-        lock_guard<mutex>  lgQsm(_queryStatsMapMtx);
+        lock_guard<mutex> lgQsm(_queryStatsMapMtx);
         qsMap = _queryStatsMap;
     }
 
