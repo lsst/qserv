@@ -294,7 +294,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
         return true;
     }
     auto executive = uberJob->getExecutive();
-    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
+    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete()) {
         return true;
     }
 
