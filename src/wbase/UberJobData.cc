@@ -113,7 +113,8 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
         workerIdStr = _foreman->chunkInventory()->id();
     } else {
         workerIdStr = "dummyWorkerIdStr";
-        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " _foreman was null, which should only happen in unit tests");
+        LOGS(_log, LOG_LVL_INFO,
+             cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
     json request = {{"version", http::MetaModule::version},
@@ -350,11 +351,21 @@ string UJTransmitCmd::cName(const char* funcN) const {
 }
 
 void UJTransmitCmd::action(util::CmdData* data) {
+    // Make certain _selfPtr is reset before leaving this function.
+    // If a retry is needed, duplicate() is called.
+    class ResetSelf {
+    public:
+        ResetSelf(UJTransmitCmd* ujtCmd) : _ujtCmd(ujtCmd) {}
+        ~ResetSelf() { _ujtCmd->_selfPtr.reset(); }
+        UJTransmitCmd* const _ujtCmd;
+    };
+    ResetSelf resetSelf(this);
+
     _attemptCount++;
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start attempt=" << _attemptCount);
     auto ujPtr = _ujData.lock();
     if (ujPtr == nullptr || ujPtr->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
+        return;
     }
     http::Client client(_method, _url, _requestStr, _headers);
     bool transmitSuccess = false;
@@ -362,17 +373,12 @@ void UJTransmitCmd::action(util::CmdData* data) {
         json const response = client.readAsJson();
         if (0 != response.at("success").get<int>()) {
             transmitSuccess = true;
-            _selfPtr.reset(); // clear so this can be deleted.
         } else {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
-            // &&& maybe add this czId+ujId to a list of failed uberjobs that can be put
-            // &&& status return??? Probably overkill.
-            _selfPtr.reset(); // clear so this can be deleted.
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start d except");
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + _requestContext + " failed, ex: " + ex.what());
     }
 
@@ -380,10 +386,11 @@ void UJTransmitCmd::action(util::CmdData* data) {
         auto sPtr = _selfPtr;
         if (_foreman != nullptr && sPtr != nullptr) {
             // Do not reset _selfPtr as re-queuing may be needed several times.
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no response for transmit, putting on failed transmit queue.");
+            LOGS(_log, LOG_LVL_WARN,
+                 cName(__func__) << " no response for transmit, putting on failed transmit queue.");
             auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
-            // This will check if the czar is believed to be alive and try the queue the query to be tried again
-            // at a lower priority. It it thinks the czar is dead, it will throw it away.
+            // This will check if the czar is believed to be alive and try the queue the query to be tried
+            // again at a lower priority. It it thinks the czar is dead, it will throw it away.
             // TODO:UJ &&& I have my doubts about this as a reconnected czar may go down in flames
             //         &&& as it is hit with thousands of these.
             //         &&& Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
@@ -394,25 +401,21 @@ void UJTransmitCmd::action(util::CmdData* data) {
                 auto wPool = _foreman->getWPool();
                 if (wPool != nullptr) {
                     Ptr replacement = duplicate();
-                    _selfPtr.reset();
                     if (replacement != nullptr) {
                         wPool->queCmd(replacement, 2);
                     } else {
                         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " replacement was null");
                     }
-                } else{
+                } else {
                     // No thread pool, should only be possible in unit tests.
                     LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " no wPool");
-                    _selfPtr.reset();
                     return;
                 }
             }
         } else {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _selfPtr was null, assuming job killed.");
-            _selfPtr.reset(); // In case _foreman is null.
         }
     }
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start end");
 }
 
 void UJTransmitCmd::kill() {
@@ -420,8 +423,9 @@ void UJTransmitCmd::kill() {
     LOGS(_log, LOG_LVL_WARN, funcN);
     auto sPtr = _selfPtr;
     _selfPtr.reset();
-    if (sPtr == nullptr) { return; }
-    // &&& TODO:UJ Is there anything that should be done here???
+    if (sPtr == nullptr) {
+        return;
+    }
 }
 
 UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {
@@ -432,7 +436,6 @@ UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {
     Ptr newPtr = create(_foreman, ujD, _method, _headers, _url, _requestContext, _requestStr);
     newPtr->_attemptCount = _attemptCount;
     return newPtr;
-
 }
 
 }  // namespace lsst::qserv::wbase
