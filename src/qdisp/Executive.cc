@@ -255,17 +255,24 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     }
 }
 
-void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) { // &&& put file collect in the pool ???
+void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 3);
     } else {
-        _qdispPool->queCmd(cmd, 4);
+        _qdispPool->queCmd(cmd, 3);
     }
 }
 
-void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
+void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
+    {
+        lock_guard<mutex> lck(_uberJobsMapMtx);
+        UberJobId ujId = uj->getJobId();
+        _uberJobsMap[ujId] = uj;
+        //&&&uj->setAdded();
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
+    }
 
-    auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
+    auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
     _jobStartCmdList.push_back(cmd);
@@ -354,27 +361,7 @@ void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsTo
     for (auto const& uJob : uJobsToAdd) {
         UberJobId ujId = uJob->getJobId();
         _uberJobsMap[ujId] = uJob;
-    }
-}
-
-void Executive::killIncompleteUberJobsOn(std::string const& restartedWorkerId) {
-    // Work with a copy to reduce lock time.
-    std::map<UberJobId, std::shared_ptr<UberJob>> ujobsMap;
-    {
-        lock_guard<mutex> lck(_uberJobsMapMtx);
-        ujobsMap = _uberJobsMap;
-    }
-    for (auto&& [ujKey, uj] : ujobsMap) {
-        if (uj == nullptr) continue;
-        auto wContactInfo = uj->getWorkerContactInfo();
-        if (wContactInfo->wId == restartedWorkerId) {
-            if (uj->getStatus()->getState() != qmeta::JobStatus::COMPLETE) {
-                // All jobs in the uberjob will be set as unassigned, which
-                // will lead to Czar::_monitor() reassigning them to new
-                // UberJobs. (Unless this query was cancelled.)
-                uj->killUberJob();
-            }
-        }
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uJob->getJobCount());
     }
 }
 
@@ -627,9 +614,41 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
 }
 
 void Executive::sendWorkersEndMsg(bool deleteResults) {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " terminating this query deleteResults="
-                 << deleteResults);
-    czar::Czar::getCzar()->getCzarRegistry()->endUserQueryOnWorkers(_id, deleteResults);
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " terminating this query deleteResults=" << deleteResults);
+    auto cz = czar::Czar::getCzar();
+    if (cz != nullptr) {  // Possible in unit tests.
+        cz->getCzarRegistry()->endUserQueryOnWorkers(_id, deleteResults);
+    }
+}
+
+void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
+    if (_cancelled) {
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " irrelevant as query already cancelled");
+        return;
+    }
+
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " killing incomplete UberJobs on " << workerId);
+    deque<UberJob::Ptr> ujToCancel;
+    {
+        lock_guard<mutex> lockUJMap(_uberJobsMapMtx);
+        for (auto const& [ujKey, ujPtr] : _uberJobsMap) {
+            auto ujStatus = ujPtr->getStatus()->getState();
+            if (ujStatus != qmeta::JobStatus::RESPONSE_DONE && ujStatus != qmeta::JobStatus::COMPLETE) {
+                // RESPONSE_DONE indicates the result file has been read by
+                // the czar, so before that point the worker's data is
+                // likely destroyed. COMPLETE indicates all jobs in the
+                // UberJob are complete.
+                if (ujPtr->getWorkerContactInfo()->wId == workerId) {
+                    ujToCancel.push_back(ujPtr);
+                }
+            }
+        }
+    }
+
+    for (auto const& uj : ujToCancel) {
+        uj->killUberJob();
+        uj->setStatusIfOk(qmeta::JobStatus::CANCEL, getIdStr() + " killIncomplete on worker=" + workerId);
+    }
 }
 
 int Executive::getNumInflight() const {
