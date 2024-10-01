@@ -192,8 +192,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
                                         << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
                                         << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
                                         << util::prettyCharList(vectMinRunningSizes));
-    _qdispPool =
-            make_shared<util::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
+    _qdispPool = make_shared<util::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
 
     qdisp::CzarStats::setup(_qdispPool);
 
@@ -684,6 +683,16 @@ std::shared_ptr<qdisp::Executive> Czar::getExecutiveFromMap(QueryId qId) {
         _executiveMap.erase(iter);
     }
     return exec;
+}
+
+std::map<QueryId, std::weak_ptr<qdisp::Executive>> Czar::getExecMapCopy() const {
+    // Copy list of executives so the mutex isn't held forever.
+    std::map<QueryId, std::weak_ptr<qdisp::Executive>> execMap;
+    {
+        lock_guard<mutex> lgMap(_executiveMapMtx);
+        execMap = _executiveMap;
+    }
+    return execMap;
 }
 
 void Czar::killIncompleteUbjerJobsOn(std::string const& restartedWorkerId) {

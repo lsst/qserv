@@ -58,7 +58,7 @@ class Task;
 
 /// This class tracks all Tasks associates with the UberJob on the worker
 /// and reports status to the czar.
-class UberJobData : public std::enable_shared_from_this<UberJobData>{
+class UberJobData : public std::enable_shared_from_this<UberJobData> {
 public:
     using Ptr = std::shared_ptr<UberJobData>;
 
@@ -75,9 +75,7 @@ public:
     /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
 
-    void setScanInteractive(bool scanInteractive) {
-        _scanInteractive = scanInteractive;
-    }
+    void setScanInteractive(bool scanInteractive) { _scanInteractive = scanInteractive; }
 
     UberJobId getUberJobId() const { return _uberJobId; }
     qmeta::CzarId getCzarId() const { return _czarId; }
@@ -113,8 +111,9 @@ private:
                 std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey);
 
     /// &&& doc
-    void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_, std::string const& url_, std::string const& requestContext_, std::string const& requestStr_);
-
+    void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
+                          std::string const& url_, std::string const& requestContext_,
+                          std::string const& requestStr_);
 
     UberJobId const _uberJobId;
     std::string const _czarName;
@@ -134,9 +133,9 @@ private:
 
     std::string const _idStr;
 
-    std::atomic<bool> _scanInteractive; ///< &&& doc
+    std::atomic<bool> _scanInteractive;  ///< &&& doc
 
-    std::atomic<bool> _cancelled{false}; ///< Set to true if this was cancelled.
+    std::atomic<bool> _cancelled{false};  ///< Set to true if this was cancelled.
 };
 
 /// &&& doc
@@ -149,37 +148,43 @@ public:
 
     std::string cName(const char* funcN) const;
 
-    /* &&&
-    static Ptr create(std::shared_ptr<wcontrol::Foreman> const& foreman_, CzarIdType czarId_, QueryId queryId_, UberJobId uberJobId_, http::Method method_, std::vector<std::string> const& headers_, std::string const& url_, std::string const& requestContext_, std::string const& requestStr_) {
-        auto ptr = Ptr(new UJTransmitCmd(foreman_, czarId_, queryId_, uberJobId_, method_, headers_, url_, requestContext_, requestStr_));
-        ptr->_selfPtr = ptr;
-        return ptr;
-    }
-    */
-    static Ptr create(std::shared_ptr<wcontrol::Foreman> const& foreman_, UberJobData::Ptr const& ujData_, http::Method method_, std::vector<std::string> const& headers_, std::string const& url_, std::string const& requestContext_, std::string const& requestStr_) {
-        auto ptr = Ptr(new UJTransmitCmd(foreman_, ujData_, method_, headers_, url_, requestContext_, requestStr_));
+    static Ptr create(std::shared_ptr<wcontrol::Foreman> const& foreman_, UberJobData::Ptr const& ujData_,
+                      http::Method method_, std::vector<std::string> const& headers_, std::string const& url_,
+                      std::string const& requestContext_, std::string const& requestStr_) {
+        auto ptr = Ptr(
+                new UJTransmitCmd(foreman_, ujData_, method_, headers_, url_, requestContext_, requestStr_));
         ptr->_selfPtr = ptr;
         return ptr;
     }
 
-    /// This is the function that will be run when the queue gets to this command.
+    /// Send the UberJob file to the czar, this is the function that will be run when
+    /// the queue reaches this command. If this message is not received by the czar,
+    /// it will notify WCzarInfo and possibly send WorkerCzarComIssue.
     void action(util::CmdData* data) override;
 
     /// Reset the self pointer so this object can be killed.
     void kill();
 
-    /// &&&
+    /// &&& doc
     Ptr duplicate();
 
 private:
-    /* &&&
-    UJTransmitCmd(std::shared_ptr<wcontrol::Foreman> const& foreman_, CzarIdType czarId_, QueryId queryId_, UberJobId uberJobId_, http::Method method_, std::vector<std::string> const& headers_, std::string const& url_, std::string const& requestContext_, std::string const& requestStr_)
-        : PriorityCommand(), _foreman(foreman_), _czarId(czarId_), _queryId(queryId_), _uberJobId(uberJobId_), _method(method_), _headers(headers_), _url(url_), _requestContext(requestContext_), _requestStr(requestStr_) {}
-        */
-    UJTransmitCmd(std::shared_ptr<wcontrol::Foreman> const& foreman_, UberJobData::Ptr const& ujData_, http::Method method_, std::vector<std::string> const& headers_, std::string const& url_, std::string const& requestContext_, std::string const& requestStr_)
-        : PriorityCommand(), _foreman(foreman_), _ujData(ujData_), _czarId(ujData_->getCzarId()), _queryId(ujData_->getQueryId()), _uberJobId(ujData_->getUberJobId()), _method(method_), _headers(headers_), _url(url_), _requestContext(requestContext_), _requestStr(requestStr_) {}
+    UJTransmitCmd(std::shared_ptr<wcontrol::Foreman> const& foreman_, UberJobData::Ptr const& ujData_,
+                  http::Method method_, std::vector<std::string> const& headers_, std::string const& url_,
+                  std::string const& requestContext_, std::string const& requestStr_)
+            : PriorityCommand(),
+              _foreman(foreman_),
+              _ujData(ujData_),
+              _czarId(ujData_->getCzarId()),
+              _queryId(ujData_->getQueryId()),
+              _uberJobId(ujData_->getUberJobId()),
+              _method(method_),
+              _headers(headers_),
+              _url(url_),
+              _requestContext(requestContext_),
+              _requestStr(requestStr_) {}
 
-    Ptr _selfPtr; ///< So this object can put itself back on the queue and keep itself alive.
+    Ptr _selfPtr;  ///< So this object can put itself back on the queue and keep itself alive.
     std::shared_ptr<wcontrol::Foreman> const _foreman;
     std::weak_ptr<UberJobData> const _ujData;
     CzarIdType const _czarId;
@@ -190,7 +195,7 @@ private:
     std::string const _url;
     std::string const _requestContext;
     std::string const _requestStr;
-    int _attemptCount = 0; ///< How many attempts have been made to transmit this.
+    int _attemptCount = 0;  ///< How many attempts have been made to transmit this.
     util::InstanceCount _ic{cName("&&&")};
 };
 

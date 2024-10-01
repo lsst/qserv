@@ -44,7 +44,6 @@
 // Third party headers
 #include <nlohmann/json.hpp>
 
-
 namespace lsst::qserv::util {
 class QdispPool;
 }

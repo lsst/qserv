@@ -492,8 +492,7 @@ void UberJob::killUberJob() {
 
     _unassignJobs();
     // Let Czar::_monitor reassign jobs - other UberJobs are probably being killed
-    // so waiting probably gets a better distribution. If this is deemed to slow,
-    // then exec->assignJobsToUberJobs() could be called here.
+    // so waiting probably gets a better distribution.
     return;
 }
 
