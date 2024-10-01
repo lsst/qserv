@@ -38,38 +38,35 @@
 // This header declarations
 namespace lsst::qserv::czar {
 
-/// &&& doc  - maintain list of done/cancelled queries for an active worker, and send
-///            that list to the worker. Once the worker has accepted the list, remove
-///            all of those queryId's from the list.
-///          - maintain a list of killed UberJobs. If an UberJob is killed, nothing
-///            will every look for its files, so they should be deleted, and the
-///            worker should avoid working on Tasks for that UberJob.
-///            The only UberJob deaths that need to be sent to a worker is when
-///            the czar kills an UberJob because the worker died/vanished, and
-///            the only time this would be sent is when a worker came back from
-///            the dead.
-///            The reason this only applies to died/vanished workers is that all
-///            other workers know their UberJobs are dead because the worker killed
-///            them. If the worker isn't told, it will continue working on
-///            the UberJob until it finishes, and then find out the UberJob was killed
-///            when it tries to return results to the czar (worker should delete files
-///            for said UberJob at that point).
-///            So, this should be very rare, only results in extra load, and therefore
-///            is a low priority.
+///  - maintain list of done/cancelled queries for an active worker, and send
+///    that list to the worker. Once the worker has accepted the list, remove
+///    all of those queryId's from the list.
+///  - maintain a list of killed UberJobs. If an UberJob is killed, nothing
+///    will every look for its files, so they should be deleted, and the
+///    worker should avoid working on Tasks for that UberJob.
+///    The only UberJob deaths that need to be sent to a worker is when
+///    the czar kills an UberJob because the worker died/vanished, and
+///    the only time this would be sent is when a worker came back from
+///    the dead.
+///    The reason this only applies to died/vanished workers is that all
+///    other workers know their UberJobs are dead because the worker killed
+///    them. If the worker isn't told, it will continue working on
+///    the UberJob until it finishes, and then find out the UberJob was killed
+///    when it tries to return results to the czar (worker should delete files
+///    for said UberJob at that point).
+///    So, this should be very rare, only results in extra load, and therefore
+///    is a low priority.
 ///
-///            If a worker goes missing from the registry, it is considered DEAD and will be
-///              removed after a period of time.
-///            If a worker hasn't been heard from in (timeout period), it is considered QUESIONABLE.
-///               When switching to QUESTIONABLE, a message will be sent to the worker asking
-///               for an update.
-///            If a QUESTIONABLE worker hasn't been heard from in (timeout period), its state is changed
-///               to LOST_CONTACT and a message is sent to the worker asking for an update.
-///            If a LOST_CONTACT worker hasn't been heard from in (timeout period), it becomes DEAD.
+///    If a worker goes missing from the registry, it is considered DEAD and may be
+///       removed after a period of time.
+///    If a worker hasn't been heard from in (timeout period), it is considered QUESIONABLE.
+///    If a QUESTIONABLE worker hasn't been heard from in (timeout period), its state is changed
+///       to DEAD.
 ///
-///            When a worker becomes DEAD: (this should probably all happen in _monitor).
-///              - Affected UberJobs are killed.
-///              - maps are remade without the dead workers
-///              - uberjobs built to handle unassigned jobs.
+///    When a worker becomes DEAD: (see Czar::_monitor).
+///       - Affected UberJobs are killed.
+///       - maps are remade without the dead workers
+///       - uberjobs built to handle unassigned jobs.
 ///
 class ActiveWorker : public std::enable_shared_from_this<ActiveWorker> {
 public:
@@ -107,24 +104,38 @@ public:
 
     ~ActiveWorker() = default;
 
-    /// &&& doc
+    /// Return true if there were differences in  worker id, host, or port values.
     bool compareContactInfo(http::WorkerContactInfo const& wcInfo) const;
 
     void setWorkerContactInfo(http::WorkerContactInfo::Ptr const& wcInfo);
 
-    /// &&& doc
+    /// Check this workers state (by looking at contact information) and queue
+    /// the WorkerQueryStatusData message `_wqsData` to be sent if this worker
+    /// isn't DEAD.
     void updateStateAndSendMessages(double timeoutAliveSecs, double timeoutDeadSecs, double maxLifetime);
 
-    /// &&& doc
+    /// Add `qId` to list of QueryId's that the worker can discard all tasks and
+    /// result files for. This `qId` will be removed from the list once the worker
+    /// has responded to the `_wqsData` message with this `qId` in the appropriate
+    /// list.
+    /// It is expected that all completed or cancelled queries on this worker will
+    /// be added to this list.
     void addToDoneDeleteFiles(QueryId qId);
 
-    /// &&& doc
+    /// Add `qId` to list of QueryId's that the worker where the worker must hold
+    /// onto result files but tasks can be eliminated. This `qId` will be removed
+    /// from the list once the worker has responded to the `_wqsData` message with
+    /// this `qId` in the appropriate list.
     void addToDoneKeepFiles(QueryId qId);
 
-    /// &&&doc
+    /// Add the uberjob to the list of dead uberjobs. This `qId` will be removed
+    /// from the list once the worker has responded to the `_wqsData` message with
+    /// this `qId` in the appropriate list. Or the `qId` is in a
+    /// removeDeadUberJobsFor() call.
     void addDeadUberJob(QueryId qId, UberJobId ujId);
 
-    /// &&& doc
+    /// If a query is completed or cancelled, there's no reason to track the
+    /// individual UberJobs anymore, so this function will get rid of them.
     void removeDeadUberJobsFor(QueryId qId);
 
     std::string dump() const;
@@ -162,7 +173,6 @@ private:
     /// The number of communication threads currently in use by this class instance.
     std::atomic<int> _conThreadCount{0};
     int _maxConThreadCount{2};
-
 };
 
 /// &&& doc

@@ -96,7 +96,6 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
             case ALIVE: {
                 if (secsSinceUpdate >= timeoutAliveSecs) {
                     _changeStateTo(QUESTIONABLE, secsSinceUpdate, cName(__func__));
-                    // &&& Anything else that should be done here?
                 }
                 break;
             }
@@ -152,10 +151,8 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
         jsWorkerReqPtr = _wqsData->serializeJson(maxLifetime);
     }
 
-    // &&& Maybe only send the status message if the lists are not empty ???
-    // Start a thread to send the message. (Maybe these should go on the qdisppool? &&&)
-    // put this in a different function and start the thread.&&&;
-    //&&& _sendStatusMsg(wInfo_, jsWorkerReqPtr);
+    // Always send the message as it's a way to inform the worker that this
+    // czar is functioning and capable of receiving requests.
     Ptr thisPtr = shared_from_this();
     auto sendStatusMsgFunc = [thisPtr, wInfo_, jsWorkerReqPtr](util::CmdData*) {
         thisPtr->_sendStatusMsg(wInfo_, jsWorkerReqPtr);

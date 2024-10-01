@@ -70,11 +70,17 @@ private:
     /// Called to indicate an UberJob is ready with data that needs to be collected.
     nlohmann::json _queryJobReady();
 
+    /// Called to indicate there were problems with the worker trying to reach this czar.
+    nlohmann::json _workerCzarComIssue();
+
     /// Translates the message and calls the Czar to collect the data.
     nlohmann::json _handleJobReady(std::string const& func);
 
     /// Translates the error and calls the Czar to take action.
     nlohmann::json _handleJobError(std::string const& func);
+
+    /// Translates the issues and calls the Czar to take action.
+    nlohmann::json _handleWorkerCzarComIssue(std::string const& func);
 };
 
 }  // namespace lsst::qserv::czar
