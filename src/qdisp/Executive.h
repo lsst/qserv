@@ -118,7 +118,9 @@ public:
     /// Find the UberJob with `ujId`.
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
 
-    std::string cName(const char* funcName = "") { return std::string("Executive::") + funcName; }
+    std::string cName(const char* funcName = "") {
+        return std::string("Executive::") + funcName + " " + getIdStr();
+    }
 
     /// Set the UserQuerySelect object for this query so this Executive can ask it to make new
     /// UberJobs in the future, if needed.
@@ -140,7 +142,7 @@ public:
     void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
 
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
-    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd); // &&& delete ???
+    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
