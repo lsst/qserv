@@ -162,8 +162,9 @@ private:
                           std::string const& requestStr_);
 
     /// &&& doc
-    void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_, std::string const& url_, std::string const& requestContext_, std::string const& requestStr_);
-
+    void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
+                          std::string const& url_, std::string const& requestContext_,
+                          std::string const& requestStr_);
 
     UberJobId const _uberJobId;
     std::string const _czarName;

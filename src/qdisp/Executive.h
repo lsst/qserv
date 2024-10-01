@@ -138,7 +138,7 @@ public:
     void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
 
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
-    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd); // &&& delete ???
+    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);  // &&& delete ???
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
@@ -153,6 +153,9 @@ public:
 
     /// Squash all the jobs.
     void squash(std::string const& note);
+
+    /// &&& doc
+    void killIncompleteUberJobsOnWorker(std::string const& workerId);
 
     bool getEmpty() { return _empty; }
 

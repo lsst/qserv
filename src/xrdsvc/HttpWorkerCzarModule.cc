@@ -336,6 +336,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
 
     // Return a message containing lists of the queries that were cancelled.
     jsRet = wqsData->serializeResponseJson(foreman()->getWorkerStartupTime());
+
     wCzarInfo->sendWorkerCzarComIssueIfNeeded(wqsData->getWInfo(), wqsData->getCzInfo());
     return jsRet;
 }

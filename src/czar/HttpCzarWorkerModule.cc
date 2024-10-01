@@ -304,4 +304,39 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     return jsRet;
 }
 
+json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
+    // Parse and verify the json message and then deal with the problems.
+    json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
+    try {
+        string const replicationInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
+        string const replicationAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
+        auto const& jsReq = body().objJson;
+        auto wccIssue =
+                http::WorkerCzarComIssue::createFromJson(jsReq, replicationInstanceId, replicationAuthKey);
+
+        auto wId = wccIssue->getWorkerInfo()->wId;
+        if (wccIssue->getThoughtCzarWasDead()) {
+            LOGS(_log, LOG_LVL_WARN,
+                 "HttpCzarWorkerModule::_handleWorkerCzarComIssue worker="
+                         << wId << " thought czar was dead and killed related uberjobs.");
+
+            // Find all incomplete UberJobs with this workerId and re-assign them.
+            // Use a copy to avoid mutex issues.
+            auto execMap = czar::Czar::getCzar()->getExecMapCopy();
+            for (auto const& [exKey, execWeak] : execMap) {
+                auto execPtr = execWeak.lock();
+                if (execPtr == nullptr) continue;
+                execPtr->killIncompleteUberJobsOnWorker(wId);
+            }
+        }
+
+    } catch (std::invalid_argument const& iaEx) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "HttpCzarWorkerModule::_handleWorkerCzarComIssue received " << iaEx.what()
+                                                                         << " js=" << body().objJson);
+        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
+    }
+    return jsRet;
+}
+
 }  // namespace lsst::qserv::czar
