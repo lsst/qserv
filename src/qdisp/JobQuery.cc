@@ -44,23 +44,19 @@ using namespace std;
 namespace lsst::qserv::qdisp {
 
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                   qmeta::JobStatus::Ptr const& jobStatus,
-                   shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid)
-        : JobBase(),
-          _executive(executive),
+                   qmeta::JobStatus::Ptr const& jobStatus, QueryId qid)
+        : _executive(executive),
           _jobDescription(jobDescription),
-          _markCompleteFunc(markCompleteFunc),
           _jobStatus(jobStatus),
           _qid(qid),
           _idStr(QueryIdHelper::makeIdStr(qid, getJobId())) {
-    //&&&_qdispPool = executive->getQdispPool();
     LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
 
 JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
-bool JobQuery::cancel(bool superfluous) {  /// &&& This can probably be simplified more
+bool JobQuery::cancel(bool superfluous) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     if (_cancelled.exchange(true) == false) {
         LOGS(_log, LOG_LVL_TRACE, "JobQuery::cancel() " << superfluous);
