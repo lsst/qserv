@@ -433,6 +433,16 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
                  __func__ << " enough rows for query rows=" << _rowcount << " " << task->getIdStr());
         }
 
+        int const ujRowLimit = task->getRowLimit();
+        bool rowLimitComplete = false;
+        if (ujRowLimit > 0 && _rowcount >= ujRowLimit) {
+            // There are enough rows to satisfy the query, so stop reading
+            hasMoreRows = false;
+            rowLimitComplete = true;
+            LOGS(_log, LOG_LVL_DEBUG,
+                 __func__ << " enough rows for query rows=" << _rowcount << " " << task->getIdStr());
+        }
+
         // If no more rows are left in the task's result set then we need to check
         // if this is last task in a logical group of ones created for processing
         // the current request (note that certain classes of requests may require
