@@ -48,7 +48,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarRegistry");
 
 namespace lsst::qserv::czar {
 
-CzarRegistry::CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig) : _czarConfig(czarConfig) {
+CzarRegistry::CzarRegistry(cconfig::CzarConfig::Ptr const& czarConfig,
+                           ActiveWorkerMap::Ptr const& activeWorkerMap)
+        : _czarConfig(czarConfig), _activeWorkerMap(activeWorkerMap) {
     // Begin periodically updating worker's status in the Replication System's registry.
     // This will continue until the application gets terminated.
     thread registryUpdateThread(&CzarRegistry::_registryUpdateLoop, this);
@@ -66,6 +68,11 @@ CzarRegistry::~CzarRegistry() {
     if (_czarWorkerInfoThrd.joinable()) {
         _czarWorkerInfoThrd.join();
     }
+}
+
+http::WorkerContactInfo::WCMapPtr CzarRegistry::getWorkerContactMap() const {
+    std::lock_guard<std::mutex> lockG(_cmapMtx);
+    return _contactMap;
 }
 
 void CzarRegistry::_registryUpdateLoop() {
@@ -129,12 +136,12 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                     auto czInfo = http::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(),
                                                                 _czarConfig->replicationHttpPort(),
                                                                 util::get_current_host_fqdn(), czarStartTime);
-                    lock_guard<mutex> lck(_mapMtx);
+                    lock_guard<mutex> lck(_cmapMtx);
                     if (wMap != nullptr && !_compareMapContactInfo(*wMap)) {
                         _contactMap = wMap;
                         _latestMapUpdate = CLOCK::now();
-                        _activeWorkerMap.updateMap(*_contactMap, czInfo, replicationInstanceId,
-                                                   replicationAuthKey);
+                        _activeWorkerMap->updateMap(*_contactMap, czInfo, replicationInstanceId,
+                                                    replicationAuthKey);
                     }
                 }
             }
@@ -198,7 +205,7 @@ http::WorkerContactInfo::WCMapPtr CzarRegistry::waitForWorkerContactMap() const 
     http::WorkerContactInfo::WCMapPtr contMap = nullptr;
     while (contMap == nullptr) {
         {
-            std::lock_guard<std::mutex> lockG(_mapMtx);
+            std::lock_guard<std::mutex> lockG(_cmapMtx);
             contMap = _contactMap;
         }
         if (contMap == nullptr) {
@@ -212,21 +219,19 @@ http::WorkerContactInfo::WCMapPtr CzarRegistry::waitForWorkerContactMap() const 
 
 void CzarRegistry::sendActiveWorkersMessages() {
     // Send messages to each active worker as needed
-    lock_guard<mutex> lck(_mapMtx);
-    _activeWorkerMap.sendActiveWorkersMessages();
+    _activeWorkerMap->sendActiveWorkersMessages();
 }
 
 void CzarRegistry::endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults) {
-    lock_guard<mutex> lck(_mapMtx);
     // Add query id to the appropriate list.
     if (deleteWorkerResults) {
-        _activeWorkerMap.addToDoneDeleteFiles(qId);
+        _activeWorkerMap->addToDoneDeleteFiles(qId);
     } else {
-        _activeWorkerMap.addToDoneKeepFiles(qId);
+        _activeWorkerMap->addToDoneKeepFiles(qId);
     }
 
     // With lists updated, send out messages.
-    _activeWorkerMap.sendActiveWorkersMessages();
+    _activeWorkerMap->sendActiveWorkersMessages();
 }
 
 }  // namespace lsst::qserv::czar
