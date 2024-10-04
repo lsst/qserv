@@ -37,7 +37,11 @@ exclude_patterns = ["misc", "CMakeLists.txt"]
 # are frequently down).
 linkcheck_ignore = [
     r"^https://jira.lsstcorp.org/browse/",
-    r"^https://dev.lsstcorp.org/trac"
+    r"^https://dev.lsstcorp.org/trac",
+    r"^https://confluence.lsstcorp.org/display/",
+    r"^https://rubinobs.atlassian.net/wiki/",
+    r"^https://rubinobs.atlassian.net/browse/",
+    r"^https://www.slac.stanford.edu/",
 ]
 
 html_additional_pages = {
