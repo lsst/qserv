@@ -114,6 +114,7 @@ def run_integration_tests(
     unload: bool,
     load: Optional[bool],
     reload: bool,
+    load_http: bool,
     cases: List[str],
     run_tests: bool,
     tests_yaml: str,
@@ -133,6 +134,8 @@ def run_integration_tests(
         database matches the qserv database.)
     reload : `bool`
         Remove test databases and re-add them.
+    load_http : `bool`
+        The protocol to use for loading the data.
     cases : `list` [`str`]
         Run (and load/reload data if those flags are set) these test cases only.
     run_tests : `bool`
@@ -197,6 +200,7 @@ def run_integration_tests(
             admin_auth_key=tests_data["repl-admin-auth-key"],
             cases=cases,
             load=load,
+            load_http=load_http,
         )
 
     if run_tests:
@@ -225,6 +229,7 @@ def run_integration_tests_http(
     unload: bool,
     load: Optional[bool],
     reload: bool,
+    load_http: bool,
     cases: List[str],
     run_tests: bool,
     tests_yaml: str,
@@ -244,6 +249,8 @@ def run_integration_tests_http(
         database matches the qserv database.)
     reload : `bool`
         Remove test databases and re-add them.
+    load_http : `bool`
+        The protocol to use for loading the data.
     cases : `list` [`str`]
         Run (and load/reload data if those flags are set) these test cases only.
     run_tests : `bool`
@@ -308,6 +315,7 @@ def run_integration_tests_http(
             admin_auth_key=tests_data["repl-admin-auth-key"],
             cases=cases,
             load=load,
+            load_http=load_http,
         )
 
     if run_tests:

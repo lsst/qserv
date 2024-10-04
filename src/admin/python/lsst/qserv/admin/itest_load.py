@@ -338,6 +338,7 @@ def _load_database(
     repl_ctrl_uri: str,
     auth_key: str,
     admin_auth_key: str,
+    load_http: bool,
 ) -> None:
     """Load a database.
 
@@ -355,6 +356,8 @@ def _load_database(
         The authorizaiton key for the replication-ingest system.
     admin_auth_key : `str`
         The admin authorizaiton key for the replication-ingest system.
+    load_http : `bool`, optional
+        The protocol to use for loading the data.
     """
     _log.info(f"Loading database %s for test %s auth_key %s admin_auth_key %s", load_db.name, load_db.id, auth_key, admin_auth_key)
     repl = ReplicationInterface(repl_ctrl_uri, auth_key, admin_auth_key)
@@ -404,12 +407,14 @@ def _load_database(
                         table=table,
                         chunks_folder=staging_dir,
                         chunk_info_file=os.path.join(staging_dir, chunk_info_file),
+                        load_http=load_http,
                     )
                 else:
                     repl.ingest_table_data(
                         transaction_id=transaction_id,
                         table=table,
                         data_file=data_file,
+                        load_http=load_http,
                     )
                 repl.commit_transaction(transaction_id)
 
@@ -528,6 +533,7 @@ def load(
     test_cases_data: List[Dict[Any, Any]],
     ref_db_admin: str,
     load: Optional[bool],
+    load_http: bool,
     cases: Optional[List[str]],
     auth_key: str,
     admin_auth_key: str,
@@ -550,6 +556,8 @@ def load(
         unload == True then will not load the database, otherwise if `None` will
         load the database if it is not yet loaded into qserv (assumes the ref
         database matches the qserv database.)
+    load_http : `bool`
+        The protocol to use for loading the data.
     cases : `list` [`str`], optional
         Restrict loading to these test cases if provided.
     auth_key : `str`
@@ -570,7 +578,7 @@ def load(
     for case_data in cases_data:
         load_db = LoadDb(case_data)
         if load == True or (load is None and load_db.name not in qserv_dbs):
-            _load_database(load_db, ref_db_uri, ref_db_admin, repl_ctrl_uri, auth_key, admin_auth_key)
+            _load_database(load_db, ref_db_uri, ref_db_admin, repl_ctrl_uri, auth_key, admin_auth_key, load_http=load_http)
 
 
 def remove(

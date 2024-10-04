@@ -37,6 +37,7 @@ from ..cli.options import (
     option_log_level,
     option_unload,
     option_reload,
+    option_load_http,
     option_run_tests,
     option_compare_results,
     option_case,
@@ -508,6 +509,7 @@ def run_debug(
 @option_load()
 @option_unload()
 @option_reload()
+@option_load_http()
 @option_run_tests()
 @option_compare_results()
 @option_case()
@@ -535,6 +537,7 @@ def itest(
     unload: bool,
     load: Optional[bool],
     reload: bool,
+    load_http: bool,
     cases: List[str],
     run_tests: bool,
     tests_yaml: str,
@@ -558,6 +561,7 @@ def itest(
         unload=unload,
         load=load,
         reload=reload,
+        load_http=load_http,
         cases=cases,
         run_tests=run_tests,
         tests_yaml=tests_yaml,
@@ -581,6 +585,7 @@ def itest(
 @option_load()
 @option_unload()
 @option_reload()
+@option_load_http()
 @option_run_tests()
 @option_compare_results()
 @option_case()
@@ -608,6 +613,7 @@ def itest_http(
     unload: bool,
     load: Optional[bool],
     reload: bool,
+    load_http: bool,
     cases: List[str],
     run_tests: bool,
     tests_yaml: str,
@@ -631,6 +637,7 @@ def itest_http(
         unload=unload,
         load=load,
         reload=reload,
+        load_http=load_http,
         cases=cases,
         run_tests=run_tests,
         tests_yaml=tests_yaml,
