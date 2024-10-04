@@ -303,16 +303,15 @@ void UserQuerySelect::submit() {
     }
 
     /// At this point the executive has a map of all jobs with the chunkIds as the key.
-    if (uberJobsEnabled) {
-        // TODO:UJ _maxCHunksPerUberJob maybe put in config??? or set on command line??
-        //         Different queries may benefit from different values
-        //         Such as LIMIT=1 may work best with this at 1, where
-        //         100 would be better for others.
-        _maxChunksPerUberJob = 2;
-        // This is needed to prevent Czar::_monitor from starting things before they are ready.
-        _executive->setReadyToExecute();
-        buildAndSendUberJobs();
-    }
+    // TODO:UJ _maxCHunksPerUberJob maybe put in config??? or set on command line??
+    //         Different queries may benefit from different values
+    //         Such as LIMIT=1 may work best with this at 1, where
+    //         100 would be better for others.
+    // &&&
+    _maxChunksPerUberJob = 2;
+    // This is needed to prevent Czar::_monitor from starting things before they are ready.
+    _executive->setReadyToExecute();
+    buildAndSendUberJobs();
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     // TODO:UJ Waiting for all jobs to start may not be needed anymore?
@@ -326,7 +325,6 @@ void UserQuerySelect::submit() {
 }
 
 void UserQuerySelect::buildAndSendUberJobs() {
-    // &&& NEED CODE - this function should check if the worker is DEAD. TODO:UJ
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start");
 
@@ -376,52 +374,59 @@ void UserQuerySelect::buildAndSendUberJobs() {
     //  - For failures - If a worker cannot be contacted, that's an uberjob failure.
     //      - uberjob failures (due to communications problems) will result in the uberjob
     //        being broken up into multiple UberJobs going to different workers.
-    //        - The best way to do this is probably to just kill the UberJob and mark all
-    //          Jobs that were in that UberJob as needing re-assignment, and re-running
-    //          the code here. The trick is going to be figuring out which workers are alive.
-    //          Maybe force a fresh lookup from the replicator Registry when an UberJob fails.
+    //        - If an UberJob fails, the UberJob is killed and all the Jobs it contained
+    //          are flagged as needing re-assignment and this function will be called
+    //          again to put those Jobs in new UberJobs. Correctly re-assigning the
+    //          Jobs requires accurate information from the registry about which workers
+    //          are alive or dead.
     map<string, vector<qdisp::UberJob::Ptr>> workerJobMap;
     vector<qdisp::Executive::ChunkIdType> missingChunks;
 
     // unassignedChunksInQuery needs to be in numerical order so that UberJobs contain chunk numbers in
     // numerical order. The workers run shared scans in numerical order of chunk id numbers.
-    // This keeps the number of partially complete UberJobs running on a worker to a minimum,
+    // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
     // and should minimize the time for the first UberJob on the worker to complete.
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
-        auto iter = chunkMapPtr->find(chunkId);
-        if (iter == chunkMapPtr->end()) {
+        // If too many workers are down, there will be a chunk that cannot be found.
+        // Just continuing should leave jobs `unassigned` with their attempt count
+        // increased. Either the chunk will be found and jobs assigned, or the jobs'
+        // attempt count will reach max and the query will be cancelled
+        auto lambdaMissingChunk = [&](string const& msg) {
             missingChunks.push_back(chunkId);
             bool const increaseAttemptCount = true;
             jqPtr->getDescription()->incrAttemptCountScrubResultsJson(_executive, increaseAttemptCount);
-            // Assign as many jobs as possible. Any chunks not found will be attempted later.
+            LOGS(_log, LOG_LVL_ERROR, msg);
+        };
+
+        auto iter = chunkMapPtr->find(chunkId);
+        if (iter == chunkMapPtr->end()) {
+            lambdaMissingChunk(funcN + " No chunkData for=" + to_string(chunkId));
             continue;
         }
         czar::CzarChunkMap::ChunkData::Ptr chunkData = iter->second;
         auto targetWorker = chunkData->getPrimaryScanWorker().lock();
-        // TODO:UJ maybe  if (targetWorker == nullptr || this worker already tried for this chunk) {
-        if (targetWorker == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, funcN << " No primary scan worker for chunk=" << chunkData->dump());
+        // TODO:UJ maybe  if (targetWorker == nullptr || ... ||  this worker already tried for this chunk) {
+        if (targetWorker == nullptr || targetWorker->isDead()) {
+            LOGS(_log, LOG_LVL_WARN,
+                 funcN << " No primary scan worker for chunk=" + chunkData->dump()
+                       << ((targetWorker == nullptr) ? " targ was null" : " targ was dead"));
             // Try to assign a different worker to this job
             auto workerHasThisChunkMap = chunkData->getWorkerHasThisMapCopy();
             bool found = false;
             for (auto wIter = workerHasThisChunkMap.begin(); wIter != workerHasThisChunkMap.end() && !found;
                  ++wIter) {
                 auto maybeTarg = wIter->second.lock();
-                if (maybeTarg != nullptr) {
+                if (maybeTarg != nullptr && !maybeTarg->isDead()) {
                     targetWorker = maybeTarg;
                     found = true;
                     LOGS(_log, LOG_LVL_WARN,
-                         funcN << " Alternate worker found for chunk=" << chunkData->dump());
+                         funcN << " Alternate worker=" << targetWorker->getWorkerId()
+                               << " found for chunk=" << chunkData->dump());
                 }
             }
             if (!found) {
-                // If too many workers are down, there will be a chunk that cannot be found.
-                // Just continuing should leave jobs `unassigned` with their attempt count
-                // increased. Either the chunk will be found and jobs assigned, or the jobs'
-                // attempt count will reach max and the query will be cancelled
-                // TODO:UJ Needs testing/verification
-                LOGS(_log, LOG_LVL_ERROR,
-                     funcN << " No primary or alternate worker found for chunk=" << chunkData->dump());
+                lambdaMissingChunk(funcN +
+                                   " No primary or alternate worker found for chunk=" + chunkData->dump());
                 continue;
             }
         }

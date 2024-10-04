@@ -43,6 +43,7 @@ struct QMetaChunkMap;
 
 namespace lsst::qserv::czar {
 
+class ActiveWorker;
 class CzarFamilyMap;
 
 class ChunkMapException : public util::Issue {
@@ -71,10 +72,11 @@ public:
     using Ptr = std::shared_ptr<CzarChunkMap>;
     using SizeT = uint64_t;
 
+    std::string cName(const char* func) { return std::string("CzarChunkMap::") + func; }
+
     CzarChunkMap(CzarChunkMap const&) = delete;
     CzarChunkMap& operator=(CzarChunkMap const&) = delete;
 
-    // static Ptr create(std::shared_ptr<qmeta::QMeta> const& qmeta) { return Ptr(new CzarChunkMap(qmeta)); }
     static Ptr create() { return Ptr(new CzarChunkMap()); }
 
     ~CzarChunkMap();
@@ -88,8 +90,10 @@ public:
         using Ptr = std::shared_ptr<ChunkData>;
         ChunkData(int chunkId_) : _chunkId(chunkId_) {}
 
+        std::string cName(const char* func) {
+            return std::string("ChunkData::") + func + " " + std::to_string(_chunkId);
+        }
         int64_t getChunkId() const { return _chunkId; }
-
         SizeT getTotalBytes() const { return _totalBytes; }
 
         std::weak_ptr<WorkerChunksData> getPrimaryScanWorker() const { return _primaryScanWorker; }
@@ -127,12 +131,19 @@ public:
         using Ptr = std::shared_ptr<WorkerChunksData>;
         WorkerChunksData(std::string const& workerId) : _workerId(workerId) {}
 
+        std::string cName(const char* func) {
+            return std::string("WorkerChunksData::") + func + " " + _workerId;
+        }
+
         /// Return the worker's id string.
         std::string const& getWorkerId() const { return _workerId; }
 
         /// Return the number of bytes contained in all chunks/tables to be
         /// accessed in a full table scan on this worker.
         SizeT getSharedScanTotalSize() const { return _sharedScanTotalSize; }
+
+        /// &&& doc
+        bool isDead();
 
         /// Return a reference to `_sharedScanChunkMap`. A copy of the pointer
         /// to this class (or the containing map) should be held to ensure the reference.
@@ -159,6 +170,10 @@ public:
         /// The total size (in bytes) of all chunks on this worker that
         /// are to be used in shared scans.
         SizeT _sharedScanTotalSize = 0;
+
+        /// Used to determine if this worker is alive and set
+        /// when the test is made.
+        std::shared_ptr<ActiveWorker> _activeWorker;
     };
 
     using WorkerChunkMap = std::map<std::string, WorkerChunksData::Ptr>;
@@ -192,7 +207,8 @@ public:
 
     /// Use the information from the registry to `organize` `_chunkMap` and `_workerChunkMap`
     /// into their expected formats.
-    void organize();
+    /// @return a vector of ChunkData::Ptr of chunks where no worker was found.
+    std::shared_ptr<CzarChunkMap::ChunkVector> organize();
 
 private:
     CzarChunkMap();
