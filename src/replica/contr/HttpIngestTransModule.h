@@ -30,6 +30,8 @@
 
 // Qserv headers
 #include "replica/contr/HttpModule.h"
+#include "replica/ingest/TransactionContrib.h"
+#include "replica/services/DatabaseServices.h"
 #include "replica/util/Common.h"
 
 // Forward declarations
@@ -130,18 +132,53 @@ private:
     /**
      * Extract contributions into a transaction.
      * @param transaction A transaction defining a scope of the request.
+     * @param tableName The name of a table to pull contributions from (if empty then all tables will be
+     * assumed).
+     * @param workerName The name of a worker to pull contributions from (if empty then all workers will be
+     * assumed).
+     * @param contribStatus A set of the contribution statuses to filter the contributions by (all
+     * contributions if empty).
+     * @param chunkSelector The chunk selector to filter the contributions by (all contributions if -1).
      * @param longContribFormat If 'true' then the method will also return info on
      *   the individual file contributions rather than just the summary info.
+     * @param includeExtensions If 'true' then include info on the contributions extensions. Note that
+     *  this option is ignored if longContribFormat == false.
      * @param includeWarnings If 'true' then include info on the MySQL warnings
      *   if any were captured after LOAD DATA INFILE. Note that this option is
      *   ignored if longContribFormat == false.
      * @param includeRetries If 'true' then include info on the failed retries
      *   if any were made when reading the input data of the contributions. Note that
      *   this option is ignored if longContribFormat == false.
+     * @param minRetries The minimum number of retries for a contribution to be included in
+     *   the response (0 for all).
+     * @param minWarnings The minimum number of warnings for a contribution to include in
+     *   the response (0 for all).
+     * @param maxEntries The maximum number of contributions to return (0 for all).
      * @return A JSON object.
      */
-    nlohmann::json _getTransactionContributions(TransactionInfo const& transaction, bool longContribFormat,
-                                                bool includeWarnings, bool includeRetries) const;
+    nlohmann::json _getTransactionContributions(TransactionInfo const& transaction,
+                                                std::string const& tableName, std::string const& workerName,
+                                                std::set<TransactionContribInfo::Status> const& contribStatus,
+                                                int chunkSelector, bool longContribFormat,
+                                                bool includeExtensions, bool includeWarnings,
+                                                bool includeRetries, size_t minRetries = 0,
+                                                size_t minWarnings = 0, size_t maxEntries = 0) const;
+
+    /**
+     * Parse a string representation of the transaction state.
+     * @param param The name of the query parameter to parse.
+     * @return A set of the transaction states (empty if the parameter is not set).
+     * @throws std::invalid_argument If the string didn't match any known code.
+     */
+    std::set<TransactionInfo::State> _parseTransStateSelector(std::string const& param) const;
+
+    /**
+     * Parse a string representation of the contribution status.
+     * @param param The name of the query parameter to parse.
+     * @return A set of the contribution statuses (empty if the parameter is not set).
+     * @throws std::invalid_argument If the string didn't match any known code.
+     */
+    std::set<TransactionContribInfo::Status> _parseContribStatusSelector(std::string const& param) const;
 
     /// Named mutexes are used for acquiring exclusive transient locks on the transaction
     /// management operations performed by the module.

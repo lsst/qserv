@@ -26,6 +26,7 @@
 #include <limits>
 #include <list>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -77,7 +78,7 @@ public:
     /// The type selector is used in the where the tri-state is required.
     enum class TypeSelector : int { SYNC, ASYNC, SYNC_OR_ASYNC };
 
-    /// @return The string representation of teh selector.
+    /// @return The string representation of the selector.
     static std::string typeSelector2str(TypeSelector typeSelector);
 
     bool async = false;  ///< The type of the request
@@ -199,6 +200,10 @@ public:
         CANCELLED,     // The request was explicitly cancelled by the ingest workflow (ASYNC)
         FINISHED       // The request succeeded
     } status;
+
+    /// The collection of all known status codes if a client needs to iterate over them.
+    static std::set<Status> const allStatuses;
+    static std::set<std::string> toStrings(std::set<Status> const& coll);
 
     /// The temporary file that was created to store pre-processed content of the input
     /// file before ingesting it into MySQL. The file is supposed to be deleted after finishing

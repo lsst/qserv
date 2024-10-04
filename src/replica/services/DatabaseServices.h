@@ -27,6 +27,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -213,7 +214,13 @@ public:
         ABORT_FAILED    ///< the failed (inactive) state, next states: (IS_ABORTING)
     };
 
+    /// The collection of all known state codes if a client needs to iterate over them.
+    static std::set<State> const allStates;
+    static std::set<std::string> toStrings(std::set<State> const& coll);
+
+    /// @throws std::invalid_argument If the string doesn't match any known state code.
     static State string2state(std::string const& str);
+
     static std::string state2string(State state);
 
     /// @brief Verify if the proposed state transition is possible.
@@ -843,11 +850,13 @@ public:
     /// @param databaseName (optional) the name of a database
     /// @param includeContext (optional) flag that (if 'true') would pull the transaction context
     /// @param includeLog (optional) flag that (if 'true') would pull the transaction log (events)
+    /// @param stateSelector (optional) a collection of the desired states of the transactions (all states if
+    /// empty)
     /// @return a collection of super-transactions (all of them or for the specified database only)
     /// @throws std::invalid_argument if database name is not valid
-    virtual std::vector<TransactionInfo> transactions(std::string const& databaseName = std::string(),
-                                                      bool includeContext = false,
-                                                      bool includeLog = false) = 0;
+    virtual std::vector<TransactionInfo> transactions(
+            std::string const& databaseName = std::string(), bool includeContext = false,
+            bool includeLog = false, std::set<TransactionInfo::State> const& stateSelector = {}) = 0;
 
     /// @param state the desired state of the transactions
     /// @param includeContext (optional) flag that (if 'true') would pull the transacion context
@@ -928,54 +937,63 @@ public:
 
     /// @return the desired contribution into a super-transaction (if found)
     /// @param id a unique identifier of the contribution
+    /// @param includeExtensions if 'true' then include info on the  contributions extensions (see schema)
     /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
     /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
     /// @throws DatabaseServicesNotFound if no contribution was found for the specified identifier
-    virtual TransactionContribInfo transactionContrib(unsigned int id, bool includeWarnings = false,
+    virtual TransactionContribInfo transactionContrib(unsigned int id, bool includeExtensions = false,
+                                                      bool includeWarnings = false,
                                                       bool includeRetries = false) = 0;
 
     /// @return contributions into a super-transaction for the given selectors
-    /// @param transactionId a unique identifier of the transaction
-    /// @param table (optional) the base name of a table (all tables if not provided)
-    /// @param workerName (optional) the name of a worker (all workers if not provided)
-    /// @param typeSelector (optional) type of the contributions
-    /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
-    /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
+    /// @param transactionId a unique identifier of the transaction (all transactions if 0)
+    /// @param table the base name of a table (all tables if empty)
+    /// @param workerName the name of a worker (all workers if empty)
+    /// @param statusSelector (optional) the desired status of the contributions (all statuses if empty)
+    /// @param typeSelector (optional) type of the contributions (all types if empty)
+    /// @param chunkSelector (optional) the desired chunk number of the contributions (all chunks if -1)
+    /// @param includeExtensions if 'true' then include info on the  contributions extensions (see schema)
+    /// @param includeWarnings (optional) if 'true' then include info on the MySQL warnings after LOAD DATA
+    /// INFILE
+    /// @param includeRetries (optional) if 'true' then include info on the failed retries to pull the input
+    /// data
+    /// @param minRetries (optional) the minimum number of retries for a contribution to be reported (no limit
+    /// if 0)
+    /// @param minWarnings (optional) the minimum number of warnings for a contribution to be reported (no
+    /// limit if 0)
+    /// @param maxEntries (optional) the maximum number of contributions to be reported (no limit if 0).
     virtual std::vector<TransactionContribInfo> transactionContribs(
-            TransactionId transactionId, std::string const& table = std::string(),
-            std::string const& workerName = std::string(),
+            TransactionId transactionId, std::string const& table, std::string const& workerName,
+            std::set<TransactionContribInfo::Status> const& statusSelector = {},
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false, bool includeRetries = false) = 0;
-
-    /// @return contributions into a super-transaction for the given selectors
-    /// @param transactionId a unique identifier of the transaction
-    /// @param status the desired status of the contributions
-    /// @param table (optional) the base name of a table (all tables if not provided)
-    /// @param workerName (optional) the name of a worker (all workers if not provided)
-    /// @param typeSelector (optional) type of the contributions
-    /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
-    /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
-    virtual std::vector<TransactionContribInfo> transactionContribs(
-            TransactionId transactionId, TransactionContribInfo::Status status,
-            std::string const& table = std::string(), std::string const& workerName = std::string(),
-            TransactionContribInfo::TypeSelector typeSelector =
-                    TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false, bool includeRetries = false) = 0;
+            int chunkSelector = -1, bool includeExtensions = false, bool includeWarnings = false,
+            bool includeRetries = false, size_t minRetries = 0, size_t minWarnings = 0,
+            size_t maxEntries = 0) = 0;
 
     /// @return contributions into super-transactions for the given selectors
     /// @param database the name of a database
-    /// @param table (optional) the base name of a table (all tables if not provided)
-    /// @param workerName (optional) the name of a worker (all workers if not provided)
-    /// @param typeSelector (optional) type of the contributions
-    /// @param includeWarnings if 'true' then include info on the MySQL warnings after LOAD DATA INFILE
-    /// @param includeRetries if 'true' then include info on the failed retries to pull the input data
+    /// @param table the base name of a table (all tables if empty)
+    /// @param workerName the name of a worker (all workers if empty)
+    /// @param statusSelector (optional) the desired status of the contributions (all statuses if empty)
+    /// @param typeSelector (optional) type of the contributions (all types if empty)
+    /// @param includeExtensions if 'true' then include info on the  contributions extensions (see schema)
+    /// @param includeWarnings (optional) if 'true' then include info on the MySQL warnings after LOAD DATA
+    /// INFILE
+    /// @param includeRetries (optional) if 'true' then include info on the failed retries to pull the input
+    /// data
+    /// @param minRetries (optional) the minimum number of retries for a contribution to be reported (no limit
+    /// if 0)
+    /// @param minWarnings (optional) the minimum number of warnings for a contribution to be reported (no
+    /// limit if 0)
+    /// @param maxEntries (optional) the maximum number of contributions to be reported (no limit if 0).
     virtual std::vector<TransactionContribInfo> transactionContribs(
-            std::string const& database, std::string const& table = std::string(),
-            std::string const& workerName = std::string(),
+            std::string const& database, std::string const& table, std::string const& workerName,
+            std::set<TransactionContribInfo::Status> const& statusSelector = {},
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
-            bool includeWarnings = false, bool includeRetries = false) = 0;
+            bool includeExtensions = false, bool includeWarnings = false, bool includeRetries = false,
+            size_t minRetries = 0, size_t minWarnings = 0, size_t maxEntries = 0) = 0;
 
     /**
      * Insert the initial record on the contribution.

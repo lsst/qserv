@@ -140,8 +140,9 @@ json IngestHttpSvcMod::_asyncTransRequests() const {
 
     TransactionId const transactionId = stoul(params().at("id"));
     string const anyTable;
+    set<TransactionContribInfo::Status> const anyStatus;
     auto const contribs = _serviceProvider->databaseServices()->transactionContribs(
-            transactionId, anyTable, _workerName, TransactionContribInfo::TypeSelector::ASYNC);
+            transactionId, anyTable, _workerName, anyStatus, TransactionContribInfo::TypeSelector::ASYNC);
     json contribsJson = json::array();
     for (auto& contrib : contribs) {
         contribsJson.push_back(contrib.toJson());
@@ -155,8 +156,9 @@ json IngestHttpSvcMod::_asyncTransCancelRequests() const {
 
     TransactionId const transactionId = stoul(params().at("id"));
     string const anyTable;
+    set<TransactionContribInfo::Status> const anyStatus;
     auto const contribs = _serviceProvider->databaseServices()->transactionContribs(
-            transactionId, anyTable, _workerName, TransactionContribInfo::TypeSelector::ASYNC);
+            transactionId, anyTable, _workerName, anyStatus, TransactionContribInfo::TypeSelector::ASYNC);
     json contribsJson = json::array();
     for (auto& contrib : contribs) {
         try {

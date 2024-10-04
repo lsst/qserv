@@ -68,6 +68,23 @@ function(CSSLoader,
     </select>
   </div>
   <div class="form-group col-md-1">
+    <label for="trans-state">Trans.state:</label>
+    <select id="trans-state" class="form-control form-control-view">
+      <option value="">&lt;any&gt;</option>
+      <option value="IS_STARTING">IS_STARTING</option>
+      <option value="STARTED" selected>STARTED</option>
+      <option value="!STARTED">!STARTED</option>
+      <option value="IS_FINISHING">IS_FINISHING</option>
+      <option value="IS_ABORTING">IS_ABORTING</option>
+      <option value="FINISHED">FINISHED</option>
+      <option value="!FINISHED">!FINISHED</option>
+      <option value="ABORTED">ABORTED</option>
+      <option value="START_FAILED">START_FAILED</option>
+      <option value="FINISH_FAILED">FINISH_FAILED</option>
+      <option value="ABORT_FAILED">ABORT_FAILED</option>
+    </select>
+  </div> 
+  <div class="form-group col-md-1">
     ${Common.html_update_ival('update-interval')}
   </div>
 </div>
@@ -76,7 +93,8 @@ function(CSSLoader,
     <table class="table table-sm table-hover table-bordered" id="fwk-ingest-transactions">
       <thead class="thead-light">
         <tr>
-          <th rowspan="2" class="left-aligned">More...</th>
+          <th rowspan="2" class="center-aligned"><i class="bi bi-info-circle-fill"></i></th>
+          <th rowspan="2" class="center-aligned"><i class="bi bi-bar-chart-steps"></i></th>
           <th rowspan="2" class="right-aligned">Id</th>
           <th rowspan="2" class="center-aligned">State</th>
           <th colspan="8" class="left-aligned">Timing</th>
@@ -145,6 +163,8 @@ function(CSSLoader,
             );
             if (in_collection && current_database) this._set_database(current_database);
         }
+        _get_state() { return this._form_control('select', 'trans-state').val(); }
+        _set_state(val) { this._form_control('select', 'trans-state').val(val); }
         _disable_selectors(disable) {
             this.fwk_app_container.find(".form-control-view").prop('disabled', disable);
         }
@@ -203,7 +223,12 @@ function(CSSLoader,
             }
             Fwk.web_service_GET(
                 "/ingest/trans",
-                {database: current_database, contrib: 1, contrib_long: 0, version: Common.RestAPIVersion},
+                {   database: current_database,
+                    trans_state: this._get_state(),
+                    contrib: 1,
+                    contrib_long: 0,
+                    version: Common.RestAPIVersion
+                },
                 (data) => {
                     if (!data.success) {
                         this._on_failure(data.error);
@@ -226,6 +251,8 @@ function(CSSLoader,
             this._loading = false;
         }
         _display(databaseInfo) {
+            const transInspectTitle = 'Click to inspect transaction events log';
+            const contribInspectTitle = 'Click to see contributions made in a scope of the transaction';
             let html = '';
             if (databaseInfo.transactions.length === 0) {
                 html += `
@@ -284,9 +311,11 @@ function(CSSLoader,
                         let attentionCssClass4warnings = numWarnings === 0 ? '' : 'table-danger';    
                         return html + `
 <tr>
-  <th class="controls">
-    <button type="button" class="activity btn btn-light btn-sm" id="${info.id}" title="Click to inspect transaction events log"><i class="bi bi-info-circle"></i></button>
-    <button type="button" class="contrib btn btn-light btn-sm" id="${info.id}" title="Click to see contributions made in a scope of the transaction"><i class="bi bi-filetype-csv"></i></button>
+  <th class="controls" style="text-align:center; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-info btn-sm activity" id="${info.id}" style="height:20px; margin:0px;" title="${transInspectTitle}"></button>
+  </th>
+  <th class="controls" style="text-align:center; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-info btn-sm contrib" id="${info.id}" style="height:20px; margin:0px;" title="${contribInspectTitle}"></button>
   </th>
   <th class="right-aligned"><pre>${info.id}</pre></th>
   <td class="center-aligned ${transactionCssClass}"><pre>${info.state}</pre></td>
@@ -323,8 +352,10 @@ function(CSSLoader,
             );
             tbody.find("button.contrib").click(
                 (e) => {
+                    const worker = undefined;
+                    const table = undefined;
                     const transactionId = $(e.currentTarget).attr("id");
-                    Fwk.find("Ingest", "Contributions").set_transaction(this._get_database_status(), this._databases, this._get_database(), this._transactions, transactionId);
+                    Fwk.find("Ingest", "Contributions").search(worker, this._get_database(), table, transactionId);
                     Fwk.show("Ingest", "Contributions");
                 }
             );

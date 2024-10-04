@@ -205,6 +205,8 @@ function(CSSLoader,
          */
         _display(databaseInfo) {
 
+            const contribInspectTitle = 'Click to see contributions made in a scope of the relevant transactions';
+
             let html = '';
 
             const database = this._get_database();
@@ -445,7 +447,8 @@ function(CSSLoader,
           <table class="table table-sm table-hover">
             <thead class="thead-light">
               <tr>
-                <th style="border-top:none">&nbsp;</th>
+                <th class="center-aligned"><i class="bi bi-bar-chart-steps"></i></th>
+                <th style="border-top:none">Context</th>
                 <th class="right-aligned" style="border-top:none">Data [GB]</th>
                 <th class="right-aligned" style="border-top:none">Rows</th>
                 <th class="right-aligned" style="border-top:none">Rows loaded</th>
@@ -456,7 +459,8 @@ function(CSSLoader,
             </thead>
             <thead>
               <tr>
-                <th colspan="4" style="border-bottom:none">Table</th>
+                <th class="center-aligned">&nbsp;</th>
+                <th colspan="4" style="border-bottom:none">Tables:</th>
               </tr>
             </thead>
             <tbody>`;
@@ -466,6 +470,9 @@ function(CSSLoader,
                     let attentionCssClass4warnings = tableStats[table].num_warnings === 0 ? '' : 'table-danger';
                     html += `
                   <tr>
+                    <td class="controls" style="text-align:center; padding-top:0; padding-bottom:0">
+                      <button class="btn btn-outline-info btn-sm contrib_table" id="${baseTableName[table]}" style="height:20px; margin:0px;" title="${contribInspectTitle}"></button>
+                    </td>
                     <td class="level-2"><pre class="database_table" database="${database}" table="${baseTableName[table]}">${table}</pre></td>
                     <td class="right-aligned"><pre>${tableStats[table].data.toFixed(2)}</pre></td>
                     <td class="right-aligned"><pre>${tableStats[table].num_rows}</pre></td>
@@ -479,7 +486,8 @@ function(CSSLoader,
                 </tbody>
                 <thead>
                   <tr>
-                    <th colspan="4" style="border-bottom:none">Worker</th>
+                    <th class="center-aligned">&nbsp;</th>
+                    <th colspan="4" style="border-bottom:none">Workers:</th>
                   </tr>
                 </thead>
             <tbody>`;
@@ -489,6 +497,9 @@ function(CSSLoader,
                     let attentionCssClass4warnings = workerStats[worker].num_warnings === 0 ? '' : 'table-danger';
                     html += `
                   <tr>
+                    <td class="controls" style="text-align:center; padding-top:0; padding-bottom:0">
+                      <button class="btn btn-outline-info btn-sm contrib_worker" id="${worker}" style="height:20px; margin:0px;" title="${contribInspectTitle}"></button>
+                    </td>
                     <td class="level-2"><pre>${worker}</pre></td>
                     <td class="right-aligned"><pre>${workerStats[worker].data.toFixed(2)}</pre></td>
                     <td class="right-aligned"><pre>${workerStats[worker].num_rows}</pre></td>
@@ -505,14 +516,29 @@ function(CSSLoader,
         </div>
       </div>
     </div>`;
-            this._database().html(html).find("pre.database_table").click((e) => {
+            var tbody = this._database().html(html);
+            tbody.find("pre.database_table").click((e) => {
                 const elem = $(e.currentTarget);
                 const database = elem.attr("database");
                 const table = elem.attr("table");
                 Fwk.show("Replication", "Schema");
                 Fwk.current().loadSchema(database, table);
             });
-        }
+            tbody.find("button.contrib_table").click((e) => {
+                const worker = undefined;
+                const table = $(e.currentTarget).attr("id");
+                const transactionId = undefined;
+                Fwk.find("Ingest", "Contributions").search(worker, this._get_database(), table, transactionId);
+                Fwk.show("Ingest", "Contributions");
+            });
+            tbody.find("button.contrib_worker").click((e) => {
+                const worker = $(e.currentTarget).attr("id");
+                const table = undefined;
+                const transactionId = undefined;
+                Fwk.find("Ingest", "Contributions").search(worker, this._get_database(), table, transactionId);
+                Fwk.show("Ingest", "Contributions");
+          });
+      }
 
         static timeAgo(timestamp) {
             let ivalSec = Fwk.now().sec - Math.floor(timestamp / 1000);

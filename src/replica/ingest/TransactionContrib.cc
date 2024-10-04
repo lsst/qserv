@@ -71,7 +71,21 @@ vector<TransactionContribInfo::Status> const TransactionContribInfo::_transactio
         TransactionContribInfo::Status::LOAD_FAILED,  TransactionContribInfo::Status::CANCELLED,
         TransactionContribInfo::Status::FINISHED};
 
-string const& TransactionContribInfo::status2str(TransactionContribInfo::Status status) {
+set<TransactionContribInfo::Status> const TransactionContribInfo::allStatuses = {
+        TransactionContribInfo::Status::IN_PROGRESS,  TransactionContribInfo::Status::CREATE_FAILED,
+        TransactionContribInfo::Status::START_FAILED, TransactionContribInfo::Status::READ_FAILED,
+        TransactionContribInfo::Status::LOAD_FAILED,  TransactionContribInfo::Status::CANCELLED,
+        TransactionContribInfo::Status::FINISHED};
+
+set<string> TransactionContribInfo::toStrings(set<Status> const& coll) {
+    set<string> result;
+    for (auto const& s : coll) {
+        result.insert(status2str(s));
+    }
+    return result;
+}
+
+string const& TransactionContribInfo::status2str(Status status) {
     auto itr = _transactionContribStatus2str.find(status);
     if (itr == _transactionContribStatus2str.cend()) {
         throw invalid_argument("DatabaseServices::" + string(__func__) +
