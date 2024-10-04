@@ -373,6 +373,11 @@ inline std::string rowCountersTable(std::string const& databaseName, std::string
     return tableNameBuilder(databaseName, tableName, "__rows");
 }
 
+template <typename T>
+inline void throwIf(bool condition, std::string const& message) {
+    if (condition) throw T(message);
+}
+
 }  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_COMMON_H
