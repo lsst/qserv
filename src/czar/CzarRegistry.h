@@ -114,7 +114,6 @@ private:
     CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
                  std::shared_ptr<ActiveWorkerMap> const& activeWorkerMap);
 
-
     /// This function will keep periodically updating Czar's info in the Replication System's Registry
     /// until _loop is set to false.
     /// Communications problems are logged but ignored. This should probably change.

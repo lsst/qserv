@@ -362,7 +362,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
     ResetSelf resetSelf(this);
 
     _attemptCount++;
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start attempt=" << _attemptCount);
     auto ujPtr = _ujData.lock();
     if (ujPtr == nullptr || ujPtr->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
@@ -378,11 +377,8 @@ void UJTransmitCmd::action(util::CmdData* data) {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
-            // &&& maybe add this czId+ujId to a list of failed uberjobs that can be put
-            // &&& status return??? Probably overkill.
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start d except");
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + _requestContext + " failed, ex: " + ex.what());
     }
 
@@ -420,7 +416,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _selfPtr was null, assuming job killed.");
         }
     }
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start end");
 }
 
 void UJTransmitCmd::kill() {
@@ -431,7 +426,6 @@ void UJTransmitCmd::kill() {
     if (sPtr == nullptr) {
         return;
     }
-    // &&& TODO:UJ Is there anything that should be done here???
 }
 
 UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {

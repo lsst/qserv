@@ -306,7 +306,6 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
                     _changeStateTo(ALIVE, secsSinceUpdate, cName(__func__));
                 } else {
                     // Don't waste time on this worker until the registry has heard from it.
-                    // &&& If it's been a really really long time, maybe delete this entry ???
                     return;
                 }
                 break;
@@ -323,20 +322,6 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
 
     shared_ptr<json> jsWorkerReqPtr;
     {
-        lock_guard<mutex> lg(_aMtx);  //&&&  needed ???
-        lock_guard<mutex> mapLg(_wqsData->mapMtx);
-        // Check how many messages are currently being sent to the worker, if at the limit, return
-        if (_wqsData->qIdDoneKeepFiles.empty() && _wqsData->qIdDoneDeleteFiles.empty() &&
-            _wqsData->qIdDeadUberJobs.empty()) {
-            return;
-        }
-        int tCount = _conThreadCount;
-        if (tCount > _maxConThreadCount) {
-            LOGS(_log, LOG_LVL_DEBUG,
-                 cName(__func__) << " not sending message since at max threads " << tCount);
-            return;
-        }
-
         // Go through the _qIdDoneKeepFiles, _qIdDoneDeleteFiles, and _qIdDeadUberJobs lists to build a
         // message to send to the worker.
         jsWorkerReqPtr = _wqsData->serializeJson(maxLifetime);
@@ -408,6 +393,17 @@ void ActiveWorker::addDeadUberJob(QueryId qId, UberJobId ujId) {
     _wqsData->addDeadUberJob(qId, ujId, now);
 }
 
+http::WorkerContactInfo::Ptr ActiveWorker::getWInfo() const {
+    std::lock_guard lg(_aMtx);
+    if (_wqsData == nullptr) return nullptr;
+    return _wqsData->getWInfo();
+}
+
+ActiveWorker::State ActiveWorker::getState() const {
+    std::lock_guard lg(_aMtx);
+    return _state;
+}
+
 string ActiveWorker::dump() const {
     lock_guard<mutex> lg(_aMtx);
     return _dump();
@@ -429,6 +425,7 @@ void ActiveWorkerMap::updateMap(http::WorkerContactInfo::WCMap const& wcMap,
         auto iter = _awMap.find(wcKey);
         if (iter == _awMap.end()) {
             auto newAW = ActiveWorker::create(wcVal, czInfo, replicationInstanceId, replicationAuthKey);
+            LOGS(_log, LOG_LVL_INFO, cName(__func__) << " AciveWorker created for " << wcKey);
             _awMap[wcKey] = newAW;
             if (_czarCancelAfterRestart) {
                 newAW->setCzarCancelAfterRestart(_czarCancelAfterRestartCzId, _czarCancelAfterRestartQId);
@@ -443,6 +440,7 @@ void ActiveWorkerMap::updateMap(http::WorkerContactInfo::WCMap const& wcMap,
                 // If there is existing information, only host and port values will change.
                 aWorker->setWorkerContactInfo(wcVal);
             }
+            aWorker->getWInfo()->setRegUpdateTime(wcVal->getRegUpdateTime());
         }
     }
 }

@@ -281,7 +281,6 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
     UberJobId ujId = ujData->getUberJobId();
     CzarIdType czId = ujData->getCzarId();
 
-    //&&&UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
     wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
     UserQueryInfo::Ptr userQueryInfo = queryStats->getUserQueryInfo();
 
@@ -348,13 +347,6 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
-                    /* &&&
-                    auto task = Task::Ptr(new Task(
-                            ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, userQueryInfo,
-                            templateId, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive,
-                            maxTableSizeMb, fragSubTables, fragSubchunkIds, sendChannel, queryStats,
-                    resultsHttpPort));
-                    */
                     auto task = Task::Ptr(new Task(
                             ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, templateId,
                             noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
@@ -369,14 +361,6 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                                                        jdQuerySpecDb, scanInfo, scanInteractive,
                                                        maxTableSizeMb, fragSubTables, fragSubchunkIds,
                                                        sendChannel, queryStats, resultsHttpPort));
-                        /* &&&
-                        auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
-                                                       fragmentNumber, userQueryInfo, templateId,
-                                                       hasSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
-                                                       scanInteractive, maxTableSizeMb, fragSubTables,
-                                                       fragSubchunkIds, sendChannel, queryStats,
-                        resultsHttpPort));
-                        */
                         vect.push_back(task);
                     }
                 }
