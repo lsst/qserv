@@ -120,14 +120,6 @@ atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
-/* &&&
-Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
-           shared_ptr<UserQueryInfo> const& userQueryInfo, size_t templateId, bool hasSubchunks,
-           int subchunkId, string const& db, proto::ScanInfo const& scanInfo, bool scanInteractive,
-           int maxTableSize, vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
-           shared_ptr<FileChannelShared> const& sc, std::shared_ptr<wpublish::QueryStatistics> const&
-queryStats_, uint16_t resultsHttpPort) : _userQueryInfo(userQueryInfo),
-*/
 Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
            size_t templateId, bool hasSubchunks, int subchunkId, string const& db,
            proto::ScanInfo const& scanInfo, bool scanInteractive, int maxTableSize,
@@ -199,15 +191,7 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
     _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
 }
 
-Task::~Task() {
-    /* &&&
-    _userQueryInfo.reset();
-    UserQueryInfo::uqMapErase(_qId);
-    if (UserQueryInfo::uqMapGet(_qId) == nullptr) {
-        LOGS(_log, LOG_LVL_TRACE, "~Task Cleared uqMap entry for _qId=" << _qId);
-    }
-    */
-}
+Task::~Task() {}
 
 std::vector<Task::Ptr> Task::createTasksForChunk(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
@@ -220,7 +204,6 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
     UberJobId ujId = ujData->getUberJobId();
     CzarIdType czId = ujData->getCzarId();
 
-    //&&&UserQueryInfo::Ptr userQueryInfo = UserQueryInfo::uqMapInsert(qId);
     wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
     UserQueryInfo::Ptr userQueryInfo = queryStats->getUserQueryInfo();
 
@@ -287,13 +270,6 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
-                    /* &&&
-                    auto task = Task::Ptr(new Task(
-                            ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, userQueryInfo,
-                            templateId, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive,
-                            maxTableSizeMb, fragSubTables, fragSubchunkIds, sendChannel, queryStats,
-                    resultsHttpPort));
-                    */
                     auto task = Task::Ptr(new Task(
                             ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, templateId,
                             noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
@@ -308,14 +284,6 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                                                        jdQuerySpecDb, scanInfo, scanInteractive,
                                                        maxTableSizeMb, fragSubTables, fragSubchunkIds,
                                                        sendChannel, queryStats, resultsHttpPort));
-                        /* &&&
-                        auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
-                                                       fragmentNumber, userQueryInfo, templateId,
-                                                       hasSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
-                                                       scanInteractive, maxTableSizeMb, fragSubTables,
-                                                       fragSubchunkIds, sendChannel, queryStats,
-                        resultsHttpPort));
-                        */
                         vect.push_back(task);
                     }
                 }
@@ -377,10 +345,9 @@ string Task::getQueryString() const {
 
     auto uQInfo = qStats->getUserQueryInfo();
     string qs = uQInfo->getTemplate(_templateId);
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& a qs=" << qs);
     boost::algorithm::replace_all(qs, CHUNK_TAG, to_string(_chunkId));
     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, to_string(_subchunkId));
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& b qs=" << qs);
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " qs=" << qs);
     return qs;
 }
 

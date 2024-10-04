@@ -132,14 +132,6 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
 
     _mark = make_shared<util::HoldTrack::Mark>(ERR_LOC, "Forman Test Msg");
 
-    /* &&&
-    int qPoolSize = _czarConfig->getQdispPoolSize();
-    int maxPriority = std::max(0, _czarConfig->getQdispMaxPriority());
-    string vectRunSizesStr = _czarConfig->getQdispVectRunSizes();
-    vector<int> vectRunSizes = util::String::parseToVectInt(vectRunSizesStr, ":", 1);
-    string vectMinRunningSizesStr = _czarConfig->getQdispVectMinRunningSizes();
-    vector<int> vectMinRunningSizes = util::String::parseToVectInt(vectMinRunningSizesStr, ":", 0);
-    */
     int qPoolSize = 50;                      // &&& TODO:UJ put in config
     int maxPriority = 2;                     // &&& TODO:UJ put in config
     string vectRunSizesStr = "10:10:10:10";  // &&& TODO:UJ put in config

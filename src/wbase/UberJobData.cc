@@ -108,7 +108,6 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
     string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
     string const requestStr = request.dump();
     _queueUJResponse(method, headers, url, requestContext, requestStr);
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& end");
 }
 
 bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task,
@@ -156,21 +155,15 @@ void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string
         wPool = _foreman->getWPool();
     }
 
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& creating UJTransmitCmd wPool=" << wPool);
     auto cmdTransmit = UJTransmitCmd::create(_foreman, shared_from_this(), method_, headers_, url_,
                                              requestContext_, requestStr_);
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& created UJTransmitCmd wPool=" << wPool);
     if (wPool == nullptr) {
         // No thread pool. Run the command now. This should only happen in unit tests.
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& creating UJTransmitCmd direct run action");
         cmdTransmit->action(nullptr);
     } else {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& creating UJTransmitCmd queue transmit");
         if (_scanInteractive) {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& creating UJTransmitCmd queue transmit_0");
             wPool->queCmd(cmdTransmit, 0);
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& creating UJTransmitCmd queue transmit_1");
             wPool->queCmd(cmdTransmit, 1);
         }
     }
@@ -204,7 +197,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
     ResetSelf resetSelf(this);
 
     _attemptCount++;
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start attempt=" << _attemptCount);
     auto ujPtr = _ujData.lock();
     if (ujPtr == nullptr || ujPtr->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
@@ -220,11 +212,8 @@ void UJTransmitCmd::action(util::CmdData* data) {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
-            // &&& maybe add this czId+ujId to a list of failed uberjobs that can be put
-            // &&& status return??? Probably overkill.
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start d except");
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + _requestContext + " failed, ex: " + ex.what());
     }
 
@@ -262,7 +251,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _selfPtr was null, assuming job killed.");
         }
     }
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& start end");
 }
 
 void UJTransmitCmd::kill() {
@@ -273,7 +261,6 @@ void UJTransmitCmd::kill() {
     if (sPtr == nullptr) {
         return;
     }
-    // &&& TODO:UJ Is there anything that should be done here???
 }
 
 UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {

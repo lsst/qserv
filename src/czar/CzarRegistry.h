@@ -61,18 +61,16 @@ public:
     using Ptr = std::shared_ptr<CzarRegistry>;
 
     /// Return a pointer to a new CzarRegistry object.
-    static Ptr create(std::shared_ptr<cconfig::CzarConfig> const& czarConfig) {
-        return Ptr(new CzarRegistry(czarConfig));
+    static Ptr create(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
+                      std::shared_ptr<ActiveWorkerMap> const& activeWorkerMap) {
+        return Ptr(new CzarRegistry(czarConfig, activeWorkerMap));
     }
 
     ~CzarRegistry();
 
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it.
-    http::WorkerContactInfo::WCMapPtr getWorkerContactMap() const {
-        std::lock_guard<std::mutex> lockG(_mapMtx);
-        return _contactMap;
-    }
+    http::WorkerContactInfo::WCMapPtr getWorkerContactMap() const;
 
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it. This
@@ -89,7 +87,8 @@ public:
 
 private:
     CzarRegistry() = delete;
-    CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig);
+    CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
+                 std::shared_ptr<ActiveWorkerMap> const& activeWorkerMap);
 
     /// This function will keep periodically updating Czar's info in the Replication System's Registry
     /// until _loop is set to false.
@@ -105,6 +104,7 @@ private:
     http::WorkerContactInfo::WCMapPtr _buildMapFromJson(nlohmann::json const& response);
 
     /// Return true if maps are the same size and all of the elements have the same contact info.
+    /// NOTE: _cmapMtx must be held when calling.
     bool _compareMapContactInfo(http::WorkerContactInfo::WCMap const& other) const;
 
     std::shared_ptr<cconfig::CzarConfig> const _czarConfig;  ///< Pointer to the CzarConfig.
@@ -118,9 +118,10 @@ private:
     TIMEPOINT _latestMapUpdate;  ///< The last time the _contactMap was updated, unrelated to
                                  ///< WorkerContactInfo update.
     // &&& review how this _mapMtx is used, probably locks for too long a period.
-    mutable std::mutex _mapMtx;  /// Protects _contactMap, _latestUpdate, _activeWorkerMap
+    mutable std::mutex _cmapMtx;  /// Protects _contactMap, _latestUpdate
 
-    ActiveWorkerMap _activeWorkerMap;  ///< Map of workers czar considers active.
+    /// Map for tracking worker aliveness, it has its own internal mutex.
+    std::shared_ptr<ActiveWorkerMap> const _activeWorkerMap;
 };
 
 }  // namespace lsst::qserv::czar

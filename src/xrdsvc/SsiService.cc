@@ -278,17 +278,7 @@ SsiService::~SsiService() {
 }
 
 void SsiService::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
-#if 0  //&&&
-    LOGS(_log, LOG_LVL_DEBUG, "Got request call where rName is: " << resRef.rName);
-    auto request = SsiRequest::newSsiRequest(resRef.rName, _foreman);
-
-    // Continue execution in the session object as SSI gave us a new thread.
-    // Object deletes itself when finished is called.
-    //
-    request->execute(reqRef);
-#else  //&&&
     LOGS(_log, LOG_LVL_ERROR, "SsiService::ProcessRequest got called");
-#endif  //&&&
 }
 
 }  // namespace lsst::qserv::xrdsvc

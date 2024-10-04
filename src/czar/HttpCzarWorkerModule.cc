@@ -98,6 +98,7 @@ json HttpCzarWorkerModule::_workerCzarComIssue() {
 }
 
 json HttpCzarWorkerModule::_handleJobError(string const& func) {
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError start");
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then kill the UberJob.
@@ -133,10 +134,12 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
              "HttpCzarWorkerModule::_handleJobError received " << iaEx.what() << " js=" << body().objJson);
         jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
     }
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError end");
     return jsRet;
 }
 
 json HttpCzarWorkerModule::_handleJobReady(string const& func) {
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobReady start");
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then have the uberjob import the file.
@@ -173,10 +176,12 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
              "HttpCzarWorkerModule::_handleJobReady received " << iaEx.what() << " js=" << body().objJson);
         jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
     }
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobReady end");
     return jsRet;
 }
 
 json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleWorkerCzarComIssue start");
     // Parse and verify the json message and then deal with the problems.
     json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
@@ -208,6 +213,7 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
                                                                          << " js=" << body().objJson);
         jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
     }
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleWorkerCzarComIssue end");
     return jsRet;
 }
 

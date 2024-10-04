@@ -75,8 +75,6 @@ public:
     /// by Task::cancel(), so if this needs to be cancelled elsewhere,
     /// call Task::cancel().
     /// This should kill an in progress SQL command.
-    //&&&/// It also tries to unblock `_streamBuf` to keep the thread
-    //&&&/// from being blocked forever.
     void cancel() override;
 
 protected:
@@ -92,8 +90,6 @@ private:
     /// Dispatch with output sent through a SendChannel
     bool _dispatchChannel();
     MYSQL_RES* _primeResult(std::string const& query);  ///< Obtain a result handle for a query.
-
-    //&&&static size_t _getDesiredLimit();
 
     wbase::Task::Ptr const _task;  ///< Actual task
 
