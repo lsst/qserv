@@ -196,7 +196,7 @@ private:
     std::string const _requestContext;
     std::string const _requestStr;
     int _attemptCount = 0;  ///< How many attempts have been made to transmit this.
-    util::InstanceCount _ic{cName("&&&")};
+    util::InstanceCount _ic{cName("UJTransmitCmd&&&")};
 };
 
 }  // namespace lsst::qserv::wbase

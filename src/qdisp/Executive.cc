@@ -190,8 +190,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         // Create the JobQuery and put it in the map.
         auto jobStatus = make_shared<qmeta::JobStatus>();
         Ptr thisPtr = shared_from_this();
-        MarkCompleteFunc::Ptr mcf = make_shared<MarkCompleteFunc>(thisPtr, jobDesc->id());
-        jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, mcf, _id);
+        jobQuery = JobQuery::create(thisPtr, jobDesc, jobStatus, _id);
 
         QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
 
@@ -225,15 +224,6 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
     QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
 
     return jobQuery;
-}
-
-void Executive::queueJobStart(util::PriorityCommand::Ptr const& cmd) {
-    _jobStartCmdList.push_back(cmd);
-    if (_scanInteractive) {
-        _qdispPool->queCmd(cmd, 0);
-    } else {
-        _qdispPool->queCmd(cmd, 1);
-    }
 }
 
 void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {

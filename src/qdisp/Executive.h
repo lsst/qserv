@@ -50,9 +50,6 @@
 #include "util/threadSafe.h"
 #include "util/ThreadPool.h"
 
-// TODO:UJ replace with better enable/disable feature, or just use only UberJobs
-#define uberJobsEnabled 1  // &&& delete
-
 namespace lsst::qserv {
 
 namespace ccontrol {
@@ -133,11 +130,8 @@ public:
     // Queue `uberJob` to be run using the QDispPool.
     void runUberJob(std::shared_ptr<UberJob> const& uberJob);
 
-    /// Queue a job to be sent to a worker so it can be started.
-    void queueJobStart(std::shared_ptr<util::PriorityCommand> const& cmd);  // &&& delete ???
-
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
-    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);  // &&& delete ???
+    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
@@ -338,26 +332,6 @@ private:
 
     /// Flag that is set to true when ready to create and run UberJobs.
     std::atomic<bool> _readyToExecute{false};
-};
-
-/// TODO:UJ delete - MarkCompleteFunc is not needed with uberjobs.  //&&&QM
-class MarkCompleteFunc {
-public:
-    typedef std::shared_ptr<MarkCompleteFunc> Ptr;
-
-    MarkCompleteFunc(Executive::Ptr const& e, JobId jobId) : _executive(e), _jobId(jobId) {}
-    virtual ~MarkCompleteFunc() {}
-
-    virtual void operator()(bool success) {
-        auto exec = _executive.lock();
-        if (exec != nullptr) {
-            exec->markCompleted(_jobId, success);
-        }
-    }
-
-private:
-    std::weak_ptr<Executive> _executive;
-    JobId _jobId;
 };
 
 }  // namespace qdisp

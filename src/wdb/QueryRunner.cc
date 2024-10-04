@@ -268,11 +268,8 @@ bool QueryRunner::_dispatchChannel() {
             if (taskSched != nullptr) {
                 taskSched->histTimeOfRunningTasks->addEntry(primeT.getElapsed());
                 LOGS(_log, LOG_LVL_DEBUG, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
-                LOGS(_log, LOG_LVL_WARN,
-                     "&&&DASH QR " << taskSched->histTimeOfRunningTasks->getString("run"));
             } else {
                 LOGS(_log, LOG_LVL_ERROR, "QR runtaskSched == nullptr");
-                LOGS(_log, LOG_LVL_ERROR, "&&&DASH QR runtaskSched == nullptr");
             }
             double runTimeSeconds = primeT.getElapsed();
             double subchunkRunTimeSeconds = subChunkT.getElapsed();
@@ -348,16 +345,6 @@ void QueryRunner::cancel() {
                 break;
         }
     }
-
-    /* &&&
-    auto streamB = _streamBuf.lock();
-    if (streamB != nullptr) {
-        streamB->cancel();
-    }
-
-    // The send channel will die naturally on its own when xrootd stops talking to it
-    // or other tasks call _transmitCancelledError().
-    */
 }
 
 QueryRunner::~QueryRunner() {}

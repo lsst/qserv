@@ -40,7 +40,6 @@
 
 namespace lsst::qserv::qdisp {
 
-//&&&class QdispPool;
 class QueryRequest;
 
 /// This class is used to describe, monitor, and control a single query to a worker.
@@ -53,9 +52,8 @@ public:
 
     /// Factory function to make certain a shared_ptr is used and _setup is called.
     static JobQuery::Ptr create(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-                                qmeta::JobStatus::Ptr const& jobStatus,
-                                std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid) {
-        Ptr jq = Ptr(new JobQuery(executive, jobDescription, jobStatus, markCompleteFunc, qid));
+                                qmeta::JobStatus::Ptr const& jobStatus, QueryId qid) {
+        Ptr jq = Ptr(new JobQuery(executive, jobDescription, jobStatus, qid));
         jq->_setup();
         return jq;
     }
@@ -78,15 +76,12 @@ public:
 
     std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
 
-    //&&&std::shared_ptr<QdispPool> getQdispPool() override { return _qdispPool; }
-
     std::ostream& dumpOS(std::ostream& os) const override;
 
     /// Make a copy of the job description. JobQuery::_setup() must be called after creation.
     /// Do not call this directly, use create.
     JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
-             qmeta::JobStatus::Ptr const& jobStatus,
-             std::shared_ptr<MarkCompleteFunc> const& markCompleteFunc, QueryId qid);
+             qmeta::JobStatus::Ptr const& jobStatus, QueryId qid);
 
     /// If the UberJob is unassigned, change the _uberJobId to ujId.
     bool setUberJobId(UberJobId ujId) {
@@ -131,7 +126,6 @@ protected:
     std::weak_ptr<Executive> _executive;
     /// The job description needs to survive until the task is complete.
     JobDescription::Ptr _jobDescription;
-    std::shared_ptr<MarkCompleteFunc> _markCompleteFunc;
 
     // JobStatus has its own mutex.
     qmeta::JobStatus::Ptr _jobStatus;  ///< Points at status in Executive::_statusMap
@@ -147,8 +141,6 @@ protected:
 
     // Cancellation
     std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.
-
-    //&&& std::shared_ptr<util::QdispPool> _qdispPool;
 
     /// The UberJobId that this job is assigned to. Values less than zero
     /// indicate this job is unassigned. To prevent race conditions,

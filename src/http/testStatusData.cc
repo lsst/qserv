@@ -55,18 +55,13 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     int czrPort = 2022;
     string const czrHost("cz_host");
 
-    //&&&auto czarA = lsst::qserv::http::CzarContactInfo::create(czrName, czrId, czrPort, czrHost);
     auto czarA = lsst::qserv::http::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
-    LOGS_ERROR("&&& a czarA=" << czarA->dump());
 
     auto czarAJs = czarA->serializeJson();
-    LOGS_ERROR("&&& b czarAJs=" << czarAJs);
 
     auto czarB = lsst::qserv::http::CzarContactInfo::createFromJson(czarAJs);
-    LOGS_ERROR("&&& c czarB=" << czarB);
     BOOST_REQUIRE(czarA->compare(*czarB));
 
-    //&&&auto czarC = lsst::qserv::http::CzarContactInfo::create("different", czrId, czrPort, czrHost);
     auto czarC =
             lsst::qserv::http::CzarContactInfo::create("different", czrId, czrPort, czrHost, cxrStartTime);
     BOOST_REQUIRE(!czarA->compare(*czarC));
@@ -77,34 +72,22 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     auto workerB = WorkerContactInfo::create("sd_workerB", "host_w2", "mgmhost_a", 3421, start);
     auto workerC = WorkerContactInfo::create("sd_workerC", "host_w3", "mgmhost_b", 3422, start);
 
-    LOGS_ERROR("&&& d workerA=" << workerA->dump());
-
     auto jsWorkerA = workerA->serializeJson();
-    LOGS_ERROR("&&& e jsWorkerA=" << jsWorkerA);
     auto start1Sec = start + 1s;
     auto workerA1 = WorkerContactInfo::createFromJsonWorker(jsWorkerA, start1Sec);
-    LOGS_ERROR("&&& f workerA1=" << workerA1->dump());
     BOOST_REQUIRE(workerA->isSameContactInfo(*workerA1));
 
     // WorkerQueryStatusData
     auto wqsdA = lsst::qserv::http::WorkerQueryStatusData::create(workerA, czarA, replicationInstanceId,
                                                                   replicationAuthKey);
-    LOGS_ERROR("&&& g wqsdA=" << wqsdA->dump());
 
-    //&&&double timeoutAliveSecs = 100.0;
-    //&&&double timeoutDeadSecs = 2*timeoutAliveSecs;
     double maxLifetime = 300.0;
     auto jsDataA = wqsdA->serializeJson(maxLifetime);
-    LOGS_ERROR("&&& h jsDataA=" << *jsDataA);
 
     // Check that empty lists work.
     auto wqsdA1 = lsst::qserv::http::WorkerQueryStatusData::createFromJson(*jsDataA, replicationInstanceId,
                                                                            replicationAuthKey, start1Sec);
-    LOGS_ERROR("&&& i wqsdA1=" << wqsdA1->dump());
-    LOGS_ERROR("&&& i wqsdA=" << wqsdA->dump());
     auto jsDataA1 = wqsdA1->serializeJson(maxLifetime);
-    LOGS_ERROR("&&& i jsDataA1=" << *jsDataA1);
-    LOGS_ERROR("&&& i jsDataA=" << *jsDataA);
     BOOST_REQUIRE(*jsDataA == *jsDataA1);
 
     vector<lsst::qserv::QueryId> qIdsDelFiles = {7, 8, 9, 15, 25, 26, 27, 30};
@@ -114,7 +97,6 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     }
 
     jsDataA = wqsdA->serializeJson(maxLifetime);
-    LOGS_ERROR("&&& j jsDataA=" << jsDataA);
     BOOST_REQUIRE(*jsDataA != *jsDataA1);
 
     for (auto const qIdKF : qIdsKeepFiles) {
@@ -123,10 +105,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
 
     wqsdA->addDeadUberJobs(12, {1, 3}, start);
 
-    LOGS_ERROR("&&& i wqsdA=" << wqsdA->dump());
-
     jsDataA = wqsdA->serializeJson(maxLifetime);
-    LOGS_ERROR("&&& j jsDataA=" << *jsDataA);
 
     auto start5Sec = start + 5s;
     auto workerAFromJson = lsst::qserv::http::WorkerQueryStatusData::createFromJson(
@@ -139,13 +118,11 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     wqsdA->addDeadUberJobs(1059, {1, 4, 6, 7, 8, 10, 3, 22, 93}, start5Sec);
 
     jsDataA = wqsdA->serializeJson(maxLifetime);
-    LOGS_ERROR("&&& k jsDataA=" << *jsDataA);
     BOOST_REQUIRE(*jsDataA != *jsWorkerAFromJson);
 
     workerAFromJson = lsst::qserv::http::WorkerQueryStatusData::createFromJson(
             *jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
     jsWorkerAFromJson = workerAFromJson->serializeJson(maxLifetime);
-    LOGS_ERROR("&&& l jsWorkerAFromJson=" << *jsWorkerAFromJson);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
 
     // Make the response, which contains lists of the items handled by the workers.
@@ -178,37 +155,28 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     string const czrHost("cz_host");
 
     auto czarA = lsst::qserv::http::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
-    LOGS_ERROR("&&&i a czarA=" << czarA->dump());
     auto czarAJs = czarA->serializeJson();
-    LOGS_ERROR("&&&i b czarAJs=" << czarAJs);
 
     auto start = lsst::qserv::CLOCK::now();
     auto workerA = WorkerContactInfo::create("sd_workerA", "host_w1", "mgmhost_a", 3421, start);
-    LOGS_ERROR("&&&i d workerA=" << workerA->dump());
     auto jsWorkerA = workerA->serializeJson();
-    LOGS_ERROR("&&&i e jsWorkerA=" << jsWorkerA);
 
     // WorkerCzarComIssue
-    //&&&auto wccIssueA = lsst::qserv::http::WorkerCzarComIssue::create(workerA, czarA, replicationInstanceId,
-    //replicationAuthKey);
     auto wccIssueA = lsst::qserv::http::WorkerCzarComIssue::create(replicationInstanceId, replicationAuthKey);
     wccIssueA->setContactInfo(workerA, czarA);
     BOOST_REQUIRE(wccIssueA->needToSend() == false);
     wccIssueA->setThoughtCzarWasDead(true);
     BOOST_REQUIRE(wccIssueA->needToSend() == true);
 
-    LOGS_ERROR("&&&i f wccIssue=" << wccIssueA->dump());
-
     auto jsIssueA = wccIssueA->serializeJson();
-    LOGS_ERROR("&&&i g jsIssue=" << *jsIssueA);
 
     auto wccIssueA1 = lsst::qserv::http::WorkerCzarComIssue::createFromJson(*jsIssueA, replicationInstanceId,
                                                                             replicationAuthKey);
-    LOGS_ERROR("&&&i i wccIssueA1=" << wccIssueA1->dump());
-    LOGS_ERROR("&&&i i wccIssueA=" << wccIssueA->dump());
+    LOGS_ERROR("&&& wccIssueA1=" << wccIssueA1->dump());
+    LOGS_ERROR("&&& wccIssueA=" << wccIssueA->dump());
     auto jsIssueA1 = wccIssueA1->serializeJson();
-    LOGS_ERROR("&&&i i jsIssueA1=" << *jsIssueA1);
-    LOGS_ERROR("&&&i i jsIssueA=" << *jsIssueA);
+    LOGS_ERROR("&&& jsIssueA1=" << *jsIssueA1);
+    LOGS_ERROR("&&& jsIssueA=" << *jsIssueA);
     BOOST_REQUIRE(*jsIssueA == *jsIssueA1);
 
     // &&& Test with items in lists.

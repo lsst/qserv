@@ -148,20 +148,25 @@ public:
         return (wId == oWId && _wHost == oWHost && _wManagementHost == oWManagementHost && _wPort == oWPort);
     }
 
-    void regUpdateTime(TIMEPOINT updateTime) {
+    void setRegUpdateTime(TIMEPOINT updateTime) {
         std::lock_guard<std::mutex> lg(_rMtx);
-        _regUpdate = updateTime;
+        _regUpdateTime = updateTime;
+    }
+
+    TIMEPOINT getRegUpdateTime(TIMEPOINT updateTime) {
+        std::lock_guard<std::mutex> lg(_rMtx);
+        return _regUpdateTime;
     }
 
     double timeSinceRegUpdateSeconds() const {
         std::lock_guard<std::mutex> lg(_rMtx);
-        double secs = std::chrono::duration<double>(CLOCK::now() - _regUpdate).count();
+        double secs = std::chrono::duration<double>(CLOCK::now() - _regUpdateTime).count();
         return secs;
     }
 
-    TIMEPOINT getRegUpdate() const {
+    TIMEPOINT getRegUpdateTime() const {
         std::lock_guard<std::mutex> lg(_rMtx);
-        return _regUpdate;
+        return _regUpdateTime;
     }
 
     /// @return true if startupTime equals _wStartupTime or _wStartupTime was never set,
@@ -192,7 +197,7 @@ private:
     WorkerContactInfo(std::string const& wId_, std::string const& wHost_, std::string const& wManagementHost_,
                       int wPort_, TIMEPOINT updateTime_)
             : wId(wId_), _wHost(wHost_), _wManagementHost(wManagementHost_), _wPort(wPort_) {
-        regUpdateTime(updateTime_);
+        setRegUpdateTime(updateTime_);
     }
 
     // _rMtx must be locked before calling
@@ -208,7 +213,7 @@ private:
     /// Last time the registry heard from this worker. The ActiveWorker class
     /// will use this to determine the worker's state.
     /// &&& Store in seconds since epoch to make atomic?
-    TIMEPOINT _regUpdate;
+    TIMEPOINT _regUpdateTime;
 
     /// "w-startup-time", it's value is set to zero until the real value is
     /// received from the worker. Once it is non-zero, any change indicates

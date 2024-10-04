@@ -61,7 +61,6 @@ CzarContactInfo::Ptr CzarContactInfo::createFromJson(nlohmann::json const& czJso
         auto czHostName_ = RequestBodyJSON::required<string>(czJson, "management-host-name");
         auto czStartupTime_ = RequestBodyJSON::required<uint64_t>(czJson, "czar-startup-time");
         return create(czName_, czId_, czPort_, czHostName_, czStartupTime_);
-        //&&& return create(czName_, czId_, czPort_, czHostName_);
     } catch (invalid_argument const& exc) {
         LOGS(_log, LOG_LVL_ERROR, string("CzarContactInfo::createJson invalid ") << exc.what());
     }
@@ -70,8 +69,6 @@ CzarContactInfo::Ptr CzarContactInfo::createFromJson(nlohmann::json const& czJso
 
 std::string CzarContactInfo::dump() const {
     stringstream os;
-    //&&& os << "czName=" << czName << " czId=" << czId << " czPort=" << czPort << " czHostName=" <<
-    // czHostName;
     os << "czName=" << czName << " czId=" << czId << " czPort=" << czPort << " czHostName=" << czHostName
        << " czStartupTime=" << czStartupTime;
     return os.str();
@@ -253,18 +250,14 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
                                                                  std::string const& replicationInstanceId_,
                                                                  std::string const& replicationAuthKey_,
                                                                  TIMEPOINT updateTm) {
-    LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson &&& a");
     try {
         if (jsWorkerReq["version"] != http::MetaModule::version) {
             LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson bad version");
             return nullptr;
         }
 
-        LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson &&& b");
         auto czInfo_ = CzarContactInfo::createFromJson(jsWorkerReq["czar"]);
-        LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson &&& c");
         auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsWorkerReq["worker"], updateTm);
-        LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson &&& d");
         if (czInfo_ == nullptr || wInfo_ == nullptr) {
             LOGS(_log, LOG_LVL_ERROR,
                  "WorkerQueryStatusData::createJson czar or worker info could not be parsed in "
@@ -272,9 +265,8 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
         }
         auto wqsData =
                 WorkerQueryStatusData::create(wInfo_, czInfo_, replicationInstanceId_, replicationAuthKey_);
-        LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson &&& e");
         wqsData->parseLists(jsWorkerReq, updateTm);
-        LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson &&& end");
+
         bool czarRestart = RequestBodyJSON::required<bool>(jsWorkerReq, "czarrestart");
         if (czarRestart) {
             auto restartCzarId = RequestBodyJSON::required<CzarIdType>(jsWorkerReq, "czarrestartcancelczid");
@@ -297,39 +289,26 @@ void WorkerQueryStatusData::parseListsInto(nlohmann::json const& jsWR, TIMEPOINT
                                            std::map<QueryId, TIMEPOINT>& doneKeepF,
                                            std::map<QueryId, TIMEPOINT>& doneDeleteF,
                                            std::map<QueryId, std::map<UberJobId, TIMEPOINT>>& deadUberJobs) {
-    LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& a");
     auto& jsQIdDoneKeepFiles = jsWR["qiddonekeepfiles"];
-    LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& b");
     for (auto const& qidKeep : jsQIdDoneKeepFiles) {
-        LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& b1");
         doneKeepF[qidKeep] = updateTm;
     }
 
-    LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& c");
     auto& jsQIdDoneDeleteFiles = jsWR["qiddonedeletefiles"];
-    LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& d");
     for (auto const& qidDelete : jsQIdDoneDeleteFiles) {
-        LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& d1");
         doneDeleteF[qidDelete] = updateTm;
     }
 
-    LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& e");
     auto& jsQIdDeadUberJobs = jsWR["qiddeaduberjobs"];
-    LOGS(_log, LOG_LVL_ERROR,
-         "WorkerQueryStatusData::parseListsInto &&& f jsQIdDeadUberJobs=" << jsQIdDeadUberJobs);
     // Interestingly, !jsQIdDeadUberJobs.empty() doesn't work, but .size() > 0 does.
     // Not having the size() check causes issues with the for loop trying to read the
     // first element of an empty list, which goes badly.
     if (jsQIdDeadUberJobs.size() > 0) {
-        LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& f1");
         for (auto const& qDeadUjs : jsQIdDeadUberJobs) {
-            LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::parseListsInto &&& f1a qDeadUjs=" << qDeadUjs);
             QueryId qId = qDeadUjs["qid"];
             auto const& ujIds = qDeadUjs["ujids"];
             auto& mapOfUj = deadUberJobs[qId];
             for (auto const& ujId : ujIds) {
-                LOGS(_log, LOG_LVL_ERROR,
-                     "WorkerQueryStatusData::parseListsInto &&& f1d1 qId=" << qId << " ujId=" << ujId);
                 mapOfUj[ujId] = updateTm;
             }
         }
@@ -442,7 +421,7 @@ shared_ptr<json> WorkerCzarComIssue::serializeJson() {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _wInfo or _czInfo was null");
         return jsCzarReqPtr;
     }
-    //&&&auto now = CLOCK::now();
+
     jsCzarR["version"] = http::MetaModule::version;
     jsCzarR["instance_id"] = _replicationInstanceId;
     jsCzarR["auth_key"] = _replicationAuthKey;
@@ -460,28 +439,21 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
                                                            std::string const& replicationInstanceId_,
                                                            std::string const& replicationAuthKey_) {
     string const fName("WorkerCzarComIssue::createFromJson");
-    LOGS(_log, LOG_LVL_WARN, fName << " &&& a");
     try {
         if (jsCzarReq["version"] != http::MetaModule::version) {
             LOGS(_log, LOG_LVL_ERROR, fName << " bad version");
             return nullptr;
         }
 
-        LOGS(_log, LOG_LVL_ERROR, fName << " &&& b");
         auto czInfo_ = CzarContactInfo::createFromJson(jsCzarReq["czar"]);
-        LOGS(_log, LOG_LVL_ERROR, fName << " &&& c");
         auto now = CLOCK::now();
         auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsCzarReq["worker"], now);
-        LOGS(_log, LOG_LVL_ERROR, fName << " && d");
         if (czInfo_ == nullptr || wInfo_ == nullptr) {
             LOGS(_log, LOG_LVL_ERROR, fName << " or worker info could not be parsed in " << jsCzarReq);
         }
-        //&&&auto wccIssue = create(wInfo_, czInfo_, replicationInstanceId_, replicationAuthKey_);
         auto wccIssue = create(replicationInstanceId_, replicationAuthKey_);
         wccIssue->setContactInfo(wInfo_, czInfo_);
-        LOGS(_log, LOG_LVL_ERROR, fName << " &&& e");
         wccIssue->_thoughtCzarWasDead = RequestBodyJSON::required<bool>(jsCzarReq, "thoughtczarwasdead");
-        LOGS(_log, LOG_LVL_ERROR, fName << " &&& end");
         return wccIssue;
     } catch (invalid_argument const& exc) {
         LOGS(_log, LOG_LVL_ERROR, string("WorkerQueryStatusData::createJson invalid ") << exc.what());

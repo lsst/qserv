@@ -44,7 +44,6 @@
 #include "util/InstanceCount.h"  //&&&
 
 namespace lsst::qserv::wbase {
-//&&&class Histogram;
 class UserQueryInfo;
 }  // namespace lsst::qserv::wbase
 
@@ -97,7 +96,6 @@ public:
     void addTaskTransmit(double timeSeconds, int64_t bytesTransmitted, int64_t rowsTransmitted,
                          double bufferFillSecs);
 
-    //&&&void touch(TIMEPOINT const now);
     void addTask(TIMEPOINT const now);
     void addTaskRunning(TIMEPOINT const now);
     bool addTaskCompleted(TIMEPOINT const now, double const taskDuration);

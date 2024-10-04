@@ -53,6 +53,7 @@ namespace lsst::qserv::cconfig {
  */
 class CzarConfig {
 public:
+    using Ptr = std::shared_ptr<CzarConfig>;
     /**
      * Create an instance of CzarConfig and load parameters from the specifid file.
      * @note One has to call this method at least once before trying to obtain
@@ -63,7 +64,7 @@ public:
      * @param czarName - the unique name of Czar.
      * @return the shared pointer to the configuration object
      */
-    static std::shared_ptr<CzarConfig> create(std::string const& configFileName, std::string const& czarName);
+    static Ptr create(std::string const& configFileName, std::string const& czarName);
 
     /**
      * Get a pointer to an instance that was created by the last call to
@@ -71,7 +72,7 @@ public:
      * @return the shared pointer to the configuration object
      * @throws std::logic_error when attempting to call the bethod before creating an instance.
      */
-    static std::shared_ptr<CzarConfig> instance();
+    static Ptr instance();
 
     CzarConfig() = delete;
     CzarConfig(CzarConfig const&) = delete;
