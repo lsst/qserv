@@ -8,7 +8,7 @@ table#fwk-qserv-queries caption {
 }
 table#fwk-qserv-queries tbody th,
 table#fwk-qserv-queries tbody td {
-    vertical-align:middle;
+    vertical-align:top;
 }
 table#fwk-qserv-queries pre {
     padding: 0;

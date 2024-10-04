@@ -21,6 +21,7 @@ function(CSSLoader,
                                             // queries between updates.
             this._id2query = {};            // Store query text for each identifier. The dictionary gets
                                             // updated at each refresh of the page.
+            this._id2url = {};              // Store URL to the query blob for each identifier
         }
         fwk_app_on_show() {
             console.log('show: ' + this.fwk_app_name);
@@ -70,6 +71,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">Time</th>
           <th class="sticky" style="text-align:right;">State</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-download"></i></th>
           <th class="sticky">Query</th>
         </tr>
       </thead>
@@ -132,6 +134,7 @@ function(CSSLoader,
         }
         _display(queries) {
             const queryCopyTitle = "Click to copy the query text to the clipboard.";
+            const queryDownloadTitle = "Click to download the query text to your computer.";
             const COL_Id = 0, COL_Command = 4, COL_Time = 5, COL_State = 6, COL_Info = 7;
             let tbody = this._table().children('tbody');
             if (_.isEmpty(queries.columns)) {
@@ -139,6 +142,9 @@ function(CSSLoader,
                 return;
             }
             this._id2query = {};
+            for (let id in this._id2url) {
+                URL.revokeObjectURL(this._id2url[id]);
+            }
             let html = '';
             for (let i in queries.rows) {
                 let row = queries.rows[i];
@@ -146,6 +152,7 @@ function(CSSLoader,
                 let queryId = row[COL_Id];
                 let query = row[COL_Info];
                 this._id2query[queryId] = query;
+                this._id2url[queryId] = URL.createObjectURL(new Blob([query], {type: "text/plain"}));
                 const expanded = (queryId in this._queryId2Expanded) && this._queryId2Expanded[queryId];
                 const queryToggleTitle = "Click to toggle query formatting.";
                 const queryStyle = "color:#4d4dff;";
@@ -156,6 +163,9 @@ function(CSSLoader,
   <td style="text-align:right;"><pre>${row[COL_State]}</pre></td>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
+  </td>
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
+    <a class="btn btn-outline-dark btn-sm" style="height:20px; margin:0px;" title="${queryDownloadTitle}" href="${this._id2url[queryId]}" download></a>
   </td>
   <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(queryId, expanded) + `<pre></td>
 </tr>`;

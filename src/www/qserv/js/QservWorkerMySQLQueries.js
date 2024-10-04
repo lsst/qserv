@@ -17,10 +17,11 @@ function(CSSLoader,
 
         constructor(name) {
             super(name);
-            this._mySqlThreadId2Expanded = {};  // Store 'true' to allow persistent state for the expanded
+            this._mysqlThreadId2Expanded = {};  // Store 'true' to allow persistent state for the expanded
                                                 // queries between updates.
-            this._mySqlThreaId2query = {};      // Store query text for each identifier. The dictionary gets
+            this._mysqlThreadId2query = {};     // Store query text for each identifier. The dictionary gets
                                                 // updated at each refresh of the page.
+            this._mysqlThreadId2url = {};       // Store URL to the query blob for each identifier
         }
         fwk_app_on_show() {
             console.log('show: ' + this.fwk_app_name);
@@ -101,6 +102,7 @@ function(CSSLoader,
           <th>&nbsp;</th>
           <th>&nbsp;</th>
           <th>&nbsp;</th>
+          <th>&nbsp;</th>
         </tr>
         <tr>
           <th class="sticky" style="text-align:right;">QID</th>
@@ -115,6 +117,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">Command</th>
           <th class="sticky" style="text-align:right;">State</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-download"></i></th>
           <th class="sticky">Query</th>
         </tr>
       </thead>
@@ -217,6 +220,7 @@ function(CSSLoader,
         _display(status) {
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
             const queryCopyTitle = "Click to copy the query text to the clipboard.";
+            const queryDownloadTitle = "Click to download the query text to your computer.";
             const COL_Id = 0, COL_Command = 4, COL_Time = 5, COL_State = 6, COL_Info = 7;
             const desiredQueryCommand = this._query_command();
             let tbody = this._table().children('tbody');
@@ -224,7 +228,10 @@ function(CSSLoader,
                 tbody.html('');
                 return;
             }
-            this._mySqlThreaId2query = {};
+            this._mysqlThreadId2query = {};
+            for (let id in this._mysqlThreadId2url) {
+                URL.revokeObjectURL(this._mysqlThreadId2url[id]);
+            }
             let numQueriesTotal = 0;
             let numQueriesDisplayed = 0;
             let html = '';
@@ -234,10 +241,11 @@ function(CSSLoader,
                 let row = status.queries.rows[i];
                 const thisQueryCommand = row[COL_Command];
                 if ((desiredQueryCommand !== '') && (thisQueryCommand !== desiredQueryCommand)) continue;
-                let mySqlThreadId = row[COL_Id];
+                let mysqlThreadId = row[COL_Id];
                 let query = row[COL_Info];
-                this._mySqlThreaId2query[mySqlThreadId] = query;
-                const expanded = (mySqlThreadId in this._mySqlThreadId2Expanded) && this._mySqlThreadId2Expanded[mySqlThreadId];
+                this._mysqlThreadId2query[mysqlThreadId] = query;
+                this._mysqlThreadId2url[mysqlThreadId] = URL.createObjectURL(new Blob([query], {type: "text/plain"}));
+                const expanded = (mysqlThreadId in this._mysqlThreadId2Expanded) && this._mysqlThreadId2Expanded[mysqlThreadId];
                 const queryToggleTitle = "Click to toggle query formatting.";
                 const queryStyle = "color:#4d4dff;";
                 // Task context (if any)
@@ -247,8 +255,8 @@ function(CSSLoader,
                 let subChunkId = '';
                 let templateId = '';
                 let state = '';
-                if (_.has(status.mysql_thread_to_task, mySqlThreadId)) {
-                    let task = status.mysql_thread_to_task[mySqlThreadId];
+                if (_.has(status.mysql_thread_to_task, mysqlThreadId)) {
+                    let task = status.mysql_thread_to_task[mysqlThreadId];
                     queryId    = task['query_id'];
                     jobId      = task['job_id'];
                     chunkId    = task['chunk_id'];
@@ -258,7 +266,7 @@ function(CSSLoader,
                 }
                 const rowClass = QservWorkerMySQLQueries._state2css(state);
                 html += `
-<tr mysql_thread_id="${mySqlThreadId}" query_id="${queryId}">
+<tr mysql_thread_id="${mysqlThreadId}" query_id="${queryId}">
   <th style="text-align:right;"><pre>${queryId}</pre></th>`;
                 if (queryId === '') {
                     html += `
@@ -275,7 +283,7 @@ function(CSSLoader,
   <td style="text-align:right;" class="${rowClass}"><pre>${subChunkId}</pre></td>
   <td style="text-align:right;" class="${rowClass}"><pre>${templateId}</pre></td>
   <td style="text-align:right;" class="${rowClass}"><pre>${state}</pre></td>
-  <th style="text-align:right;"><pre>${mySqlThreadId}</pre></th>
+  <th style="text-align:right;"><pre>${mysqlThreadId}</pre></th>
   <td style="text-align:right;"><pre>${row[COL_Time]}</pre></td>
   <td style="text-align:right;"><pre>${row[COL_Command]}</pre></td>
   <td style="text-align:right;"><pre>${row[COL_State]}</pre></td>`;
@@ -289,7 +297,10 @@ function(CSSLoader,
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
-  <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(mySqlThreadId, expanded) + `<pre></td>`;
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
+    <a class="btn btn-outline-dark btn-sm" style="height:20px; margin:0px;" title="${queryDownloadTitle}" href="${this._mysqlThreadId2url[mysqlThreadId]}" download></a>
+  </td>
+  <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(mysqlThreadId, expanded) + `<pre></td>`;
                 }
                 html += `
 </tr>`;
@@ -305,8 +316,8 @@ function(CSSLoader,
             };
             let copyQueryToClipboard = function(e) {
                 let button = $(e.currentTarget);
-                let mySqlThreadId = button.parent().parent().attr("mysql_thread_id");
-                let query = that._mySqlThreaId2query[mySqlThreadId];
+                let mysqlThreadId = button.parent().parent().attr("mysql_thread_id");
+                let query = that._mysqlThreadId2query[mysqlThreadId];
                 navigator.clipboard.writeText(query,
                     () => {},
                     () => { alert("Failed to write the query to the clipboard. Please copy the text manually: " + query); }
@@ -315,18 +326,18 @@ function(CSSLoader,
             let toggleQueryDisplay = function(e) {
                 let td = $(e.currentTarget);
                 let pre = td.find("pre.query");
-                const mySqlThreadId = td.parent().attr("mysql_thread_id");
-                const expanded = !((mySqlThreadId in that._mySqlThreadId2Expanded) && that._mySqlThreadId2Expanded[mySqlThreadId]);
-                pre.text(that._query2text(mySqlThreadId, expanded));
-                that._mySqlThreadId2Expanded[mySqlThreadId] = expanded;
+                const mysqlThreadId = td.parent().attr("mysql_thread_id");
+                const expanded = !((mysqlThreadId in that._mysqlThreadId2Expanded) && that._mysqlThreadId2Expanded[mysqlThreadId]);
+                pre.text(that._query2text(mysqlThreadId, expanded));
+                that._mysqlThreadId2Expanded[mysqlThreadId] = expanded;
             };
             tbody.find("button.inspect-query").click(displayQuery);
             tbody.find("button.copy-query").click(copyQueryToClipboard);
             tbody.find("td.query_toggler").click(toggleQueryDisplay);
             this._set_num_queries(numQueriesTotal, numQueriesDisplayed);
         }
-        _query2text(mySqlThreadId, expanded) {
-            return Common.query2text(this._mySqlThreaId2query[mySqlThreadId], expanded);
+        _query2text(mysqlThreadId, expanded) {
+            return Common.query2text(this._mysqlThreadId2query[mysqlThreadId], expanded);
         }
         static _state2css(state) {
             switch (state) {

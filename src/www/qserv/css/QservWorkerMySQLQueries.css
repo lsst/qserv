@@ -13,7 +13,7 @@ table#fwk-worker-mysql-queries > thead > tr > th.sticky {
 }
 table#fwk-worker-mysql-queries tbody th,
 table#fwk-worker-mysql-queries tbody td {
-    vertical-align:middle;
+    vertical-align:top;
 }
 table#fwk-worker-mysql-queries pre {
     padding: 0;

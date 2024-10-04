@@ -21,6 +21,7 @@ function(CSSLoader,
                                             // queries between updates.
             this._id2query = {};            // Store query text for each identifier. The dictionary gets
                                             // updated at each refresh of the page.
+            this._id2url = {};              // Store URL to the query blob for each identifier
         }
         fwk_app_on_show() {
             console.log('show: ' + this.fwk_app_name);
@@ -71,6 +72,7 @@ function(CSSLoader,
           <th class="sticky">#tasks</th>
           <th class="sticky">qid</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-download"></i></th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
           <th class="sticky">query</th>
         </tr>
@@ -142,11 +144,15 @@ function(CSSLoader,
          */
         _display(data) {
             const queryCopyTitle = "Click to copy the query text to the clipboard.";
+            const queryDownloadTitle = "Click to download the query text to your computer.";
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
             const queryToggleTitle = "Click to toggle query formatting.";
             const queryStyle = "color:#4d4dff;";
             let html = '';
             this._id2query = {};
+            for (let id in this._id2url) {
+                URL.revokeObjectURL(this._id2url[id]);
+            }
             for (let worker in data) {
                 if (!data[worker].success) {
                     html += `
@@ -173,15 +179,19 @@ function(CSSLoader,
                             const queryId  = scheduler.query_id_to_count[j][0];
                             const numTasks = scheduler.query_id_to_count[j][1];
                             this._id2query[queryId] = queries[queryId].query;
+                            this._id2url[queryId] = URL.createObjectURL(new Blob([queries[queryId].query], {type: "text/plain"}));
                             const expanded = (queryId in this._queryId2Expanded) && this._queryId2Expanded[queryId];
                             htmlSchedulerQueries += `
 <tr id="${queryId}">
   <td><pre>${numTasks}</pre></td>
-  <td><pre>${queryId}</pre></td>
+  <th><pre>${queryId}</pre></th>
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-dark btn-sm copy-query" style="height:20px; margin:0px;" title="${queryCopyTitle}"></button>
   </td>
-  <td style="text-align:right; padding-top:0; padding-bottom:0">
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
+    <a class="btn btn-outline-dark btn-sm" style="height:20px; margin:0px;" title="${queryDownloadTitle}" href="${this._id2url[queryId]}" download></a>
+  </td>
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
   </td>
   <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(queryId, expanded) + `<pre></td>
