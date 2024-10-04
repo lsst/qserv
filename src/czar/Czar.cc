@@ -95,10 +95,17 @@ void Czar::_monitor() {
         LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
 
         /// Check database for changes in worker chunk assignments and aliveness
-        _czarFamilyMap->read();
+        try {
+            _czarFamilyMap->read();
+        } catch (ChunkMapException const& cmex) {
+            // There are probably chunks that don't exist on any alive worker,
+            // continue on in hopes that workers will show up with the missing chunks
+            // later.
+            LOGS(_log, LOG_LVL_ERROR, funcN << " family map read problems " << cmex.what());
+        }
 
         // Send appropriate messages to all ActiveWorkers. This will
-        // check if workers have died by timeout. The reponse
+        // check if workers have died by timeout. The response
         // from the worker include
         _czarRegistry->sendActiveWorkersMessages();
 
@@ -126,14 +133,13 @@ void Czar::_monitor() {
             execVal->assignJobsToUberJobs();
         }
 
-        // TODO:UJ DM-45470 Maybe get missing results from workers.
-        //    To prevent anything from slipping through the cracks:
-        //    Workers will keep trying to transmit results until they think the czar is dead.
-        //    If a worker thinks the czar died, it will cancel all related jobs that it has,
-        //    and if the czar sends a status message to that worker, that worker will send back
-        //    a separate message saying it killed everything that this czar gave it. Upon
-        //    getting this message from a worker, this czar will reassign everything it had
-        //    sent to that worker.
+        // To prevent anything from slipping through the cracks:
+        // Workers will keep trying to transmit results until they think the czar is dead.
+        // If a worker thinks the czar died, it will cancel all related jobs that it has,
+        // and if the czar sends a status message to that worker, that worker will send back
+        // a separate message (see WorkerCzarComIssue) saying it killed everything that this
+        // czar gave it. Upon getting this message from a worker, this czar will reassign
+        // everything it had sent to that worker.
 
         // TODO:UJ How long should queryId's remain on this list?
     }
@@ -229,7 +235,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     auto const port = _controlHttpSvc->start();
     _czarConfig->setReplicationHttpPort(port);
 
-    _czarRegistry = CzarRegistry::create(_czarConfig);
+    _czarRegistry = CzarRegistry::create(_czarConfig, _activeWorkerMap);
 
     // Start the monitor thread
     thread monitorThrd(&Czar::_monitor, this);

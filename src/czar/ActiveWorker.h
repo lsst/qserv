@@ -79,7 +79,8 @@ public:
     ActiveWorker& operator=(ActiveWorker const&) = delete;
 
     std::string cName(const char* fName) {
-        return std::string("ActiveWorker::") + fName + " " + ((_wqsData == nullptr) ? "?" : _wqsData->dump());
+        auto wqsd = _wqsData;
+        return std::string("ActiveWorker::") + fName + " " + ((wqsd == nullptr) ? "?" : wqsd->dump());
     }
 
     static std::string getStateStr(State st);
@@ -97,10 +98,7 @@ public:
         _wqsData->setCzarCancelAfterRestart(czId, lastQId);
     }
 
-    http::WorkerContactInfo::Ptr getWInfo() const {
-        if (_wqsData == nullptr) return nullptr;
-        return _wqsData->getWInfo();
-    }
+    http::WorkerContactInfo::Ptr getWInfo() const;
 
     ~ActiveWorker() = default;
 
@@ -138,6 +136,8 @@ public:
     /// individual UberJobs anymore, so this function will get rid of them.
     void removeDeadUberJobsFor(QueryId qId);
 
+    State getState() const;
+
     std::string dump() const;
 
 private:
@@ -169,10 +169,6 @@ private:
     State _state{QUESTIONABLE};  ///< current state of this worker.
 
     mutable std::mutex _aMtx;  ///< protects _wInfo, _state, _qIdDoneKeepFiles, _qIdDoneDeleteFiles
-
-    /// The number of communication threads currently in use by this class instance.
-    std::atomic<int> _conThreadCount{0};
-    int _maxConThreadCount{2};
 };
 
 /// &&& doc
@@ -182,6 +178,7 @@ private:
 /// come back from the dead.
 class ActiveWorkerMap {
 public:
+    using Ptr = std::shared_ptr<ActiveWorkerMap>;
     ActiveWorkerMap() = default;
     ActiveWorkerMap(ActiveWorkerMap const&) = delete;
     ActiveWorkerMap operator=(ActiveWorkerMap const&) = delete;

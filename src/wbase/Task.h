@@ -308,7 +308,6 @@ public:
     }
 
 private:
-    //&&&std::weak_ptr<UserQueryInfo> _userQueryInfo;    ///< Details common to Tasks in this UserQuery.
     std::shared_ptr<FileChannelShared> _sendChannel;  ///< Send channel.
 
     uint64_t const _tSeq = 0;          ///< identifier for the specific task

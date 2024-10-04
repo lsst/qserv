@@ -159,11 +159,6 @@ public:
         return _ReservedInteractiveSqlConnections->getVal();
     }
 
-    /* &&&
-    /// @return the maximum number of gigabytes that can be used by StreamBuffers
-    unsigned int getBufferMaxTotalGB() const { return _bufferMaxTotalGB->getVal(); } //&&& delete
-    */
-
     /// @return the maximum number of concurrent transmits to a czar
     unsigned int getMaxTransmits() const { return _maxTransmits->getVal(); }
 
@@ -308,10 +303,6 @@ private:
             util::ConfigValTUInt::create(_configValMap, "sqlconnections", "maxsqlconn", notReq, 800);
     CVTUIntPtr _ReservedInteractiveSqlConnections = util::ConfigValTUInt::create(
             _configValMap, "sqlconnections", "reservedinteractivesqlconn", notReq, 50);
-    /* &&&
-    CVTUIntPtr _bufferMaxTotalGB =
-            util::ConfigValTUInt::create(_configValMap, "transmit", "buffermaxtotalgb", notReq, 41);
-            */
     CVTUIntPtr _maxTransmits =
             util::ConfigValTUInt::create(_configValMap, "transmit", "maxtransmits", notReq, 40);
     CVTIntPtr _maxPerQid = util::ConfigValTInt::create(_configValMap, "transmit", "maxperqid", notReq, 3);
