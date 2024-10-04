@@ -30,6 +30,7 @@
 #include "http/ChttpMetaModule.h"
 #include "replica/config/Configuration.h"
 #include "replica/ingest/IngestDataHttpSvcMod.h"
+#include "replica/ingest/IngestFileHttpSvcMod.h"
 #include "replica/ingest/IngestHttpSvcMod.h"
 #include "replica/ingest/IngestRequest.h"
 #include "replica/ingest/IngestRequestMgr.h"
@@ -80,6 +81,10 @@ void IngestHttpSvc::registerServices(unique_ptr<httplib::Server> const& server) 
     server->Post("/ingest/data", [self](httplib::Request const& req, httplib::Response& resp) {
         IngestDataHttpSvcMod::process(self->serviceProvider(), self->_workerName, req, resp,
                                       "SYNC-PROCESS-DATA");
+    });
+    server->Post("/ingest/csv", [self](httplib::Request const& req, httplib::Response& resp,
+                                       httplib::ContentReader const& contentReader) {
+        IngestFileHttpSvcMod::process(self->serviceProvider(), self->_workerName, req, resp, contentReader);
     });
     server->Post("/ingest/file", [self](httplib::Request const& req, httplib::Response& resp) {
         IngestHttpSvcMod::process(self->serviceProvider(), self->_requestMgr, self->_workerName, req, resp,

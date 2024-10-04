@@ -54,12 +54,20 @@ BOOST_AUTO_TEST_CASE(UrlTest) {
     BOOST_CHECK_THROW({ ptr.reset(new Url("data-json://h/f")); }, invalid_argument);
 
     // The well-formed URL
-    string dataUrl = "data-json://h/";
-    BOOST_REQUIRE_NO_THROW({ ptr.reset(new Url(dataUrl)); });
-    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->url(), dataUrl); });
+    string dataJsonUrl = "data-json://h/";
+    BOOST_REQUIRE_NO_THROW({ ptr.reset(new Url(dataJsonUrl)); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->url(), dataJsonUrl); });
     BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::DATA_JSON); });
     BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->fileHost(), "h"); });
     BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->filePath(), string()); });
+
+    // The well-formed URL
+    string dataCsvUrl = "data-csv://h/f";
+    BOOST_REQUIRE_NO_THROW({ ptr.reset(new Url(dataCsvUrl)); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->url(), dataCsvUrl); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->scheme(), Url::Scheme::DATA_CSV); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->fileHost(), "h"); });
+    BOOST_REQUIRE_NO_THROW({ BOOST_CHECK_EQUAL(ptr->filePath(), "/f"); });
 
     // Resources which are too short to include anyting by the name of a scheme
     // aren't allowed.

@@ -2,6 +2,7 @@ add_library(http SHARED)
 
 target_sources(http PRIVATE
     AsyncReq.cc
+    BaseModule.cc
     BinaryEncoding.cc
     ChttpMetaModule.cc
     ChttpModule.cc
@@ -10,6 +11,7 @@ target_sources(http PRIVATE
     ClientConfig.cc
     ClientConnPool.cc
     Exceptions.cc
+    FileUploadModule.cc
     MetaModule.cc
     Method.cc
     Module.cc
@@ -47,6 +49,7 @@ endfunction()
 
 http_tests(
     testAsyncReq
+    testRequestBodyJSON
     testRequestQuery
     testUrl
 )
