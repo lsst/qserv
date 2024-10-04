@@ -6,6 +6,7 @@ target_sources(replica_apps PRIVATE
     Application.cc
     ApplicationColl.cc
     ApplicationTypes.cc
+    TestAwsS3App.cc
     CheckSumApp.cc
     ChunksApp.cc
     ClusterHealthApp.cc

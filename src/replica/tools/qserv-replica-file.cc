@@ -25,6 +25,7 @@
 
 // Qserv headers
 #include "replica/apps/ApplicationColl.h"
+#include "replica/apps/TestAwsS3App.h"
 #include "replica/apps/FileExportApp.h"
 #include "replica/apps/FileIngestApp.h"
 #include "replica/apps/FileReadApp.h"
@@ -37,6 +38,7 @@ namespace {
 
 ApplicationColl getAppColl() {
     ApplicationColl coll;
+    coll.add<TestAwsS3App>("AWS-S3");
     coll.add<FileExportApp>("EXPORT");
     coll.add<FileIngestApp>("INGEST");
     coll.add<FileReadApp>("READ");
