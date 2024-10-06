@@ -1,8 +1,3 @@
-.. warning::
-
-   **Information in this guide is known to be outdated.** A documentation sprint is underway which will
-   include updates and revisions to this guide.
-
 .. highlight:: sql
 
 #################
@@ -14,5 +9,4 @@ Developer's Guide
 
    quick-start-devel
    doc
-   css
-   wmgr-api
+   scisql
