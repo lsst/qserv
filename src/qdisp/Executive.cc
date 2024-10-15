@@ -228,9 +228,9 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
 
 void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     if (_scanInteractive) {
-        _qdispPool->queCmd(cmd, 3);
+        _qdispPool->queCmd(cmd, 2);
     } else {
-        _qdispPool->queCmd(cmd, 4);
+        _qdispPool->queCmd(cmd, 3);
     }
 }
 
@@ -730,6 +730,13 @@ void Executive::_setupLimit() {
         if (_limit <= 0) hasLimit = false;
     }
     _limitSquashApplies = hasLimit && !(groupBy || orderBy || allChunksRequired);
+}
+
+int Executive::getUjRowLimit() const {
+    if (_limitSquashApplies) {
+        return _limit;
+    }
+    return 0;
 }
 
 void Executive::addResultRows(int64_t rowCount) { _totalResultRows += rowCount; }
