@@ -183,6 +183,12 @@ public:
     /// rows already read in.
     void checkLimitRowComplete();
 
+    //&&&int getRowLimit() const { return _limit; }
+
+    /// Returns the maximum number of rows the worker needs for the LIMIT clause, or
+    ///   a value <= 0 there's no limit that can be applied at the worker.
+    int getUjRowLimit() const;
+
     /// @return _limitRowComplete, which can only be meaningful if the
     ///         user query has not been cancelled.
     bool isLimitRowComplete() { return _limitRowComplete && !_cancelled; }

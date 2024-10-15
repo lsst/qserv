@@ -118,7 +118,7 @@ public:
 
 private:
     UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-            int queryId, int uberJobId, qmeta::CzarId czarId,
+            int queryId, int uberJobId, qmeta::CzarId czarId, int rowLimit,
             czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
 
     /// Used to setup elements that can't be done in the constructor.
@@ -157,9 +157,9 @@ private:
     QueryId const _queryId;
     UberJobId const _uberJobId;
     qmeta::CzarId const _czarId;
+    int const _rowLimit;
 
     std::string const _idStr;
-    std::shared_ptr<util::QdispPool> _qdispPool;  // TODO:UJ remove when possible. &&& delete
 
     // Map of workerData
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed
