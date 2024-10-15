@@ -110,6 +110,7 @@ struct Fixture {
         bool const lockInMemory = false;
         string const resultName = "resName";
         string const authKey = "noAuthKey";
+        int const rowLimit = 0;
     };
 
     shared_ptr<nlohmann::json> newTaskJson(MsgInfo const& mInfo) {
@@ -234,9 +235,9 @@ BOOST_AUTO_TEST_CASE(Simple) {
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
     auto const queries = queriesAndChunks();
-    auto ujData = lsst::qserv::wbase::UberJobData::create(mInfo.uberJobId, mInfo.czarName, mInfo.czarId,
-                                                          mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-                                                          mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+    auto ujData = lsst::qserv::wbase::UberJobData::create(
+            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+            mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     lsst::qserv::proto::ScanInfo scanInfo;
     scanInfo.scanRating = mInfo.scanRating;
     scanInfo.infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
@@ -249,21 +250,6 @@ BOOST_AUTO_TEST_CASE(Simple) {
 }
 
 BOOST_AUTO_TEST_CASE(Output) {
-    /* &&&
-    WorkerConfig::create();
-    string out;
-    shared_ptr<TaskMsg> msg(newTaskMsg());
-    shared_ptr<SendChannel> sendC(SendChannel::newStringChannel(out));
-    auto sc = FileChannelShared::create(sendC, msg->czarid());
-    FakeBackend::Ptr backend = make_shared<FakeBackend>();
-    shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
-    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
-    auto const queries = queriesAndChunks();
-    auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr, queries);
-    Task::Ptr task = taskVect[0];
-    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
-    BOOST_CHECK(a->runQuery());
-    */
     WorkerConfig::create();
     string out;
     MsgInfo mInfo;
@@ -274,9 +260,9 @@ BOOST_AUTO_TEST_CASE(Output) {
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
     auto const queries = queriesAndChunks();
-    auto ujData = lsst::qserv::wbase::UberJobData::create(mInfo.uberJobId, mInfo.czarName, mInfo.czarId,
-                                                          mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-                                                          mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+    auto ujData = lsst::qserv::wbase::UberJobData::create(
+            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+            mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     lsst::qserv::proto::ScanInfo scanInfo;
     scanInfo.scanRating = mInfo.scanRating;
     scanInfo.infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);

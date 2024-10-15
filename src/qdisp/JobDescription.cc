@@ -65,16 +65,9 @@ JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, R
           _mock(mock) {}
 
 bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase) {
-    LOGS(_log, LOG_LVL_ERROR,
-         "JobDescription::incrAttemptCountScrubResultsJson &&&a qId=" << _queryId << " jId=" << _jobId
-                                                                      << " attempt=" << _attemptCount);
-
     if (increase) {
         ++_attemptCount;
     }
-    LOGS(_log, LOG_LVL_ERROR,
-         "JobDescription::incrAttemptCountScrubResultsJson &&&b qId=" << _queryId << " jId=" << _jobId
-                                                                      << " attempt=" << _attemptCount);
     if (_attemptCount >= MAX_JOB_ATTEMPTS) {
         LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
         return false;
@@ -100,7 +93,6 @@ bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive>
                                            _attemptCount, _czarId);
     LOGS(_log, LOG_LVL_DEBUG, "JobDescription::" << __func__ << " js=" << (*js));
     _jsForWorker = js;
-
     return true;
 }
 

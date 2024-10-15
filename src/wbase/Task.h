@@ -46,6 +46,7 @@
 #include "wbase/TaskState.h"
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
+#include "util/InstanceCount.h"  //&&&
 
 // Forward declarations
 namespace lsst::qserv::mysql {
@@ -308,6 +309,11 @@ public:
         setFunc(func);
     }
 
+    /// Returns the LIMIT of rows for the query enforceable at the worker, where values <= 0 indicate
+    /// that there is no limit to the number of rows sent back by the worker.
+    /// @see UberJobData::getRowLimit()
+    int getRowLimit() { return _rowLimit; }
+
 private:
     std::shared_ptr<FileChannelShared> _sendChannel;  ///< Send channel.
 
@@ -372,7 +378,11 @@ private:
     /// Time stamp for when `_booted` is set to true, otherwise meaningless.
     TIMEPOINT _bootedTime;
 
+    /// When > 0, indicates maximum number of rows needed for a result.
+    int const _rowLimit;
+
     bool _unitTest = false;  ///<
+    // util::InstanceCount _ic{std::string("&&&icTask ") + getIdStr()};
 };
 
 }  // namespace lsst::qserv::wbase

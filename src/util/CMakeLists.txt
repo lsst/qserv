@@ -32,7 +32,6 @@ target_sources(util PRIVATE
     Timer.cc
     TimeUtils.cc
     WorkQueue.cc
-    xrootd.cc
 )
 
 target_link_libraries(util PUBLIC

@@ -141,11 +141,12 @@ shared_ptr<json> WorkerQueryStatusData::serializeJson(double maxLifetime) {
     jsWorkerR["version"] = http::MetaModule::version;
     jsWorkerR["instance_id"] = _replicationInstanceId;
     jsWorkerR["auth_key"] = _replicationAuthKey;
-    jsWorkerR["czar"] = _czInfo->serializeJson();
+    jsWorkerR["czarinfo"] = _czInfo->serializeJson();
     {
         lock_guard<mutex> lgI(_infoMtx);
         if (_wInfo != nullptr) {
-            jsWorkerR["worker"] = _wInfo->serializeJson();
+            jsWorkerR["workerinfo"] = _wInfo->serializeJson();
+            jsWorkerR["worker"] = _wInfo->wId;
         } else {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " wInfo is null");
         }
@@ -256,8 +257,8 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
             return nullptr;
         }
 
-        auto czInfo_ = CzarContactInfo::createFromJson(jsWorkerReq["czar"]);
-        auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsWorkerReq["worker"], updateTm);
+        auto czInfo_ = CzarContactInfo::createFromJson(jsWorkerReq["czarinfo"]);
+        auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsWorkerReq["workerinfo"], updateTm);
         if (czInfo_ == nullptr || wInfo_ == nullptr) {
             LOGS(_log, LOG_LVL_ERROR,
                  "WorkerQueryStatusData::createJson czar or worker info could not be parsed in "
@@ -425,12 +426,13 @@ shared_ptr<json> WorkerCzarComIssue::serializeJson() {
     jsCzarR["version"] = http::MetaModule::version;
     jsCzarR["instance_id"] = _replicationInstanceId;
     jsCzarR["auth_key"] = _replicationAuthKey;
-    jsCzarR["czar"] = _czInfo->serializeJson();
-    jsCzarR["worker"] = _wInfo->serializeJson();
+    jsCzarR["czarinfo"] = _czInfo->serializeJson();
+    jsCzarR["czar"] = _czInfo->czName;
+    jsCzarR["workerinfo"] = _wInfo->serializeJson();
 
     jsCzarR["thoughtczarwasdead"] = _thoughtCzarWasDead;
 
-    // &&& add list of failed transmits
+    // TODO:UJ add list of failed transmits
 
     return jsCzarReqPtr;
 }
@@ -439,15 +441,16 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
                                                            std::string const& replicationInstanceId_,
                                                            std::string const& replicationAuthKey_) {
     string const fName("WorkerCzarComIssue::createFromJson");
+    LOGS(_log, LOG_LVL_DEBUG, fName);
     try {
         if (jsCzarReq["version"] != http::MetaModule::version) {
             LOGS(_log, LOG_LVL_ERROR, fName << " bad version");
             return nullptr;
         }
 
-        auto czInfo_ = CzarContactInfo::createFromJson(jsCzarReq["czar"]);
+        auto czInfo_ = CzarContactInfo::createFromJson(jsCzarReq["czarinfo"]);
         auto now = CLOCK::now();
-        auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsCzarReq["worker"], now);
+        auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsCzarReq["workerinfo"], now);
         if (czInfo_ == nullptr || wInfo_ == nullptr) {
             LOGS(_log, LOG_LVL_ERROR, fName << " or worker info could not be parsed in " << jsCzarReq);
         }
@@ -464,7 +467,7 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
 json WorkerCzarComIssue::serializeResponseJson() {
     json jsResp = {{"success", 1}, {"errortype", "none"}, {"note", ""}};
 
-    // TODO:UJ &&& add lists of uberjobs that are scheduled to have files collected because of this message.
+    // TODO:UJ add lists of uberjobs that are scheduled to have files collected because of this message.
     return jsResp;
 }
 

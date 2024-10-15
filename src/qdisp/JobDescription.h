@@ -29,6 +29,7 @@
 
 // System headers
 #include <memory>
+#include <mutex>
 #include <sstream>
 
 // Third party headers
@@ -91,7 +92,7 @@ public:
 
     std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
 
-    void resetJsForWorker() { _jsForWorker.reset(); }  // TODO:UJ may need mutex for _jsForWorker //&&&
+    void resetJsForWorker() { _jsForWorker.reset(); }
 
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 

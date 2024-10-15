@@ -59,13 +59,14 @@ UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
                              qmeta::CzarId czarId,
                              czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData) {
-    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId, czarId, workerData));
+    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId, czarId,
+                                  executive->getUjRowLimit(), workerData));
     uJob->_setup();
     return uJob;
 }
 
 UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-                 int queryId, int uberJobId, qmeta::CzarId czarId,
+                 int queryId, int uberJobId, qmeta::CzarId czarId, int rowLimit,
                  czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData)
         : JobBase(),
           _executive(executive),
@@ -73,8 +74,8 @@ UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandle
           _queryId(queryId),
           _uberJobId(uberJobId),
           _czarId(czarId),
+          _rowLimit(rowLimit),
           _idStr("QID=" + to_string(_queryId) + ":uj=" + to_string(uberJobId)),
-          _qdispPool(executive->getQdispPool()),
           _workerData(workerData) {}
 
 void UberJob::_setup() {
@@ -117,7 +118,7 @@ bool UberJob::runUberJob() {
                     {"instance_id", czarConfig->replicationInstanceId()},
                     {"auth_key", czarConfig->replicationAuthKey()},
                     {"worker", ciwId},
-                    {"czar",
+                    {"czarinfo",
                      {{"name", czarConfig->name()},
                       {"id", czarConfig->id()},
                       {"management-port", czarConfig->replicationHttpPort()},
@@ -126,6 +127,7 @@ bool UberJob::runUberJob() {
                      {{"queryid", _queryId},
                       {"uberjobid", _uberJobId},
                       {"czarid", _czarId},
+                      {"rowlimit", _rowLimit},
                       {"jobs", json::array()}}}};
 
     auto& jsUberJob = request["uberjob"];
@@ -158,10 +160,10 @@ bool UberJob::runUberJob() {
         if (0 != response.at("success").get<int>()) {
             transmitSuccess = true;
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " response success=0");
+            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " ujresponse success=0");
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        LOGS(_log, LOG_LVL_WARN, requestContext + " ujresponse failed, ex: " + ex.what());
         exceptionWhat = ex.what();
     }
     if (!transmitSuccess) {

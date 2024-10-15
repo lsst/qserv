@@ -41,7 +41,6 @@
 #include "global/intTypes.h"
 #include "wbase/Task.h"
 #include "wsched/SchedulerBase.h"
-#include "util/InstanceCount.h"  //&&&
 
 namespace lsst::qserv::wbase {
 class UserQueryInfo;

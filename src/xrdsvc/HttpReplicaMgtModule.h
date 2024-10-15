@@ -184,7 +184,7 @@ private:
      */
     void _modifyChunk(std::string const& func, int chunk, std::string const& database, Direction direction);
 
-    bool _dataContext = false;  // &&&
+    bool _dataContext = false;
 };
 
 }  // namespace lsst::qserv::xrdsvc

@@ -38,7 +38,6 @@
 #include "qmeta/types.h"
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
-#include "util/InstanceCount.h"
 
 namespace lsst::qserv {
 
@@ -66,11 +65,11 @@ public:
     UberJobData(UberJobData const&) = delete;
 
     static Ptr create(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
-                      std::string const& czarHost, int czarPort, uint64_t queryId,
+                      std::string const& czarHost, int czarPort, uint64_t queryId, int rowLimit,
                       std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
                       std::string const& authKey) {
-        return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, workerId,
-                                   foreman, authKey));
+        return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, rowLimit,
+                                   workerId, foreman, authKey));
     }
     /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
@@ -105,9 +104,15 @@ public:
     /// &&& doc
     void cancelAllTasks();
 
+    /// Returns the LIMIT of rows for the query enforceable at the worker, where values <= 0 indicate
+    /// that there is no limit to the number of rows sent back by the worker.
+    /// Workers can only safely limit rows for queries that have the LIMIT clause without other related
+    /// clauses like ORDER BY.
+    int getRowLimit() { return _rowLimit; }
+
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
-                int czarPort, uint64_t queryId, std::string const& workerId,
+                int czarPort, uint64_t queryId, int rowLimit, std::string const& workerId,
                 std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey);
 
     /// &&& doc
@@ -121,6 +126,7 @@ private:
     std::string const _czarHost;
     int const _czarPort;
     QueryId const _queryId;
+    int const _rowLimit;  ///< If > 0, only read this many rows before return the results.
     std::string const _workerId;
     std::string const _authKey;
 
@@ -196,7 +202,6 @@ private:
     std::string const _requestContext;
     std::string const _requestStr;
     int _attemptCount = 0;  ///< How many attempts have been made to transmit this.
-    util::InstanceCount _ic{cName("UJTransmitCmd&&&")};
 };
 
 }  // namespace lsst::qserv::wbase

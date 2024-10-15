@@ -142,7 +142,8 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
           _scanInfo(scanInfo),
           _scanInteractive(scanInteractive),
           _queryStats(queryStats_),
-          _maxTableSize(maxTableSize * ::MB_SIZE_BYTES) {
+          _maxTableSize(maxTableSize * ::MB_SIZE_BYTES),
+          _rowLimit(ujData->getRowLimit()) {
     // These attributes will be passed back to Czar in the Protobuf response
     // to advice which result delivery channel to use.
     auto const workerConfig = wconfig::WorkerConfig::instance();
@@ -361,6 +362,7 @@ wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {
+    // util::InstanceCount _ic{std::string("&&&icTask::cancel ") + getIdStr()};
     if (_cancelled.exchange(true)) {
         // Was already cancelled.
         return;
@@ -383,14 +385,11 @@ void Task::cancel() {
 }
 
 bool Task::checkCancelled() {
-    // A czar doesn't directly tell the worker the query is dead.
-    // A czar has XrdSsi kill the SsiRequest, which kills the
-    // sendChannel used by this task. sendChannel can be killed
-    // in other ways, however, without the sendChannel, this task
-    // has no way to return anything to the originating czar and
-    // may as well give up now.
-    if (_sendChannel == nullptr || _sendChannel->isDead()) {
-        // The sendChannel is dead, probably squashed by the czar.
+    // The czar does tell the worker a query id is cancelled.
+    // Returning true here indicates there's no point in doing
+    // any more processing for this Task.
+    if (_cancelled) return true;
+    if (_sendChannel == nullptr || _sendChannel->isDead() || _sendChannel->isRowLimitComplete()) {
         cancel();
     }
     return _cancelled;

@@ -172,14 +172,10 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
 
     auto wccIssueA1 = lsst::qserv::http::WorkerCzarComIssue::createFromJson(*jsIssueA, replicationInstanceId,
                                                                             replicationAuthKey);
-    LOGS_ERROR("&&& wccIssueA1=" << wccIssueA1->dump());
-    LOGS_ERROR("&&& wccIssueA=" << wccIssueA->dump());
     auto jsIssueA1 = wccIssueA1->serializeJson();
-    LOGS_ERROR("&&& jsIssueA1=" << *jsIssueA1);
-    LOGS_ERROR("&&& jsIssueA=" << *jsIssueA);
     BOOST_REQUIRE(*jsIssueA == *jsIssueA1);
 
-    // &&& Test with items in lists.
+    // TODO:UJ Test with items in lists.
 }
 
 BOOST_AUTO_TEST_SUITE_END()

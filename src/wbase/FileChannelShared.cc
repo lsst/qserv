@@ -311,7 +311,12 @@ FileChannelShared::~FileChannelShared() {
     // dead it means there was a problem to process a query or send back a response
     // to Czar. In either case, the file would be useless and it has to be deleted
     // in order to avoid leaving unclaimed result files within the results folder.
-    if (isDead()) {
+    //
+    // _rowLimitComplete confuses things as it can cause other Tasks using this
+    // file to be cancelled, but the file should not be deleted until collected.
+    // In any case, the WorkerQueryStatusData message from the czar will delete
+    // the file when the user query completes.
+    if (isDead() && !_rowLimitComplete) {
         _removeFile(lock_guard<mutex>(_tMtx));
     }
     LOGS(_log, LOG_LVL_DEBUG, "~FileChannelShared end");
@@ -319,9 +324,21 @@ FileChannelShared::~FileChannelShared() {
 
 void FileChannelShared::setTaskCount(int taskCount) { _taskCount = taskCount; }
 
-bool FileChannelShared::transmitTaskLast() {
+bool FileChannelShared::transmitTaskLast(bool rowLimitComplete) {
     lock_guard<mutex> const streamMutexLock(_streamMutex);
     ++_lastCount;
+    if (rowLimitComplete) {
+        // There are enough rows in the file so other tasks can be ignored.
+        if (_rowLimitComplete.exchange(true) == false) {
+            // This is TaskLast.
+            return true;
+        } else {
+            // A different task set _rowLimitComplete before
+            // this one. Since there can be only one TaskLast,
+            // it is not this one.
+            return false;
+        }
+    }
     bool lastTaskDone = _lastCount >= _taskCount;
     return lastTaskDone;
 }
@@ -331,16 +348,26 @@ bool FileChannelShared::kill(string const& note) {
     return _kill(streamMutexLock, note);
 }
 
-bool FileChannelShared::isDead() { return _dead; }
+bool FileChannelShared::isDead() const { return _dead; }
 
 string FileChannelShared::makeIdStr(int qId, int jId) {
     string str("QID" + (qId == 0 ? "" : to_string(qId) + "#" + to_string(jId)));
     return str;
 }
 
+bool FileChannelShared::isRowLimitComplete() const {
+    lock_guard<mutex> const tMtxLock(_tMtx);
+    return _rowLimitComplete;
+}
+
 bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
     lock_guard<mutex> const tMtxLock(_tMtx);
+    if (_rowLimitComplete) {
+        LOGS(_log, LOG_LVL_WARN,
+             __func__ << " already enough rows, this call likely a side effect" << task->getIdStr());
+        return false;
+    }
     // Delete the result file as nobody will come looking for it.
     _kill(tMtxLock, " buildAndTransmitError");
     return _uberJobData->responseError(multiErr, task, cancelled);
@@ -369,6 +396,11 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         // This lock is to protect the stream from having other Tasks mess with it
         // while data is loading.
         lock_guard<mutex> const tMtxLockA(_tMtx);
+        if (_rowLimitComplete) {
+            LOGS(_log, LOG_LVL_DEBUG, __func__ << " already enough rows, returning " << task->getIdStr());
+            // Deleting the file now could be risky.
+            return erred;
+        }
 
         util::Timer bufferFillT;
         bufferFillT.start();
@@ -391,7 +423,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
         int64_t const maxTableSize = task->getMaxTableSize();
         // Fail the operation if the amount of data in the result set exceeds the requested
-        // "large result" limit (in case if the one was specified).
+        // "large result" limit (in case one was specified).
         if (maxTableSize > 0 && bytesTransmitted > maxTableSize) {
             string const err = "The result set size " + to_string(bytesTransmitted) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
@@ -402,18 +434,28 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             break;
         }
 
+        int const ujRowLimit = task->getRowLimit();
+        bool rowLimitComplete = false;
+        if (ujRowLimit > 0 && _rowcount >= ujRowLimit) {
+            // There are enough rows to satisfy the query, so stop reading
+            hasMoreRows = false;
+            rowLimitComplete = true;
+            LOGS(_log, LOG_LVL_DEBUG,
+                 __func__ << " enough rows for query rows=" << _rowcount << " " << task->getIdStr());
+        }
+
         // If no more rows are left in the task's result set then we need to check
         // if this is last task in a logical group of ones created for processing
         // the current request (note that certain classes of requests may require
         // more than one task for processing).
-        if (!hasMoreRows && transmitTaskLast()) {
+        if (!hasMoreRows && transmitTaskLast(rowLimitComplete)) {
             // Make sure the file is sync to disk before notifying Czar.
             _file.flush();
             _file.close();
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
-            if (!_sendResponse(tMtxLockA, task, cancelled, multiErr)) {
+            if (!_sendResponse(tMtxLockA, task, cancelled, multiErr, rowLimitComplete)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
                 break;
@@ -437,7 +479,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     // includes problems encountered while sending a response back to Czar after
     // successfully processing the query and writing all results into the file.
     // The file is not going to be used by Czar in either of these scenarios.
-    if (cancelled || erred || isDead()) {
+    if ((cancelled || erred || isDead()) && !_rowLimitComplete) {
         lock_guard<mutex> const tMtxLockA(_tMtx);
         _removeFile(tMtxLockA);
     }
@@ -450,7 +492,6 @@ bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string c
     if (!oldVal) {
         LOGS(_log, LOG_LVL_WARN, "FileChannelShared first kill call " << note);
     }
-    _removeFile(streamMutexLock);
     return oldVal;
 }
 
@@ -551,7 +592,7 @@ void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
 }
 
 bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
-                                      bool cancelled, util::MultiError const& multiErr) {
+                                      bool cancelled, util::MultiError const& multiErr, bool mustSend) {
     auto const queryId = task->getQueryId();
     auto const jobId = task->getJobId();
     auto const idStr(makeIdStr(queryId, jobId));
@@ -570,13 +611,13 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
 
     QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
     LOGS(_log, LOG_LVL_DEBUG, __func__);
-    if (isDead()) {
+    if (isDead() && !mustSend) {
         LOGS(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");
         return false;
     }
 
     // Prepare the response object and serialize in into a message that will
-    // be sent to Czar.
+    // be sent to the Czar.
     string httpFileUrl = task->resultFileHttpUrl();
     _uberJobData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
     return true;
