@@ -272,6 +272,8 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     // Parse and verify the json message and then have the uberjob import the file.
     json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
+        // &&& TODO:UJ file response - move construction and parsing
+        // &&& TODO:UJ to a class so it can be added to WorkerCzarComIssue
         // See qdisp::UberJob::runUberJob() for json message construction.
         string const targetWorkerId = body().required<string>("workerid");
         string const czarName = body().required<string>("czar");
@@ -310,7 +312,7 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
 json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
     LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleWorkerCzarComIssue start");
     // Parse and verify the json message and then deal with the problems.
-    json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
+    json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
         string const replicationInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
         string const replicationAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
@@ -333,6 +335,8 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
                 execPtr->killIncompleteUberJobsOnWorker(wId);
             }
         }
+        jsRet = wccIssue->serializeResponseJson();
+        LOGS(_log, LOG_LVL_TRACE, "HttpCzarWorkerModule::_handleWorkerCzarComIssue jsRet=" << jsRet.dump());
 
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
@@ -340,7 +344,6 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
                                                                          << " js=" << body().objJson);
         jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
     }
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleWorkerCzarComIssue end");
     return jsRet;
 }
 

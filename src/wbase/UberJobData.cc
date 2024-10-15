@@ -117,6 +117,7 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
+    // &&&UJFileResp TODO:UJ file response
     json request = {{"version", http::MetaModule::version},
                     {"workerid", workerIdStr},
                     {"auth_key", _authKey},
@@ -353,6 +354,7 @@ string UJTransmitCmd::cName(const char* funcN) const {
 void UJTransmitCmd::action(util::CmdData* data) {
     // Make certain _selfPtr is reset before leaving this function.
     // If a retry is needed, duplicate() is called.
+    util::InstanceCount ic_(cName(__func__) + " &&&ic " + _requestStr + " url=" + _url);
     class ResetSelf {
     public:
         ResetSelf(UJTransmitCmd* ujtCmd) : _ujtCmd(ujtCmd) {}
@@ -372,6 +374,7 @@ void UJTransmitCmd::action(util::CmdData* data) {
     try {
         json const response = client.readAsJson();
         if (0 != response.at("success").get<int>()) {
+            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& success url=" << _url);
             transmitSuccess = true;
         } else {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");

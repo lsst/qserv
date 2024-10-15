@@ -250,6 +250,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     wCzarInfo->czarMsgReceived(CLOCK::now());
 
     auto const czInfo = wqsData->getCzInfo();
+    LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
     CzarIdType czId = czInfo->czId;
     wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
     wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);
@@ -336,7 +337,6 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
 
     // Return a message containing lists of the queries that were cancelled.
     jsRet = wqsData->serializeResponseJson(foreman()->getWorkerStartupTime());
-
     wCzarInfo->sendWorkerCzarComIssueIfNeeded(wqsData->getWInfo(), wqsData->getCzInfo());
     return jsRet;
 }

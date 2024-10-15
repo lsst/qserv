@@ -151,6 +151,7 @@ struct Fixture {
         bool const lockInMemory = false;
         string const resultName = "resName";
         string const authKey = "noAuthKey";
+        int const rowLimit = 0;
     };
 
     shared_ptr<nlohmann::json> newTaskJson(MsgInfo const& mInfo) {
@@ -286,9 +287,9 @@ BOOST_AUTO_TEST_CASE(Simple) {
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
     auto const queries = queriesAndChunks();
-    auto ujData = lsst::qserv::wbase::UberJobData::create(mInfo.uberJobId, mInfo.czarName, mInfo.czarId,
-                                                          mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-                                                          mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+    auto ujData = lsst::qserv::wbase::UberJobData::create(
+            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+            mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     lsst::qserv::proto::ScanInfo scanInfo;
     scanInfo.scanRating = mInfo.scanRating;
     scanInfo.infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
@@ -336,9 +337,9 @@ BOOST_AUTO_TEST_CASE(Output) {
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
     auto const queries = queriesAndChunks();
-    auto ujData = lsst::qserv::wbase::UberJobData::create(mInfo.uberJobId, mInfo.czarName, mInfo.czarId,
-                                                          mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-                                                          mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+    auto ujData = lsst::qserv::wbase::UberJobData::create(
+            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+            mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     lsst::qserv::proto::ScanInfo scanInfo;
     scanInfo.scanRating = mInfo.scanRating;
     scanInfo.infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);

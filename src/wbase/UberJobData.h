@@ -38,7 +38,6 @@
 #include "qmeta/types.h"
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
-#include "util/InstanceCount.h"
 
 namespace lsst::qserv {
 
@@ -146,6 +145,12 @@ public:
     /// &&& doc
     void cancelAllTasks();
 
+    /// Returns the LIMIT of rows for the query enforceable at the worker, where values <= 0 indicate
+    /// that there is no limit to the number of rows sent back by the worker.
+    /// Workers can only safely limit rows for queries that have the LIMIT clause without other related
+    /// clauses like ORDER BY.
+    int getRowLimit() { return _rowLimit; }
+
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
                 int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,
@@ -157,11 +162,6 @@ private:
     std::string _resultFileName() const;
 
     /// Queue the response to be sent to the originating czar.
-    void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
-                          std::string const& url_, std::string const& requestContext_,
-                          std::string const& requestStr_);
-
-    /// &&& doc
     void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
                           std::string const& url_, std::string const& requestContext_,
                           std::string const& requestStr_);

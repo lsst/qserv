@@ -46,6 +46,7 @@
 #include "wbase/TaskState.h"
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
+#include "util/InstanceCount.h"  //&&&
 
 // Forward declarations
 namespace lsst::qserv::mysql {

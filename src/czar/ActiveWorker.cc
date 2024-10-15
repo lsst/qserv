@@ -336,6 +336,7 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(sendStatusMsgFunc));
     auto qdisppool = czar::Czar::getCzar()->getQdispPool();
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " queuing message");
     qdisppool->queCmd(cmd, 1);
 }
 
@@ -360,8 +361,11 @@ void ActiveWorker::_sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
     http::Client client(method, url, jsWorkerReq.dump(), headers);
     bool transmitSuccess = false;
     string exceptionWhat;
+    json response;
     try {
-        json const response = client.readAsJson();
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read start");
+        response = client.readAsJson();
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
         if (0 != response.at("success").get<int>()) {
             bool startupTimeChanged = false;
             tie(transmitSuccess, startupTimeChanged) = _wqsData->handleResponseJson(response);
@@ -371,14 +375,15 @@ void ActiveWorker::_sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
                 czar::Czar::getCzar()->killIncompleteUbjerJobsOn(wInf->wId);
             }
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " response success=0");
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure response success=0 " << response);
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        LOGS(_log, LOG_LVL_ERROR, requestContext + " transmit failure, ex: " + ex.what());
         exceptionWhat = ex.what();
     }
     if (!transmitSuccess) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure");
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << " transmit failure " << jsWorkerReq.dump() << " resp=" << response);
     }
 }
 

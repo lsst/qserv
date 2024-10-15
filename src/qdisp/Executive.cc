@@ -259,7 +259,7 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 3);
     } else {
-        _qdispPool->queCmd(cmd, 4);
+        _qdispPool->queCmd(cmd, 3);
     }
 }
 
