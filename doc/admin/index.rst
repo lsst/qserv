@@ -11,4 +11,3 @@ Administrator's Guide
    :maxdepth: 4
 
    k8s
-   test-set
