@@ -35,7 +35,7 @@ namespace lsst::qserv::proto {
 
 /// Structure to store shared scan information for a single table.
 ///
-struct ScanTableInfo {  // &&& check if still useful
+struct ScanTableInfo {  // TODO:UJ check if still useful
     using ListOf = std::vector<ScanTableInfo>;
 
     ScanTableInfo() = default;

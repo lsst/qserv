@@ -260,11 +260,11 @@ bool CzarChunkMap::WorkerChunksData::isDead() {
         }
     }
     auto wState = _activeWorker->getState();
-    bool res = wState == ActiveWorker::DEAD;
-    if (!res) {
+    bool dead = wState == ActiveWorker::DEAD;
+    if (dead) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " is dead");
     }
-    return res;
+    return dead;
 }
 
 string CzarChunkMap::WorkerChunksData::dump() const {

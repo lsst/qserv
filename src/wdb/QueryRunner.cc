@@ -126,7 +126,6 @@ bool QueryRunner::_initConnection() {
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
-    util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_TRACE,
@@ -245,7 +244,7 @@ bool QueryRunner::_dispatchChannel() {
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
         auto taskSched = _task->getTaskScheduler();
-        if (!_cancelled && !_task->getSendChannel()->isDead()) {
+        if (!_cancelled && !_task->checkCancelled()) {
             string const& query = _task->getQueryString();
             util::Timer primeT;
             primeT.start();
