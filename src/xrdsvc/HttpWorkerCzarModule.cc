@@ -113,7 +113,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         auto const& jsReq = body().objJson;
         string const targetWorkerId = body().required<string>("worker");
 
-        http::RequestBodyJSON rbCzar(body().required<json>("czar"));
+        http::RequestBodyJSON rbCzar(body().required<json>("czarinfo"));
         auto czarName = rbCzar.required<string>("name");
         auto czarId = rbCzar.required<qmeta::CzarId>("id");
         auto czarPort = rbCzar.required<int>("management-port");
@@ -121,14 +121,15 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         LOGS(_log, LOG_LVL_TRACE,
              __func__ << " czar n=" << czarName << " id=" << czarId << " p=" << czarPort
                       << " h=" << czarHostName);
-
         http::RequestBodyJSON rbUberJob(body().required<json>("uberjob"));
         auto ujQueryId = rbUberJob.required<QueryId>("queryid");
         auto ujId = rbUberJob.required<UberJobId>("uberjobid");
         auto ujCzarId = rbUberJob.required<int>("czarid");
+        auto ujRowLimit = rbUberJob.required<int>("rowlimit");
         auto ujJobs = rbUberJob.required<json>("jobs");
         LOGS(_log, LOG_LVL_TRACE,
-             __func__ << " uj qid=" << ujQueryId << " ujid=" << ujId << " czid=" << ujCzarId);
+             __func__ << " uj qid=" << ujQueryId << " ujid=" << ujId << " czid=" << ujCzarId
+                      << " rowlimit=" << ujRowLimit);
 
         // Get or create QueryStatistics and UserQueryInfo instances.
         auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzarId);
@@ -144,7 +145,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         }
 
         auto ujData = wbase::UberJobData::create(ujId, czarName, czarId, czarHostName, czarPort, ujQueryId,
-                                                 targetWorkerId, foreman(), authKey());
+                                                 ujRowLimit, targetWorkerId, foreman(), authKey());
 
         // Find the entry for this queryId, creat a new one if needed.
         userQueryInfo->addUberJob(ujData);
@@ -243,8 +244,6 @@ json HttpWorkerCzarModule::_queryStatus() {
 }
 
 json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
-    LOGS(_log, LOG_LVL_ERROR, "&&& HttpWorkerCzarModule::_handleQueryStatus");
-
     json jsRet;
     auto now = CLOCK::now();
     auto const workerConfig = wconfig::WorkerConfig::instance();
@@ -256,6 +255,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
                                                                replicationAuthKey, now);
 
     auto const czInfo = wqsData->getCzInfo();
+    LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
     CzarIdType czId = czInfo->czId;
     wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
     wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);
@@ -263,7 +263,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
 
     // For all queryId and czarId items, if the item can't be found, it is simply ignored. Anything that
     // is missed will eventually be picked up by other mechanisms, such as results being rejected
-    // by the czar.
+    // by the czar. This almost never happen, but the system should respond gracefully.
 
     // If a czar was restarted, cancel and delete the abandoned items.
     if (wqsData->isCzarRestart()) {
@@ -279,30 +279,31 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     // appropriate queries and tasks as needed.
     auto const queriesAndChunks = foreman()->queriesAndChunks();
     vector<wbase::UserQueryInfo::Ptr> cancelledList;
-    // Cancelled queries where we want to keep the files
-    lock_guard<mutex> mapLg(wqsData->mapMtx);
-    for (auto const& [dkQid, dkTm] : wqsData->qIdDoneKeepFiles) {
-        auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
-        if (qStats != nullptr) {
-            auto uqInfo = qStats->getUserQueryInfo();
-            if (uqInfo != nullptr) {
-                if (!uqInfo->getCancelledByCzar()) {
-                    cancelledList.push_back(uqInfo);
+    vector<wbase::UserQueryInfo::Ptr> deleteFilesList;
+    {
+        // Cancelled queries where we want to keep the files
+        lock_guard<mutex> mapLg(wqsData->mapMtx);
+        for (auto const& [dkQid, dkTm] : wqsData->qIdDoneKeepFiles) {
+            auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
+            if (qStats != nullptr) {
+                auto uqInfo = qStats->getUserQueryInfo();
+                if (uqInfo != nullptr) {
+                    if (!uqInfo->getCancelledByCzar()) {
+                        cancelledList.push_back(uqInfo);
+                    }
                 }
             }
         }
-    }
-
-    vector<wbase::UserQueryInfo::Ptr> deleteFilesList;
-    for (auto const& [dkQid, dkTm] : wqsData->qIdDoneDeleteFiles) {
-        auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
-        if (qStats != nullptr) {
-            auto uqInfo = qStats->getUserQueryInfo();
-            if (uqInfo != nullptr) {
-                if (!uqInfo->getCancelledByCzar()) {
-                    cancelledList.push_back(uqInfo);
+        for (auto const& [dkQid, dkTm] : wqsData->qIdDoneDeleteFiles) {
+            auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
+            if (qStats != nullptr) {
+                auto uqInfo = qStats->getUserQueryInfo();
+                if (uqInfo != nullptr) {
+                    if (!uqInfo->getCancelledByCzar()) {
+                        cancelledList.push_back(uqInfo);
+                    }
+                    deleteFilesList.push_back(uqInfo);
                 }
-                deleteFilesList.push_back(uqInfo);
             }
         }
     }
@@ -337,14 +338,11 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
         QueryId qId = uqiPtr->getQueryId();
         wbase::FileChannelShared::cleanUpResults(czarId, qId);
     }
-
     // Syntax errors in the message would throw invalid_argument, which is handled elsewhere.
 
     // Return a message containing lists of the queries that were cancelled.
     jsRet = wqsData->serializeResponseJson(foreman()->getWorkerStartupTime());
-
     wCzarInfo->sendWorkerCzarComIssueIfNeeded(wqsData->getWInfo(), wqsData->getCzInfo());
-
     return jsRet;
 }
 
