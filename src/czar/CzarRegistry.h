@@ -36,6 +36,7 @@
 // Qserv headers
 #include "czar/ActiveWorker.h"
 #include "global/clock_defs.h"
+#include "util/Mutex.h"
 
 namespace lsst::qserv::cconfig {
 class CzarConfig;
@@ -77,7 +78,9 @@ public:
     /// function will wait forever for a valid contact map to be ready.
     http::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
 
-    /// &&& doc
+    /// Send all live workers the `WorkerQueryStatusData` message for
+    /// that worker. This may result in the worker sending back the
+    /// `WorkerCzarComIssue` message if there were communication problems.
     void sendActiveWorkersMessages();
 
     /// Add the query id to the list of queries to end on workers and
@@ -117,8 +120,7 @@ private:
     http::WorkerContactInfo::WCMapPtr _contactMap;
     TIMEPOINT _latestMapUpdate;  ///< The last time the _contactMap was updated, unrelated to
                                  ///< WorkerContactInfo update.
-    // &&& review how this _mapMtx is used, probably locks for too long a period.
-    mutable std::mutex _cmapMtx;  /// Protects _contactMap, _latestUpdate
+    mutable MUTEX _cmapMtx;  /// Protects _contactMap, _latestUpdate
 
     /// Map for tracking worker aliveness, it has its own internal mutex.
     std::shared_ptr<ActiveWorkerMap> const _activeWorkerMap;

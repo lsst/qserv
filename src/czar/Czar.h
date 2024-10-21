@@ -149,7 +149,12 @@ public:
 
     std::map<QueryId, std::weak_ptr<qdisp::Executive>> getExecMapCopy() const;
 
-    /// &&& doc
+    /// This function kills incomplete UberJobs associated with `workerId`.
+    /// This is done when it is believed a worker has died. The executive
+    /// un-assignes the Jobs associated with the UberJobs and then
+    /// adds the ids to lists for the affected worker. If the worker
+    /// reconnects, it will stop work on those UberJobs when it gets the
+    /// list.
     void killIncompleteUbjerJobsOn(std::string const& workerId);
 
     std::shared_ptr<util::QdispPool> getQdispPool() const { return _qdispPool; }

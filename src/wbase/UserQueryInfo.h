@@ -69,7 +69,7 @@ public:
     /// Add an UberJobData object to the UserQueryInfo.
     void addUberJob(std::shared_ptr<UberJobData> const& ujData);
 
-    /// &&& doc
+    /// Return true if this user query was cancelled by its czar.
     bool getCancelledByCzar() const { return _cancelledByCzar; }
 
     /// The czar has cancelled this user query, all tasks need to
@@ -81,7 +81,7 @@ public:
     /// information about which UberJobs are dead.
     void cancelAllUberJobs();
 
-    /// &&& doc
+    /// Cancel a specific UberJob in this user query.
     void cancelUberJob(UberJobId ujId);
 
     bool isUberJobDead(UberJobId ujId) const;

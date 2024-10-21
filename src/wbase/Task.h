@@ -46,7 +46,6 @@
 #include "wbase/TaskState.h"
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
-#include "util/InstanceCount.h"  //&&&
 
 // Forward declarations
 namespace lsst::qserv::mysql {
@@ -380,7 +379,6 @@ private:
     int const _rowLimit;
 
     bool _unitTest = false;  ///<
-    // util::InstanceCount _ic{std::string("&&&icTask ") + getIdStr()};
 };
 
 }  // namespace lsst::qserv::wbase

@@ -75,7 +75,7 @@ std::string CzarContactInfo::dump() const {
 }
 
 json WorkerContactInfo::serializeJson() const {
-    lock_guard<mutex> lg(_rMtx);
+    lock_guard lg(_rMtx);
     return _serializeJson();
 }
 
@@ -121,7 +121,7 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json co
 }
 
 string WorkerContactInfo::dump() const {
-    lock_guard<mutex> lg(_rMtx);
+    lock_guard lg(_rMtx);
     return _dump();
 }
 
@@ -143,7 +143,7 @@ shared_ptr<json> WorkerQueryStatusData::serializeJson(double maxLifetime) {
     jsWorkerR["auth_key"] = _replicationAuthKey;
     jsWorkerR["czarinfo"] = _czInfo->serializeJson();
     {
-        lock_guard<mutex> lgI(_infoMtx);
+        lock_guard lgI(_infoMtx);
         if (_wInfo != nullptr) {
             jsWorkerR["workerinfo"] = _wInfo->serializeJson();
             jsWorkerR["worker"] = _wInfo->wId;
@@ -157,7 +157,7 @@ shared_ptr<json> WorkerQueryStatusData::serializeJson(double maxLifetime) {
     addListsToJson(jsWorkerR, now, maxLifetime);
     if (czarCancelAfterRestart) {
         jsWorkerR["czarrestart"] = true;
-        lock_guard<mutex> mapLg(mapMtx);
+        lock_guard mapLg(mapMtx);
         jsWorkerR["czarrestartcancelczid"] = czarCancelAfterRestartCzId;
         jsWorkerR["czarrestartcancelqid"] = czarCancelAfterRestartQId;
     } else {
@@ -171,7 +171,7 @@ void WorkerQueryStatusData::addListsToJson(json& jsWR, TIMEPOINT tmMark, double 
     jsWR["qiddonekeepfiles"] = json::array();
     jsWR["qiddonedeletefiles"] = json::array();
     jsWR["qiddeaduberjobs"] = json::array();
-    lock_guard<mutex> mapLg(mapMtx);
+    lock_guard mapLg(mapMtx);
     {
         auto& jsDoneKeep = jsWR["qiddonekeepfiles"];
         auto iterDoneKeep = qIdDoneKeepFiles.begin();
@@ -282,7 +282,7 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
 }
 
 void WorkerQueryStatusData::parseLists(nlohmann::json const& jsWR, TIMEPOINT updateTm) {
-    lock_guard<mutex> mapLg(mapMtx);
+    lock_guard mapLg(mapMtx);
     parseListsInto(jsWR, updateTm, qIdDoneKeepFiles, qIdDoneDeleteFiles, qIdDeadUberJobs);
 }
 
@@ -317,7 +317,7 @@ void WorkerQueryStatusData::parseListsInto(nlohmann::json const& jsWR, TIMEPOINT
 }
 
 void WorkerQueryStatusData::addDeadUberJobs(QueryId qId, std::vector<UberJobId> ujIds, TIMEPOINT tm) {
-    lock_guard<mutex> mapLg(mapMtx);
+    lock_guard mapLg(mapMtx);
     auto& ujMap = qIdDeadUberJobs[qId];
     for (auto const ujId : ujIds) {
         ujMap[ujId] = tm;
@@ -325,23 +325,23 @@ void WorkerQueryStatusData::addDeadUberJobs(QueryId qId, std::vector<UberJobId> 
 }
 
 void WorkerQueryStatusData::addDeadUberJob(QueryId qId, UberJobId ujId, TIMEPOINT tm) {
-    lock_guard<mutex> mapLg(mapMtx);
+    lock_guard mapLg(mapMtx);
     auto& ujMap = qIdDeadUberJobs[qId];
     ujMap[ujId] = tm;
 }
 
 void WorkerQueryStatusData::addToDoneDeleteFiles(QueryId qId) {
-    lock_guard<mutex> mapLg(mapMtx);
+    lock_guard mapLg(mapMtx);
     qIdDoneDeleteFiles[qId] = CLOCK::now();
 }
 
 void WorkerQueryStatusData::addToDoneKeepFiles(QueryId qId) {
-    lock_guard<mutex> mapLg(mapMtx);
+    lock_guard mapLg(mapMtx);
     qIdDoneKeepFiles[qId] = CLOCK::now();
 }
 
 void WorkerQueryStatusData::removeDeadUberJobsFor(QueryId qId) {
-    lock_guard<mutex> mapLg(mapMtx);
+    lock_guard mapLg(mapMtx);
     qIdDeadUberJobs.erase(qId);
 }
 
@@ -359,14 +359,14 @@ json WorkerQueryStatusData::serializeResponseJson(uint64_t workerStartupTime) {
     return jsResp;
 }
 
-std::pair<bool, bool> WorkerQueryStatusData::handleResponseJson(nlohmann::json const& jsResp) {
+bool WorkerQueryStatusData::handleResponseJson(nlohmann::json const& jsResp) {
     auto now = CLOCK::now();
     std::map<QueryId, TIMEPOINT> doneKeepF;
     std::map<QueryId, TIMEPOINT> doneDeleteF;
     std::map<QueryId, std::map<UberJobId, TIMEPOINT>> deadUberJobs;
     parseListsInto(jsResp, now, doneKeepF, doneDeleteF, deadUberJobs);
 
-    lock_guard<mutex> mapLg(mapMtx);
+    lock_guard mapLg(mapMtx);
     // Remove entries from _qIdDoneKeepFiles
     for (auto const& [qId, tm] : doneKeepF) {
         qIdDoneKeepFiles.erase(qId);
@@ -400,15 +400,16 @@ std::pair<bool, bool> WorkerQueryStatusData::handleResponseJson(nlohmann::json c
                              << " changed to=" << workerStartupTime << " Assuming worker restarted");
         workerRestarted = true;
     }
-    return {true, workerRestarted};
+    return workerRestarted;
 }
 
 string WorkerQueryStatusData::dump() const {
-    lock_guard<mutex> lgI(_infoMtx);
+    lock_guard lgI(_infoMtx);
     return _dump();
 }
 
 string WorkerQueryStatusData::_dump() const {
+    VMUTEX_HELD(_infoMtx);
     stringstream os;
     os << "ActiveWorker " << ((_wInfo == nullptr) ? "?" : _wInfo->dump());
     return os.str();
@@ -417,7 +418,7 @@ string WorkerQueryStatusData::_dump() const {
 shared_ptr<json> WorkerCzarComIssue::serializeJson() {
     shared_ptr<json> jsCzarReqPtr = make_shared<json>();
     json& jsCzarR = *jsCzarReqPtr;
-    lock_guard<mutex> _lgWciMtx(_wciMtx);
+    lock_guard _lgWciMtx(_wciMtx);
     if (_wInfo == nullptr || _czInfo == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _wInfo or _czInfo was null");
         return jsCzarReqPtr;
@@ -472,7 +473,7 @@ json WorkerCzarComIssue::serializeResponseJson() {
 }
 
 string WorkerCzarComIssue::dump() const {
-    lock_guard<mutex> _lgWciMtx(_wciMtx);
+    lock_guard _lgWciMtx(_wciMtx);
     return _dump();
 }
 
