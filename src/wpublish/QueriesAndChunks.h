@@ -244,7 +244,8 @@ public:
     };
     using ScanTableSumsMap = std::map<std::string, ScanTableSums>;
 
-    /// &&& doc
+    /// If the worker believes this czar has died, it calls this to stop
+    /// all Tasks associated with that czar.
     void killAllQueriesFromCzar(CzarIdType czarId);
 
     friend std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc);

@@ -369,7 +369,7 @@ bool Executive::join() {
     if (sCount == _requestCount) {
         LOGS(_log, LOG_LVL_INFO,
              "Query execution succeeded all: " << _requestCount << " jobs dispatched and completed.");
-    } else if (isLimitRowComplete()) {
+    } else if (isRowLimitComplete()) {
         LOGS(_log, LOG_LVL_INFO,
              "Query execution succeeded enough (LIMIT): " << sCount << " jobs out of " << _requestCount
                                                           << " completed.");
@@ -381,14 +381,14 @@ bool Executive::join() {
     _empty = (sCount == _requestCount);
     LOGS(_log, LOG_LVL_DEBUG,
          "Flag set to _empty=" << _empty << ", sCount=" << sCount << ", requestCount=" << _requestCount);
-    return _empty || isLimitRowComplete();
+    return _empty || isRowLimitComplete();
 }
 
 void Executive::markCompleted(JobId jobId, bool success) {
     ResponseHandler::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
-    if (!success && !isLimitRowComplete()) {
+    if (!success && !isRowLimitComplete()) {
         {
             lock_guard<mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
@@ -428,7 +428,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
         }
     }
     _unTrack(jobId);
-    if (!success && !isLimitRowComplete()) {
+    if (!success && !isRowLimitComplete()) {
         LOGS(_log, LOG_LVL_ERROR,
              "Executive: requesting squash, cause: " << " failed (code=" << err.getCode() << " "
                                                      << err.getMsg() << ")");
@@ -456,10 +456,11 @@ void Executive::squash() {
         job->cancel();
     }
 
-    // TODO:UJ - Send a message to all workers saying this czarId + queryId is cancelled.
-    //           The workers will just mark all associated tasks as cancelled, and that should be it.
-    //           Any message to this czar about this query should result in an error sent back to
-    //           the worker as soon it can't locate an executive or the executive says cancelled.
+    // Send a message to all workers saying this czarId + queryId is cancelled.
+    // The workers will just mark all associated tasks as cancelled, and that should be it.
+    // Any message to this czar about this query should result in an error sent back to
+    // the worker as soon it can't locate an executive or the executive says it was
+    // cancelled.
     bool const deleteResults = true;
     sendWorkersEndMsg(deleteResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
@@ -603,7 +604,7 @@ void Executive::_unTrack(int jobId) {
             s = _getIncompleteJobsString(5);
         }
     }
-    bool logDebug = untracked || isLimitRowComplete();
+    bool logDebug = untracked || isRowLimitComplete();
     LOGS(_log, (logDebug ? LOG_LVL_DEBUG : LOG_LVL_WARN),
          "Executive UNTRACKING " << (untracked ? "success" : "failed") << "::" << s);
     // Every time a chunk completes, consider sending an update to QMeta.

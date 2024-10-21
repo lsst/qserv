@@ -177,7 +177,8 @@ void ActiveWorker::_sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
         if (0 != response.at("success").get<int>()) {
             bool startupTimeChanged = false;
-            tie(transmitSuccess, startupTimeChanged) = _wqsData->handleResponseJson(response);
+            startupTimeChanged = _wqsData->handleResponseJson(response);
+            transmitSuccess = true;
             if (startupTimeChanged) {
                 LOGS(_log, LOG_LVL_WARN, cName(__func__) << " worker startupTime changed, likely rebooted.");
                 // kill all incomplete UberJobs on this worker.

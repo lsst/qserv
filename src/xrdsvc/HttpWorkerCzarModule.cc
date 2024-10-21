@@ -282,7 +282,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     vector<wbase::UserQueryInfo::Ptr> deleteFilesList;
     {
         // Cancelled queries where we want to keep the files
-        lock_guard<mutex> mapLg(wqsData->mapMtx);
+        lock_guard mapLg(wqsData->mapMtx);
         for (auto const& [dkQid, dkTm] : wqsData->qIdDoneKeepFiles) {
             auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
             if (qStats != nullptr) {

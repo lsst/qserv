@@ -33,6 +33,8 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+#define MUTEX_UNITTEST
+
 // Qserv headers
 #include "util/BlockPost.h"
 #include "util/Mutex.h"
@@ -62,12 +64,12 @@ BOOST_AUTO_TEST_CASE(MutexTest) {
 
     // The mutex won't be locked by anyone
     Mutex mtx1;
-    BOOST_CHECK(!mtx1.lockedByCaller());
+    BOOST_CHECK(!mtx1.lockedByThread());
 
     // The mutex will be locked by the current thread
     Mutex mtx2;
     lock_guard<Mutex> const lockGuard2(mtx2);
-    BOOST_CHECK(mtx2.lockedByCaller());
+    BOOST_CHECK(mtx2.lockedByThread());
 
     // Lock this mutex in each of two separate threads. Let each thread
     // to wait for a random period of time within some interval before
@@ -85,18 +87,18 @@ BOOST_AUTO_TEST_CASE(MutexTest) {
         thread thr1([&mtx, &wasLockedBeforeBy1, &wasLockedAfterBy1]() {
             BlockPost blockPost(10, 20);
             blockPost.wait();
-            wasLockedBeforeBy1 = mtx.lockedByCaller();
+            wasLockedBeforeBy1 = mtx.lockedByThread();
             lock_guard<Mutex> const lock(mtx);
-            wasLockedAfterBy1 = mtx.lockedByCaller();
+            wasLockedAfterBy1 = mtx.lockedByThread();
         });
         bool wasLockedBeforeBy2 = false;
         bool wasLockedAfterBy2 = false;
         thread thr2([&mtx, &wasLockedBeforeBy2, &wasLockedAfterBy2]() {
             BlockPost blockPost(10, 20);
             blockPost.wait();
-            wasLockedBeforeBy2 = mtx.lockedByCaller();
+            wasLockedBeforeBy2 = mtx.lockedByThread();
             lock_guard<Mutex> const lock(mtx);
-            wasLockedAfterBy2 = mtx.lockedByCaller();
+            wasLockedAfterBy2 = mtx.lockedByThread();
         });
         thr1.join();
         BOOST_CHECK(!wasLockedBeforeBy1);
@@ -136,14 +138,14 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
 
     // The mutex won't be locked by anyone
     VMutex mtx1;
-    BOOST_CHECK(!mtx1.lockedByCaller());
+    BOOST_CHECK(!mtx1.lockedByThread());
     BOOST_CHECK_THROW(VMUTEX_HELD(mtx1), lsst::qserv::util::Bug);
     BOOST_REQUIRE_NO_THROW(VMUTEX_NOT_HELD(mtx1));
 
     // The mutex will be locked by the current thread
     VMutex mtx2;
     lock_guard<VMutex> const lockGuard2(mtx2);
-    BOOST_CHECK(mtx2.lockedByCaller());
+    BOOST_CHECK(mtx2.lockedByThread());
     BOOST_REQUIRE_NO_THROW(VMUTEX_HELD(mtx2));
     BOOST_CHECK_THROW(VMUTEX_NOT_HELD(mtx2), lsst::qserv::util::Bug);
 
@@ -163,18 +165,18 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
         thread thr1([&mtx, &wasLockedBeforeBy1, &wasLockedAfterBy1]() {
             BlockPost blockPost(10, 20);
             blockPost.wait();
-            wasLockedBeforeBy1 = mtx.lockedByCaller();
+            wasLockedBeforeBy1 = mtx.lockedByThread();
             lock_guard<VMutex> const lock(mtx);
-            wasLockedAfterBy1 = mtx.lockedByCaller();
+            wasLockedAfterBy1 = mtx.lockedByThread();
         });
         bool wasLockedBeforeBy2 = false;
         bool wasLockedAfterBy2 = false;
         thread thr2([&mtx, &wasLockedBeforeBy2, &wasLockedAfterBy2]() {
             BlockPost blockPost(10, 20);
             blockPost.wait();
-            wasLockedBeforeBy2 = mtx.lockedByCaller();
+            wasLockedBeforeBy2 = mtx.lockedByThread();
             lock_guard<VMutex> const lock(mtx);
-            wasLockedAfterBy2 = mtx.lockedByCaller();
+            wasLockedAfterBy2 = mtx.lockedByThread();
         });
         thr1.join();
         BOOST_CHECK(!wasLockedBeforeBy1);
@@ -214,7 +216,7 @@ BOOST_AUTO_TEST_CASE(LockTest1) {
 
     // The mutex won't be locked by anyone
     Mutex mtx1;
-    BOOST_CHECK(not mtx1.lockedByCaller());
+    BOOST_CHECK(not mtx1.lockedByThread());
 
     // The mutex will be locked by the current thread
     Mutex mtx2;
@@ -222,9 +224,9 @@ BOOST_AUTO_TEST_CASE(LockTest1) {
         // Do this in a nested block to ensure that lock object
         // gets destructed before the mutex.
         Lock const lock(mtx2, "LockTes1t: main thread");
-        BOOST_CHECK(mtx2.lockedByCaller());
+        BOOST_CHECK(mtx2.lockedByThread());
     }
-    LOGS_DEBUG(!mtx2.lockedByCaller());
+    LOGS_DEBUG(!mtx2.lockedByThread());
 
     // Lock this mutex in each of two separate threads. Let each thread
     // to wait for a random period of time within some interval before
@@ -247,7 +249,7 @@ BOOST_AUTO_TEST_CASE(LockTest1) {
             blockPost.wait();
             Lock const lock(mtx, "LockTest1: thread 2");
         });
-        BOOST_CHECK(!mtx.lockedByCaller());
+        BOOST_CHECK(!mtx.lockedByThread());
         thr1.join();
         thr2.join();
     }
@@ -284,7 +286,7 @@ BOOST_AUTO_TEST_CASE(LockTest2) {
 
     // The mutex won't be locked by anyone
     shared_ptr<Mutex> const mtx1 = make_shared<Mutex>();
-    BOOST_CHECK(!mtx1->lockedByCaller());
+    BOOST_CHECK(!mtx1->lockedByThread());
 
     // The mutex will be locked by the current thread
     shared_ptr<Mutex> const mtx2 = make_shared<Mutex>();
@@ -292,9 +294,9 @@ BOOST_AUTO_TEST_CASE(LockTest2) {
         // Do this in a nested block to ensure that lock object
         // gets destructed before the mutex.
         Lock const lock(mtx2, "LockTes1t: main thread");
-        BOOST_CHECK(mtx2->lockedByCaller());
+        BOOST_CHECK(mtx2->lockedByThread());
     }
-    BOOST_CHECK(!mtx2->lockedByCaller());
+    BOOST_CHECK(!mtx2->lockedByThread());
 
     // Lock this mutex in each of two separate threads. Let each thread
     // to wait for a random period of time within some interval before
@@ -317,7 +319,7 @@ BOOST_AUTO_TEST_CASE(LockTest2) {
             blockPost.wait();
             Lock const lock(mtx, "LockTest1: thread 2");
         });
-        BOOST_CHECK(!mtx->lockedByCaller());
+        BOOST_CHECK(!mtx->lockedByThread());
         thr1.join();
         thr2.join();
     }
