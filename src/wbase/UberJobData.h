@@ -101,7 +101,7 @@ public:
 
     bool getCancelled() const { return _cancelled; }
 
-    /// &&& doc
+    /// Cancel all Tasks in this UberJob.
     void cancelAllTasks();
 
     /// Returns the LIMIT of rows for the query enforceable at the worker, where values <= 0 indicate
@@ -115,7 +115,7 @@ private:
                 int czarPort, uint64_t queryId, int rowLimit, std::string const& workerId,
                 std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey);
 
-    /// &&& doc
+    /// Queue the response to be sent to the originating czar.
     void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
                           std::string const& url_, std::string const& requestContext_,
                           std::string const& requestStr_);
@@ -139,12 +139,15 @@ private:
 
     std::string const _idStr;
 
-    std::atomic<bool> _scanInteractive;  ///< &&& doc
+    /// True if this an interactive (aka high priority) user query.
+    std::atomic<bool> _scanInteractive;
 
     std::atomic<bool> _cancelled{false};  ///< Set to true if this was cancelled.
 };
 
-/// &&& doc
+/// This class puts the information about a locally finished UberJob into a command
+/// so it can be put on a queue and sent to the originating czar. The information
+/// being transmitted is usually the url for the result file or an error message.
 class UJTransmitCmd : public util::PriorityCommand {
 public:
     using Ptr = std::shared_ptr<UJTransmitCmd>;
@@ -171,7 +174,11 @@ public:
     /// Reset the self pointer so this object can be killed.
     void kill();
 
-    /// &&& doc
+    /// This function makes a duplicate of the required information for transmition to the czar
+    /// in a new object and then increments the attempt count, so it is not a true copy.
+    /// Priority commands cannot be resent as there's information in them about which queue
+    /// to modify, so a fresh object is needed to re-send. The message and target czar remain
+    /// unchanged except for the atttempt count.
     Ptr duplicate();
 
 private:

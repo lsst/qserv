@@ -60,29 +60,28 @@ JobQuery::~JobQuery() {
 }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
-bool JobQuery::cancel(bool superfluous) {  /// &&& This can probably be simplified more
+bool JobQuery::cancel(bool superfluous) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
-        lock_guard<recursive_mutex> lock(_rmutex);
-        // If _inSsi is true then this query request has been passed to SSI and
-        // _queryRequestPtr cannot be a nullptr. Cancellation is complicated.
-        bool cancelled = false;
+        lock_guard lock(_rmutex);
 
-        if (!cancelled) {
-            ostringstream os;
-            os << _idStr << " cancel";
-            LOGS(_log, LOG_LVL_DEBUG, os.str());
-            if (!superfluous) {
-                getDescription()->respHandler()->errorFlush(os.str(), -1);
-            }
-            auto executive = _executive.lock();
-            if (executive == nullptr) {
-                LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
-                return false;
-            }
-            executive->markCompleted(getJobId(), false);
+        //&&&bool cancelled = false;
+
+        //&&&if (!cancelled) {
+        ostringstream os;
+        os << _idStr << " cancel";
+        LOGS(_log, LOG_LVL_DEBUG, os.str());
+        if (!superfluous) {
+            getDescription()->respHandler()->errorFlush(os.str(), -1);
         }
+        auto executive = _executive.lock();
+        if (executive == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
+            return false;
+        }
+        executive->markCompleted(getJobId(), false);
+        //&&&}
         if (!superfluous) {
             _jobDescription->respHandler()->processCancel();
         }

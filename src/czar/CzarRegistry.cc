@@ -71,7 +71,7 @@ CzarRegistry::~CzarRegistry() {
 }
 
 http::WorkerContactInfo::WCMapPtr CzarRegistry::getWorkerContactMap() const {
-    std::lock_guard<std::mutex> lockG(_cmapMtx);
+    lock_guard lockG(_cmapMtx);
     return _contactMap;
 }
 
@@ -136,7 +136,7 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                     auto czInfo = http::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(),
                                                                 _czarConfig->replicationHttpPort(),
                                                                 util::get_current_host_fqdn(), czarStartTime);
-                    lock_guard<mutex> lck(_cmapMtx);
+                    lock_guard lck(_cmapMtx);
                     if (wMap != nullptr && !_compareMapContactInfo(*wMap)) {
                         _contactMap = wMap;
                         _latestMapUpdate = CLOCK::now();
@@ -181,6 +181,7 @@ http::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
 }
 
 bool CzarRegistry::_compareMapContactInfo(http::WorkerContactInfo::WCMap const& other) const {
+    VMUTEX_HELD(_cmapMtx);
     if (_contactMap == nullptr) {
         // If _contactMap is null, it needs to be replaced.
         return false;
@@ -205,7 +206,7 @@ http::WorkerContactInfo::WCMapPtr CzarRegistry::waitForWorkerContactMap() const 
     http::WorkerContactInfo::WCMapPtr contMap = nullptr;
     while (contMap == nullptr) {
         {
-            std::lock_guard<std::mutex> lockG(_cmapMtx);
+            lock_guard lockG(_cmapMtx);
             contMap = _contactMap;
         }
         if (contMap == nullptr) {

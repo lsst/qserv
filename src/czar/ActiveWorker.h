@@ -38,6 +38,10 @@
 // This header declarations
 namespace lsst::qserv::czar {
 
+/// This class is used to track information important to the czar and a
+/// specific worker. Primarily the czar cares about the worker being alive
+/// and informing the worker that various query IDs and UberJobs
+/// have finished or need to be cancelled.
 ///  - maintain list of done/cancelled queries for an active worker, and send
 ///    that list to the worker. Once the worker has accepted the list, remove
 ///    all of those queryId's from the list.
@@ -52,8 +56,8 @@ namespace lsst::qserv::czar {
 ///    other workers know their UberJobs are dead because the worker killed
 ///    them. If the worker isn't told, it will continue working on
 ///    the UberJob until it finishes, and then find out the UberJob was killed
-///    when it tries to return results to the czar (worker should delete files
-///    for said UberJob at that point).
+///    when it tries to return results to the czar. The worker should delete
+///    files for said UberJob at that point).
 ///    So, this should be very rare, only results in extra load, and therefore
 ///    is a low priority.
 ///
@@ -65,8 +69,8 @@ namespace lsst::qserv::czar {
 ///
 ///    When a worker becomes DEAD: (see Czar::_monitor).
 ///       - Affected UberJobs are killed.
-///       - maps are remade without the dead workers
-///       - uberjobs built to handle unassigned jobs.
+///       - UberJobs are built to handle unassigned jobs where dead workers are skipped and
+///         the jobs are assigned to alternate workers.
 ///
 class ActiveWorker : public std::enable_shared_from_this<ActiveWorker> {
 public:
@@ -150,15 +154,16 @@ private:
         }
     }
 
-    /// &&& doc
+    /// Change the state to `newState` and log if it is different.
     /// _aMtx must be held before calling.
     void _changeStateTo(State newState, double secsSinceUpdate, std::string const& note);
 
-    /// &&& doc
+    /// Send the `jsWorkerReqPtr` json message to the worker referenced by `wInf` to
+    /// transmit the `_wqsData` state.
     void _sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
                         std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr);
 
-    /// &&& doc
+    /// Dump a log string for this object.
     /// _aMtx must be held before calling.
     std::string _dump() const;
 
@@ -171,11 +176,10 @@ private:
     mutable std::mutex _aMtx;  ///< protects _wInfo, _state, _qIdDoneKeepFiles, _qIdDoneDeleteFiles
 };
 
-/// &&& doc
-/// Maintain a list of all workers, indicating which are considered active. Communication
-/// problems with workers could cause interesting race conditions, so workers will remain
-/// on the list for a very long time after they have disappeared in the off chance they
-/// come back from the dead.
+/// This class maintains a list of all workers, indicating which are considered active.
+/// Communication problems with workers could cause interesting race conditions, so
+/// workers will remain on the list for a very long time after they have disappeared
+/// in case they come back from the dead.
 class ActiveWorkerMap {
 public:
     using Ptr = std::shared_ptr<ActiveWorkerMap>;
@@ -186,7 +190,8 @@ public:
 
     std::string cName(const char* fName) { return std::string("ActiveWorkerMap::") + fName + " "; }
 
-    /// &&& doc
+    /// Use information gathered from the registry to update the map. The registry
+    /// contains last contact time (used for determining aliveness) and worker contact information.
     void updateMap(http::WorkerContactInfo::WCMap const& wcMap, http::CzarContactInfo::Ptr const& czInfo,
                    std::string const& replicationInstanceId, std::string const& replicationAuthKey);
 
@@ -195,16 +200,23 @@ public:
     /// should be cancelled.
     void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId);
 
-    /// &&& doc
+    /// Return a pointer to the `ActiveWorker` associated with `workerId`.
     ActiveWorker::Ptr getActiveWorker(std::string const& workerId) const;
 
-    // &&& doc
+    /// Call `updateStateAndSendMessages` for all workers in this map.
     void sendActiveWorkersMessages();
 
-    /// &&& doc
+    /// Add `qId` to the list of query ids where the worker can throw away all related
+    /// Tasks and result files. This is used for all completed user queries and cancelled
+    /// user queries.
     void addToDoneDeleteFiles(QueryId qId);
 
-    /// &&& doc
+    /// Add `qId` to the list of query ids where the worker must hold onto result
+    /// files but all incomplete Tasks can be stopped. This is used for `rowLimitComplete`
+    /// where enough rows have been found to complete a user query with a LIMIT
+    ///clause. The czar may still need to collect the result files from the worker.
+    /// Once the czar has completed the user query, the `qId` will be added to
+    /// `addToDoneDeleteFiles` so the workers will delete the files.
     void addToDoneKeepFiles(QueryId qId);
 
 private:

@@ -82,10 +82,12 @@ private:
     /// work of deciphering the message, creating UberJobData objects and Task objects.
     nlohmann::json _handleQueryJob(std::string const& func);
 
-    /// &&& doc
+    /// Verify some aspects of the query and call _handleQueryStatus
     nlohmann::json _queryStatus();
 
-    /// &&& doc
+    /// Reconstruct the message, absorb the lists into this worker's state,
+    /// queue the ComIssue message and needed, and send the lists back to
+    /// the czar.
     nlohmann::json _handleQueryStatus(std::string const& func);
 };
 

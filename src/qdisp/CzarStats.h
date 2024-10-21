@@ -211,7 +211,7 @@ private:
     CzarStats(std::shared_ptr<util::QdispPool> const& qdispPool);
 
     static Ptr _globalCzarStats;    ///< Pointer to the global instance.
-    static util::Mutex _globalMtx;  ///< Protects `_globalCzarStats`
+    static MUTEX _globalMtx;  ///< Protects `_globalCzarStats`
 
     /// Connection to get information about the czar's pool of dispatch threads.
     std::shared_ptr<util::QdispPool> _qdispPool;
@@ -251,7 +251,7 @@ private:
 
     // Query progress stats are recorded along with timestamps when changes
     // in previously captured counters are detected.
-    mutable util::Mutex _queryProgressMtx;  ///< Protects _queryNumIncompleteJobs
+    mutable MUTEX _queryProgressMtx;  ///< Protects _queryNumIncompleteJobs
     QueryProgress _queryNumIncompleteJobs;
 };
 

@@ -34,6 +34,7 @@
 // qserv headers
 #include "global/clock_defs.h"
 #include "global/intTypes.h"
+#include "util/Mutex.h"
 
 // This header declarations
 namespace lsst::qserv::http {
@@ -48,7 +49,7 @@ public:
     CzarContactInfo(CzarContactInfo const&) = default;
     CzarContactInfo& operator=(CzarContactInfo const&) = default;
 
-    /// &&& doc
+    /// Return true is elements, other than czStartupTime, are the same.
     bool compare(CzarContactInfo const& other) {
         return (czName == other.czName && czId == other.czId && czPort == other.czPort &&
                 czHostName == other.czHostName);
@@ -67,7 +68,7 @@ public:
     std::string const czHostName;  ///< czar "management-host-name"
     uint64_t const czStartupTime;  ///< czar startup time
 
-    /// &&& doc
+    /// Return a json version of the contents of this class.
     nlohmann::json serializeJson() const;
 
     std::string dump() const;
@@ -95,13 +96,14 @@ public:
         return Ptr(new WorkerContactInfo(wId_, wHost_, wManagementHost_, wPort_, updateTime_));
     }
 
-    /// &&& doc Used to create WorkerQueryStatusData object from a registry json message.
+    /// This function creates a WorkerQueryStatusData object from a registry json message,
+    /// which is provided by the system registry.
     static Ptr createFromJsonRegistry(std::string const& wId_, nlohmann::json const& regJson);
 
-    /// &&& doc Used to create WorkerQueryStatusData object from a worker json message.
+    /// This function creates a WorkerQueryStatusData object from a worker json message.
     static Ptr createFromJsonWorker(nlohmann::json const& workerJson, TIMEPOINT updateTime);
 
-    /// &&& doc
+    /// Return a json version of the contents of this object.
     nlohmann::json serializeJson() const;
 
     std::string cName(const char* fn) { return std::string("WorkerContactInfo::") + fn; }
@@ -109,24 +111,24 @@ public:
     std::string const wId;  ///< key, this is the one thing that cannot change.
 
     std::string getWHost() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         return _wHost;
     }
 
     std::string getWManagementHost() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         return _wManagementHost;
     }
 
     int getWPort() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         return _wPort;
     }
 
-    /// &&doc
+    /// Change host and port info to those provided in `other`.
     void changeBaseInfo(WorkerContactInfo const& other) {
         auto [oWId, oWHost, oWManagementHost, oWPort] = other.getAll();
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         _wHost = oWHost;
         _wManagementHost = oWManagementHost;
         _wPort = oWPort;
@@ -137,35 +139,35 @@ public:
     /// @return _wManagementHost - management host
     /// @return _wPort - worker port
     std::tuple<std::string, std::string, std::string, int> getAll() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         return {wId, _wHost, _wManagementHost, _wPort};
     }
 
     /// Return true if communication related items are the same.
     bool isSameContactInfo(WorkerContactInfo const& other) const {
         auto [oWId, oWHost, oWManagementHost, oWPort] = other.getAll();
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         return (wId == oWId && _wHost == oWHost && _wManagementHost == oWManagementHost && _wPort == oWPort);
     }
 
     void setRegUpdateTime(TIMEPOINT updateTime) {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         _regUpdateTime = updateTime;
     }
 
     TIMEPOINT getRegUpdateTime(TIMEPOINT updateTime) {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         return _regUpdateTime;
     }
 
     double timeSinceRegUpdateSeconds() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         double secs = std::chrono::duration<double>(CLOCK::now() - _regUpdateTime).count();
         return secs;
     }
 
     TIMEPOINT getRegUpdateTime() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         return _regUpdateTime;
     }
 
@@ -174,7 +176,7 @@ public:
     /// @return false indicates the worker was restarted and all associated jobs need
     ///   re-assignment.
     bool checkWStartupTime(uint64_t startupTime) {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         if (_wStartupTime == startupTime) {
             return true;
         }
@@ -187,7 +189,7 @@ public:
     }
 
     uint64_t getWStartupTime() const {
-        std::lock_guard<std::mutex> lg(_rMtx);
+        std::lock_guard lg(_rMtx);
         return _wStartupTime;
     }
 
@@ -211,8 +213,7 @@ private:
     int _wPort;                    ///< "management-port" entry.
 
     /// Last time the registry heard from this worker. The ActiveWorker class
-    /// will use this to determine the worker's state.
-    /// &&& Store in seconds since epoch to make atomic?
+    /// will use this to determine the worker's state (alive/dead).
     TIMEPOINT _regUpdateTime;
 
     /// "w-startup-time", it's value is set to zero until the real value is
@@ -222,7 +223,7 @@ private:
     /// foreman()->getStartupTime();
     uint64_t _wStartupTime = 0;
 
-    mutable std::mutex _rMtx;  ///< protects _regUpdate
+    mutable MUTEX _rMtx;  ///< protects _regUpdate
 };
 
 /// This classes purpose is to be a structure to store and transfer information
@@ -244,47 +245,55 @@ public:
         return Ptr(new WorkerQueryStatusData(wInfo_, czInfo_, replicationInstanceId_, replicationAuthKey_));
     }
 
-    /// &&& doc Used to create WorkerQueryStatusData object from a worker json message.
+    /// This function creates a WorkerQueryStatusData object from the worker json `czarJson`, the
+    /// other parameters are used to verify the json message.
     static Ptr createFromJson(nlohmann::json const& czarJson, std::string const& replicationInstanceId_,
                               std::string const& replicationAuthKey_, TIMEPOINT updateTm);
 
     ~WorkerQueryStatusData() = default;
 
     void setWInfo(WorkerContactInfo::Ptr const& wInfo_) {
-        std::lock_guard<std::mutex> lgI(_infoMtx);
+        std::lock_guard lgI(_infoMtx);
         if (_wInfo == nullptr) {
             _wInfo = wInfo_;
             return;
         }
         if (wInfo_ != nullptr) {
-            // This only change host and port values of _wInfo.
+            // This only changes host and port values of _wInfo.
             _wInfo->changeBaseInfo(*wInfo_);
         }
     }
 
     WorkerContactInfo::Ptr getWInfo() const {
-        std::lock_guard<std::mutex> lgI(_infoMtx);
+        std::lock_guard lgI(_infoMtx);
         return _wInfo;
     }
     CzarContactInfo::Ptr getCzInfo() const { return _czInfo; }
 
-    /// doc &&&
+    /// `qId` and `ujId` identify a dead UberJob which is added to the list
+    /// of dead UberJobs for this worker.
     void addDeadUberJob(QueryId qId, UberJobId ujId, TIMEPOINT tm);
 
-    /// &&& doc
+    /// Add multiple UberJobIds for `qId` to the list of dead UberJobs for
+    /// this worker.
     void addDeadUberJobs(QueryId qId, std::vector<UberJobId> ujIds, TIMEPOINT tm);
 
-    /// &&& doc
+    /// Add `qId` to the list of user queries where all Tasks can be stopped
+    /// and result files can be deleted.
     void addToDoneDeleteFiles(QueryId qId);
 
-    /// &&& doc
+    /// Add `qId` to the list of user queries where all Tasks can be stopped
+    /// but result files should be kept.
     void addToDoneKeepFiles(QueryId qId);
 
-    /// &&& doc
+    /// Remove all UberJobs from the list of dead UberJobs with QueryId `qId`.
+    /// There's no point in tracking individual UberJobs once the entire
+    /// user query is finished or cancelled as they will all be deleted by
+    /// `addToDoneDeleteFiles`
     void removeDeadUberJobsFor(QueryId qId);
 
     void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId) {
-        std::lock_guard<std::mutex> mapLg(mapMtx);
+        std::lock_guard mapLg(mapMtx);
         czarCancelAfterRestart = true;
         czarCancelAfterRestartCzId = czId;
         czarCancelAfterRestartQId = lastQId;
@@ -304,17 +313,30 @@ public:
     /// than maxLifetime.
     void addListsToJson(nlohmann::json& jsWR, TIMEPOINT tmMark, double maxLifetime);
 
-    /// &&& doc
+    /// Parse the lists in `jsWR` to populate the lists for qIdDoneKeepFiles,
+    /// qIdDoneDeleteFiles, and qIdDeadUberJobs.
     /// @throws std::invalid_argument
     void parseLists(nlohmann::json const& jsWR, TIMEPOINT updateTm);
 
-    /// &&& doc
+    /// Return a json object indicating the status of the message for the
+    /// original requester.
     nlohmann::json serializeResponseJson(uint64_t workerStartupTime);
 
-    /// &&& doc
-    std::pair<bool, bool> handleResponseJson(nlohmann::json const& jsResp);
+    /// Use the worker's response, `jsResp`, to update the status of this object.
+    /// The worker's response contains lists indicating what the worker
+    /// received from the czar's json message created with `serializeResponseJson`.
+    /// The czar can remove the ids from the lists as once the worker has
+    /// verified them.
+    /// @return transmitSuccess - true if the message was parsed successfully.
+    /// @return workerRestarted - true if `workerStartupTime` doesn't match,
+    ///        indicating the worker has been restarted and the czar should
+    ///        invalidate and re-assign all UberJobs associated with this
+    ///        worker.
+    /// @throw invalid_argument if there are problems with json parsing.
+    bool handleResponseJson(nlohmann::json const& jsResp);
 
-    /// &&& doc
+    /// Parse the contents of `jsWR` to fill the maps `doneKeepF`, `doneDeleteF`,
+    /// and `deadUberJobs`.
     static void parseListsInto(nlohmann::json const& jsWR, TIMEPOINT updateTm,
                                std::map<QueryId, TIMEPOINT>& doneKeepF,
                                std::map<QueryId, TIMEPOINT>& doneDeleteF,
@@ -324,15 +346,27 @@ public:
 
     // Making these private requires member functions to be written
     // that cause issues with linking. All of the workarounds are ugly.
-    std::map<QueryId, TIMEPOINT> qIdDoneKeepFiles;                      ///< &&& doc - limit reached
-    std::map<QueryId, TIMEPOINT> qIdDoneDeleteFiles;                    ///< &&& doc -cancelled/finished
-    std::map<QueryId, std::map<UberJobId, TIMEPOINT>> qIdDeadUberJobs;  ///< &&& doc
+    /// Map of QueryIds where the LIMIT clause has been satisfied so
+    /// that Tasks can be stopped but result files need to be kept.
+    std::map<QueryId, TIMEPOINT> qIdDoneKeepFiles;
+
+    /// Map fo QueryIds where Tasks can be stopped and files deleted, which is
+    /// used when user queries are cancelled or finished.
+    std::map<QueryId, TIMEPOINT> qIdDoneDeleteFiles;
+
+    /// Map used to indicated a specific UberJobs need to be killed.
+    std::map<QueryId, std::map<UberJobId, TIMEPOINT>> qIdDeadUberJobs;
+
+    /// If true, this indicates that this is a newly started czar and
+    /// the worker should stop all previous work associated with this
+    /// CzarId.
     std::atomic<bool> czarCancelAfterRestart = false;
     CzarIdType czarCancelAfterRestartCzId = 0;
     QueryId czarCancelAfterRestartQId = 0;
+
     /// Protects _qIdDoneKeepFiles, _qIdDoneDeleteFiles, _qIdDeadUberJobs,
     /// and czarCancelAfter variables.
-    mutable std::mutex mapMtx;
+    mutable MUTEX mapMtx;
 
 private:
     WorkerQueryStatusData(WorkerContactInfo::Ptr const& wInfo_, CzarContactInfo::Ptr const& czInfo_,
@@ -342,18 +376,18 @@ private:
               _replicationInstanceId(replicationInstanceId_),
               _replicationAuthKey(replicationAuthKey_) {}
 
-    WorkerContactInfo::Ptr _wInfo;       ///< &&& doc
-    CzarContactInfo::Ptr const _czInfo;  //< &&& doc
-    mutable std::mutex _infoMtx;         ///< protects wInfo
+    WorkerContactInfo::Ptr _wInfo;       ///< Information needed to contact the worker.
+    CzarContactInfo::Ptr const _czInfo;  ///< Information needed to contact the czar.
+    mutable MUTEX _infoMtx;         ///< protects _wInfo
 
-    std::string const _replicationInstanceId;  ///< &&& doc
-    std::string const _replicationAuthKey;     ///< &&& doc
+    std::string const _replicationInstanceId;  ///< Used for message verification.
+    std::string const _replicationAuthKey;     ///< Used for message verification.
 
     /// _infoMtx must be locked before calling.
     std::string _dump() const;
 };
 
-/// &&& doc
+
 /// This class is used to send/receive a message from the worker to a specific
 /// czar when there has been a communication issue with the worker sending UberJob
 /// file ready messages. If there have been timeouts, the worker will send this
@@ -368,7 +402,7 @@ private:
 /// TODO:UJ &&& will be added to this message. uber job file response
 /// Upon successful completion, the worker will clear all values set by the
 /// the czar.
-/// This message is expected to only be needed rarely.
+/// Currently, this message is expected to only be needed rarely.
 class WorkerCzarComIssue {
 public:
     using Ptr = std::shared_ptr<WorkerCzarComIssue>;
@@ -392,14 +426,14 @@ public:
 
     bool getThoughtCzarWasDead() const { return _thoughtCzarWasDead; }
 
-    /// &&& doc
+    /// Return true if there is a reason this WorkerCzarComIssue should be sent to this czar.
     bool needToSend() const {
         std::lock_guard lg(_wciMtx);
         // TODO:UJ &&& or list of failed transmits not empty.
         return _thoughtCzarWasDead;
     }
 
-    /// &&& doc
+    /// Set the contact information for the appropriate czar and worker.
     void setContactInfo(WorkerContactInfo::Ptr const& wInfo_, CzarContactInfo::Ptr const& czInfo_) {
         std::lock_guard lgWci(_wciMtx);
         if (_wInfo == nullptr && wInfo_ != nullptr) _wInfo = wInfo_;
@@ -416,10 +450,11 @@ public:
         return _wInfo;
     }
 
-    /// &&& doc
+    /// Return a json version of the contents of this class.
     std::shared_ptr<nlohmann::json> serializeJson();
 
-    /// &&& doc
+    /// Return a json object indicating the status of the message for the
+    /// original requester.
     nlohmann::json serializeResponseJson();
 
     std::string dump() const;
@@ -432,14 +467,14 @@ private:
 
     WorkerContactInfo::Ptr _wInfo;
     CzarContactInfo::Ptr _czInfo;
-    std::string const _replicationInstanceId;  ///< &&& doc
-    std::string const _replicationAuthKey;     ///< &&& doc
+    std::string const _replicationInstanceId;  ///< Used for message verification.
+    std::string const _replicationAuthKey;     ///< Used for message verification.
 
     /// Set to by the worker true if the czar was considered dead, and reset to false
     /// after the czar has acknowledged successful reception of this message.
     bool _thoughtCzarWasDead = false;
 
-    mutable std::mutex _wciMtx;  ///< protects all members.
+    mutable MUTEX _wciMtx;  ///< protects all members.
 };
 
 }  // namespace lsst::qserv::http

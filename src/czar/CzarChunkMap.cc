@@ -186,12 +186,17 @@ shared_ptr<CzarChunkMap::ChunkVector> CzarChunkMap::organize() {
     //  - _workerChunkMap has a map of workerData by worker id with each worker having a map of ChunkData
     //  - _chunkMap has a map of all chunkData by chunk id
     //  - chunksSortedBySize a list of chunks sorted with largest first.
-    // From here need to assign shared scan chunk priority
-    // Go through the chunksSortedBySize list and assign each chunk to worker that has it with the smallest
-    // totalScanSize.
+    // From here need to assign shared scan chunk priority (i.e. the worker
+    //    that will handle the chunk in shared scans, unless it is dead.)
+    // Go through the chunksSortedBySize list and assign each chunk to worker that has both:
+    //    - a copy of the chunk
+    //    - the worker currently has the smallest totalScanSize.
+    // When this is done, all workers should have lists of chunks with similar total sizes
+    // and missing chunks should be empty.
     for (auto&& chunkData : *chunksSortedBySize) {
         SizeT smallest = std::numeric_limits<SizeT>::max();
         WorkerChunksData::Ptr smallestWkr = nullptr;
+        // Find worker with smallest total size.
         for (auto&& [wkrId, wkrDataWeak] : chunkData->_workerHasThisMap) {
             auto wkrData = wkrDataWeak.lock();
             if (wkrData == nullptr) {
@@ -245,7 +250,7 @@ bool CzarChunkMap::WorkerChunksData::isDead() {
         auto czarPtr = Czar::getCzar();
         if (czarPtr == nullptr) {
             LOGS(_log, LOG_LVL_ERROR,
-                 cName(__func__) << " czarPtr is null, this should only hap[pen in unit test.");
+                 cName(__func__) << " czarPtr is null, this should only happen in unit test.");
             return false;
         }
         auto awMap = Czar::getCzar()->getActiveWorkerMap();
@@ -386,7 +391,7 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
         }
     }
 
-    // this needs to be done for each CzarChunkMap in the family map.
+    // This needs to be done for each CzarChunkMap in the family map.
     for (auto&& [familyName, chunkMapPtr] : *newFamilyMap) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " working on " << familyName);
         auto missing = chunkMapPtr->organize();
