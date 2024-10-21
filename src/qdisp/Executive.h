@@ -183,15 +183,13 @@ public:
     /// rows already read in.
     void checkLimitRowComplete();
 
-    //&&&int getRowLimit() const { return _limit; }
-
     /// Returns the maximum number of rows the worker needs for the LIMIT clause, or
     ///   a value <= 0 there's no limit that can be applied at the worker.
     int getUjRowLimit() const;
 
-    /// @return _limitRowComplete, which can only be meaningful if the
+    /// @return _rowLimitComplete, which can only be meaningful if the
     ///         user query has not been cancelled.
-    bool isLimitRowComplete() { return _limitRowComplete && !_cancelled; }
+    bool isRowLimitComplete() { return _rowLimitComplete && !_cancelled; }
 
     /// @return the value of _dataIgnoredCount
     int incrDataIgnoredCount() { return ++_dataIgnoredCount; }
@@ -247,10 +245,10 @@ private:
 
     void _squashSuperfluous();
 
-    /// @return previous value of _limitRowComplete while setting it to true.
+    /// @return previous value of _rowLimitComplete while setting it to true.
     ///  This indicates that enough rows have been read to complete the user query
     ///  with a LIMIT clause, and no group by or order by clause.
-    bool _setLimitRowComplete() { return _limitRowComplete.exchange(true); }
+    bool _setLimitRowComplete() { return _rowLimitComplete.exchange(true); }
 
     // for debugging
     void _printState(std::ostream& os);
@@ -318,7 +316,7 @@ private:
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
-    std::atomic<bool> _limitRowComplete{false};
+    std::atomic<bool> _rowLimitComplete{false};
 
     std::atomic<int64_t> _totalResultRows{0};
     std::weak_ptr<qproc::QuerySession> _querySession;

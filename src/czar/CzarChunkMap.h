@@ -142,7 +142,7 @@ public:
         /// accessed in a full table scan on this worker.
         SizeT getSharedScanTotalSize() const { return _sharedScanTotalSize; }
 
-        /// &&& doc
+        /// Return true if this worker is dead, according to `ActiveWorkerMap`.
         bool isDead();
 
         /// Return a reference to `_sharedScanChunkMap`. A copy of the pointer
@@ -163,7 +163,7 @@ public:
         /// Map of chunks this worker will handle during shared scans.
         /// Since scans are done in order of chunk id numbers, it helps
         /// to have this in chunk id number order.
-        /// At some point, thus should be sent to workers so they
+        /// At some point, this should be sent to workers so they
         /// can make more accurate time estimates for chunk completion.
         std::map<int, ChunkData::Ptr> _sharedScanChunkMap;
 
@@ -206,7 +206,9 @@ public:
     }
 
     /// Use the information from the registry to `organize` `_chunkMap` and `_workerChunkMap`
-    /// into their expected formats.
+    /// into their expected formats, which also should define where a chunk is always
+    /// run during shared scans.
+    /// This is a critical function for defining which workers will handle which jobs.
     /// @return a vector of ChunkData::Ptr of chunks where no worker was found.
     std::shared_ptr<CzarChunkMap::ChunkVector> organize();
 
@@ -296,6 +298,9 @@ public:
 
     /// Make a new FamilyMapType map including ChunkMap and WorkerChunkMap from the data
     /// in `qChunkMap`. Each family has its own ChunkMap and WorkerChunkMap.
+    ///
+    /// NOTE: This is likely an expensive operation and should probably only
+    ///   be called if new workers have been added or chunks have been moved.
     std::shared_ptr<FamilyMapType> makeNewMaps(qmeta::QMetaChunkMap const& qChunkMap);
 
     /// Insert the new element described by the parameters into the `newFamilyMap` as appropriate.

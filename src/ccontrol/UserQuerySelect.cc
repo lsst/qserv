@@ -303,12 +303,7 @@ void UserQuerySelect::submit() {
     }
 
     /// At this point the executive has a map of all jobs with the chunkIds as the key.
-    // TODO:UJ _maxCHunksPerUberJob maybe put in config??? or set on command line??
-    //         Different queries may benefit from different values
-    //         Such as LIMIT=1 may work best with this at 1, where
-    //         100 would be better for others.
-    // &&&
-    _maxChunksPerUberJob = 2;
+    _maxChunksPerUberJob = 2; // &&& set in config
     // This is needed to prevent Czar::_monitor from starting things before they are ready.
     _executive->setReadyToExecute();
     buildAndSendUberJobs();

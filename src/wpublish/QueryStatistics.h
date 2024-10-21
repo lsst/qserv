@@ -197,7 +197,8 @@ private:
 
     SchedTasksInfoMap _taskSchedInfoMap;  ///< Map of task information ordered by scheduler name.
 
-    std::shared_ptr<wbase::UserQueryInfo> const _userQueryInfo;  ///< &&& doc
+    /// Contains information common to all Tasks in this user query.
+    std::shared_ptr<wbase::UserQueryInfo> const _userQueryInfo;
 };
 
 }  // namespace lsst::qserv::wpublish

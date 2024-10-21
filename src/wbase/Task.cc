@@ -362,7 +362,6 @@ wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
 void Task::cancel() {
-    // util::InstanceCount _ic{std::string("&&&icTask::cancel ") + getIdStr()};
     if (_cancelled.exchange(true)) {
         // Was already cancelled.
         return;
