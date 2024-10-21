@@ -38,7 +38,6 @@
 #include "global/clock_defs.h"
 #include "util/Mutex.h"
 
-
 namespace lsst::qserv::cconfig {
 class CzarConfig;
 }  // namespace lsst::qserv::cconfig
@@ -101,7 +100,9 @@ public:
     /// function will wait forever for a valid contact map to be ready.
     http::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
 
-    /// &&& doc
+    /// Send all live workers the `WorkerQueryStatusData` message for
+    /// that worker. This may result in the worker sending back the
+    /// `WorkerCzarComIssue` message if there were communication problems.
     void sendActiveWorkersMessages();
 
     /// Add the query id to the list of queries to end on workers and

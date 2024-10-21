@@ -134,8 +134,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     BOOST_REQUIRE(!wqsdA->qIdDeadUberJobs.empty());
 
     wqsdA->handleResponseJson(jsWorkerResp);
-    auto [respSuccess, workerRestarted] = wqsdA->handleResponseJson(jsWorkerResp);
-    BOOST_REQUIRE(respSuccess == true);
+    auto workerRestarted = wqsdA->handleResponseJson(jsWorkerResp);
     BOOST_REQUIRE(workerRestarted == false);
 
     BOOST_REQUIRE(wqsdA->qIdDoneDeleteFiles.empty());

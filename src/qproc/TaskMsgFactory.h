@@ -48,9 +48,8 @@ namespace lsst::qserv::qproc {
 
 class ChunkQuerySpec;
 
-/// TaskMsgFactory is a factory for TaskMsg (protobuf) objects.
-/// All member variables must be thread safe.
-/// &&& fix doc
+/// TaskMsgFactory makes json messages for the jobs to be sent to the workers, where
+/// they will be used to create Tasks.
 class TaskMsgFactory {
 public:
     using Ptr = std::shared_ptr<TaskMsgFactory>;

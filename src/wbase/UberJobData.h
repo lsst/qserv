@@ -142,7 +142,7 @@ public:
 
     bool getCancelled() const { return _cancelled; }
 
-    /// &&& doc
+    /// Cancel all Tasks in this UberJob.
     void cancelAllTasks();
 
     /// Returns the LIMIT of rows for the query enforceable at the worker, where values <= 0 indicate

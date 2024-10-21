@@ -561,7 +561,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         return _importResultError(true, "cancelled", "Query cancelled - no executive");
     }
 
-    if (exec->isLimitRowComplete()) {
+    if (exec->isRowLimitComplete()) {
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
             LOGS(_log, LOG_LVL_INFO,
@@ -626,14 +626,14 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
         return _workerErrorFinish(deleteData, "cancelled");
     }
 
-    if (exec->isLimitRowComplete()) {
+    if (exec->isRowLimitComplete()) {
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
             LOGS(_log, LOG_LVL_INFO,
                  cName(__func__) << " ignoring, enough rows already "
                                  << "dataIgnored=" << dataIgnored);
         }
-        return _workerErrorFinish(keepData, "none", "limitRowComplete");
+        return _workerErrorFinish(keepData, "none", "rowLimitComplete");
     }
 
     // Currently there are no detectable recoverable errors from workers. The only
@@ -744,7 +744,7 @@ void UberJob::killUberJob() {
         return;
     }
 
-    if (exec->isLimitRowComplete()) {
+    if (exec->isRowLimitComplete()) {
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
             LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ignoring, enough rows already.");
