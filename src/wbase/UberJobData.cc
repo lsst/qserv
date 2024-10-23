@@ -209,7 +209,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
     try {
         json const response = client.readAsJson();
         if (0 != response.at("success").get<int>()) {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& success url=" << _url);
             transmitSuccess = true;
         } else {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");

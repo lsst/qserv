@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_SUITE(Suite)
 BOOST_AUTO_TEST_CASE(MutexTest) {
     // Test the interface of class Mutex to comply with expectations
     // of the standard std::lock_guard<T>.
-    LOGS_DEBUG("MutexTest begins");
+    LOGS_INFO("MutexTest begins");
 
     // The mutex won't be locked by anyone
     Mutex mtx1;
@@ -128,13 +128,13 @@ BOOST_AUTO_TEST_CASE(MutexTest) {
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
     }
-    LOGS_DEBUG("MutexTest ends");
+    LOGS_INFO("MutexTest ends");
 }
 
 BOOST_AUTO_TEST_CASE(VMutexTest) {
     // Test the interface of class Mutex to comply with expectations
     // of the standard std::lock_guard<T>.
-    LOGS_DEBUG("VMutexTest begins");
+    LOGS_INFO("VMutexTest begins");
 
     // The mutex won't be locked by anyone
     VMutex mtx1;
@@ -207,12 +207,12 @@ BOOST_AUTO_TEST_CASE(VMutexTest) {
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
     }
 
-    LOGS_DEBUG("VMutexTest ends");
+    LOGS_INFO("VMutexTest ends");
 }
 
 BOOST_AUTO_TEST_CASE(LockTest1) {
     // Test locking a mutex created on stack using a special class util::Lock.
-    LOGS_DEBUG("LockTest1 begins");
+    LOGS_INFO("LockTest1 begins");
 
     // The mutex won't be locked by anyone
     Mutex mtx1;
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(LockTest1) {
         Lock const lock(mtx2, "LockTes1t: main thread");
         BOOST_CHECK(mtx2.lockedByThread());
     }
-    LOGS_DEBUG(!mtx2.lockedByThread());
+    LOGS_INFO(!mtx2.lockedByThread());
 
     // Lock this mutex in each of two separate threads. Let each thread
     // to wait for a random period of time within some interval before
@@ -274,7 +274,7 @@ BOOST_AUTO_TEST_CASE(LockTest1) {
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
     }
-    LOGS_DEBUG("LockTest1 ends");
+    LOGS_INFO("LockTest1 ends");
 }
 
 BOOST_AUTO_TEST_CASE(LockTest2) {
@@ -282,7 +282,7 @@ BOOST_AUTO_TEST_CASE(LockTest2) {
     // a shared pointer using a special class util::Lock. The test implements
     // the same testing algorithm as the previous test, except it will be testing
     // a different way of constructing the lock.
-    LOGS_DEBUG("LockTest2 begins");
+    LOGS_INFO("LockTest2 begins");
 
     // The mutex won't be locked by anyone
     shared_ptr<Mutex> const mtx1 = make_shared<Mutex>();
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE(LockTest2) {
         }
         BOOST_CHECK_EQUAL(counter, steps * numThreads);
     }
-    LOGS_DEBUG("LockTest2 ends");
+    LOGS_INFO("LockTest2 ends");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -132,7 +132,8 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                  std::shared_ptr<qmeta::QStatus> const& queryStatsData,
                                  std::shared_ptr<util::SemaMgr> const& semaMgrConn, qmeta::CzarId czarId,
-                                 std::string const& errorExtra, bool async, std::string const& resultDb)
+                                 std::string const& errorExtra, bool async, std::string const& resultDb,
+                                 int uberJobMaxChunks)
         : _qSession(qs),
           _messageStore(messageStore),
           _executive(executive),
@@ -145,7 +146,8 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
           _qMetaCzarId(czarId),
           _errorExtra(errorExtra),
           _resultDb(resultDb),
-          _async(async) {}
+          _async(async),
+          _uberJobMaxChunks(uberJobMaxChunks) {}
 
 std::string UserQuerySelect::getError() const {
     std::string div = (_errorExtra.size() && _qSession->getError().size()) ? " " : "";
@@ -303,7 +305,6 @@ void UserQuerySelect::submit() {
     }
 
     /// At this point the executive has a map of all jobs with the chunkIds as the key.
-    _maxChunksPerUberJob = 2; // &&& set in config
     // This is needed to prevent Czar::_monitor from starting things before they are ready.
     _executive->setReadyToExecute();
     buildAndSendUberJobs();
@@ -320,6 +321,7 @@ void UserQuerySelect::submit() {
 }
 
 void UserQuerySelect::buildAndSendUberJobs() {
+    // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start");
 
@@ -428,7 +430,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         // Add this job to the appropriate UberJob, making the UberJob if needed.
         string workerId = targetWorker->getWorkerId();
         auto& ujVect = workerJobMap[workerId];
-        if (ujVect.empty() || ujVect.back()->getJobCount() >= _maxChunksPerUberJob) {
+        if (ujVect.empty() || ujVect.back()->getJobCount() >= _uberJobMaxChunks) {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
             auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
@@ -455,7 +457,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
     // Add worker contact info to UberJobs. The czar can't do anything without
     // the contact map, so it will wait. This should only ever be an issue at startup.
     auto const wContactMap = czRegistry->waitForWorkerContactMap();
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
     for (auto const& [wIdKey, ujVect] : workerJobMap) {
         auto iter = wContactMap->find(wIdKey);
         if (iter == wContactMap->end()) {
@@ -470,9 +471,10 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         _executive->addUberJobs(ujVect);
         for (auto const& ujPtr : ujVect) {
-            _executive->runUberJob(ujPtr);
+            _executive->queueUberJob(ujPtr);
         }
     }
+    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
 }
 
 /// Block until a submit()'ed query completes.
@@ -510,14 +512,14 @@ QueryState UserQuerySelect::join() {
     QueryState state = SUCCESS;
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes, finalRows);
-        LOGS(_log, LOG_LVL_INFO, "Joined everything (success)");
+        LOGS(_log, LOG_LVL_INFO, "Joined everything (success) QID=" << getQueryId());
     } else if (_killed) {
         // status is already set to ABORTED
-        LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed)");
+        LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed) QID=" << getQueryId());
         state = ERROR;
     } else {
         _qMetaUpdateStatus(qmeta::QInfo::FAILED, collectedRows, collectedBytes, finalRows);
-        LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
+        LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!) QID=" << getQueryId());
         state = ERROR;
     }
     auto const czarConfig = cconfig::CzarConfig::instance();

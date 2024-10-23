@@ -45,8 +45,7 @@ namespace lsst::qserv::qdisp {
 
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
                    qmeta::JobStatus::Ptr const& jobStatus, QueryId qid)
-        : JobBase(),
-          _executive(executive),
+        : _executive(executive),
           _jobDescription(jobDescription),
           _jobStatus(jobStatus),
           _qid(qid),
@@ -64,11 +63,9 @@ bool JobQuery::cancel(bool superfluous) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel()");
     if (_cancelled.exchange(true) == false) {
-        lock_guard lock(_rmutex);
+        VMUTEX_NOT_HELD(_jqMtx);
+        lock_guard lock(_jqMtx);
 
-        //&&&bool cancelled = false;
-
-        //&&&if (!cancelled) {
         ostringstream os;
         os << _idStr << " cancel";
         LOGS(_log, LOG_LVL_DEBUG, os.str());
@@ -81,7 +78,6 @@ bool JobQuery::cancel(bool superfluous) {
             return false;
         }
         executive->markCompleted(getJobId(), false);
-        //&&&}
         if (!superfluous) {
             _jobDescription->respHandler()->processCancel();
         }
@@ -107,6 +103,7 @@ bool JobQuery::isQueryCancelled() {
 
 bool JobQuery::_setUberJobId(UberJobId ujId) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
+    VMUTEX_HELD(_jqMtx);
     if (_uberJobId >= 0 && ujId != _uberJobId) {
         LOGS(_log, LOG_LVL_DEBUG,
              __func__ << " couldn't change UberJobId as ujId=" << ujId << " is owned by " << _uberJobId);
@@ -118,7 +115,8 @@ bool JobQuery::_setUberJobId(UberJobId ujId) {
 
 bool JobQuery::unassignFromUberJob(UberJobId ujId) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
-    std::lock_guard<std::recursive_mutex> lock(_rmutex);
+    VMUTEX_NOT_HELD(_jqMtx);
+    lock_guard lock(_jqMtx);
     if (_uberJobId < 0) {
         LOGS(_log, LOG_LVL_INFO, __func__ << " UberJobId already unassigned. attempt by ujId=" << ujId);
         return true;
@@ -137,16 +135,21 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
 }
 
 int JobQuery::getAttemptCount() const {
-    std::lock_guard<std::recursive_mutex> lock(_rmutex);
+    VMUTEX_NOT_HELD(_jqMtx);
+    lock_guard lock(_jqMtx);
     return _jobDescription->getAttemptCount();
-}
-
-void JobQuery::callMarkCompleteFunc(bool success) {
-    throw util::Bug(ERR_LOC, "&&& JobQuery::callMarkCompleteFunc should not be called, ever");
 }
 
 ostream& JobQuery::dumpOS(ostream& os) const {
     return os << "{" << getIdStr() << _jobDescription << " " << _jobStatus << "}";
 }
+
+std::string JobQuery::dump() const {
+    std::ostringstream os;
+    dumpOS(os);
+    return os.str();
+}
+
+std::ostream& operator<<(std::ostream& os, JobQuery const& jq) { return jq.dumpOS(os); }
 
 }  // namespace lsst::qserv::qdisp

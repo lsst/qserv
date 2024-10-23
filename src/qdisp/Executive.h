@@ -41,7 +41,6 @@
 #include "global/stringTypes.h"
 #include "qdisp/JobDescription.h"
 #include "qdisp/ResponseHandler.h"
-#include "qdisp/SharedResources.h"
 #include "qdisp/UberJob.h"
 #include "qmeta/JobStatus.h"
 #include "util/EventThread.h"
@@ -105,14 +104,16 @@ public:
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
     static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
-                                 SharedResources::Ptr const& sharedResources,
+                                 std::shared_ptr<util::QdispPool> const& qdispPool,
                                  std::shared_ptr<qmeta::QStatus> const& qMeta,
                                  std::shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService);
 
-    ~Executive();
+    virtual ~Executive();
 
-    std::string cName(const char* funcName = "") { return std::string("Executive::") + funcName; }
+    std::string cName(const char* funcName = "") {
+        return std::string("Executive::") + funcName + " " + getIdStr();
+    }
 
     /// Set the UserQuerySelect object for this query so this Executive can ask it to make new
     /// UberJobs in the future, if needed.
@@ -128,7 +129,7 @@ public:
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
     // Queue `uberJob` to be run using the QDispPool.
-    void runUberJob(std::shared_ptr<UberJob> const& uberJob);
+    void queueUberJob(std::shared_ptr<UberJob> const& uberJob);
 
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
     void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
@@ -146,9 +147,6 @@ public:
 
     /// Squash all the jobs.
     void squash();
-
-    /// &&& doc
-    void killIncompleteUberJobsOnWorker(std::string const& workerId);
 
     bool getEmpty() { return _empty; }
 
@@ -203,7 +201,7 @@ public:
 
     /// Call UserQuerySelect::buildAndSendUberJobs make new UberJobs for
     /// unassigned jobs.
-    void assignJobsToUberJobs();
+    virtual void assignJobsToUberJobs();
 
     int getTotalJobs() { return _totalJobs; }
 
@@ -226,14 +224,17 @@ public:
     /// @param deleteResults - If true, delete all result files for this query on the workers.
     void sendWorkersEndMsg(bool deleteResults);
 
-    /// &&& doc
-    void killIncompleteUberJobsOn(std::string const& restartedWorkerId);
+    /// Complete UberJobs have their results on the czar, the
+    /// incomplete UberJobs need to be stopped and possibly reassigned.
+    void killIncompleteUberJobsOnWorker(std::string const& workerId);
 
-private:
-    Executive(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
-              SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qStatus,
+protected:
+    Executive(ExecutiveConfig const& cfg, std::shared_ptr<qmeta::MessageStore> const& ms,
+              std::shared_ptr<util::QdispPool> const& sharedResources,
+              std::shared_ptr<qmeta::QStatus> const& qStatus,
               std::shared_ptr<qproc::QuerySession> const& querySession);
 
+private:
     void _setupLimit();
 
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);

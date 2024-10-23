@@ -32,7 +32,7 @@
 
 #include "util/Bug.h"
 
-#define USING_VMUTEX 1 // &&& Should be replaced by variable in build.
+#define USING_VMUTEX 0  // &&& Should be replaced by variable in build.
 
 #ifdef MUTEX_UNITTEST
 #define USING_VMUTEX 1
@@ -50,7 +50,7 @@
 #define VMUTEX_NOT_HELD(vmtx) \
     if (vmtx.lockedByThread()) throw lsst::qserv::util::Bug(ERR_LOC, "mutex not unlocked!");
 
-#else // not USING_VMUTEX
+#else  // not USING_VMUTEX
 
 #define MUTEX std::mutex
 
@@ -58,7 +58,7 @@
 
 #define VMUTEX_NOT_HELD(vmtx) ;
 
-#endif // USING_VMUTEX
+#endif  // USING_VMUTEX
 
 // This header declarations
 namespace lsst::qserv::util {

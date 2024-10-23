@@ -198,6 +198,22 @@ public:
     /// the OOM situation.
     unsigned int czarStatsRetainPeriodSec() const { return _czarStatsRetainPeriodSec->getVal(); }
 
+    /// A worker is considered fully ALIVE if the last update from the worker has been
+    /// heard in less than _activeWorkerTimeoutAliveSecs seconds.
+    int getActiveWorkerTimeoutAliveSecs() const { return _activeWorkerTimeoutAliveSecs->getVal(); }
+
+    /// A worker is considered DEAD if it hasn't been heard from in more than
+    /// _activeWorkerTimeoutDeadSecs.
+    int getActiveWorkerTimeoutDeadSecs() const { return _activeWorkerTimeoutDeadSecs->getVal(); }
+
+    /// Max lifetime of a message to be sent to an active worker. If the czar has been
+    /// trying to send a message to a worker and has failed for this many seconds,
+    /// it gives up at this point, removing elements of the message to save memory.
+    int getActiveWorkerMaxLifetimeSecs() const { return _activeWorkerMaxLifetimeSecs->getVal(); }
+
+    /// The maximum number of chunks (basically Jobs) allowed in a single UberJob.
+    int getUberJobMaxChunks() const { return _uberJobMaxChunks->getVal(); }
+
     // Parameters of the Czar management service
 
     std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
@@ -383,6 +399,18 @@ private:
             util::ConfigValTInt::create(_configValMap, "replication", "http_port", notReq, 0);
     CVTUIntPtr _replicationNumHttpThreads =
             util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
+
+    // Active Worker
+    CVTIntPtr _activeWorkerTimeoutAliveSecs =  // 5min
+            util::ConfigValTInt::create(_configValMap, "activeworker", "timeoutAliveSecs", notReq, 60 * 5);
+    CVTIntPtr _activeWorkerTimeoutDeadSecs =  // 10min
+            util::ConfigValTInt::create(_configValMap, "activeworker", "timeoutDeadSecs", notReq, 60 * 10);
+    CVTIntPtr _activeWorkerMaxLifetimeSecs =  // 1hr
+            util::ConfigValTInt::create(_configValMap, "activeworker", "maxLifetimeSecs", notReq, 60 * 60);
+
+    // UberJobs
+    CVTIntPtr _uberJobMaxChunks =
+            util::ConfigValTInt::create(_configValMap, "uberjob", "maxChunks", notReq, 10);
 };
 
 }  // namespace lsst::qserv::cconfig

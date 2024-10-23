@@ -87,7 +87,9 @@ Foreman::Ptr Foreman::create(Scheduler::Ptr const& scheduler, unsigned int poolS
                              unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
                              wpublish::QueriesAndChunks::Ptr const& queries,
                              std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {
+                             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr, int qPoolSize,
+                             int maxPriority, std::string const& vectRunSizesStr,
+                             std::string const& vectMinRunningSizesStr) {
     // Latch
     static std::atomic<bool> globalForemanSet{false};
     if (globalForemanSet.exchange(true) == true) {
@@ -95,7 +97,7 @@ Foreman::Ptr Foreman::create(Scheduler::Ptr const& scheduler, unsigned int poolS
     }
 
     Ptr fm = Ptr(new Foreman(scheduler, poolSize, maxPoolThreads, mySqlConfig, queries, chunkInventory,
-                             sqlConnMgr));
+                             sqlConnMgr, qPoolSize, maxPriority, vectRunSizesStr, vectMinRunningSizesStr));
     _globalForeman = fm;
     return _globalForeman;
 }
@@ -103,7 +105,8 @@ Foreman::Ptr Foreman::create(Scheduler::Ptr const& scheduler, unsigned int poolS
 Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
                  mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
                  std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                 std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr)
+                 std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
+                 std::string const& vectRunSizesStr, std::string const& vectMinRunningSizesStr)
         : _scheduler(scheduler),
           _mySqlConfig(mySqlConfig),
           _queries(queries),
@@ -132,11 +135,7 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
 
     _mark = make_shared<util::HoldTrack::Mark>(ERR_LOC, "Forman Test Msg");
 
-    int qPoolSize = 50;                      // &&& TODO:UJ put in config
-    int maxPriority = 2;                     // &&& TODO:UJ put in config
-    string vectRunSizesStr = "10:10:10:10";  // &&& TODO:UJ put in config
     vector<int> vectRunSizes = util::String::parseToVectInt(vectRunSizesStr, ":", 1);
-    string vectMinRunningSizesStr = "0:1:3:3";  // &&& TODO:UJ put in config
     vector<int> vectMinRunningSizes = util::String::parseToVectInt(vectMinRunningSizesStr, ":", 0);
     LOGS(_log, LOG_LVL_INFO,
          "INFO wPool config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
