@@ -339,6 +339,9 @@ bool CzarFamilyMap::_read() {
              cName(__func__) << " no need to read "
                              << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime)
                              << " db=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
+        // &&& Should a flag be set here to alter worker aliveness check as nothing has changed? TODO:UJ
+        // &&& Reason being that a brief loss of the registry could leave all workers marked as dead, when
+        // &&& they are still alive.
         return false;
     }
 

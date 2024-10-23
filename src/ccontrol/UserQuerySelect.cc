@@ -530,6 +530,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
 }
 
 void UserQuerySelect::buildAndSendUberJobs() {
+    // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start");
 
@@ -638,7 +639,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         // Add this job to the appropriate UberJob, making the UberJob if needed.
         string workerId = targetWorker->getWorkerId();
         auto& ujVect = workerJobMap[workerId];
-        if (ujVect.empty() || ujVect.back()->getJobCount() >= _maxChunksPerUberJob) {
+        if (ujVect.empty() || ujVect.back()->getJobCount() >= _uberJobMaxChunks) {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
             auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
@@ -665,7 +666,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
     // Add worker contact info to UberJobs. The czar can't do anything without
     // the contact map, so it will wait. This should only ever be an issue at startup.
     auto const wContactMap = czRegistry->waitForWorkerContactMap();
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
     for (auto const& [wIdKey, ujVect] : workerJobMap) {
         auto iter = wContactMap->find(wIdKey);
         if (iter == wContactMap->end()) {
@@ -680,9 +680,10 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         _executive->addUberJobs(ujVect);
         for (auto const& ujPtr : ujVect) {
-            _executive->runUberJob(ujPtr);
+            _executive->queueUberJob(ujPtr);
         }
     }
+    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
 }
 
 /// Block until a submit()'ed query completes.

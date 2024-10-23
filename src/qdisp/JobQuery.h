@@ -33,7 +33,6 @@
 
 // Qserv headers
 #include "qdisp/Executive.h"
-#include "qdisp/JobBase.h"
 #include "qdisp/JobDescription.h"
 #include "qdisp/ResponseHandler.h"
 #include "util/InstanceCount.h"
@@ -65,7 +64,7 @@ public:
     JobDescription::Ptr getDescription() { return _jobDescription; }
     qmeta::JobStatus::Ptr getStatus() { return _jobStatus; }
     bool cancel(bool superfluous = false);
-    bool isQueryCancelled() override;
+    bool isQueryCancelled();
 
     std::shared_ptr<Executive> getExecutive() { return _executive.lock(); }
 
@@ -123,14 +122,20 @@ protected:
 
     /// @return true if _uberJobId was set, it can only be set if it is unassigned
     ///         or by the current owner.
-    /// NOTE: _rmutex must be held before calling this
+    /// NOTE: _jqMtx must be held before calling this
     bool _setUberJobId(UberJobId ujId);
 
-    /// NOTE: _rmutex must be held before calling this
-    UberJobId _getUberJobId() const { return _uberJobId; }
+    /// NOTE: _jqMtx must be held before calling this
+    UberJobId _getUberJobId() const {
+        VMUTEX_HELD(_jqMtx);
+        return _uberJobId;
+    }
 
-    /// NOTE: _rmutex must be held before calling this
-    bool _isInUberJob() const { return _uberJobId >= 0; }
+    /// NOTE: _jqMtx must be held before calling this
+    bool _isInUberJob() const {
+        VMUTEX_HELD(_jqMtx);
+        return _uberJobId >= 0;
+    }
 
     // Values that don't change once set.
     std::weak_ptr<Executive> _executive;

@@ -54,7 +54,6 @@ namespace util = lsst::qserv::util;
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::mysql::MySqlConnection;
 
-
 using lsst::qserv::wbase::FileChannelShared;
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::Task;
@@ -139,7 +138,6 @@ struct Fixture {
         string const czarHostName = "cz5host";
         int const czarPort = 3437;
         string const targWorkerId = "a_worker";
-        // &&& make mock foreman instead of nullptr?
         std::shared_ptr<lsst::qserv::wcontrol::Foreman> foreman;
         int const queryId = 23;
         int const jobId = 1;
@@ -173,15 +171,6 @@ struct Fixture {
         auto& jsJobMsg = *jsJobMsgPtr;
 
         auto& chunkScanTables = jsJobMsg["chunkScanTables"];
-        /* &&&
-        for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
-            nlohmann::json cst = {{"db", sTbl.db},
-                                  {"table", sTbl.table},
-                                  {"lockInMemory", sTbl.lockInMemory},
-                                  {"tblScanRating", sTbl.scanRating}};
-            chunkScanTables.push_back(move(cst));
-        }
-        */
         nlohmann::json cst = {{"db", mInfo.db},
                               {"table", mInfo.table},
                               {"lockInMemory", mInfo.lockInMemory},
@@ -189,32 +178,6 @@ struct Fixture {
         chunkScanTables.push_back(move(cst));
 
         auto& jsFragments = jsJobMsg["queryFragments"];
-        /* &&&
-        if (chunkQuerySpec.nextFragment.get()) {
-            ChunkQuerySpec const* sPtr = &chunkQuerySpec;
-            while (sPtr) {
-                LOGS(_log, LOG_LVL_TRACE, "nextFragment");
-                for (unsigned int t = 0; t < (sPtr->queries).size(); t++) {
-                    LOGS(_log, LOG_LVL_DEBUG, __func__ << " q=" << (sPtr->queries).at(t));
-                }
-                for (auto const& sbi : sPtr->subChunkIds) {
-                    LOGS(_log, LOG_LVL_DEBUG, __func__ << " sbi=" << sbi);
-                }
-                // Linked fragments will not have valid subChunkTables vectors,
-                // So, we reuse the root fragment's vector.
-                _addFragmentJson(jsFragments, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
-                                 sPtr->queries);
-                sPtr = sPtr->nextFragment.get();
-            }
-        } else {
-            LOGS(_log, LOG_LVL_TRACE, "no nextFragment");
-            for (unsigned int t = 0; t < (chunkQuerySpec.queries).size(); t++) {
-                LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
-            }
-            _addFragmentJson(jsFragments, resultTable, chunkQuerySpec.subChunkTables,
-        chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
-        }
-        */
         nlohmann::json jsFrag = {{"resultTable", mInfo.resultName},
                                  {"queries", nlohmann::json::array()},
                                  {"subchunkTables", nlohmann::json::array()},
@@ -285,7 +248,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     auto sChannel = FileChannelShared::create(sendC, mInfo.czarId);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
-    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
+    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 9);
     auto const queries = queriesAndChunks();
     auto ujData = lsst::qserv::wbase::UberJobData::create(
             mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
@@ -335,7 +298,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     auto sc = FileChannelShared::create(sendC, mInfo.czarId);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
-    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
+    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 9);
     auto const queries = queriesAndChunks();
     auto ujData = lsst::qserv::wbase::UberJobData::create(
             mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,

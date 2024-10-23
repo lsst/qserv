@@ -447,7 +447,6 @@ void MergingHandler::errorFlush(std::string const& msg, int code) {
     LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
 }
 
-
 // Note that generally we always have an _infileMerger object except during
 // a unit test. I suppose we could try to figure out how to create one.
 //

@@ -176,6 +176,127 @@ public:
 
 }  // namespace lsst::qserv::qdisp
 
+namespace lsst::qserv::qdisp {
+
+class ExecutiveUT;
+
+class TestInfo : public ResponseHandler {
+public:
+    using Ptr = std::shared_ptr<TestInfo>;
+
+    TestInfo() {}
+    virtual ~TestInfo() {}
+
+    bool goWait() {
+        unique_lock ulock(_infoMtx);
+        _infoCV.wait(ulock, [this]() { return _go == true; });
+        return _ok;
+    }
+
+    void setGo(bool val) {
+        lock_guard lg(_infoMtx);
+        _go = val;
+        _infoCV.notify_all();
+    }
+
+    // virtual function that won't be needed
+    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
+                                     uint64_t& resultRows) override {
+        return {true, false};
+    }
+    void flushHttpError(int errorCode, std::string const& errorMsg, int status) override {}
+    void errorFlush(std::string const& msg, int code) override{};
+    Error getError() const override { return util::Error(); }
+    void processCancel() override{};
+    void prepScrubResults(int jobId, int attempt) override{};
+
+    /// Print a string representation of the receiver to an ostream
+    std::ostream& print(std::ostream& os) const override {
+        os << "TestInfo ujCount=" << ujCount;
+        return os;
+    }
+
+    atomic<int> ujCount = 0;
+
+private:
+    bool _ok = true;
+    bool _go = true;
+    mutex _infoMtx;
+    condition_variable _infoCV;
+};
+
+/// Version of UberJob specifically for this unit test.
+class UberJobUT : public UberJob {
+public:
+    using PtrUT = std::shared_ptr<UberJobUT>;
+
+    UberJobUT(std::shared_ptr<Executive> const& executive,
+              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
+              qmeta::CzarId czarId, int rowLimit, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData,
+              TestInfo::Ptr const& testInfo_)
+            : UberJob(executive, respHandler, queryId, uberJobId, czarId, rowLimit, workerData),
+              testInfo(testInfo_) {}
+
+    void runUberJob() override {
+        LOGS(_log, LOG_LVL_INFO, "runUberJob() chunkId=" << chunkId);
+        bool ok = testInfo->goWait();
+        int c = -1;
+        if (ok) {
+            c = ++(testInfo->ujCount);
+        }
+        callMarkCompleteFunc(ok);
+        LOGS(_log, LOG_LVL_INFO, "runUberJob() end chunkId=" << chunkId << " c=" << c);
+    }
+
+    TestInfo::Ptr testInfo;
+    int chunkId = -1;
+};
+
+/// Version of Executive specifically for this unit test.
+class ExecutiveUT : public Executive {
+public:
+    using PtrUT = shared_ptr<ExecutiveUT>;
+
+    ~ExecutiveUT() override = default;
+
+    ExecutiveUT(ExecutiveConfig const& cfg, shared_ptr<qmeta::MessageStore> const& ms,
+                util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QStatus> const& qStatus,
+                shared_ptr<qproc::QuerySession> const& querySession, TestInfo::Ptr const& testInfo_)
+            : Executive(cfg, ms, qdispPool, qStatus, querySession), testInfo(testInfo_) {}
+
+    void assignJobsToUberJobs() override {
+        vector<qdisp::UberJob::Ptr> ujVect;
+
+        // Make an UberJobUnitTest for each job
+        qdisp::Executive::ChunkIdJobMapType unassignedChunks = unassignedChunksInQuery();
+        for (auto const& [chunkId, jqPtr] : unassignedChunks) {
+            auto exec = shared_from_this();
+            PtrUT execUT = dynamic_pointer_cast<ExecutiveUT>(exec);
+            auto uJob = UberJobUT::PtrUT(new UberJobUT(execUT, testInfo, getId(), ujId++, czarId, rowLimit,
+                                                       targetWorker, testInfo));
+            uJob->chunkId = chunkId;
+            uJob->addJob(jqPtr);
+            ujVect.push_back(uJob);
+        }
+
+        // Queue up the jobs to be run.
+        addUberJobs(ujVect);
+        for (auto const& ujPtr : ujVect) {
+            queueUberJob(ujPtr);
+        }
+        LOGS(_log, LOG_LVL_INFO, "assignJobsToUberJobs() end");
+    }
+
+    CzarIdType czarId = 1;
+    UberJobId ujId = 1;
+    int rowLimit = 0;
+    czar::CzarChunkMap::WorkerChunksData::Ptr targetWorker = nullptr;
+
+    TestInfo::Ptr testInfo;
+};
+
+}  // namespace lsst::qserv::qdisp
+
 qdisp::JobDescription::Ptr makeMockJobDescription(qdisp::Executive::Ptr const& ex, int sequence,
                                                   ResourceUnit const& ru, std::string msg,
                                                   std::shared_ptr<qdisp::ResponseHandler> const& mHandler) {

@@ -236,15 +236,6 @@ bool UberJob::isQueryCancelled() {
     return exec->getCancelled();
 }
 
-bool UberJob::getScanInteractive() const {
-    auto exec = _executive.lock();
-    if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " _executive == nullptr");
-        return false;  // Safer to assume the worst.
-    }
-    return exec->getScanInteractive();
-}
-
 bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg) {
     // must be locked _jobsMtx
     auto currentState = _jobStatus->getState();
@@ -578,16 +569,15 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         return _importResultError(false, "setStatusFail", "could not set status to RESPONSE_READY");
     }
 
-    JobBase::Ptr jBaseThis = shared_from_this();
-    weak_ptr<UberJob> ujThis = std::dynamic_pointer_cast<UberJob>(jBaseThis);
-
+    weak_ptr<UberJob> ujThis = weak_from_this();
     // TODO:UJ lambda may not be the best way to do this, alsocheck synchronization - may need a mutex for
     // merging.
-    auto fileCollectFunc = [ujThis, fileUrl, rowCount](util::CmdData*) {
+    string const idStr = _idStr;
+    auto fileCollectFunc = [ujThis, fileUrl, rowCount, idStr](util::CmdData*) {
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
-                 "UberJob::importResultFile::fileCollectFunction uberjob ptr is null " << fileUrl);
+                 "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrl);
             return;
         }
         uint64_t resultRows = 0;
@@ -691,8 +681,15 @@ json UberJob::_importResultError(bool shouldCancel, string const& errorType, str
     return jsRet;
 }
 
-nlohmann::json UberJob::_importResultFinish(uint64_t resultRows) {
+void UberJob::_importResultFinish(uint64_t resultRows) {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
+
+    auto exec = _executive.lock();
+    if (exec == nullptr) {
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
+        return;
+    }
+
     /// If this is called, the file has been collected and the worker should delete it
     ///
     /// This function should call markComplete for all jobs in the uberjob
@@ -700,22 +697,16 @@ nlohmann::json UberJob::_importResultFinish(uint64_t resultRows) {
     bool const statusSet =
             setStatusIfOk(qmeta::JobStatus::RESPONSE_DONE, getIdStr() + " _importResultFinish");
     if (!statusSet) {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " failed to set status " << getIdStr());
-        return {{"success", 0}, {"errortype", "statusMismatch"}, {"note", "failed to set status"}};
-    }
-    auto exec = _executive.lock();
-    if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
-        return {{"success", 0}, {"errortype", "cancelled"}, {"note", "executive is null"}};
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failed to set status, squashing " << getIdStr());
+        // Something has gone very wrong
+        exec->squash();
+        return;
     }
 
     bool const success = true;
     callMarkCompleteFunc(success);  // sets status to COMPLETE
     exec->addResultRows(resultRows);
     exec->checkLimitRowComplete();
-
-    json jsRet = {{"success", 1}, {"errortype", ""}, {"note", ""}};
-    return jsRet;
 }
 
 nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& errorType,

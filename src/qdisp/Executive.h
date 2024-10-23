@@ -116,7 +116,9 @@ public:
     /// Find the UberJob with `ujId`.
     std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
 
-    std::string cName(const char* funcName = "") { return std::string("Executive::") + funcName; }
+    std::string cName(const char* funcName = "") {
+        return std::string("Executive::") + funcName + " " + getIdStr();
+    }
 
     /// Set the UserQuerySelect object for this query so this Executive can ask it to make new
     /// UberJobs in the future, if needed.
@@ -153,9 +155,6 @@ public:
 
     /// Squash all the jobs.
     void squash(std::string const& note);
-
-    /// &&& doc
-    void killIncompleteUberJobsOnWorker(std::string const& workerId);
 
     bool getEmpty() { return _empty; }
 

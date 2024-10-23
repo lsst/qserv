@@ -71,7 +71,6 @@ std::string ResourceUnit::makePath(int chunk, std::string const& db) {
     return _pathSep + prefix(UnitType::DBCHUNK) + _pathSep + db + _pathSep + std::to_string(chunk);
 }
 
-
 void ResourceUnit::setAsDbChunk(std::string const& db, int chunk) {
     _unitType = DBCHUNK;
     _db = db;

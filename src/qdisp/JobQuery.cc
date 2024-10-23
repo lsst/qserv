@@ -45,8 +45,7 @@ namespace lsst::qserv::qdisp {
 
 JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& jobDescription,
                    qmeta::JobStatus::Ptr const& jobStatus, QueryId qid)
-        : JobBase(),
-          _executive(executive),
+        : _executive(executive),
           _jobDescription(jobDescription),
           _jobStatus(jobStatus),
           _qid(qid),
