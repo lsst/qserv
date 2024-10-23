@@ -42,7 +42,6 @@
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
-#include "qdisp/SharedResources.h"
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
@@ -121,9 +120,6 @@ public:
      */
     static Ptr getCzar() { return _czar; }
 
-    /// Return a pointer to QdispSharedResources
-    qdisp::SharedResources::Ptr getQdispSharedResources() { return _qdispSharedResources; }
-
     /// Remove all old tables in the qservResult database.
     void removeOldResultTables();
 
@@ -201,11 +197,6 @@ private:
     IdToQuery _idToQuery;          ///< maps query ID to query (for currently running queries)
     std::mutex _mutex;             ///< protects _uqFactory, _clientToQuery, and _idToQuery
 
-    /// Thread pool for handling Responses from XrdSsi,
-    /// the PsuedoFifo to prevent czar from calling most recent requests,
-    /// and any other resources for use by query executives.
-    qdisp::SharedResources::Ptr _qdispSharedResources;
-
     util::Timer _lastRemovedTimer;  ///< Timer to limit table deletions.
     std::mutex _lastRemovedMtx;     ///< protects _lastRemovedTimer
 
@@ -245,6 +236,13 @@ private:
 
     /// A combined priority queue and thread pool to regulate czar communications
     /// with workers. Once created, the pointer never changes.
+    /// TODO:UJ - It would be better to have a pool for each worker as it
+    ///           may be possible for a worker to have communications
+    ///           problems in a way that would wedge the pool. This can
+    ///           probably be done fairly easily by having pools
+    ///           attached to ActiveWorker in _activeWorkerMap.
+    ///           This was not possible in xrootd as the czar had
+    ///           no reasonable way to know where Jobs were going.
     std::shared_ptr<util::QdispPool> _qdispPool;
 };
 

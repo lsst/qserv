@@ -236,8 +236,14 @@ SsiService::SsiService(XrdSsiLogger* log) {
     LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
     LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
+    int qPoolSize = workerConfig->getQPoolSize();
+    int maxPriority = workerConfig->getQPoolMaxPriority();
+    string vectRunSizesStr = workerConfig->getQPoolRunSizes();
+    string vectMinRunningSizesStr = workerConfig->getQPoolMinRunningSizes();
+
     _foreman = wcontrol::Foreman::create(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries,
-                                         ::makeChunkInventory(mySqlConfig), sqlConnMgr);
+                                         ::makeChunkInventory(mySqlConfig), sqlConnMgr, qPoolSize,
+                                         maxPriority, vectRunSizesStr, vectMinRunningSizesStr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log

@@ -210,8 +210,8 @@ public:
 private:
     CzarStats(std::shared_ptr<util::QdispPool> const& qdispPool);
 
-    static Ptr _globalCzarStats;    ///< Pointer to the global instance.
-    static MUTEX _globalMtx;  ///< Protects `_globalCzarStats`
+    static Ptr _globalCzarStats;  ///< Pointer to the global instance.
+    static MUTEX _globalMtx;      ///< Protects `_globalCzarStats`
 
     /// Connection to get information about the czar's pool of dispatch threads.
     std::shared_ptr<util::QdispPool> _qdispPool;
