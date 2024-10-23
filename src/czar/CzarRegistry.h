@@ -120,7 +120,7 @@ private:
     http::WorkerContactInfo::WCMapPtr _contactMap;
     TIMEPOINT _latestMapUpdate;  ///< The last time the _contactMap was updated, unrelated to
                                  ///< WorkerContactInfo update.
-    mutable MUTEX _cmapMtx;  /// Protects _contactMap, _latestUpdate
+    mutable MUTEX _cmapMtx;      /// Protects _contactMap, _latestUpdate
 
     /// Map for tracking worker aliveness, it has its own internal mutex.
     std::shared_ptr<ActiveWorkerMap> const _activeWorkerMap;

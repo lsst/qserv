@@ -131,13 +131,13 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                 // TODO: Is there a better thing to do than just log this here?
             } else {
                 http::WorkerContactInfo::WCMapPtr wMap = _buildMapFromJson(response);
-                // Compare the new map to the existing map and replace if different.
+                // Update the values in the map
                 {
                     auto czInfo = http::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(),
                                                                 _czarConfig->replicationHttpPort(),
                                                                 util::get_current_host_fqdn(), czarStartTime);
                     lock_guard lck(_cmapMtx);
-                    if (wMap != nullptr && !_compareMapContactInfo(*wMap)) {
+                    if (wMap != nullptr) {
                         _contactMap = wMap;
                         _latestMapUpdate = CLOCK::now();
                         _activeWorkerMap->updateMap(*_contactMap, czInfo, replicationInstanceId,

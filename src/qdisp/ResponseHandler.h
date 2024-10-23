@@ -42,7 +42,8 @@ class ResponseSummary;
 
 namespace lsst::qserv::qdisp {
 
-class JobBase;
+class JobQuery;
+class UberJob;
 
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
@@ -57,14 +58,8 @@ public:
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
     ResponseHandler() {}
-    void setJobQuery(std::shared_ptr<JobBase> const& jobBase) { _jobBase = jobBase; }
+    void setUberJob(std::weak_ptr<UberJob> const& ujPtr) { _uberJob = ujPtr; }
     virtual ~ResponseHandler() {}
-
-    /// Process a request for pulling and merging a job result into the result table
-    /// @param responseSummary - worker response to be analyzed and processed
-    /// @param resultRows - number of result rows in this result.
-    /// @return true if successful (no error)
-    virtual bool flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) = 0;
 
     /// Collect result data from the worker and merge it with the query result table.
     /// @return success - true if the operation was successful
@@ -80,10 +75,6 @@ public:
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
 
-    /// @return true if the receiver has completed its duties.
-    virtual bool finished() const = 0;
-    virtual bool reset() = 0;  ///< Reset the state that a request can be retried.
-
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
 
@@ -96,10 +87,10 @@ public:
     /// Scrub the results from jobId-attempt from the result table.
     virtual void prepScrubResults(int jobId, int attempt) = 0;
 
-    std::weak_ptr<JobBase> getJobBase() { return _jobBase; }
+    std::weak_ptr<UberJob> getUberJob() { return _uberJob; }
 
 private:
-    std::weak_ptr<JobBase> _jobBase;
+    std::weak_ptr<UberJob> _uberJob;
 };
 
 inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) { return r.print(os); }

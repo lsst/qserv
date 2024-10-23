@@ -35,6 +35,10 @@
 #include "http/WorkerQueryStatusData.h"
 #include "util/Bug.h"
 
+namespace lsst::qserv::cconfig {
+class CzarConfig;
+}
+
 // This header declarations
 namespace lsst::qserv::czar {
 
@@ -44,7 +48,7 @@ namespace lsst::qserv::czar {
 /// have finished or need to be cancelled.
 ///  - maintain list of done/cancelled queries for an active worker, and send
 ///    that list to the worker. Once the worker has accepted the list, remove
-///    all of those queryId's from the list.
+///    all of those queryId's from the lists.
 ///  - maintain a list of killed UberJobs. If an UberJob is killed, nothing
 ///    will every look for its files, so they should be deleted, and the
 ///    worker should avoid working on Tasks for that UberJob.
@@ -57,9 +61,8 @@ namespace lsst::qserv::czar {
 ///    them. If the worker isn't told, it will continue working on
 ///    the UberJob until it finishes, and then find out the UberJob was killed
 ///    when it tries to return results to the czar. The worker should delete
-///    files for said UberJob at that point).
-///    So, this should be very rare, only results in extra load, and therefore
-///    is a low priority.
+///    files for said UberJob at that point.
+///    So, this should be very rare, only results in extra load.
 ///
 ///    If a worker goes missing from the registry, it is considered DEAD and may be
 ///       removed after a period of time.
@@ -69,7 +72,7 @@ namespace lsst::qserv::czar {
 ///
 ///    When a worker becomes DEAD: (see Czar::_monitor).
 ///       - Affected UberJobs are killed.
-///       - UberJobs are built to handle unassigned jobs where dead workers are skipped and
+///       - New UberJobs are built to handle unassigned jobs where dead workers are skipped and
 ///         the jobs are assigned to alternate workers.
 ///
 class ActiveWorker : public std::enable_shared_from_this<ActiveWorker> {
@@ -186,6 +189,9 @@ public:
     ActiveWorkerMap() = default;
     ActiveWorkerMap(ActiveWorkerMap const&) = delete;
     ActiveWorkerMap operator=(ActiveWorkerMap const&) = delete;
+
+    ActiveWorkerMap(std::shared_ptr<cconfig::CzarConfig> const& czarConfig);
+
     ~ActiveWorkerMap() = default;
 
     std::string cName(const char* fName) { return std::string("ActiveWorkerMap::") + fName + " "; }
@@ -214,7 +220,7 @@ public:
     /// Add `qId` to the list of query ids where the worker must hold onto result
     /// files but all incomplete Tasks can be stopped. This is used for `rowLimitComplete`
     /// where enough rows have been found to complete a user query with a LIMIT
-    ///clause. The czar may still need to collect the result files from the worker.
+    /// clause. The czar may still need to collect the result files from the worker.
     /// Once the czar has completed the user query, the `qId` will be added to
     /// `addToDoneDeleteFiles` so the workers will delete the files.
     void addToDoneKeepFiles(QueryId qId);
@@ -223,9 +229,14 @@ private:
     std::map<std::string, ActiveWorker::Ptr> _awMap;  ///< Key is worker id.
     mutable std::mutex _awMapMtx;                     ///< protects _awMap;
 
-    double _timeoutAliveSecs = 60.0 * 5.0;  ///< &&& set from config. 5min
-    double _timeoutDeadSecs = 60.0 * 10.0;  ///< &&& set from config. 10min
-    double _maxLifetime = 60.0 * 60.0;      ///< &&& set from config. 1hr
+    /// @see CzarConfig::getActiveWorkerTimeoutAliveSecs()
+    double _timeoutAliveSecs = 60.0 * 5.0;
+
+    /// @see CzarConfig::getActiveWorkerTimeoutDeadSecs()
+    double _timeoutDeadSecs = 60.0 * 10.0;
+
+    /// @see CzarConfig::getActiveWorkerMaxLifetimeSecs()
+    double _maxLifetime = 60.0 * 60.0;
 
     bool _czarCancelAfterRestart = false;
     CzarIdType _czarCancelAfterRestartCzId = 0;

@@ -115,7 +115,8 @@ public:
                       mysql::MySqlConfig const& mySqlConfig,
                       std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
                       std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                      std::shared_ptr<SqlConnMgr> const& sqlConnMgr);
+                      std::shared_ptr<SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
+                      std::string const& vectRunSizesStr, std::string const& vectMinRunningSizesStr);
 
     ~Foreman();
 
@@ -151,7 +152,8 @@ private:
     Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
             std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-            std::shared_ptr<SqlConnMgr> const& sqlConnMgr);
+            std::shared_ptr<SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
+            std::string const& vectRunSizesStr, std::string const& vectMinRunningSizesStr);
 
     /// Startup time of worker, sent to czars so they can detect that the worker was
     /// was restarted when this value changes.
@@ -185,6 +187,11 @@ private:
     std::shared_ptr<qhttp::Server> const _httpServer;
 
     /// Combined priority queue and thread pool for communicating with czars.
+    /// TODO:UJ - It would be better to have a pool for each czar as it
+    ///           may be possible for a czar to have communications
+    ///           problems in a way that would wedge the pool. This can
+    ///           probably be done fairly easily by having pools
+    ///           attached to wcontrol::WCzarInfoMap.
     std::shared_ptr<util::QdispPool> _wPool;
 
     /// Map of czar information for all czars that have contacted this worker.

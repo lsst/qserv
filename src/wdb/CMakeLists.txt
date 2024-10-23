@@ -37,4 +37,6 @@ wdb_tests(
     testQueryRunner
 )
 
+# For this test to work, a mariadb server needs to be available.
+# This functionality is covered by integration tests.
 set_tests_properties(testQueryRunner PROPERTIES WILL_FAIL 1)

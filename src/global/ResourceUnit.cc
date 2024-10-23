@@ -53,7 +53,6 @@ std::string ResourceUnit::path() const {
     return ss.str();
 }
 
-
 std::string ResourceUnit::prefix(UnitType const& r) {
     switch (r) {
         case DBCHUNK:
@@ -71,7 +70,6 @@ std::string ResourceUnit::prefix(UnitType const& r) {
 std::string ResourceUnit::makePath(int chunk, std::string const& db) {
     return _pathSep + prefix(UnitType::DBCHUNK) + _pathSep + db + _pathSep + std::to_string(chunk);
 }
-
 
 void ResourceUnit::setAsDbChunk(std::string const& db, int chunk) {
     _unitType = DBCHUNK;

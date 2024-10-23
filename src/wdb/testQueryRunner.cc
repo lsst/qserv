@@ -54,12 +54,6 @@ namespace util = lsst::qserv::util;
 using lsst::qserv::mysql::MySqlConfig;
 using lsst::qserv::mysql::MySqlConnection;
 
-/* &&&
-using lsst::qserv::proto::TaskMsg;
-using lsst::qserv::proto::TaskMsg_Fragment;
-using lsst::qserv::proto::TaskMsg_Subchunk;
-*/
-
 using lsst::qserv::wbase::FileChannelShared;
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::Task;
@@ -72,22 +66,6 @@ using lsst::qserv::wdb::QueryRunner;
 using lsst::qserv::wpublish::QueriesAndChunks;
 
 struct Fixture {
-    /* &&&
-    shared_ptr<TaskMsg> newTaskMsg() {
-        shared_ptr<TaskMsg> t = make_shared<TaskMsg>();
-        t->set_chunkid(3240);  // hardcoded
-        t->set_db("LSST");     // hardcoded
-        auto scanTbl = t->add_scantable();
-        scanTbl->set_db("LSST");
-        scanTbl->set_table("Object");
-        scanTbl->set_lockinmemory(false);
-        scanTbl->set_scanrating(1);
-        lsst::qserv::proto::TaskMsg::Fragment* f = t->add_fragment();
-        f->add_query("SELECT AVG(yFlux_PS) from LSST.Object_3240");
-        return t;
-    }
-    */
-
     struct MsgInfo {
         string const db = "LSST";
         string const table = "Object";
@@ -98,7 +76,6 @@ struct Fixture {
         string const czarHostName = "cz5host";
         int const czarPort = 3437;
         string const targWorkerId = "a_worker";
-        // &&& make mock foreman instead of nullptr?
         std::shared_ptr<lsst::qserv::wcontrol::Foreman> foreman;
         int const queryId = 23;
         int const jobId = 1;
@@ -132,15 +109,6 @@ struct Fixture {
         auto& jsJobMsg = *jsJobMsgPtr;
 
         auto& chunkScanTables = jsJobMsg["chunkScanTables"];
-        /* &&&
-        for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
-            nlohmann::json cst = {{"db", sTbl.db},
-                                  {"table", sTbl.table},
-                                  {"lockInMemory", sTbl.lockInMemory},
-                                  {"tblScanRating", sTbl.scanRating}};
-            chunkScanTables.push_back(move(cst));
-        }
-        */
         nlohmann::json cst = {{"db", mInfo.db},
                               {"table", mInfo.table},
                               {"lockInMemory", mInfo.lockInMemory},
@@ -148,32 +116,6 @@ struct Fixture {
         chunkScanTables.push_back(move(cst));
 
         auto& jsFragments = jsJobMsg["queryFragments"];
-        /* &&&
-        if (chunkQuerySpec.nextFragment.get()) {
-            ChunkQuerySpec const* sPtr = &chunkQuerySpec;
-            while (sPtr) {
-                LOGS(_log, LOG_LVL_TRACE, "nextFragment");
-                for (unsigned int t = 0; t < (sPtr->queries).size(); t++) {
-                    LOGS(_log, LOG_LVL_DEBUG, __func__ << " q=" << (sPtr->queries).at(t));
-                }
-                for (auto const& sbi : sPtr->subChunkIds) {
-                    LOGS(_log, LOG_LVL_DEBUG, __func__ << " sbi=" << sbi);
-                }
-                // Linked fragments will not have valid subChunkTables vectors,
-                // So, we reuse the root fragment's vector.
-                _addFragmentJson(jsFragments, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
-                                 sPtr->queries);
-                sPtr = sPtr->nextFragment.get();
-            }
-        } else {
-            LOGS(_log, LOG_LVL_TRACE, "no nextFragment");
-            for (unsigned int t = 0; t < (chunkQuerySpec.queries).size(); t++) {
-                LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
-            }
-            _addFragmentJson(jsFragments, resultTable, chunkQuerySpec.subChunkTables,
-        chunkQuerySpec.subChunkIds, chunkQuerySpec.queries);
-        }
-        */
         nlohmann::json jsFrag = {{"resultTable", mInfo.resultName},
                                  {"queries", nlohmann::json::array()},
                                  {"subchunkTables", nlohmann::json::array()},
@@ -207,25 +149,9 @@ struct Fixture {
     }
 };
 
-BOOST_FIXTURE_TEST_SUITE(Basic, Fixture)
+BOOST_FIXTURE_TEST_SUITE(Basic, Fixture, *boost::unit_test::timeout(20))
 
 BOOST_AUTO_TEST_CASE(Simple) {
-    /* &&&
-    WorkerConfig::create();
-    shared_ptr<TaskMsg> msg(newTaskMsg());
-    shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
-    auto sc = FileChannelShared::create(sendC, msg->czarid());
-    FakeBackend::Ptr backend = make_shared<FakeBackend>();
-    shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
-    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
-    auto const queries = queriesAndChunks();
-    //&&& auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr, queries);
-    auto taskVect = Task::createTasks(msg, sc, crm, newMySqlConfig(), sqlConnMgr, queries);
-    Task::Ptr task = taskVect[0];
-    QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
-    BOOST_CHECK(a->runQuery());
-    */
-
     WorkerConfig::create();
     MsgInfo mInfo;
     auto msgJson = newTaskJson(mInfo);
@@ -233,7 +159,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     auto sChannel = FileChannelShared::create(sendC, mInfo.czarId);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
-    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
+    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 9);
     auto const queries = queriesAndChunks();
     auto ujData = lsst::qserv::wbase::UberJobData::create(
             mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
@@ -258,7 +184,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     auto sc = FileChannelShared::create(sendC, mInfo.czarId);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
-    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 15);
+    SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 9);
     auto const queries = queriesAndChunks();
     auto ujData = lsst::qserv::wbase::UberJobData::create(
             mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
