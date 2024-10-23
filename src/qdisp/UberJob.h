@@ -27,7 +27,7 @@
 #include "qmeta/types.h"
 #include "czar/CzarChunkMap.h"  // Need nested class. TODO:UJ Make non-nested?
 #include "czar/CzarRegistry.h"  // Need nested class. TODO:UJ Make non-nested?
-#include "qdisp/JobBase.h"
+#include "qdisp/Executive.h"
 #include "qmeta/JobStatus.h"
 
 namespace lsst::qserv::util {
@@ -46,7 +46,7 @@ class JobQuery;
 /// When this UberJobCompletes, all the Jobs it contains are registered as completed.
 /// If this UberJob fails, it will be destroyed, un-assigning all of its Jobs.
 /// Those Jobs will need to be reassigned to new UberJobs, or the query cancelled.
-class UberJob : public JobBase {
+class UberJob : public std::enable_shared_from_this<UberJob> {
 public:
     using Ptr = std::shared_ptr<UberJob>;
 
@@ -63,24 +63,23 @@ public:
     std::string cName(const char* funcN) const { return std::string("UberJob::") + funcN + " " + getIdStr(); }
 
     bool addJob(std::shared_ptr<JobQuery> const& job);
-    bool runUberJob();
 
-    /// &&&doc
+    /// Make a json version of this UberJob and send it to its worker.
+    virtual void runUberJob();
+
+    /// Kill this UberJob and unassign all Jobs so they can be used in a new UberJob if needed.
     void killUberJob();
 
-    QueryId getQueryId() const override { return _queryId; }
-    UberJobId getJobId() const override {
+    QueryId getQueryId() const { return _queryId; }
+    UberJobId getJobId() const {
         return _uberJobId;
-    }  // TODO:UJ change name when JobBase no longer needed.
-    std::string const& getIdStr() const override { return _idStr; }
-    std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
-    std::shared_ptr<qmeta::JobStatus> getStatus() override {
-        return _jobStatus;
-    }                                                  // TODO:UJ relocate to JobBase
-    bool getScanInteractive() const override;          ///< probably not called TODO:UJ
-    bool isQueryCancelled() override;                  // TODO:UJ relocate to JobBase
-    void callMarkCompleteFunc(bool success) override;  ///< call markComplete for all jobs in this UberJob.
-    std::shared_ptr<Executive> getExecutive() override { return _executive.lock(); }
+    }  // &&& TODO:UJ change name when JobBase no longer needed.
+    std::string const& getIdStr() const { return _idStr; }
+    std::shared_ptr<ResponseHandler> getRespHandler() { return _respHandler; }
+    std::shared_ptr<qmeta::JobStatus> getStatus() { return _jobStatus; }
+    bool isQueryCancelled();
+    void callMarkCompleteFunc(bool success);  ///< call markComplete for all jobs in this UberJob.
+    std::shared_ptr<Executive> getExecutive() { return _executive.lock(); }
 
     /// Return false if not ok to set the status to newState, otherwise set the state for
     /// this UberJob and all jobs it contains to newState.
@@ -114,13 +113,16 @@ public:
     /// Handle an error from the worker.
     nlohmann::json workerError(int errorCode, std::string const& errorMsg);
 
-    std::ostream& dumpOS(std::ostream& os) const override;
+    std::ostream& dumpOS(std::ostream& os) const;
+    std::string dump() const;
+    friend std::ostream& operator<<(std::ostream& os, UberJob const& uj);
 
-private:
+protected:
     UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
             int queryId, int uberJobId, qmeta::CzarId czarId, int rowLimit,
             czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
 
+private:
     /// Used to setup elements that can't be done in the constructor.
     void _setup();
 
@@ -138,7 +140,7 @@ private:
                                       std::string const& note);
 
     /// Let the executive know that all Jobs in UberJob are complete.
-    nlohmann::json _importResultFinish(uint64_t resultRows);
+    void _importResultFinish(uint64_t resultRows);
 
     /// Let the Executive know about errors while handling results.
     nlohmann::json _workerErrorFinish(bool successful, std::string const& errorType = std::string(),

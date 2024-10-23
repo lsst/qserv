@@ -30,6 +30,7 @@
 #include "http/MetaModule.h"
 #include "http/RequestBodyJSON.h"
 #include "util/common.h"
+#include "util/TimeUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -120,6 +121,12 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json co
     return nullptr;
 }
 
+void WorkerContactInfo::setRegUpdateTime(TIMEPOINT updateTime) {
+    std::lock_guard lg(_rMtx);
+    _regUpdateTime = updateTime;
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " " << _dump());
+}
+
 string WorkerContactInfo::dump() const {
     lock_guard lg(_rMtx);
     return _dump();
@@ -128,7 +135,8 @@ string WorkerContactInfo::dump() const {
 string WorkerContactInfo::_dump() const {
     stringstream os;
     os << "workerContactInfo{"
-       << "id=" << wId << " host=" << _wHost << " mgHost=" << _wManagementHost << " port=" << _wPort << "}";
+       << "id=" << wId << " host=" << _wHost << " mgHost=" << _wManagementHost << " port=" << _wPort
+       << " update=" << util::TimeUtils::timePointToDateTimeString(_regUpdateTime) << "}";
     return os.str();
 }
 
@@ -322,6 +330,19 @@ void WorkerQueryStatusData::addDeadUberJobs(QueryId qId, std::vector<UberJobId> 
     for (auto const ujId : ujIds) {
         ujMap[ujId] = tm;
     }
+}
+
+void WorkerQueryStatusData::setWInfo(WorkerContactInfo::Ptr const& wInfo_) {
+    std::lock_guard lgI(_infoMtx);
+    if (_wInfo == nullptr) {
+        _wInfo = wInfo_;
+        return;
+    }
+    if (wInfo_ != nullptr) {
+        // This only changes host and port values of _wInfo.
+        _wInfo->changeBaseInfo(*wInfo_);
+    }
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " " << _wInfo->dump());
 }
 
 void WorkerQueryStatusData::addDeadUberJob(QueryId qId, UberJobId ujId, TIMEPOINT tm) {

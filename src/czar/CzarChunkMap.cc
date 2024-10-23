@@ -333,11 +333,14 @@ bool CzarFamilyMap::_read() {
     // better to wait for new maps if something changed.
     std::lock_guard gLock(_familyMapMtx);
     qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap(_lastUpdateTime);
-    if (_lastUpdateTime >= qChunkMap.updateTime) {
+    if (_lastUpdateTime == qChunkMap.updateTime) {
         LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) << " no need to read "
                              << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime)
                              << " db=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
+        // &&& Should a flag be set here to alter worker aliveness check as nothing has changed? TODO:UJ
+        // &&& Reason being that a brief loss of the registry could leave all workers marked as dead, when
+        // &&& they are still alive.
         return false;
     }
 

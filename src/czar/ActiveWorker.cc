@@ -80,6 +80,7 @@ void ActiveWorker::_changeStateTo(State newState, double secsSinceUpdate, string
 
 void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double timeoutDeadSecs,
                                               double maxLifetime) {
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " start");
     bool newlyDeadWorker = false;
     http::WorkerContactInfo::Ptr wInfo_;
     {
@@ -89,9 +90,14 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " no WorkerContactInfo");
             return;
         }
-        double secsSinceUpdate = (wInfo_ == nullptr) ? timeoutDeadSecs : wInfo_->timeSinceRegUpdateSeconds();
+        double secsSinceUpdate = wInfo_->timeSinceRegUpdateSeconds();
+        LOGS(_log, LOG_LVL_TRACE,
+             cName(__func__) << " wInfo=" << wInfo_->dump()
+                             << " secsSince=" << wInfo_->timeSinceRegUpdateSeconds()
+                             << " secsSinceUpdate=" << secsSinceUpdate);
 
         // Update the last time the registry contacted this worker.
+        // TODO:UJ - This needs to be added to the dashboard.
         switch (_state) {
             case ALIVE: {
                 if (secsSinceUpdate >= timeoutAliveSecs) {
@@ -229,6 +235,11 @@ string ActiveWorker::_dump() const {
     os << "ActiveWorker " << (_wqsData->dump());
     return os.str();
 }
+
+ActiveWorkerMap::ActiveWorkerMap(std::shared_ptr<cconfig::CzarConfig> const& czarConfig)
+        : _timeoutAliveSecs(czarConfig->getActiveWorkerTimeoutAliveSecs()),
+          _timeoutDeadSecs(czarConfig->getActiveWorkerTimeoutDeadSecs()),
+          _maxLifetime(czarConfig->getActiveWorkerMaxLifetimeSecs()) {}
 
 void ActiveWorkerMap::updateMap(http::WorkerContactInfo::WCMap const& wcMap,
                                 http::CzarContactInfo::Ptr const& czInfo,

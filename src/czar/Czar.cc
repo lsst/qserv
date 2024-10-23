@@ -56,7 +56,6 @@
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
-#include "qdisp/SharedResources.h"
 #include "qproc/DatabaseModels.h"
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
@@ -152,7 +151,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _idCounter(),
           _uqFactory(),
           _clientToQuery(),
-          _activeWorkerMap(new ActiveWorkerMap()) {
+          _activeWorkerMap(new ActiveWorkerMap(_czarConfig)) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -201,9 +200,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _qdispPool = make_shared<util::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
 
     qdisp::CzarStats::setup(_qdispPool);
-
-    _qdispSharedResources = qdisp::SharedResources::create(_qdispPool);
-
     int xrootdCBThreadsMax = _czarConfig->getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig->getXrootdCBThreadsInit();
     LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
@@ -294,8 +290,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     ccontrol::UserQuery::Ptr uq;
     {
         lock_guard<mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispSharedResources(), userQueryId, msgTableName,
-                                      resultDb);
+        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName, resultDb);
     }
 
     // Add logging context with query ID
@@ -714,7 +709,7 @@ void Czar::killIncompleteUbjerJobsOn(std::string const& restartedWorkerId) {
     for (auto const& [eKey, wPtrExec] : execMap) {
         auto exec = wPtrExec.lock();
         if (exec != nullptr) {
-            exec->killIncompleteUberJobsOn(restartedWorkerId);
+            exec->killIncompleteUberJobsOnWorker(restartedWorkerId);
         }
     }
 }

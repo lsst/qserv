@@ -89,12 +89,12 @@ namespace lsst::qserv::qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> const& ms,
-                     SharedResources::Ptr const& sharedResources, shared_ptr<qmeta::QStatus> const& qStatus,
+Executive::Executive(ExecutiveConfig const& cfg, shared_ptr<qmeta::MessageStore> const& ms,
+                     util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QStatus> const& qStatus,
                      shared_ptr<qproc::QuerySession> const& querySession)
-        : _config(c),
+        : _config(cfg),
           _messageStore(ms),
-          _qdispPool(sharedResources->getQdispPool()),
+          _qdispPool(qdispPool),
           _qMeta(qStatus),
           _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
@@ -107,7 +107,8 @@ Executive::~Executive() {
     qdisp::CzarStats::get()->deleteQuery();
     qdisp::CzarStats::get()->deleteJobs(_incompleteJobs.size());
     // Remove this executive from the map.
-    if (czar::Czar::getCzar()->getExecutiveFromMap(getId()) != nullptr) {
+    auto cz = czar::Czar::getCzar();  // cz can be null in unit tests.
+    if (cz != nullptr && cz->getExecutiveFromMap(getId()) != nullptr) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) + " pointer in map should be invalid QID=" << getId());
     }
     if (_asyncTimer != nullptr) {
@@ -117,12 +118,12 @@ Executive::~Executive() {
 }
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> const& ms,
-                                 SharedResources::Ptr const& sharedResources,
+                                 std::shared_ptr<util::QdispPool> const& qdispPool,
                                  shared_ptr<qmeta::QStatus> const& qMeta,
                                  shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
-    Executive::Ptr ptr(new Executive(c, ms, sharedResources, qMeta, querySession));
+    Executive::Ptr ptr(new Executive(c, ms, qdispPool, qMeta, querySession));
 
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
@@ -195,7 +196,7 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
 
         {
-            lock_guard<recursive_mutex> lock(_cancelled.getMutex());
+            lock_guard lock(_cancelled.getMutex());
             if (_cancelled) {
                 LOGS(_log, LOG_LVL_DEBUG,
                      "Executive already cancelled, ignoring add(" << jobDesc->id() << ")");
@@ -234,7 +235,7 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     }
 }
 
-void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
+void Executive::queueUberJob(std::shared_ptr<UberJob> const& uberJob) {
     auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
@@ -276,27 +277,7 @@ void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsTo
     for (auto const& uJob : uJobsToAdd) {
         UberJobId ujId = uJob->getJobId();
         _uberJobsMap[ujId] = uJob;
-    }
-}
-
-void Executive::killIncompleteUberJobsOn(std::string const& restartedWorkerId) {
-    // Work with a copy to reduce lock time.
-    std::map<UberJobId, std::shared_ptr<UberJob>> ujobsMap;
-    {
-        lock_guard<mutex> lck(_uberJobsMapMtx);
-        ujobsMap = _uberJobsMap;
-    }
-    for (auto&& [ujKey, uj] : ujobsMap) {
-        if (uj == nullptr) continue;
-        auto wContactInfo = uj->getWorkerContactInfo();
-        if (wContactInfo->wId == restartedWorkerId) {
-            if (uj->getStatus()->getState() != qmeta::JobStatus::COMPLETE) {
-                // All jobs in the uberjob will be set as unassigned, which
-                // will lead to Czar::_monitor() reassigning them to new
-                // UberJobs. (Unless this query was cancelled.)
-                uj->killUberJob();
-            }
-        }
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uJob->getJobCount());
     }
 }
 
@@ -351,6 +332,7 @@ bool Executive::join() {
     // To join, we make sure that all of the chunks added so far are complete.
     // Check to see if _requesters is empty, if not, then sleep on a condition.
     _waitAllUntilEmpty();
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " wait done");
     // Okay to merge. probably not the Executive's responsibility
     struct successF {
         static bool func(Executive::JobMap::value_type const& entry) {
@@ -380,7 +362,9 @@ bool Executive::join() {
     }
     _empty = (sCount == _requestCount);
     LOGS(_log, LOG_LVL_DEBUG,
-         "Flag set to _empty=" << _empty << ", sCount=" << sCount << ", requestCount=" << _requestCount);
+         cName(__func__) << " "
+                         << "Flag set to _empty=" << _empty << ", sCount=" << sCount
+                         << ", requestCount=" << _requestCount);
     return _empty || isRowLimitComplete();
 }
 
@@ -498,7 +482,10 @@ void Executive::_squashSuperfluous() {
 
 void Executive::sendWorkersEndMsg(bool deleteResults) {
     LOGS(_log, LOG_LVL_INFO, cName(__func__) << " terminating this query deleteResults=" << deleteResults);
-    czar::Czar::getCzar()->getCzarRegistry()->endUserQueryOnWorkers(_id, deleteResults);
+    auto cz = czar::Czar::getCzar();
+    if (cz != nullptr) {  // Possible in unit tests.
+        cz->getCzarRegistry()->endUserQueryOnWorkers(_id, deleteResults);
+    }
 }
 
 void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {

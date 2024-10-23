@@ -150,10 +150,7 @@ public:
         return (wId == oWId && _wHost == oWHost && _wManagementHost == oWManagementHost && _wPort == oWPort);
     }
 
-    void setRegUpdateTime(TIMEPOINT updateTime) {
-        std::lock_guard lg(_rMtx);
-        _regUpdateTime = updateTime;
-    }
+    void setRegUpdateTime(TIMEPOINT updateTime);
 
     TIMEPOINT getRegUpdateTime(TIMEPOINT updateTime) {
         std::lock_guard lg(_rMtx);
@@ -252,17 +249,7 @@ public:
 
     ~WorkerQueryStatusData() = default;
 
-    void setWInfo(WorkerContactInfo::Ptr const& wInfo_) {
-        std::lock_guard lgI(_infoMtx);
-        if (_wInfo == nullptr) {
-            _wInfo = wInfo_;
-            return;
-        }
-        if (wInfo_ != nullptr) {
-            // This only changes host and port values of _wInfo.
-            _wInfo->changeBaseInfo(*wInfo_);
-        }
-    }
+    void setWInfo(WorkerContactInfo::Ptr const& wInfo_);
 
     WorkerContactInfo::Ptr getWInfo() const {
         std::lock_guard lgI(_infoMtx);
@@ -378,7 +365,7 @@ private:
 
     WorkerContactInfo::Ptr _wInfo;       ///< Information needed to contact the worker.
     CzarContactInfo::Ptr const _czInfo;  ///< Information needed to contact the czar.
-    mutable MUTEX _infoMtx;         ///< protects _wInfo
+    mutable MUTEX _infoMtx;              ///< protects _wInfo
 
     std::string const _replicationInstanceId;  ///< Used for message verification.
     std::string const _replicationAuthKey;     ///< Used for message verification.
@@ -386,7 +373,6 @@ private:
     /// _infoMtx must be locked before calling.
     std::string _dump() const;
 };
-
 
 /// This class is used to send/receive a message from the worker to a specific
 /// czar when there has been a communication issue with the worker sending UberJob
