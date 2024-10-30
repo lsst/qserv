@@ -1,0 +1,14 @@
+{
+    "version": 12,
+    "auth_key":"",
+    "database":"test101",
+    "table":"Filter",
+    "is_partitioned":0,
+    "fields_terminated_by":"\\t",
+    "schema":[
+        {"name":"filterId", "type":"tinyint(4) NOT NULL"},
+        {"name":"filterName", "type":"char(3) NOT NULL"},
+        {"name":"photClam", "type":"float NOT NULL"},
+        {"name":"photBW", "type":"float NOT NULL"}
+    ]
+}
