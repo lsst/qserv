@@ -35,6 +35,9 @@
 #include "cconfig/CzarConfig.h"
 #include "http/AsyncReq.h"
 #include "http/BinaryEncoding.h"
+#include "http/Client.h"
+#include "http/ClientConfig.h"
+#include "http/ClientConnPool.h"
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
 #include "http/RequestBodyJSON.h"
@@ -340,11 +343,32 @@ shared_ptr<http::AsyncReq> HttpCzarIngestModuleBase::_asyncPostRequest(string co
     return request;
 }
 
+shared_ptr<http::Client> HttpCzarIngestModuleBase::_syncMimePostRequest(
+        string const& url, list<http::ClientMimeEntry> const& mimeData,
+        shared_ptr<http::ClientConnPool> const& connPool) {
+    vector<string> const headers;
+    http::ClientConfig clientConfig;
+    clientConfig.connectTimeout = _timeoutSec;
+    clientConfig.timeout = _timeoutSec;
+    return make_shared<http::Client>(url, mimeData, headers, clientConfig, connPool);
+}
+
 void HttpCzarIngestModuleBase::setProtocolFields(json& data) const {
     data["version"] = http::MetaModule::version;
     data["instance_id"] = cconfig::CzarConfig::instance()->replicationInstanceId();
     data["auth_key"] = cconfig::CzarConfig::instance()->replicationAuthKey();
     data["admin_auth_key"] = cconfig::CzarConfig::instance()->replicationAdminAuthKey();
+}
+
+void HttpCzarIngestModuleBase::setProtocolFields(list<http::ClientMimeEntry>& mimeData) const {
+    // IMPORTANT: The order of the fields is important in the MIMEPOST request. Non-file
+    // fields should be placed before the file field. The collection that is being ammeded
+    // by this method may already contain some fields, including the file fields.
+    mimeData.push_front({"version", to_string(http::MetaModule::version), "", ""});
+    mimeData.push_front({"instance_id", cconfig::CzarConfig::instance()->replicationInstanceId(), "", ""});
+    mimeData.push_front({"auth_key", cconfig::CzarConfig::instance()->replicationAuthKey(), "", ""});
+    mimeData.push_front(
+            {"admin_auth_key", cconfig::CzarConfig::instance()->replicationAdminAuthKey(), "", ""});
 }
 
 }  // namespace lsst::qserv::czar

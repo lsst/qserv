@@ -40,6 +40,9 @@
 
 namespace lsst::qserv::http {
 class AsyncReq;
+class Client;
+class ClientConnPool;
+class ClientMimeEntry;
 }  // namespace lsst::qserv::http
 
 // This header declarations
@@ -137,10 +140,32 @@ protected:
     }
 
     /**
+     * Create a synchronous MIMEPOST request to the specified Replication Worker.
+     * @note The request won't be started. It's up to a caller to do so. The duration of
+     * the request is limited by the optional timeout attribute set by calling the method
+     * setTimeoutSec().
+     * @param workerId The worker's identifier.
+     * @param mimeData The collection of the mime descriptors to be sent with the request.
+     * @param connPool The optional connection pool.
+     * @return std::shared_ptr<http::Client> A pointer to the request object.
+     */
+    std::shared_ptr<http::Client> syncCsvRequestWorker(
+            std::string const& workerId, std::list<http::ClientMimeEntry> const& mimeData,
+            std::shared_ptr<http::ClientConnPool> const& connPool = nullptr) {
+        return _syncMimePostRequest(_worker(workerId) + "/ingest/csv", mimeData, connPool);
+    }
+
+    /**
      * Set the protocol fields in the JSON object.
      * @param data The JSON object to be updated.
      */
     void setProtocolFields(nlohmann::json& data) const;
+
+    /**
+     * Set the protocol fields in a collection of the mime descriptors.
+     * @param mimeData The collection of the descriptors to be updated.
+     */
+    void setProtocolFields(std::list<http::ClientMimeEntry>& mimeData) const;
 
 private:
     // The following methods are used to interact with the Replication Controller.
@@ -256,6 +281,19 @@ private:
      * @throw http::Error for specific errors reported by the client library.
      */
     std::shared_ptr<http::AsyncReq> _asyncPostRequest(std::string const& url, std::string const& data);
+
+    /**
+     * Create a synchronous MIMEPOST request to the server.
+     * @note The request won't be started. It's up to a caller to do so.
+     * @param url A complete URL for the REST service to be called.
+     * @param mimeData The collection of the mime descriptors to be sent with the request.
+     * @param connPool The optional connection pool.
+     * @return std::shared_ptr<http::Client> A pointer to the request object.
+     * @throw http::Error for specific errors reported by the client library.
+     */
+    std::shared_ptr<http::Client> _syncMimePostRequest(
+            std::string const& url, std::list<http::ClientMimeEntry> const& mimeData,
+            std::shared_ptr<http::ClientConnPool> const& connPool = nullptr);
 
     /// I/O service for async TCP communications.
     boost::asio::io_service& _io_service;

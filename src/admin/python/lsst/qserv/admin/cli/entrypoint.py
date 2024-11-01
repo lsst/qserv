@@ -139,12 +139,16 @@ commands = OrderedDict((
     )),
     ("czar-http", CommandInfo(
         "qserv-czar-http "
-        "http "
-        "{{czar_cfg_path}} "
-        "{{http_frontend_port}} "
-        "{{http_frontend_threads}} "
-        "{{http_ssl_cert_file}} "
-        "{{http_ssl_private_key_file}}",
+        "--czar-name {{czar_name}} "
+        "--config {{czar_cfg_path}} "
+        "--port {{http_port}} "
+        "--threads {{http_threads}} "
+        "--worker-ingest-threads {{http_worker_ingest_threads}} "
+        "--ssl-cert-file {{http_ssl_cert_file}} "
+        "--ssl-private-key-file {{http_ssl_private_key_file}} "
+        "--tmp-dir {{http_tmp_dir}} "
+        "--conn-pool-size {{http_conn_pool_size}} "
+        "--verbose",
     )),
     ("cmsd-manager", CommandInfo(
         "cmsd -c {{cmsd_manager_cfg_path}} -n manager -I v4",
@@ -564,17 +568,24 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
 @option_mysql_monitor_password()
 @option_xrootd_manager(required=True)
 @click.option(
-    "--http-frontend-port",
+    "--http-port",
     default="4048",
     show_default=True,
-    help="The HTTP port of the frontend. The value of http_frontend_port is passed as a command-line"
+    help="The HTTP port of the frontend. The value of the parameter is passed as a command-line"
          " parameter to the application."
 )
 @click.option(
-    "--http-frontend-threads",
+    "--http-threads",
     default="2",
     show_default=True,
-    help="The number of threads for the HTTP server of the frontend. The value of http_frontend_threads is passed"
+    help="The number of the request processing threads in the REST service. The value of the parameter is passed"
+         " as a command-line parameter to the application."
+)
+@click.option(
+    "--http-worker-ingest-threads",
+    default="2",
+    show_default=True,
+    help="The number of the request processing threads in the REST service. The value of the parameter is passed"
          " as a command-line parameter to the application."
 )
 @click.option(
@@ -599,6 +610,28 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
     "--czar-cfg-path",
     help="Location to render the czar config file.",
     default=czar_cfg_path,
+    show_default=True,
+)
+@click.option(
+    "--http-tmp-dir",
+    help="The temporary directory for the HTTP server of the frontend.",
+    default="/tmp",
+    show_default=True,
+)
+@click.option(
+    "--http-conn-pool-size",
+    help="A size of a connection pool for synchronous communications over the HTTP"
+         " protocol with the Qserv Worker Ingest servbers. The default value is 0,"
+         " which assumes that the pool size is determined by an implementation of"
+         " the underlying library 'libcurl'. The number of connectons in a production"
+         " Qserv deployment should be at least the number of workers in the deployment.",
+    default=0,
+    show_default=True,
+)
+@click.option(
+    "--czar-name",
+    help="The unique name of the Czar instance.",
+    default="http",
     show_default=True,
 )
 @option_log_cfg_file()

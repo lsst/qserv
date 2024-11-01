@@ -33,8 +33,11 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
+#include "czar/HttpCzarIngestCsvModule.h"
 #include "czar/HttpCzarIngestModule.h"
 #include "czar/HttpCzarQueryModule.h"
+#include "czar/WorkerIngestProcessor.h"
+#include "http/ClientConnPool.h"
 #include "http/ChttpMetaModule.h"
 
 // LSST headers
@@ -58,17 +61,26 @@ void throwIf(bool condition, string const& message) {
 
 namespace lsst::qserv::czar {
 
-shared_ptr<HttpCzarSvc> HttpCzarSvc::create(int port, unsigned int numThreads, string const& sslCertFile,
-                                            string const& sslPrivateKeyFile) {
-    return shared_ptr<HttpCzarSvc>(new HttpCzarSvc(port, numThreads, sslCertFile, sslPrivateKeyFile));
+shared_ptr<HttpCzarSvc> HttpCzarSvc::create(int port, unsigned int numThreads,
+                                            unsigned int numWorkerIngestThreads, string const& sslCertFile,
+                                            string const& sslPrivateKeyFile, string const& tmpDir,
+                                            unsigned int clientConnPoolSize) {
+    return shared_ptr<HttpCzarSvc>(new HttpCzarSvc(port, numThreads, numWorkerIngestThreads, sslCertFile,
+                                                   sslPrivateKeyFile, tmpDir, clientConnPoolSize));
 }
 
-HttpCzarSvc::HttpCzarSvc(int port, unsigned int numThreads, string const& sslCertFile,
-                         string const& sslPrivateKeyFile)
+HttpCzarSvc::HttpCzarSvc(int port, unsigned int numThreads, unsigned int numWorkerIngestThreads,
+                         string const& sslCertFile, string const& sslPrivateKeyFile, string const& tmpDir,
+                         unsigned int clientConnPoolSize)
         : _port(port),
           _numThreads(numThreads),
+          _numWorkerIngestThreads(numWorkerIngestThreads),
           _sslCertFile(sslCertFile),
-          _sslPrivateKeyFile(sslPrivateKeyFile) {
+          _sslPrivateKeyFile(sslPrivateKeyFile),
+          _tmpDir(tmpDir),
+          _clientConnPool(make_shared<http::ClientConnPool>(clientConnPoolSize)),
+          _workerIngestProcessor(ingest::Processor::create(
+                  numWorkerIngestThreads ? numWorkerIngestThreads : thread::hardware_concurrency())) {
     _createAndConfigure();
 }
 
@@ -103,7 +115,10 @@ void HttpCzarSvc::_createAndConfigure() {
     _svr = make_unique<httplib::SSLServer>(_sslCertFile.data(), _sslPrivateKeyFile.data());
     ::throwIf<runtime_error>(!_svr->is_valid(), context + "Failed to create the server");
 
-    _svr->new_task_queue = [&] { return new httplib::ThreadPool(_numThreads, _maxQueuedRequests); };
+    _svr->new_task_queue = [&] {
+        return new httplib::ThreadPool(_numThreads ? _numThreads : thread::hardware_concurrency(),
+                                       _maxQueuedRequests);
+    };
     if (_port == 0) {
         _port = _svr->bind_to_any_port(_bindAddr, _port);
         ::throwIf<runtime_error>(_port < 0, context + "Failed to bind the server to any port");
@@ -140,6 +155,11 @@ void HttpCzarSvc::_registerHandlers() {
     });
     _svr->Get("/query-async/result/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
         HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT");
+    });
+    _svr->Post("/ingest/csv", [self](httplib::Request const& req, httplib::Response& resp,
+                                     httplib::ContentReader const& contentReader) {
+        HttpCzarIngestCsvModule::process(self->_io_service, ::serviceName, self->_tmpDir, req, resp,
+                                         contentReader, self->_clientConnPool, self->_workerIngestProcessor);
     });
     _svr->Post("/ingest/data", [self](httplib::Request const& req, httplib::Response& resp) {
         HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "INGEST-DATA");

@@ -31,6 +31,14 @@
 #include "boost/asio.hpp"
 
 // Forward declarations
+namespace lsst::qserv::czar::ingest {
+class Processor;
+}  // namespace lsst::qserv::czar::ingest
+
+namespace lsst::qserv::http {
+class ClientConnPool;
+}  // namespace lsst::qserv::http
+
 namespace httplib {
 class SSLServer;
 }  // namespace httplib
@@ -48,35 +56,41 @@ namespace lsst::qserv::czar {
 class HttpCzarSvc : public std::enable_shared_from_this<HttpCzarSvc> {
 public:
     static std::shared_ptr<HttpCzarSvc> create(int port, unsigned int numThreads,
+                                               unsigned int numWorkerIngestThreads,
                                                std::string const& sslCertFile,
-                                               std::string const& sslPrivateKeyFile);
+                                               std::string const& sslPrivateKeyFile,
+                                               std::string const& tmpDir,
+                                               unsigned int clientConnPoolSize = 0);
     int port() const { return _port; }
     void startAndWait();
 
 private:
-    HttpCzarSvc(int port, unsigned int numThreads, std::string const& sslCertFile,
-                std::string const& sslPrivateKeyFile);
+    HttpCzarSvc(int port, unsigned int numThreads, unsigned int numWorkerIngestThreads,
+                std::string const& sslCertFile, std::string const& sslPrivateKeyFile,
+                std::string const& tmpDir, unsigned int clientConnPoolSize = 0);
     void _createAndConfigure();
     void _registerHandlers();
 
     int _port;
     unsigned int const _numThreads;
+    unsigned int const _numWorkerIngestThreads;
     std::string const _sslCertFile;
     std::string const _sslPrivateKeyFile;
+    std::string const _tmpDir;
     std::size_t const _maxQueuedRequests = 0;  // 0 means unlimited
     std::string const _bindAddr = "0.0.0.0";
     std::unique_ptr<httplib::SSLServer> _svr;
 
-    // The BOOST ASIO I/O services and a thread pool for async communication with
-    // the Replication Controller and workers.
-    // TODO: Consider a configuration option for setting the desired number
-    // of threads in the pool.
-
-    unsigned int const _numBoostAsioThreads = 2;
+    /// The BOOST ASIO I/O services and a thread pool for async communication with
+    /// the Replication Controller and workers.
+    unsigned int const _numBoostAsioThreads = std::thread::hardware_concurrency();
 
     std::unique_ptr<boost::asio::io_service::work> _work;
     boost::asio::io_service _io_service;
     std::vector<std::unique_ptr<std::thread>> _threads;
+
+    std::shared_ptr<http::ClientConnPool> const _clientConnPool;
+    std::shared_ptr<ingest::Processor> const _workerIngestProcessor;
 };
 
 }  // namespace lsst::qserv::czar
