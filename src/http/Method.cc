@@ -39,6 +39,8 @@ string method2string(Method method) {
             return "PUT";
         case Method::DELETE:
             return "DELETE";
+        case Method::MIMEPOST:
+            return "MIMEPOST";
     }
     throw invalid_argument("http::" + string(__func__) + " invalid method " +
                            to_string(static_cast<int>(method)));
@@ -53,6 +55,8 @@ Method string2method(string const& str) {
         return Method::PUT;
     else if ("DELETE" == str)
         return Method::DELETE;
+    else if ("MIMEPOST" == str)
+        return Method::MIMEPOST;
     throw invalid_argument("http::" + string(__func__) + " invalid method " + str);
 }
 

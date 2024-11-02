@@ -30,10 +30,10 @@
 namespace lsst::qserv::http {
 
 /// The names of the allowed methods.
-static std::vector<std::string> const allowedMethods = {"GET", "POST", "PUT", "DELETE"};
+static std::vector<std::string> const allowedMethods = {"GET", "POST", "PUT", "DELETE", "MIMEPOST"};
 
 /// The type-safe representation of the HTTP methods.
-enum class Method : int { GET, POST, PUT, DELETE };
+enum class Method : int { GET, POST, PUT, DELETE, MIMEPOST };
 
 /// @return The string representation.
 /// @throws std::invalid_argument If the method is not valid.

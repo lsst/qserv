@@ -23,6 +23,7 @@
 
 // System headers
 #include <functional>
+#include <list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -42,6 +43,16 @@ class ClientConnPool;
 
 // This header declarations
 namespace lsst::qserv::http {
+
+/**
+ * The structure represents a single entry in the MIMEPOST request.
+ */
+struct ClientMimeEntry {
+    std::string name;      ///< The required name of the form field.
+    std::string value;     ///< The optional value of the form field.
+    std::string filename;  ///< The optional name of the file to be uploaded.
+    std::string type;      ///< The optional MIME type of the file.
+};
 
 /**
  * Class Client is a simple interface for communicating over the HTTP protocol.
@@ -84,6 +95,10 @@ public:
     ~Client();
 
     /**
+     * Create a client object for communicating with a remote service.
+     *
+     * @note This form of the object construction is not allowed to be called with
+         the method 'http::Method::MIMEPOST'.
      * @param method An HTTP method.
      * @param url A location of the remote resoure.
      * @param data Optional data to be sent with a request (depends on the HTTP headers).
@@ -92,6 +107,34 @@ public:
      * @param connPool Optional connection pool
      */
     Client(http::Method method, std::string const& url, std::string const& data = std::string(),
+           std::vector<std::string> const& headers = std::vector<std::string>(),
+           ClientConfig const& clientConfig = ClientConfig(),
+           std::shared_ptr<ClientConnPool> const& connPool = nullptr);
+
+    /**
+     * Create a client object for sending a http::method::MIMEPOST request to a remote service.
+     *
+     * The body of the request will be in the 'multipart/form-data' format. A description of
+     * the body is provided in the 'mimeData' parameter. Here is an example illustrating how to
+     * use the method for uploading a file to a remote service:
+     * @code
+     *   std::list<http::ClientMimeEntry> const mimeData = {
+     *     {"database", "lsst_dr01", "", ""},
+     *     {"table", "Object", "", ""},
+     *     {"schema", R"({"column":"object_id", "type": "BIGINT"})", "", "application/json"},
+     *     {"rows", "",  "/tmp/chunk_123.txt", "text/plain"}
+     *   };
+     *   http::Client client("https://qserv-int.lsst.net/ingest/chunk", mimeData);
+     * @code
+     * @note There is no need to specify the header {"Content-Type: multipart/form-data"} as it
+     *   is added automatically by the method.
+     * @param url A location of the remote resoure.
+     * @param data A descriptor of the data to be sent in the 'multipart/form-data' body.
+     * @param headers Optional HTTP headers to be send with a request.
+     * @param clientConfig Optional configuration parameters of the reader.
+     * @param connPool Optional connection pool
+     */
+    Client(std::string const& url, std::list<ClientMimeEntry> const& mimeData,
            std::vector<std::string> const& headers = std::vector<std::string>(),
            ClientConfig const& clientConfig = ClientConfig(),
            std::shared_ptr<ClientConnPool> const& connPool = nullptr);
@@ -172,6 +215,7 @@ private:
     http::Method const _method;
     std::string const _url;
     std::string const _data;
+    std::list<ClientMimeEntry> const _mimeData;
     std::vector<std::string> const _headers;
     ClientConfig const _clientConfig;
     std::shared_ptr<ClientConnPool> const _connPool;
@@ -181,6 +225,7 @@ private:
     // Cached members
     CURL* _hcurl = nullptr;
     curl_slist* _hlist = nullptr;
+    curl_mime* _form = nullptr;
 };
 
 }  // namespace lsst::qserv::http

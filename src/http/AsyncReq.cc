@@ -50,6 +50,7 @@ boost::beast::http::verb method2verb(lsst::qserv::http::Method method) {
         case lsst::qserv::http::Method::GET:
             return boost::beast::http::verb::get;
         case lsst::qserv::http::Method::POST:
+        case lsst::qserv::http::Method::MIMEPOST:
             return boost::beast::http::verb::post;
         case lsst::qserv::http::Method::PUT:
             return boost::beast::http::verb::put;
