@@ -47,3 +47,5 @@ linkcheck_ignore = [
 html_additional_pages = {
     "index": "overview.html"
 }
+
+mermaid_version = "10.3.0"
