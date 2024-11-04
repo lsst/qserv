@@ -356,6 +356,10 @@ jobs:
         if: always()
         run: docker logs ${USER}_czar_proxy_1
 
+      - name: Czar HTTP Frontend Log
+        if: always()
+        run: docker logs ${USER}_czar_http_1
+
       - name: Czar CMSD Log
         if: always()
         run: docker logs ${USER}_czar_cmsd_1
