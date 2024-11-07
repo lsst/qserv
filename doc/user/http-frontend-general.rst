@@ -124,7 +124,7 @@ Example:
         "name" :        "http",
         "id" :          8,
         "instance_id" : "qserv-prod",
-        "version" :     38,
+        "version" :     39,
         "success" :     1
     }
 
@@ -137,7 +137,7 @@ the following request for checking the status of an ongoing query might look lik
 
 .. code-block:: bash
 
-   curl -k 'https://localhost:4041/query-async/status/1234?version=38' -X GET
+   curl -k 'https://localhost:4041/query-async/status/1234?version=39' -X GET
 
 For other HTTP methods used by the API, the version number must be included in the body of the request as shown below:
 
@@ -145,11 +145,11 @@ For other HTTP methods used by the API, the version number must be included in t
 
    curl -k 'https://localhost:4041/query-async' -X POST \
         -H 'Content-Type: application/json' \
-        -d'{"version":38,"query":"SELECT ..."}'
+        -d'{"version":39,"query":"SELECT ..."}'
 
 If the number does not match expectations, such a request will fail and the service will return the following
 response. Here is an example of what will happen if the wrong version number ``29`` is specified instead
-of ``38`` (as specified in the example above):
+of ``39`` (as specified in the example above):
 
 .. code-block:: json
 
@@ -157,7 +157,7 @@ of ``38`` (as specified in the example above):
         "error" :   "The requested version 29 of the API is not in the range
                      supported by the service.",
         "error_ext" : {
-            "max_version" : 38,
+            "max_version" : 39,
             "min_version" : 30
         },
         "warning" : ""

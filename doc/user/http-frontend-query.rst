@@ -129,7 +129,7 @@ For example, consider the following request:
 
 .. code-block:: bash
 
-    curl -k 'https://localhost:4041/query-async/status/123?version=38' -X GET
+    curl -k 'https://localhost:4041/query-async/status/123?version=39' -X GET
 
 It might result in the following response:
 
@@ -354,7 +354,7 @@ For example, consider the following query submission request:
 .. code-block:: bash
 
     curl -k 'https://localhost:4041/query' -X POST-H 'Content-Type: application/json' \
-         -d'{"version":38,"query":"SELECT objectId,coord_ra,coord_dec FROM dp02_dc2_catalogs.Object LIMIT 5"}'
+         -d'{"version":39,"query":"SELECT objectId,coord_ra,coord_dec FROM dp02_dc2_catalogs.Object LIMIT 5"}'
 
 The query could return:
 
@@ -402,7 +402,7 @@ If the query identifier is not valid, the service will report an error in the re
 
 .. code-block:: bash
 
-    curl -k 'https://localhost:4041/query-async/123?version=38' -X DELETE
+    curl -k 'https://localhost:4041/query-async/123?version=39' -X DELETE
 
 It might result in the following response:
 
