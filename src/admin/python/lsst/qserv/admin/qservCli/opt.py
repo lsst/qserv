@@ -442,6 +442,12 @@ itest_http_container_default = OptDefault(
     ev=env_project,
     val=lambda ev_val: f"{ev_val}_itest_http",
 )
+itest_http_ingest_container_default = OptDefault(
+    opt=["--itest-http-ingest-container"],
+    default="itest_http_ingest",
+    ev=env_project,
+    val=lambda ev_val: f"{ev_val}_itest_http_ingest",
+)
 test_container_default = OptDefault(
     opt=["--test-container"],
     default="test",
@@ -746,11 +752,21 @@ option_itest_file = partial(
     required=True,
 )
 
+
 option_itest_http_container_name = partial(
     click.option,
     *itest_http_container_default.opt,
     help=itest_http_container_default.help("The name to give the integration test container for HTTP frontend."),
     default=itest_http_container_default.val(),
+    required=True,
+)
+
+option_itest_http_ingest_container_name = partial(
+    click.option,
+    *itest_http_ingest_container_default.opt,
+    help=itest_http_ingest_container_default.help("The name to give the integration test container for testing"
+                                                  " user table ingest via the HTTP frontend."),
+    default=itest_http_ingest_container_default.val(),
     required=True,
 )
 

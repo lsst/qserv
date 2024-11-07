@@ -18,19 +18,22 @@
 #
 # You should have received a copy of the GNU General Public License
 
+import csv
 from filecmp import dircmp
 import json
 import logging
 import urllib3
 import requests
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 import os
 import re
 import shutil
 import time
-from typing import Any, Dict, Generator, List, Optional, TextIO, Union
+from typing import Any, Collection, Dict, Generator, List, Optional, Sequence, TextIO, Union
 import subprocess
 from urllib.parse import urljoin
 from urllib.parse import urlparse
+from .replicationInterface import repl_api_version
 
 _log = logging.getLogger(__name__)
 
@@ -996,3 +999,287 @@ def compareQueryResults(run_cases: List[str], outputs_dir: str) -> List[ITestCas
         _log.info(str(result))
 
     return results
+
+def run_http_ingest(
+    http_frontend_uri: str,
+    keep_results: bool,
+) -> bool:
+    """Test ingesting user tables into Qserv and querying the tables.
+
+    Parameters
+    ----------
+    http_frontend_uri : `str`
+        The uri to use to connect to the HTPP frontend.
+    keep_results : `bool`
+        If `True` then keep the results of the test, otherwise delete them.
+    """
+
+    schema = [
+        {"name": "id",     "type": "INT"},
+        {"name": "val",    "type": "VARCHAR(32)"},
+        {"name": "active", "type": "BOOL"},
+    ]
+    indexes = [
+        {"index": "idx_id",
+         "spec": "UNIQUE",
+         "comment": "The unique primary key index.",
+         "columns": [
+             {"columnn": "id", "length": 0, "ascending": 1}
+         ]},
+        {"index": "idx_val",
+         "spec": "DEFAULT",
+         "comment": "The non-unique index on the string values.",
+         "columns": [
+             {"columnn": "val", "length": 32, "ascending": 1}
+         ]},
+    ]
+    rows = [
+        ["1", "Andy", "1"],
+        ["2", "Bob", "0"],
+        ["3", "Charlie", "1"],
+    ]
+
+    database = "user_testdb"
+    table_json = "json"
+    table_csv = "csv"
+
+    _log.debug("Testing user database: %s", database)
+
+    # Supress the warning about the self-signed certificate
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+    # Run the cleanup step to ensure no such database (and tables in it) exists after
+    # prior attempts to run the test.
+    try:
+        _http_delete_database(http_frontend_uri, database)
+    except Exception as e:
+        _log.warning("Failed to delete user database: %s, error: %s", database, e)
+
+    # Create the table and ingest data using the JSON option. Then query the table.
+    try:
+        _http_ingest_data_json(http_frontend_uri, database, table_json, schema, indexes, rows)
+    except Exception as e:
+        _log.error("Failed to ingest data into table: %s of user database: %s, error: %s", table_json, database, e)
+        return False
+    try:
+        _http_query_table(http_frontend_uri, database, table_json, rows)
+    except Exception as e:
+        _log.error("Failed to query table: %s of user database: %s, error: ", table_json, database, e)
+        return False
+
+    # Create the table and ingest data using the CSV option. Then query the table.
+    try:
+        _http_ingest_data_csv(http_frontend_uri, database, table_csv, schema, indexes, rows)
+    except Exception as e:
+        _log.error("Failed to ingest data into table: %s of user database: %s, error: %s", table_csv, database, e)
+        return False
+    try:
+        _http_query_table(http_frontend_uri, database, table_csv, rows)
+    except Exception as e:
+        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv, database, e)
+
+    # Cleanup the tables and the database in two separate steps unless the user
+    # requested to keep the results.
+    if not keep_results:
+        for table in [table_json, table_csv]:
+            try:
+                _http_delete_table(http_frontend_uri, database, table)
+            except Exception as e:
+                _log.error("Failed to delete table: %s from user database: %s, error: %s", table, database, e)
+                return False
+        try:
+            _http_delete_database(http_frontend_uri, database)
+        except Exception as e:
+            _log.error("Failed to delete user database: %s, error: %s", database, e)
+            return False
+
+    return True
+
+def _http_delete_database(
+    http_frontend_uri: str,
+    database: str,
+) -> None:
+    """Delete an existing user database.
+
+    Parameters
+    ----------
+    http : `str`
+        The uri to use to connect to the HTPP frontend.
+    database : `str`
+        The name of the database to delete.
+    """
+    _log.debug("Deleting user database: %s", database)
+    data = {
+        "version": repl_api_version,
+    }
+    url = str(urljoin(http_frontend_uri, f"/ingest/database/{database}"))
+    req = requests.delete(url, json=data, verify=False)
+    req.raise_for_status()
+    res = req.json()
+    if res["success"] == 0:
+        error = res["error"]
+        raise RuntimeError(f"Failed to delete user database: {database}, error: {error}")
+
+def _http_delete_table(
+    http_frontend_uri: str,
+    database: str,
+    table: str,
+) -> None:
+    """Delete an existing table from the user database.
+
+    Parameters
+    ----------
+    http_frontend_uri : `str`
+        The uri to use to connect to the HTPP frontend.
+    database : `str`
+        The name of the database where the table is located.
+    table : `str`
+        The name of the table to delete.
+    """
+    _log.debug("Deleting table: %s from user database: %s", table, database)
+    data = {
+        "version": repl_api_version,
+    }
+    url = str(urljoin(http_frontend_uri, f"/ingest/table/{database}/{table}"))
+    req = requests.delete(url, json=data, verify=False)
+    req.raise_for_status()
+    res = req.json()
+    if res["success"] == 0:
+        error = res["error"]
+        raise RuntimeError(f"Failed to delete table: {table} from user database: {database}, error: {error}")
+
+def _http_ingest_data_json(
+    http_frontend_uri: str,
+    database: str,
+    table: str,
+    schema: List[Dict[str, str]],
+    indexes: List[Dict[str, Sequence[Collection[str]]]],
+    rows: List[List[Any]],
+) -> None:
+    """Ingest data into an existing table of the user database.
+
+    Parameters
+    ----------
+    http_frontend_uri : `str`
+        The uri to use to connect to the HTPP frontend.
+    database : `str`
+        The name of the database where the table is located.
+    table : `str`
+        The name of the table where the data will be ingested.
+    schema : `list` [`dict` [`str`, `str`]]
+        The schema of the table to be created.
+    indexes : `list` [`dict` [`str`, `list` [`list` [`str`]]]]
+        The indexes of the table to be created.
+    """
+    _log.debug("Ingesting JSON data into table: %s of user database: %s", table, database)
+    data = {
+        "version": repl_api_version,
+        "database" : database,
+        "table": table,
+        "schema": schema,
+        "indexes": indexes,
+        "rows": rows,
+    }
+    url = str(urljoin(http_frontend_uri, "/ingest/data"))
+    req = requests.post(url, json=data, verify=False)
+    req.raise_for_status()
+    res = req.json()
+    if res["success"] == 0:
+        error = res["error"]
+        raise RuntimeError(f"Failed to create and load the table: {table} in user database {database}, error: {error}")
+
+def _http_ingest_data_csv(
+    http_frontend_uri: str,
+    database: str,
+    table: str,
+    schema: List[Dict[str, str]],
+    indexes: List[Dict[str, Sequence[Collection[str]]]],
+    rows: List[List[Any]],
+) -> None:
+    """Create the table and ingest the data into the table.
+
+    Parameters
+    ----------
+    http_frontend_uri : `str`
+        The uri to use to connect to the HTPP frontend.
+    database : `str`
+        The name of the database where the table is located.
+    table : `str`
+        The name of the table where the data will be ingested.
+    schema : `list` [`dict` [`str`, `str`]]
+        The schema of the table to be created.
+    indexes : `list` [`dict` [`str`, `list` [`list` [`str`]]]]
+        The indexes of the table to be created.
+    """
+    _log.debug("Ingesting CSV data into table: %s of user database: %s", table, database)
+    base_dir = "/tmp"
+    schema_file = "schema.json"
+    schema_file_path = os.path.join(base_dir, schema_file)
+    indexes_file = "indexes.json"
+    indexes_file_path = os.path.join(base_dir, indexes_file)
+    rows_file = "rows.csv"
+    rows_file_path = os.path.join(base_dir, rows_file)
+
+    with open(schema_file_path, "w") as f:
+        json.dump(schema, f)
+    with open(indexes_file_path, "w") as f:
+        json.dump(indexes, f)
+    with open(rows_file_path, "w") as f:
+        csv_writer = csv.writer(f)
+        for row in rows:
+            csv_writer.writerow(row)
+
+    encoder = MultipartEncoder(
+        fields = {
+            "version": (None, str(repl_api_version)),
+            "database" : (None, database),
+            "table": (None, table),
+            "fields_terminated_by": (None, ","),
+            "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
+            "indexes": (indexes_file, open(indexes_file_path, "rb"), "application/json"),
+            "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),
+        }
+    )
+    url = str(urljoin(http_frontend_uri, "/ingest/csv"))
+    req = requests.post(url, data=encoder, headers={'Content-Type': encoder.content_type}, verify=False)
+    req.raise_for_status()
+    res = req.json()
+    if res["success"] == 0:
+        error = res["error"]
+        raise RuntimeError(f"Failed to create and load the table: {table} in user database {database}, error: {error}")
+
+def _http_query_table(
+    http_frontend_uri: str,
+    database: str,
+    table: str,
+    expected_rows: List[List[Any]],
+) -> None:
+    """Query an existing table of the user database.
+
+    Parameters
+    ----------
+    http_frontend_uri : `str`
+        The uri to use to connect to the HTPP frontend.
+    database : `str`
+        The name of the database where the table is located.
+    table : `str`
+        The name of the table that will be queried.
+    expected_rows : `list` [`list` [`Any`]]
+        The expected data in the table
+    """
+    _log.debug("Querying table: %s of user database: %s", table, database)
+    data = {
+        "version": repl_api_version,
+        "database" : database,
+        "query": f"SELECT `id`,`val`,`active` FROM `{table}` ORDER BY id ASC",
+    }
+    url = str(urljoin(http_frontend_uri, "/query"))
+    req = requests.post(url, json=data, verify=False)
+    req.raise_for_status()
+    res = req.json()
+    if res["success"] == 0:
+        error = res["error"]
+        raise RuntimeError(f"Failed to query the table: {table} in user database: {database}, error: {error}")
+    received_rows = res["rows"]
+    if received_rows != expected_rows:
+        raise RuntimeError(f"Query result mismatch for table: {table} in user database: {database}, expected: {expected_rows}, got: {received_rows}")

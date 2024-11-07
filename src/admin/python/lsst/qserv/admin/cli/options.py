@@ -280,6 +280,12 @@ option_run_tests = partial(
     default=True,
 )
 
+option_keep_results = partial(
+    click.option,
+    "--keep-results/--no-keep-results",
+    help="Keep or delet results after finishing the tests. Defaults to --no-keep-results.",
+    default=False,
+)
 
 option_compare_results = partial(
     click.option,

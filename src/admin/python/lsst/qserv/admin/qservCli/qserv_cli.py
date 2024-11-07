@@ -39,6 +39,7 @@ from ..cli.options import (
     option_reload,
     option_load_http,
     option_run_tests,
+    option_keep_results,
     option_compare_results,
     option_case,
     option_repl_connection,
@@ -70,6 +71,7 @@ from .opt import (
     option_itest_ref_container_name,
     option_itest_file,
     option_itest_http_container_name,
+    option_itest_http_ingest_container_name,
     option_jobs,
     env_ltd_password,
     env_ltd_user,
@@ -116,6 +118,7 @@ help_order = [
     "update-schema",
     "itest",
     "itest-http",
+    "itest-http-ingest",
     "itest-rm",
     "prepare-data",
     "run-dev",
@@ -647,6 +650,58 @@ def itest_http(
     )
     sys.exit(returncode)
 
+@qserv.command()
+@option_qserv_image()
+@option_qserv_root()
+@option_project()
+@option_itest_http_ingest_container_name()
+@option_bind()
+@option_itest_file()
+@option_run_tests()
+@option_keep_results()
+@option_tests_yaml()
+@click.option(
+    "--wait",
+    help="How many seconds to wait before running load and test. "
+    "This is useful for allowing qserv to boot if the qserv containers "
+    "are started at the same time as this container. "
+    f"Default is {click.style('0', fg='green', bold=True)}.",
+    default=0,
+)
+@option_remove()
+@option_dry()
+def itest_http_ingest(
+    qserv_root: str,
+    itest_http_ingest_container: str,
+    qserv_image: str,
+    bind: List[str],
+    itest_file: str,
+    dry: bool,
+    project: str,
+    run_tests: bool,
+    keep_results: bool,
+    tests_yaml: str,
+    wait: int,
+    remove: bool,
+) -> None:
+    """Run integration tests for ingesting user tables via the HTTP frontend.
+
+    Launches a lite-qserv container and uses it to run integration tests."""
+    returncode = launch.itest_http_ingest(
+        qserv_root=qserv_root,
+        itest_http_ingest_container=itest_http_ingest_container,
+        qserv_image=qserv_image,
+        bind=bind,
+        itest_file=itest_file,
+        dry=dry,
+        project=project,
+        run_tests=run_tests,
+        keep_results=keep_results,
+        tests_yaml=tests_yaml,
+        wait=wait,
+        remove=remove,
+    )
+    sys.exit(returncode)
 
 
 @qserv.command()

@@ -1095,6 +1095,22 @@ def integration_test_http(
     )
 
 
+def integration_test_http_ingest(
+    repl_connection: str,
+    run_tests: bool,
+    keep_results: bool,
+    tests_yaml: str,
+) -> bool:
+    if repl_connection is not None:
+        _do_smig_block(admin_smig_dir, "replica", repl_connection)
+
+    return _integration_test.run_integration_tests_http_ingest(
+        run_tests=run_tests,
+        keep_results=keep_results,
+        tests_yaml=tests_yaml,
+    )
+
+
 def prepare_data(
     tests_yaml: str,
 ) -> bool:
