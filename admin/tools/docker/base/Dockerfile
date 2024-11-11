@@ -112,6 +112,7 @@ RUN cd /usr/share/java \
 RUN cd /tmp \
     && git clone https://github.com/lsst/mysqlproxy \
     && cd mysqlproxy \
+    && git checkout 0.8.5.lsst8 \
     && cp /usr/lib64/pkgconfig/lua-5.1.pc /usr/lib64/pkgconfig/lua5.1.pc \
     && ./configure \
     && make \
