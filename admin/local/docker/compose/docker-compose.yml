@@ -103,7 +103,7 @@ services:
         << : *worker-xrootd
         command: >
           entrypoint worker-xrootd
-          --db-uri mysql://qsmaster@127.0.0.1:3306
+          --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
           --vnid-config "@/usr/local/lib64/libreplica.so {{db_uri}}/qservw_worker 0 0"
           --repl-instance-id qserv_proj
@@ -138,8 +138,8 @@ services:
         << : *worker-cmsd
         command: >
           entrypoint worker-cmsd
-          --db-uri mysql://qsmaster@worker_mariadb_0:3306
-          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
+          --db-uri mysql://qsmaster:CHANGEME2@worker_mariadb_0:3306
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster:CHANGEME2@127.0.0.1:3306/qservw_worker 0 0"
           --results-dirname /qserv/data/results
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
@@ -208,9 +208,9 @@ services:
         << : *worker-xrootd
         command: >
           entrypoint --log-level DEBUG worker-xrootd
-          --db-uri mysql://qsmaster@127.0.0.1:3306?socket={{db_socket}}
+          --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
-          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster:CHANGEME2@127.0.0.1:3306/qservw_worker 0 0"
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -244,8 +244,8 @@ services:
         << : *worker-cmsd
         command: >
           entrypoint --log-level DEBUG worker-cmsd
-          --db-uri mysql://qsmaster@worker_mariadb_1:3306?socket=/qserv/mariadb/run/mysqld.sock
-          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster@127.0.0.1:3306/qservw_worker 0 0"
+          --db-uri mysql://qsmaster:CHANGEME2@worker_mariadb_1:3306?socket=/qserv/mariadb/run/mysqld.sock
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster:CHANGEME2@127.0.0.1:3306/qservw_worker 0 0"
           --results-dirname /qserv/data/results
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
@@ -357,7 +357,7 @@ services:
         init: true
         command: >
           entrypoint --log-level DEBUG proxy
-          --db-uri mysql://qsmaster@127.0.0.1:3306?socket={{db_socket}}
+          --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --xrootd-manager czar_xrootd
@@ -395,7 +395,7 @@ services:
         init: true
         command: >
           entrypoint --log-level DEBUG czar-http
-          --db-uri mysql://qsmaster@czar_mariadb:3306/
+          --db-uri mysql://qsmaster:CHANGEME2@czar_mariadb:3306/
           --xrootd-manager czar_xrootd
           --czar-name http
           --http-port 4048

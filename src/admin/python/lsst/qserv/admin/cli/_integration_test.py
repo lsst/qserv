@@ -120,6 +120,7 @@ def run_integration_tests(
     tests_yaml: str,
     compare_results: bool,
     mysqld_user: str,
+    mysqld_password: str,
 ) -> itest.ITestResults:
     """Top level script to run the integration tests.
 
@@ -148,6 +149,8 @@ def run_integration_tests(
         If True run query output comparison, if False do not.
     mysqld_user : `str`
         The name of the qserv user.
+    mysqld_password : `str`
+        The password for the qserv user.
 
     Returns
     -------
@@ -157,6 +160,7 @@ def run_integration_tests(
     save_template_cfg(
         dict(
             mysqld_user_qserv=mysqld_user,
+            mysqld_user_qserv_password=mysqld_password,
         )
     )
 
@@ -235,6 +239,7 @@ def run_integration_tests_http(
     tests_yaml: str,
     compare_results: bool,
     mysqld_user: str,
+    mysqld_password: str,
 ) -> itest.ITestResults:
     """Top level script to run the integration tests of the HTTP frontend.
 
@@ -263,6 +268,8 @@ def run_integration_tests_http(
         If True run query output comparison, if False do not.
     mysqld_user : `str`
         The name of the qserv user.
+    mysqld_password : `str`
+        The password for the qserv user.
 
     Returns
     -------
@@ -272,6 +279,7 @@ def run_integration_tests_http(
     save_template_cfg(
         dict(
             mysqld_user_qserv=mysqld_user,
+            mysqld_user_qserv_password=mysqld_password,
         )
     )
 

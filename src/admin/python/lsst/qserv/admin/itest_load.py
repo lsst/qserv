@@ -107,8 +107,8 @@ def _create_ref_db(ref_db_admin: str, name: str) -> None:
         The name of the database to create.
     """
     statements = [
-        "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'localhost';",
-        "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'%';",
+        "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'localhost' IDENTIFIED BY '{{ mysqld_user_qserv_password }}';",
+        "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'%' IDENTIFIED BY '{{ mysqld_user_qserv_password }}';",
         "CREATE DATABASE IF NOT EXISTS {name};",
         "GRANT ALL ON {name}.* TO '{{ mysqld_user_qserv }}'@'localhost';",
         "GRANT ALL ON {name}.* TO '{{ mysqld_user_qserv }}'@'%';",

@@ -1,5 +1,5 @@
-CREATE USER '{{ mysqld_user_qserv }}'@'localhost';
-CREATE USER '{{ mysqld_user_qserv }}'@'%';
+CREATE USER '{{ mysqld_user_qserv }}'@'localhost' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
+CREATE USER '{{ mysqld_user_qserv }}'@'%' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
 
 GRANT ALL ON qservResult.* TO '{{ mysqld_user_qserv }}'@'localhost';
 GRANT ALL ON qservResult.* TO '{{ mysqld_user_qserv }}'@'%';

@@ -63,6 +63,7 @@ worker_smig_dir = "worker/schema"
 replication_controller_smig_dir = "replica/schema"
 
 mysqld_user_qserv = "qsmaster"
+mysqld_user_qserv_password = "CHANGEME2"
 
 ld_preload = "libjemalloc.so.2"
 
@@ -468,6 +469,8 @@ def enter_worker_xrootd(
 
     save_template_cfg(targs)
     save_template_cfg({"mysqld_user_qserv": mysqld_user_qserv})
+    save_template_cfg({"mysqld_user_qserv_password": mysqld_user_qserv_password})
+
 
     smig_worker(db_admin_uri, update=False)
 
@@ -623,6 +626,7 @@ def enter_proxy(
         {
             "proxy_backend_address": proxy_backend_address,
             "mysqld_user_qserv": url.username,
+            "mysqld_user_qserv_password": url.password,
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
             "czar_db_socket": url.query.get("socket", ""),
@@ -696,6 +700,7 @@ def enter_czar_http(
     save_template_cfg(
         {
             "mysqld_user_qserv": url.username,
+            "mysqld_user_qserv_password": url.password,
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
             "czar_db_socket": url.query.get("socket", ""),
@@ -1065,6 +1070,7 @@ def integration_test(
         tests_yaml=tests_yaml,
         compare_results=compare_results,
         mysqld_user=mysqld_user_qserv,
+        mysqld_password=mysqld_user_qserv_password,
     )
 
 
@@ -1092,6 +1098,7 @@ def integration_test_http(
         tests_yaml=tests_yaml,
         compare_results=compare_results,
         mysqld_user=mysqld_user_qserv,
+        mysqld_password=mysqld_user_qserv_password,
     )
 
 

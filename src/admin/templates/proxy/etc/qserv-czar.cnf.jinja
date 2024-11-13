@@ -11,16 +11,16 @@ technology = mysql
 hostname = {{ czar_db_host }}
 port = {{ czar_db_port }}
 username = qsmaster
-password =
+password = CHANGEME2
 database = qservCssData
 socket = {{ czar_db_socket }}
 
 [resultdb]
-passwd =
 db = qservResult
 unix_socket = {{ czar_db_socket }}
 host = {{ czar_db_host }}
 user = qsmaster
+passwd = CHANGEME2
 port = {{ czar_db_port }}
 
 # Any table in resultdb that hasn't been updated in this many days is deleted.
@@ -35,11 +35,11 @@ maxtablesize_mb = 5100
 
 # database connection for QMeta database
 [qmeta]
-passwd =
 db = qservMeta
 unix_socket = {{ czar_db_socket }}
 host = {{ czar_db_host }}
 user = qsmaster
+passwd = CHANGEME2
 port = {{ czar_db_port }}
 maxMsgSourceStore = 5
 
@@ -47,10 +47,10 @@ maxMsgSourceStore = 5
 # Using qmeta for now. May move this qservResult or make its own instance
 # databse based on what happens with multiple czars.
 [qstatus]
-passwd =
 #db = qservStatusData
 db = qservMeta
 user = qsmaster
+passwd = CHANGEME2
 host = {{ czar_db_host }}
 port = {{ czar_db_port }}
 

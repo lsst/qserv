@@ -2,8 +2,8 @@
 -- Script to initialize the QMeta database
 --
 
-CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'localhost';
-CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'%';
+CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'localhost' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
+CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'%' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
 
 -- Director index database (i.e. objectId/chunkId relation)
 -- created by integration test script/loader for now
