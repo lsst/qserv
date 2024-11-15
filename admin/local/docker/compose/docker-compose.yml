@@ -397,10 +397,14 @@ services:
           entrypoint --log-level DEBUG czar-http
           --db-uri mysql://qsmaster@czar_mariadb:3306/
           --xrootd-manager czar_xrootd
-          --http-frontend-port 4048
-          --http-frontend-threads 4
+          --czar-name http
+          --http-port 4048
+          --http-threads 4
+          --http-worker-ingest-threads 2
           --http-ssl-cert-file /config-etc/ssl/czar-cert.pem
           --http-ssl-private-key-file /config-etc/ssl/czar-key.pem
+          --http-tmp-dir /tmp
+          --http-conn-pool-size 2
           --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey

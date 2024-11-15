@@ -119,7 +119,6 @@ Things to consider:
   factor limiting the performance of the workflow.
 - Any failure to ingest a contribution will result in aborting the entire transaction. This can significantly
   impact the workflow's performance, especially if the amount of data to be ingested is large.
-  impact the workflow's performance, especially if the amount of data to be ingested is large.
 
 Best use:
 

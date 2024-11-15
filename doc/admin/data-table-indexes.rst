@@ -247,7 +247,7 @@ Where:
     The required *base* name of the table where the index will be created.
 
 ``overlap`` : *number* := ``0``
-    The optional *overlap* flagg indicating a sub-type of the *chunk* table. The value should be one of the following:
+    The optional *overlap* flag indicating a sub-type of the *chunk* table. The value should be one of the following:
 
     - ``1`` : *full overlap*
     - ``0`` : *chunk*
@@ -301,9 +301,9 @@ Where:
         types (numeric, etc.). Otherwise, an index creation request will fail. 
 
     ``ascending`` : *number*
-        The required sorting order of the column in the index. It translates into ``ASC`` or ``DESC``  optiona
-        in the key definition in ``key_part``. A value of ``0`` will be interpreted as ``DESC``. Any other positive number
-        will be imterpreted as to ``ASC``.
+        The required sorting order of the column in the index. It translates into ``ASC`` or ``DESC`` options
+        in the key definition in ``key_part``. A value of ``0`` will be interpreted as ``DESC``.
+        Any other positive number will be imterpreted as to ``ASC``.
 
 ``auth_key`` : *string*
     The required zauthorization key.
@@ -388,7 +388,7 @@ Where:
     The required *base* name of the table where the index will be created.
 
 ``overlap`` : *number* := ``0``
-    The optional *overlap* flagg indicating a sub-type of the *chunk* table. The value should be one of the following:
+    The optional *overlap* flag indicating a sub-type of the *chunk* table. The value should be one of the following:
 
     - ``1`` : *full overlap*
     - ``0`` : *chunk*
@@ -439,10 +439,10 @@ Where the service path has the following parameters:
 ``table`` : *string*
     The name of the table for which the indexes are required to be collected.
 
-The optional query parameyter is
+The optional query parameter is
 
 ``overlap`` : *number* := ``0``
-    The optional *overlap* flagg indicating a sub-type of the *chunk* table. The value should be one of the following:
+    The optional *overlap* flag indicating a sub-type of the *chunk* table. The value should be one of the following:
 
     - ``1`` : *full overlap*
     - ``0`` : *chunk*

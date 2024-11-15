@@ -87,7 +87,7 @@ The following table illustrates how JSON configurations for all the above-mentio
   |     "longitude_key" : "dec"       |                                           |
   |   }                               | **Note**: Attributes ``latitude_key`` and |
   |                                   | ``longitude_key`` were not provided.      |
-  |                                   | is allowed for the dependent tables.      |
+  |                                   | This is allowed for the dependent tables. |
   |                                   |                                           |
   |                                   | .. code-block:: json                      |
   |                                   |                                           |

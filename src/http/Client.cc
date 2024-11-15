@@ -52,6 +52,22 @@ Client::Client(http::Method method, string const& url, string const& data, vecto
           _headers(headers),
           _clientConfig(clientConfig),
           _connPool(connPool) {
+    if (_method == http::Method::MIMEPOST) {
+        throw invalid_argument("http::Client::" + string(__func__) +
+                               ":  method MIMEPOST is not allowed in this constructor");
+    }
+    _hcurl = curl_easy_init();
+    assert(_hcurl != nullptr);
+}
+
+Client::Client(string const& url, list<ClientMimeEntry> const& mimeData, vector<string> const& headers,
+               ClientConfig const& clientConfig, shared_ptr<ClientConnPool> const& connPool)
+        : _method(http::Method::MIMEPOST),
+          _url(url),
+          _mimeData(mimeData),
+          _headers(headers),
+          _clientConfig(clientConfig),
+          _connPool(connPool) {
     _hcurl = curl_easy_init();
     assert(_hcurl != nullptr);
 }
@@ -59,11 +75,13 @@ Client::Client(http::Method method, string const& url, string const& data, vecto
 Client::~Client() {
     curl_slist_free_all(_hlist);
     curl_easy_cleanup(_hcurl);
+    curl_mime_free(_form);
 }
 
 void Client::read(CallbackType const& onDataRead) {
+    string const context = "http::Client::" + string(__func__) + ": ";
     if (onDataRead == nullptr) {
-        throw invalid_argument("http::Client::" + string(__func__) + ": no callback provided");
+        throw invalid_argument(context + "no callback provided");
     }
     _onDataRead = onDataRead;
 
@@ -75,21 +93,51 @@ void Client::read(CallbackType const& onDataRead) {
                           curl_easy_setopt(_hcurl, CURLOPT_URL, _url.c_str()));
     _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
                           curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, nullptr));
-    if (_method == http::Method::GET) {
-        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_HTTPGET)",
-                              curl_easy_setopt(_hcurl, CURLOPT_HTTPGET, 1L));
-    } else if (_method == http::Method::POST) {
-        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POST)", curl_easy_setopt(_hcurl, CURLOPT_POST, 1L));
+    if (_method == http::Method::MIMEPOST) {
+        if (_mimeData.empty()) {
+            throw invalid_argument(context + "no data provided for MIMEPOST");
+        }
+        curl_mime_free(_form);
+        _form = curl_mime_init(_hcurl);
+        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_MIMEPOST)",
+                              curl_easy_setopt(_hcurl, CURLOPT_MIMEPOST, _form));
+        for (auto const& mimeEntry : _mimeData) {
+            curl_mimepart* field = curl_mime_addpart(_form);
+            _curlEasyErrorChecked("curl_mime_name", curl_mime_name(field, mimeEntry.name.c_str()));
+            if (mimeEntry.value.empty() == mimeEntry.filename.empty()) {
+                throw invalid_argument(context + "invalid JSON data provided for MIMEPOST");
+            }
+            if (!mimeEntry.value.empty()) {
+                _curlEasyErrorChecked("curl_mime_data",
+                                      curl_mime_data(field, mimeEntry.value.c_str(), CURL_ZERO_TERMINATED));
+            } else {
+                _curlEasyErrorChecked("curl_mime_filename",
+                                      curl_mime_filename(field, mimeEntry.filename.c_str()));
+                _curlEasyErrorChecked("curl_mime_filedata",
+                                      curl_mime_filedata(field, mimeEntry.filename.c_str()));
+            }
+            if (!mimeEntry.type.empty()) {
+                _curlEasyErrorChecked("curl_mime_type", curl_mime_type(field, mimeEntry.type.c_str()));
+            }
+        }
     } else {
-        _curlEasyErrorChecked(
-                "curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
-                curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, http::method2string(_method).data()));
-    }
-    if (!_data.empty()) {
-        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POSTFIELDS)",
-                              curl_easy_setopt(_hcurl, CURLOPT_POSTFIELDS, _data.c_str()));
-        _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POSTFIELDSIZE)",
-                              curl_easy_setopt(_hcurl, CURLOPT_POSTFIELDSIZE, _data.size()));
+        if (_method == http::Method::GET) {
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_HTTPGET)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_HTTPGET, 1L));
+        } else if (_method == http::Method::POST) {
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POST)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_POST, 1L));
+        } else {
+            _curlEasyErrorChecked(
+                    "curl_easy_setopt(CURLOPT_CUSTOMREQUEST)",
+                    curl_easy_setopt(_hcurl, CURLOPT_CUSTOMREQUEST, http::method2string(_method).data()));
+        }
+        if (!_data.empty()) {
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POSTFIELDS)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_POSTFIELDS, _data.c_str()));
+            _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_POSTFIELDSIZE)",
+                                  curl_easy_setopt(_hcurl, CURLOPT_POSTFIELDSIZE, _data.size()));
+        }
     }
     curl_slist_free_all(_hlist);
     _hlist = nullptr;

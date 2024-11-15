@@ -69,8 +69,8 @@ it should be registered using:
 
 - :ref:`ingest-db-table-management-register-db` (REST)
 
-The newely registered database will be always in the *unpublished* state. If the database already exists in
-the Replication/Ingest and it's in the *published* state it should be *unpublished* state using:
+The newly registered database will be always in the *unpublished* state. If the database already exists in
+the Replication/Ingest and it's in the *published* state it should be put into the *unpublished* state using:
 
 - :ref:`ingest-db-table-management-unpublish-db` (REST)
 
@@ -159,8 +159,8 @@ The REST API for initiating the contribuiton requests is covered in the followin
 Monitor the progress of the ingest activities
 ----------------------------------------------
 
-The workflow should always be avare about the progress of the ingest activities, and about the status of the
-contribution requests. This is need for (at least) three reasons:
+The workflow should always be aware about the progress of the ingest activities, and about the status of the
+contribution requests. This is needed for (at least) three reasons:
 
 #. To know when the ingest activities are finished
 #. To know when the ingest activities (and which requests) are failed

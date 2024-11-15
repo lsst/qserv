@@ -3,14 +3,13 @@
 Transactions
 ============
 
-The distributed transaction mechanism is one of the key technologies that was
-implemented in the Qserv Ingest system to allow for the incremental updates of the overall state of the data and metadata
-while ensuring the consistency of the ingested catalogs. Transactions also play an important role in allowing
-the high-performance ingest activities to be performed in a distributed environment. Transactions if used correct may
-significantly increase the level of parallelism of the ingest workflows. Transactions are not visible to end users.
+The distributed transaction mechanism is a crucial technology in the Qserv Ingest system. It enables incremental updates
+to the data and metadata while maintaining the consistency of ingested catalogs. Transactions also facilitate high-performance
+ingest activities in a distributed environment. When used correctly, transactions can significantly enhance the parallelism
+of ingest workflows. Note that transactions are not visible to end users.
 
 Transactions are open in a scope of a database. It's a responsibility of the workflows to manage transactions as needed
-for the ingest activities uisng the following REST services:
+for the ingest activities using the following REST services:
 
 - :ref:`ingest-trans-management` (REST)
 
@@ -68,10 +67,10 @@ to Qserv users and is queriable. Here is an illustration of a query and the corr
 Checkpointing
 -------------
 
-Transactions also provide the checkpointing mechanism that allows rolling back to a prior consistent state of the affected tables
-should any problem occur during the ingest activities. Transactions may spans across many workers and tables located
-at the workers. It's up to the workflow to decide what contrubutions to ingest and in what order to ingest those in
-a scope of each transaction.
+Transactions also provide a checkpointing mechanism that allows rolling back to a prior consistent state of the affected tables
+should any problem occur during the ingest activities. Transactions may span across many workers and tables located
+at the workers. It's up to the workflow to decide what contributions to ingest and in what order to ingest those in
+the scope of each transaction.
 
 The following diagram illustrates the concept of the transactions in Qserv. There are 3 transactions that are started and
 commited sequentially (in the real life scenarios the transactions can be and should be started and commited in parallel,
