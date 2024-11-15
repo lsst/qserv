@@ -42,6 +42,7 @@ linkcheck_ignore = [
     r"^https://rubinobs.atlassian.net/wiki/",
     r"^https://rubinobs.atlassian.net/browse/",
     r"^https://www.slac.stanford.edu/",
+    r".*/_images/",
 ]
 
 html_additional_pages = {

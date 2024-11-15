@@ -1,3 +1,7 @@
+.. warning::
+
+   Information in this guide is known to be outdated. The updated version will be available in the near future.
+
 .. _quick-start-devel:
 
 ################################

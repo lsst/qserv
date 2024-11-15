@@ -1,5 +1,5 @@
 [project]
 title = "Qserv"
-copyright = "2015-2023 Association of Universities for Research in Astronomy, Inc. (AURA)"
+copyright = "2015-2024 Association of Universities for Research in Astronomy, Inc. (AURA)"
 base_url = "https://qserv.lsst.io"
 github_url = "https://github.com/lsst/qserv"
