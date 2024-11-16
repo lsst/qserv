@@ -63,6 +63,7 @@ from .options import (
     option_results_protocol,
     option_run,
     option_run_tests,
+    option_keep_results,
     options_targs,
     option_tests_yaml,
     option_unload,
@@ -427,6 +428,34 @@ def integration_test_http(
     click.echo(str(results))
     sys.exit(0 if results.passed else 1)
 
+
+@entrypoint.command()
+@option_repl_connection(
+    help=option_repl_connection.keywords["help"]
+    + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
+)
+@option_run_tests()
+@option_keep_results()
+@option_tests_yaml()
+def integration_test_http_ingest(
+    repl_connection: str,
+    run_tests: bool,
+    keep_results: bool,
+    tests_yaml: str,
+) -> None:
+    """Run integration tests of the ingesting user tables via the HTTP frontend.
+
+    TESTS_YAML is the yaml file path that contains connection information and describes tests to load and run.
+    """
+
+    results = script.integration_test_http_ingest(
+        repl_connection=repl_connection,
+        run_tests=run_tests,
+        keep_results=keep_results,
+        tests_yaml=tests_yaml,
+    )
+    click.echo(str(results))
+    sys.exit(0 if results else 1)
 
 
 @entrypoint.command()

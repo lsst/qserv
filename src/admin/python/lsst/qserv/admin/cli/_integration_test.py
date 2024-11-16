@@ -340,6 +340,42 @@ def run_integration_tests_http(
     )
 
 
+def run_integration_tests_http_ingest(
+    run_tests: bool,
+    keep_results: bool,
+    tests_yaml: str,
+) -> bool:
+    """Top level script to run the integration tests of ingesting user tables via the HTTP frontend.
+
+    Parameters
+    ----------
+    run_tests : `bool`
+        True if the tests should be run. (False can be used to compare
+        previously generated test outputs.)
+    keep_results : `bool`
+        True if the results should be kept after the tests are run.
+    tests_yaml : `str`
+        Path to the yaml file that contains the details about running the
+        tests. The files will be merged, higher index files get priority.
+
+    Returns
+    -------
+    success : `bool`
+        `True` if loading succeeded and query outputs were the same as the inputs, otherwise `False`.
+    """
+
+    with open(tests_yaml) as f:
+        tests_data = yaml.safe_load(f.read())
+
+    if run_tests:
+        wait_for_czar(tests_data["czar-db-admin-uri"])
+        wait_for_replication_system(tests_data["replication-controller-uri"])
+        return itest.run_http_ingest(
+            http_frontend_uri=tests_data["qserv-http-uri"],
+            keep_results=keep_results,
+        )
+    return True
+
 def prepare_data(
     tests_yaml: str
 ) -> bool:
