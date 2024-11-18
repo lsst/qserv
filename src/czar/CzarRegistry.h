@@ -71,12 +71,12 @@ public:
 
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it.
-    http::WorkerContactInfo::WCMapPtr getWorkerContactMap() const;
+    protojson::WorkerContactInfo::WCMapPtr getWorkerContactMap() const;
 
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it. This
     /// function will wait forever for a valid contact map to be ready.
-    http::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
+    protojson::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
 
     /// Send all live workers the `WorkerQueryStatusData` message for
     /// that worker. This may result in the worker sending back the
@@ -104,11 +104,11 @@ private:
     void _registryWorkerInfoLoop();
 
     /// Build a new WorkerContactMap from the json `response`
-    http::WorkerContactInfo::WCMapPtr _buildMapFromJson(nlohmann::json const& response);
+    protojson::WorkerContactInfo::WCMapPtr _buildMapFromJson(nlohmann::json const& response);
 
     /// Return true if maps are the same size and all of the elements have the same contact info.
     /// NOTE: _cmapMtx must be held when calling.
-    bool _compareMapContactInfo(http::WorkerContactInfo::WCMap const& other) const;
+    bool _compareMapContactInfo(protojson::WorkerContactInfo::WCMap const& other) const;
 
     std::shared_ptr<cconfig::CzarConfig> const _czarConfig;  ///< Pointer to the CzarConfig.
 
@@ -117,7 +117,7 @@ private:
     std::thread _czarWorkerInfoThrd;  ///< This thread continuously collects worker contact information.
 
     /// Pointer to the map of worker contact information.
-    http::WorkerContactInfo::WCMapPtr _contactMap;
+    protojson::WorkerContactInfo::WCMapPtr _contactMap;
     TIMEPOINT _latestMapUpdate;  ///< The last time the _contactMap was updated, unrelated to
                                  ///< WorkerContactInfo update.
     mutable MUTEX _cmapMtx;      /// Protects _contactMap, _latestUpdate

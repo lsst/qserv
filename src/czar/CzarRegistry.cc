@@ -70,7 +70,7 @@ CzarRegistry::~CzarRegistry() {
     }
 }
 
-http::WorkerContactInfo::WCMapPtr CzarRegistry::getWorkerContactMap() const {
+protojson::WorkerContactInfo::WCMapPtr CzarRegistry::getWorkerContactMap() const {
     lock_guard lockG(_cmapMtx);
     return _contactMap;
 }
@@ -130,12 +130,12 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                 LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
                 // TODO: Is there a better thing to do than just log this here?
             } else {
-                http::WorkerContactInfo::WCMapPtr wMap = _buildMapFromJson(response);
+                protojson::WorkerContactInfo::WCMapPtr wMap = _buildMapFromJson(response);
                 // Update the values in the map
                 {
-                    auto czInfo = http::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(),
-                                                                _czarConfig->replicationHttpPort(),
-                                                                util::get_current_host_fqdn(), czarStartTime);
+                    auto czInfo = protojson::CzarContactInfo::create(
+                            _czarConfig->name(), _czarConfig->id(), _czarConfig->replicationHttpPort(),
+                            util::get_current_host_fqdn(), czarStartTime);
                     lock_guard lck(_cmapMtx);
                     if (wMap != nullptr) {
                         _contactMap = wMap;
@@ -153,16 +153,16 @@ void CzarRegistry::_registryWorkerInfoLoop() {
     }
 }
 
-http::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {
+protojson::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json const& response) {
     auto const& jsServices = response.at("services");
     auto const& jsWorkers = jsServices.at("workers");
-    auto wMap = http::WorkerContactInfo::WCMapPtr(new http::WorkerContactInfo::WCMap());
+    auto wMap = protojson::WorkerContactInfo::WCMapPtr(new protojson::WorkerContactInfo::WCMap());
     for (auto const& [key, value] : jsWorkers.items()) {
         auto const& jsQserv = value.at("qserv");
         LOGS(_log, LOG_LVL_DEBUG, __func__ << " key=" << key << " jsQ=" << jsQserv);
 
         // The names for items here are different than the names used by workers.
-        auto wInfo = http::WorkerContactInfo::createFromJsonRegistry(key, jsQserv);
+        auto wInfo = protojson::WorkerContactInfo::createFromJsonRegistry(key, jsQserv);
 
         LOGS(_log, LOG_LVL_DEBUG, __func__ << " wInfot=" << wInfo->dump());
         auto iter = wMap->find(key);
@@ -180,7 +180,7 @@ http::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann::json
     return wMap;
 }
 
-bool CzarRegistry::_compareMapContactInfo(http::WorkerContactInfo::WCMap const& other) const {
+bool CzarRegistry::_compareMapContactInfo(protojson::WorkerContactInfo::WCMap const& other) const {
     VMUTEX_HELD(_cmapMtx);
     if (_contactMap == nullptr) {
         // If _contactMap is null, it needs to be replaced.
@@ -202,8 +202,8 @@ bool CzarRegistry::_compareMapContactInfo(http::WorkerContactInfo::WCMap const& 
     return true;
 }
 
-http::WorkerContactInfo::WCMapPtr CzarRegistry::waitForWorkerContactMap() const {
-    http::WorkerContactInfo::WCMapPtr contMap = nullptr;
+protojson::WorkerContactInfo::WCMapPtr CzarRegistry::waitForWorkerContactMap() const {
+    protojson::WorkerContactInfo::WCMapPtr contMap = nullptr;
     while (contMap == nullptr) {
         {
             lock_guard lockG(_cmapMtx);
