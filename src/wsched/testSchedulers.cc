@@ -103,7 +103,7 @@ struct SchedulerFixture {
     SchedulerFixture(void) { counter = 20; }
     ~SchedulerFixture(void) {}
 
-    /* &&& Instead of using messages, make a Task::createUnitTest() function
+    /* &&& Instead of using messages, make a Task::createTasksForUnitTest() function
     void addSomeFragments(TaskMsgPtr const& t, int numberOfFragments) {
         for (int i = 0; i < numberOfFragments; ++i) {
             TaskMsg::Fragment* f = t->add_fragment();

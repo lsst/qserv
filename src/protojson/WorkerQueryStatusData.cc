@@ -20,9 +20,8 @@
  */
 
 // Class header
-#include "http/WorkerQueryStatusData.h"
+#include "protojson/WorkerQueryStatusData.h"
 
-// System headers
 #include <stdexcept>
 
 // Qserv headers
@@ -39,10 +38,10 @@ using namespace std;
 using namespace nlohmann;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.http.WorkerQueryStatusData");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.WorkerQueryStatusData");
 }  // namespace
 
-namespace lsst::qserv::http {
+namespace lsst::qserv::protojson {
 
 json CzarContactInfo::serializeJson() const {
     json jsCzar;
@@ -56,11 +55,11 @@ json CzarContactInfo::serializeJson() const {
 
 CzarContactInfo::Ptr CzarContactInfo::createFromJson(nlohmann::json const& czJson) {
     try {
-        auto czName_ = RequestBodyJSON::required<string>(czJson, "name");
-        auto czId_ = RequestBodyJSON::required<CzarIdType>(czJson, "id");
-        auto czPort_ = RequestBodyJSON::required<int>(czJson, "management-port");
-        auto czHostName_ = RequestBodyJSON::required<string>(czJson, "management-host-name");
-        auto czStartupTime_ = RequestBodyJSON::required<uint64_t>(czJson, "czar-startup-time");
+        auto czName_ = http::RequestBodyJSON::required<string>(czJson, "name");
+        auto czId_ = http::RequestBodyJSON::required<CzarIdType>(czJson, "id");
+        auto czPort_ = http::RequestBodyJSON::required<int>(czJson, "management-port");
+        auto czHostName_ = http::RequestBodyJSON::required<string>(czJson, "management-host-name");
+        auto czStartupTime_ = http::RequestBodyJSON::required<uint64_t>(czJson, "czar-startup-time");
         return create(czName_, czId_, czPort_, czHostName_, czStartupTime_);
     } catch (invalid_argument const& exc) {
         LOGS(_log, LOG_LVL_ERROR, string("CzarContactInfo::createJson invalid ") << exc.what());
@@ -93,10 +92,10 @@ json WorkerContactInfo::_serializeJson() const {
 WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonRegistry(string const& wId_,
                                                                  nlohmann::json const& regJson) {
     try {
-        auto wHost_ = RequestBodyJSON::required<string>(regJson, "host-addr");
-        auto wManagementHost_ = RequestBodyJSON::required<string>(regJson, "management-host-name");
-        auto wPort_ = RequestBodyJSON::required<int>(regJson, "management-port");
-        auto updateTimeInt = RequestBodyJSON::required<uint64_t>(regJson, "update-time-ms");
+        auto wHost_ = http::RequestBodyJSON::required<string>(regJson, "host-addr");
+        auto wManagementHost_ = http::RequestBodyJSON::required<string>(regJson, "management-host-name");
+        auto wPort_ = http::RequestBodyJSON::required<int>(regJson, "management-port");
+        auto updateTimeInt = http::RequestBodyJSON::required<uint64_t>(regJson, "update-time-ms");
         TIMEPOINT updateTime_ = TIMEPOINT(chrono::milliseconds(updateTimeInt));
 
         return create(wId_, wHost_, wManagementHost_, wPort_, updateTime_);
@@ -109,10 +108,10 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonRegistry(string const& w
 WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json const& wJson,
                                                                TIMEPOINT updateTime_) {
     try {
-        auto wId_ = RequestBodyJSON::required<string>(wJson, "id");
-        auto wHost_ = RequestBodyJSON::required<string>(wJson, "host");
-        auto wManagementHost_ = RequestBodyJSON::required<string>(wJson, "management-host-name");
-        auto wPort_ = RequestBodyJSON::required<int>(wJson, "management-port");
+        auto wId_ = http::RequestBodyJSON::required<string>(wJson, "id");
+        auto wHost_ = http::RequestBodyJSON::required<string>(wJson, "host");
+        auto wManagementHost_ = http::RequestBodyJSON::required<string>(wJson, "management-host-name");
+        auto wPort_ = http::RequestBodyJSON::required<int>(wJson, "management-port");
 
         return create(wId_, wHost_, wManagementHost_, wPort_, updateTime_);
     } catch (invalid_argument const& exc) {
@@ -276,10 +275,12 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
                 WorkerQueryStatusData::create(wInfo_, czInfo_, replicationInstanceId_, replicationAuthKey_);
         wqsData->parseLists(jsWorkerReq, updateTm);
 
-        bool czarRestart = RequestBodyJSON::required<bool>(jsWorkerReq, "czarrestart");
+        bool czarRestart = http::RequestBodyJSON::required<bool>(jsWorkerReq, "czarrestart");
         if (czarRestart) {
-            auto restartCzarId = RequestBodyJSON::required<CzarIdType>(jsWorkerReq, "czarrestartcancelczid");
-            auto restartQueryId = RequestBodyJSON::required<QueryId>(jsWorkerReq, "czarrestartcancelqid");
+            auto restartCzarId =
+                    http::RequestBodyJSON::required<CzarIdType>(jsWorkerReq, "czarrestartcancelczid");
+            auto restartQueryId =
+                    http::RequestBodyJSON::required<QueryId>(jsWorkerReq, "czarrestartcancelqid");
             wqsData->setCzarCancelAfterRestart(restartCzarId, restartQueryId);
         }
         return wqsData;
@@ -413,7 +414,7 @@ bool WorkerQueryStatusData::handleResponseJson(nlohmann::json const& jsResp) {
     }
 
     bool workerRestarted = false;
-    auto workerStartupTime = RequestBodyJSON::required<uint64_t>(jsResp, "w-startup-time");
+    auto workerStartupTime = http::RequestBodyJSON::required<uint64_t>(jsResp, "w-startup-time");
     LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " workerStartupTime=" << workerStartupTime);
     if (!_wInfo->checkWStartupTime(workerStartupTime)) {
         LOGS(_log, LOG_LVL_ERROR,
@@ -478,7 +479,8 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
         }
         auto wccIssue = create(replicationInstanceId_, replicationAuthKey_);
         wccIssue->setContactInfo(wInfo_, czInfo_);
-        wccIssue->_thoughtCzarWasDead = RequestBodyJSON::required<bool>(jsCzarReq, "thoughtczarwasdead");
+        wccIssue->_thoughtCzarWasDead =
+                http::RequestBodyJSON::required<bool>(jsCzarReq, "thoughtczarwasdead");
         return wccIssue;
     } catch (invalid_argument const& exc) {
         LOGS(_log, LOG_LVL_ERROR, string("WorkerQueryStatusData::createJson invalid ") << exc.what());
@@ -506,4 +508,4 @@ string WorkerCzarComIssue::_dump() const {
     return os.str();
 }
 
-}  // namespace lsst::qserv::http
+}  // namespace lsst::qserv::protojson

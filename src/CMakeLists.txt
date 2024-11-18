@@ -68,6 +68,7 @@ add_subdirectory(mysql)
 add_subdirectory(parser)
 add_subdirectory(partition)
 add_subdirectory(proto)
+add_subdirectory(protojson)
 add_subdirectory(proxy)
 add_subdirectory(qana)
 add_subdirectory(qdisp)
@@ -102,6 +103,7 @@ target_link_libraries(qserv_common PUBLIC
     mysql
     sql
     util
+    protojson
 )
 
 install(

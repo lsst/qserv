@@ -98,11 +98,11 @@ public:
 
     /// Set the worker information needed to send messages to the worker believed to
     /// be responsible for the chunks handled in this UberJob.
-    void setWorkerContactInfo(http::WorkerContactInfo::Ptr const& wContactInfo) {
+    void setWorkerContactInfo(protojson::WorkerContactInfo::Ptr const& wContactInfo) {
         _wContactInfo = wContactInfo;
     }
 
-    http::WorkerContactInfo::Ptr getWorkerContactInfo() { return _wContactInfo; }
+    protojson::WorkerContactInfo::Ptr getWorkerContactInfo() { return _wContactInfo; }
 
     /// Get the data for the worker that should handle this UberJob.
     czar::CzarChunkMap::WorkerChunksData::Ptr getWorkerData() { return _workerData; }
@@ -167,7 +167,7 @@ private:
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed
 
     // Contact information for the target worker.
-    http::WorkerContactInfo::Ptr _wContactInfo;  // Change to ActiveWorker &&& ???
+    protojson::WorkerContactInfo::Ptr _wContactInfo;  // Change to ActiveWorker &&& ???
 };
 
 }  // namespace lsst::qserv::qdisp
