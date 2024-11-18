@@ -447,7 +447,6 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
                     auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber,
                                                    0, noSubchunks, subchunkId, jdQuerySpecDb, fragSubTables,
                                                    fragSubchunkIds, sendChannel, nullptr));
-
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {

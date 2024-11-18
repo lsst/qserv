@@ -231,7 +231,7 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
     // Parse and verify the json message and then kill the UberJob.
     json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
-        // See qdisp::UberJob::runUberJob() for json message construction.
+        // See qdisp::UberJob::runUberJob() for json message construction. &&&
         string const targetWorkerId = body().required<string>("workerid");
         string const czarName = body().required<string>("czar");
         qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
@@ -274,7 +274,7 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     try {
         // &&& TODO:UJ file response - move construction and parsing
         // &&& TODO:UJ to a class so it can be added to WorkerCzarComIssue
-        // See qdisp::UberJob::runUberJob() for json message construction.
+        // See qdisp::UberJob::runUberJob() for json message construction. &&&
         string const targetWorkerId = body().required<string>("workerid");
         string const czarName = body().required<string>("czar");
         qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
@@ -317,8 +317,8 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
         string const replicationInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
         string const replicationAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
         auto const& jsReq = body().objJson;
-        auto wccIssue =
-                http::WorkerCzarComIssue::createFromJson(jsReq, replicationInstanceId, replicationAuthKey);
+        auto wccIssue = protojson::WorkerCzarComIssue::createFromJson(jsReq, replicationInstanceId,
+                                                                      replicationAuthKey);
 
         auto wId = wccIssue->getWorkerInfo()->wId;
         if (wccIssue->getThoughtCzarWasDead()) {

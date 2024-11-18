@@ -98,7 +98,7 @@ public:
     /// Return _contactMap, the object that the returned pointer points to is
     /// constant and no attempts should be made to change it. This
     /// function will wait forever for a valid contact map to be ready.
-    http::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
+    protojson::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
 
     /// Send all live workers the `WorkerQueryStatusData` message for
     /// that worker. This may result in the worker sending back the

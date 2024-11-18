@@ -180,7 +180,6 @@ protojson::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann:
     return wMap;
 }
 
-
 bool CzarRegistry::_compareMapContactInfo(protojson::WorkerContactInfo::WCMap const& other) const {
     VMUTEX_HELD(_cmapMtx);
     if (_contactMap == nullptr) {

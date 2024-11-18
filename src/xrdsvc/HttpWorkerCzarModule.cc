@@ -36,7 +36,6 @@
 #include "http/MetaModule.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
-#include "http/WorkerQueryStatusData.h"
 #include "mysql/MySqlUtils.h"
 #include "protojson/UberJobMsg.h"
 #include "protojson/WorkerQueryStatusData.h"
