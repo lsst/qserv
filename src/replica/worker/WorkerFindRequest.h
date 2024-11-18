@@ -38,10 +38,7 @@ namespace lsst::qserv::replica {
 
 /**
  * Class WorkerFindRequest represents a context and a state of replica lookup
- * requests within the worker servers. It can also be used for testing the framework
- * operation as its implementation won't make any changes to any files or databases.
- *
- * Real implementations of the request processing must derive from this class.
+ * requests within the worker servers.
  */
 class WorkerFindRequest : public WorkerRequest {
 public:
@@ -77,12 +74,8 @@ public:
 
     ~WorkerFindRequest() override = default;
 
-    // Trivial get methods
-
     std::string const& database() const { return _request.database(); }
-
     unsigned int chunk() const { return _request.chunk(); }
-
     bool computeCheckSum() const { return _request.compute_cs(); }
 
     /**
@@ -99,50 +92,14 @@ protected:
                       unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
 
     // Input parameters
-
     ProtocolRequestFind const _request;
 
     /// Result of the operation
     ReplicaInfo _replicaInfo;
-};
-
-/**
- * Class WorkerFindRequestPOSIX provides an actual implementation for
- * the replica lookup requests based on the direct manipulation of files on
- * a POSIX file system.
- */
-class WorkerFindRequestPOSIX : public WorkerFindRequest {
-public:
-    typedef std::shared_ptr<WorkerFindRequestPOSIX> Ptr;
-
-    /// @see WorkerFindRequestPOSIX::create()
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
-
-    WorkerFindRequestPOSIX() = delete;
-    WorkerFindRequestPOSIX(WorkerFindRequestPOSIX const&) = delete;
-    WorkerFindRequestPOSIX& operator=(WorkerFindRequestPOSIX const&) = delete;
-
-    ~WorkerFindRequestPOSIX() final = default;
-
-    bool execute() final;
-
-private:
-    WorkerFindRequestPOSIX(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                           std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                           unsigned int requestExpirationIvalSec, ProtocolRequestFind const& request);
 
     /// The engine for incremental control sum calculation
     std::unique_ptr<MultiFileCsComputeEngine> _csComputeEnginePtr;
 };
-
-/**
- * Class WorkerFindRequestFS has the same implementation as the 'typedef'-ed
- * class for the replica deletion based on the direct manipulation of files on
- * a POSIX file system.
- */
-typedef WorkerFindRequestPOSIX WorkerFindRequestFS;
 
 }  // namespace lsst::qserv::replica
 

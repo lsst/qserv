@@ -71,10 +71,7 @@ public:
 
     ~WorkerEchoRequest() override = default;
 
-    // Trivial get methods
-
     std::string const& data() const { return _request.data(); }
-
     uint64_t delay() const { return _request.delay(); }
 
     /**
@@ -91,18 +88,11 @@ protected:
                       unsigned int requestExpirationIvalSec, ProtocolRequestEcho const& request);
 
     // Input parameters
-
     ProtocolRequestEcho const _request;
 
     /// The amount of the initial delay which is still left
     uint64_t _delayLeft;
 };
-
-/// Class WorkerEchoRequest provides an actual implementation
-typedef WorkerEchoRequest WorkerEchoRequestFS;
-
-/// Class WorkerEchoRequest provides an actual implementation
-typedef WorkerEchoRequest WorkerEchoRequestPOSIX;
 
 }  // namespace lsst::qserv::replica
 

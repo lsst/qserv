@@ -40,7 +40,6 @@
 #include "replica/util/FileUtils.h"
 #include "replica/worker/FileServer.h"
 #include "replica/worker/WorkerProcessor.h"
-#include "replica/worker/WorkerRequestFactory.h"
 #include "replica/worker/WorkerServer.h"
 
 // LSST headers
@@ -111,13 +110,7 @@ int WorkerApp::runImpl() {
 
     _verifyCreateFolders();
 
-    // Configure the factory with a pool of persistent connectors
-    auto const config = serviceProvider()->config();
-    auto const connectionPool = ConnectionPool::create(Configuration::qservWorkerDbParams(),
-                                                       config->get<size_t>("database", "services-pool-size"));
-    WorkerRequestFactory requestFactory(serviceProvider(), connectionPool);
-
-    auto const reqProcSvr = WorkerServer::create(serviceProvider(), requestFactory, worker);
+    auto const reqProcSvr = WorkerServer::create(serviceProvider(), worker);
     thread reqProcSvrThread([reqProcSvr]() { reqProcSvr->run(); });
 
     auto const fileSvr = FileServer::create(serviceProvider(), worker);

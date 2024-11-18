@@ -48,17 +48,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerFindAllRequest");
 
 namespace lsst::qserv::replica {
 
-///////////////////////////////////////////////////////////////
-///////////////////// WorkerFindAllRequest ////////////////////
-///////////////////////////////////////////////////////////////
-
 WorkerFindAllRequest::Ptr WorkerFindAllRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                        string const& worker, string const& id, int priority,
                                                        ExpirationCallbackType const& onExpired,
                                                        unsigned int requestExpirationIvalSec,
                                                        ProtocolRequestFindAll const& request) {
-    return WorkerFindAllRequest::Ptr(new WorkerFindAllRequest(serviceProvider, worker, id, priority,
-                                                              onExpired, requestExpirationIvalSec, request));
+    auto ptr = WorkerFindAllRequest::Ptr(new WorkerFindAllRequest(
+            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerFindAllRequest::WorkerFindAllRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
@@ -72,11 +70,8 @@ WorkerFindAllRequest::WorkerFindAllRequest(ServiceProvider::Ptr const& servicePr
 
 void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     replica::Lock lock(_mtx, context(__func__));
-
     response.set_allocated_target_performance(performance().info().release());
-
     for (auto&& replicaInfo : _replicaInfoCollection) {
         replicaInfo.setInfo(response.add_replica_info_many());
     }
@@ -86,61 +81,20 @@ void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
 bool WorkerFindAllRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database());
 
-    // Set up the result if the operation is over
-
-    bool completed = WorkerRequest::execute();
-    if (completed) {
-        // Simulate the request processing by making an arbitrary number of
-        // datasets.
-
-        for (unsigned int chunk = 0; chunk < 8; ++chunk) {
-            _replicaInfoCollection.emplace_back(ReplicaInfo::COMPLETE, _worker, database(), chunk,
-                                                util::TimeUtils::now(), ReplicaInfo::FileInfoCollection());
-        }
-    }
-    return completed;
-}
-
-////////////////////////////////////////////////////////////////////
-///////////////////// WorkerFindAllRequestPOSIX ////////////////////
-////////////////////////////////////////////////////////////////////
-
-WorkerFindAllRequestPOSIX::Ptr WorkerFindAllRequestPOSIX::create(ServiceProvider::Ptr const& serviceProvider,
-                                                                 string const& worker, string const& id,
-                                                                 int priority,
-                                                                 ExpirationCallbackType const& onExpired,
-                                                                 unsigned int requestExpirationIvalSec,
-                                                                 ProtocolRequestFindAll const& request) {
-    return WorkerFindAllRequestPOSIX::Ptr(new WorkerFindAllRequestPOSIX(
-            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
-}
-
-WorkerFindAllRequestPOSIX::WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                                                     string const& worker, string const& id, int priority,
-                                                     ExpirationCallbackType const& onExpired,
-                                                     unsigned int requestExpirationIvalSec,
-                                                     ProtocolRequestFindAll const& request)
-        : WorkerFindAllRequest(serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec,
-                               request) {}
-
-bool WorkerFindAllRequestPOSIX::execute() {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database());
-
     replica::Lock lock(_mtx, context(__func__));
+    checkIfCancelling(lock, __func__);
 
     auto const config = _serviceProvider->config();
     DatabaseInfo const databaseInfo = config->databaseInfo(database());
 
     // Scan the data directory to find all files which match the expected pattern(s)
     // and group them by their chunk number
-
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code ec;
 
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
-
         fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext = errorContext or
@@ -168,7 +122,6 @@ bool WorkerFindAllRequestPOSIX::execute() {
                                                  "failed to read file mtime: " + entry.path().string());
 
                     unsigned const chunk = get<1>(parsed);
-
                     chunk2fileInfoCollection[chunk].emplace_back(ReplicaInfo::FileInfo({
                             entry.path().filename().string(), size, mtime,
                             "",  /* cs is never computed for this type of requests */
@@ -191,9 +144,7 @@ bool WorkerFindAllRequestPOSIX::execute() {
 
     // Analyze results to see which chunks are complete using chunk 0 as an example
     // of the total number of files which are normally associated with each chunk.
-
     size_t const numFilesPerChunkRequired = FileUtils::partitionedFiles(databaseInfo, 0).size();
-
     for (auto&& entry : chunk2fileInfoCollection) {
         unsigned int const chunk = entry.first;
         size_t const numFiles = entry.second.size();
@@ -201,7 +152,6 @@ bool WorkerFindAllRequestPOSIX::execute() {
                 numFiles < numFilesPerChunkRequired ? ReplicaInfo::INCOMPLETE : ReplicaInfo::COMPLETE,
                 worker(), database(), chunk, util::TimeUtils::now(), chunk2fileInfoCollection[chunk]);
     }
-
     setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }

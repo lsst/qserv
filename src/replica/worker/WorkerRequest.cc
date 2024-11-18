@@ -95,6 +95,19 @@ WorkerRequest::~WorkerRequest() {
     dispose();
 }
 
+void WorkerRequest::checkIfCancelling(replica::Lock const& lock, string const& func) {
+    switch (status()) {
+        case ProtocolStatus::IN_PROGRESS:
+            break;
+        case ProtocolStatus::IS_CANCELLING:
+            setStatus(lock, ProtocolStatus::CANCELLED);
+            throw WorkerRequestCancelled();
+        default:
+            throw logic_error(context(func) +
+                              "  not allowed while in status: " + WorkerRequest::status2string(status()));
+    }
+}
+
 WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(bool errorCondition,
                                                          ProtocolStatusExt extendedStatus,
                                                          string const& errorMsg) {
@@ -143,26 +156,13 @@ void WorkerRequest::start() {
 bool WorkerRequest::execute() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
+    checkIfCancelling(lock, __func__);
 
     // Simulate request 'processing' for some maximum duration of time (milliseconds)
     // while making a progress through increments of random duration of time.
     // Success/failure modes will be also simulated using the corresponding generator.
-
-    switch (status()) {
-        case ProtocolStatus::IN_PROGRESS:
-            break;
-        case ProtocolStatus::IS_CANCELLING:
-            setStatus(lock, ProtocolStatus::CANCELLED);
-            throw WorkerRequestCancelled();
-        default:
-            throw logic_error(context(__func__) +
-                              "  not allowed while in status: " + WorkerRequest::status2string(status()));
-    }
-
     _durationMillisec += ::incrementIvalMillisec.wait();
-
     if (_durationMillisec < ::maxDurationMillisec) return false;
-
     setStatus(lock, ::successRateGenerator.success() ? ProtocolStatus::SUCCESS : ProtocolStatus::FAILED);
     return true;
 }

@@ -47,15 +47,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerServer");
 namespace lsst::qserv::replica {
 
 WorkerServer::Ptr WorkerServer::create(ServiceProvider::Ptr const& serviceProvider,
-                                       WorkerRequestFactory& requestFactory, string const& workerName) {
-    return WorkerServer::Ptr(new WorkerServer(serviceProvider, requestFactory, workerName));
+                                       string const& workerName) {
+    return WorkerServer::Ptr(new WorkerServer(serviceProvider, workerName));
 }
 
-WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider, WorkerRequestFactory& requestFactory,
-                           string const& workerName)
+WorkerServer::WorkerServer(ServiceProvider::Ptr const& serviceProvider, string const& workerName)
         : _serviceProvider(serviceProvider),
           _workerName(workerName),
-          _processor(WorkerProcessor::create(serviceProvider, requestFactory, workerName)),
+          _processor(WorkerProcessor::create(serviceProvider, workerName)),
           _acceptor(_io_service, boost::asio::ip::tcp::endpoint(
                                          boost::asio::ip::tcp::v4(),
                                          serviceProvider->config()->get<uint16_t>("worker", "svc-port"))) {

@@ -48,18 +48,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerReplicationRequest");
 
 namespace lsst::qserv::replica {
 
-///////////////////////////////////////////////////////////////////
-///////////////////// WorkerReplicationRequest ////////////////////
-///////////////////////////////////////////////////////////////////
-
 WorkerReplicationRequest::Ptr WorkerReplicationRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                                string const& worker, string const& id,
                                                                int priority,
                                                                ExpirationCallbackType const& onExpired,
                                                                unsigned int requestExpirationIvalSec,
                                                                ProtocolRequestReplicate const& request) {
-    return WorkerReplicationRequest::Ptr(new WorkerReplicationRequest(
+    auto ptr = WorkerReplicationRequest::Ptr(new WorkerReplicationRequest(
             serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerReplicationRequest::WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
@@ -70,7 +68,13 @@ WorkerReplicationRequest::WorkerReplicationRequest(ServiceProvider::Ptr const& s
         : WorkerRequest(serviceProvider, worker, "REPLICATE", id, priority, onExpired,
                         requestExpirationIvalSec),
           _request(request),
-          _sourceWorkerHostPort(request.worker_host() + ":" + to_string(request.worker_port())) {
+          _sourceWorkerHostPort(request.worker_host() + ":" + to_string(request.worker_port())),
+          _databaseInfo(_serviceProvider->config()->databaseInfo(request.database())),
+          _initialized(false),
+          _files(FileUtils::partitionedFiles(_databaseInfo, request.chunk())),
+          _tmpFilePtr(nullptr),
+          _buf(0),
+          _bufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")) {
     string const context = "WorkerReplicationRequest::" + string(__func__) + " ";
 
     if (worker == request.worker()) {
@@ -89,294 +93,29 @@ WorkerReplicationRequest::WorkerReplicationRequest(ServiceProvider::Ptr const& s
     }
 }
 
+WorkerReplicationRequest::~WorkerReplicationRequest() {
+    replica::Lock lock(_mtx, context(__func__));
+    _releaseResources(lock);
+}
+
 void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     replica::Lock lock(_mtx, context(__func__));
 
     response.set_allocated_target_performance(performance().info().release());
-    response.set_allocated_replica_info(replicaInfo.info().release());
+    response.set_allocated_replica_info(_replicaInfo.info().release());
 
     *(response.mutable_request()) = _request;
 }
 
 bool WorkerReplicationRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG,
-         context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort() << "  db: " << database()
-                           << "  chunk: " << chunk());
-
-    bool const complete = WorkerRequest::execute();
-    if (complete) {
-        replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE, worker(), database(), chunk(),
-                                  util::TimeUtils::now(), ReplicaInfo::FileInfoCollection());
-    }
-    return complete;
-}
-
-////////////////////////////////////////////////////////////////////////
-///////////////////// WorkerReplicationRequestPOSIX ////////////////////
-////////////////////////////////////////////////////////////////////////
-
-WorkerReplicationRequestPOSIX::Ptr WorkerReplicationRequestPOSIX::create(
-        ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& id, int priority,
-        ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
-        ProtocolRequestReplicate const& request) {
-    return WorkerReplicationRequestPOSIX::Ptr(new WorkerReplicationRequestPOSIX(
-            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
-}
-
-WorkerReplicationRequestPOSIX::WorkerReplicationRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                                                             string const& worker, string const& id,
-                                                             int priority,
-                                                             ExpirationCallbackType const& onExpired,
-                                                             unsigned int requestExpirationIvalSec,
-                                                             ProtocolRequestReplicate const& request)
-        : WorkerReplicationRequest(serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec,
-                                   request) {}
-
-bool WorkerReplicationRequestPOSIX::execute() {
-    LOGS(_log, LOG_LVL_DEBUG,
-         context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
-                           << "  sourceWorkerDataDir: " << sourceWorkerDataDir()
-                           << "  database: " << database() << "  chunk: " << chunk());
-
-    replica::Lock lock(_mtx, context(__func__));
-
-    // Obtain the list of files to be migrated
-    //
-    // IMPLEMENTATION NOTES:
-    //
-    // - Note using the overloaded operator '/' which is used to form
-    //   folders and files path names below. The operator will concatenate
-    //   names and also insert a file separator for an operating system
-    //   on which this code will get compiled.
-    //
-    // - Temporary file names at a destination folders are prepended with
-    //   prefix '_' to prevent colliding with the canonical names. They will
-    //   be renamed in the last step.
-    //
-    // - All operations with the file system namespace (creating new non-temporary
-    //   files, checking for folders and files, renaming files, creating folders, etc.)
-    //   are guarded by acquiring replica::Lock lock(_mtxDataFolderOperations) where it's needed.
-
-    auto const config = serviceProvider()->config();
-    DatabaseInfo const databaseInfo = config->databaseInfo(database());
-
-    fs::path const inDir = fs::path(sourceWorkerDataDir()) / database();
-    fs::path const outDir = fs::path(config->get<string>("worker", "data-dir")) / database();
-
-    vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
-
-    vector<fs::path> inFiles;
-    vector<fs::path> tmpFiles;
-    vector<fs::path> outFiles;
-
-    map<string, fs::path> file2inFile;
-    map<string, fs::path> file2tmpFile;
-    map<string, fs::path> file2outFile;
-
-    map<fs::path, time_t> inFile2mtime;
-
-    for (auto&& file : files) {
-        fs::path const inFile = inDir / file;
-        inFiles.push_back(inFile);
-        file2inFile[file] = inFile;
-
-        fs::path const tmpFile = outDir / ("_" + file);
-        tmpFiles.push_back(tmpFile);
-        file2tmpFile[file] = tmpFile;
-
-        fs::path const outFile = outDir / file;
-        outFiles.push_back(outFile);
-        file2outFile[file] = outFile;
-    }
-
-    // Check input files, check and sanitize the destination folder
-
-    uintmax_t totalBytes = 0;  // the total number of bytes in all input files to be moved
-
-    WorkerRequest::ErrorContext errorContext;
-    boost::system::error_code ec;
-    {
-        replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__) + ":1");
-
-        // Check for a presence of input files and calculate space requirement
-
-        for (auto&& file : inFiles) {
-            fs::file_status const stat = fs::status(file, ec);
-            errorContext = errorContext or
-                           reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
-                                         "failed to check the status of input file: " + file.string()) or
-                           reportErrorIf(not fs::exists(stat), ProtocolStatusExt::NO_FILE,
-                                         "the input file does not exist: " + file.string());
-
-            totalBytes += fs::file_size(file, ec);
-            errorContext =
-                    errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
-                                                  "failed to get the size of input file: " + file.string());
-
-            inFile2mtime[file] = fs::last_write_time(file, ec);
-            errorContext =
-                    errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                                  "failed to get the mtime of input file: " + file.string());
-        }
-
-        // Check and sanitize the output directory
-
-        bool const outDirExists = fs::exists(outDir, ec);
-        errorContext = errorContext or
-                       reportErrorIf(ec.value() != 0, ProtocolStatusExt::FOLDER_STAT,
-                                     "failed to check the status of output directory: " + outDir.string()) or
-                       reportErrorIf(not outDirExists, ProtocolStatusExt::NO_FOLDER,
-                                     "the output directory doesn't exist: " + outDir.string());
-
-        // The files with canonical(!) names should NOT exist at the destination
-        // folder.
-
-        for (auto&& file : outFiles) {
-            fs::file_status const stat = fs::status(file, ec);
-            errorContext = errorContext or
-                           reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
-                                         "failed to check the status of output file: " + file.string()) or
-                           reportErrorIf(fs::exists(stat), ProtocolStatusExt::FILE_EXISTS,
-                                         "the output file already exists: " + file.string());
-        }
-
-        // Check if there are any files with the temporary names at the destination
-        // folder and if so then get rid of them.
-
-        for (auto&& file : tmpFiles) {
-            fs::file_status const stat = fs::status(file, ec);
-            errorContext = errorContext or
-                           reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
-                                         "failed to check the status of temporary file: " + file.string());
-
-            if (fs::exists(stat)) {
-                fs::remove(file, ec);
-                errorContext =
-                        errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_DELETE,
-                                                      "failed to remove temporary file: " + file.string());
-            }
-        }
-
-        // Make sure a file system at the destination has enough space
-        // to accommodate new files
-        //
-        // NOTE: this operation runs after cleaning up temporary files
-
-        fs::space_info const space = fs::space(outDir, ec);
-        errorContext =
-                errorContext or
-                reportErrorIf(ec.value() != 0, ProtocolStatusExt::SPACE_REQ,
-                              "failed to obtain space information at output folder: " + outDir.string()) or
-                reportErrorIf(space.available < totalBytes, ProtocolStatusExt::NO_SPACE,
-                              "not enough free space available at output folder: " + outDir.string());
-    }
-    if (errorContext.failed) {
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
-        return true;
-    }
-
-    // Begin copying files into the destination folder under their
-    // temporary names w/o acquiring the directory lock.
-
-    for (auto&& file : files) {
-        fs::path const inFile = file2inFile[file];
-        fs::path const tmpFile = file2tmpFile[file];
-
-        fs::copy_file(inFile, tmpFile, ec);
-        errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_COPY,
-                                                     "failed to copy file: " + inFile.string() +
-                                                             " into: " + tmpFile.string());
-    }
-    if (errorContext.failed) {
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
-        return true;
-    }
-
-    // Rename temporary files into the canonical ones
-    // Note that this operation changes the directory namespace in a way
-    // which may affect other users (like replica lookup operations, etc.). Hence we're
-    // acquiring the directory lock to guarantee a consistent view onto the folder.
-
-    {
-        replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__) + ":2");
-
-        // ATTENTION: as per ISO/IEC 9945 the file rename operation will
-        //            remove empty files. Not sure if this should be treated
-        //            in a special way?
-
-        for (auto&& file : files) {
-            fs::path const inFile = file2inFile[file];
-            fs::path const tmpFile = file2tmpFile[file];
-            fs::path const outFile = file2outFile[file];
-
-            fs::rename(tmpFile, outFile, ec);
-            errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_RENAME,
-                                                         "failed to rename file: " + tmpFile.string());
-
-            fs::last_write_time(outFile, inFile2mtime[inFile], ec);
-            errorContext = errorContext or
-                           reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                         "failed to set the mtime of output file: " + outFile.string());
-        }
-    }
-    if (errorContext.failed) {
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
-        return true;
-    }
-
-    // For now (before finalizing the progress reporting protocol) just return
-    // the percentage of the total amount of data moved
-
-    setStatus(lock, ProtocolStatus::SUCCESS);
-    return true;
-}
-
-/////////////////////////////////////////////////////////////////////
-///////////////////// WorkerReplicationRequestFS ////////////////////
-/////////////////////////////////////////////////////////////////////
-
-WorkerReplicationRequestFS::Ptr WorkerReplicationRequestFS::create(
-        ServiceProvider::Ptr const& serviceProvider, string const& worker, string const& id, int priority,
-        ExpirationCallbackType const& onExpired, unsigned int requestExpirationIvalSec,
-        ProtocolRequestReplicate const& request) {
-    return WorkerReplicationRequestFS::Ptr(new WorkerReplicationRequestFS(
-            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
-}
-
-WorkerReplicationRequestFS::WorkerReplicationRequestFS(ServiceProvider::Ptr const& serviceProvider,
-                                                       string const& worker, string const& id, int priority,
-                                                       ExpirationCallbackType const& onExpired,
-                                                       unsigned int requestExpirationIvalSec,
-                                                       ProtocolRequestReplicate const& request)
-        : WorkerReplicationRequest(serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec,
-                                   request),
-          _databaseInfo(_serviceProvider->config()->databaseInfo(request.database())),
-          _initialized(false),
-          _files(FileUtils::partitionedFiles(_databaseInfo, request.chunk())),
-          _tmpFilePtr(nullptr),
-          _buf(0),
-          _bufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")) {}
-
-WorkerReplicationRequestFS::~WorkerReplicationRequestFS() {
-    replica::Lock lock(_mtx, context(__func__));
-    _releaseResources(lock);
-}
-
-bool WorkerReplicationRequestFS::execute() {
-    LOGS(_log, LOG_LVL_DEBUG,
          context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
                            << "  database: " << database() << "  chunk: " << chunk());
 
     replica::Lock lock(_mtx, context(__func__));
-
-    // Abort the operation right away if that's the case
-
-    if (_status == ProtocolStatus::IS_CANCELLING) {
-        setStatus(lock, ProtocolStatus::CANCELLED);
-        throw WorkerRequestCancelled();
-    }
+    checkIfCancelling(lock, __func__);
 
     // Obtain the list of files to be migrated
     //
@@ -548,7 +287,7 @@ bool WorkerReplicationRequestFS::execute() {
         // Allocate the record buffer
         _buf = new uint8_t[_bufSize];
         if (not _buf) {
-            throw runtime_error("WorkerReplicationRequestFS::" + string(__func__) +
+            throw runtime_error("WorkerReplicationRequest::" + string(__func__) +
                                 "  buffer allocation failed");
         }
 
@@ -642,7 +381,7 @@ bool WorkerReplicationRequestFS::execute() {
     return _finalize(lock);
 }
 
-bool WorkerReplicationRequestFS::_openFiles(replica::Lock const& lock) {
+bool WorkerReplicationRequest::_openFiles(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort() << "  database: "
                            << database() << "  chunk: " << chunk() << "  file: " << *_fileItr);
@@ -683,7 +422,7 @@ bool WorkerReplicationRequestFS::_openFiles(replica::Lock const& lock) {
     return true;
 }
 
-bool WorkerReplicationRequestFS::_finalize(replica::Lock const& lock) {
+bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
                            << "  database: " << database() << "  chunk: " << chunk());
@@ -726,7 +465,7 @@ bool WorkerReplicationRequestFS::_finalize(replica::Lock const& lock) {
     return true;
 }
 
-void WorkerReplicationRequestFS::_updateInfo(replica::Lock const& lock) {
+void WorkerReplicationRequest::_updateInfo(replica::Lock const& lock) {
     size_t totalInSizeBytes = 0;
     size_t totalOutSizeBytes = 0;
 
@@ -746,11 +485,11 @@ void WorkerReplicationRequestFS::_updateInfo(replica::Lock const& lock) {
 
     // Fill in the info on the chunk before finishing the operation
 
-    WorkerReplicationRequest::replicaInfo =
+    WorkerReplicationRequest::_replicaInfo =
             ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(), fileInfoCollection);
 }
 
-void WorkerReplicationRequestFS::_releaseResources(replica::Lock const& lock) {
+void WorkerReplicationRequest::_releaseResources(replica::Lock const& lock) {
     // Drop a connection to the remote server
     _inFilePtr.reset();
 

@@ -47,8 +47,10 @@ WorkerEchoRequest::Ptr WorkerEchoRequest::create(ServiceProvider::Ptr const& ser
                                                  ExpirationCallbackType const& onExpired,
                                                  unsigned int requestExpirationIvalSec,
                                                  ProtocolRequestEcho const& request) {
-    return WorkerEchoRequest::Ptr(new WorkerEchoRequest(serviceProvider, worker, id, priority, onExpired,
-                                                        requestExpirationIvalSec, request));
+    auto ptr = WorkerEchoRequest::Ptr(new WorkerEchoRequest(serviceProvider, worker, id, priority, onExpired,
+                                                            requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerEchoRequest::WorkerEchoRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
@@ -64,10 +66,8 @@ void WorkerEchoRequest::setInfo(ProtocolResponseEcho& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     replica::Lock lock(_mtx, context(__func__));
-
     response.set_allocated_target_performance(performance().info().release());
     response.set_data(data());
-
     *(response.mutable_request()) = _request;
 }
 
@@ -75,28 +75,11 @@ bool WorkerEchoRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  delay:" << delay() << " _delayLeft:" << _delayLeft);
 
     replica::Lock lock(_mtx, context(__func__));
-
-    switch (status()) {
-        case ProtocolStatus::IN_PROGRESS:
-            break;
-
-        case ProtocolStatus::IS_CANCELLING:
-
-            // Abort the operation right away
-
-            setStatus(lock, ProtocolStatus::CANCELLED);
-            throw WorkerRequestCancelled();
-
-        default:
-            throw logic_error(context(__func__) +
-                              "  not allowed while in state: " + WorkerRequest::status2string(status()));
-    }
+    checkIfCancelling(lock, __func__);
 
     // Block the thread for the random number of milliseconds in the interval
     // below. Then update the amount of time which is still left.
-
     util::BlockPost blockPost(1000, 2000);
-
     uint64_t const span = blockPost.wait();
     _delayLeft -= (span < _delayLeft) ? span : _delayLeft;
 

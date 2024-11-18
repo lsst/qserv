@@ -51,8 +51,10 @@ WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& servi
                                                ExpirationCallbackType const& onExpired,
                                                unsigned int requestExpirationIvalSec,
                                                ProtocolRequestSql const& request) {
-    return WorkerSqlRequest::Ptr(new WorkerSqlRequest(serviceProvider, worker, id, priority, onExpired,
-                                                      requestExpirationIvalSec, request));
+    auto ptr = WorkerSqlRequest::Ptr(new WorkerSqlRequest(serviceProvider, worker, id, priority, onExpired,
+                                                          requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
@@ -83,18 +85,10 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 bool WorkerSqlRequest::execute() {
     string const context_ = "WorkerSqlRequest::" + context(__func__);
     LOGS(_log, LOG_LVL_DEBUG, context_);
-    replica::Lock lock(_mtx, context_);
 
-    switch (status()) {
-        case ProtocolStatus::IN_PROGRESS:
-            break;
-        case ProtocolStatus::IS_CANCELLING:
-            setStatus(lock, ProtocolStatus::CANCELLED);
-            throw WorkerRequestCancelled();
-        default:
-            throw logic_error(context_ +
-                              "  not allowed while in state: " + WorkerRequest::status2string(status()));
-    }
+    replica::Lock lock(_mtx, context_);
+    checkIfCancelling(lock, __func__);
+
     try {
         // Pre-create the default result-set message before any operations with
         // the database service. This is needed to report errors.

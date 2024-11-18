@@ -39,9 +39,9 @@
 #include "replica/worker/WorkerRequest.h"
 
 // Forward declarations
-namespace lsst::qserv::replica {
-class WorkerRequestFactory;
-}  // namespace lsst::qserv::replica
+namespace lsst::qserv::replica::database::mysql {
+class ConnectionPool;
+}  // namespace lsst::qserv::replica::database::mysql
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -107,12 +107,9 @@ public:
      * @param serviceProvider provider is needed to access the Configuration of
      *   a setup in order to get a number of the processing threads to be launched
      *   by the processor.
-     * @param requestFactory reference to a factory of requests (for instantiating
-     *   request objects)
      * @param worker the name of a worker
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, WorkerRequestFactory const& requestFactory,
-                      std::string const& worker);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker);
 
     WorkerProcessor() = delete;
     WorkerProcessor(WorkerProcessor const&) = delete;
@@ -336,8 +333,7 @@ public:
     size_t numFinishedRequests() const;
 
 private:
-    WorkerProcessor(ServiceProvider::Ptr const& serviceProvider, WorkerRequestFactory const& requestFactory,
-                    std::string const& worker);
+    WorkerProcessor(ServiceProvider::Ptr const& serviceProvider, std::string const& worker);
 
     static std::string _classMethodContext(std::string const& func);
 
@@ -506,8 +502,8 @@ private:
     std::string _context(std::string const& func = std::string()) const { return "PROCESSOR  " + func; }
 
     ServiceProvider::Ptr const _serviceProvider;
-    WorkerRequestFactory const& _requestFactory;
     std::string const _worker;
+    std::shared_ptr<database::mysql::ConnectionPool> const _connectionPool;
 
     State _state;
 

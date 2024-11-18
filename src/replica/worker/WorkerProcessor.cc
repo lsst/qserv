@@ -29,13 +29,13 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/mysql/DatabaseMySQL.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/worker/WorkerDeleteRequest.h"
 #include "replica/worker/WorkerEchoRequest.h"
 #include "replica/worker/WorkerFindRequest.h"
 #include "replica/worker/WorkerFindAllRequest.h"
 #include "replica/worker/WorkerReplicationRequest.h"
-#include "replica/worker/WorkerRequestFactory.h"
 #include "replica/worker/WorkerSqlRequest.h"
 #include "replica/worker/WorkerDirectorIndexRequest.h"
 #include "util/BlockPost.h"
@@ -91,16 +91,16 @@ string WorkerProcessor::state2string(State state) {
 }
 
 WorkerProcessor::Ptr WorkerProcessor::create(ServiceProvider::Ptr const& serviceProvider,
-                                             WorkerRequestFactory const& requestFactory,
                                              string const& worker) {
-    return Ptr(new WorkerProcessor(serviceProvider, requestFactory, worker));
+    return Ptr(new WorkerProcessor(serviceProvider, worker));
 }
 
-WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider,
-                                 WorkerRequestFactory const& requestFactory, string const& worker)
+WorkerProcessor::WorkerProcessor(ServiceProvider::Ptr const& serviceProvider, string const& worker)
         : _serviceProvider(serviceProvider),
-          _requestFactory(requestFactory),
           _worker(worker),
+          _connectionPool(database::mysql::ConnectionPool::create(
+                  Configuration::qservWorkerDbParams(),
+                  serviceProvider->config()->get<size_t>("database", "services-pool-size"))),
           _state(STATE_IS_STOPPED),
           _startTime(util::TimeUtils::now()) {}
 
@@ -156,10 +156,8 @@ void WorkerProcessor::drain() {
 
     // Collect identifiers of requests to be affected by the operation
     list<string> ids;
-
     for (auto&& ptr : _newRequests) ids.push_back(ptr->id());
     for (auto&& entry : _inProgressRequests) ids.push_back(entry.first);
-
     for (auto&& id : ids) _dequeueOrCancelImpl(lock, id);
 }
 
@@ -196,20 +194,17 @@ void WorkerProcessor::enqueueForReplication(string const& id, int32_t priority,
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createReplicationRequest(
-                _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+        auto const ptr = WorkerReplicationRequest::create(
+                _serviceProvider, _worker, id, priority,
+                [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-
         response.set_status(ProtocolStatus::QUEUED);
         response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info().release());
-
         _setInfo(ptr, response);
-
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-
         setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
     }
 }
@@ -239,20 +234,17 @@ void WorkerProcessor::enqueueForDeletion(string const& id, int32_t priority,
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createDeleteRequest(
-                _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+        auto const ptr = WorkerDeleteRequest::create(
+                _serviceProvider, _worker, id, priority,
+                [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-
         response.set_status(ProtocolStatus::QUEUED);
         response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info().release());
-
         _setInfo(ptr, response);
-
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-
         setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
     }
 }
@@ -271,20 +263,17 @@ void WorkerProcessor::enqueueForFind(string const& id, int32_t priority,
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createFindRequest(
-                _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+        auto const ptr = WorkerFindRequest::create(
+                _serviceProvider, _worker, id, priority,
+                [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-
         response.set_status(ProtocolStatus::QUEUED);
         response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info().release());
-
         _setInfo(ptr, response);
-
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-
         setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
     }
 }
@@ -301,20 +290,17 @@ void WorkerProcessor::enqueueForFindAll(string const& id, int32_t priority,
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createFindAllRequest(
-                _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+        auto const ptr = WorkerFindAllRequest::create(
+                _serviceProvider, _worker, id, priority,
+                [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-
         response.set_status(ProtocolStatus::QUEUED);
         response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info().release());
-
         _setInfo(ptr, response);
-
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-
         setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
     }
 }
@@ -333,12 +319,10 @@ void WorkerProcessor::enqueueForEcho(string const& id, int32_t priority,
         WorkerPerformance performance;
         performance.setUpdateStart();
         performance.setUpdateFinish();
-
         response.set_status(ProtocolStatus::SUCCESS);
         response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(performance.info().release());
         response.set_data(request.data());
-
         return;
     }
 
@@ -346,20 +330,18 @@ void WorkerProcessor::enqueueForEcho(string const& id, int32_t priority,
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createEchoRequest(
-                _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+        auto const ptr = WorkerEchoRequest::create(
+                _serviceProvider, _worker, id, priority,
+                [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-
         response.set_status(ProtocolStatus::QUEUED);
         response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info().release());
-
         _setInfo(ptr, response);
 
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-
         setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
     }
 }
@@ -377,20 +359,17 @@ void WorkerProcessor::enqueueForSql(std::string const& id, int32_t priority,
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createSqlRequest(
-                _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+        auto const ptr = WorkerSqlRequest::create(
+                _serviceProvider, _worker, id, priority,
+                [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-
         response.set_status(ProtocolStatus::QUEUED);
         response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info().release());
-
         _setInfo(ptr, response);
-
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-
         setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
     }
 }
@@ -411,20 +390,17 @@ void WorkerProcessor::enqueueForDirectorIndex(string const& id, int32_t priority
     // won't pass further validation against the present configuration of the request
     // processing service.
     try {
-        auto const ptr = _requestFactory.createDirectorIndexRequest(
-                _worker, id, priority, bind(&WorkerProcessor::dispose, shared_from_this(), _1),
+        auto const ptr = WorkerDirectorIndexRequest::create(
+                _serviceProvider, _connectionPool, _worker, id, priority,
+                [self = shared_from_this()](string const& requestId) { self->dispose(requestId); },
                 requestExpirationIvalSec, request);
         _newRequests.push(ptr);
-
         response.set_status(ProtocolStatus::QUEUED);
         response.set_status_ext(ProtocolStatusExt::NONE);
         response.set_allocated_performance(ptr->performance().info().release());
-
         _setInfo(ptr, response);
-
     } catch (invalid_argument const& ec) {
         LOGS(_log, LOG_LVL_ERROR, _context(__func__) << "  " << ec.what());
-
         setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_PARAM);
     }
 }
@@ -487,7 +463,6 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
             case ProtocolStatus::SUCCESS:
             case ProtocolStatus::FAILED:
                 return ptr;
-
             default:
                 throw logic_error(_classMethodContext(__func__) + "  unexpected request status " +
                                   WorkerRequest::status2string(ptr->status()) + " in in-progress requests");
@@ -586,7 +561,7 @@ void WorkerProcessor::setServiceResponse(ProtocolServiceResponse& response, stri
     replica::Lock lock(_mtx, _context(__func__));
 
     response.set_status(status);
-    response.set_technology(_requestFactory.technology());
+    response.set_technology("FS");
     response.set_start_time(_startTime);
 
     switch (state()) {

@@ -35,10 +35,7 @@ namespace lsst::qserv::replica {
 
 /**
  * Class WorkerDeleteRequest represents a context and a state of replica deletion
- * requests within the worker servers. It can also be used for testing the framework
- * operation as its implementation won't make any changes to any files or databases.
- *
- * Real implementations of the request processing must derive from this class.
+ * requests within the worker servers.
  */
 class WorkerDeleteRequest : public WorkerRequest {
 public:
@@ -74,10 +71,7 @@ public:
 
     ~WorkerDeleteRequest() override = default;
 
-    // Trivial get methods
-
     std::string const& database() const { return _request.database(); }
-
     unsigned int chunk() const { return _request.chunk(); }
 
     /**
@@ -94,46 +88,11 @@ protected:
                         unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
 
     // Input parameters
-
     ProtocolRequestDelete const _request;
 
     /// Extended status of the replica deletion request
     ReplicaInfo _replicaInfo;
 };
-
-/**
- * Class WorkerDeleteRequestPOSIX provides an actual implementation for
- * the replica deletion based on the direct manipulation of files on
- * a POSIX file system.
- */
-class WorkerDeleteRequestPOSIX : public WorkerDeleteRequest {
-public:
-    typedef std::shared_ptr<WorkerDeleteRequestPOSIX> Ptr;
-
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
-
-    WorkerDeleteRequestPOSIX() = delete;
-    WorkerDeleteRequestPOSIX(WorkerDeleteRequestPOSIX const&) = delete;
-    WorkerDeleteRequestPOSIX& operator=(WorkerDeleteRequestPOSIX const&) = delete;
-
-    ~WorkerDeleteRequestPOSIX() final = default;
-
-    bool execute() final;
-
-private:
-    WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                             std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                             unsigned int requestExpirationIvalSec, ProtocolRequestDelete const& request);
-};
-
-/**
- * Class WorkerDeleteRequestFS has the same implementation as the 'typedef'-ed
- * class for the replica deletion based on the direct manipulation of files on
- * a POSIX file system.
- */
-typedef WorkerDeleteRequestPOSIX WorkerDeleteRequestFS;
 
 }  // namespace lsst::qserv::replica
 

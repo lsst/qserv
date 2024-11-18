@@ -47,17 +47,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerFindRequest");
 
 namespace lsst::qserv::replica {
 
-////////////////////////////////////////////////////////////
-///////////////////// WorkerFindRequest ////////////////////
-////////////////////////////////////////////////////////////
-
 WorkerFindRequest::Ptr WorkerFindRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                  string const& worker, string const& id, int priority,
                                                  ExpirationCallbackType const& onExpired,
                                                  unsigned int requestExpirationIvalSec,
                                                  ProtocolRequestFind const& request) {
-    return WorkerFindRequest::Ptr(new WorkerFindRequest(serviceProvider, worker, id, priority, onExpired,
-                                                        requestExpirationIvalSec, request));
+    auto ptr = WorkerFindRequest::Ptr(new WorkerFindRequest(serviceProvider, worker, id, priority, onExpired,
+                                                            requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerFindRequest::WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
@@ -73,10 +71,8 @@ void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     replica::Lock lock(_mtx, context(__func__));
-
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
-
     *(response.mutable_request()) = _request;
 }
 
@@ -84,50 +80,7 @@ bool WorkerFindRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database() << "  chunk: " << chunk());
 
     replica::Lock lock(_mtx, context(__func__));
-
-    // Set up the result if the operation is over
-
-    bool completed = WorkerRequest::execute();
-    if (completed) {
-        _replicaInfo = ReplicaInfo(ReplicaInfo::COMPLETE, worker(), database(), chunk(),
-                                   util::TimeUtils::now(), ReplicaInfo::FileInfoCollection());
-    }
-    return completed;
-}
-
-/////////////////////////////////////////////////////////////////
-///////////////////// WorkerFindRequestPOSIX ////////////////////
-/////////////////////////////////////////////////////////////////
-
-WorkerFindRequestPOSIX::Ptr WorkerFindRequestPOSIX::create(ServiceProvider::Ptr const& serviceProvider,
-                                                           string const& worker, string const& id,
-                                                           int priority,
-                                                           ExpirationCallbackType const& onExpired,
-                                                           unsigned int requestExpirationIvalSec,
-                                                           ProtocolRequestFind const& request) {
-    return WorkerFindRequestPOSIX::Ptr(new WorkerFindRequestPOSIX(
-            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
-}
-
-WorkerFindRequestPOSIX::WorkerFindRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                                               string const& worker, string const& id, int priority,
-                                               ExpirationCallbackType const& onExpired,
-                                               unsigned int requestExpirationIvalSec,
-                                               ProtocolRequestFind const& request)
-        : WorkerFindRequest(serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec,
-                            request) {}
-
-bool WorkerFindRequestPOSIX::execute() {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database() << "  chunk: " << chunk());
-
-    replica::Lock lock(_mtx, context(__func__));
-
-    // Abort the operation right away if that's the case
-
-    if (_status == ProtocolStatus::IS_CANCELLING) {
-        setStatus(lock, ProtocolStatus::CANCELLED);
-        throw WorkerRequestCancelled();
-    }
+    checkIfCancelling(lock, __func__);
 
     // There are two modes of operation of the code which would depend
     // on a presence (or a lack of that) to calculate control/check sums

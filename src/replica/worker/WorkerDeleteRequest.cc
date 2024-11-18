@@ -47,17 +47,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerDeleteRequest");
 
 namespace lsst::qserv::replica {
 
-//////////////////////////////////////////////////////////////
-///////////////////// WorkerDeleteRequest ////////////////////
-//////////////////////////////////////////////////////////////
-
 WorkerDeleteRequest::Ptr WorkerDeleteRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                      string const& worker, string const& id, int priority,
                                                      ExpirationCallbackType const& onExpired,
                                                      unsigned int requestExpirationIvalSec,
                                                      ProtocolRequestDelete const& request) {
-    return WorkerDeleteRequest::Ptr(new WorkerDeleteRequest(serviceProvider, worker, id, priority, onExpired,
-                                                            requestExpirationIvalSec, request));
+    auto ptr = WorkerDeleteRequest::Ptr(new WorkerDeleteRequest(
+            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
@@ -85,35 +83,8 @@ void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
 bool WorkerDeleteRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  db: " << database() << "  chunk: " << chunk());
 
-    return WorkerRequest::execute();
-}
-
-///////////////////////////////////////////////////////////////////
-///////////////////// WorkerDeleteRequestPOSIX ////////////////////
-///////////////////////////////////////////////////////////////////
-
-WorkerDeleteRequestPOSIX::Ptr WorkerDeleteRequestPOSIX::create(ServiceProvider::Ptr const& serviceProvider,
-                                                               string const& worker, string const& id,
-                                                               int priority,
-                                                               ExpirationCallbackType const& onExpired,
-                                                               unsigned int requestExpirationIvalSec,
-                                                               ProtocolRequestDelete const& request) {
-    return WorkerDeleteRequestPOSIX::Ptr(new WorkerDeleteRequestPOSIX(
-            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
-}
-
-WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                                                   string const& worker, string const& id, int priority,
-                                                   ExpirationCallbackType const& onExpired,
-                                                   unsigned int requestExpirationIvalSec,
-                                                   ProtocolRequestDelete const& request)
-        : WorkerDeleteRequest(serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec,
-                              request) {}
-
-bool WorkerDeleteRequestPOSIX::execute() {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  db: " << database() << "  chunk: " << chunk());
-
     replica::Lock lock(_mtx, context(__func__));
+    checkIfCancelling(lock, __func__);
 
     auto const config = _serviceProvider->config();
     DatabaseInfo const databaseInfo = config->databaseInfo(database());
