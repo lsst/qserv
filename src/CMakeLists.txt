@@ -68,6 +68,7 @@ add_subdirectory(mysql)
 add_subdirectory(parser)
 add_subdirectory(partition)
 add_subdirectory(proto)
+add_subdirectory(protojson)
 add_subdirectory(proxy)
 add_subdirectory(qana)
 add_subdirectory(qdisp)
@@ -90,4 +91,5 @@ add_subdirectory(wsched)
 add_subdirectory(www)
 add_subdirectory(xrdlog)
 add_subdirectory(xrdsvc)
+
 

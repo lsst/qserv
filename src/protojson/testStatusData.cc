@@ -28,10 +28,8 @@
 
 // Qserv headers
 #include "global/clock_defs.h"
-#include "http/WorkerQueryStatusData.h"
-
-// LSST headers
 #include "lsst/log/Log.h"
+#include "protojson/WorkerQueryStatusData.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE RequestQuery
@@ -39,7 +37,7 @@
 
 using namespace std;
 namespace test = boost::test_tools;
-using namespace lsst::qserv::http;
+using namespace lsst::qserv::protojson;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
@@ -55,15 +53,16 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     int czrPort = 2022;
     string const czrHost("cz_host");
 
-    auto czarA = lsst::qserv::http::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
+    auto czarA =
+            lsst::qserv::protojson::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
 
     auto czarAJs = czarA->serializeJson();
 
-    auto czarB = lsst::qserv::http::CzarContactInfo::createFromJson(czarAJs);
+    auto czarB = lsst::qserv::protojson::CzarContactInfo::createFromJson(czarAJs);
     BOOST_REQUIRE(czarA->compare(*czarB));
 
-    auto czarC =
-            lsst::qserv::http::CzarContactInfo::create("different", czrId, czrPort, czrHost, cxrStartTime);
+    auto czarC = lsst::qserv::protojson::CzarContactInfo::create("different", czrId, czrPort, czrHost,
+                                                                 cxrStartTime);
     BOOST_REQUIRE(!czarA->compare(*czarC));
 
     auto start = lsst::qserv::CLOCK::now();
@@ -78,15 +77,15 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     BOOST_REQUIRE(workerA->isSameContactInfo(*workerA1));
 
     // WorkerQueryStatusData
-    auto wqsdA = lsst::qserv::http::WorkerQueryStatusData::create(workerA, czarA, replicationInstanceId,
-                                                                  replicationAuthKey);
+    auto wqsdA = lsst::qserv::protojson::WorkerQueryStatusData::create(workerA, czarA, replicationInstanceId,
+                                                                       replicationAuthKey);
 
     double maxLifetime = 300.0;
     auto jsDataA = wqsdA->serializeJson(maxLifetime);
 
     // Check that empty lists work.
-    auto wqsdA1 = lsst::qserv::http::WorkerQueryStatusData::createFromJson(*jsDataA, replicationInstanceId,
-                                                                           replicationAuthKey, start1Sec);
+    auto wqsdA1 = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
+            *jsDataA, replicationInstanceId, replicationAuthKey, start1Sec);
     auto jsDataA1 = wqsdA1->serializeJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsDataA1);
 
@@ -108,7 +107,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     jsDataA = wqsdA->serializeJson(maxLifetime);
 
     auto start5Sec = start + 5s;
-    auto workerAFromJson = lsst::qserv::http::WorkerQueryStatusData::createFromJson(
+    auto workerAFromJson = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
             *jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
     auto jsWorkerAFromJson = workerAFromJson->serializeJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
@@ -120,7 +119,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     jsDataA = wqsdA->serializeJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA != *jsWorkerAFromJson);
 
-    workerAFromJson = lsst::qserv::http::WorkerQueryStatusData::createFromJson(
+    workerAFromJson = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
             *jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
     jsWorkerAFromJson = workerAFromJson->serializeJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
@@ -153,7 +152,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     int czrPort = 2022;
     string const czrHost("cz_host");
 
-    auto czarA = lsst::qserv::http::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
+    auto czarA =
+            lsst::qserv::protojson::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
     auto czarAJs = czarA->serializeJson();
 
     auto start = lsst::qserv::CLOCK::now();
@@ -161,7 +161,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto jsWorkerA = workerA->serializeJson();
 
     // WorkerCzarComIssue
-    auto wccIssueA = lsst::qserv::http::WorkerCzarComIssue::create(replicationInstanceId, replicationAuthKey);
+    auto wccIssueA =
+            lsst::qserv::protojson::WorkerCzarComIssue::create(replicationInstanceId, replicationAuthKey);
     wccIssueA->setContactInfo(workerA, czarA);
     BOOST_REQUIRE(wccIssueA->needToSend() == false);
     wccIssueA->setThoughtCzarWasDead(true);
@@ -169,8 +170,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
 
     auto jsIssueA = wccIssueA->serializeJson();
 
-    auto wccIssueA1 = lsst::qserv::http::WorkerCzarComIssue::createFromJson(*jsIssueA, replicationInstanceId,
-                                                                            replicationAuthKey);
+    auto wccIssueA1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
+            *jsIssueA, replicationInstanceId, replicationAuthKey);
     auto jsIssueA1 = wccIssueA1->serializeJson();
     BOOST_REQUIRE(*jsIssueA == *jsIssueA1);
 

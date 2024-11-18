@@ -31,7 +31,7 @@
 
 // qserv headers
 #include "http/Client.h"
-#include "http/WorkerQueryStatusData.h"
+#include "protojson/WorkerQueryStatusData.h"
 #include "util/Bug.h"
 #include "util/Histogram.h"
 #include "wbase/UberJobData.h"
@@ -54,7 +54,7 @@ namespace lsst::qserv::wcontrol {
 
 WCzarInfo::WCzarInfo(CzarIdType czarId_)
         : czarId(czarId_),
-          _workerCzarComIssue(http::WorkerCzarComIssue::create(
+          _workerCzarComIssue(protojson::WorkerCzarComIssue::create(
                   wconfig::WorkerConfig::instance()->replicationInstanceId(),
                   wconfig::WorkerConfig::instance()->replicationAuthKey())) {}
 
@@ -68,8 +68,8 @@ void WCzarInfo::czarMsgReceived(TIMEPOINT tm) {
     }
 }
 
-void WCzarInfo::sendWorkerCzarComIssueIfNeeded(http::WorkerContactInfo::Ptr const& wInfo_,
-                                               http::CzarContactInfo::Ptr const& czInfo_) {
+void WCzarInfo::sendWorkerCzarComIssueIfNeeded(protojson::WorkerContactInfo::Ptr const& wInfo_,
+                                               protojson::CzarContactInfo::Ptr const& czInfo_) {
     unique_lock<mutex> uniLock(_wciMtx);
     if (_workerCzarComIssue->needToSend()) {
         // Having more than one of this message being sent at one time

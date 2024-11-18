@@ -32,7 +32,7 @@
 #include "nlohmann/json.hpp"
 
 // qserv headers
-#include "http/WorkerQueryStatusData.h"
+#include "protojson/WorkerQueryStatusData.h"
 #include "util/Bug.h"
 
 namespace lsst::qserv::cconfig {
@@ -92,8 +92,9 @@ public:
 
     static std::string getStateStr(State st);
 
-    static Ptr create(http::WorkerContactInfo::Ptr const& wInfo, http::CzarContactInfo::Ptr const& czInfo,
-                      std::string const& replicationInstanceId, std::string const& replicationAuthKey) {
+    static Ptr create(protojson::WorkerContactInfo::Ptr const& wInfo,
+                      protojson::CzarContactInfo::Ptr const& czInfo, std::string const& replicationInstanceId,
+                      std::string const& replicationAuthKey) {
         return Ptr(new ActiveWorker(wInfo, czInfo, replicationInstanceId, replicationAuthKey));
     }
 
@@ -105,14 +106,14 @@ public:
         _wqsData->setCzarCancelAfterRestart(czId, lastQId);
     }
 
-    http::WorkerContactInfo::Ptr getWInfo() const;
+    protojson::WorkerContactInfo::Ptr getWInfo() const;
 
     ~ActiveWorker() = default;
 
     /// Return true if there were differences in  worker id, host, or port values.
-    bool compareContactInfo(http::WorkerContactInfo const& wcInfo) const;
+    bool compareContactInfo(protojson::WorkerContactInfo const& wcInfo) const;
 
-    void setWorkerContactInfo(http::WorkerContactInfo::Ptr const& wcInfo);
+    void setWorkerContactInfo(protojson::WorkerContactInfo::Ptr const& wcInfo);
 
     /// Check this workers state (by looking at contact information) and queue
     /// the WorkerQueryStatusData message `_wqsData` to be sent if this worker
@@ -148,10 +149,11 @@ public:
     std::string dump() const;
 
 private:
-    ActiveWorker(http::WorkerContactInfo::Ptr const& wInfo, http::CzarContactInfo::Ptr const& czInfo,
-                 std::string const& replicationInstanceId, std::string const& replicationAuthKey)
-            : _wqsData(http::WorkerQueryStatusData::create(wInfo, czInfo, replicationInstanceId,
-                                                           replicationAuthKey)) {
+    ActiveWorker(protojson::WorkerContactInfo::Ptr const& wInfo,
+                 protojson::CzarContactInfo::Ptr const& czInfo, std::string const& replicationInstanceId,
+                 std::string const& replicationAuthKey)
+            : _wqsData(protojson::WorkerQueryStatusData::create(wInfo, czInfo, replicationInstanceId,
+                                                                replicationAuthKey)) {
         if (_wqsData == nullptr) {
             throw util::Bug(ERR_LOC, "ActiveWorker _wqsData null");
         }
@@ -163,7 +165,7 @@ private:
 
     /// Send the `jsWorkerReqPtr` json message to the worker referenced by `wInf` to
     /// transmit the `_wqsData` state.
-    void _sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
+    void _sendStatusMsg(protojson::WorkerContactInfo::Ptr const& wInf,
                         std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr);
 
     /// Dump a log string for this object.
@@ -172,7 +174,7 @@ private:
 
     /// Contains data that needs to be sent to workers about finished/cancelled
     /// user queries and UberJobs. It must not be null.
-    http::WorkerQueryStatusData::Ptr const _wqsData;
+    protojson::WorkerQueryStatusData::Ptr const _wqsData;
 
     State _state{QUESTIONABLE};  ///< current state of this worker.
 
@@ -198,8 +200,9 @@ public:
 
     /// Use information gathered from the registry to update the map. The registry
     /// contains last contact time (used for determining aliveness) and worker contact information.
-    void updateMap(http::WorkerContactInfo::WCMap const& wcMap, http::CzarContactInfo::Ptr const& czInfo,
-                   std::string const& replicationInstanceId, std::string const& replicationAuthKey);
+    void updateMap(protojson::WorkerContactInfo::WCMap const& wcMap,
+                   protojson::CzarContactInfo::Ptr const& czInfo, std::string const& replicationInstanceId,
+                   std::string const& replicationAuthKey);
 
     /// If this is to be called, it must be called before Czar::_monitor is started:
     /// It tells the workers all queries from `czId` with QueryIds less than `lastQId`

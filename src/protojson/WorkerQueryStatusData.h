@@ -37,7 +37,7 @@
 #include "util/Mutex.h"
 
 // This header declarations
-namespace lsst::qserv::http {
+namespace lsst::qserv::protojson {
 
 /// This class just contains the czar id and network contact information.
 class CzarContactInfo : public std::enable_shared_from_this<CzarContactInfo> {
@@ -463,6 +463,16 @@ private:
     mutable MUTEX _wciMtx;  ///< protects all members.
 };
 
-}  // namespace lsst::qserv::http
+class WorkerUberJobMsg {
+public:
+    using Ptr = std::shared_ptr<WorkerUberJobMsg>;
+
+    static Ptr create();
+
+private:
+    WorkerUberJobMsg();
+};
+
+}  // namespace lsst::qserv::protojson
 
 #endif  // LSST_QSERV_HTTP_WORKERQUERYSTATUSDATA_H

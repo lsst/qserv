@@ -57,14 +57,14 @@ string ActiveWorker::getStateStr(State st) {
     return string("unknown");
 }
 
-bool ActiveWorker::compareContactInfo(http::WorkerContactInfo const& wcInfo) const {
+bool ActiveWorker::compareContactInfo(protojson::WorkerContactInfo const& wcInfo) const {
     lock_guard<mutex> lg(_aMtx);
     auto wInfo_ = _wqsData->getWInfo();
     if (wInfo_ == nullptr) return false;
     return wInfo_->isSameContactInfo(wcInfo);
 }
 
-void ActiveWorker::setWorkerContactInfo(http::WorkerContactInfo::Ptr const& wcInfo) {
+void ActiveWorker::setWorkerContactInfo(protojson::WorkerContactInfo::Ptr const& wcInfo) {
     LOGS(_log, LOG_LVL_INFO, cName(__func__) << " new info=" << wcInfo->dump());
     lock_guard<mutex> lg(_aMtx);
     _wqsData->setWInfo(wcInfo);
@@ -82,7 +82,7 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
                                               double maxLifetime) {
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " start");
     bool newlyDeadWorker = false;
-    http::WorkerContactInfo::Ptr wInfo_;
+    protojson::WorkerContactInfo::Ptr wInfo_;
     {
         lock_guard<mutex> lg(_aMtx);
         wInfo_ = _wqsData->getWInfo();
@@ -155,7 +155,7 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
     qdisppool->queCmd(cmd, 1);
 }
 
-void ActiveWorker::_sendStatusMsg(http::WorkerContactInfo::Ptr const& wInf,
+void ActiveWorker::_sendStatusMsg(protojson::WorkerContactInfo::Ptr const& wInf,
                                   std::shared_ptr<nlohmann::json> const& jsWorkerReqPtr) {
     auto& jsWorkerReq = *jsWorkerReqPtr;
     auto const method = http::Method::POST;
@@ -214,7 +214,7 @@ void ActiveWorker::addDeadUberJob(QueryId qId, UberJobId ujId) {
     _wqsData->addDeadUberJob(qId, ujId, now);
 }
 
-http::WorkerContactInfo::Ptr ActiveWorker::getWInfo() const {
+protojson::WorkerContactInfo::Ptr ActiveWorker::getWInfo() const {
     std::lock_guard lg(_aMtx);
     if (_wqsData == nullptr) return nullptr;
     return _wqsData->getWInfo();
@@ -241,8 +241,8 @@ ActiveWorkerMap::ActiveWorkerMap(std::shared_ptr<cconfig::CzarConfig> const& cza
           _timeoutDeadSecs(czarConfig->getActiveWorkerTimeoutDeadSecs()),
           _maxLifetime(czarConfig->getActiveWorkerMaxLifetimeSecs()) {}
 
-void ActiveWorkerMap::updateMap(http::WorkerContactInfo::WCMap const& wcMap,
-                                http::CzarContactInfo::Ptr const& czInfo,
+void ActiveWorkerMap::updateMap(protojson::WorkerContactInfo::WCMap const& wcMap,
+                                protojson::CzarContactInfo::Ptr const& czInfo,
                                 std::string const& replicationInstanceId,
                                 std::string const& replicationAuthKey) {
     // Go through wcMap, update existing entries in _awMap, create new entries for those that don't exist,
