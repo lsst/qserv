@@ -33,11 +33,11 @@
 #include "global/clock_defs.h"
 #include "global/intTypes.h"
 
-namespace lsst::qserv::http {
+namespace lsst::qserv::protojson {
 class CzarContactInfo;
 class WorkerContactInfo;
 class WorkerCzarComIssue;
-}  // namespace lsst::qserv::http
+}  // namespace lsst::qserv::protojson
 
 namespace lsst::qserv::wbase {
 class UJTransmitCmd;
@@ -67,8 +67,8 @@ public:
     static Ptr create(CzarIdType czarId_) { return Ptr(new WCzarInfo(czarId_)); }
 
     /// If there were communication issues, start a thread to send the WorkerCzarComIssue message.
-    void sendWorkerCzarComIssueIfNeeded(std::shared_ptr<http::WorkerContactInfo> const& wInfo_,
-                                        std::shared_ptr<http::CzarContactInfo> const& czInfo_);
+    void sendWorkerCzarComIssueIfNeeded(std::shared_ptr<protojson::WorkerContactInfo> const& wInfo_,
+                                        std::shared_ptr<protojson::CzarContactInfo> const& czInfo_);
 
     /// Called by the worker after the czar successfully replied to the original
     /// message from the worker.
@@ -79,7 +79,7 @@ public:
     /// Check if the czar is still considered to be alive, or it timed out.
     bool checkAlive(TIMEPOINT tmMark);
 
-    std::shared_ptr<http::WorkerCzarComIssue> getWorkerCzarComIssue();
+    std::shared_ptr<protojson::WorkerCzarComIssue> getWorkerCzarComIssue();
 
     CzarIdType const czarId;
 
@@ -93,7 +93,7 @@ private:
 
     /// This class tracks communication problems and prepares a message
     /// to inform the czar of the problem.
-    std::shared_ptr<http::WorkerCzarComIssue> _workerCzarComIssue;
+    std::shared_ptr<protojson::WorkerCzarComIssue> _workerCzarComIssue;
     mutable std::mutex _wciMtx;  ///< protects all private members.
 
     /// true when running a thread to send a message to the czar

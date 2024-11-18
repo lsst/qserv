@@ -36,8 +36,8 @@
 #include "http/MetaModule.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
-#include "http/WorkerQueryStatusData.h"
 #include "mysql/MySqlUtils.h"
+#include "protojson/WorkerQueryStatusData.h"
 #include "qmeta/types.h"
 #include "util/String.h"
 #include "util/Timer.h"
@@ -251,8 +251,8 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     auto const replicationAuthKey = workerConfig->replicationAuthKey();
 
     auto const& jsReq = body().objJson;
-    auto wqsData = http::WorkerQueryStatusData::createFromJson(jsReq, replicationInstanceId,
-                                                               replicationAuthKey, now);
+    auto wqsData = protojson::WorkerQueryStatusData::createFromJson(jsReq, replicationInstanceId,
+                                                                    replicationAuthKey, now);
 
     auto const czInfo = wqsData->getCzInfo();
     LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
