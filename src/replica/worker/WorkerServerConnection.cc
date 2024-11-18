@@ -137,10 +137,8 @@ void WorkerServerConnection::_receive() {
     // the synchronous read method. This is based on an assumption
     // that the worker server sends the whole message (its frame and
     // the message itself) at once.
-
     const size_t bytes = sizeof(uint32_t);
     _bufferPtr->resize(bytes);
-
     boost::asio::async_read(_socket, boost::asio::buffer(_bufferPtr->data(), bytes),
                             boost::asio::transfer_at_least(bytes),
                             bind(&WorkerServerConnection::_received, shared_from_this(), _1, _2));
@@ -149,7 +147,6 @@ void WorkerServerConnection::_receive() {
 void WorkerServerConnection::_received(boost::system::error_code const& ec, size_t bytes_transferred) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " ec=" << ec.value() << " bytes_transferred=" << bytes_transferred);
-
     if (::isErrorCode(context(), ec, __func__)) return;
 
     // Now read the request header
@@ -161,7 +158,6 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec, size
     // - first goes the class of requests as defined by member 'type'
     // - then  goes a choice of a specific request within its class. Those specific
     //   request codes are obtained from the corresponding members
-
     switch (hdr.type()) {
         case ProtocolRequestHeader::QUEUED:
             _processQueuedRequest(hdr);
@@ -432,12 +428,10 @@ void WorkerServerConnection::_processServiceRequest(ProtocolRequestHeader const&
 
     // All performance counters for this type of requests should be
     // equal because this is the instantaneous request
-
     WorkerPerformance performance;
     performance.setUpdateStart();
     performance.setUpdateFinish();
     response.set_allocated_performance(performance.info().release());
-
     if (_verifyInstance(hdr, response)) {
         switch (hdr.service_type()) {
             case ProtocolServiceRequestType::SERVICE_SUSPEND: {
@@ -503,7 +497,6 @@ void WorkerServerConnection::_send(string const& id) {
 void WorkerServerConnection::_sent(boost::system::error_code const& ec, size_t bytes_transferred) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << " ec=" << ec.value() << " bytes_transferred=" << bytes_transferred);
-
     if (::isErrorCode(context(), ec, __func__)) return;
 
     // Go wait for another request

@@ -80,10 +80,8 @@ void WorkerFindAllRequest::setInfo(ProtocolResponseFindAll& response) const {
 
 bool WorkerFindAllRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database());
-
     replica::Lock lock(_mtx, context(__func__));
     checkIfCancelling(lock, __func__);
-
     auto const config = _serviceProvider->config();
     DatabaseInfo const databaseInfo = config->databaseInfo(database());
 

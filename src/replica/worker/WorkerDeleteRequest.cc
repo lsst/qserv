@@ -71,12 +71,9 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
 
 void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     replica::Lock lock(_mtx, context(__func__));
-
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
-
     *(response.mutable_request()) = _request;
 }
 
@@ -88,18 +85,14 @@ bool WorkerDeleteRequest::execute() {
 
     auto const config = _serviceProvider->config();
     DatabaseInfo const databaseInfo = config->databaseInfo(database());
-
     vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
 
     // The data folder will be locked while performing the operation
-
     int numFilesDeleted = 0;
-
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code ec;
     {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
-
         fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext = errorContext or
@@ -107,7 +100,6 @@ bool WorkerDeleteRequest::execute() {
                                      "failed to check the status of directory: " + dataDir.string()) or
                        reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
                                      "the directory does not exists: " + dataDir.string());
-
         for (const auto& name : files) {
             const fs::path file = dataDir / fs::path(name);
             if (fs::remove(file, ec)) ++numFilesDeleted;
@@ -119,7 +111,6 @@ bool WorkerDeleteRequest::execute() {
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
-
     setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }

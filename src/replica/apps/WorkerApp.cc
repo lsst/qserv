@@ -127,6 +127,7 @@ int WorkerApp::runImpl() {
 
     // Keep sending periodic 'heartbeats' to the Registry service to report
     // a configuration and a status of the current worker.
+    auto const config = serviceProvider()->config();
     while (true) {
         try {
             serviceProvider()->registry()->addWorker(worker);

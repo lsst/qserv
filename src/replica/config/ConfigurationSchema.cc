@@ -278,12 +278,7 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " (if the server is not up, or if it's not reachable for some reason)"},
              {"default", 3600}}}}},
          {"worker",
-          {{"technology",
-            {{"description",
-              "The name of a technology for implementing replica management requests at workers."},
-             {"restricted", {{"type", "set"}, {"values", json::array({"FS", "POSIX", "TEST"})}}},
-             {"default", "FS"}}},
-           {"num-threads",
+          {{"num-threads",
             {{"description",
               "The number of threads managed by BOOST ASIO. Must be greater than 0."
               " Note that setting too many threads may result in a significant memory footprint"

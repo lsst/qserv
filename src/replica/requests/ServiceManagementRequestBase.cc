@@ -97,7 +97,6 @@ void ServiceState::set(ProtocolServiceResponse const& message) {
             throw runtime_error("ServiceState::" + string(__func__) +
                                 "  service state found in protocol is unknown");
     }
-    technology = message.technology();
     startTime = message.start_time();
 
     numNewRequests = message.num_new_requests();
@@ -121,7 +120,6 @@ ostream& operator<<(ostream& os, ServiceState const& ss) {
     os << "ServiceState:\n"
        << "\n  Summary:\n\n"
        << "    service state:              " << ss.state2string() << "\n"
-       << "    technology:                 " << ss.technology << "\n"
        << "    start time [ms]:            " << ss.startTime << " (" << secondsAgo << " seconds ago)\n"
        << "    total new requests:         " << ss.numNewRequests << "\n"
        << "    total in-progress requests: " << ss.numInProgressRequests << "\n"

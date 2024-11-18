@@ -123,11 +123,9 @@ WorkerRequest::ErrorContext WorkerRequest::reportErrorIf(bool errorCondition,
 void WorkerRequest::init() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
-
     if (status() != ProtocolStatus::CREATED) return;
 
     // Start the expiration timer
-
     if (_requestExpirationIvalSec != 0) {
         _requestExpirationTimer.cancel();
         _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
@@ -142,7 +140,6 @@ void WorkerRequest::init() {
 void WorkerRequest::start() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
-
     switch (status()) {
         case ProtocolStatus::CREATED:
             setStatus(lock, ProtocolStatus::IN_PROGRESS);
@@ -170,7 +167,6 @@ bool WorkerRequest::execute() {
 void WorkerRequest::cancel() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
-
     switch (status()) {
         case ProtocolStatus::QUEUED:
         case ProtocolStatus::CREATED:
@@ -193,7 +189,6 @@ void WorkerRequest::cancel() {
 void WorkerRequest::rollback() {
     LOGS(_log, LOG_LVL_TRACE, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
-
     switch (status()) {
         case ProtocolStatus::CREATED:
         case ProtocolStatus::IN_PROGRESS:
@@ -233,7 +228,6 @@ void WorkerRequest::setStatus(replica::Lock const& lock, ProtocolStatus status,
     LOGS(_log, LOG_LVL_TRACE,
          context(__func__) << "  " << WorkerRequest::status2string(_status, _extendedStatus) << " -> "
                            << WorkerRequest::status2string(status, extendedStatus));
-
     switch (status) {
         case ProtocolStatus::CREATED:
             _performance.start_time = 0;
@@ -249,9 +243,7 @@ void WorkerRequest::setStatus(replica::Lock const& lock, ProtocolStatus status,
 
             // Set the start time to some meaningful value in case if the request was
             // cancelled while sitting in the input queue
-
             if (0 == _performance.start_time) _performance.setUpdateStart();
-
             _performance.setUpdateFinish();
             break;
 
@@ -266,7 +258,6 @@ void WorkerRequest::setStatus(replica::Lock const& lock, ProtocolStatus status,
     // ATTENTION: the top-level status is the last to be modified in
     // the state transition to ensure clients will see a consistent state
     // of the object.
-
     _extendedStatus = extendedStatus;
     _status = status;
 }

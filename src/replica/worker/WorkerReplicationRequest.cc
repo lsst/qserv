@@ -100,12 +100,9 @@ WorkerReplicationRequest::~WorkerReplicationRequest() {
 
 void WorkerReplicationRequest::setInfo(ProtocolResponseReplicate& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     replica::Lock lock(_mtx, context(__func__));
-
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
-
     *(response.mutable_request()) = _request;
 }
 
@@ -148,7 +145,6 @@ bool WorkerReplicationRequest::execute() {
 
         vector<fs::path> tmpFiles;
         vector<fs::path> outFiles;
-
         for (auto&& file : _files) {
             fs::path const tmpFile = outDir / ("_" + file);
             tmpFiles.push_back(tmpFile);
@@ -187,14 +183,12 @@ bool WorkerReplicationRequest::execute() {
                                       "failed to open input file on remote worker: " + sourceWorker() + " (" +
                                               sourceWorkerHostPort() + "), database: " + _databaseInfo.name +
                                               ", file: " + file);
-
                 if (errorContext.failed) {
                     setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
                     return true;
                 }
                 file2size[file] = inFilePtr->size();
                 totalBytes += inFilePtr->size();
-
                 _file2descr[file].inSizeBytes = inFilePtr->size();
                 _file2descr[file].mtime = inFilePtr->mtime();
             }
@@ -211,7 +205,6 @@ bool WorkerReplicationRequest::execute() {
 
             // The files with canonical(!) names should NOT exist at the destination
             // folder.
-
             for (auto&& file : outFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext = errorContext or
@@ -223,14 +216,12 @@ bool WorkerReplicationRequest::execute() {
 
             // Check if there are any files with the temporary names at the destination
             // folder and if so then get rid of them.
-
             for (auto&& file : tmpFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext =
                         errorContext or
                         reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
                                       "failed to check the status of temporary file: " + file.string());
-
                 if (fs::exists(stat)) {
                     fs::remove(file, ec);
                     errorContext = errorContext or
@@ -243,7 +234,6 @@ bool WorkerReplicationRequest::execute() {
             // to accommodate new files
             //
             // NOTE: this operation runs after cleaning up temporary files
-
             fs::space_info const space = fs::space(outDir, ec);
             errorContext =
                     errorContext or
@@ -255,12 +245,10 @@ bool WorkerReplicationRequest::execute() {
 
             // Pre-create temporary files with the final size to assert disk space
             // availability before filling these files with the actual payload.
-
             for (auto&& file : _files) {
                 fs::path const tmpFile = _file2descr[file].tmpFile;
 
                 // Create a file of size 0
-
                 FILE* tmpFilePtr = fopen(tmpFile.string().c_str(), "wb");
                 errorContext = errorContext or
                                reportErrorIf(not tmpFilePtr, ProtocolStatusExt::FILE_CREATE,
@@ -272,7 +260,6 @@ bool WorkerReplicationRequest::execute() {
                 }
 
                 // Resize the file (will be filled with \0)
-
                 fs::resize_file(tmpFile, file2size[file], ec);
                 errorContext = errorContext or
                                reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_RESIZE,
@@ -293,7 +280,6 @@ bool WorkerReplicationRequest::execute() {
 
         // Setup the iterator for the name of the very first file to be copied
         _fileItr = _files.begin();
-
         if (not _openFiles(lock)) return true;
     }
 
@@ -302,10 +288,8 @@ bool WorkerReplicationRequest::execute() {
     // w/o acquiring the directory lock.
     //
     // NOTE: the while loop below is meant to skip files which are empty
-
     while (_files.end() != _fileItr) {
         // Copy the next record if any is available
-
         size_t num = 0;
         try {
             num = _inFilePtr->read(_buf, _bufSize);
@@ -331,7 +315,6 @@ bool WorkerReplicationRequest::execute() {
                                                                      _file2descr[*_fileItr].tmpFile.string() +
                                                                      ", error: " + strerror(errno));
             }
-
         } catch (FileClientError const& ex) {
             errorContext =
                     errorContext or
@@ -350,7 +333,6 @@ bool WorkerReplicationRequest::execute() {
                               "short read of the input file from remote worker: " + sourceWorker() + " (" +
                                       sourceWorkerHostPort() + "), database: " + _databaseInfo.name +
                                       ", file: " + *_fileItr);
-
         if (errorContext.failed) {
             setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             _releaseResources(lock);
@@ -358,7 +340,6 @@ bool WorkerReplicationRequest::execute() {
         }
 
         // Flush and close the current file
-
         fflush(_tmpFilePtr);
         fclose(_tmpFilePtr);
         _tmpFilePtr = 0;
@@ -396,7 +377,6 @@ bool WorkerReplicationRequest::_openFiles(replica::Lock const& lock) {
                                  "failed to open input file on remote worker: " + sourceWorker() + " (" +
                                          sourceWorkerHostPort() + "), database: " + _databaseInfo.name +
                                          ", file: " + *_fileItr);
-
     if (errorContext.failed) {
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return false;
@@ -404,7 +384,6 @@ bool WorkerReplicationRequest::_openFiles(replica::Lock const& lock) {
 
     // Reopen a temporary output file locally in the 'append binary mode'
     // then 'rewind' to the beginning of the file before writing into it.
-
     fs::path const tmpFile = _file2descr[*_fileItr].tmpFile;
 
     _tmpFilePtr = fopen(tmpFile.string().c_str(), "wb");
@@ -416,9 +395,7 @@ bool WorkerReplicationRequest::_openFiles(replica::Lock const& lock) {
         return false;
     }
     rewind(_tmpFilePtr);
-
     _file2descr[*_fileItr].beginTransferTime = util::TimeUtils::now();
-
     return true;
 }
 
@@ -434,16 +411,13 @@ bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
     // Note that this operation changes the directory namespace in a way
     // which may affect other users (like replica lookup operations, etc.). Hence we're
     // acquiring the directory lock to guarantee a consistent view onto the folder.
-
     replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
     // ATTENTION: as per ISO/IEC 9945 the file rename operation will
     //            remove empty files. Not sure if this should be treated
     //            in a special way?
-
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code ec;
-
     for (auto&& file : _files) {
         fs::path const tmpFile = _file2descr[file].tmpFile;
         fs::path const outFile = _file2descr[file].outFile;
@@ -451,12 +425,10 @@ bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
         fs::rename(tmpFile, outFile, ec);
         errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_RENAME,
                                                      "failed to rename file: " + tmpFile.string());
-
         fs::last_write_time(outFile, _file2descr[file].mtime, ec);
         errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
                                                      "failed to change 'mtime' of file: " + tmpFile.string());
     }
-
     if (errorContext.failed) {
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
@@ -468,7 +440,6 @@ bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
 void WorkerReplicationRequest::_updateInfo(replica::Lock const& lock) {
     size_t totalInSizeBytes = 0;
     size_t totalOutSizeBytes = 0;
-
     ReplicaInfo::FileInfoCollection fileInfoCollection;
     for (auto&& file : _files) {
         fileInfoCollection.emplace_back(
@@ -484,7 +455,6 @@ void WorkerReplicationRequest::_updateInfo(replica::Lock const& lock) {
                     : ReplicaInfo::Status::INCOMPLETE;
 
     // Fill in the info on the chunk before finishing the operation
-
     WorkerReplicationRequest::_replicaInfo =
             ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(), fileInfoCollection);
 }

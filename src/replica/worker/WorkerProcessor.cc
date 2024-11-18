@@ -561,7 +561,6 @@ void WorkerProcessor::setServiceResponse(ProtocolServiceResponse& response, stri
     replica::Lock lock(_mtx, _context(__func__));
 
     response.set_status(status);
-    response.set_technology("FS");
     response.set_start_time(_startTime);
 
     switch (state()) {
@@ -667,14 +666,11 @@ WorkerRequest::Ptr WorkerProcessor::_fetchNextForProcessing(WorkerProcessorThrea
         // the wait.
         {
             replica::Lock lock(_mtx, _context(__func__));
-
             if (not _newRequests.empty()) {
                 WorkerRequest::Ptr request = _newRequests.top();
                 _newRequests.pop();
-
                 request->start();
                 _inProgressRequests[request->id()] = request;
-
                 return request;
             }
         }
@@ -706,7 +702,6 @@ void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
     LOGS(_log, LOG_LVL_DEBUG,
          _context(__func__) << "  id: " << request->id()
                             << "  status: " << WorkerRequest::status2string(request->status()));
-
     replica::Lock lock(_mtx, _context(__func__));
 
     // Note that disposed requests won't be found in any queue.
@@ -720,7 +715,6 @@ void WorkerProcessor::_processingFinished(WorkerRequest::Ptr const& request) {
 void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& processorThread) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  thread: " << processorThread->id());
     replica::Lock lock(_mtx, _context(__func__));
-
     if (_state == STATE_IS_STOPPING) {
         // Complete state transition if all threads are stopped
         for (auto&& t : _threads) {
@@ -732,7 +726,6 @@ void WorkerProcessor::_processorThreadStopped(WorkerProcessorThread::Ptr const& 
 
 void WorkerProcessor::_setInfo(WorkerRequest::Ptr const& request, ProtocolResponseReplicate& response) {
     if (nullptr == request) return;
-
     auto ptr = dynamic_pointer_cast<WorkerReplicationRequest>(request);
     if (not ptr) {
         throw logic_error(_classMethodContext(__func__) +

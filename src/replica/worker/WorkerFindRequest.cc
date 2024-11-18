@@ -69,7 +69,6 @@ WorkerFindRequest::WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider
 
 void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     replica::Lock lock(_mtx, context(__func__));
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
@@ -94,10 +93,8 @@ bool WorkerFindRequest::execute() {
     //
     // Both methods are combined within the same code block to avoid
     // code duplication.
-
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code ec;
-
     if (not computeCheckSum() or not _csComputeEnginePtr) {
         auto const config = _serviceProvider->config();
         DatabaseInfo const databaseInfo = config->databaseInfo(database());
@@ -105,16 +102,13 @@ bool WorkerFindRequest::execute() {
         // Check if the data directory exists and it can be read
 
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
-
         fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat = fs::status(dataDir, ec);
-
         errorContext = errorContext or
                        reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,
                                      "failed to check the status of directory: " + dataDir.string()) or
                        reportErrorIf(not fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
                                      "the directory does not exists: " + dataDir.string());
-
         if (errorContext.failed) {
             setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             return true;
@@ -138,11 +132,9 @@ bool WorkerFindRequest::execute() {
         for (auto&& file : FileUtils::partitionedFiles(databaseInfo, chunk())) {
             fs::path const path = dataDir / file;
             fs::file_status const stat = fs::status(path, ec);
-
             errorContext = errorContext or
                            reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
                                          "failed to check the status of file: " + path.string());
-
             if (fs::exists(stat)) {
                 if (not computeCheckSum()) {
                     // Get file size & mtime right away
@@ -151,12 +143,10 @@ bool WorkerFindRequest::execute() {
                     errorContext =
                             errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
                                                           "failed to read file size: " + path.string());
-
                     const time_t mtime = fs::last_write_time(path, ec);
                     errorContext =
                             errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
                                                           "failed to read file mtime: " + path.string());
-
                     fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
                             file, size, mtime, "", /* cs */
                             0,                     /* beginTransferTime */
@@ -186,9 +176,7 @@ bool WorkerFindRequest::execute() {
             // Fill in the info on the chunk before finishing the operation
             _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(),
                                        fileInfoCollection);
-
             setStatus(lock, ProtocolStatus::SUCCESS);
-
             return true;
         }
 
@@ -203,17 +191,13 @@ bool WorkerFindRequest::execute() {
         if (finished) {
             // Extract statistics
             ReplicaInfo::FileInfoCollection fileInfoCollection;
-
             auto const fileNames = _csComputeEnginePtr->fileNames();
             for (auto&& file : fileNames) {
                 const fs::path path(file);
-
                 uint64_t const size = _csComputeEnginePtr->bytes(file);
-
                 time_t const mtime = fs::last_write_time(path, ec);
                 errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
                                                              "failed to read file mtime: " + path.string());
-
                 fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
                         path.filename().string(), size, mtime, to_string(_csComputeEnginePtr->cs(file)),
                         0,   /* beginTransferTime */
@@ -227,9 +211,7 @@ bool WorkerFindRequest::execute() {
             }
 
             // Fnalize the operation
-
             DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
-
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;
             if (fileInfoCollection.size())
                 status = FileUtils::partitionedFiles(databaseInfo, chunk()).size() == fileNames.size()
@@ -239,21 +221,17 @@ bool WorkerFindRequest::execute() {
             // Fill in the info on the chunk before finishing the operation
             _replicaInfo = ReplicaInfo(status, worker(), database(), chunk(), util::TimeUtils::now(),
                                        fileInfoCollection);
-
             setStatus(lock, ProtocolStatus::SUCCESS);
         }
-
     } catch (exception const& ex) {
         WorkerRequest::ErrorContext errorContext;
         errorContext = errorContext or reportErrorIf(true, ProtocolStatusExt::FILE_READ, ex.what());
-
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
     }
 
     // If done (either way) then get rid of the engine right away because
     // it may still have allocated buffers
     if (finished) _csComputeEnginePtr.reset();
-
     return finished;
 }
 
