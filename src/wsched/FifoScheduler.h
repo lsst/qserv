@@ -36,7 +36,7 @@ class FifoScheduler : public wcontrol::Scheduler {
 public:
     typedef std::shared_ptr<FifoScheduler> Ptr;
 
-    FifoScheduler(){};
+    FifoScheduler() {};
     virtual ~FifoScheduler() {}
 
     std::string getName() const override { return std::string("FifoSched"); }

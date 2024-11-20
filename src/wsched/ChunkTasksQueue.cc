@@ -45,8 +45,8 @@ void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
         int chunkId = task->getChunkId();
         if (iter != _chunkMap.end() && iter->first != chunkId) {
             LOGS(_log, LOG_LVL_ERROR,
-                 "All tasks grouped together must be on the same chunk."
-                         << " chunkA=" << iter->first << " chunkB=" << chunkId);
+                 "All tasks grouped together must be on the same chunk." << " chunkA=" << iter->first
+                                                                         << " chunkB=" << chunkId);
             throw util::Bug(ERR_LOC, "ChunkTasksQueue::queueTask mismatched chunkIds");
         }
         /// If it's the first time through, or the chunkId is different than the previous one, then

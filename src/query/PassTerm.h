@@ -42,7 +42,7 @@ public:
     void findValueExprs(ValueExprPtrVector& vector) const override {}
 
     /// Get a vector of references to pointers to the ValueExprs this contains.
-    void findValueExprRefs(ValueExprPtrRefVector& vector) override{};
+    void findValueExprRefs(ValueExprPtrRefVector& vector) override {};
 
     /// Get a vector of the ColumnRefs this contains.
     void findColumnRefs(ColumnRef::Vector& vector) const override {}

@@ -158,8 +158,7 @@ BOOST_FIXTURE_TEST_CASE(create, AsyncReqFixture) {
     BOOST_CHECK_THROW(
             {
                 auto const url = "https://127.0.0.1:80/";
-                req = http::AsyncReq::create(
-                        io_service, [](auto const& req) {}, http::Method::GET, url);
+                req = http::AsyncReq::create(io_service, [](auto const& req) {}, http::Method::GET, url);
             },
             std::invalid_argument);
 

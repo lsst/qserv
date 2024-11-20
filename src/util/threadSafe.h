@@ -41,7 +41,7 @@ namespace lsst::qserv::util {
 template <class T>
 class Sequential {
 public:
-    explicit Sequential(T seq) : _seq(seq){};
+    explicit Sequential(T seq) : _seq(seq) {};
     // Returns the value before incrementing.
     T incr() {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -63,12 +63,12 @@ private:
 template <class T>
 class Flag {
 public:
-    explicit Flag(T flag) : _flag(flag){};
+    explicit Flag(T flag) : _flag(flag) {};
     Flag& operator=(Flag&& other) = delete;
     Flag(const Flag&&) = delete;
     Flag& operator=(const Flag&) = delete;
     Flag(const Flag&) = delete;
-    virtual ~Flag(){};
+    virtual ~Flag() {};
 
     /// Sets flag value to 'val' and returns the old value of flag.
     virtual T exchange(T val) {
@@ -98,8 +98,8 @@ protected:
 template <class T>
 class FlagNotify {
 public:
-    explicit FlagNotify(T flag) : _flag(flag){};
-    virtual ~FlagNotify(){};
+    explicit FlagNotify(T flag) : _flag(flag) {};
+    virtual ~FlagNotify() {};
     /** Sets flag value to 'val' while notifying others of the change,
      * and returns the old value of flag.
      */

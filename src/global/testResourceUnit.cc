@@ -38,7 +38,7 @@ struct Fixture {
     Fixture() : dummy(0) {}
 
     int dummy;
-    ~Fixture(void){};
+    ~Fixture(void) {};
 };
 int const MAGIC_SIZE = 80;
 

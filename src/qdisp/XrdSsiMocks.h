@@ -43,7 +43,7 @@ class XrdSsiServiceMock : public XrdSsiService {
 public:
     void ProcessRequest(XrdSsiRequest &reqRef, XrdSsiResource &resRef) override;
 
-    XrdSsiServiceMock(Executive *executive){};
+    XrdSsiServiceMock(Executive *executive) {};
 
     virtual ~XrdSsiServiceMock() {}
 

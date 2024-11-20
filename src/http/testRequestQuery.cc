@@ -122,8 +122,8 @@ BOOST_AUTO_TEST_CASE(RequestQueryTest) {
         BOOST_CHECK_EQUAL(query.optionalUInt16("some_unknown_param", defaultUInt16Value), defaultUInt16Value);
     });
     BOOST_CHECK_THROW({ query.optionalUInt16("out_of_range_uint16"); }, std::out_of_range);
-    BOOST_CHECK_THROW({ query.optionalUInt16("out_of_range_uint16", defaultUInt16Value); },
-                      std::out_of_range);
+    BOOST_CHECK_THROW(
+            { query.optionalUInt16("out_of_range_uint16", defaultUInt16Value); }, std::out_of_range);
 
     // Test parsing 'unsigned int'
 

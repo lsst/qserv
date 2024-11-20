@@ -367,8 +367,8 @@ void Executive::markCompleted(int jobId, bool success) {
     _unTrack(jobId);
     if (!success && !isLimitRowComplete()) {
         LOGS(_log, LOG_LVL_ERROR,
-             "Executive: requesting squash, cause: "
-                     << " failed (code=" << err.getCode() << " " << err.getMsg() << ")");
+             "Executive: requesting squash, cause: " << " failed (code=" << err.getCode() << " "
+                                                     << err.getMsg() << ")");
         squash();  // ask to squash
     }
 }
@@ -481,9 +481,8 @@ bool Executive::_track(int jobId, shared_ptr<JobQuery> const& r) {
         lock_guard<mutex> lock(_incompleteJobsMutex);
         if (_incompleteJobs.find(jobId) != _incompleteJobs.end()) {
             LOGS(_log, LOG_LVL_WARN,
-                 "Attempt for TRACKING "
-                         << " failed as jobId already found in incomplete jobs. "
-                         << _getIncompleteJobsString(-1));
+                 "Attempt for TRACKING " << " failed as jobId already found in incomplete jobs. "
+                                         << _getIncompleteJobsString(-1));
             return false;
         }
         _incompleteJobs[jobId] = r;

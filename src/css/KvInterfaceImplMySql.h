@@ -56,7 +56,7 @@ public:
      *  @param mysqlConf: Configuration object for mysql connection
      */
     explicit KvInterfaceImplMySql(mysql::MySqlConfig const& mysqlConf, bool readOnly = false);
-    virtual ~KvInterfaceImplMySql(){};
+    virtual ~KvInterfaceImplMySql() {};
 
     virtual std::string create(std::string const& key, std::string const& value,
                                bool unique = false) override;
