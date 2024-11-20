@@ -62,35 +62,36 @@ def wait_for_replication_system(repl_ctrl_uri: str) -> None:
     ReplicationInterface(repl_ctrl_uri).version()
 
 
-class CzarNotReady(RuntimeError):
+class DbServiceNotReady(RuntimeError):
     pass
 
-
 @backoff.on_exception(
-    exception=(CzarNotReady, mysql.connector.errors.DatabaseError, MySQLInterfaceError),
+    exception=(DbServiceNotReady, mysql.connector.errors.DatabaseError, MySQLInterfaceError),
     wait_gen=backoff.expo,
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,
 )
-def wait_for_czar(czar_db_uri: str) -> None:
-    """Wait for the czar to be ready.
+def wait_for_db_service(db_uri: str, checkdb: str) -> None:
+    """Wait for the database service to be ready.
 
     Parameters
     ----------
-    czar_db_uri : str
-        The uri to the czar database.
+    db_uri : str
+        The uri to the database service.
+    checkdb : str
+        The name of the database to check for.
 
     Raises
     ------
-    CzarNotReady
-        If the czar is not ready. This is handled by the backoff decorator until
-        a max wait time is exceeded, and then the excetpion will not be caught,
+    DbServiceNotReady
+        If the service is not ready. This is handled by the backoff decorator until
+        a max wait time is exceeded, and then the exception will not be caught,
         and can be handled above or test execution can be aborted.
     """
-    parsed = urlparse(czar_db_uri)
+    parsed = urlparse(db_uri)
 
     def get_databases() -> List[str]:
-        """Get the names of the databases in the czar db."""
+        """Get the names of the databases in the database service."""
         with closing(
             mysql.connector.connect(
                 user=parsed.username,
@@ -104,10 +105,9 @@ def wait_for_czar(czar_db_uri: str) -> None:
                 return [str(row[0]) for row in cursor.fetchall()]
 
     databases = get_databases()
-    checkdb = "qservMeta"
     if checkdb in databases:
         return
-    raise CzarNotReady(f"{checkdb} not in existing databases: {databases}")
+    raise DbServiceNotReady(f"{checkdb} not in existing databases: {databases}")
 
 
 def run_integration_tests(
@@ -120,6 +120,7 @@ def run_integration_tests(
     tests_yaml: str,
     compare_results: bool,
     mysqld_user: str,
+    mysqld_password: str,
 ) -> itest.ITestResults:
     """Top level script to run the integration tests.
 
@@ -148,6 +149,8 @@ def run_integration_tests(
         If True run query output comparison, if False do not.
     mysqld_user : `str`
         The name of the qserv user.
+    mysqld_password : `str`
+        The password for the qserv user.
 
     Returns
     -------
@@ -157,6 +160,7 @@ def run_integration_tests(
     save_template_cfg(
         dict(
             mysqld_user_qserv=mysqld_user,
+            mysqld_user_qserv_password=mysqld_password,
         )
     )
 
@@ -171,7 +175,8 @@ def run_integration_tests(
         raise RuntimeError("qserv_testdata sources are not present.")
 
     if unload or load != False or reload or run_tests:
-        wait_for_czar(tests_data["czar-db-admin-uri"])
+        wait_for_db_service(tests_data["reference-db-admin-uri"], "mysql")
+        wait_for_db_service(tests_data["czar-db-admin-uri"], "qservMeta")
         wait_for_replication_system(tests_data["replication-controller-uri"])
 
     # If unload is True, and load is not specified (default is `None`, means
@@ -235,6 +240,7 @@ def run_integration_tests_http(
     tests_yaml: str,
     compare_results: bool,
     mysqld_user: str,
+    mysqld_password: str,
 ) -> itest.ITestResults:
     """Top level script to run the integration tests of the HTTP frontend.
 
@@ -263,6 +269,8 @@ def run_integration_tests_http(
         If True run query output comparison, if False do not.
     mysqld_user : `str`
         The name of the qserv user.
+    mysqld_password : `str`
+        The password for the qserv user.
 
     Returns
     -------
@@ -272,6 +280,7 @@ def run_integration_tests_http(
     save_template_cfg(
         dict(
             mysqld_user_qserv=mysqld_user,
+            mysqld_user_qserv_password=mysqld_password,
         )
     )
 
@@ -286,7 +295,8 @@ def run_integration_tests_http(
         raise RuntimeError("qserv_testdata sources are not present.")
 
     if unload or load != False or reload or run_tests:
-        wait_for_czar(tests_data["czar-db-admin-uri"])
+        wait_for_db_service(tests_data["reference-db-admin-uri"], "mysql")
+        wait_for_db_service(tests_data["czar-db-admin-uri"], "qservMeta")
         wait_for_replication_system(tests_data["replication-controller-uri"])
 
     # If unload is True, and load is not specified (default is `None`, means
@@ -368,7 +378,7 @@ def run_integration_tests_http_ingest(
         tests_data = yaml.safe_load(f.read())
 
     if run_tests:
-        wait_for_czar(tests_data["czar-db-admin-uri"])
+        wait_for_db_service(tests_data["czar-db-admin-uri"], "qservMeta")
         wait_for_replication_system(tests_data["replication-controller-uri"])
         return itest.run_http_ingest(
             http_frontend_uri=tests_data["qserv-http-uri"],

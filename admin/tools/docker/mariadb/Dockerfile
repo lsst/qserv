@@ -15,7 +15,7 @@ FROM ubuntu:focal AS mariadb-scisql-builder
 
 RUN apt-get update \
     && apt-get install -y curl \
-    && curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | bash -s -- --mariadb-server-version="mariadb-10.6.8" \
+    && curl -LsS https://r.mariadb.com/downloads/mariadb_repo_setup | bash -s -- --mariadb-server-version="mariadb-11.4.4" \
     && apt-get install -y g++ make git python3 libmariadb-dev \
     && update-alternatives --install /usr/bin/python python /usr/bin/python3 0
 
@@ -40,7 +40,7 @@ RUN chmod a+r /tmp/scisql/build/deploy.mysql
 # off-the-shelf mariadb image.  This produces a generic "mariadb with scisql installed" container image.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM mariadb:10.6.8 AS mariadb-scisql
+FROM mariadb:11.4.4 AS mariadb-scisql
 COPY --from=mariadb-scisql-builder /tmp/scisql/build/libscisql-scisql_0.3.so /usr/lib/mysql/plugin
 COPY --from=mariadb-scisql-builder /tmp/scisql/build/deploy.mysql /docker-entrypoint-initdb.d/scisql.sql
 

@@ -55,7 +55,7 @@ private:
 /// Base class to allow arbitrary data to be passed to or returned from
 /// Command::action.
 struct CmdData {
-    virtual ~CmdData(){};
+    virtual ~CmdData() {};
 };
 
 /// Base class for commands. Can be used with functions as is or

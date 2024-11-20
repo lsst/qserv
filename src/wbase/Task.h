@@ -77,7 +77,7 @@ class UserQueryInfo;
 class TaskQueryRunner {
 public:
     using Ptr = std::shared_ptr<TaskQueryRunner>;
-    virtual ~TaskQueryRunner(){};
+    virtual ~TaskQueryRunner() {};
     virtual bool runQuery() = 0;
     virtual void cancel() = 0;  ///< Repeated calls to cancel() must be harmless.
 };

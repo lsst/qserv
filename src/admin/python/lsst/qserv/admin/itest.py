@@ -180,6 +180,7 @@ class ITestQuery:
             f"{parsed.hostname}",
             f"--port={parsed.port}",
             f"--user={parsed.username}",
+            f"--password={parsed.password}",
             "--batch",
             "--binary-as-hex",
             "--skip-column-names",
@@ -201,6 +202,7 @@ class ITestQuery:
             f"{parsed.hostname}",
             f"--port={parsed.port}",
             f"--user={parsed.username}",
+            f"--password={parsed.password}",
             "--batch",
             "--binary-as-hex",
             "--skip-column-names",
@@ -223,6 +225,7 @@ class ITestQuery:
             f"{parsed.hostname}",
             f"--port={parsed.port}",
             f"--user={parsed.username}",
+            f"--password={parsed.password}",
             "--batch",
             "--binary-as-hex",
             "-e",
@@ -247,6 +250,7 @@ class ITestQuery:
         """
         query = self._render_query(self.query_t, qserv, database)
         parsed = urlparse(connection)
+        _log.debug("connection:%s parsed:%s", connection, str(parsed))
         _log.debug("run_attached qserv:%s", qserv)
         args = [
             "mysql",
@@ -254,6 +258,7 @@ class ITestQuery:
             f"{parsed.hostname}",
             f"--port={parsed.port}",
             f"--user={parsed.username}",
+            f"--password={parsed.password}",
             "--batch",
             "--binary-as-hex",
             "--database",
@@ -483,6 +488,7 @@ class ITestQueryHttp:
             f"{parsed.hostname}",
             f"--port={parsed.port}",
             f"--user={parsed.username}",
+            f"--password={parsed.password}",
             "--batch",
             "--binary-as-hex",
             "--database",

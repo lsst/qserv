@@ -55,7 +55,7 @@ public:
     std::string getError() const override { return std::string(); }
 
     /// Begin execution of the query over all ChunkSpecs added so far.
-    void submit() override{};
+    void submit() override {};
 
     /// Wait until the query has completed execution.
     /// @return the final execution state.

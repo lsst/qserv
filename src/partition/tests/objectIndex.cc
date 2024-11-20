@@ -77,15 +77,18 @@ BOOST_AUTO_TEST_CASE(ObjectIndexTest) {
     csv::Editor editor(dialect, dialect, fields, fields);
 
     // Make sure input parameters are properly validated
-    BOOST_CHECK_THROW({ ObjectIndex::instance()->create("", editor, "id", "chunkId", "subChunkId"); },
-                      std::invalid_argument);
+    BOOST_CHECK_THROW(
+            { ObjectIndex::instance()->create("", editor, "id", "chunkId", "subChunkId"); },
+            std::invalid_argument);
     BOOST_CHECK_THROW(
             { ObjectIndex::instance()->create(indexFileName, editor, "", "chunkId", "subChunkId"); },
             std::invalid_argument);
-    BOOST_CHECK_THROW({ ObjectIndex::instance()->create(indexFileName, editor, "id", "", "subChunkId"); },
-                      std::invalid_argument);
-    BOOST_CHECK_THROW({ ObjectIndex::instance()->create(indexFileName, editor, "id", "chunkId", ""); },
-                      std::invalid_argument);
+    BOOST_CHECK_THROW(
+            { ObjectIndex::instance()->create(indexFileName, editor, "id", "", "subChunkId"); },
+            std::invalid_argument);
+    BOOST_CHECK_THROW(
+            { ObjectIndex::instance()->create(indexFileName, editor, "id", "chunkId", ""); },
+            std::invalid_argument);
     BOOST_CHECK_THROW({ ObjectIndex::instance()->open("", dialect); }, std::invalid_argument);
     BOOST_CHECK_THROW({ ObjectIndex::instance()->open("file:///", dialect); }, std::invalid_argument);
 

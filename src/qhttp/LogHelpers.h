@@ -44,7 +44,7 @@ namespace lsst::qserv::qhttp {
 
 struct ServerLogger {
     Server const* server;
-    ServerLogger(Server const* server) : server(server){};
+    ServerLogger(Server const* server) : server(server) {};
 };
 
 inline std::ostream& operator<<(std::ostream& str, ServerLogger const& logger) {
@@ -56,7 +56,7 @@ inline ServerLogger logger(Server::Ptr const& server) { return ServerLogger(serv
 
 struct SocketLogger {
     boost::asio::detail::socket_type sockno;
-    SocketLogger(boost::asio::ip::tcp::socket* socket) : sockno(socket->native_handle()){};
+    SocketLogger(boost::asio::ip::tcp::socket* socket) : sockno(socket->native_handle()) {};
 };
 
 inline std::ostream& operator<<(std::ostream& str, SocketLogger const& logger) {
@@ -69,7 +69,7 @@ inline SocketLogger logger(std::shared_ptr<boost::asio::ip::tcp::socket> socket)
 
 struct AjaxLogger {
     AjaxEndpoint const* aep;
-    AjaxLogger(AjaxEndpoint const* aep) : aep(aep){};
+    AjaxLogger(AjaxEndpoint const* aep) : aep(aep) {};
 };
 
 inline std::ostream& operator<<(std::ostream& str, AjaxLogger const& logger) {

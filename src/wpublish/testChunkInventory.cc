@@ -45,8 +45,8 @@ bool startswith(std::string const& a, std::string const& start) {
 }  // namespace
 
 struct ChunkInvFixture {
-    ChunkInvFixture(void){};
-    ~ChunkInvFixture(void){};
+    ChunkInvFixture(void) {};
+    ~ChunkInvFixture(void) {};
 };
 
 struct ChunkSql : public MockSql {

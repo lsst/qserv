@@ -76,7 +76,7 @@ namespace lsst::qserv::util {
 class CommandQueue {
 public:
     using Ptr = std::shared_ptr<CommandQueue>;
-    virtual ~CommandQueue(){};
+    virtual ~CommandQueue() {};
     /// Queue a command object in a thread safe way and signal any threads
     /// waiting on the queue that a command is available.
     virtual void queCmd(Command::Ptr const& cmd) {
@@ -119,8 +119,8 @@ public:
         }
     }
 
-    virtual void commandStart(Command::Ptr const&){};   //< Derived methods must be thread safe.
-    virtual void commandFinish(Command::Ptr const&){};  //< Derived methods must be thread safe.
+    virtual void commandStart(Command::Ptr const&) {};   //< Derived methods must be thread safe.
+    virtual void commandFinish(Command::Ptr const&) {};  //< Derived methods must be thread safe.
 
 protected:
     std::deque<Command::Ptr> _qu{};
