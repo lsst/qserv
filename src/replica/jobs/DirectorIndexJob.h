@@ -37,6 +37,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "replica/config/ConfigDatabase.h"
 #include "replica/jobs/Job.h"
 #include "replica/requests/DirectorIndexRequest.h"
 #include "replica/util/Common.h"

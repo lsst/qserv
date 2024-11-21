@@ -23,8 +23,8 @@
 #include "replica/jobs/SqlGetIndexesJob.h"
 
 // Qserv headers
+#include "replica/mysql/DatabaseMySQLRow.h"
 #include "replica/requests/SqlGetIndexesRequest.h"
-#include "replica/requests/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -249,7 +249,6 @@ SqlIndexes SqlGetIndexesJob::indexes() const {
 list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                        size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
-
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -261,20 +260,16 @@ list<SqlRequest::Ptr> SqlGetIndexesJob::launchRequests(replica::Lock const& lock
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    auto const self = shared_from_base<SqlGetIndexesJob>();
     for (auto&& tables : distributeTables(_workers2tables[worker], maxRequestsPerWorker)) {
-        requests.push_back(controller()->sqlGetTableIndexes(
-                worker, database(), tables,
-                [self](SqlGetIndexesRequest::Ptr const& request) { self->onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+        bool const keepTracking = true;
+        requests.push_back(SqlGetIndexesRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlGetIndexesJob>()](SqlGetIndexesRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
     }
     return requests;
-}
-
-void SqlGetIndexesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlGetIndexesRequest>(lock, request);
 }
 
 void SqlGetIndexesJob::notify(replica::Lock const& lock) {

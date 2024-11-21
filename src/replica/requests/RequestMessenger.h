@@ -26,16 +26,16 @@
 #include <memory>
 #include <string>
 
-// Third party headers
-#include "boost/asio.hpp"
-
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
-#include "replica/requests/Messenger.h"
 #include "replica/requests/Request.h"
-#include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
 #include "replica/util/Mutex.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -67,17 +67,11 @@ public:
 protected:
     /**
      * Construct the request with the pointer to the services provider.
-     *
-     * @param messenger An interface for communicating with workers.
-     * @see class Request for an explanation of other parameters.
      * @return A pointer to the created object.
      */
-    RequestMessenger(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                     std::string const& type, std::string const& workerName, int priority, bool keepTracking,
-                     bool allowDuplicate, bool disposeRequired, Messenger::Ptr const& messenger);
-
-    /// @return pointer to the messaging service
-    Messenger::Ptr const& messenger() const { return _messenger; }
+    RequestMessenger(std::shared_ptr<Controller> const& controller, std::string const& type,
+                     std::string const& workerName, int priority, bool keepTracking, bool allowDuplicate,
+                     bool disposeRequired);
 
     /// @see Request::finishImpl()
     void finishImpl(replica::Lock const& lock) override;
@@ -97,10 +91,6 @@ protected:
      *  the request disposal operation.
      */
     void dispose(replica::Lock const& lock, int priority, OnDisposeCallbackType const& onFinish = nullptr);
-
-    // Input parameters
-
-    Messenger::Ptr const _messenger;
 };
 
 }  // namespace lsst::qserv::replica

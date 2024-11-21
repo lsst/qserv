@@ -22,38 +22,35 @@
 // Class header
 #include "replica/requests/SqlEnableDbRequest.h"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlEnableDbRequest");
-
+const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlEnableDbRequest::Ptr SqlEnableDbRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                   boost::asio::io_service& io_service, string const& worker,
-                                                   std::string const& database, CallbackType const& onFinish,
-                                                   int priority, bool keepTracking,
-                                                   shared_ptr<Messenger> const& messenger) {
-    return Ptr(new SqlEnableDbRequest(serviceProvider, io_service, worker, database, onFinish, priority,
-                                      keepTracking, messenger));
+SqlEnableDbRequest::Ptr SqlEnableDbRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                           string const& workerName,
+                                                           std::string const& database,
+                                                           CallbackType const& onFinish, int priority,
+                                                           bool keepTracking, string const& jobId,
+                                                           unsigned int requestExpirationIvalSec) {
+    auto ptr =
+            Ptr(new SqlEnableDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-SqlEnableDbRequest::SqlEnableDbRequest(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service, string const& worker,
+SqlEnableDbRequest::SqlEnableDbRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        std::string const& database, CallbackType const& onFinish,
-                                       int priority, bool keepTracking,
-                                       shared_ptr<Messenger> const& messenger)
-        : SqlRequest(serviceProvider, io_service, "SQL_ENABLE_DATABASE", worker, 0 /* maxRows */, priority,
-                     keepTracking, messenger),
+                                       int priority, bool keepTracking)
+        : SqlRequest(controller, "SQL_ENABLE_DATABASE", workerName, ::unlimitedMaxRows, priority,
+                     keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::ENABLE_DATABASE);
@@ -63,7 +60,6 @@ SqlEnableDbRequest::SqlEnableDbRequest(ServiceProvider::Ptr const& serviceProvid
 void SqlEnableDbRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
     notifyDefaultImpl<SqlEnableDbRequest>(lock, _onFinish);
 }
 

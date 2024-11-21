@@ -37,7 +37,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Messenger;
+class Controller;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -88,30 +88,22 @@ public:
 protected:
     /**
      * Create a new request with specified parameters.
-     * @param serviceProvider is needed to access the Configuration and the Controller
-     *   for communicating with the worker.
-     * @param io_service  a communication end-point
-     * @param workerName identifier of a worker node
-     * @param maxRows (optional) limit for the maximum number of rows to be returned with the request.
+     *
+     * Class-specific parameters are documented below:
+     * @param maxRows The (optional) limit for the maximum number of rows to be returned with the request.
      *   Leaving the default value of the parameter to 0 will result in not imposing any
      *   explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
-     * @param priority priority level of the request
-     * @param keepTracking keep tracking the request before it finishes or fails
-     * @param messenger interface for communicating with workers
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
      */
-    SqlRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-               std::string const& requestName, std::string const& workerName, uint64_t maxRows, int priority,
-               bool keepTracking, std::shared_ptr<Messenger> const& messenger);
+    SqlRequest(std::shared_ptr<Controller> const& controller, std::string const& requestName,
+               std::string const& workerName, uint64_t maxRows, int priority, bool keepTracking);
 
-    /// @see Request::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Request::savePersistentState()
     void savePersistentState(replica::Lock const& lock) final;
-
-    /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
 
     /**

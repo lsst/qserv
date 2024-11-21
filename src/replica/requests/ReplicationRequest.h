@@ -37,7 +37,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Messenger;
+class Controller;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -74,55 +74,42 @@ public:
     ReplicaInfo const& responseData() const { return _replicaInfo; }
 
     /**
-     * Create a new request with specified parameters.
+     * Create and start a new request with specified parameters.
      *
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider a host of services for various communications
-     * @param io_service BOOST ASIO API
-     * @param workerName the identifier of a worker node (the one to be affected by the replication)
-     *   at a destination of the chunk
-     * @param sourceWorkerName the identifier of a worker node at a source of the chunk
-     * @param database the name of a database
-     * @param chunk the number of a chunk to replicate (implies all relevant tables)
-     * @param allowDuplicate follow a previously made request if the current one duplicates it
-     * @param onFinish an optional callback function to be called upon a completion of the request.
-     * @param priority a priority level of the request
-     * @param keepTracking keep tracking the request before it finishes or fails
-     * @param messenger worker messaging service
-     * @return pointer to the created object
+     * Class-specific parameters are documented below:
+     * @param sourceWorkerName An identifier of a worker node at a source of the chunk.
+     * @param database The name of a database.
+     * @param chunk The number of a chunk to replicate (implies all relevant tables).
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
+     * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& workerName, std::string const& sourceWorkerName,
-                      std::string const& database, unsigned int chunk, bool allowDuplicate,
-                      CallbackType const& onFinish, int priority, bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              std::string const& sourceWorkerName, std::string const& database,
+                              unsigned int chunk, CallbackType const& onFinish = nullptr,
+                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
+                              bool allowDuplicate = true, std::string const& jobId = "",
+                              unsigned int requestExpirationIvalSec = 0);
 
     /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see Request::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Request::notify()
     void notify(replica::Lock const& lock) final;
-
-    /// @see Request::savePersistentState()
     void savePersistentState(replica::Lock const& lock) final;
-
-    /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
 
 private:
-    /// @see ReplicationRequest::create()
-    ReplicationRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                       std::string const& workerName, std::string const& sourceWorkerName,
-                       std::string const& database, unsigned int chunk, bool allowDuplicate,
-                       CallbackType const& onFinish, int priority, bool keepTracking,
-                       std::shared_ptr<Messenger> const& messenger);
+    ReplicationRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                       std::string const& sourceWorkerName, std::string const& database, unsigned int chunk,
+                       CallbackType const& onFinish, int priority, bool keepTracking, bool allowDuplicate);
 
     /**
      * Send the serialized content of the buffer to a worker

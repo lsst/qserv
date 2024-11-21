@@ -27,7 +27,6 @@
 
 // Qserv headers
 #include "replica/requests/SqlDeleteTableRequest.h"
-#include "replica/requests/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -70,7 +69,6 @@ list<pair<string, string>> SqlDeleteTableJob::extendedPersistentState() const {
 list<SqlRequest::Ptr> SqlDeleteTableJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                         size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
-
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -82,20 +80,16 @@ list<SqlRequest::Ptr> SqlDeleteTableJob::launchRequests(replica::Lock const& loc
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    auto const self = shared_from_base<SqlDeleteTableJob>();
     for (auto&& tables : distributeTables(allTables, maxRequestsPerWorker)) {
-        requests.push_back(controller()->sqlDeleteTable(
-                worker, database(), tables,
-                [self](SqlDeleteTableRequest::Ptr const& request) { self->onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+        bool const keepTracking = true;
+        requests.push_back(SqlDeleteTableRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlDeleteTableJob>()](SqlDeleteTableRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
     }
     return requests;
-}
-
-void SqlDeleteTableJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlDeleteTableRequest>(lock, request);
 }
 
 void SqlDeleteTableJob::notify(replica::Lock const& lock) {

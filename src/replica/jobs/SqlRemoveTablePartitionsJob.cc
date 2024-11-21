@@ -24,7 +24,6 @@
 
 // Qserv headers
 #include "replica/requests/SqlRemoveTablePartitionsRequest.h"
-#include "replica/requests/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -76,7 +75,6 @@ list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(replica::Lock 
                                                                   string const& worker,
                                                                   size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
-
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -88,22 +86,17 @@ list<SqlRequest::Ptr> SqlRemoveTablePartitionsJob::launchRequests(replica::Lock 
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    auto const self = shared_from_base<SqlRemoveTablePartitionsJob>();
     for (auto&& tables : distributeTables(allTables, maxRequestsPerWorker)) {
-        requests.push_back(controller()->sqlRemoveTablePartitions(
-                worker, database(), tables,
-                [self](SqlRemoveTablePartitionsRequest::Ptr const& request) {
+        bool const keepTracking = true;
+        requests.push_back(SqlRemoveTablePartitionsRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlRemoveTablePartitionsJob>()](
+                        SqlRemoveTablePartitionsRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+                priority(), keepTracking, id()));
     }
     return requests;
-}
-
-void SqlRemoveTablePartitionsJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlRemoveTablePartitionsRequest>(lock, request);
 }
 
 void SqlRemoveTablePartitionsJob::notify(replica::Lock const& lock) {

@@ -29,7 +29,6 @@
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/requests/SqlCreateTableRequest.h"
-#include "replica/requests/StopRequest.h"
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -83,23 +82,18 @@ list<SqlRequest::Ptr> SqlCreateTableJob::launchRequests(replica::Lock const& loc
                                                         size_t maxRequestsPerWorker) {
     // Launch exactly one request per worker unless it was already
     // launched earlier
-
     list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
-        auto const self = shared_from_base<SqlCreateTableJob>();
-        requests.push_back(controller()->sqlCreateTable(
-                worker, database(), table(), engine(), partitionByColumn(), columns(),
-                [self](SqlCreateTableRequest::Ptr const& request) { self->onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+        bool const keepTracking = true;
+        requests.push_back(SqlCreateTableRequest::createAndStart(
+                controller(), worker, database(), table(), engine(), partitionByColumn(), columns(),
+                [self = shared_from_base<SqlCreateTableJob>()](SqlCreateTableRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
         _workers.insert(worker);
     }
     return requests;
-}
-
-void SqlCreateTableJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlCreateTableRequest>(lock, request);
 }
 
 void SqlCreateTableJob::notify(replica::Lock const& lock) {

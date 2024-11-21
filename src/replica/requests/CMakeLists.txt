@@ -34,9 +34,7 @@ target_sources(replica_requests PRIVATE
     SqlResultSet.cc
     SqlRowStatsRequest.cc
     StatusRequest.cc
-    StatusRequestBase.cc
     StopRequest.cc
-    StopRequestBase.cc
 )
 target_link_libraries(replica_requests PUBLIC
     log

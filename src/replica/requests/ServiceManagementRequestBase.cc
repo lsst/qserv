@@ -56,6 +56,10 @@ void dumpRequestInfo(ostream& os, vector<ProtocolServiceResponseInfo> const& req
     }
 }
 
+bool const keepTrackingNo = false;
+bool const allowDuplicateNo = false;
+bool const disposeRequiredNo = false;
+
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -161,17 +165,12 @@ ServiceState const& ServiceManagementRequestBase::getServiceState() const {
                       "  not allowed in the current state of the request");
 }
 
-ServiceManagementRequestBase::ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
-                                                           boost::asio::io_service& io_service,
+ServiceManagementRequestBase::ServiceManagementRequestBase(shared_ptr<Controller> const& controller,
                                                            char const* requestName, string const& workerName,
                                                            ProtocolServiceRequestType requestType,
-                                                           int priority,
-                                                           shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, requestName, workerName, priority,
-                           false,  // keepTracking
-                           false,  // allowDuplicate
-                           false,  // disposeRequired
-                           messenger),
+                                                           int priority)
+        : RequestMessenger(controller, requestName, workerName, priority, ::keepTrackingNo,
+                           ::allowDuplicateNo, ::disposeRequiredNo),
           _requestType(requestType) {}
 
 void ServiceManagementRequestBase::startImpl(replica::Lock const& lock) {
@@ -179,22 +178,20 @@ void ServiceManagementRequestBase::startImpl(replica::Lock const& lock) {
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::SERVICE);
     hdr.set_service_type(_requestType);
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
     // Send the message
-    auto self = shared_from_base<ServiceManagementRequestBase>();
-    messenger()->send<ProtocolServiceResponse>(
+    controller()->serviceProvider()->messenger()->send<ProtocolServiceResponse>(
             workerName(), id(), priority(), buffer(),
-            [self](string const& id, bool success, ProtocolServiceResponse const& response) {
+            [self = shared_from_base<ServiceManagementRequestBase>()](
+                    string const& id, bool success, ProtocolServiceResponse const& response) {
                 self->_analyze(success, response);
             });
 }
@@ -210,7 +207,6 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
-
     if (not success) {
         finish(lock, CLIENT_ERROR);
         return;
@@ -227,7 +223,6 @@ void ServiceManagementRequestBase::_analyze(bool success, ProtocolServiceRespons
             _serviceState.set(message);
             finish(lock, SUCCESS);
             break;
-
         default:
             finish(lock, SERVER_ERROR);
             break;

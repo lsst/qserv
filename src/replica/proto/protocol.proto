@@ -63,9 +63,10 @@ enum ProtocolQueuedRequestType {
 //
 enum ProtocolManagementRequestType {
 
-    REQUEST_STATUS   = 0;   // check a status of a request
-    REQUEST_STOP     = 1;   // stop a previously requested request
-    REQUEST_DISPOSE  = 2;   // garbage collect the request (in-progress ones will be also stopped)
+    REQUEST_STATUS   = 0;   // check a status the previously submitted request
+    REQUEST_STOP     = 1;   // stop the previously submitted request
+    REQUEST_TRACK    = 2;   // track the previously submitted request
+    REQUEST_DISPOSE  = 3;   // garbage collect the request (in-progress ones will be also stopped)
 }
 
 // Request types affecting the overall state of the worker replication service
@@ -295,25 +296,19 @@ message ProtocolRequestDirectorIndex {
     optional uint64 offset = 7 [default = 0];
 }
 
-// This request is sent to stop an on-going replication (if any is still in progress).
+// This request is sent to stop an on-going request.
 // This message is sent once after the header.
 //
 message ProtocolRequestStop {
 
     /// an identifier of a request to be stopped
     required string id = 1;
-
-    // A specific type of the request will affect a choice of the status
-    // object returned in response. The type needs to match a value set
-    // in the preceding header at: ProtocolRequestHeader::type
-
-    optional ProtocolQueuedRequestType queued_type = 2;
 }
 
-// This request is sent to request a status of an on-going replication (if any
+// This request is sent to track a status of a target request (if any
 // is still in progress). This message is sent once after the header.
 //
-message ProtocolRequestStatus {
+message ProtocolRequestTrack {
 
     /// an identifier of a request to be inspected
     required string id = 1;
@@ -323,6 +318,15 @@ message ProtocolRequestStatus {
     // in the preceding header at: ProtocolRequestHeader::type
 
     optional ProtocolQueuedRequestType queued_type = 2;
+}
+
+// This request is sent to get a status of a target request (if any
+// is still in progress). This message is sent once after the header.
+//
+message ProtocolRequestStatus {
+
+    /// an identifier of a request to be inspected
+    required string id = 1;
 }
 
 // This request is sent to explicitly require to garbage-collect a set
@@ -789,6 +793,43 @@ message ProtocolResponseDispose {
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 3 [default = NONE];
+}
+
+message ProtocolResponseStop {
+
+    /// The completion status of the operation
+    required ProtocolStatus status = 8;
+
+    /// Extended status of this operation
+    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+
+    /// The performance of this operation
+    required ProtocolPerformance performance = 4;
+}
+
+message ProtocolResponseStatus {
+
+    /// The completion status of the operation
+    required ProtocolStatus status = 1;
+
+    /// Extended status of this operation
+    optional ProtocolStatusExt status_ext = 2 [default = NONE];
+
+    /// The performance of this operation
+    required ProtocolPerformance performance = 3;
+
+    // The following atributes are set only if the target request was found at the worker.
+    // Otherwise, there is no point in setting any default values of the attributes.
+
+    /// The completion status of the target request
+    optional ProtocolStatus target_status = 4;
+
+    /// Extended status of the target request
+    optional ProtocolStatusExt target_status_ext = 5;
+
+    /// The performance of the target request
+    optional ProtocolPerformance target_performance = 6;
+
 }
 
 /////////////////////////////////////////////////////////////////////////

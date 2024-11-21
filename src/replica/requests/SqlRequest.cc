@@ -44,44 +44,35 @@ using namespace std;
 using namespace std::placeholders;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlRequest");
-
+bool const allowDuplicateNo = false;
+bool const disposeRequired = true;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
 void SqlRequest::extendedPrinter(Ptr const& ptr) {
     Request::defaultPrinter(ptr);
-
     for (auto&& itr : ptr->responseData().queryResultSet) {
         auto&& scope = itr.first;
         auto&& resultSet = itr.second;
-
         if (resultSet.hasResult) {
             string const caption = "RESULT SET [" + scope + "]";
             string const indent = "";
-
             auto const table = resultSet.toColumnTable(caption, indent);
-
             bool const topSeparator = false;
             bool const bottomSeparator = false;
             bool const repeatedHeader = false;
-
             size_t const pageSize = 0;
-
             table.print(cout, topSeparator, bottomSeparator, pageSize, repeatedHeader);
         }
     }
 }
 
-SqlRequest::SqlRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                       std::string const& requestName, string const& workerName, uint64_t maxRows,
-                       int priority, bool keepTracking, shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, requestName, workerName, priority, keepTracking,
-                           false,  // allowDuplicate
-                           true,   // disposeRequired
-                           messenger) {
+SqlRequest::SqlRequest(shared_ptr<Controller> const& controller, std::string const& requestName,
+                       string const& workerName, uint64_t maxRows, int priority, bool keepTracking)
+        : RequestMessenger(controller, requestName, workerName, priority, keepTracking, ::allowDuplicateNo,
+                           ::disposeRequired) {
     // Partial initialization of the request body's content. Other members
     // will be set in the request type-specific subclasses.
     requestBody.set_max_rows(maxRows);
@@ -111,7 +102,6 @@ void SqlRequest::startImpl(replica::Lock const& lock) {
 
     // Serialize the Request message header and the request body into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
@@ -120,8 +110,7 @@ void SqlRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::SQL);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
     buffer()->serialize(requestBody);
 
@@ -132,28 +121,24 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
-
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the status request's body into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
-    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
-    ProtocolRequestStatus statusRequestBody;
+    ProtocolRequestTrack statusRequestBody;
     statusRequestBody.set_id(id());
     statusRequestBody.set_queued_type(ProtocolQueuedRequestType::SQL);
-
     buffer()->serialize(statusRequestBody);
 
     _send(lock);
@@ -162,7 +147,7 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
 void SqlRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<SqlRequest>();
-    messenger()->send<ProtocolResponseSql>(
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseSql>(
             workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseSql const& response) {
                 self->_analyze(success, response);
@@ -180,7 +165,6 @@ void SqlRequest::_analyze(bool success, ProtocolResponseSql const& response) {
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
-
     if (not success) {
         finish(lock, CLIENT_ERROR);
         return;

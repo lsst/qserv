@@ -170,7 +170,6 @@ public:
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
     bool overlap() const { return _overlap; }
-
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
     /**
@@ -184,11 +183,8 @@ public:
 
 protected:
     void notify(replica::Lock const& lock) final;
-
     std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
-
-    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
     SqlGetIndexesJob(std::string const& database, std::string const& table, bool overlap, bool allWorkers,
@@ -196,11 +192,9 @@ private:
                      CallbackType const& onFinish, int priority);
 
     // Input parameters
-
     std::string const _database;
     std::string const _table;
     bool const _overlap;
-
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A collection of tables to be processed by workers. The collection

@@ -27,6 +27,7 @@
 #include <thread>
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -158,10 +159,10 @@ void ClusterHealthJob::startImpl(replica::Lock const& lock) {
                                 : controller()->serviceProvider()->config()->workers();
 
     for (auto const& worker : workers) {
-        auto const replicationRequest = controller()->statusOfWorkerService(
-                worker, [self](ServiceStatusRequest::Ptr request) { self->_onRequestFinish(request); },
-                priority(), id(), /* jobId */
-                timeoutSec());
+        auto const replicationRequest = ServiceStatusRequest::createAndStart(
+                controller(), worker,
+                [self](ServiceStatusRequest::Ptr request) { self->_onRequestFinish(request); }, priority(),
+                id(), timeoutSec());
         _requests[replicationRequest->id()] = replicationRequest;
         ++_numStarted;
 

@@ -29,6 +29,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/RequestTracker.h"
 #include "replica/util/Performance.h"
@@ -57,7 +58,8 @@ AdminApp::AdminApp(int argc, char* argv[])
                       ::enableServiceProvider) {
     // Configure the command line parser
 
-    parser().commands("operation", {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN"}, _operation)
+    parser().commands("operation", {"STATUS", "SUSPEND", "RESUME", "REQUESTS", "DRAIN", "RECONFIG"},
+                      _operation)
             .flag("all-workers",
                   "The flag for selecting all workers regardless of their status (DISABLED or READ-ONLY).",
                   _allWorkers)
@@ -85,6 +87,8 @@ AdminApp::AdminApp(int argc, char* argv[])
 
     parser().command("DRAIN").description(
             "Cancel the in-progress (if any) requests on all workers, then empty all queues.");
+
+    parser().command("RECONFIG").description("Re-configure the worker services.");
 }
 
 int AdminApp::runImpl() {
@@ -93,51 +97,48 @@ int AdminApp::runImpl() {
     // Launch requests against a collection of workers
 
     CommonRequestTracker<ServiceManagementRequestBase> tracker(cout, _progressReport, _errorReport);
-
     auto const workerNames =
             _allWorkers ? serviceProvider()->config()->allWorkers() : serviceProvider()->config()->workers();
-
     for (auto&& workerName : workerNames) {
         if (_operation == "STATUS") {
-            tracker.add(controller->statusOfWorkerService(
-                    workerName, [&tracker](ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
-
+            tracker.add(ServiceStatusRequest::createAndStart(
+                    controller, workerName,
+                    [&tracker](ServiceStatusRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
         } else if (_operation == "SUSPEND") {
-            tracker.add(controller->suspendWorkerService(
-                    workerName,
+            tracker.add(ServiceSuspendRequest::createAndStart(
+                    controller, workerName,
                     [&tracker](ServiceSuspendRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
-
         } else if (_operation == "RESUME") {
-            tracker.add(controller->resumeWorkerService(
-                    workerName, [&tracker](ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
-
+            tracker.add(ServiceResumeRequest::createAndStart(
+                    controller, workerName,
+                    [&tracker](ServiceResumeRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
         } else if (_operation == "REQUESTS") {
-            tracker.add(controller->requestsOfWorkerService(
-                    workerName,
+            tracker.add(ServiceRequestsRequest::createAndStart(
+                    controller, workerName,
                     [&tracker](ServiceRequestsRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
-
         } else if (_operation == "DRAIN") {
-            tracker.add(controller->drainWorkerService(
-                    workerName, [&tracker](ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
-
+            tracker.add(ServiceDrainRequest::createAndStart(
+                    controller, workerName,
+                    [&tracker](ServiceDrainRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
+        } else if (_operation == "RECONFIG") {
+            tracker.add(ServiceReconfigRequest::createAndStart(
+                    controller, workerName,
+                    [&tracker](ServiceReconfigRequest::Ptr const& ptr) { tracker.onFinish(ptr); }));
         } else {
             throw logic_error("AdminApp::" + string(__func__) + "  unsupported operation: " + _operation);
         }
     }
 
     // Wait before all request are finished
-
     tracker.track();
 
     // Analyze and display results
-
     vector<string> workerName;
     vector<string> startedSecondsAgo;
     vector<string> state;
     vector<string> numNewRequests;
     vector<string> numInProgressRequests;
     vector<string> numFinishedRequests;
-
     for (auto const& ptr : tracker.requests) {
         workerName.push_back(ptr->workerName());
         if ((ptr->state() == Request::State::FINISHED) &&
@@ -174,7 +175,6 @@ int AdminApp::runImpl() {
         vector<string> requestType;
         vector<string> queue;
         vector<uint32_t> priority;
-
         auto analyzeRemoteRequestInfo = [&](string const& workerName_, string const& queueName,
                                             ProtocolServiceResponseInfo const& info) {
             workerName.push_back(workerName_);

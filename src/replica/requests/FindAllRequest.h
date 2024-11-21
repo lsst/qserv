@@ -34,7 +34,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Messenger;
+class Controller;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -58,7 +58,6 @@ public:
     ~FindAllRequest() final = default;
 
     std::string const& database() const { return _database; }
-
     bool saveReplicaInfo() const { return _saveReplicaInfo; }
 
     /// @return target request specific parameters
@@ -78,45 +77,33 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider a host of services for various communications
-     * @param workerName the identifier of a worker node (the one where the chunks
-     *   expected to be located)
-     * @param database the name of a database
-     * @param saveReplicaInfo save replica info in a database
-     * @param onFinish an optional callback function to be called upon a completion of
-     *   the request
-     * @param priority a priority level of the request
-     * @param keepTracking keep tracking the request before it finishes or fails
-     * @param messenger an interface for communicating with workers
-     * @return pointer to the created object
+     * Class-specific parameters are documented below:
+     * @param database The name of a database.
+     * @param saveReplicaInfo The (optional) save-replica info in a database.
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
+     * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& workerName, std::string const& database, bool saveReplicaInfo,
-                      CallbackType const& onFinish, int priority, bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              std::string const& database, bool saveReplicaInfo = true,
+                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
+                              bool keepTracking = true, std::string const& jobId = "",
+                              unsigned int requestExpirationIvalSec = 0);
 
-    /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
-    /// @see Request::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Request::notify()
     void notify(replica::Lock const& lock) final;
-
-    /// @see Request::savePersistentState()
     void savePersistentState(replica::Lock const& lock) final;
-
-    /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
 
 private:
-    /// @see FindAllRequest::create()
-    FindAllRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                   std::string const& workerName, std::string const& database, bool saveReplicaInfo,
-                   CallbackType const& onFinish, int priority, bool keepTracking,
-                   std::shared_ptr<Messenger> const& messenger);
+    FindAllRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                   std::string const& database, bool saveReplicaInfo, CallbackType const& onFinish,
+                   int priority, bool keepTracking);
 
     /**
      * Send the serialized content of the buffer to a worker

@@ -35,7 +35,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Messenger;
+class Controller;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -96,50 +96,40 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider  a host of services for various communications
-     * @param workerName  the identifier of a worker node (the one where the chunks
-     *   expected to be located)
-     * @param database  the name of a database
-     * @param directorTable the name of the director table
-     * @param chunk  the number of a chunk to be inspected
-     * @param hasTransactions  if set to 'true' then the result will also include a column which
-     *   stores a value of the corresponding super-transaction
-     * @param transactionId  (optional) identifier of a super-transaction. This parameter is used
+     * Class-specific parameters are documented below:
+     * @param database The name of a database.
+     * @param directorTable The name of the director table.
+     * @param chunk The number of a chunk to be inspected.
+     * @param hasTransactions If set to 'true' then the result will also include a column which
+     *   stores a value of the corresponding super-transaction.
+     * @param transactionId The (optional) identifier of a super-transaction. This parameter is used
      *   only if the above defined flag 'hasTransactions' is set.
-     * @param onFinish  an optional callback function to be called upon a completion of
-     *   the request
-     * @param priority  a priority level of the request
-     * @param keepTracking  keep tracking the request before it finishes or fails
-     * @param messenger  an interface for communicating with workers
-     * @return  pointer to the created object
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
+     * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& workerName, std::string const& database,
-                      std::string const& directorTable, unsigned int chunk, bool hasTransactions,
-                      TransactionId transactionId, CallbackType const& onFinish, int priority,
-                      bool keepTracking, std::shared_ptr<Messenger> const& messenger);
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              std::string const& database, std::string const& directorTable,
+                              unsigned int chunk, bool hasTransactions, TransactionId transactionId,
+                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
+                              bool keepTracking = true, std::string const& jobId = "",
+                              unsigned int requestExpirationIvalSec = 0);
 
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
-    /// @see Request::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Request::notify()
     void notify(replica::Lock const& lock) final;
-
-    /// @see Request::savePersistentState()
     void savePersistentState(replica::Lock const& lock) final;
-
-    /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
 
 private:
-    DirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                         std::string const& workerName, std::string const& database,
-                         std::string const& directorTable, unsigned int chunk, bool hasTransactions,
-                         TransactionId transactionId, CallbackType const& onFinish, int priority,
-                         bool keepTracking, std::shared_ptr<Messenger> const& messenger);
+    DirectorIndexRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                         std::string const& database, std::string const& directorTable, unsigned int chunk,
+                         bool hasTransactions, TransactionId transactionId, CallbackType const& onFinish,
+                         int priority, bool keepTracking);
 
     /**
      * Send the initial request for pulling data from the server.

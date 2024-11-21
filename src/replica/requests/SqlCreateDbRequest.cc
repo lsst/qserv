@@ -22,38 +22,35 @@
 // Class header
 #include "replica/requests/SqlCreateDbRequest.h"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateDbRequest");
-
+const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlCreateDbRequest::Ptr SqlCreateDbRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                   boost::asio::io_service& io_service, string const& worker,
-                                                   std::string const& database, CallbackType const& onFinish,
-                                                   int priority, bool keepTracking,
-                                                   shared_ptr<Messenger> const& messenger) {
-    return Ptr(new SqlCreateDbRequest(serviceProvider, io_service, worker, database, onFinish, priority,
-                                      keepTracking, messenger));
+SqlCreateDbRequest::Ptr SqlCreateDbRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                           string const& workerName,
+                                                           std::string const& database,
+                                                           CallbackType const& onFinish, int priority,
+                                                           bool keepTracking, string const& jobId,
+                                                           unsigned int requestExpirationIvalSec) {
+    auto ptr =
+            Ptr(new SqlCreateDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-SqlCreateDbRequest::SqlCreateDbRequest(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service, string const& worker,
+SqlCreateDbRequest::SqlCreateDbRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        std::string const& database, CallbackType const& onFinish,
-                                       int priority, bool keepTracking,
-                                       shared_ptr<Messenger> const& messenger)
-        : SqlRequest(serviceProvider, io_service, "SQL_CREATE_DATABASE", worker, 0 /* maxRows */, priority,
-                     keepTracking, messenger),
+                                       int priority, bool keepTracking)
+        : SqlRequest(controller, "SQL_CREATE_DATABASE", workerName, ::unlimitedMaxRows, priority,
+                     keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::CREATE_DATABASE);
@@ -63,7 +60,6 @@ SqlCreateDbRequest::SqlCreateDbRequest(ServiceProvider::Ptr const& serviceProvid
 void SqlCreateDbRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
     notifyDefaultImpl<SqlCreateDbRequest>(lock, _onFinish);
 }
 

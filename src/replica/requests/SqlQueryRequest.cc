@@ -22,9 +22,6 @@
 // Class header
 #include "replica/requests/SqlQueryRequest.h"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -38,23 +35,23 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlQueryRequest");
 
 namespace lsst::qserv::replica {
 
-SqlQueryRequest::Ptr SqlQueryRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                             boost::asio::io_service& io_service, string const& worker,
-                                             std::string const& query, std::string const& user,
-                                             std::string const& password, uint64_t maxRows,
-                                             CallbackType const& onFinish, int priority, bool keepTracking,
-                                             shared_ptr<Messenger> const& messenger) {
-    return Ptr(new SqlQueryRequest(serviceProvider, io_service, worker, query, user, password, maxRows,
-                                   onFinish, priority, keepTracking, messenger));
+SqlQueryRequest::Ptr SqlQueryRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                     string const& workerName, std::string const& query,
+                                                     std::string const& user, std::string const& password,
+                                                     uint64_t maxRows, CallbackType const& onFinish,
+                                                     int priority, bool keepTracking, string const& jobId,
+                                                     unsigned int requestExpirationIvalSec) {
+    auto ptr = Ptr(new SqlQueryRequest(controller, workerName, query, user, password, maxRows, onFinish,
+                                       priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-SqlQueryRequest::SqlQueryRequest(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service, string const& worker,
+SqlQueryRequest::SqlQueryRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                  std::string const& query, std::string const& user,
                                  std::string const& password, uint64_t maxRows, CallbackType const& onFinish,
-                                 int priority, bool keepTracking, shared_ptr<Messenger> const& messenger)
-        : SqlRequest(serviceProvider, io_service, "SQL_QUERY", worker, maxRows, priority, keepTracking,
-                     messenger),
+                                 int priority, bool keepTracking)
+        : SqlRequest(controller, "SQL_QUERY", workerName, maxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::QUERY);
@@ -66,7 +63,6 @@ SqlQueryRequest::SqlQueryRequest(ServiceProvider::Ptr const& serviceProvider,
 void SqlQueryRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
     notifyDefaultImpl<SqlQueryRequest>(lock, _onFinish);
 }
 

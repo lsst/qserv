@@ -44,53 +44,47 @@ using namespace std;
 using namespace std::placeholders;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ReplicationRequest");
-
+bool const disposeRequired = true;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-ReplicationRequest::Ptr ReplicationRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                   boost::asio::io_service& io_service,
-                                                   string const& workerName, string const& sourceWorkerName,
-                                                   string const& database, unsigned int chunk,
-                                                   bool allowDuplicate, CallbackType const& onFinish,
-                                                   int priority, bool keepTracking,
-                                                   shared_ptr<Messenger> const& messenger) {
-    return ReplicationRequest::Ptr(new ReplicationRequest(serviceProvider, io_service, workerName,
-                                                          sourceWorkerName, database, chunk, allowDuplicate,
-                                                          onFinish, priority, keepTracking, messenger));
+ReplicationRequest::Ptr ReplicationRequest::createAndStart(
+        shared_ptr<Controller> const& controller, string const& workerName, string const& sourceWorkerName,
+        string const& database, unsigned int chunk, CallbackType const& onFinish, int priority,
+        bool keepTracking, bool allowDuplicate, string const& jobId, unsigned int requestExpirationIvalSec) {
+    auto ptr = ReplicationRequest::Ptr(new ReplicationRequest(controller, workerName, sourceWorkerName,
+                                                              database, chunk, onFinish, priority,
+                                                              keepTracking, allowDuplicate));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-ReplicationRequest::ReplicationRequest(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service, string const& workerName,
+ReplicationRequest::ReplicationRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        string const& sourceWorkerName, string const& database,
-                                       unsigned int chunk, bool allowDuplicate, CallbackType const& onFinish,
-                                       int priority, bool keepTracking,
-                                       shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "REPLICA_CREATE", workerName, priority, keepTracking,
-                           allowDuplicate,
-                           true,  // disposeRequired
-                           messenger),
+                                       unsigned int chunk, CallbackType const& onFinish, int priority,
+                                       bool keepTracking, bool allowDuplicate)
+        : RequestMessenger(controller, "REPLICA_CREATE", workerName, priority, keepTracking, allowDuplicate,
+                           ::disposeRequired),
           _database(database),
           _chunk(chunk),
           _sourceWorkerName(sourceWorkerName),
           _onFinish(onFinish),
           _replicaInfo() {
-    Request::serviceProvider()->config()->assertWorkerIsValid(sourceWorkerName);
-    Request::serviceProvider()->config()->assertWorkersAreDifferent(sourceWorkerName, workerName);
-    Request::serviceProvider()->config()->assertDatabaseIsValid(database);
+    controller->serviceProvider()->config()->assertWorkerIsValid(sourceWorkerName);
+    controller->serviceProvider()->config()->assertWorkersAreDifferent(sourceWorkerName, workerName);
+    controller->serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
 void ReplicationRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    ConfigWorker const sourceConfigWorker = serviceProvider()->config()->worker(sourceWorkerName());
+    ConfigWorker const sourceConfigWorker =
+            controller()->serviceProvider()->config()->worker(sourceWorkerName());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
@@ -99,8 +93,7 @@ void ReplicationRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
     ProtocolRequestReplicate message;
@@ -110,7 +103,6 @@ void ReplicationRequest::startImpl(replica::Lock const& lock) {
     message.set_worker_host(sourceConfigWorker.fsHost.addr);
     message.set_worker_port(sourceConfigWorker.fsPort);
     message.set_worker_data_dir(sourceConfigWorker.dataDir);
-
     buffer()->serialize(message);
 
     _send(lock);
@@ -118,30 +110,25 @@ void ReplicationRequest::startImpl(replica::Lock const& lock) {
 
 void ReplicationRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (isAborted(ec)) return;
-
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
-    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
-    ProtocolRequestStatus message;
+    ProtocolRequestTrack message;
     message.set_id(remoteId());
     message.set_queued_type(ProtocolQueuedRequestType::REPLICA_CREATE);
-
     buffer()->serialize(message);
 
     _send(lock);
@@ -149,7 +136,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
 void ReplicationRequest::_send(replica::Lock const& lock) {
     auto self = shared_from_base<ReplicationRequest>();
-    messenger()->send<ProtocolResponseReplicate>(
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseReplicate>(
             workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseReplicate const& response) {
                 self->_analyze(success, response);
@@ -167,7 +154,6 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
-
     if (not success) {
         finish(lock, CLIENT_ERROR);
         return;
@@ -195,7 +181,7 @@ void ReplicationRequest::_analyze(bool success, ProtocolResponseReplicate const&
     }
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
-            serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
+            controller()->serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
             finish(lock, SUCCESS);
             break;
         case ProtocolStatus::CREATED:

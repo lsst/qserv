@@ -68,7 +68,8 @@ json HttpQservSqlModule::_execute() {
     debug(__func__, "user=" + user);
     debug(__func__, "maxRows=" + to_string(maxRows));
 
-    auto const request = controller()->sqlQuery(worker, query, user, password, maxRows);
+    auto const request =
+            SqlQueryRequest::createAndStart(controller(), worker, query, user, password, maxRows);
     request->wait();
 
     json result;

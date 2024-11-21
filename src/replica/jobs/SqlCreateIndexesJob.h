@@ -111,11 +111,8 @@ public:
 
 protected:
     void notify(replica::Lock const& lock) final;
-
     std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
-
-    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
     SqlCreateIndexesJob(std::string const& database, std::string const& table, bool overlap,
@@ -125,7 +122,6 @@ private:
                         std::string const& parentJobId, CallbackType const& onFinish, int priority);
 
     // Input parameters
-
     std::string const _database;
     std::string const _table;
     bool const _overlap;
@@ -133,7 +129,6 @@ private:
     std::string const _indexName;
     std::string const _indexComment;
     std::vector<SqlIndexColumn> const _indexColumns;
-
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.

@@ -33,8 +33,10 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/config/Configuration.h"
+#include "replica/ingest/TransactionContrib.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/requests/StopRequest.h"
+#include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
 
@@ -282,22 +284,19 @@ void DirectorIndexJob::cancelImpl(replica::Lock const& lock) {
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
-
     _chunks.clear();
 
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
-
     auto const noCallbackOnFinish = nullptr;
     bool const keepTracking = true;
-
     for (auto&& itr : _inFlightRequests) {
         auto&& ptr = itr.second;
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            controller()->stopById<StopDirectorIndexRequest>(ptr->workerName(), ptr->id(), noCallbackOnFinish,
-                                                             priority(), keepTracking, id());
+            StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                        priority(), keepTracking, id());
         }
     }
     _inFlightRequests.clear();
@@ -515,8 +514,9 @@ list<DirectorIndexRequest::Ptr> DirectorIndexJob::_launchRequests(replica::Lock 
         auto const chunk = _chunks[workerName].front();
         _chunks[workerName].pop();
 
-        requests.push_back(controller()->directorIndex(
-                workerName, database(), directorTable(), chunk, hasTransactions(), transactionId(),
+        requests.push_back(DirectorIndexRequest::createAndStart(
+                controller(), workerName, database(), directorTable(), chunk, hasTransactions(),
+                transactionId(),
                 [self](DirectorIndexRequest::Ptr const& request) { self->_onRequestFinish(request); },
                 priority(), keepTracking, id()));
     }

@@ -256,8 +256,9 @@ void Job::_startHeartbeatTimer(replica::Lock const& lock) {
         // The timer needs to be initialized each time a new interval
         // is about to begin. Otherwise it will immediately expire when
         // async_wait() will be called.
-        _heartbeatTimerPtr.reset(new boost::asio::deadline_timer(
-                controller()->io_service(), boost::posix_time::seconds(_heartbeatTimerIvalSec)));
+        _heartbeatTimerPtr.reset(
+                new boost::asio::deadline_timer(controller()->serviceProvider()->io_service(),
+                                                boost::posix_time::seconds(_heartbeatTimerIvalSec)));
         _heartbeatTimerPtr->async_wait(bind(&Job::_heartbeat, shared_from_this(), _1));
     }
 }
@@ -286,8 +287,9 @@ void Job::_startExpirationTimer(replica::Lock const& lock) {
         // The timer needs to be initialized each time a new interval
         // is about to begin. Otherwise it will immediately expire when
         // async_wait() will be called.
-        _expirationTimerPtr.reset(new boost::asio::deadline_timer(
-                controller()->io_service(), boost::posix_time::seconds(_expirationIvalSec)));
+        _expirationTimerPtr.reset(
+                new boost::asio::deadline_timer(controller()->serviceProvider()->io_service(),
+                                                boost::posix_time::seconds(_expirationIvalSec)));
         _expirationTimerPtr->async_wait(bind(&Job::_expired, shared_from_this(), _1));
     }
 }

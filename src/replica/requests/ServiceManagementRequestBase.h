@@ -35,7 +35,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Messenger;
+class Controller;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -110,23 +110,17 @@ public:
 protected:
     /**
      * Construct the request with the pointer to the services provider.
-     * @param serviceProvider  Provides various services for the application.
-     * @param io_service  The asynchronous I/O communication services (BOOST ASIO).
-     * @param requestName  The name of a request.
-     * @param workerName  The name of a worker.
-     * @param requestType  A type of a request.
-     * @param priority  A priority level of a request.
-     * @param messenger  The messaging service for workers.
+     * @param controller the Controller associated with the request
+     * @param requestName The name of a request.
+     * @param workerName The name of a worker.
+     * @param requestType A type of a request.
+     * @param priority A priority level of a request.
      */
-    ServiceManagementRequestBase(ServiceProvider::Ptr const& serviceProvider,
-                                 boost::asio::io_service& io_service, char const* requestName,
+    ServiceManagementRequestBase(std::shared_ptr<Controller> const& controller, char const* requestName,
                                  std::string const& workerName, ProtocolServiceRequestType requestType,
-                                 int priority, std::shared_ptr<Messenger> const& messenger);
+                                 int priority);
 
-    /// @see Request::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Request::savePersistentState()
     void savePersistentState(replica::Lock const& lock) final;
 
 private:

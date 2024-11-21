@@ -32,6 +32,11 @@
 #include "replica/requests/SqlRequest.h"
 #include "replica/util/Common.h"
 
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -62,37 +67,32 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider is needed to access the Configuration and the Controller
-     *   for communicating with the worker
-     * @param io_service a communication end-point
-     * @param worker identifier of a worker node
-     * @param database the name of an existing database where the table is residing
-     * @param tables a collection of tables (given by their names) affected by
-     *   the operation
-     * @param transactionId a unique identifier of a transaction which corresponds
+     * Class-specific parameters are documented below:
+     * @param database The name of an existing database where the table is residing.
+     * @param tables A collection of tables (given by their names) affected by
+     *   the operation.
+     * @param transactionId The unique identifier of a transaction which corresponds
      *   to a MySQL partition to be removed.
-     * @param onFinish (optional) callback function to call upon completion of
-     *   the request
-     * @param priority priority level of the request
-     * @param keepTracking keep tracking the request before it finishes or fails
-     * @param messenger interface for communicating with workers
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
      * @return pointer to the created object
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, std::string const& database,
-                      std::vector<std::string> const& tables, TransactionId transactionId,
-                      CallbackType const& onFinish, int priority, bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              std::string const& database, std::vector<std::string> const& tables,
+                              TransactionId transactionId, CallbackType const& onFinish = nullptr,
+                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
+                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
 protected:
     void notify(replica::Lock const& lock) final;
 
 private:
-    SqlDeleteTablePartitionRequest(ServiceProvider::Ptr const& serviceProvider,
-                                   boost::asio::io_service& io_service, std::string const& worker,
-                                   std::string const& database, std::vector<std::string> const& tables,
-                                   TransactionId transactionId, CallbackType const& onFinish, int priority,
-                                   bool keepTracking, std::shared_ptr<Messenger> const& messenger);
+    SqlDeleteTablePartitionRequest(std::shared_ptr<Controller> const& controller,
+                                   std::string const& workerName, std::string const& database,
+                                   std::vector<std::string> const& tables, TransactionId transactionId,
+                                   CallbackType const& onFinish, int priority, bool keepTracking);
 
     CallbackType _onFinish;  ///< @note is reset when the request finishes
 };

@@ -30,6 +30,11 @@
 // Qserv headers
 #include "replica/requests/SqlRequest.h"
 
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -60,40 +65,35 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     * @param serviceProvider Is needed to access the Configuration and
-     *   the Controller for communicating with the worker.
-     * @param io_service The BOOST ASIO communication end-point.
-     * @param worker An identifier of a worker node.
+     *
+     * Class-specific parameters are documented below:
      * @param query The query to be executed.
-     * @param user  The name of a database account for connecting to the database service.
+     * @param user The name of a database account for connecting to the database service.
      * @param password The database account password for connecting to the database service.
-     * @param maxRows  The (optional) limit for the maximum number of rows to be returned with
-     *   the request. Leaving the default value of the parameter to 0 will result in not imposing
+     * @param maxRows  The limit for the maximum number of rows to be returned with
+     *   the request. Setting a value of the parameter to 0 will result in not imposing
      *   any explicit restrictions on a size of the result set. Note that other, resource-defined
      *   restrictions will still apply. The later includes the maximum size of the Google Protobuf
      *   objects, the amount of available memory, etc.
-     * @param onFinish  The (optional) callback function to call upon completion of
-     *   the request.
-     * @param priority  The priority level of the request.
-     * @param keepTracking  Keep tracking the request before it finishes or fails.
-     * @param messenger An interface for communicating with workers.
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
      * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& worker, std::string const& query, std::string const& user,
-                      std::string const& password, uint64_t maxRows, CallbackType const& onFinish,
-                      int priority, bool keepTracking, std::shared_ptr<Messenger> const& messenger);
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              std::string const& query, std::string const& user, std::string const& password,
+                              uint64_t maxRows, CallbackType const& onFinish = nullptr,
+                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
+                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
 protected:
-    /// @see Request::notify()
     void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see SqlQueryRequest::create()
-    SqlQueryRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                    std::string const& worker, std::string const& query, std::string const& user,
-                    std::string const& password, uint64_t maxRows, CallbackType const& onFinish, int priority,
-                    bool keepTracking, std::shared_ptr<Messenger> const& messenger);
+    SqlQueryRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                    std::string const& query, std::string const& user, std::string const& password,
+                    uint64_t maxRows, CallbackType const& onFinish, int priority, bool keepTracking);
 
     CallbackType _onFinish;  ///< @note is reset when the request finishes
 };

@@ -72,9 +72,7 @@ CreateReplicaJob::CreateReplicaJob(string const& databaseFamily, unsigned int ch
 
 CreateReplicaJobResult const& CreateReplicaJob::getReplicaData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (state() == State::FINISHED) return _replicaData;
-
     throw logic_error("CreateReplicaJob::" + string(__func__) +
                       "  the method can't be called while the job hasn't finished");
 }
@@ -90,7 +88,6 @@ list<pair<string, string>> CreateReplicaJob::extendedPersistentState() const {
 
 list<pair<string, string>> CreateReplicaJob::persistentLogData() const {
     list<pair<string, string>> result;
-
     auto&& replicaData = getReplicaData();
 
     // Per-worker counters for the following categories:
@@ -98,16 +95,13 @@ list<pair<string, string>> CreateReplicaJob::persistentLogData() const {
     //   created-chunks:
     //     the total number of chunks created on the workers as a result
     //     of the operation
-
     map<string, map<string, size_t>> workerCategoryCounter;
-
     for (auto&& info : replicaData.replicas) {
         workerCategoryCounter[info.worker()]["created-chunks"]++;
     }
     for (auto&& workerItr : workerCategoryCounter) {
         auto&& worker = workerItr.first;
         string val = "worker=" + worker;
-
         for (auto&& categoryItr : workerItr.second) {
             auto&& category = categoryItr.first;
             size_t const counter = categoryItr.second;
@@ -122,9 +116,7 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << "startImpl");
 
     // Check if configuration parameters are valid
-
     auto const& config = controller()->serviceProvider()->config();
-
     if (not(config->isKnownDatabaseFamily(databaseFamily()) and config->isKnownWorker(sourceWorker()) and
             config->isKnownWorker(destinationWorker()) and (sourceWorker() != destinationWorker()))) {
         LOGS(_log, LOG_LVL_ERROR,
@@ -132,32 +124,26 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
                        << " database family: '" << databaseFamily() << "'"
                        << " source worker: '" << sourceWorker() << "'"
                        << " destination worker: '" << destinationWorker() << "'");
-
         finish(lock, ExtendedState::CONFIG_ERROR);
         return;
     }
 
     // Make sure no such replicas exist yet at the destination
-
     vector<ReplicaInfo> destinationReplicas;
     try {
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
                 destinationReplicas, chunk(), destinationWorker(), databaseFamily());
-
     } catch (invalid_argument const& ex) {
         LOGS(_log, LOG_LVL_ERROR,
              context() << string(__func__) << "  ** MISCONFIGURED ** "
                        << " chunk: " << chunk() << " destinationWorker: " << destinationWorker()
                        << " databaseFamily: " << databaseFamily() << " exception: " << ex.what());
-
         throw;
-
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR,
              context() << string(__func__) << "  ** failed to find replicas ** "
                        << " chunk: " << chunk() << " destinationWorker: " << destinationWorker()
                        << " databaseFamily: " << databaseFamily() << " exception: " << ex.what());
-
         finish(lock, ExtendedState::FAILED);
         return;
     }
@@ -167,7 +153,6 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
                        << destinationReplicas.size() << " replicas ** "
                        << " chunk: " << chunk() << " destinationWorker: " << destinationWorker()
                        << " databaseFamily: " << databaseFamily());
-
         finish(lock, ExtendedState::FAILED);
         return;
     }
@@ -181,7 +166,6 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
     //
     // 2. launching FindRequest for each member of the database family to
     //    see if the chunk is available on a source node.
-
     vector<ReplicaInfo> sourceReplicas;
     try {
         controller()->serviceProvider()->databaseServices()->findWorkerReplicas(
@@ -194,7 +178,6 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
                        << " databaseFamily: " << databaseFamily() << " exception: " << ex.what());
 
         throw;
-
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR,
              context() << string(__func__) << "  ** failed to find replicas ** "
@@ -219,17 +202,15 @@ void CreateReplicaJob::startImpl(replica::Lock const& lock) {
     //
     // VERY IMPORTANT: the requests are sent for participating databases
     // only because some catalogs may not have a full coverage
-
-    auto self = shared_from_base<CreateReplicaJob>();
-
+    bool const keepTracking = true;
+    bool const allowDuplicate = true;
     for (auto&& replica : sourceReplicas) {
-        _requests.push_back(controller()->replicate(
-                destinationWorker(), sourceWorker(), replica.database(), chunk(),
-                [self](ReplicationRequest::Ptr ptr) { self->_onRequestFinish(ptr); }, priority(),
-                true, /* keepTracking */
-                true, /* allowDuplicate */
-                id()  /* jobId */
-                ));
+        _requests.push_back(ReplicationRequest::createAndStart(
+                controller(), destinationWorker(), sourceWorker(), replica.database(), chunk(),
+                [self = shared_from_base<CreateReplicaJob>()](ReplicationRequest::Ptr ptr) {
+                    self->_onRequestFinish(ptr);
+                },
+                priority(), keepTracking, allowDuplicate, id()));
     }
 }
 
@@ -238,18 +219,17 @@ void CreateReplicaJob::cancelImpl(replica::Lock const& lock) {
 
     // The algorithm will also clear resources taken by various
     // locally created objects.
-
+    //
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
-
+    auto const noCallbackOnFinish = nullptr;
+    bool const keepTracking = true;
     for (auto&& ptr : _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED)
-            controller()->stopById<StopReplicationRequest>(destinationWorker(), ptr->id(),
-                                                           nullptr,          /* onFinish */
-                                                           priority(), true, /* keepTracking */
-                                                           id() /* jobId */);
+            StopRequest::createAndStart(controller(), destinationWorker(), ptr->id(), noCallbackOnFinish,
+                                        priority(), keepTracking, id());
     }
     _requests.clear();
 }
@@ -266,9 +246,7 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
                    << "  sourceWorker=" << sourceWorker() << "  chunk=" << chunk());
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + string(__func__) + "(ReplicationeRequest)");
-
     if (state() == State::FINISHED) return;
 
     ++_numRequestsFinished;
@@ -280,7 +258,6 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
 
     // Evaluate the status of on-going operations to see if the replica creation
     // stage has finished.
-
     if (_numRequestsFinished == _requests.size()) {
         if (_numRequestsSuccess == _requests.size()) {
             // Notify Qserv about the change in a disposition of replicas.
@@ -290,12 +267,10 @@ void CreateReplicaJob::_onRequestFinish(ReplicationRequest::Ptr const& request) 
             // NOTE: The current implementation will not be affected by a result
             //       of the operation. Neither any upstream notifications will be
             //       sent to a requester of this job.
-
             vector<string> databases;
             for (auto&& databaseEntry : _replicaData.chunks[chunk()]) {
                 databases.push_back(databaseEntry.first);
             }
-
             ServiceProvider::Ptr const serviceProvider = controller()->serviceProvider();
             if (serviceProvider->config()->get<unsigned int>("xrootd", "auto-notify") != 0) {
                 _qservAddReplica(lock, chunk(), databases, destinationWorker());
@@ -314,11 +289,9 @@ void CreateReplicaJob::_qservAddReplica(replica::Lock const& lock, unsigned int 
          context() << __func__ << "  ** START ** Qserv notification on ADD replica:"
                    << ", chunk=" << chunk << ", databases=" << util::String::toString(databases)
                    << "  worker=" << worker);
-
-    auto self = shared_from_this();
     controller()->serviceProvider()->qservMgtServices()->addReplica(
             chunk, databases, worker,
-            [self, onFinish](AddReplicaQservMgtRequest::Ptr const& request) {
+            [self = shared_from_this(), onFinish](AddReplicaQservMgtRequest::Ptr const& request) {
                 LOGS(_log, LOG_LVL_DEBUG,
                      self->context() << __func__ << "  ** FINISH ** Qserv notification on ADD replica:"
                                      << "  chunk=" << request->chunk()

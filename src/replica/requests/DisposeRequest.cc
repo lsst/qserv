@@ -27,7 +27,9 @@
 #include <sstream>
 
 // Qserv headers
+#include "replica/contr/Controller.h"
 #include "replica/requests/Messenger.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/util/ProtocolBuffer.h"
 
 // LSST headers
@@ -39,7 +41,8 @@ using namespace std::placeholders;
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DisposeRequest");
-
+bool const allowDuplicateNo = false;
+bool const disposeRequiredNo = false;
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -65,23 +68,23 @@ string DisposeRequest::toString(bool extended) const {
     return oss.str();
 }
 
-DisposeRequest::Ptr DisposeRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                           boost::asio::io_service& io_service, string const& workerName,
-                                           std::vector<std::string> const& targetIds,
-                                           CallbackType const& onFinish, int priority, bool keepTracking,
-                                           shared_ptr<Messenger> const& messenger) {
-    return DisposeRequest::Ptr(new DisposeRequest(serviceProvider, io_service, workerName, targetIds,
-                                                  onFinish, priority, keepTracking, messenger));
+DisposeRequest::Ptr DisposeRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                   string const& workerName,
+                                                   std::vector<std::string> const& targetIds,
+                                                   CallbackType const& onFinish, int priority,
+                                                   bool keepTracking, string const& jobId,
+                                                   unsigned int requestExpirationIvalSec) {
+    auto ptr = DisposeRequest::Ptr(
+            new DisposeRequest(controller, workerName, targetIds, onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-DisposeRequest::DisposeRequest(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service, string const& workerName,
+DisposeRequest::DisposeRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                std::vector<std::string> const& targetIds, CallbackType const& onFinish,
-                               int priority, bool keepTracking, shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "DISPOSE", workerName, priority, keepTracking,
-                           false,  // allowDuplicate
-                           false,  // disposeRequired
-                           messenger),
+                               int priority, bool keepTracking)
+        : RequestMessenger(controller, "DISPOSE", workerName, priority, keepTracking, ::allowDuplicateNo,
+                           ::disposeRequiredNo),
           _targetIds(targetIds),
           _onFinish(onFinish) {}
 
@@ -93,15 +96,13 @@ void DisposeRequest::startImpl(replica::Lock const& lock) {
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_DISPOSE);
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
     ProtocolRequestDispose message;
@@ -115,7 +116,7 @@ void DisposeRequest::startImpl(replica::Lock const& lock) {
 
 void DisposeRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    messenger()->send<ProtocolResponseDispose>(
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseDispose>(
             workerName(), id(), priority(), buffer(),
             // Don't forward the first parameter (request's identifier) of the callback
             // to the response's analyzer. A value of the identifier is already known

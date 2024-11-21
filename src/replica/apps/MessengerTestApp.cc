@@ -117,8 +117,8 @@ int MessengerTestApp::runImpl() {
         _onNumActiveCv.wait(lock, [&] { return _numActive < _maxActiveRequests; });
 
         // Submit the next request.
-        auto const request = controller->echo(
-                _workerName, _data, _proccesingTimeSec,
+        auto const request = EchoRequest::createAndStart(
+                controller, _workerName, _data, _proccesingTimeSec,
                 [&](EchoRequest::Ptr request) {
                     {
                         unique_lock<mutex> lock(_mtx);

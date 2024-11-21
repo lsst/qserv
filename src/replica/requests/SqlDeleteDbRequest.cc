@@ -22,38 +22,34 @@
 // Class header
 #include "replica/requests/SqlDeleteDbRequest.h"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlDeleteDbRequest");
-
+const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlDeleteDbRequest::Ptr SqlDeleteDbRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                   boost::asio::io_service& io_service, string const& worker,
-                                                   std::string const& database, CallbackType const& onFinish,
-                                                   int priority, bool keepTracking,
-                                                   shared_ptr<Messenger> const& messenger) {
-    return Ptr(new SqlDeleteDbRequest(serviceProvider, io_service, worker, database, onFinish, priority,
-                                      keepTracking, messenger));
+SqlDeleteDbRequest::Ptr SqlDeleteDbRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                           string const& workerName,
+                                                           std::string const& database,
+                                                           CallbackType const& onFinish, int priority,
+                                                           bool keepTracking, string const& jobId,
+                                                           unsigned int requestExpirationIvalSec) {
+    auto ptr =
+            Ptr(new SqlDeleteDbRequest(controller, workerName, database, onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-SqlDeleteDbRequest::SqlDeleteDbRequest(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service, string const& worker,
+SqlDeleteDbRequest::SqlDeleteDbRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        std::string const& database, CallbackType const& onFinish,
-                                       int priority, bool keepTracking,
-                                       shared_ptr<Messenger> const& messenger)
-        : SqlRequest(serviceProvider, io_service, "SQL_DROP_DATABASE", worker, 0 /* maxRows */, priority,
-                     keepTracking, messenger),
+                                       int priority, bool keepTracking)
+        : SqlRequest(controller, "SQL_DROP_DATABASE", workerName, ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::DROP_DATABASE);
@@ -63,7 +59,6 @@ SqlDeleteDbRequest::SqlDeleteDbRequest(ServiceProvider::Ptr const& serviceProvid
 void SqlDeleteDbRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
     notifyDefaultImpl<SqlDeleteDbRequest>(lock, _onFinish);
 }
 

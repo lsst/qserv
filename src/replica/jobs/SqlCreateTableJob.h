@@ -56,43 +56,22 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param database
-     *   the name of a database where a new table will be created
-     *
-     * @param table
-     *   the name of a table to be created
-     *
-     * @param engine
-     *   the name of the MySQL engine for the new table
-     *
-     * @pram partitionByColumn
-     *   (optional, if not empty) the name of a column which will be used
+     * @param database the name of a database where a new table will be created
+     * @param table the name of a table to be created
+     * @param engine the name of the MySQL engine for the new table
+     * @param partitionByColumn (optional, if not empty) the name of a column which will be used
      *   as a key to configure MySQL partitions for the new table.
      *   This variation of table schema will be used for the super-transaction-based
      *   ingest into the table.
-     *
-     * @param columns
-     *   column definitions (name,type) of the table
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
+     * @param columns column definitions (name,type) of the table
+     * @param allWorkers engage all known workers regardless of their status. If the flag
      *   is set to 'false' then only 'ENABLED' workers which are not in
      *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   an identifier of the parent job
-     *
-     * @param onFinish
-     *   a callback function to be called upon a completion of the job
-     *
-     * @param priority
-     *   defines the job priority
-     *
-     * @return
-     *   pointer to the created object
+     * @param controller is needed launching requests and accessing the Configuration
+     * @param parentJobId an identifier of the parent job
+     * @param onFinish a callback function to be called upon a completion of the job
+     * @param priority defines the job priority
+     * @return pointer to the created object
      */
     static Ptr create(std::string const& database, std::string const& table, std::string const& engine,
                       std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
@@ -105,25 +84,17 @@ public:
 
     ~SqlCreateTableJob() final = default;
 
-    // Trivial get methods
-
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
     std::string const& engine() const { return _engine; }
-
     std::string const& partitionByColumn() const { return _partitionByColumn; }
-
     std::list<SqlColDef> const& columns() const { return _columns; }
-
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(replica::Lock const& lock) final;
-
     std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
-
-    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
     SqlCreateTableJob(std::string const& database, std::string const& table, std::string const& engine,
@@ -132,14 +103,11 @@ private:
                       CallbackType const& onFinish, int priority);
 
     // Input parameters
-
     std::string const _database;
     std::string const _table;
     std::string const _engine;
     std::string const _partitionByColumn;
-
     std::list<SqlColDef> const _columns;
-
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.

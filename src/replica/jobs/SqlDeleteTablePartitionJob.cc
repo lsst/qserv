@@ -23,9 +23,9 @@
 #include "replica/jobs/SqlDeleteTablePartitionJob.h"
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/SqlDeleteTablePartitionRequest.h"
-#include "replica/requests/StopRequest.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -95,7 +95,6 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(replica::Lock c
                                                                  string const& worker,
                                                                  size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
-
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -107,22 +106,17 @@ list<SqlRequest::Ptr> SqlDeleteTablePartitionJob::launchRequests(replica::Lock c
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    bool const keepTracking = true;
-    string const jobId = id();
-    auto const self = shared_from_base<SqlDeleteTablePartitionJob>();
     for (auto&& tables : distributeTables(allTables, maxRequestsPerWorker)) {
-        requests.push_back(controller()->sqlDeleteTablePartition(
-                worker, database(), tables, transactionId(),
-                [self](SqlDeleteTablePartitionRequest::Ptr const& request) {
+        bool const keepTracking = true;
+        requests.push_back(SqlDeleteTablePartitionRequest::createAndStart(
+                controller(), worker, database(), tables, transactionId(),
+                [self = shared_from_base<SqlDeleteTablePartitionJob>()](
+                        SqlDeleteTablePartitionRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },
-                priority(), keepTracking, jobId));
+                priority(), keepTracking, id()));
     }
     return requests;
-}
-
-void SqlDeleteTablePartitionJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlDeleteTablePartitionRequest>(lock, request);
 }
 
 void SqlDeleteTablePartitionJob::notify(replica::Lock const& lock) {
