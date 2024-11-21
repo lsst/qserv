@@ -51,8 +51,10 @@ WorkerSqlRequest::Ptr WorkerSqlRequest::create(ServiceProvider::Ptr const& servi
                                                ExpirationCallbackType const& onExpired,
                                                unsigned int requestExpirationIvalSec,
                                                ProtocolRequestSql const& request) {
-    return WorkerSqlRequest::Ptr(new WorkerSqlRequest(serviceProvider, worker, id, priority, onExpired,
-                                                      requestExpirationIvalSec, request));
+    auto ptr = WorkerSqlRequest::Ptr(new WorkerSqlRequest(serviceProvider, worker, id, priority, onExpired,
+                                                          requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
@@ -64,7 +66,6 @@ WorkerSqlRequest::WorkerSqlRequest(ServiceProvider::Ptr const& serviceProvider, 
 void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
     replica::Lock lock(_mtx, context(__func__));
-
     response.set_allocated_target_performance(performance().info().release());
 
     // Carry over the result of the query only after the request
@@ -83,18 +84,9 @@ void WorkerSqlRequest::setInfo(ProtocolResponseSql& response) const {
 bool WorkerSqlRequest::execute() {
     string const context_ = "WorkerSqlRequest::" + context(__func__);
     LOGS(_log, LOG_LVL_DEBUG, context_);
-    replica::Lock lock(_mtx, context_);
 
-    switch (status()) {
-        case ProtocolStatus::IN_PROGRESS:
-            break;
-        case ProtocolStatus::IS_CANCELLING:
-            setStatus(lock, ProtocolStatus::CANCELLED);
-            throw WorkerRequestCancelled();
-        default:
-            throw logic_error(context_ +
-                              "  not allowed while in state: " + WorkerRequest::status2string(status()));
-    }
+    replica::Lock lock(_mtx, context_);
+    checkIfCancelling(lock, __func__);
     try {
         // Pre-create the default result-set message before any operations with
         // the database service. This is needed to report errors.
@@ -115,7 +107,6 @@ bool WorkerSqlRequest::execute() {
             // Count the number of failures for proper error reporting on
             // the current request.
             size_t numFailures = 0;
-
             for (int i = 0; i < _request.tables_size(); ++i) {
                 string const table = _request.tables(i);
 
@@ -124,7 +115,6 @@ bool WorkerSqlRequest::execute() {
                 // a new one.
                 if (i > 0) currentResultSet = _response.add_result_sets();
                 currentResultSet->set_scope(table);
-
                 try {
                     ConnectionHandler const h(connection);
                     h.conn->execute([&](decltype(h.conn) const& conn_) {
@@ -166,7 +156,6 @@ bool WorkerSqlRequest::execute() {
             } else {
                 setStatus(lock, ProtocolStatus::SUCCESS);
             }
-
         } else {
             // TODO: the algorithm will only report a result set of the last query
             // from the multi-query collections. The implementations of the corresponding
@@ -187,7 +176,6 @@ bool WorkerSqlRequest::execute() {
             });
             setStatus(lock, ProtocolStatus::SUCCESS);
         }
-
     } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
         _reportFailure(lock, ProtocolStatusExt::NO_SUCH_TABLE, ex.what());
 
@@ -220,7 +208,6 @@ Connection::Ptr WorkerSqlRequest::_connector() const {
     // on a type of the request. For the sake of greater security, arbitrary
     // queries require a client to explicitly provide the credentials.
     // Otherwise, using credentials from the worker's configuration.
-
     bool const clientCredentials = _request.type() == ProtocolRequestSql::QUERY;
     auto connectionParams = Configuration::qservWorkerDbParams();
     if (clientCredentials) {
@@ -237,7 +224,6 @@ vector<Query> WorkerSqlRequest::_queries(Connection::Ptr const& conn) const {
         case ProtocolRequestSql::QUERY:
             queries.emplace_back(Query(_request.query()));
             break;
-
         case ProtocolRequestSql::CREATE_DATABASE: {
             bool const ifNotExists = true;
             string const query = g.createDb(_request.database(), ifNotExists);
@@ -280,7 +266,6 @@ vector<Query> WorkerSqlRequest::_queries(Connection::Ptr const& conn) const {
 Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table) const {
     QueryGenerator const g(conn);
     SqlId const databaseTable = g.id(_request.database(), table);
-
     switch (_request.type()) {
         case ProtocolRequestSql::CREATE_TABLE: {
             list<SqlColDef> columns;
@@ -303,7 +288,6 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
             }
             return Query(query, databaseTable.str);
         }
-
         case ProtocolRequestSql::DROP_TABLE: {
             bool const ifExists = true;
             string const query = g.dropTable(databaseTable, ifExists);
@@ -386,7 +370,6 @@ void WorkerSqlRequest::_extractResultSet(replica::Lock const& lock, Connection::
     // Now carry over the actual rest set (if any)
     resultSet->set_char_set_name(conn->charSetName());
     resultSet->set_has_result(conn->hasResult());
-
     if (conn->hasResult()) {
         for (size_t i = 0; i < conn->numFields(); ++i) {
             conn->exportField(resultSet->add_fields(), i);
@@ -414,12 +397,9 @@ void WorkerSqlRequest::_reportFailure(replica::Lock const& lock, ProtocolStatusE
     // result set, while the final state of the whole request may vary
     // depending on a kind of the request - if it's a simple or the "batch"
     // request.
-
     auto resultSet = _currentResultSet(lock);
-
     resultSet->set_status_ext(statusExt);
     resultSet->set_error(error);
-
     setStatus(lock, ProtocolStatus::FAILED, _batchMode() ? statusExt : ProtocolStatusExt::MULTIPLE);
 }
 
@@ -430,7 +410,6 @@ ProtocolResponseSqlResultSet* WorkerSqlRequest::_currentResultSet(replica::Lock 
                           " the operation is not allowed in this state");
     }
     return _response.mutable_result_sets(numResultSets - 1);
-    ;
 }
 
 bool WorkerSqlRequest::_batchMode() const { return _request.has_batch_mode() and _request.batch_mode(); }

@@ -47,17 +47,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerDeleteRequest");
 
 namespace lsst::qserv::replica {
 
-//////////////////////////////////////////////////////////////
-///////////////////// WorkerDeleteRequest ////////////////////
-//////////////////////////////////////////////////////////////
-
 WorkerDeleteRequest::Ptr WorkerDeleteRequest::create(ServiceProvider::Ptr const& serviceProvider,
                                                      string const& worker, string const& id, int priority,
                                                      ExpirationCallbackType const& onExpired,
                                                      unsigned int requestExpirationIvalSec,
                                                      ProtocolRequestDelete const& request) {
-    return WorkerDeleteRequest::Ptr(new WorkerDeleteRequest(serviceProvider, worker, id, priority, onExpired,
-                                                            requestExpirationIvalSec, request));
+    auto ptr = WorkerDeleteRequest::Ptr(new WorkerDeleteRequest(
+            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProvider, string const& worker,
@@ -73,62 +71,28 @@ WorkerDeleteRequest::WorkerDeleteRequest(ServiceProvider::Ptr const& serviceProv
 
 void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     replica::Lock lock(_mtx, context(__func__));
-
     response.set_allocated_target_performance(performance().info().release());
     response.set_allocated_replica_info(_replicaInfo.info().release());
-
     *(response.mutable_request()) = _request;
 }
 
 bool WorkerDeleteRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  db: " << database() << "  chunk: " << chunk());
 
-    return WorkerRequest::execute();
-}
-
-///////////////////////////////////////////////////////////////////
-///////////////////// WorkerDeleteRequestPOSIX ////////////////////
-///////////////////////////////////////////////////////////////////
-
-WorkerDeleteRequestPOSIX::Ptr WorkerDeleteRequestPOSIX::create(ServiceProvider::Ptr const& serviceProvider,
-                                                               string const& worker, string const& id,
-                                                               int priority,
-                                                               ExpirationCallbackType const& onExpired,
-                                                               unsigned int requestExpirationIvalSec,
-                                                               ProtocolRequestDelete const& request) {
-    return WorkerDeleteRequestPOSIX::Ptr(new WorkerDeleteRequestPOSIX(
-            serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec, request));
-}
-
-WorkerDeleteRequestPOSIX::WorkerDeleteRequestPOSIX(ServiceProvider::Ptr const& serviceProvider,
-                                                   string const& worker, string const& id, int priority,
-                                                   ExpirationCallbackType const& onExpired,
-                                                   unsigned int requestExpirationIvalSec,
-                                                   ProtocolRequestDelete const& request)
-        : WorkerDeleteRequest(serviceProvider, worker, id, priority, onExpired, requestExpirationIvalSec,
-                              request) {}
-
-bool WorkerDeleteRequestPOSIX::execute() {
-    LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  db: " << database() << "  chunk: " << chunk());
-
     replica::Lock lock(_mtx, context(__func__));
+    checkIfCancelling(lock, __func__);
 
     auto const config = _serviceProvider->config();
     DatabaseInfo const databaseInfo = config->databaseInfo(database());
-
     vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
 
     // The data folder will be locked while performing the operation
-
     int numFilesDeleted = 0;
-
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code ec;
     {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
-
         fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext = errorContext or
@@ -136,7 +100,6 @@ bool WorkerDeleteRequestPOSIX::execute() {
                                      "failed to check the status of directory: " + dataDir.string()) or
                        reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
                                      "the directory does not exists: " + dataDir.string());
-
         for (const auto& name : files) {
             const fs::path file = dataDir / fs::path(name);
             if (fs::remove(file, ec)) ++numFilesDeleted;
@@ -148,7 +111,6 @@ bool WorkerDeleteRequestPOSIX::execute() {
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return true;
     }
-
     setStatus(lock, ProtocolStatus::SUCCESS);
     return true;
 }

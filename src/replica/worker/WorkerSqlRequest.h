@@ -161,12 +161,6 @@ private:
     mutable ProtocolResponseSql _response;
 };
 
-/// Class WorkerSqlRequest provides an actual implementation
-typedef WorkerSqlRequest WorkerSqlRequestFS;
-
-/// Class WorkerSqlRequest provides an actual implementation
-typedef WorkerSqlRequest WorkerSqlRequestPOSIX;
-
 }  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_WORKERSQLREQUEST_H

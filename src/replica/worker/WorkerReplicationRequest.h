@@ -46,10 +46,7 @@ namespace lsst::qserv::replica {
 
 /**
  * Class WorkerReplicationRequest represents a context and a state of replication
- * requests within the worker servers. It can also be used for testing the framework
- * operation as its implementation won't make any changes to any files or databases.
- *
- * Real implementations of the request processing must derive from this class.
+ * requests within the worker servers.
  */
 class WorkerReplicationRequest : public WorkerRequest {
 public:
@@ -84,9 +81,8 @@ public:
     WorkerReplicationRequest(WorkerReplicationRequest const&) = delete;
     WorkerReplicationRequest& operator=(WorkerReplicationRequest const&) = delete;
 
-    ~WorkerReplicationRequest() override = default;
-
-    // Trivial get methods
+    /// Non-trivial destructor is needed to relese resources
+    ~WorkerReplicationRequest() override;
 
     std::string const& database() const { return _request.database(); }
     unsigned int chunk() const { return _request.chunk(); }
@@ -104,84 +100,11 @@ public:
 
     bool execute() override;
 
-protected:
+private:
     WorkerReplicationRequest(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
                              std::string const& id, int priority, ExpirationCallbackType const& onExpired,
                              unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
 
-    /// Result of the operation
-    ReplicaInfo replicaInfo;
-
-private:
-    // Input parameters
-    ProtocolRequestReplicate const _request;
-
-    /// The cached connection parameters for the source worker (for error reporting and debugging).
-    std::string const _sourceWorkerHostPort;
-};
-
-/**
- * Class WorkerReplicationRequestPOSIX provides an actual implementation for
- * the replication requests based on the direct manipulation of files on
- * a POSIX file system.
- */
-class WorkerReplicationRequestPOSIX : public WorkerReplicationRequest {
-public:
-    typedef std::shared_ptr<WorkerReplicationRequestPOSIX> Ptr;
-
-    /// @see WorkerReplicationRequest::created()
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
-
-    WorkerReplicationRequestPOSIX() = delete;
-    WorkerReplicationRequestPOSIX(WorkerReplicationRequestPOSIX const&) = delete;
-    WorkerReplicationRequestPOSIX& operator=(WorkerReplicationRequestPOSIX const&) = delete;
-
-    ~WorkerReplicationRequestPOSIX() final = default;
-
-    bool execute() final;
-
-protected:
-    WorkerReplicationRequestPOSIX(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                                  std::string const& id, int priority,
-                                  ExpirationCallbackType const& onExpired,
-                                  unsigned int requestExpirationIvalSec,
-                                  ProtocolRequestReplicate const& request);
-};
-
-/**
- * Class WorkerReplicationRequestFS provides an actual implementation for
- * the replication requests based on the direct manipulation of local files
- * on a POSIX file system and for reading remote files using the built-into-worker
- * simple file server.
- */
-class WorkerReplicationRequestFS : public WorkerReplicationRequest {
-public:
-    typedef std::shared_ptr<WorkerReplicationRequestFS> Ptr;
-
-    /// @see WorkerReplicationRequest::created()
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestReplicate const& request);
-
-    WorkerReplicationRequestFS() = delete;
-    WorkerReplicationRequestFS(WorkerReplicationRequestFS const&) = delete;
-    WorkerReplicationRequestFS& operator=(WorkerReplicationRequestFS const&) = delete;
-
-    /// Destructor (non trivial one is needed to release resources)
-    ~WorkerReplicationRequestFS() final;
-
-    bool execute() final;
-
-protected:
-    /// @see WorkerReplicationRequestFS::create()
-    WorkerReplicationRequestFS(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                               std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                               unsigned int requestExpirationIvalSec,
-                               ProtocolRequestReplicate const& request);
-
-private:
     /**
      * Open files associated with the current state of iterator _fileItr.
      *
@@ -209,17 +132,24 @@ private:
      * released to prevent unnecessary resource utilization. Note that
      * request objects can stay in the server's memory for an extended
      * period of time.
-     *
      * @param lock A lock to be acquired before calling this method
      */
     void _releaseResources(replica::Lock const& lock);
 
     /**
      * Update file migration statistics
-     *
      * @param lock A lock to be acquired before calling this method
      */
     void _updateInfo(replica::Lock const& lock);
+
+    // Input parameters
+    ProtocolRequestReplicate const _request;
+
+    /// Result of the operation
+    ReplicaInfo _replicaInfo;
+
+    /// The cached connection parameters for the source worker (for error reporting and debugging).
+    std::string const _sourceWorkerHostPort;
 
     /// Cached descriptor of the database obtained from the Configuration
     DatabaseInfo const _databaseInfo;

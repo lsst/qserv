@@ -120,17 +120,11 @@ public:
      * of the request.
      *
      * This method is required to be called while the request state is ProtocolStatus::IN_PROGRESS.
-     *
-     * The method will throw custom exception WorkerRequestCancelled when
-     * it detects a cancellation request.
-     *
-     * The default implementation of the method will do nothing, just simulate
-     * processing. This can be serve as a foundation for various tests
-     * of this framework.
+     * The method will throw custom exception WorkerRequestCancelled when it detects a cancellation request.
      *
      * @return result of the operation as explained above
      */
-    virtual bool execute();
+    virtual bool execute() = 0;
 
     /**
      * Cancel execution of the request.
@@ -139,12 +133,9 @@ public:
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
      *
-     *   ProtocolStatus::CREATED or ProtocolStatus::CANCELLED          - transition to state
-     ProtocolStatus::CANCELLED
-     *   ProtocolStatus::IN_PROGRESS or ProtocolStatus::IS_CANCELLING  - transition to state
-     ProtocolStatus::IS_CANCELLING
-     *   other                                                         - throwing std::logic_error
-
+     * {ProtocolStatus::CREATED,ProtocolStatus::CANCELLED} -> ProtocolStatus::CANCELLED
+     * {ProtocolStatus::IN_PROGRESS,ProtocolStatus::IS_CANCELLING} -> ProtocolStatus::IS_CANCELLING
+     * {*} -> throw std::logic_error
      */
     virtual void cancel();
 
@@ -156,19 +147,16 @@ public:
      * the request. The default (the base class's implementation) assumes
      * the following transitions:
      *
-     *   ProtocolStatus::CREATED or ProtocolStatus::IN_PROGRESS - transition to ProtocolStatus::CREATED
-     *   ProtocolStatus::IS_CANCELLING                          - transition to ProtocolStatus::CANCELLED and
-     * throwing WorkerRequestCancelled other                                                  - throwing
-     * std::logic_error
+     * {ProtocolStatus::CREATED, ProtocolStatus::IN_PROGRESS} -> ProtocolStatus::CREATED
+     * {ProtocolStatus::IS_CANCELLING} -> ProtocolStatus::CANCELLED -> throw WorkerRequestCancelled
+     * {*} -> throw std::logic_error
      */
     virtual void rollback();
 
     /**
      * This method is called from *ANY* initial state in order to turn
      * the request back into the initial ProtocolStatus::CREATED.
-     *
-     * @param func (optional) the name of a function/method which requested
-     *   the context string
+     * @param func (optional) the name of a function/method which requested the context string
      */
     void stop();
 
@@ -213,6 +201,21 @@ protected:
                   std::string const& type, std::string const& id, int priority,
                   ExpirationCallbackType const& onExpired = nullptr,
                   unsigned int requestExpirationIvalSec = 0);
+
+    /**
+     * The method is used to check if the request is entered the cancellation state.
+     * The implementation assumes the following transitions:
+     *
+     * {ProtocolStatus::IN_PROGRESS} -> ProtocolStatus::IN_PROGRESS
+     * {ProtocolStatus::IS_CANCELLING} -> ProtocolStatus::CANCELLED -> throw WorkerRequestCancelled
+     * {*} -> throw std::logic_error
+     *
+     * @param lock a lock on _mtx which acquired before calling this method
+     * @param func the name of a function/method which called the method
+     * @throws WorkerRequestCancelled if the request is being cancelled.
+     * @throws std::logic_error if the state is not as expected.
+     */
+    void checkIfCancelling(replica::Lock const& lock, std::string const& func);
 
     /** Set the status
      *
@@ -343,15 +346,9 @@ private:
 struct WorkerRequestCompare {
     /**
      * Sort requests by their priorities
-     *
-     * @param lhs
-     *   pointer to a request on the left side of a logical comparison
-     *
-     * @param rhs
-     *   pointer to a request on the right side of a logical comparison
-     *
-     * @return
-     *   'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
+     * @param lhs pointer to a request on the left side of a logical comparison
+     * @param rhs pointer to a request on the right side of a logical comparison
+     * @return 'true' if the priority of 'lhs' is strictly less than the one of 'rhs'
      */
     bool operator()(WorkerRequest::Ptr const& lhs, WorkerRequest::Ptr const& rhs) const {
         return lhs->priority() < rhs->priority();

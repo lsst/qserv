@@ -51,9 +51,6 @@ struct ServiceState {
     enum State { SUSPEND_IN_PROGRESS = 0, SUSPENDED = 1, RUNNING = 2 };
     State state;
 
-    /// The back-end technology
-    std::string technology;
-
     /// When the service started (milliseconds since UNIX Epoch)
     uint64_t startTime;
 

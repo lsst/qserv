@@ -34,10 +34,7 @@ namespace lsst::qserv::replica {
 
 /**
  * Class WorkerFindAllRequest represents a context and a state of replicas lookup
- * requests within the worker servers. It can also be used for testing the framework
- * operation as its implementation won't make any changes to any files or databases.
- *
- * Real implementations of the request processing must derive from this class.
+ * requests within the worker servers.
  */
 class WorkerFindAllRequest : public WorkerRequest {
 public:
@@ -73,8 +70,6 @@ public:
 
     ~WorkerFindAllRequest() override = default;
 
-    // Trivial get methods
-
     std::string const& database() const { return _request.database(); }
 
     /**
@@ -91,47 +86,11 @@ protected:
                          unsigned int requestExpirationIvalSec, ProtocolRequestFindAll const& request);
 
     // Input parameters
-
     ProtocolRequestFindAll const _request;
 
     /// Result of the operation
     ReplicaInfoCollection _replicaInfoCollection;
 };
-
-/**
- * Class WorkerFindAllRequestPOSIX provides an actual implementation for
- * the replicas lookup based on the direct manipulation of files on
- * a POSIX file system.
- */
-class WorkerFindAllRequestPOSIX : public WorkerFindAllRequest {
-public:
-    typedef std::shared_ptr<WorkerFindAllRequestPOSIX> Ptr;
-
-    /// @see WorkerFindAllRequest::create()
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                      std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                      unsigned int requestExpirationIvalSec, ProtocolRequestFindAll const& request);
-
-    WorkerFindAllRequestPOSIX() = delete;
-    WorkerFindAllRequestPOSIX(WorkerFindAllRequestPOSIX const&) = delete;
-    WorkerFindAllRequestPOSIX& operator=(WorkerFindAllRequestPOSIX const&) = delete;
-
-    ~WorkerFindAllRequestPOSIX() final = default;
-
-    bool execute() final;
-
-private:
-    WorkerFindAllRequestPOSIX(ServiceProvider::Ptr const& serviceProvider, std::string const& worker,
-                              std::string const& id, int priority, ExpirationCallbackType const& onExpired,
-                              unsigned int requestExpirationIvalSec, ProtocolRequestFindAll const& request);
-};
-
-/**
- * Class WorkerFindAllRequestFS has the same implementation as the 'typedef'-ed
- * class for the replica deletion based on the direct manipulation of files on
- * a POSIX file system.
- */
-typedef WorkerFindAllRequestPOSIX WorkerFindAllRequestFS;
 
 }  // namespace lsst::qserv::replica
 

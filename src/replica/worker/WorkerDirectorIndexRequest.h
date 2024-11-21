@@ -86,7 +86,6 @@ public:
 
     /**
      * Extract request status into the Protobuf response object.
-     *
      * @param response Protobuf response to be initialized
      */
     void setInfo(ProtocolResponseDirectorIndex& response) const;
@@ -146,12 +145,6 @@ private:
     /// of the data extraction query.
     std::string _data;
 };
-
-/// Class WorkerDirectorIndexRequest provides an actual implementation
-typedef WorkerDirectorIndexRequest WorkerDirectorIndexRequestFS;
-
-/// Class WorkerDirectorIndexRequest provides an actual implementation
-typedef WorkerDirectorIndexRequest WorkerDirectorIndexRequestPOSIX;
 
 }  // namespace lsst::qserv::replica
 

@@ -32,11 +32,6 @@
 #include "replica/worker/WorkerProcessor.h"
 #include "replica/worker/WorkerServerConnection.h"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class WorkerRequestFactory;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -59,18 +54,13 @@ public:
      *   provider is needed to access the Configuration of a setup
      *   and for validating the input parameters
      *
-     * @param requestFactory
-     *   the factory of requests which will be created by the server
-     *   and forwarded to the request processor for actual execution.
-     *
      * @param workerName
      *   the name of a worker this instance represents
      *
      * @return
      *   pointer to the new object created by the factory
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, WorkerRequestFactory& requestFactory,
-                      std::string const& workerName);
+    static Ptr create(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     // Default construction and copy semantics are prohibited
 
@@ -104,8 +94,7 @@ public:
 
 private:
     /// @see WorkerServer::create()
-    WorkerServer(ServiceProvider::Ptr const& serviceProvider, WorkerRequestFactory& requestFactory,
-                 std::string const& workerName);
+    WorkerServer(ServiceProvider::Ptr const& serviceProvider, std::string const& workerName);
 
     /**
      * Begin (asynchronously) accepting connection requests.

@@ -820,7 +820,6 @@ message ProtocolServiceResponse {
         RUNNING             = 2;
     }
     required ServiceState service_state = 3;
-    required string       technology    = 4;
 
     /// When the service started (milliseconds since UNIX Epoch)
     required uint64 start_time = 5;

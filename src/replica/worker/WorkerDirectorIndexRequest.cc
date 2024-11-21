@@ -58,9 +58,11 @@ WorkerDirectorIndexRequest::Ptr WorkerDirectorIndexRequest::create(
         ServiceProvider::Ptr const& serviceProvider, ConnectionPoolPtr const& connectionPool,
         string const& worker, string const& id, int priority, ExpirationCallbackType const& onExpired,
         unsigned int requestExpirationIvalSec, ProtocolRequestDirectorIndex const& request) {
-    return WorkerDirectorIndexRequest::Ptr(new WorkerDirectorIndexRequest(serviceProvider, connectionPool,
-                                                                          worker, id, priority, onExpired,
-                                                                          requestExpirationIvalSec, request));
+    auto ptr = WorkerDirectorIndexRequest::Ptr(
+            new WorkerDirectorIndexRequest(serviceProvider, connectionPool, worker, id, priority, onExpired,
+                                           requestExpirationIvalSec, request));
+    ptr->init();
+    return ptr;
 }
 
 WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
@@ -80,14 +82,11 @@ WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(ServiceProvider::Ptr cons
 
 void WorkerDirectorIndexRequest::setInfo(ProtocolResponseDirectorIndex& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
-
     replica::Lock lock(_mtx, context(__func__));
-
     response.set_allocated_target_performance(performance().info().release());
     response.set_error(_error);
     response.set_data(_data);
     response.set_total_bytes(_fileSizeBytes);
-
     *(response.mutable_request()) = _request;
 }
 
@@ -95,17 +94,8 @@ bool WorkerDirectorIndexRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
     replica::Lock lock(_mtx, context(__func__));
+    checkIfCancelling(lock, __func__);
 
-    switch (status()) {
-        case ProtocolStatus::IN_PROGRESS:
-            break;
-        case ProtocolStatus::IS_CANCELLING:
-            setStatus(lock, ProtocolStatus::CANCELLED);
-            throw WorkerRequestCancelled();
-        default:
-            throw logic_error("WorkerDirectorIndexRequest::" + context(__func__) +
-                              "  not allowed while in state: " + WorkerRequest::status2string(status()));
-    }
     try {
         // The table will be scanned only when the offset is set to 0.
         if (_request.offset() == 0) {

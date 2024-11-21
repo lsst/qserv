@@ -13,7 +13,6 @@ target_sources(replica_worker PRIVATE
     WorkerProcessorThread.cc
     WorkerReplicationRequest.cc
     WorkerRequest.cc
-    WorkerRequestFactory.cc
     WorkerServer.cc
     WorkerServerConnection.cc
     WorkerSqlRequest.cc
