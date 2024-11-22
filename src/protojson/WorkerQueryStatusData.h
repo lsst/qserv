@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_HTTP_WORKERQUERYSTATUSDATA_H
-#define LSST_QSERV_HTTP_WORKERQUERYSTATUSDATA_H
+#ifndef LSST_QSERV_PROTOJSON_WORKERQUERYSTATUSDATA_H
+#define LSST_QSERV_PROTOJSON_WORKERQUERYSTATUSDATA_H
 
 // System headers
 #include <chrono>
@@ -475,4 +475,4 @@ private:
 
 }  // namespace lsst::qserv::protojson
 
-#endif  // LSST_QSERV_HTTP_WORKERQUERYSTATUSDATA_H
+#endif  // LSST_QSERV_PROTOJSON_WORKERQUERYSTATUSDATA_H
