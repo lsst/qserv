@@ -1,6 +1,7 @@
 add_library(protojson SHARED)
 
 target_sources(protojson PRIVATE
+    UberJobMsg.cc
     WorkerQueryStatusData.cc
 )
 
@@ -34,4 +35,5 @@ endfunction()
 
 protojson_tests(
     testStatusData
+    testUberJobMsg
 )

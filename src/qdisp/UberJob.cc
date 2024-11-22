@@ -37,6 +37,7 @@
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "proto/worker.pb.h"
+#include "protojson/UberJobMsg.h"
 #include "qdisp/JobQuery.h"
 #include "qmeta/JobStatus.h"
 #include "util/Bug.h"
@@ -98,10 +99,12 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
 
 void UberJob::runUberJob() {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
     auto exec = _executive.lock();
+#if 1  // &&&
     for (auto const& jqPtr : _jobs) {
         jqPtr->getDescription()->incrAttemptCountScrubResultsJson(exec, true);
     }
@@ -112,6 +115,7 @@ void UberJob::runUberJob() {
     string const url = "http://" + ciwHost + ":" + to_string(ciwPort) + "/queryjob";
     vector<string> const headers = {"Content-Type: application/json"};
     auto const& czarConfig = cconfig::CzarConfig::instance();
+
     // See xrdsvc::httpWorkerCzarModule::_handleQueryJob for json message parsing.
     json request = {{"version", http::MetaModule::version},
                     {"instance_id", czarConfig->replicationInstanceId()},
@@ -144,6 +148,44 @@ void UberJob::runUberJob() {
         jsJobs.push_back(jsJob);
         jbPtr->getDescription()->resetJsForWorker();  // no longer needed.
     }
+#else  // &&&
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest a");
+    // Send the uberjob to the worker
+    auto const method = http::Method::POST;
+    auto [ciwId, ciwHost, ciwManagment, ciwPort] = _wContactInfo->getAll();
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest b");
+    string const url = "http://" + ciwHost + ":" + to_string(ciwPort) + "/queryjob";
+    vector<string> const headers = {"Content-Type: application/json"};
+    auto const& czarConfig = cconfig::CzarConfig::instance();
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest c");
+
+    int maxTableSizeMB = czarConfig->getMaxTableSizeMB();
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest d");
+    auto czInfo = protojson::CzarContactInfo::create(
+            czarConfig->name(), czarConfig->id(), czarConfig->replicationHttpPort(),
+            util::get_current_host_fqdn(), czar::Czar::czarStartupTime);
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest e");
+    auto uberJobMsg = protojson::UberJobMsg::create(
+            http::MetaModule::version, czarConfig->replicationInstanceId(), czarConfig->replicationAuthKey(),
+            czInfo, _wContactInfo, _queryId, _uberJobId, _rowLimit, maxTableSizeMB, _jobs);
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest f");
+    json request = uberJobMsg->serializeJson();
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest g");
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest=" << request);
+
+    {  // &&& testing only, delete
+        auto parsedReq = protojson::UberJobMsg::createFromJson(request);
+        json jsParsedReq = parsedReq->serializeJson();
+        if (request == jsParsedReq) {
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&& YAY!!! ");
+        } else {
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&& request != jsParsedReq");
+            LOGS(_log, LOG_LVL_ERROR, "&&& request=" << request);
+            LOGS(_log, LOG_LVL_ERROR, "&&& jsParsedReq=" << jsParsedReq);
+        }
+    }
+
+#endif                  // &&&
     jobsLock.unlock();  // unlock so other _jobsMtx threads can advance while this waits for transmit
 
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " REQ " << request);

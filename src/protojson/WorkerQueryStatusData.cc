@@ -270,6 +270,7 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
             LOGS(_log, LOG_LVL_ERROR,
                  "WorkerQueryStatusData::createJson czar or worker info could not be parsed in "
                          << jsWorkerReq);
+            return nullptr;
         }
         auto wqsData =
                 WorkerQueryStatusData::create(wInfo_, czInfo_, replicationInstanceId_, replicationAuthKey_);
