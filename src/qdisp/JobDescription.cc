@@ -89,10 +89,11 @@ bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive>
     }
 
     // build the request
-    auto js = _taskMsgFactory->makeMsgJson(*_chunkQuerySpec, _chunkResultName, _queryId, _jobId,
+    auto js = _taskMsgFactory->makeMsgJson(*_chunkQuerySpec, _chunkResultName, _queryId,
+                                           _jobId,  // &&& should be able to delete this
                                            _attemptCount, _czarId);
     LOGS(_log, LOG_LVL_DEBUG, "JobDescription::" << __func__ << " js=" << (*js));
-    _jsForWorker = js;
+    _jsForWorker = js;  // &&& should be able to delete _jsForWorker
     return true;
 }
 
