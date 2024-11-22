@@ -102,6 +102,7 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
 
 void UberJob::runUberJob() {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
