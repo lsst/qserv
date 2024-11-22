@@ -82,6 +82,8 @@ public:
     ResourceUnit const& resource() const { return _resource; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
     int getAttemptCount() const { return _attemptCount; }
+    std::shared_ptr<qproc::ChunkQuerySpec> getChunkQuerySpec() { return _chunkQuerySpec; }
+    std::string getChunkResultName() { return _chunkResultName; }
 
     bool getScanInteractive() const;
     int getScanRating() const;

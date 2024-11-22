@@ -109,7 +109,8 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     json jsRet;
     vector<wbase::Task::Ptr> ujTasks;
     try {
-        // See qdisp::UberJob::runUberJob() for json message construction.
+#if 1  // &&&
+       // See qdisp::UberJob::runUberJob() for json message construction.
         auto const& jsReq = body().objJson;
         string const targetWorkerId = body().required<string>("worker");
 
@@ -198,6 +199,11 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
             }
             scanInfo.scanRating = jdScanPriority;
         }
+#else   // &&&
+        auto const& jsReq = body().objJson;
+        auto uberJobMsg = protojson::UberJobMsg::createFromJson(jsReq);
+        // && fill in values
+#endif  //&&&
 
         ujData->setScanInteractive(jdScanInteractive);
 
