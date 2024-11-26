@@ -57,7 +57,7 @@ public:
     UberJob(UberJob const&) = delete;
     UberJob& operator=(UberJob const&) = delete;
 
-    virtual ~UberJob(){};
+    virtual ~UberJob() {};
 
     bool addJob(std::shared_ptr<JobQuery> const& job);
     bool runUberJob();
@@ -74,7 +74,7 @@ public:
     std::shared_ptr<ResponseHandler> getRespHandler() override { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() override {
         return _jobStatus;
-    }                                                           // TODO:UJ relocate to JobBase
+    }  // TODO:UJ relocate to JobBase
     bool getScanInteractive() const override { return false; }  ///< UberJobs are never interactive.
     bool isQueryCancelled() override;                           // TODO:UJ relocate to JobBase
     void callMarkCompleteFunc(bool success) override;  ///< call markComplete for all jobs in this UberJob.
