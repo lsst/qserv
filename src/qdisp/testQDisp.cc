@@ -108,10 +108,10 @@ public:
         return {true, false};
     }
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override {}
-    void errorFlush(std::string const& msg, int code) override{};
+    void errorFlush(std::string const& msg, int code) override {};
     Error getError() const override { return util::Error(); }
-    void processCancel() override{};
-    void prepScrubResults(int jobId, int attempt) override{};
+    void processCancel() override {};
+    void prepScrubResults(int jobId, int attempt) override {};
 
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override {
