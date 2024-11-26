@@ -181,7 +181,7 @@ public:
             bool scanInteractive, int maxTableSizeMb,
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr
             //&&&mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const&
-            //sqlConnMgr,
+            // sqlConnMgr,
             //&&&std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
             //&&&uint16_t resultsHttpPort = 8080);
     );

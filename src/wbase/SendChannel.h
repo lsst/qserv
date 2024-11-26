@@ -68,5 +68,5 @@ private:
     std::atomic<bool> _destroying{false};
 };
 
-}}      // namespace lsst::qserv::wbase
+}}  // namespace lsst::qserv::wbase
 #endif  // LSST_QSERV_WBASE_SENDCHANNEL_H
