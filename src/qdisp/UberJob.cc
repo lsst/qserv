@@ -558,8 +558,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
             LOGS(_log, LOG_LVL_INFO,
-                 "UberJob ignoring, enough rows already "
-                         << "dataIgnored=" << dataIgnored);
+                 "UberJob ignoring, enough rows already " << "dataIgnored=" << dataIgnored);
         }
         return _importResultError(false, "rowLimited", "Enough rows already");
     }
