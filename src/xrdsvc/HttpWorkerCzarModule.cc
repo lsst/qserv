@@ -37,6 +37,7 @@
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
 #include "mysql/MySqlUtils.h"
+#include "protojson/UberJobMsg.h"
 #include "protojson/WorkerQueryStatusData.h"
 #include "qmeta/types.h"
 #include "util/String.h"
@@ -109,8 +110,8 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     json jsRet;
     vector<wbase::Task::Ptr> ujTasks;
     try {
-#if 1  // &&&
-       // See qdisp::UberJob::runUberJob() for json message construction.
+#if NEWMSGUJ  // &&&
+              // See qdisp::UberJob::runUberJob() for json message construction.
         auto const& jsReq = body().objJson;
         string const targetWorkerId = body().required<string>("worker");
 
@@ -157,7 +158,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         // TODO:UJ These items should be stored higher in the message structure as they get
         //   duplicated and should always be the same within an UberJob.
         QueryId jdQueryId = 0;
-        proto::ScanInfo scanInfo;
+        auto scanInfo = protojson::ScanInfo::create();
         bool scanInfoSet = false;
         bool jdScanInteractive = false;
         int jdMaxTableSize = 0;
@@ -192,18 +193,13 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
                     LOGS(_log, LOG_LVL_TRACE,
                          __func__ << " chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
                                   << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
-                    scanInfo.infoTables.emplace_back(chunkScanDb, chunkScanTable, lockInMemory,
-                                                     tblScanRating);
+                    scanInfo->infoTables.emplace_back(chunkScanDb, chunkScanTable, lockInMemory,
+                                                      tblScanRating);
                     scanInfoSet = true;
                 }
             }
-            scanInfo.scanRating = jdScanPriority;
+            scanInfo->scanRating = jdScanPriority;
         }
-#else   // &&&
-        auto const& jsReq = body().objJson;
-        auto uberJobMsg = protojson::UberJobMsg::createFromJson(jsReq);
-        // && fill in values
-#endif  //&&&
 
         ujData->setScanInteractive(jdScanInteractive);
 
@@ -216,6 +212,56 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
 
         channelShared->setTaskCount(ujTasks.size());
         ujData->addTasks(ujTasks);
+#else  // &&&
+        auto const& jsReq = body().objJson;
+        auto uberJobMsg = protojson::UberJobMsg::createFromJson(jsReq);
+
+        UberJobId ujId = uberJobMsg->getUberJobId();
+        auto ujCzInfo = uberJobMsg->getCzarContactInfo();
+        auto czarId = ujCzInfo->czId;
+        QueryId ujQueryId = uberJobMsg->getQueryId();
+        int ujRowLimit = uberJobMsg->getRowLimit();
+        auto targetWorkerId = uberJobMsg->getWorkerId();
+
+        // Get or create QueryStatistics and UserQueryInfo instances.
+        auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzInfo->czId);
+        auto userQueryInfo = queryStats->getUserQueryInfo();
+
+        if (userQueryInfo->getCancelledByCzar()) {
+            throw wbase::TaskException(
+                    ERR_LOC, string("Already cancelled by czar. ujQueryId=") + to_string(ujQueryId));
+        }
+        if (userQueryInfo->isUberJobDead(ujId)) {
+            throw wbase::TaskException(ERR_LOC, string("UberJob already dead. ujQueryId=") +
+                                                        to_string(ujQueryId) + " ujId=" + to_string(ujId));
+        }
+
+        /* &&&
+        auto ujData = wbase::UberJobData::create(ujId, czarName, czarId, czarHostName, czarPort, ujQueryId,
+                                                 ujRowLimit, targetWorkerId, foreman(), authKey());
+        */
+        auto ujData = wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
+                                                 ujCzInfo->czPort, ujQueryId, ujRowLimit, targetWorkerId,
+                                                 foreman(), authKey());
+
+        // Find the entry for this queryId, create a new one if needed.
+        userQueryInfo->addUberJob(ujData);
+        /* &&&
+        auto channelShared =
+                wbase::FileChannelShared::create(ujData, czarId, czarHostName, czarPort, targetWorkerId);
+        */
+        auto channelShared = wbase::FileChannelShared::create(ujData, ujCzInfo->czId, ujCzInfo->czHostName,
+                                                              ujCzInfo->czPort, targetWorkerId);
+
+        ujData->setFileChannelShared(channelShared);
+
+        auto ujTasks = wbase::Task::createTasksFromUberJobMsg(
+                uberJobMsg, ujData, channelShared, foreman()->chunkResourceMgr(), foreman()->mySqlConfig(),
+                foreman()->sqlConnMgr(), foreman()->queriesAndChunks(), foreman()->httpPort());
+        channelShared->setTaskCount(ujTasks.size());
+        ujData->addTasks(ujTasks);
+
+#endif  //&&&
 
         // At this point, it looks like the message was sent successfully, update
         // czar touched time.

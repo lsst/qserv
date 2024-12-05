@@ -40,6 +40,7 @@
 #include "protojson/UberJobMsg.h"
 #include "qdisp/JobQuery.h"
 #include "qmeta/JobStatus.h"
+#include "qproc/ChunkQuerySpec.h"
 #include "util/Bug.h"
 #include "util/common.h"
 #include "util/QdispPool.h"
@@ -104,7 +105,7 @@ void UberJob::runUberJob() {
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
     auto exec = _executive.lock();
-#if 1  // &&&
+#if NEWMSGUJ  // &&&
     for (auto const& jqPtr : _jobs) {
         jqPtr->getDescription()->incrAttemptCountScrubResultsJson(exec, true);
     }
@@ -153,26 +154,22 @@ void UberJob::runUberJob() {
     // Send the uberjob to the worker
     auto const method = http::Method::POST;
     auto [ciwId, ciwHost, ciwManagment, ciwPort] = _wContactInfo->getAll();
-    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest b");
     string const url = "http://" + ciwHost + ":" + to_string(ciwPort) + "/queryjob";
     vector<string> const headers = {"Content-Type: application/json"};
     auto const& czarConfig = cconfig::CzarConfig::instance();
-    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest c");
 
     int maxTableSizeMB = czarConfig->getMaxTableSizeMB();
-    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest d");
     auto czInfo = protojson::CzarContactInfo::create(
             czarConfig->name(), czarConfig->id(), czarConfig->replicationHttpPort(),
             util::get_current_host_fqdn(), czar::Czar::czarStartupTime);
-    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest e");
+    auto scanInfoPtr = exec->getScanInfo();
+
     auto uberJobMsg = protojson::UberJobMsg::create(
             http::MetaModule::version, czarConfig->replicationInstanceId(), czarConfig->replicationAuthKey(),
-            czInfo, _wContactInfo, _queryId, _uberJobId, _rowLimit, maxTableSizeMB, _jobs);
-    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest f");
+            czInfo, _wContactInfo, _queryId, _uberJobId, _rowLimit, maxTableSizeMB, scanInfoPtr, _jobs);
     json request = uberJobMsg->serializeJson();
-    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest g");
-    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest=" << request);
 
+    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest=" << request);
     {  // &&& testing only, delete
         auto parsedReq = protojson::UberJobMsg::createFromJson(request);
         json jsParsedReq = parsedReq->serializeJson();

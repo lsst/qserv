@@ -261,6 +261,7 @@ void UserQuerySelect::submit() {
     }
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
+    _executive->setScanInfo(_qSession->getScanInfo());
 
     string dbName("");
     bool dbNameSet = false;

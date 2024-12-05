@@ -79,8 +79,8 @@ std::shared_ptr<nlohmann::json> TaskMsgFactory::makeMsgJson(ChunkQuerySpec const
                                 {"jobId", jobId},
                                 {"attemptCount", attemptCount},
                                 {"querySpecDb", chunkQuerySpec.db},
-                                {"scanPriority", chunkQuerySpec.scanInfo.scanRating},
-                                {"scanInteractive", chunkQuerySpec.scanInteractive},
+                                {"scanPriority", chunkQuerySpec.scanInfo->scanRating},  //&&& del ???
+                                {"scanInteractive", chunkQuerySpec.scanInteractive},    //&&& del ???
                                 {"maxTableSize", (cconfig::CzarConfig::instance()->getMaxTableSizeMB())},
                                 {"chunkScanTables", nlohmann::json::array()},
                                 {"chunkId", chunkQuerySpec.chunkId},
@@ -89,7 +89,7 @@ std::shared_ptr<nlohmann::json> TaskMsgFactory::makeMsgJson(ChunkQuerySpec const
     auto& jsJobMsg = *jsJobMsgPtr;
 
     auto& chunkScanTables = jsJobMsg["chunkScanTables"];
-    for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
+    for (auto const& sTbl : chunkQuerySpec.scanInfo->infoTables) {  //&&& probably redundant
         nlohmann::json cst = {{"db", sTbl.db},
                               {"table", sTbl.table},
                               {"lockInMemory", sTbl.lockInMemory},
