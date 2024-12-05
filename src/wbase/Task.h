@@ -42,7 +42,7 @@
 #include "global/DbTable.h"
 #include "global/intTypes.h"
 #include "memman/MemMan.h"
-#include "proto/ScanTableInfo.h"
+#include "protojson/ScanTableInfo.h"
 #include "wbase/TaskState.h"
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
@@ -50,6 +50,10 @@
 // Forward declarations
 namespace lsst::qserv::mysql {
 class MySqlConfig;
+}
+
+namespace lsst::qserv::protojson {
+class UberJobMsg;
 }
 
 namespace lsst::qserv::wbase {
@@ -155,7 +159,7 @@ public:
     //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
-         proto::ScanInfo const& scanInfo, bool scanInteractive, int maxTableSizeMb,
+         protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
          std::shared_ptr<FileChannelShared> const& sc,
          std::shared_ptr<wpublish::QueryStatistics> const& queryStats_, uint16_t resultsHttpPort = 8080);
@@ -165,10 +169,20 @@ public:
     virtual ~Task();
 
     /// Read json to generate a vector of one or more task for a chunk.
-    static std::vector<Ptr> createTasksForChunk(
+    static std::vector<Ptr> createTasksForChunk(  /// &&& delete
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel, proto::ScanInfo const& scanInfo,
-            bool scanInteractive, int maxTableSizeMb,
+            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
+            protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
+            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
+            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
+            uint16_t resultsHttpPort = 8080);
+
+    /// &&&
+    static std::vector<Ptr> createTasksFromUberJobMsg(
+            std::shared_ptr<protojson::UberJobMsg> const& uberJobMsg,
+            std::shared_ptr<UberJobData> const& ujData,
+            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
@@ -177,8 +191,8 @@ public:
     //&&&
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel, proto::ScanInfo const& scanInfo,
-            bool scanInteractive, int maxTableSizeMb,
+            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
+            protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr
             //&&&mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const&
             // sqlConnMgr,
@@ -239,7 +253,7 @@ public:
     int getAttemptCount() const { return _attemptCount; }
     bool getScanInteractive() { return _scanInteractive; }
     int64_t getMaxTableSize() const { return _maxTableSize; }
-    proto::ScanInfo& getScanInfo() { return _scanInfo; }
+    protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
     bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
@@ -362,7 +376,7 @@ private:
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
-    proto::ScanInfo _scanInfo;
+    protojson::ScanInfo::Ptr _scanInfo;
     bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.

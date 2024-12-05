@@ -29,7 +29,7 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
-#include "proto/ScanTableInfo.h"
+#include "protojson/ScanTableInfo.h"
 #include "proto/worker.pb.h"
 #include "wbase/FileChannelShared.h"
 #include "wbase/Task.h"
@@ -164,9 +164,9 @@ BOOST_AUTO_TEST_CASE(Simple) {
     auto ujData = lsst::qserv::wbase::UberJobData::create(
             mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
             mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
-    lsst::qserv::proto::ScanInfo scanInfo;
-    scanInfo.scanRating = mInfo.scanRating;
-    scanInfo.infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
+    auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
+    scanInfo->scanRating = mInfo.scanRating;
+    scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
     vector<Task::Ptr> taskVect =
             Task::createTasksForChunk(ujData, *msgJson, sChannel, scanInfo, mInfo.scanInteractive,
                                       mInfo.maxTableSize, crm, newMySqlConfig(), sqlConnMgr, queries);
@@ -189,9 +189,9 @@ BOOST_AUTO_TEST_CASE(Output) {
     auto ujData = lsst::qserv::wbase::UberJobData::create(
             mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
             mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
-    lsst::qserv::proto::ScanInfo scanInfo;
-    scanInfo.scanRating = mInfo.scanRating;
-    scanInfo.infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
+    auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
+    scanInfo->scanRating = mInfo.scanRating;
+    scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
     vector<Task::Ptr> taskVect =
             Task::createTasksForChunk(ujData, *msgJson, sc, scanInfo, mInfo.scanInteractive,
                                       mInfo.maxTableSize, crm, newMySqlConfig(), sqlConnMgr, queries);

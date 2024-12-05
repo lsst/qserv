@@ -190,11 +190,11 @@ SsiService::SsiService(XrdSsiLogger* log) {
                                                      workerConfig->getMaxGroupSize(),
                                                      wsched::SchedulerBase::getMaxPriority());
 
-    int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
-    int const fast = lsst::qserv::proto::ScanInfo::Rating::FAST;
-    int const medium = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
-    int const slow = lsst::qserv::proto::ScanInfo::Rating::SLOW;
-    int const slowest = lsst::qserv::proto::ScanInfo::Rating::SLOWEST;
+    int const fastest = lsst::qserv::protojson::ScanInfo::Rating::FASTEST;
+    int const fast = lsst::qserv::protojson::ScanInfo::Rating::FAST;
+    int const medium = lsst::qserv::protojson::ScanInfo::Rating::MEDIUM;
+    int const slow = lsst::qserv::protojson::ScanInfo::Rating::SLOW;
+    int const slowest = lsst::qserv::protojson::ScanInfo::Rating::SLOWEST;
     double fastScanMaxMinutes = (double)workerConfig->getScanMaxMinutesFast();
     double medScanMaxMinutes = (double)workerConfig->getScanMaxMinutesMed();
     double slowScanMaxMinutes = (double)workerConfig->getScanMaxMinutesSlow();

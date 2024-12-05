@@ -199,10 +199,10 @@ void QueriesAndChunks::_finishedTaskForChunk(wbase::Task::Ptr const& task, doubl
     }
     ul.unlock();
     auto iter = res.first->second;
-    proto::ScanInfo& scanInfo = task->getScanInfo();
+    protojson::ScanInfo::Ptr scanInfo = task->getScanInfo();
     string tblName;
-    if (!scanInfo.infoTables.empty()) {
-        proto::ScanTableInfo& sti = scanInfo.infoTables.at(0);
+    if (!scanInfo->infoTables.empty()) {
+        protojson::ScanTableInfo& sti = scanInfo->infoTables.at(0);
         tblName = ChunkTableStats::makeTableName(sti.db, sti.table);
     }
     ChunkTableStats::Ptr tableStats = iter->add(tblName, minutes);
@@ -328,8 +328,8 @@ void QueriesAndChunks::examineAll() {
             }
             double schedMaxTime = sched->getMaxTimeMinutes();  // Get max time for scheduler
             // Get the slowest scan table in task.
-            auto begin = task->getScanInfo().infoTables.begin();
-            if (begin == task->getScanInfo().infoTables.end()) {
+            auto begin = task->getScanInfo()->infoTables.begin();
+            if (begin == task->getScanInfo()->infoTables.end()) {
                 continue;
             }
             string const& slowestTable = begin->db + ":" + begin->table;

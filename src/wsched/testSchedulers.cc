@@ -33,8 +33,8 @@
 // Qserv headers
 #include "memman/MemManNone.h"
 #include "mysql/MySqlConfig.h"
-#include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
+#include "protojson/ScanTableInfo.h"
 #include "util/Command.h"
 #include "util/EventThread.h"
 #include "wbase/FileChannelShared.h"
@@ -188,10 +188,10 @@ struct SchedFixture {
         queries->setRequiredTasksCompleted(1);  // Make it easy to set a baseline.
     }
 
-    int const fastest = lsst::qserv::proto::ScanInfo::Rating::FASTEST;
-    int const fast = lsst::qserv::proto::ScanInfo::Rating::FAST;
-    int const medium = lsst::qserv::proto::ScanInfo::Rating::MEDIUM;
-    int const slow = lsst::qserv::proto::ScanInfo::Rating::SLOW;
+    int const fastest = lsst::qserv::protojson::ScanInfo::Rating::FASTEST;
+    int const fast = lsst::qserv::protojson::ScanInfo::Rating::FAST;
+    int const medium = lsst::qserv::protojson::ScanInfo::Rating::MEDIUM;
+    int const slow = lsst::qserv::protojson::ScanInfo::Rating::SLOW;
 
     lsst::qserv::QueryId qIdInc{1};
 
