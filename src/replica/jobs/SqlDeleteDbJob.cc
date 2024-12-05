@@ -29,7 +29,6 @@
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/requests/SqlDeleteDbRequest.h"
-#include "replica/requests/StopRequest.h"
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -70,23 +69,18 @@ list<SqlRequest::Ptr> SqlDeleteDbJob::launchRequests(replica::Lock const& lock, 
                                                      size_t maxRequestsPerWorker) {
     // Launch exactly one request per worker unless it was already
     // launched earlier
-
     list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
-        auto const self = shared_from_base<SqlDeleteDbJob>();
-        requests.push_back(controller()->sqlDeleteDb(
-                worker, database(),
-                [self](SqlDeleteDbRequest::Ptr const& request) { self->onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+        bool const keepTracking = true;
+        requests.push_back(SqlDeleteDbRequest::createAndStart(
+                controller(), worker, database(),
+                [self = shared_from_base<SqlDeleteDbJob>()](SqlDeleteDbRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
         _workers.insert(worker);
     }
     return requests;
-}
-
-void SqlDeleteDbJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlDeleteDbRequest>(lock, request);
 }
 
 void SqlDeleteDbJob::notify(replica::Lock const& lock) {

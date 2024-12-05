@@ -29,6 +29,7 @@
 #include <vector>
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/contr/EventLogger.h"
 #include "replica/jobs/Job.h"
@@ -216,32 +217,24 @@ protected:
         info(T::typeName());
 
         // Launch the jobs
-
-        auto self = shared_from_this();
-
         std::vector<typename T::Ptr> jobs;
         _numFinishedJobs = 0;
-
         std::string const parentJobId;  // no parent for these jobs
-
         for (auto&& family : serviceProvider()->config()->databaseFamilies()) {
             auto job = T::create(
                     family, Fargs..., controller(), parentJobId,
-                    [self](typename T::Ptr const& job) {
+                    [self = shared_from_this()](typename T::Ptr const& job) {
                         self->_numFinishedJobs++;
                         // FIXME: analyze job status and report it here
                     },
                     priority);
             job->start();
             jobs.push_back(job);
-
             logJobStartedEvent(T::typeName(), job, job->databaseFamily());
         }
 
         // Track the completion of all jobs
-
         track<T>(T::typeName(), jobs, _numFinishedJobs);
-
         for (auto&& job : jobs) {
             logJobFinishedEvent(T::typeName(), job, job->databaseFamily());
         }
@@ -271,9 +264,7 @@ protected:
     void track(std::string const& typeName, std::vector<typename T::Ptr> const& jobs,
                std::atomic<size_t> const& numFinishedJobs) {
         info(typeName + ": tracking started");
-
         util::BlockPost blockPost(1000, 1001);  // ~1 second wait time between iterations
-
         while (numFinishedJobs != jobs.size()) {
             if (stopRequested()) {
                 for (auto&& job : jobs) {
@@ -290,8 +281,6 @@ protected:
 private:
     /// This method is launched by the task when it starts
     void _startImpl();
-
-    // Input parameters
 
     /// The callback (if provided) to be called upon an abnormal termination
     /// of the user-supplied algorithm run in a context of the task.

@@ -24,7 +24,6 @@
 
 // Qserv headers
 #include "replica/requests/SqlCreateIndexesRequest.h"
-#include "replica/requests/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -91,7 +90,6 @@ list<pair<string, string>> SqlCreateIndexesJob::extendedPersistentState() const 
 list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                           size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
-
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -104,20 +102,16 @@ list<SqlRequest::Ptr> SqlCreateIndexesJob::launchRequests(replica::Lock const& l
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    auto const self = shared_from_base<SqlCreateIndexesJob>();
     for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
-        requests.push_back(controller()->sqlCreateTableIndexes(
-                worker, database(), tables, indexSpec(), indexName(), indexComment(), indexColumns(),
-                [self](SqlCreateIndexesRequest::Ptr const& request) { self->onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+        bool const keepTracking = true;
+        requests.push_back(SqlCreateIndexesRequest::createAndStart(
+                controller(), worker, database(), tables, indexSpec(), indexName(), indexComment(),
+                indexColumns(),
+                [self = shared_from_base<SqlCreateIndexesJob>()](
+                        SqlCreateIndexesRequest::Ptr const& request) { self->onRequestFinish(request); },
+                priority(), keepTracking, id()));
     }
     return requests;
-}
-
-void SqlCreateIndexesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlCreateIndexesRequest>(lock, request);
 }
 
 void SqlCreateIndexesJob::notify(replica::Lock const& lock) {

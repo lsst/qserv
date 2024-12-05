@@ -117,16 +117,12 @@ public:
     std::string const& table() const { return _table; }
     ChunkOverlapSelector overlapSelector() const { return _overlapSelector; }
     StateUpdatePolicy stateUpdatePolicy() const { return _stateUpdatePolicy; }
-
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(replica::Lock const& lock) final;
-
     std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
-
-    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) final;
     void processResultAndFinish(replica::Lock const& lock, ExtendedState extendedState) final;
 
 private:
@@ -152,12 +148,10 @@ private:
                   std::map<std::string, std::map<TransactionId, std::vector<size_t>>>& counters) const;
 
     // Input parameters
-
     std::string const _database;
     std::string const _table;
     ChunkOverlapSelector const _overlapSelector;
     StateUpdatePolicy const _stateUpdatePolicy;
-
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.

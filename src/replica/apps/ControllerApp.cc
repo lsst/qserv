@@ -28,6 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/requests/DeleteRequest.h"
 #include "replica/requests/DisposeRequest.h"
 #include "replica/requests/EchoRequest.h"
@@ -72,56 +73,6 @@ string const description =
 bool const injectDatabaseOptions = true;
 bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
-
-/**
- * This is the helper class for submitting the management requests
- * which are meant to request a status or stop an on-going request.
- */
-class ManagementRequestLauncher {
-public:
-    // All (but the normal one) forms of construction are prohibited
-
-    ManagementRequestLauncher() = delete;
-    ManagementRequestLauncher(ManagementRequestLauncher const&) = delete;
-    ManagementRequestLauncher& operator=(ManagementRequestLauncher const&) = delete;
-
-    ManagementRequestLauncher(Controller::Ptr const& controller, string workerName, string affectedRequestId,
-                              int priority, bool doNotTrackRequest)
-            : _controller(controller),
-              _workerName(workerName),
-              _affectedRequestId(affectedRequestId),
-              _priority(priority),
-              _doNotTrackRequest(doNotTrackRequest) {}
-    ~ManagementRequestLauncher() = default;
-
-    template <typename REQUEST>
-    typename REQUEST::Ptr status() const {
-        return _controller->statusById<REQUEST>(_workerName, _affectedRequestId, REQUEST::extendedPrinter,
-                                                !_doNotTrackRequest);
-    }
-
-    template <typename REQUEST>
-    typename REQUEST::Ptr stop() const {
-        return _controller->stopById<REQUEST>(_workerName, _affectedRequestId, REQUEST::extendedPrinter,
-                                              !_doNotTrackRequest);
-    }
-
-private:
-    /// Pointer to the controller for launching requests
-    Controller::Ptr const _controller;
-
-    /// The name of a worker which will execute a request
-    std::string const _workerName;
-
-    /// An identifier of a request for operations over known requests
-    std::string const _affectedRequestId;
-
-    /// The priority level of a request
-    int const _priority;
-
-    /// Do not track requests waiting before they finish
-    bool const _doNotTrackRequest;
-};
 
 }  // namespace
 
@@ -406,76 +357,12 @@ void ControllerApp::_configureParserCommandINDEX() {
 void ControllerApp::_configureParserCommandSTATUS() {
     parser().command("STATUS")
             .description("Ask a worker to return a status of a request.")
-            .required("affected-request",
-                      "The type of a request affected by the operation. Supported types:"
-                      " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_ALTER_TABLES, SQL_QUERY, "
-                      "SQL_CREATE_DATABASE"
-                      " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
-                      " SQL_GRANT_ACCESS"
-                      " SQL_CREATE_TABLE, SQL_CREATE_TABLES, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
-                      " SQL_DELETE_TABLE_PARTITION,"
-                      " SQL_CREATE_TABLE_INDEXES, SQL_DROP_TABLE_INDEXES, SQL_GET_TABLE_INDEXES"
-                      " INDEX",
-                      _affectedRequest,
-                      {"REPLICATE",
-                       "DELETE",
-                       "FIND",
-                       "FIND_ALL",
-                       "ECHO",
-                       "SQL_ALTER_TABLES",
-                       "SQL_QUERY",
-                       "SQL_CREATE_DATABASE",
-                       "SQL_DELETE_DATABASE",
-                       "SQL_ENABLE_DATABASE",
-                       "SQL_DISABLE_DATABASE",
-                       "SQL_GRANT_ACCESS",
-                       "SQL_CREATE_TABLE",
-                       "SQL_CREATE_TABLES",
-                       "SQL_DELETE_TABLE",
-                       "SQL_REMOVE_TABLE_PARTITIONS",
-                       "SQL_DELETE_TABLE_PARTITION",
-                       "SQL_CREATE_TABLE_INDEXES",
-                       "SQL_DROP_TABLE_INDEXES",
-                       "SQL_GET_TABLE_INDEXES",
-                       "INDEX"})
             .required("id", "A valid identifier of a request to be probed.", _affectedRequestId);
 }
 
 void ControllerApp::_configureParserCommandSTOP() {
     parser().command("STOP")
             .description("Ask a worker to stop an on-going request of the given type.")
-            .required("affected-request",
-                      "The type of a request affected by the operation. Supported types:"
-                      " REPLICATE, DELETE, FIND, FIND_ALL, ECHO, SQL_ALTER_TABLES, SQL_QUERY, "
-                      "SQL_CREATE_DATABASE"
-                      " SQL_DELETE_DATABASE, SQL_ENABLE_DATABASE, SQL_DISABLE_DATABASE"
-                      " SQL_GRANT_ACCESS"
-                      " SQL_CREATE_TABLE, SQL_CREATE_TABLES, SQL_DELETE_TABLE, SQL_REMOVE_TABLE_PARTITIONS,"
-                      " SQL_DELETE_TABLE_PARTITION,"
-                      " SQL_CREATE_TABLE_INDEXES, SQL_DROP_TABLE_INDEXES, SQL_GET_TABLE_INDEXES"
-                      " INDEX",
-                      _affectedRequest,
-                      {"REPLICATE",
-                       "DELETE",
-                       "FIND",
-                       "FIND_ALL",
-                       "ECHO",
-                       "SQL_ALTER_TABLES",
-                       "SQL_QUERY",
-                       "SQL_CREATE_DATABASE",
-                       "SQL_DELETE_DATABASE",
-                       "SQL_ENABLE_DATABASE",
-                       "SQL_DISABLE_DATABASE",
-                       "SQL_GRANT_ACCESS",
-                       "SQL_CREATE_TABLE",
-                       "SQL_CREATE_TABLES",
-                       "SQL_DELETE_TABLE",
-                       "SQL_REMOVE_TABLE_PARTITIONS",
-                       "SQL_DELETE_TABLE_PARTITION",
-                       "SQL_CREATE_TABLE_INDEXES",
-                       "SQL_DROP_TABLE_INDEXES",
-                       "SQL_GET_TABLE_INDEXES",
-                       "INDEX"})
             .required("id", "A valid identifier of a request to be stopped.", _affectedRequestId);
 }
 
@@ -525,31 +412,30 @@ int ControllerApp::runImpl() {
     Request::Ptr request;
 
     if ("REPLICATE" == _requestType) {
-        request = controller->replicate(
-                _workerName, _sourceWorkerName, _databaseName, _chunkNumber,
-                [](Request::Ptr const& request_) { request_->print(); }, _priority, !_doNotTrackRequest,
-                _allowDuplicates);
-
+        request = ReplicationRequest::createAndStart(
+                controller, _workerName, _sourceWorkerName, _databaseName, _chunkNumber,
+                [](ReplicationRequest::Ptr const& request_) { request_->print(); }, _priority,
+                !_doNotTrackRequest, _allowDuplicates);
     } else if ("DELETE" == _requestType) {
-        request = controller->deleteReplica(_workerName, _databaseName, _chunkNumber, Request::defaultPrinter,
-                                            _priority, !_doNotTrackRequest, _allowDuplicates);
-
+        request = DeleteRequest::createAndStart(controller, _workerName, _databaseName, _chunkNumber,
+                                                Request::defaultPrinter, _priority, !_doNotTrackRequest,
+                                                _allowDuplicates);
     } else if ("FIND" == _requestType) {
-        request = controller->findReplica(_workerName, _databaseName, _chunkNumber, Request::defaultPrinter,
-                                          _priority, _computeCheckSum, !_doNotTrackRequest);
-
+        request = FindRequest::createAndStart(controller, _workerName, _databaseName, _chunkNumber,
+                                              Request::defaultPrinter, _priority, _computeCheckSum,
+                                              !_doNotTrackRequest);
     } else if ("FIND_ALL" == _requestType) {
-        request = controller->findAllReplicas(_workerName, _databaseName, !_doNotSaveReplicaInfo,
-                                              Request::defaultPrinter, _priority, !_doNotTrackRequest);
-
+        request =
+                FindAllRequest::createAndStart(controller, _workerName, _databaseName, !_doNotSaveReplicaInfo,
+                                               Request::defaultPrinter, _priority, !_doNotTrackRequest);
     } else if ("ECHO" == _requestType) {
-        request = controller->echo(_workerName, _echoData, _echoDelayMilliseconds, Request::defaultPrinter,
-                                   _priority, !_doNotTrackRequest);
-
+        request = EchoRequest::createAndStart(controller, _workerName, _echoData, _echoDelayMilliseconds,
+                                              Request::defaultPrinter, _priority, !_doNotTrackRequest);
     } else if ("INDEX" == _requestType) {
         bool const hasTransactions = _transactionId != numeric_limits<TransactionId>::max();
-        request = controller->directorIndex(
-                _workerName, _sqlDatabase, _sqlTable, _chunkNumber, hasTransactions, _transactionId,
+        request = DirectorIndexRequest::createAndStart(
+                controller, _workerName, _sqlDatabase, _sqlTable, _chunkNumber, hasTransactions,
+                _transactionId,
                 [&](DirectorIndexRequest::Ptr const& request_) {
                     Request::defaultPrinter(request_);
                     auto const& responseData = request_->responseData();
@@ -570,132 +456,117 @@ int ControllerApp::runImpl() {
                     }
                 },
                 _priority, !_doNotTrackRequest);
-
     } else if ("SQL_ALTER_TABLES" == _requestType) {
         vector<string> const tables = {_sqlTable};
-        request = controller->sqlAlterTables(_workerName, _sqlDatabase, tables, _sqlAlterSpec,
-                                             SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
-
+        request = SqlAlterTablesRequest::createAndStart(controller, _workerName, _sqlDatabase, tables,
+                                                        _sqlAlterSpec, SqlRequest::extendedPrinter, _priority,
+                                                        !_doNotTrackRequest);
     } else if ("SQL_QUERY" == _requestType) {
-        request = controller->sqlQuery(_workerName, _sqlQuery, _sqlUser, _sqlPassword, _sqlMaxRows,
-                                       SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
-
+        request = SqlQueryRequest::createAndStart(controller, _workerName, _sqlQuery, _sqlUser, _sqlPassword,
+                                                  _sqlMaxRows, SqlRequest::extendedPrinter, _priority,
+                                                  !_doNotTrackRequest);
     } else if ("SQL_CREATE_DATABASE" == _requestType) {
-        request = controller->sqlCreateDb(_workerName, _sqlDatabase, SqlRequest::extendedPrinter, _priority,
-                                          !_doNotTrackRequest);
-
+        request = SqlCreateDbRequest::createAndStart(controller, _workerName, _sqlDatabase,
+                                                     SqlRequest::extendedPrinter, _priority,
+                                                     !_doNotTrackRequest);
     } else if ("SQL_DELETE_DATABASE" == _requestType) {
-        request = controller->sqlDeleteDb(_workerName, _sqlDatabase, SqlRequest::extendedPrinter, _priority,
-                                          !_doNotTrackRequest);
-
+        request = SqlDeleteDbRequest::createAndStart(controller, _workerName, _sqlDatabase,
+                                                     SqlRequest::extendedPrinter, _priority,
+                                                     !_doNotTrackRequest);
     } else if ("SQL_ENABLE_DATABASE" == _requestType) {
-        request = controller->sqlEnableDb(_workerName, _sqlDatabase, SqlRequest::extendedPrinter, _priority,
-                                          !_doNotTrackRequest);
-
+        request = SqlEnableDbRequest::createAndStart(controller, _workerName, _sqlDatabase,
+                                                     SqlRequest::extendedPrinter, _priority,
+                                                     !_doNotTrackRequest);
     } else if ("SQL_DISABLE_DATABASE" == _requestType) {
-        request = controller->sqlDisableDb(_workerName, _sqlDatabase, SqlRequest::extendedPrinter, _priority,
-                                           !_doNotTrackRequest);
-
-    } else if ("SQL_GRANT_ACCESS" == _requestType) {
-        request = controller->sqlGrantAccess(_workerName, _sqlDatabase, _sqlUser, SqlRequest::extendedPrinter,
-                                             _priority, !_doNotTrackRequest);
-
-    } else if ("SQL_CREATE_TABLE" == _requestType) {
-        request = controller->sqlCreateTable(_workerName, _sqlDatabase, _sqlTable, _sqlEngine,
-                                             _sqlPartitionByColumn,
-                                             SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
-                                             SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
-
-    } else if ("SQL_CREATE_TABLES" == _requestType) {
-        vector<string> const tables = {_sqlTable};
-        request = controller->sqlCreateTables(_workerName, _sqlDatabase, tables, _sqlEngine,
-                                              _sqlPartitionByColumn,
-                                              SqlSchemaUtils::readFromTextFile(_sqlSchemaFile),
-                                              SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
-
-    } else if ("SQL_DELETE_TABLE" == _requestType) {
-        vector<string> const tables = {_sqlTable};
-        request = controller->sqlDeleteTable(_workerName, _sqlDatabase, tables, SqlRequest::extendedPrinter,
-                                             _priority, !_doNotTrackRequest);
-
-    } else if ("SQL_REMOVE_TABLE_PARTITIONS" == _requestType) {
-        vector<string> const tables = {_sqlTable};
-        request = controller->sqlRemoveTablePartitions(_workerName, _sqlDatabase, tables,
-                                                       SqlRequest::extendedPrinter, _priority,
-                                                       !_doNotTrackRequest);
-
-    } else if ("SQL_DELETE_TABLE_PARTITION" == _requestType) {
-        vector<string> const tables = {_sqlTable};
-        request = controller->sqlDeleteTablePartition(_workerName, _sqlDatabase, tables, _transactionId,
+        request = SqlDisableDbRequest::createAndStart(controller, _workerName, _sqlDatabase,
                                                       SqlRequest::extendedPrinter, _priority,
                                                       !_doNotTrackRequest);
-
+    } else if ("SQL_GRANT_ACCESS" == _requestType) {
+        request = SqlGrantAccessRequest::createAndStart(controller, _workerName, _sqlDatabase, _sqlUser,
+                                                        SqlRequest::extendedPrinter, _priority,
+                                                        !_doNotTrackRequest);
+    } else if ("SQL_CREATE_TABLE" == _requestType) {
+        request = SqlCreateTableRequest::createAndStart(
+                controller, _workerName, _sqlDatabase, _sqlTable, _sqlEngine, _sqlPartitionByColumn,
+                SqlSchemaUtils::readFromTextFile(_sqlSchemaFile), SqlRequest::extendedPrinter, _priority,
+                !_doNotTrackRequest);
+    } else if ("SQL_CREATE_TABLES" == _requestType) {
+        vector<string> const tables = {_sqlTable};
+        request = SqlCreateTablesRequest::createAndStart(
+                controller, _workerName, _sqlDatabase, tables, _sqlEngine, _sqlPartitionByColumn,
+                SqlSchemaUtils::readFromTextFile(_sqlSchemaFile), SqlRequest::extendedPrinter, _priority,
+                !_doNotTrackRequest);
+    } else if ("SQL_DELETE_TABLE" == _requestType) {
+        vector<string> const tables = {_sqlTable};
+        request = SqlDeleteTableRequest::createAndStart(controller, _workerName, _sqlDatabase, tables,
+                                                        SqlRequest::extendedPrinter, _priority,
+                                                        !_doNotTrackRequest);
+    } else if ("SQL_REMOVE_TABLE_PARTITIONS" == _requestType) {
+        vector<string> const tables = {_sqlTable};
+        request = SqlRemoveTablePartitionsRequest::createAndStart(controller, _workerName, _sqlDatabase,
+                                                                  tables, SqlRequest::extendedPrinter,
+                                                                  _priority, !_doNotTrackRequest);
+    } else if ("SQL_DELETE_TABLE_PARTITION" == _requestType) {
+        vector<string> const tables = {_sqlTable};
+        request = SqlDeleteTablePartitionRequest::createAndStart(
+                controller, _workerName, _sqlDatabase, tables, _transactionId, SqlRequest::extendedPrinter,
+                _priority, !_doNotTrackRequest);
     } else if ("SQL_CREATE_TABLE_INDEXES" == _requestType) {
         vector<string> const tables = {_sqlTable};
-        request = controller->sqlCreateTableIndexes(
-                _workerName, _sqlDatabase, tables, SqlRequestParams::IndexSpec(_sqlIndexSpecStr),
+        request = SqlCreateIndexesRequest::createAndStart(
+                controller, _workerName, _sqlDatabase, tables, SqlRequestParams::IndexSpec(_sqlIndexSpecStr),
                 _sqlIndexName, _sqlIndexComment,
                 SqlSchemaUtils::readIndexSpecFromTextFile(_sqlIndexColumnsFile), SqlRequest::extendedPrinter,
                 _priority, !_doNotTrackRequest);
-
     } else if ("SQL_DROP_TABLE_INDEXES" == _requestType) {
         vector<string> const tables = {_sqlTable};
-        request =
-                controller->sqlDropTableIndexes(_workerName, _sqlDatabase, tables, _sqlIndexName,
-                                                SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
-
+        request = SqlDropIndexesRequest::createAndStart(controller, _workerName, _sqlDatabase, tables,
+                                                        _sqlIndexName, SqlRequest::extendedPrinter, _priority,
+                                                        !_doNotTrackRequest);
     } else if ("SQL_GET_TABLE_INDEXES" == _requestType) {
         vector<string> const tables = {_sqlTable};
-        request = controller->sqlGetTableIndexes(_workerName, _sqlDatabase, tables,
-                                                 SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
-
+        request = SqlGetIndexesRequest::createAndStart(controller, _workerName, _sqlDatabase, tables,
+                                                       SqlRequest::extendedPrinter, _priority,
+                                                       !_doNotTrackRequest);
     } else if ("SQL_TABLE_ROW_STATS" == _requestType) {
         auto const databaseInfo = controller->serviceProvider()->config()->databaseInfo(_sqlDatabase);
         bool const isPartitioned = databaseInfo.findTable(_sqlTable).isPartitioned;
         vector<string> const tables = {
                 isPartitioned ? ChunkedTable(_sqlTable, _chunkNumber, _isOverlap).name() : _sqlTable};
-        request = controller->sqlRowStats(_workerName, _sqlDatabase, tables, SqlRequest::extendedPrinter,
-                                          _priority, !_doNotTrackRequest);
-
+        request = SqlRowStatsRequest::createAndStart(controller, _workerName, _sqlDatabase, tables,
+                                                     SqlRequest::extendedPrinter, _priority,
+                                                     !_doNotTrackRequest);
     } else if ("STATUS" == _requestType) {
         request = _launchStatusRequest(controller);
-
     } else if ("STOP" == _requestType) {
-        request = _launchStatusRequest(controller);
-
+        request = _launchStopRequest(controller);
     } else if ("DISPOSE" == _requestType) {
         vector<string> const targetIds = {_affectedRequestId};
-        request = controller->dispose(_workerName, targetIds, Request::defaultPrinter);
-
+        request = DisposeRequest::createAndStart(controller, _workerName, targetIds, Request::defaultPrinter);
     } else if ("SERVICE_SUSPEND" == _requestType) {
-        request =
-                controller->suspendWorkerService(_workerName, ServiceManagementRequestBase::extendedPrinter);
-
+        request = ServiceSuspendRequest::createAndStart(controller, _workerName,
+                                                        ServiceManagementRequestBase::extendedPrinter);
     } else if ("SERVICE_RESUME" == _requestType) {
-        request = controller->resumeWorkerService(_workerName, ServiceManagementRequestBase::extendedPrinter);
-
+        request = ServiceResumeRequest::createAndStart(controller, _workerName,
+                                                       ServiceManagementRequestBase::extendedPrinter);
     } else if ("SERVICE_STATUS" == _requestType) {
-        request =
-                controller->statusOfWorkerService(_workerName, ServiceManagementRequestBase::extendedPrinter);
-
+        request = ServiceStatusRequest::createAndStart(controller, _workerName,
+                                                       ServiceManagementRequestBase::extendedPrinter);
     } else if ("SERVICE_REQUESTS" == _requestType) {
-        request = controller->requestsOfWorkerService(_workerName,
-                                                      ServiceManagementRequestBase::extendedPrinter);
-
+        request = ServiceRequestsRequest::createAndStart(controller, _workerName,
+                                                         ServiceManagementRequestBase::extendedPrinter);
     } else if ("SERVICE_DRAIN" == _requestType) {
-        request = controller->drainWorkerService(_workerName, ServiceManagementRequestBase::extendedPrinter);
-
+        request = ServiceDrainRequest::createAndStart(controller, _workerName,
+                                                      ServiceManagementRequestBase::extendedPrinter);
     } else if ("SERVICE_RECONFIG" == _requestType) {
-        request =
-                controller->reconfigWorkerService(_workerName, ServiceManagementRequestBase::extendedPrinter);
-
+        request = ServiceReconfigRequest::createAndStart(controller, _workerName,
+                                                         ServiceManagementRequestBase::extendedPrinter);
     } else {
         throw logic_error(context + "unsupported request: " + _affectedRequest);
     }
 
     // Cancel the last request if required, or just block the thread waiting
     // before it will finish.
-
     if (_cancelDelayMilliseconds != 0) {
         util::BlockPost blockPost(_cancelDelayMilliseconds, _cancelDelayMilliseconds + 1);
         blockPost.wait();
@@ -707,62 +578,15 @@ int ControllerApp::runImpl() {
 }
 
 Request::Ptr ControllerApp::_launchStatusRequest(Controller::Ptr const& controller) const {
-    ::ManagementRequestLauncher l(controller, _workerName, _affectedRequestId, _priority, _doNotTrackRequest);
-
-    if ("REPLICATE" == _affectedRequest) return l.status<StatusReplicationRequest>();
-    if ("DELETE" == _affectedRequest) return l.status<StatusDeleteRequest>();
-    if ("FIND" == _affectedRequest) return l.status<StatusFindRequest>();
-    if ("FIND_ALL" == _affectedRequest) return l.status<StatusFindAllRequest>();
-    if ("ECHO" == _affectedRequest) return l.status<StatusEchoRequest>();
-    if ("INDEX" == _affectedRequest) return l.status<StatusDirectorIndexRequest>();
-    if ("SQL_ALTER_TABLES" == _affectedRequest) return l.status<StatusSqlAlterTablesRequest>();
-    if ("SQL_QUERY" == _affectedRequest) return l.status<StatusSqlQueryRequest>();
-    if ("SQL_CREATE_DATABASE" == _affectedRequest) return l.status<StatusSqlCreateDbRequest>();
-    if ("SQL_DELETE_DATABASE" == _affectedRequest) return l.status<StatusSqlDeleteDbRequest>();
-    if ("SQL_ENABLE_DATABASE" == _affectedRequest) return l.status<StatusSqlEnableDbRequest>();
-    if ("SQL_DISABLE_DATABASE" == _affectedRequest) return l.status<StatusSqlDisableDbRequest>();
-    if ("SQL_GRANT_ACCESS" == _affectedRequest) return l.status<StatusSqlGrantAccessRequest>();
-    if ("SQL_CREATE_TABLE" == _affectedRequest) return l.status<StatusSqlCreateTableRequest>();
-    if ("SQL_CREATE_TABLES" == _affectedRequest) return l.status<StatusSqlCreateTablesRequest>();
-    if ("SQL_CREATE_TABLE_INDEXES" == _affectedRequest) return l.status<StatusSqlCreateIndexesRequest>();
-    if ("SQL_DELETE_TABLE" == _affectedRequest) return l.status<StatusSqlDeleteTableRequest>();
-    if ("SQL_DROP_TABLE_INDEXES" == _affectedRequest) return l.status<StatusSqlDropIndexesRequest>();
-    if ("SQL_GET_TABLE_INDEXES" == _affectedRequest) return l.status<StatusSqlGetIndexesRequest>();
-    if ("SQL_REMOVE_TABLE_PARTITIONS" == _affectedRequest)
-        return l.status<StatusSqlRemoveTablePartitionsRequest>();
-    if ("SQL_DELETE_TABLE_PARTITION" == _affectedRequest)
-        return l.status<StatusSqlDeleteTablePartitionRequest>();
-
-    throw logic_error("ControllerApp::" + string(__func__) + "  unsupported request: " + _affectedRequest);
+    return StatusRequest::createAndStart(
+            controller, _workerName, _affectedRequestId,
+            [](StatusRequest::Ptr const& request_) { request_->print(); }, !_doNotTrackRequest);
 }
 
 Request::Ptr ControllerApp::_launchStopRequest(Controller::Ptr const& controller) const {
-    ::ManagementRequestLauncher l(controller, _workerName, _affectedRequestId, _priority, _doNotTrackRequest);
-
-    if ("REPLICATE" == _affectedRequest) return l.stop<StopReplicationRequest>();
-    if ("DELETE" == _affectedRequest) return l.stop<StopDeleteRequest>();
-    if ("FIND" == _affectedRequest) return l.stop<StopFindRequest>();
-    if ("FIND_ALL" == _affectedRequest) return l.stop<StopFindAllRequest>();
-    if ("ECHO" == _affectedRequest) return l.stop<StopEchoRequest>();
-    if ("INDEX" == _affectedRequest) return l.stop<StopDirectorIndexRequest>();
-    if ("SQL_ALTER_TABLES" == _affectedRequest) return l.stop<StopSqlAlterTablesRequest>();
-    if ("SQL_QUERY" == _affectedRequest) return l.stop<StopSqlQueryRequest>();
-    if ("SQL_CREATE_DATABASE" == _affectedRequest) return l.stop<StopSqlCreateDbRequest>();
-    if ("SQL_DELETE_DATABASE" == _affectedRequest) return l.stop<StopSqlDeleteDbRequest>();
-    if ("SQL_ENABLE_DATABASE" == _affectedRequest) return l.stop<StopSqlEnableDbRequest>();
-    if ("SQL_DISABLE_DATABASE" == _affectedRequest) return l.stop<StopSqlDisableDbRequest>();
-    if ("SQL_GRANT_ACCESS" == _affectedRequest) return l.stop<StopSqlGrantAccessRequest>();
-    if ("SQL_CREATE_TABLE" == _affectedRequest) return l.stop<StopSqlCreateTableRequest>();
-    if ("SQL_CREATE_TABLES" == _affectedRequest) return l.stop<StopSqlCreateTablesRequest>();
-    if ("SQL_CREATE_TABLE_INDEXES" == _affectedRequest) return l.stop<StopSqlCreateIndexesRequest>();
-    if ("SQL_DELETE_TABLE" == _affectedRequest) return l.stop<StopSqlDeleteTableRequest>();
-    if ("SQL_DROP_TABLE_INDEXES" == _affectedRequest) return l.stop<StopSqlDropIndexesRequest>();
-    if ("SQL_GET_TABLE_INDEXES" == _affectedRequest) return l.stop<StopSqlGetIndexesRequest>();
-    if ("SQL_REMOVE_TABLE_PARTITIONS" == _affectedRequest)
-        return l.stop<StopSqlRemoveTablePartitionsRequest>();
-    if ("SQL_DELETE_TABLE_PARTITION" == _affectedRequest) return l.stop<StopSqlDeleteTablePartitionRequest>();
-
-    throw logic_error("ControllerApp::" + string(__func__) + "  unsupported request: " + _affectedRequest);
+    return StopRequest::createAndStart(
+            controller, _workerName, _affectedRequestId,
+            [](StopRequest::Ptr const& request_) { request_->print(); }, !_doNotTrackRequest);
 }
 
 }  // namespace lsst::qserv::replica

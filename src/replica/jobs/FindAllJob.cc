@@ -144,20 +144,19 @@ list<pair<string, string>> FindAllJob::persistentLogData() const {
 void FindAllJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto const self = shared_from_base<FindAllJob>();
-
     auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
                                           : controller()->serviceProvider()->config()->workers();
-
     for (auto&& workerName : workerNames) {
         _replicaData.workers[workerName] = false;
         for (auto&& database : _databases) {
             _workerDatabaseSuccess[workerName][database] = false;
-            _requests.push_back(controller()->findAllReplicas(
-                    workerName, database, saveReplicaInfo(),
-                    [self](FindAllRequest::Ptr request) { self->_onRequestFinish(request); }, priority(),
-                    true, /* keepTracking*/
-                    id()  /* jobId */
+            _requests.push_back(FindAllRequest::createAndStart(
+                    controller(), workerName, database, saveReplicaInfo(),
+                    [self = shared_from_base<FindAllJob>()](FindAllRequest::Ptr request) {
+                        self->_onRequestFinish(request);
+                    },
+                    priority(), true, /* keepTracking*/
+                    id()              /* jobId */
                     ));
             _numLaunched++;
         }
@@ -172,18 +171,16 @@ void FindAllJob::startImpl(replica::Lock const& lock) {
 void FindAllJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto const noCallbackOnFinish = nullptr;
-    bool const keepTracking = true;
-
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
-
+    auto const noCallbackOnFinish = nullptr;
+    bool const keepTracking = true;
     for (auto&& ptr : _requests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            controller()->stopById<StopFindAllRequest>(ptr->workerName(), ptr->id(), noCallbackOnFinish,
-                                                       priority(), keepTracking, id());
+            StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                        priority(), keepTracking, id());
         }
     }
     _requests.clear();

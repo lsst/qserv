@@ -34,7 +34,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Messenger;
+class Controller;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -78,43 +78,33 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider provider of various services
-     * @param workerName identifier of a worker node
-     * @param data data string to be echoed back by a worker
-     * @param delay execution time (milliseconds) of the request at worker
-     * @param onFinish (optional) callback function to call upon completion of the request
-     * @param priority priority level of the request
-     * @param keepTracking keep tracking the request before it finishes or fails
-     * @param messenger interface for communicating with workers
-     * @return pointer to the created object
+     * Class-specific parameters are documented below:
+     * @param data The data string to be echoed back by a worker.
+     * @param delay The execution time (milliseconds) of the request at worker.
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
+     * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& workerName, std::string const& data, uint64_t delay,
-                      CallbackType const& onFinish, int priority, bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              std::string const& data, uint64_t delay, CallbackType const& onFinish = nullptr,
+                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
+                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
     /// @see Request::extendedPersistentState()
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const override;
 
 protected:
-    /// @see Request::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Request::notify()
     void notify(replica::Lock const& lock) final;
-
-    /// @see Request::savePersistentState()
     void savePersistentState(replica::Lock const& lock) final;
-
-    /// @see Request::awaken()
     void awaken(boost::system::error_code const& ec) final;
 
 private:
-    /// @see EchoRequest::create()
-    EchoRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                std::string const& workerName, std::string const& data, uint64_t delay,
-                CallbackType const& onFinish, int priority, bool keepTracking,
-                std::shared_ptr<Messenger> const& messenger);
+    EchoRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                std::string const& data, uint64_t delay, CallbackType const& onFinish, int priority,
+                bool keepTracking);
 
     /**
      * Send the serialized content of the buffer to a worker

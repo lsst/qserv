@@ -62,66 +62,41 @@ public:
     /// @return the unique name distinguishing this class from other types of jobs
     static std::string typeName();
 
-    // Default construction and copy semantics are prohibited
-
     ServiceManagementBaseJob() = delete;
     ServiceManagementBaseJob(ServiceManagementBaseJob const&) = delete;
     ServiceManagementBaseJob& operator=(ServiceManagementBaseJob const&) = delete;
 
     ~ServiceManagementBaseJob() override = default;
 
-    // Trivial get methods
-
     bool allWorkers() const { return _allWorkers; }
-
     unsigned int requestExpirationIvalSec() const { return _requestExpirationIvalSec; }
 
     /**
      * Return the combined result of the operation
      *
-     * @note:
-     *  The method should be invoked only after the job has finished (primary
+     * @note The method should be invoked only after the job has finished (primary
      *  status is set to Job::Status::FINISHED). Otherwise exception
      *  std::logic_error will be thrown
      *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @return the data structure to be filled upon the completion of the job.
+     * @throws std::logic_error if the job didn't finished at a time when the method was called
      */
     ServiceManagementJobResult const& getResultData() const;
 
 protected:
-    /// @see Job::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
     void cancelImpl(replica::Lock const& lock) final;
 
     /**
-     * Normal constructor.
-     *
-     * @param requestName
-     *   the name of a specific request (as defined by a subclass)
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status. If the flag
-     *   is set to 'false' then only 'ENABLED' workers which are not in
-     *   the 'READ-ONLY' state will be involved into the operation.
-     *
-     * @param requestExpirationIvalSec
-     *   the number of seconds before the requests will be declared as expired
-     *   unless receiving responses from them.
-     *
-     * @param controller
-     *   is needed launching requests and accessing the Configuration
-     *
-     * @param parentJobId
-     *   an identifier of a parent job
-     *
-     * @param priority
-     *   defines the job priority
+     * @param requestName the name of a specific request (as defined by a subclass)
+     * @param allWorkers engage all known workers regardless of their status.
+     *  If the flag is set to 'false' then only 'ENABLED' workers which are not in
+     *  the 'READ-ONLY' state will be involved into the operation.
+     * @param requestExpirationIvalSec the number of seconds before the requests will
+     *  be declared as expired unless receiving responses from them.
+     * @param controller is needed launching requests and accessing the Configuration
+     * @param parentJobId an identifier of a parent job
+     * @param priority defines the job priority
      */
     ServiceManagementBaseJob(std::string const& requestName, bool allWorkers,
                              unsigned int requestExpirationIvalSec, Controller::Ptr const& controller,
@@ -129,7 +104,6 @@ protected:
 
     /**
      * Submit type-specific request
-     *
      * @param worker  the name of a worker to which the request will be sent
      * @return a newly created & submitted object
      */
@@ -206,10 +180,12 @@ protected:
 
     /// @see ServiceManagementBaseJob::submitRequest()
     ServiceManagementRequestBase::Ptr submitRequest(std::string const& worker) final {
-        auto const self = shared_from_base<ServiceManagementJob<REQUEST>>();
-        return controller()->template workerServiceRequest<REQUEST>(
-                worker, [self](typename REQUEST::Ptr const& ptr) { self->onRequestFinish(ptr); }, priority(),
-                id(), requestExpirationIvalSec());
+        return REQUEST::createAndStart(
+                controller(), worker,
+                [self = shared_from_base<ServiceManagementJob<REQUEST>>()](typename REQUEST::Ptr const& ptr) {
+                    self->onRequestFinish(ptr);
+                },
+                priority(), id(), requestExpirationIvalSec());
     }
 
 private:

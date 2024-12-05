@@ -22,156 +22,151 @@
 // Class header
 #include "replica/requests/StopRequest.h"
 
+// Qserv headers
+#include "replica/contr/Controller.h"
+#include "replica/requests/Messenger.h"
+#include "replica/services/DatabaseServices.h"
+#include "replica/services/ServiceProvider.h"
+#include "replica/util/ProtocolBuffer.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.StopRequest");
+bool const allowDuplicateNo = false;
+bool const disposeRequiredNo = false;
+}  // namespace
 
 namespace lsst::qserv::replica {
 
-// -------------------------------------------------
-// --------- StopReplicationRequestPolicy ----------
-// -------------------------------------------------
-
-char const* StopReplicationRequestPolicy::requestName() { return "REQUEST_STOP:REPLICA_CREATE"; }
-
-ProtocolQueuedRequestType StopReplicationRequestPolicy::targetRequestType() {
-    return ProtocolQueuedRequestType::REPLICA_CREATE;
+StopRequest::Ptr StopRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                             string const& workerName, string const& targetRequestId,
+                                             CallbackType const& onFinish, int priority, bool keepTracking,
+                                             string const& jobId, unsigned int requestExpirationIvalSec) {
+    auto ptr = StopRequest::Ptr(
+            new StopRequest(controller, workerName, targetRequestId, onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-void StopReplicationRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                       ResponseDataType& data) {
-    data = ResponseDataType(&(msg.replica_info()));
+StopRequest::StopRequest(shared_ptr<Controller> const& controller, string const& workerName,
+                         string const& targetRequestId, CallbackType const& onFinish, int priority,
+                         bool keepTracking)
+        : RequestMessenger(controller, "REQUEST_STOP", workerName, priority, keepTracking, ::allowDuplicateNo,
+                           ::disposeRequiredNo),
+          _targetRequestId(targetRequestId),
+          _onFinish(onFinish) {}
+
+string StopRequest::toString(bool extended) const {
+    return Request::toString(extended) + "  targetRequestId: " + targetRequestId() + "\n";
 }
 
-void StopReplicationRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
-                                                              TargetRequestParamsType& params) {
-    if (msg.has_request()) {
-        params = TargetRequestParamsType(msg.request());
+list<pair<string, string>> StopRequest::extendedPersistentState() const {
+    list<pair<string, string>> result;
+    result.emplace_back("target_request_id", targetRequestId());
+    return result;
+}
+
+void StopRequest::notify(replica::Lock const& lock) { notifyDefaultImpl<StopRequest>(lock, _onFinish); }
+
+void StopRequest::savePersistentState(replica::Lock const& lock) {
+    controller()->serviceProvider()->databaseServices()->saveState(*this, performance(lock));
+}
+
+void StopRequest::startImpl(replica::Lock const& lock) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
+    // Serialize the Stop message header and the request itself into
+    // the network buffer.
+    buffer()->resize();
+
+    ProtocolRequestHeader hdr;
+    hdr.set_id(id());
+    hdr.set_type(ProtocolRequestHeader::REQUEST);
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STOP);
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
+    buffer()->serialize(hdr);
+
+    ProtocolRequestStop message;
+    message.set_id(_targetRequestId);
+    buffer()->serialize(message);
+
+    _send(lock);
+}
+
+void StopRequest::awaken(boost::system::error_code const& ec) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+    if (isAborted(ec)) return;
+    if (state() == State::FINISHED) return;
+    replica::Lock lock(_mtx, context() + __func__);
+    if (state() == State::FINISHED) return;
+
+    // Send the same message again.
+    _send(lock);
+}
+
+void StopRequest::_send(replica::Lock const& lock) {
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseStop>(
+            workerName(), id(), priority(), buffer(),
+            [self = shared_from_base<StopRequest>()](string const& id, bool success,
+                                                     ProtocolResponseStop const& response) {
+                self->_analyze(success, response);
+            });
+}
+
+void StopRequest::_analyze(bool success, ProtocolResponseStop message) {
+    LOGS(_log, LOG_LVL_DEBUG, context() << __func__ << "  success=" << (success ? "true" : "false"));
+
+    // This method is called on behalf of an asynchronous callback fired
+    // upon a completion of the request within method _send() - the only
+    // client of _analyze(). So, we should take care of proper locking and watch
+    // for possible state transition which might occur while the async I/O was
+    // still in a progress.
+    if (state() == State::FINISHED) return;
+    replica::Lock lock(_mtx, context() + __func__);
+    if (state() == State::FINISHED) return;
+    if (not success) {
+        finish(lock, CLIENT_ERROR);
+        return;
     }
-}
 
-// --------------------------------------------
-// --------- StopDeleteRequestPolicy ----------
-// --------------------------------------------
+    // Always get the latest status reported by the remote server
+    setExtendedServerStatus(lock, message.status_ext());
 
-char const* StopDeleteRequestPolicy::requestName() { return "REQUEST_STOP:REPLICA_DELETE"; }
+    // Always update performance counters obtained from the worker service.
+    mutablePerformance().update(message.performance());
 
-ProtocolQueuedRequestType StopDeleteRequestPolicy::targetRequestType() {
-    return ProtocolQueuedRequestType::REPLICA_DELETE;
-}
-
-void StopDeleteRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
-    data = ResponseDataType(&(msg.replica_info()));
-}
-
-void StopDeleteRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
-                                                         TargetRequestParamsType& params) {
-    if (msg.has_request()) {
-        params = TargetRequestParamsType(msg.request());
-    }
-}
-
-// ------------------------------------------
-// --------- StopFindRequestPolicy ----------
-// ------------------------------------------
-
-char const* StopFindRequestPolicy::requestName() { return "REQUEST_STOP:REPLICA_FIND"; }
-
-ProtocolQueuedRequestType StopFindRequestPolicy::targetRequestType() {
-    return ProtocolQueuedRequestType::REPLICA_FIND;
-}
-
-void StopFindRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
-    data = ResponseDataType(&(msg.replica_info()));
-}
-
-void StopFindRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
-                                                       TargetRequestParamsType& params) {
-    if (msg.has_request()) {
-        params = TargetRequestParamsType(msg.request());
-    }
-}
-
-// ---------------------------------------------
-// --------- StopFindAllRequestPolicy ----------
-// ---------------------------------------------
-
-char const* StopFindAllRequestPolicy::requestName() { return "REQUEST_STOP:REPLICA_FIND_ALL"; }
-
-ProtocolQueuedRequestType StopFindAllRequestPolicy::targetRequestType() {
-    return ProtocolQueuedRequestType::REPLICA_FIND_ALL;
-}
-
-void StopFindAllRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
-    for (int num = msg.replica_info_many_size(), idx = 0; idx < num; ++idx) {
-        data.emplace_back(&(msg.replica_info_many(idx)));
-    }
-}
-
-void StopFindAllRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
-                                                          TargetRequestParamsType& params) {
-    if (msg.has_request()) {
-        params = TargetRequestParamsType(msg.request());
-    }
-}
-
-// ------------------------------------------
-// --------- StopEchoRequestPolicy ----------
-// ------------------------------------------
-
-char const* StopEchoRequestPolicy::requestName() { return "REQUEST_STOP:TEST_ECHO"; }
-
-ProtocolQueuedRequestType StopEchoRequestPolicy::targetRequestType() {
-    return ProtocolQueuedRequestType::TEST_ECHO;
-}
-
-void StopEchoRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
-    data = msg.data();
-}
-
-void StopEchoRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
-                                                       TargetRequestParamsType& params) {
-    if (msg.has_request()) {
-        params = TargetRequestParamsType(msg.request());
-    }
-}
-
-// ---------------------------------------------------
-// --------- StopDirectorIndexRequestPolicy ----------
-// ---------------------------------------------------
-
-char const* StopDirectorIndexRequestPolicy::requestName() { return "REQUEST_STOP:INDEX"; }
-
-ProtocolQueuedRequestType StopDirectorIndexRequestPolicy::targetRequestType() {
-    return ProtocolQueuedRequestType::INDEX;
-}
-
-void StopDirectorIndexRequestPolicy::extractResponseData(ResponseMessageType const& msg,
-                                                         ResponseDataType& data) {
-    data = msg.error();
-}
-
-void StopDirectorIndexRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
-                                                                TargetRequestParamsType& params) {
-    if (msg.has_request()) {
-        params = TargetRequestParamsType(msg.request());
-    }
-}
-
-// -----------------------------------------
-// --------- StopSqlRequestPolicy ----------
-// -----------------------------------------
-
-char const* StopSqlRequestPolicy::requestName() { return "REQUEST_STOP:SQL"; }
-
-ProtocolQueuedRequestType StopSqlRequestPolicy::targetRequestType() { return ProtocolQueuedRequestType::SQL; }
-
-void StopSqlRequestPolicy::extractResponseData(ResponseMessageType const& msg, ResponseDataType& data) {
-    data.set(msg);
-}
-
-void StopSqlRequestPolicy::extractTargetRequestParams(ResponseMessageType const& msg,
-                                                      TargetRequestParamsType& params) {
-    if (msg.has_request()) {
-        params = TargetRequestParamsType(msg.request());
+    switch (message.status()) {
+        case ProtocolStatus::SUCCESS:
+            finish(lock, SUCCESS);
+            break;
+        case ProtocolStatus::CREATED:
+            keepTrackingOrFinish(lock, SERVER_CREATED);
+            break;
+        case ProtocolStatus::QUEUED:
+            keepTrackingOrFinish(lock, SERVER_QUEUED);
+            break;
+        case ProtocolStatus::IN_PROGRESS:
+            keepTrackingOrFinish(lock, SERVER_IN_PROGRESS);
+            break;
+        case ProtocolStatus::IS_CANCELLING:
+            keepTrackingOrFinish(lock, SERVER_IS_CANCELLING);
+            break;
+        case ProtocolStatus::BAD:
+            finish(lock, SERVER_BAD);
+            break;
+        case ProtocolStatus::FAILED:
+            finish(lock, SERVER_ERROR);
+            break;
+        case ProtocolStatus::CANCELLED:
+            finish(lock, SERVER_CANCELLED);
+            break;
+        default:
+            throw logic_error("StopRequest::" + string(__func__) + "  unknown status '" +
+                              ProtocolStatus_Name(message.status()) + "' received from server");
     }
 }
 

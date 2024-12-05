@@ -67,9 +67,7 @@ DeleteWorkerJob::DeleteWorkerJob(string const& workerName, bool permanentDelete,
 
 DeleteWorkerJobResult const& DeleteWorkerJob::getReplicaData() const {
     LOGS(_log, LOG_LVL_DEBUG, context());
-
     if (state() == State::FINISHED) return _replicaData;
-
     throw logic_error("DeleteWorkerJob::" + string(__func__) +
                       "  the method can't be called while the job hasn't finished");
 }
@@ -84,22 +82,17 @@ list<pair<string, string>> DeleteWorkerJob::extendedPersistentState() const {
 list<pair<string, string>> DeleteWorkerJob::persistentLogData() const {
     list<pair<string, string>> result;
 
-    auto&& replicaData = getReplicaData();
-
     // Encode new chunk replicas (if any) which had to be created to compensate
     // for lost ones.
+    auto&& replicaData = getReplicaData();
     for (auto&& familyChunkDatabaseWorkerInfo : replicaData.chunks) {
         auto&& family = familyChunkDatabaseWorkerInfo.first;
-
         for (auto&& chunkDatabaseWorkerInfo : familyChunkDatabaseWorkerInfo.second) {
             auto&& chunk = chunkDatabaseWorkerInfo.first;
-
             for (auto&& databaseWorkerInfo : chunkDatabaseWorkerInfo.second) {
                 auto&& database = databaseWorkerInfo.first;
-
                 for (auto&& workerInfo : databaseWorkerInfo.second) {
                     auto&& workerName = workerInfo.first;
-
                     result.emplace_back("new-replica", "family=" + family + " chunk=" + to_string(chunk) +
                                                                " database=" + database +
                                                                " worker=" + workerName);
@@ -111,10 +104,8 @@ list<pair<string, string>> DeleteWorkerJob::persistentLogData() const {
     // Encode orphan replicas (if any) which only existed on the evicted worker
     for (auto&& chunkDatabaseReplicaInfo : replicaData.orphanChunks) {
         auto&& chunk = chunkDatabaseReplicaInfo.first;
-
         for (auto&& databaseReplicaInfo : chunkDatabaseReplicaInfo.second) {
             auto&& database = databaseReplicaInfo.first;
-
             result.emplace_back("orphan-replica", "chunk=" + to_string(chunk) + " database=" + database);
         }
     }
@@ -129,29 +120,29 @@ void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
 
     // Check the status of the worker service, and if it's still running
     // try to get as much info from it as possible
-    auto const statusRequest = controller()->statusOfWorkerService(
-            workerName(), noCallbackOnFinish, priority(), id(), requestExpirationIvalSec);
+    auto const statusRequest = ServiceStatusRequest::createAndStart(
+            controller(), workerName(), noCallbackOnFinish, priority(), id(), requestExpirationIvalSec);
     statusRequest->wait();
 
     if (statusRequest->extendedState() == Request::ExtendedState::SUCCESS) {
         if (statusRequest->getServiceState().state == ServiceState::State::RUNNING) {
             // Make sure the service won't be executing any other "leftover"
             // requests which may be interfering with the current job's requests
-            auto const drainRequest = controller()->drainWorkerService(
-                    workerName(), noCallbackOnFinish, priority(), id(), requestExpirationIvalSec);
+            auto const drainRequest =
+                    ServiceDrainRequest::createAndStart(controller(), workerName(), noCallbackOnFinish,
+                                                        priority(), id(), requestExpirationIvalSec);
             drainRequest->wait();
-
             if (drainRequest->extendedState() == Request::ExtendedState::SUCCESS) {
                 if (drainRequest->getServiceState().state == ServiceState::State::RUNNING) {
                     // Try to get the most recent state the worker's replicas
                     // for all known databases
                     bool const saveReplicaInfo = true;  // always save the replica info in a database because
                                                         // the algorithm depends on it.
-                    auto self = shared_from_base<DeleteWorkerJob>();
                     for (auto&& database : controller()->serviceProvider()->config()->databases()) {
-                        auto const request = controller()->findAllReplicas(
-                                workerName(), database, saveReplicaInfo,
-                                [self](FindAllRequest::Ptr const& request) {
+                        auto const request = FindAllRequest::createAndStart(
+                                controller(), workerName(), database, saveReplicaInfo,
+                                [self = shared_from_base<DeleteWorkerJob>()](
+                                        FindAllRequest::Ptr const& request) {
                                     self->_onRequestFinish(request);
                                 },
                                 priority());
@@ -174,22 +165,20 @@ void DeleteWorkerJob::startImpl(replica::Lock const& lock) {
 void DeleteWorkerJob::cancelImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto const noCallbackOnFinish = nullptr;
-    auto const keepTracking = true;
-
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
+    auto const noCallbackOnFinish = nullptr;
+    auto const keepTracking = true;
     for (auto&& ptr : _findAllRequests) {
         ptr->cancel();
         if (ptr->state() != Request::State::FINISHED) {
-            controller()->stopById<StopFindAllRequest>(ptr->workerName(), ptr->id(), noCallbackOnFinish,
-                                                       priority(), keepTracking, id());
+            StopRequest::createAndStart(controller(), ptr->workerName(), ptr->id(), noCallbackOnFinish,
+                                        priority(), keepTracking, id());
         }
     }
 
     // Stop chained jobs (if any) as well
-
     for (auto&& ptr : _replicateJobs) ptr->cancel();
 }
 
@@ -227,13 +216,14 @@ void DeleteWorkerJob::_disableWorker(replica::Lock const& lock) {
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess = 0;
-
-    auto self = shared_from_base<DeleteWorkerJob>();
-
     for (auto&& databaseFamily : controller()->serviceProvider()->config()->databaseFamilies()) {
         ReplicateJob::Ptr const job = ReplicateJob::create(
                 databaseFamily, 0, /* numReplicas -- pull from Configuration */
-                controller(), id(), [self](ReplicateJob::Ptr job) { self->_onJobFinish(job); }, priority());
+                controller(), id(),
+                [self = shared_from_base<DeleteWorkerJob>()](ReplicateJob::Ptr job) {
+                    self->_onJobFinish(job);
+                },
+                priority());
         job->start();
         _replicateJobs.push_back(job);
         _numLaunched++;
@@ -251,7 +241,6 @@ void DeleteWorkerJob::_onJobFinish(ReplicateJob::Ptr const& job) {
     if (state() == State::FINISHED) return;
 
     _numFinished++;
-
     if (job->extendedState() != ExtendedState::SUCCESS) {
         finish(lock, ExtendedState::FAILED);
         return;
@@ -259,14 +248,12 @@ void DeleteWorkerJob::_onJobFinish(ReplicateJob::Ptr const& job) {
 
     // Process the normal completion of the child job
     _numSuccess++;
-
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "(ReplicateJob)  "
                    << "job->getReplicaData().chunks.size(): " << job->getReplicaData().chunks.size());
 
     // Merge results into the current job's result object
     _replicaData.chunks[job->databaseFamily()] = job->getReplicaData().chunks;
-
     if (_numFinished == _numLaunched) {
         // Construct a collection of orphan replicas if possible
         ReplicaInfoCollection replicas;
@@ -275,7 +262,6 @@ void DeleteWorkerJob::_onJobFinish(ReplicateJob::Ptr const& job) {
             for (ReplicaInfo const& replica : replicas) {
                 unsigned int const chunk = replica.chunk();
                 string const& database = replica.database();
-
                 bool replicated = false;
                 for (auto&& databaseFamilyEntry : _replicaData.chunks) {
                     auto const& chunks = databaseFamilyEntry.second;

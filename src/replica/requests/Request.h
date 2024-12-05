@@ -24,7 +24,7 @@
 // System headers
 #include <atomic>
 #include <condition_variable>
-#include <map>
+#include <list>
 #include <memory>
 #include <iostream>
 #include <string>
@@ -33,16 +33,15 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "replica/config/Configuration.h"
-#include "replica/services/ServiceProvider.h"
-#include "replica/util/Common.h"
+#include "replica/config/ConfigWorker.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/util/Performance.h"
-#include "replica/util/ProtocolBuffer.h"
 #include "replica/util/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
 class Controller;
+class ProtocolBuffer;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -50,7 +49,24 @@ namespace lsst::qserv::replica {
 
 /**
  * Class Request is a base class for a family of requests within
- * the master server.
+ * the master Replication Controller service.
+ *
+ * The class is not intended to be used directly. Instead, it should be subclassed
+ * by a specific request type. Objects of the subclassed request type are created
+ * by a factory method "createAndStart" that is provided by each such class.
+ *
+ * The following parameters of the method "createAndStart" are common for all subclasses:
+ * @param controller The Controller associated with the request.
+ * @param workerName An identifier of a worker node.
+ * @param onFinish The (optional) callback function to call upon completion of
+ *   the request. The functin type is specific for each subclass.
+ * @param priority The (optional) priority level of the request.
+ * @param keepTracking The (optional) flagg to keep tracking the request before it finishes or fails.
+ * @param allowDuplicate (optional) Follow a previously made request if the current one duplicates it.
+ * @param jobId The (optional) unique identifier of a job to which the request belongs.
+ * @param requestExpirationIvalSec The (optional) time in seconds after which the request
+ *   will expire. The default value of '0' means an effective expiration time will be pull
+ *   from the configuration.
  */
 class Request : public std::enable_shared_from_this<Request> {
 public:
@@ -137,8 +153,8 @@ public:
 
     virtual ~Request();
 
-    /// @return reference to the service provider,
-    ServiceProvider::Ptr const& serviceProvider() const { return _serviceProvider; }
+    /// @return the Controller
+    std::shared_ptr<Controller> const& controller() const { return _controller; }
 
     /// @return a string representing a type of a request.
     std::string const& type() const { return _type; }
@@ -172,28 +188,19 @@ public:
     /// @return the performance info
     Performance performance() const;
 
-    /// @return the Controller (if set)
-    std::shared_ptr<Controller> const& controller() const { return _controller; }
-
     /**
      * Reset the state (if needed) and begin processing the request.
      *
      * This is supposed to be the first operation to be called upon a creation
-     * of the request. A caller may optionally provide a pointer to an instance
-     * of the Controller class which (if set) may be used by subclasses for saving
-     * their state in a database.
+     * of the request.
      *
-     * @note Only the first call with the non-default pointer to the Controller
-     *   will be considering for building an association with the Controller.
-     * @param controller A (optional) pointer to an instance of the Controller.
      * @param jobId An (optional) identifier of a job specifying a context
      *   in which a request will be executed.
      * @param requestExpirationIvalSecAn (optional) parameter (if differs from 0)
      *   allowing to override the default value of the corresponding parameter from
      *   the Configuration.
      */
-    void start(std::shared_ptr<Controller> const& controller = nullptr, std::string const& jobId = "",
-               unsigned int requestExpirationIvalSec = 0);
+    void start(std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
     /// Wait for the completion of the request
     void wait();
@@ -260,8 +267,7 @@ protected:
      * @note options 'keepTracking', 'allowDuplicate' and 'disposeRequired'
      *   have effect for specific request only.
      *
-     * @param serviceProvider A provider of various services (Configuration, etc.).
-     * @param io_service BOOST ASIO service object
+     * @param controller The Controller associated with the request.
      * @param type The type name of a request (used informally for debugging, and it's
      *   also stored in the persistent state of the Replication system).
      * @param workerName The name of a worker.
@@ -275,9 +281,9 @@ protected:
      *   disposal is needed for a particular request. Normally, it's required for
      *   requests which are queued by workers in its processing queues.
      */
-    Request(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-            std::string const& type, std::string const& workerName, int priority, bool keepTracking,
-            bool allowDuplicate, bool disposeRequired);
+    Request(std::shared_ptr<Controller> const& controller, std::string const& type,
+            std::string const& workerName, int priority, bool keepTracking, bool allowDuplicate,
+            bool disposeRequired);
 
     /// @return A shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -296,7 +302,7 @@ protected:
 
     /// Callback handler for the asynchronous operation. It's invoked in a series
     /// of the timer-triggered events to track a progress of the request.
-    /// @note The metgod must get the subclass-specif implementation for cases
+    /// @note The metgod must get the subclass-specific implementation for cases
     ///  where the subclass enables the tracking.
     /// @see request::keepTracking
     /// @throw std::runtime_error If the default implementation of the method is called.
@@ -499,7 +505,7 @@ protected:
             // 1. it guaranties (exactly) one time notification
             // 2. it breaks the up-stream dependency on a caller object if a shared
             //    pointer to the object was mentioned as the lambda-function's closure
-            serviceProvider()->io_service().post(std::bind(std::move(onFinish), shared_from_base<T>()));
+            _ioService().post(std::bind(std::move(onFinish), shared_from_base<T>()));
             onFinish = nullptr;
         }
     }
@@ -514,12 +520,14 @@ protected:
     mutable replica::Mutex _mtx;
 
 private:
+    /// @return The global IO service object retreived from the service provider
+    boost::asio::io_service& _ioService();
+
     /// The global counter for the number of instances of any subclasses
     static std::atomic<size_t> _numClassInstances;
 
     // Input parameters
-
-    ServiceProvider::Ptr const _serviceProvider;
+    std::shared_ptr<Controller> _controller;
 
     std::string const _type;
     std::string const _id;  /// @note UUID generated by the constructor
@@ -577,9 +585,6 @@ private:
     /// with status: FINISHED::TIMEOUT_EXPIRED.
     unsigned int _requestExpirationIvalSec;
     boost::asio::deadline_timer _requestExpirationTimer;
-
-    /// The optional association with the Controller
-    std::shared_ptr<Controller> _controller;
 
     /// The job context of a request
     std::string _jobId;

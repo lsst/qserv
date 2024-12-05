@@ -22,42 +22,37 @@
 // Class header
 #include "replica/requests/SqlCreateTableRequest.h"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlCreateTableRequest");
+const uint64_t unlimitedMaxRows = 0;
 
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlCreateTableRequest::Ptr SqlCreateTableRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-        string const& worker, std::string const& database, std::string const& table,
-        std::string const& engine, string const& partitionByColumn, std::list<SqlColDef> const& columns,
-        CallbackType const& onFinish, int priority, bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-    return Ptr(new SqlCreateTableRequest(serviceProvider, io_service, worker, database, table, engine,
-                                         partitionByColumn, columns, onFinish, priority, keepTracking,
-                                         messenger));
+SqlCreateTableRequest::Ptr SqlCreateTableRequest::createAndStart(
+        shared_ptr<Controller> const& controller, string const& workerName, std::string const& database,
+        std::string const& table, std::string const& engine, string const& partitionByColumn,
+        std::list<SqlColDef> const& columns, CallbackType const& onFinish, int priority, bool keepTracking,
+        string const& jobId, unsigned int requestExpirationIvalSec) {
+    auto ptr = Ptr(new SqlCreateTableRequest(controller, workerName, database, table, engine,
+                                             partitionByColumn, columns, onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-SqlCreateTableRequest::SqlCreateTableRequest(ServiceProvider::Ptr const& serviceProvider,
-                                             boost::asio::io_service& io_service, string const& worker,
-                                             std::string const& database, std::string const& table,
-                                             std::string const& engine, string const& partitionByColumn,
+SqlCreateTableRequest::SqlCreateTableRequest(shared_ptr<Controller> const& controller,
+                                             string const& workerName, std::string const& database,
+                                             std::string const& table, std::string const& engine,
+                                             string const& partitionByColumn,
                                              std::list<SqlColDef> const& columns,
-                                             CallbackType const& onFinish, int priority, bool keepTracking,
-                                             shared_ptr<Messenger> const& messenger)
-        : SqlRequest(serviceProvider, io_service, "SQL_CREATE_TABLE", worker, 0, /* maxRows */
-                     priority, keepTracking, messenger),
+                                             CallbackType const& onFinish, int priority, bool keepTracking)
+        : SqlRequest(controller, "SQL_CREATE_TABLE", workerName, ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::CREATE_TABLE);
@@ -75,7 +70,6 @@ SqlCreateTableRequest::SqlCreateTableRequest(ServiceProvider::Ptr const& service
 void SqlCreateTableRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
     notifyDefaultImpl<SqlCreateTableRequest>(lock, _onFinish);
 }
 

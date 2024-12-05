@@ -246,6 +246,11 @@ public:
     }
 
     /**
+     * Get a status of the request
+     */
+    void checkStatus(ProtocolRequestStatus const& request, ProtocolResponseStatus& response);
+
+    /**
      * Dequeue replication request
      *
      * If the request is not being processed yet then it will be simply removed
@@ -253,42 +258,19 @@ public:
      * to cancel processing will be made. If it has already processed this will
      * be reported.
      */
-    template <typename RESPONSE_MSG_TYPE>
-    void dequeueOrCancel(ProtocolRequestStop const& request, RESPONSE_MSG_TYPE& response) {
-        replica::Lock lock(_mtx, _context(__func__));
-
-        // Set this response unless an exact request (same type and identifier)
-        // will be found.
-        setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_ID);
-
-        if (WorkerRequest::Ptr const ptr = _dequeueOrCancelImpl(lock, request.id())) {
-            try {
-                // Set request-specific fields. Note exception handling for scenarios
-                // when request identifiers won't match actual types of requests
-                _setInfo(ptr, response);
-
-                // The status field is present in all response types
-                response.set_status(ptr->status());
-                response.set_status_ext(ptr->extendedStatus());
-
-            } catch (std::logic_error const& ex) {
-                ;
-            }
-        }
-    }
+    void dequeueOrCancel(ProtocolRequestStop const& request, ProtocolResponseStop& response);
 
     /**
-     * Return the status of an on-going replication request
+     * Return the tracking info on the on-going request
      */
     template <typename RESPONSE_MSG_TYPE>
-    void checkStatus(ProtocolRequestStatus const& request, RESPONSE_MSG_TYPE& response) {
+    void trackRequest(ProtocolRequestTrack const& request, RESPONSE_MSG_TYPE& response) {
         replica::Lock lock(_mtx, _context(__func__));
 
         // Set this response unless an exact request (same type and identifier)
         // will be found.
         setDefaultResponse(response, ProtocolStatus::BAD, ProtocolStatusExt::INVALID_ID);
-
-        if (WorkerRequest::Ptr const ptr = _checkStatusImpl(lock, request.id())) {
+        if (WorkerRequest::Ptr const ptr = _trackRequestImpl(lock, request.id())) {
             try {
                 // Set request-specific fields. Note exception handling for scenarios
                 // when request identifiers won't match actual types of requests
@@ -297,7 +279,6 @@ public:
                 // The status field is present in all response types
                 response.set_status(ptr->status());
                 response.set_status_ext(ptr->extendedStatus());
-
             } catch (std::logic_error const&) {
                 ;
             }
@@ -382,7 +363,7 @@ private:
      * @return a valid reference to the request object (if found)
      *   or a reference to nullptr otherwise.
      */
-    WorkerRequest::Ptr _checkStatusImpl(replica::Lock const& lock, std::string const& id);
+    WorkerRequest::Ptr _trackRequestImpl(replica::Lock const& lock, std::string const& id);
 
     /**
      * Extract the extra data from the request and put

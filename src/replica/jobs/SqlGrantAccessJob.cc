@@ -29,7 +29,6 @@
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/requests/SqlGrantAccessRequest.h"
-#include "replica/requests/StopRequest.h"
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -77,20 +76,16 @@ list<SqlRequest::Ptr> SqlGrantAccessJob::launchRequests(replica::Lock const& loc
 
     list<SqlRequest::Ptr> requests;
     if (not _workers.count(worker) and maxRequestsPerWorker != 0) {
-        auto const self = shared_from_base<SqlGrantAccessJob>();
-        requests.push_back(controller()->sqlGrantAccess(
-                worker, database(), user(),
-                [self](SqlGrantAccessRequest::Ptr const& request) { self->onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+        bool const keepTracking = true;
+        requests.push_back(SqlGrantAccessRequest::createAndStart(
+                controller(), worker, database(), user(),
+                [self = shared_from_base<SqlGrantAccessJob>()](SqlGrantAccessRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
         _workers.insert(worker);
     }
     return requests;
-}
-
-void SqlGrantAccessJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlGrantAccessRequest>(lock, request);
 }
 
 void SqlGrantAccessJob::notify(replica::Lock const& lock) {

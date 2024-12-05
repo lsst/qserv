@@ -83,20 +83,14 @@ public:
 
     ~SqlDeleteTableJob() final = default;
 
-    // Trivial get methods
-
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
-
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(replica::Lock const& lock) final;
-
     std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
-
-    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
     SqlDeleteTableJob(std::string const& database, std::string const& table, bool allWorkers,
@@ -104,10 +98,8 @@ private:
                       CallbackType const& onFinish, int priority);
 
     // Input parameters
-
     std::string const _database;
     std::string const _table;
-
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.

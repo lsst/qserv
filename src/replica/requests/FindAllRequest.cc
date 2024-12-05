@@ -30,6 +30,7 @@
 #include "boost/date_time/posix_time/posix_time.hpp"
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
@@ -43,36 +44,33 @@ using namespace std;
 using namespace std::placeholders;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.FindAllRequest");
-
+bool const allowDuplicateNo = false;
+bool const disposeRequired = true;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-FindAllRequest::Ptr FindAllRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                           boost::asio::io_service& io_service, string const& workerName,
-                                           string const& database, bool saveReplicaInfo,
-                                           CallbackType const& onFinish, int priority, bool keepTracking,
-                                           shared_ptr<Messenger> const& messenger) {
-    return FindAllRequest::Ptr(new FindAllRequest(serviceProvider, io_service, workerName, database,
-                                                  saveReplicaInfo, onFinish, priority, keepTracking,
-                                                  messenger));
+FindAllRequest::Ptr FindAllRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                   string const& workerName, string const& database,
+                                                   bool saveReplicaInfo, CallbackType const& onFinish,
+                                                   int priority, bool keepTracking, string const& jobId,
+                                                   unsigned int requestExpirationIvalSec) {
+    auto ptr = FindAllRequest::Ptr(new FindAllRequest(controller, workerName, database, saveReplicaInfo,
+                                                      onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-FindAllRequest::FindAllRequest(ServiceProvider::Ptr const& serviceProvider,
-                               boost::asio::io_service& io_service, string const& workerName,
+FindAllRequest::FindAllRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                string const& database, bool saveReplicaInfo, CallbackType const& onFinish,
-                               int priority, bool keepTracking, shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "REPLICA_FIND_ALL", workerName, priority,
-                           keepTracking,
-                           false,  // allowDuplicate
-                           true,   // disposeRequired
-                           messenger),
+                               int priority, bool keepTracking)
+        : RequestMessenger(controller, "REPLICA_FIND_ALL", workerName, priority, keepTracking,
+                           ::allowDuplicateNo, ::disposeRequired),
           _database(database),
           _saveReplicaInfo(saveReplicaInfo),
           _onFinish(onFinish) {
-    Request::serviceProvider()->config()->assertDatabaseIsValid(database);
+    controller->serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
 const ReplicaInfoCollection& FindAllRequest::responseData() const { return _replicaInfoCollection; }
@@ -82,7 +80,6 @@ void FindAllRequest::startImpl(replica::Lock const& lock) {
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
@@ -91,13 +88,11 @@ void FindAllRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND_ALL);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
     ProtocolRequestFindAll message;
     message.set_database(database());
-
     buffer()->serialize(message);
 
     _send(lock);
@@ -107,39 +102,34 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
-
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
-    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
-    ProtocolRequestStatus message;
+    ProtocolRequestTrack message;
     message.set_id(id());
     message.set_queued_type(ProtocolQueuedRequestType::REPLICA_FIND_ALL);
-
     buffer()->serialize(message);
 
-    // Send the message
     _send(lock);
 }
 
 void FindAllRequest::_send(replica::Lock const& lock) {
-    auto self = shared_from_base<FindAllRequest>();
-    messenger()->send<ProtocolResponseFindAll>(
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseFindAll>(
             workerName(), id(), priority(), buffer(),
-            [self](string const& id, bool success, ProtocolResponseFindAll const& response) {
+            [self = shared_from_base<FindAllRequest>()](string const& id, bool success,
+                                                        ProtocolResponseFindAll const& response) {
                 self->_analyze(success, response);
             });
 }
@@ -155,7 +145,6 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
-
     if (not success) {
         finish(lock, CLIENT_ERROR);
         return;
@@ -187,8 +176,8 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
             if (saveReplicaInfo()) {
-                serviceProvider()->databaseServices()->saveReplicaInfoCollection(workerName(), database(),
-                                                                                 _replicaInfoCollection);
+                controller()->serviceProvider()->databaseServices()->saveReplicaInfoCollection(
+                        workerName(), database(), _replicaInfoCollection);
             }
             finish(lock, SUCCESS);
             break;

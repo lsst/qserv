@@ -405,6 +405,55 @@ void WorkerProcessor::enqueueForDirectorIndex(string const& id, int32_t priority
     }
 }
 
+void WorkerProcessor::checkStatus(ProtocolRequestStatus const& request, ProtocolResponseStatus& response) {
+    replica::Lock lock(_mtx, _context(__func__));
+
+    // Still waiting in the queue?
+    WorkerRequest::Ptr targetRequestPtr;
+    for (auto ptr : _newRequests) {
+        if (ptr->id() == request.id()) {
+            targetRequestPtr = ptr;
+            break;
+        }
+    }
+    if (targetRequestPtr == nullptr) {
+        // Is it already being processed?
+        auto itrInProgress = _inProgressRequests.find(request.id());
+        if (itrInProgress != _inProgressRequests.end()) {
+            targetRequestPtr = itrInProgress->second;
+        }
+        if (targetRequestPtr == nullptr) {
+            // Has it finished?
+            auto itrFinished = _finishedRequests.find(request.id());
+            if (itrFinished != _finishedRequests.end()) {
+                targetRequestPtr = itrFinished->second;
+            }
+            // No such request?
+            if (targetRequestPtr == nullptr) {
+                response.set_status(ProtocolStatus::BAD);
+                response.set_status_ext(ProtocolStatusExt::INVALID_ID);
+                return;
+            }
+        }
+    }
+    response.set_status(ProtocolStatus::SUCCESS);
+    response.set_status_ext(ProtocolStatusExt::NONE);
+    response.set_target_status(targetRequestPtr->status());
+    response.set_target_status_ext(targetRequestPtr->extendedStatus());
+    response.set_allocated_target_performance(targetRequestPtr->performance().info().release());
+}
+
+void WorkerProcessor::dequeueOrCancel(ProtocolRequestStop const& request, ProtocolResponseStop& response) {
+    replica::Lock lock(_mtx, _context(__func__));
+    if (_dequeueOrCancelImpl(lock, request.id()) == nullptr) {
+        response.set_status(ProtocolStatus::BAD);
+        response.set_status_ext(ProtocolStatusExt::INVALID_ID);
+    } else {
+        response.set_status(ProtocolStatus::SUCCESS);
+        response.set_status_ext(ProtocolStatusExt::NONE);
+    }
+}
+
 WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lock, string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
@@ -491,7 +540,7 @@ WorkerRequest::Ptr WorkerProcessor::_dequeueOrCancelImpl(replica::Lock const& lo
     return WorkerRequest::Ptr();
 }
 
-WorkerRequest::Ptr WorkerProcessor::_checkStatusImpl(replica::Lock const& lock, string const& id) {
+WorkerRequest::Ptr WorkerProcessor::_trackRequestImpl(replica::Lock const& lock, string const& id) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << "  id: " << id);
 
     // Still waiting in the queue?

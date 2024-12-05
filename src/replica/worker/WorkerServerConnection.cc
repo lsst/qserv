@@ -286,106 +286,76 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
         return;
     }
     switch (hdr.management_type()) {
-        case ProtocolManagementRequestType::REQUEST_STOP: {
-            // Read the request body
-            ProtocolRequestStop request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
-
-            switch (request.queued_type()) {
-                case ProtocolQueuedRequestType::REPLICA_CREATE: {
-                    ProtocolResponseReplicate response;
-                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
-                    _reply(hdr.id(), response);
-                    break;
-                }
-                case ProtocolQueuedRequestType::REPLICA_DELETE: {
-                    ProtocolResponseDelete response;
-                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
-                    _reply(hdr.id(), response);
-                    break;
-                }
-                case ProtocolQueuedRequestType::REPLICA_FIND: {
-                    ProtocolResponseFind response;
-                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
-                    _reply(hdr.id(), response);
-                    break;
-                }
-                case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
-                    ProtocolResponseFindAll response;
-                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
-                    _reply(hdr.id(), response);
-                    break;
-                }
-                case ProtocolQueuedRequestType::TEST_ECHO: {
-                    ProtocolResponseEcho response;
-                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
-                    _reply(hdr.id(), response);
-                    break;
-                }
-                case ProtocolQueuedRequestType::INDEX: {
-                    ProtocolResponseDirectorIndex response;
-                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
-                    _reply(hdr.id(), response);
-                    break;
-                }
-                case ProtocolQueuedRequestType::SQL: {
-                    ProtocolResponseSql response;
-                    if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
-                    _reply(hdr.id(), response);
-                    break;
-                }
-                default:
-                    throw logic_error("WorkerServerConnection::" + string(__func__) +
-                                      "  unhandled request type: '" +
-                                      ProtocolQueuedRequestType_Name(request.queued_type()));
-            }
-            break;
-        }
         case ProtocolManagementRequestType::REQUEST_STATUS: {
             // Read the request body
             ProtocolRequestStatus request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
-
+            ProtocolResponseStatus response;
+            WorkerPerformance performance;
+            performance.setUpdateStart();
+            if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
+            performance.setUpdateFinish();
+            response.set_allocated_performance(performance.info().release());
+            _reply(hdr.id(), response);
+            break;
+        }
+        case ProtocolManagementRequestType::REQUEST_STOP: {
+            // Read the request body
+            ProtocolRequestStop request;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            ProtocolResponseStop response;
+            WorkerPerformance performance;
+            performance.setUpdateStart();
+            if (_verifyInstance(hdr, response)) _processor->dequeueOrCancel(request, response);
+            performance.setUpdateFinish();
+            response.set_allocated_performance(performance.info().release());
+            _reply(hdr.id(), response);
+            break;
+        }
+        case ProtocolManagementRequestType::REQUEST_TRACK: {
+            // Read the request body
+            ProtocolRequestTrack request;
+            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
             switch (request.queued_type()) {
                 case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
-                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->trackRequest(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_DELETE: {
                     ProtocolResponseDelete response;
-                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->trackRequest(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND: {
                     ProtocolResponseFind response;
-                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->trackRequest(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
                     ProtocolResponseFindAll response;
-                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->trackRequest(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::TEST_ECHO: {
                     ProtocolResponseEcho response;
-                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->trackRequest(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::INDEX: {
                     ProtocolResponseDirectorIndex response;
-                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->trackRequest(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
                 case ProtocolQueuedRequestType::SQL: {
                     ProtocolResponseSql response;
-                    if (_verifyInstance(hdr, response)) _processor->checkStatus(request, response);
+                    if (_verifyInstance(hdr, response)) _processor->trackRequest(request, response);
                     _reply(hdr.id(), response);
                     break;
                 }
@@ -400,7 +370,6 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
             // Read the request body
             ProtocolRequestDispose request;
             if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
-
             ProtocolResponseDispose response;
             if (_verifyInstance(hdr, response)) {
                 for (int i = 0; i < request.ids_size(); ++i) {

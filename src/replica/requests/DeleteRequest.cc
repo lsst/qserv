@@ -44,34 +44,32 @@ using namespace std;
 using namespace std::placeholders;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DeleteRequest");
-
+bool const disposeRequired = true;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-DeleteRequest::Ptr DeleteRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                         boost::asio::io_service& io_service, string const& worker,
-                                         string const& database, unsigned int chunk, bool allowDuplicate,
-                                         CallbackType const& onFinish, int priority, bool keepTracking,
-                                         shared_ptr<Messenger> const& messenger) {
-    return DeleteRequest::Ptr(new DeleteRequest(serviceProvider, io_service, worker, database, chunk,
-                                                allowDuplicate, onFinish, priority, keepTracking, messenger));
+DeleteRequest::Ptr DeleteRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                 string const& workerName, string const& database,
+                                                 unsigned int chunk, CallbackType const& onFinish,
+                                                 int priority, bool keepTracking, bool allowDuplicate,
+                                                 string const& jobId, unsigned int requestExpirationIvalSec) {
+    auto ptr = DeleteRequest::Ptr(new DeleteRequest(controller, workerName, database, chunk, onFinish,
+                                                    priority, keepTracking, allowDuplicate));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-DeleteRequest::DeleteRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                             string const& worker, string const& database, unsigned int chunk,
-                             bool allowDuplicate, CallbackType const& onFinish, int priority,
-                             bool keepTracking, shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "REPLICA_DELETE", worker, priority, keepTracking,
-                           allowDuplicate,
-                           true,  // disposeRequired
-                           messenger),
+DeleteRequest::DeleteRequest(shared_ptr<Controller> const& controller, string const& workerName,
+                             string const& database, unsigned int chunk, CallbackType const& onFinish,
+                             int priority, bool keepTracking, bool allowDuplicate)
+        : RequestMessenger(controller, "REPLICA_DELETE", workerName, priority, keepTracking, allowDuplicate,
+                           ::disposeRequired),
           _database(database),
           _chunk(chunk),
           _onFinish(onFinish) {
-    Request::serviceProvider()->config()->assertDatabaseIsValid(database);
+    controller->serviceProvider()->config()->assertDatabaseIsValid(database);
 }
 
 void DeleteRequest::startImpl(replica::Lock const& lock) {
@@ -79,7 +77,6 @@ void DeleteRequest::startImpl(replica::Lock const& lock) {
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
@@ -88,14 +85,12 @@ void DeleteRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::REPLICA_DELETE);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
     ProtocolRequestDelete message;
     message.set_database(database());
     message.set_chunk(chunk());
-
     buffer()->serialize(message);
 
     _send(lock);
@@ -112,21 +107,18 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
-    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
-    ProtocolRequestStatus message;
+    ProtocolRequestTrack message;
     message.set_id(remoteId());
     message.set_queued_type(ProtocolQueuedRequestType::REPLICA_DELETE);
-
     buffer()->serialize(message);
 
     _send(lock);
@@ -134,7 +126,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
 void DeleteRequest::_send(replica::Lock const& lock) {
     auto self = shared_from_base<DeleteRequest>();
-    messenger()->send<ProtocolResponseDelete>(
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseDelete>(
             workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseDelete const& response) {
                 self->_analyze(success, response);
@@ -181,7 +173,7 @@ void DeleteRequest::_analyze(bool success, ProtocolResponseDelete const& message
     }
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
-            serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
+            controller()->serviceProvider()->databaseServices()->saveReplicaInfo(_replicaInfo);
             finish(lock, SUCCESS);
             break;
 

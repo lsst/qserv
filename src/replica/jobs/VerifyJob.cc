@@ -187,13 +187,9 @@ list<pair<string, string>> VerifyJob::extendedPersistentState() const {
 void VerifyJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    auto self = shared_from_base<VerifyJob>();
-
     // Launch the first batch of requests
-
     vector<ReplicaInfo> replicas;
     _nextReplicas(lock, replicas, maxReplicas());
-
     if (replicas.empty()) {
         // In theory this should never happen unless the installation
         // doesn't have a single chunk.
@@ -206,10 +202,12 @@ void VerifyJob::startImpl(replica::Lock const& lock) {
     auto const currentJobPriority = priority();
     bool const keepTracking = true;
     for (ReplicaInfo const& replica : replicas) {
-        auto request = controller()->findReplica(
-                replica.worker(), replica.database(), replica.chunk(),
-                [self](FindRequest::Ptr request) { self->_onRequestFinish(request); }, currentJobPriority,
-                computeCheckSum(), keepTracking, id());
+        auto request = FindRequest::createAndStart(
+                controller(), replica.worker(), replica.database(), replica.chunk(),
+                [self = shared_from_base<VerifyJob>()](FindRequest::Ptr request) {
+                    self->_onRequestFinish(request);
+                },
+                currentJobPriority, computeCheckSum(), keepTracking, id());
         _replicas[request->id()] = replica;
         _requests[request->id()] = request;
     }
@@ -221,17 +219,14 @@ void VerifyJob::cancelImpl(replica::Lock const& lock) {
     // To ensure no lingering "side effects" will be left after cancelling this
     // job the request cancellation should be also followed (where it makes a sense)
     // by stopping the request at corresponding worker service.
-
     auto const noCallbackOnFinish = nullptr;
-    auto const currentJobPriority = priority();
     bool const keepTracking = true;
-
     for (auto&& entry : _requests) {
         auto const& request = entry.second;
         request->cancel();
         if (request->state() != Request::State::FINISHED) {
-            controller()->stopById<StopFindRequest>(request->workerName(), request->id(), noCallbackOnFinish,
-                                                    currentJobPriority, keepTracking, id());
+            StopRequest::createAndStart(controller(), request->workerName(), request->id(),
+                                        noCallbackOnFinish, priority(), keepTracking, id());
         }
     }
     _replicas.clear();
@@ -249,9 +244,7 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
                    << " chunk=" << request->chunk());
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // The default version of the object won't have any difference
@@ -259,15 +252,12 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
     ReplicaDiff selfReplicaDiff;           // against the previous state of the current replica
     vector<ReplicaDiff> otherReplicaDiff;  // against other known replicas
 
-    auto self = shared_from_base<VerifyJob>();
-
     if (request->extendedState() == Request::ExtendedState::SUCCESS) {
         // TODO:
         // - check if the replica still exists. It's fine if it's gone
         //   because some jobs may choose either to purge extra replicas
         //   or re-balance the cluster. So, no subscriber notification is needed
         //   here.
-
         ;
 
         // Compare new state of the replica against its older one which was
@@ -280,17 +270,14 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
         // ATTENTIONS: Replica differences are reported into the log stream only
         //             when no interest to be notified in the differences
         //             expressed by a caller (no callback provided).
-
         ReplicaInfo const& oldReplica = _replicas[request->id()];
         selfReplicaDiff = ReplicaDiff(oldReplica, request->responseData());
         if (selfReplicaDiff() and not _onReplicaDifference) {
             LOGS(_log, LOG_LVL_INFO, context() << "replica mismatch for self\n" << selfReplicaDiff);
         }
-
         vector<ReplicaInfo> otherReplicas;
         controller()->serviceProvider()->databaseServices()->findReplicas(otherReplicas, oldReplica.chunk(),
                                                                           oldReplica.database());
-
         for (auto&& replica : otherReplicas) {
             ReplicaDiff diff(request->responseData(), replica);
             if (not diff.isSelf()) {
@@ -302,33 +289,30 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
 
     } else {
         // Report the error and keep going
-
         LOGS(_log, LOG_LVL_ERROR,
              context() << "failed request " << request->context() << " worker: " << request->workerName()
                        << " database: " << request->database() << " chunk: " << request->chunk());
     }
 
     // Remove the processed replica, fetch another one and begin processing it
-
     _replicas.erase(request->id());
     _requests.erase(request->id());
-
     vector<ReplicaInfo> replicas;
     _nextReplicas(lock, replicas, 1);
-
     if (0 == replicas.size()) {
         LOGS(_log, LOG_LVL_ERROR, context() << __func__ << "  ** no replicas found in the database **");
 
         // In theory this should never happen unless all replicas are gone
         // from the installation.
-
         finish(lock, ExtendedState::FAILED);
         return;
     }
     for (ReplicaInfo const& replica : replicas) {
-        auto request = controller()->findReplica(
-                replica.worker(), replica.database(), replica.chunk(),
-                [self](FindRequest::Ptr request) { self->_onRequestFinish(request); },
+        auto request = FindRequest::createAndStart(
+                controller(), replica.worker(), replica.database(), replica.chunk(),
+                [self = shared_from_base<VerifyJob>()](FindRequest::Ptr request) {
+                    self->_onRequestFinish(request);
+                },
                 priority(),              /* inherited from the one of the current job */
                 computeCheckSum(), true, /* keepTracking*/
                 id()                     /* jobId */
@@ -339,10 +323,8 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
 
     // The callback is being made asynchronously in a separate thread
     // to avoid blocking the current thread.
-
     if (_onReplicaDifference) {
-        auto self = shared_from_base<VerifyJob>();
-        thread notifier([self, selfReplicaDiff, otherReplicaDiff]() {
+        thread notifier([self = shared_from_base<VerifyJob>(), selfReplicaDiff, otherReplicaDiff]() {
             self->_onReplicaDifference(self, selfReplicaDiff, otherReplicaDiff);
         });
         notifier.detach();

@@ -25,9 +25,10 @@
 // Qserv headers
 #include "global/constants.h"
 #include "global/stringUtil.h"
+#include "replica/config/Configuration.h"
 #include "replica/jobs/SqlJobResult.h"
 #include "replica/requests/SqlRowStatsRequest.h"
-#include "replica/requests/StopRequest.h"
+#include "replica/services/DatabaseServices.h"
 #include "replica/util/ChunkedTable.h"
 #include "util/TimeUtils.h"
 
@@ -129,19 +130,16 @@ list<SqlRequest::Ptr> SqlRowStatsJob::launchRequests(replica::Lock const& lock, 
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    bool const keepTracking = true;
-    auto const self = shared_from_base<SqlRowStatsJob>();
     for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
-        requests.push_back(controller()->sqlRowStats(
-                worker, database(), tables,
-                [self](SqlRowStatsRequest::Ptr const& request) { self->onRequestFinish(request); },
+        bool const keepTracking = true;
+        requests.push_back(SqlRowStatsRequest::createAndStart(
+                controller(), worker, database(), tables,
+                [self = shared_from_base<SqlRowStatsJob>()](SqlRowStatsRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
                 priority(), keepTracking, id()));
     }
     return requests;
-}
-
-void SqlRowStatsJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlGetIndexesRequest>(lock, request);
 }
 
 void SqlRowStatsJob::notify(replica::Lock const& lock) {
@@ -170,7 +168,6 @@ void SqlRowStatsJob::processResultAndFinish(replica::Lock const& lock, ExtendedS
                                            ->databaseInfo(database())
                                            .findTable(table())
                                            .isPartitioned;
-
         bool dataError = false;
         getResultData(lock).iterate([&](SqlJobResult::Worker const& worker,
                                         SqlJobResult::Scope const& internalTable,

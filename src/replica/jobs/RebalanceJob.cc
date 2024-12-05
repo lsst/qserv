@@ -29,6 +29,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
 #include "replica/util/ErrorReporting.h"

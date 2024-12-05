@@ -21,16 +21,6 @@
 #ifndef LSST_QSERV_REPLICA_STATUSREQUEST_H
 #define LSST_QSERV_REPLICA_STATUSREQUEST_H
 
-/**
- * This header declares a collection of the request status management request
- * classes for the Controller-side Replication Framework.
- *
- * @see class StatusRequestReplicate
- * @see class StatusRequestDelete
- * @see class StatusRequestFind
- * @see class StatusRequestFindAll
- */
-
 // System headers
 #include <functional>
 #include <iostream>
@@ -39,188 +29,27 @@
 
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
-#include "replica/requests/Messenger.h"
 #include "replica/requests/RequestMessenger.h"
-#include "replica/requests/StatusRequestBase.h"
-#include "replica/requests/SqlResultSet.h"
-#include "replica/services/DatabaseServices.h"
-#include "replica/services/ServiceProvider.h"
 #include "replica/util/Common.h"
-#include "replica/util/ProtocolBuffer.h"
-#include "replica/util/ReplicaInfo.h"
+#include "replica/util/Performance.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
 
-// ========================================================================
-//   Customizations for specific request types require dedicated policies
-// ========================================================================
-
-class StatusReplicationRequestPolicy {
-public:
-    using ResponseMessageType = ProtocolResponseReplicate;
-    using ResponseDataType = ReplicaInfo;
-    using TargetRequestParamsType = ReplicationRequestParams;
-
-    static char const* requestName();
-    static ProtocolQueuedRequestType targetRequestType();
-    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
-    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
-
-    template <class REQUEST_PTR>
-    static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
-        request->serviceProvider()->databaseServices()->updateRequestState(
-                *request, request->targetRequestId(), request->targetPerformance());
-    }
-};
-
-class StatusDeleteRequestPolicy {
-public:
-    using ResponseMessageType = ProtocolResponseDelete;
-    using ResponseDataType = ReplicaInfo;
-    using TargetRequestParamsType = DeleteRequestParams;
-
-    static char const* requestName();
-    static ProtocolQueuedRequestType targetRequestType();
-    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
-    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
-
-    template <class REQUEST_PTR>
-    static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
-        request->serviceProvider()->databaseServices()->updateRequestState(
-                *request, request->targetRequestId(), request->targetPerformance());
-    }
-};
-
-class StatusFindRequestPolicy {
-public:
-    using ResponseMessageType = ProtocolResponseFind;
-    using ResponseDataType = ReplicaInfo;
-    using TargetRequestParamsType = FindRequestParams;
-
-    static char const* requestName();
-    static ProtocolQueuedRequestType targetRequestType();
-    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
-    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
-
-    template <class REQUEST_PTR>
-    static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->saveReplicaInfo(request->responseData());
-        request->serviceProvider()->databaseServices()->updateRequestState(
-                *request, request->targetRequestId(), request->targetPerformance());
-    }
-};
-
-class StatusFindAllRequestPolicy {
-public:
-    using ResponseMessageType = ProtocolResponseFindAll;
-    using ResponseDataType = ReplicaInfoCollection;
-    using TargetRequestParamsType = FindAllRequestParams;
-
-    static char const* requestName();
-    static ProtocolQueuedRequestType targetRequestType();
-    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
-    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
-
-    template <class REQUEST_PTR>
-    static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->saveReplicaInfoCollection(
-                request->workerName(), request->targetRequestParams().database, request->responseData());
-        request->serviceProvider()->databaseServices()->updateRequestState(
-                *request, request->targetRequestId(), request->targetPerformance());
-    }
-};
-
-class StatusEchoRequestPolicy {
-public:
-    using ResponseMessageType = ProtocolResponseEcho;
-    using ResponseDataType = std::string;
-    using TargetRequestParamsType = EchoRequestParams;
-
-    static char const* requestName();
-    static ProtocolQueuedRequestType targetRequestType();
-    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
-    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
-
-    template <class REQUEST_PTR>
-    static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->updateRequestState(
-                *request, request->targetRequestId(), request->targetPerformance());
-    }
-};
-
-/// @note This type of the management request for testing the target request won't
-///  return any data even in case when the target request was found successfully
-///  completed. An assumption here is that since the target requests of this
-///  kind have no side effects then they could always be resubmited if needed.
-///  The response object will contained the server error should the request failed
-///  at a worker.
-class StatusDirectorIndexRequestPolicy {
-public:
-    using ResponseMessageType = ProtocolResponseDirectorIndex;
-    using ResponseDataType = std::string;
-    using TargetRequestParamsType = DirectorIndexRequestParams;
-
-    static char const* requestName();
-    static ProtocolQueuedRequestType targetRequestType();
-    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
-    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
-
-    template <class REQUEST_PTR>
-    static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->updateRequestState(
-                *request, request->targetRequestId(), request->targetPerformance());
-    }
-};
-
-class StatusSqlRequestPolicy {
-public:
-    using ResponseMessageType = ProtocolResponseSql;
-    using ResponseDataType = SqlResultSet;
-    using TargetRequestParamsType = SqlRequestParams;
-
-    static char const* requestName();
-    static ProtocolQueuedRequestType targetRequestType();
-    static void extractResponseData(ResponseMessageType const& msg, ResponseDataType& data);
-    static void extractTargetRequestParams(ResponseMessageType const& msg, TargetRequestParamsType& params);
-
-    template <class REQUEST_PTR>
-    static void saveReplicaInfo(REQUEST_PTR const& request) {
-        request->serviceProvider()->databaseServices()->updateRequestState(
-                *request, request->targetRequestId(), request->targetPerformance());
-    }
-};
-
 /**
- * Generic class StatusRequest extends its base class to allow further policy-based
- * customization of specific requests.
+ * Class StatusRequest is used for checking a status of the previously submitted requests.
  */
-template <typename POLICY>
-class StatusRequest : public StatusRequestBase {
+class StatusRequest : public RequestMessenger {
 public:
-    typedef std::shared_ptr<StatusRequest<POLICY>> Ptr;
+    typedef std::shared_ptr<StatusRequest> Ptr;
 
     /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
-
-    StatusRequest() = delete;
-    StatusRequest(StatusRequest const&) = delete;
-    StatusRequest& operator=(StatusRequest const&) = delete;
-
-    ~StatusRequest() final = default;
-
-    /// @return target request specific parameters
-    typename POLICY::TargetRequestParamsType const& targetRequestParams() const {
-        return _targetRequestParams;
-    }
-
-    /**
-     * @return  The request-specific extended data reported upon a successful
-     *   completion of the request.
-     */
-    typename POLICY::ResponseDataType const& responseData() const { return _responseData; }
 
     /**
      * Create a new request with specified parameters.
@@ -228,143 +57,75 @@ public:
      * Static factory method is needed to prevent issue with the lifespan
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
-     * @param serviceProvider a host of services for various communications
-     * @param workerName the identifier of a worker node (the one to be affected by the request)
-     * @param io_service network communication service
-     * @param targetRequestId an identifier of the target request whose remote status
-     *   is going to be inspected
-     * @param onFinish an optional callback function to be called upon a completion of
-     *   the request.
-     * @param priority priority level of the request
-     * @param keepTracking keep tracking the request before it finishes or fails
-     * @param messenger an interface for communicating with workers
-     * @return pointer to the created object
+     *
+     * Class-specific parameters are documented below:
+     * @param targetRequestId An identifier of the target request whose remote status
+     *   is going to be inspected.
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
+     * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& workerName, std::string const& targetRequestId,
-                      CallbackType const& onFinish, int priority, bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger) {
-        return StatusRequest<POLICY>::Ptr(new StatusRequest<POLICY>(
-                serviceProvider, io_service, POLICY::requestName(), workerName, targetRequestId,
-                POLICY::targetRequestType(), onFinish, priority, keepTracking, messenger));
-    }
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              std::string const& targetRequestId, CallbackType const& onFinish = nullptr,
+                              int priority = PRIORITY_NORMAL, bool keepTracking = true,
+                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
-    /**
-     * Make an extended print of the request which would include a result set.
-     * The method will also make a call to Request::defaultPrinter().
-     * @param ptr  An object to be printed.
-     */
-    static void extendedPrinter(Ptr const& ptr) {
-        Request::defaultPrinter(ptr);
-        std::cout << ptr->responseData() << std::endl;
-    }
+    StatusRequest() = delete;
+    StatusRequest(StatusRequest const&) = delete;
+    StatusRequest& operator=(StatusRequest const&) = delete;
+
+    ~StatusRequest() final = default;
+
+    std::string const& targetRequestId() const { return _targetRequestId; }
+
+    // Status info on the target request (as reported by the worker) is only available after
+    // the status request is successfully completed. Otherwise std::logic_error is thrown.
+
+    ProtocolStatus targetRequestStatus() const;
+    ProtocolStatusExt targetRequestExtendedStatus() const;
+    Performance const& targetRequestPerformance() const;
+
+    /// @see Request::toString()
+    std::string toString(bool extended = false) const override;
 
 protected:
-    void notify(replica::Lock const& lock) final {
-        notifyDefaultImpl<StatusRequest<POLICY>>(lock, _onFinish);
-    }
-
-    /**
-     * Initiate request-specific send.
-     * @note This method implements the corresponding virtual method defined
-     *   by the base class.
-     * @param lock  A lock on Request::_mtx must be acquired before calling this method.
-     */
-    void send(replica::Lock const& lock) final {
-        auto self = shared_from_base<StatusRequest<POLICY>>();
-        messenger()->send<typename POLICY::ResponseMessageType>(
-                workerName(), id(), priority(), buffer(),
-                [self](std::string const& id, bool success,
-                       typename POLICY::ResponseMessageType const& response) {
-                    if (success)
-                        self->analyze(true, self->_parseResponse(response));
-                    else
-                        self->analyze(false);
-                });
-    }
-
-    /**
-     * Initiate request-specific operation with the persistent state service
-     * to store replica status.
-     * @note This method implements the corresponding virtual method defined
-     *   by the base class.
-     */
-    void saveReplicaInfo() final {
-        auto const self = shared_from_base<StatusRequest<POLICY>>();
-        POLICY::saveReplicaInfo(self);
-    }
+    void startImpl(replica::Lock const& lock) final;
+    void notify(replica::Lock const& lock) final;
+    void awaken(boost::system::error_code const& ec) final;
 
 private:
-    StatusRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                  char const* requestName, std::string const& workerName, std::string const& targetRequestId,
-                  ProtocolQueuedRequestType targetRequestType, CallbackType const& onFinish, int priority,
-                  bool keepTracking, std::shared_ptr<Messenger> const& messenger)
-            : StatusRequestBase(serviceProvider, io_service, requestName, workerName, targetRequestId,
-                                targetRequestType, priority, keepTracking, messenger),
-              _onFinish(onFinish) {}
+    StatusRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                  std::string const& targetRequestId, CallbackType const& onFinish, int priority,
+                  bool keepTracking);
+    /**
+     * Send the serialized content of the buffer to a worker
+     * @param lock a lock on Request::_mtx must be acquired before calling
+     *   this method
+     */
+    void _send(replica::Lock const& lock);
 
     /**
-     * Parse request-specific reply.
-     * @param message  A message to be parsed.
-     * @return  The status of the operation reported by a server.
+     * Process the worker response to the requested operation.
+     * @param success 'true' indicates a successful response from a worker
+     * @param message worker response (if success)
      */
-    ProtocolStatus _parseResponse(typename POLICY::ResponseMessageType const& message) {
-        // This lock must be acquired because the method is going to modify
-        // results of the request. Note that the operation doesn't care
-        // about the global state of the request (wether it's already finished
-        // or not)
-        replica::Lock lock(_mtx, context() + __func__);
+    void _analyze(bool success, ProtocolResponseStatus message);
 
-        // Extract target request-specific parameters from the response if available.
-        POLICY::extractTargetRequestParams(message, _targetRequestParams);
-
-        // Extract request-specific data from the response regardless of
-        // the completion status of the request.
-        POLICY::extractResponseData(message, _responseData);
-
-        // Always get the latest status reported by the remote server.
-        setExtendedServerStatus(lock, message.status_ext());
-
-        // Always update performance counters obtained from the worker service.
-        mutablePerformance().update(message.performance());
-
-        // Set the optional performance of the target operation.
-        if (message.has_target_performance()) {
-            _targetPerformance.update(message.target_performance());
-        }
-
-        // Field 'status' of a type returned by the current method always
-        // be defined in all types of request-specific responses.
-        return message.status();
-    }
+    /// Ensure the request is in a successful state.
+    /// @throw std::logic_error if the request is not in a successful state.
+    void _assertIsSucceeded() const;
 
     // Input parameters
-
+    std::string const _targetRequestId;
     CallbackType _onFinish;
 
-    /// Request-specific parameters of the target request
-    typename POLICY::TargetRequestParamsType _targetRequestParams;
-
-    /// Request-specific data
-    typename POLICY::ResponseDataType _responseData;
+    // Status of of the target request
+    ProtocolStatus _targetStatus;
+    ProtocolStatusExt _targetExtendedServerStatus;
+    Performance _targetPerformance;
 };
-
-typedef StatusRequest<StatusReplicationRequestPolicy> StatusReplicationRequest;
-typedef StatusRequest<StatusDeleteRequestPolicy> StatusDeleteRequest;
-typedef StatusRequest<StatusFindRequestPolicy> StatusFindRequest;
-typedef StatusRequest<StatusFindAllRequestPolicy> StatusFindAllRequest;
-typedef StatusRequest<StatusEchoRequestPolicy> StatusEchoRequest;
-typedef StatusRequest<StatusDirectorIndexRequestPolicy> StatusDirectorIndexRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlQueryRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlCreateDbRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteDbRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlEnableDbRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDisableDbRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlGrantAccessRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlCreateTableRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteTableRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlRemoveTablePartitionsRequest;
-typedef StatusRequest<StatusSqlRequestPolicy> StatusSqlDeleteTablePartitionRequest;
 
 }  // namespace lsst::qserv::replica
 

@@ -205,6 +205,15 @@ private:
     }
 
     /// The specialized version of the above defined template method for responses
+    /// to the requests stoppings.
+    bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseStop& response) const {
+        if (hdr.instance_id() == _serviceProvider->instanceId()) return true;
+        response.set_status(ProtocolStatus::BAD);
+        response.set_status_ext(ProtocolStatusExt::FOREIGN_INSTANCE);
+        return false;
+    }
+
+    /// The specialized version of the above defined template method for responses
     /// to the requests disposals.
     bool _verifyInstance(ProtocolRequestHeader const& hdr, ProtocolResponseDispose& response) const {
         if (hdr.instance_id() == _serviceProvider->instanceId()) return true;

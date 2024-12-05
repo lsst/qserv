@@ -154,23 +154,9 @@ protected:
                                                       size_t maxRequestsPerWorker = 1) = 0;
 
     /**
-     * This method lets a request type-specific subclass to stop requests
-     * of the corresponding subtype.
+     * Stop the specified request if it's still running.
      */
-    virtual void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) = 0;
-
-    /**
-     * This method is called by subclass-specific implementations of
-     * the virtual method SqlJob::stopRequest in order to reduce code
-     * duplication.
-     */
-    template <class REQUEST>
-    void stopRequestDefaultImpl(replica::Lock const& lock, SqlRequest::Ptr const& request) const {
-        auto const noCallBackOnFinish = nullptr;
-        bool const keepTracking = true;
-        controller()->stopById<REQUEST>(request->workerName(), request->id(), noCallBackOnFinish, priority(),
-                                        keepTracking, id());
-    }
+    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) const;
 
     /**
      * This method lets a request type-specific subclass a chance to process
@@ -282,7 +268,6 @@ private:
     bool _isPartitioned(std::string const& databaseName, std::string const& tableName) const;
 
     // Input parameters
-
     uint64_t const _maxRows;
     bool const _allWorkers;
     bool const _ignoreNonPartitioned;

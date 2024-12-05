@@ -24,7 +24,6 @@
 
 // Qserv headers
 #include "replica/requests/SqlAlterTablesRequest.h"
-#include "replica/requests/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -73,7 +72,6 @@ list<pair<string, string>> SqlAlterTablesJob::extendedPersistentState() const {
 list<SqlRequest::Ptr> SqlAlterTablesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                         size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
-
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -86,20 +84,16 @@ list<SqlRequest::Ptr> SqlAlterTablesJob::launchRequests(replica::Lock const& loc
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    auto const self = shared_from_base<SqlAlterTablesJob>();
     for (auto&& tables : distributeTables(tables2process, maxRequestsPerWorker)) {
-        requests.push_back(controller()->sqlAlterTables(
-                worker, database(), tables, alterSpec(),
-                [self](SqlAlterTablesRequest::Ptr const& request) { self->onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+        bool const keepTracking = true;
+        requests.push_back(SqlAlterTablesRequest::createAndStart(
+                controller(), worker, database(), tables, alterSpec(),
+                [self = shared_from_base<SqlAlterTablesJob>()](SqlAlterTablesRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
     }
     return requests;
-}
-
-void SqlAlterTablesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlAlterTablesRequest>(lock, request);
 }
 
 void SqlAlterTablesJob::notify(replica::Lock const& lock) {

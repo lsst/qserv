@@ -35,7 +35,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Messenger;
+class Controller;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -104,38 +104,28 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider provider of various services
-     * @param workerName identifier of a worker node
-     * @param targetIds a collection unique identifiers of requests to be disposed
-     * @param onFinish (optional) callback function to call upon completion
-     *   of the request
-     * @param priority priority level of the request
-     * @param keepTracking keep tracking the request before it finishes or fails
-     * @param messenger interface for communicating with workers
+     * Class-specific parameters are documented below:
+     * @param targetIds A collection unique identifiers of requests to be disposed.
      *
-     * @return pointer to the created object
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
+     * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& workerName, std::vector<std::string> const& targetIds,
-                      CallbackType const& onFinish, int priority, bool keepTracking,
-                      std::shared_ptr<Messenger> const& messenger);
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              std::vector<std::string> const& targetIds,
+                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL,
+                              bool keepTracking = true, std::string const& jobId = "",
+                              unsigned int requestExpirationIvalSec = 0);
 
 protected:
-    /// @see Request::startImpl
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Request::notify
     void notify(replica::Lock const& lock) final;
 
-    /// @note No persistent state for this type of requests
-    /// @see Request::savePersistentState
-    void savePersistentState(replica::Lock const& lock) final {}
-
 private:
-    DisposeRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                   std::string const& workerName, std::vector<std::string> const& targetIds,
-                   CallbackType const& onFinish, int priority, bool keepTracking,
-                   std::shared_ptr<Messenger> const& messenger);
+    DisposeRequest(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                   std::vector<std::string> const& targetIds, CallbackType const& onFinish, int priority,
+                   bool keepTracking);
 
     /**
      * Send the serialized content of the buffer to a worker

@@ -44,30 +44,29 @@ using namespace std;
 using namespace std::placeholders;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.EchoRequest");
-
+bool const allowDuplicateNo = false;
+bool const disposeRequired = true;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-EchoRequest::Ptr EchoRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                     boost::asio::io_service& io_service, string const& workerName,
-                                     string const& data, uint64_t delay, CallbackType const& onFinish,
-                                     int priority, bool keepTracking,
-                                     shared_ptr<Messenger> const& messenger) {
-    return EchoRequest::Ptr(new EchoRequest(serviceProvider, io_service, workerName, data, delay, onFinish,
-                                            priority, keepTracking, messenger));
+EchoRequest::Ptr EchoRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                             string const& workerName, string const& data, uint64_t delay,
+                                             CallbackType const& onFinish, int priority, bool keepTracking,
+                                             std::string const& jobId,
+                                             unsigned int requestExpirationIvalSec) {
+    auto ptr = EchoRequest::Ptr(
+            new EchoRequest(controller, workerName, data, delay, onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-EchoRequest::EchoRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                         string const& workerName, string const& data, uint64_t delay,
-                         CallbackType const& onFinish, int priority, bool keepTracking,
-                         shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "TEST_ECHO", workerName, priority, keepTracking,
-                           false,  // allowDuplicate
-                           true,   // disposeRequired
-                           messenger),
+EchoRequest::EchoRequest(shared_ptr<Controller> const& controller, string const& workerName,
+                         string const& data, uint64_t delay, CallbackType const& onFinish, int priority,
+                         bool keepTracking)
+        : RequestMessenger(controller, "TEST_ECHO", workerName, priority, keepTracking, ::allowDuplicateNo,
+                           ::disposeRequired),
           _data(data),
           _delay(delay),
           _onFinish(onFinish) {}
@@ -81,7 +80,6 @@ void EchoRequest::startImpl(replica::Lock const& lock) {
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
@@ -90,14 +88,12 @@ void EchoRequest::startImpl(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
     ProtocolRequestEcho message;
     message.set_data(data());
     message.set_delay(delay());
-
     buffer()->serialize(message);
 
     _send(lock);
@@ -107,28 +103,24 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
     if (isAborted(ec)) return;
-
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
 
     // Serialize the Status message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
-    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
-    ProtocolRequestStatus message;
+    ProtocolRequestTrack message;
     message.set_id(id());
     message.set_queued_type(ProtocolQueuedRequestType::TEST_ECHO);
-
     buffer()->serialize(message);
 
     _send(lock);
@@ -136,10 +128,10 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
 void EchoRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    auto self = shared_from_base<EchoRequest>();
-    messenger()->send<ProtocolResponseEcho>(
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseEcho>(
             workerName(), id(), priority(), buffer(),
-            [self](string const& id, bool success, ProtocolResponseEcho const& response) {
+            [self = shared_from_base<EchoRequest>()](string const& id, bool success,
+                                                     ProtocolResponseEcho const& response) {
                 self->_analyze(success, response);
             });
 }
@@ -155,7 +147,6 @@ void EchoRequest::_analyze(bool success, ProtocolResponseEcho const& message) {
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context() + __func__);
     if (state() == State::FINISHED) return;
-
     if (not success) {
         finish(lock, CLIENT_ERROR);
         return;

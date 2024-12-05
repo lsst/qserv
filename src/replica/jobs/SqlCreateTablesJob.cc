@@ -24,7 +24,6 @@
 
 // Qserv headers
 #include "replica/requests/SqlCreateTablesRequest.h"
-#include "replica/requests/StopRequest.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -80,7 +79,6 @@ list<pair<string, string>> SqlCreateTablesJob::extendedPersistentState() const {
 list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(replica::Lock const& lock, string const& worker,
                                                          size_t maxRequestsPerWorker) {
     list<SqlRequest::Ptr> requests;
-
     if (maxRequestsPerWorker == 0) return requests;
 
     // Make sure this worker has already been served
@@ -92,20 +90,16 @@ list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(replica::Lock const& lo
 
     // Divide tables into subsets allocated to the "batch" requests. Then launch
     // the requests for the current worker.
-    auto const self = shared_from_base<SqlCreateTablesJob>();
     for (auto&& tables : distributeTables(allTables, maxRequestsPerWorker)) {
-        requests.push_back(controller()->sqlCreateTables(
-                worker, database(), tables, engine(), partitionByColumn(), columns(),
-                [self](SqlCreateTablesRequest::Ptr const& request) { self->onRequestFinish(request); },
-                priority(), true, /* keepTracking*/
-                id()              /* jobId */
-                ));
+        bool const keepTracking = true;
+        requests.push_back(SqlCreateTablesRequest::createAndStart(
+                controller(), worker, database(), tables, engine(), partitionByColumn(), columns(),
+                [self = shared_from_base<SqlCreateTablesJob>()](SqlCreateTablesRequest::Ptr const& request) {
+                    self->onRequestFinish(request);
+                },
+                priority(), keepTracking, id()));
     }
     return requests;
-}
-
-void SqlCreateTablesJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) {
-    stopRequestDefaultImpl<StopSqlCreateTablesRequest>(lock, request);
 }
 
 void SqlCreateTablesJob::notify(replica::Lock const& lock) {

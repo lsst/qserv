@@ -23,7 +23,10 @@
 #include "replica/requests/RequestMessenger.h"
 
 // Qserv headers
+#include "replica/contr/Controller.h"
 #include "replica/proto/protocol.pb.h"
+#include "replica/requests/Messenger.h"
+#include "replica/services/ServiceProvider.h"
 #include "replica/util/ProtocolBuffer.h"
 
 // LSST headers
@@ -39,13 +42,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.RequestMessenger");
 
 namespace lsst::qserv::replica {
 
-RequestMessenger::RequestMessenger(ServiceProvider::Ptr const& serviceProvider,
-                                   boost::asio::io_service& io_service, string const& type,
+RequestMessenger::RequestMessenger(shared_ptr<Controller> const& controller, string const& type,
                                    string const& workerName, int priority, bool keepTracking,
-                                   bool allowDuplicate, bool disposeRequired, Messenger::Ptr const& messenger)
-        : Request(serviceProvider, io_service, type, workerName, priority, keepTracking, allowDuplicate,
-                  disposeRequired),
-          _messenger(messenger) {}
+                                   bool allowDuplicate, bool disposeRequired)
+        : Request(controller, type, workerName, priority, keepTracking, allowDuplicate, disposeRequired) {}
 
 void RequestMessenger::finishImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
@@ -56,7 +56,7 @@ void RequestMessenger::finishImpl(replica::Lock const& lock) {
     // will be at the messenger's queue. This optimization also reduces extra
     // locking (and delays) in the messenger because the operation is synchronized.
     if (extendedState() != Request::ExtendedState::SUCCESS) {
-        _messenger->cancel(workerName(), id());
+        controller()->serviceProvider()->messenger()->cancel(workerName(), id());
     }
 
     // Tell the worker to dispose the request if a subclass made such requirement,
@@ -88,14 +88,15 @@ void RequestMessenger::dispose(replica::Lock const& lock, int priority,
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
     hdr.set_management_type(ProtocolManagementRequestType::REQUEST_DISPOSE);
-    hdr.set_instance_id(serviceProvider()->instanceId());
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
 
     buffer()->serialize(hdr);
     ProtocolRequestDispose message;
     message.add_ids(id());
     buffer()->serialize(message);
 
-    _messenger->send<ProtocolResponseDispose>(workerName(), id(), priority, buffer(), onFinish);
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseDispose>(workerName(), id(), priority,
+                                                                                buffer(), onFinish);
 }
 
 }  // namespace lsst::qserv::replica

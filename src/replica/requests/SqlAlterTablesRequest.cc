@@ -22,39 +22,33 @@
 // Class header
 #include "replica/requests/SqlAlterTablesRequest.h"
 
-// Qserv headers
-#include "replica/services/ServiceProvider.h"
-
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.SqlAlterTablesRequest");
-
+const uint64_t unlimitedMaxRows = 0;
 }  // namespace
 
 namespace lsst::qserv::replica {
 
-SqlAlterTablesRequest::Ptr SqlAlterTablesRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-        string const& worker, string const& database, vector<string> const& tables, string const& alterSpec,
-        CallbackType const& onFinish, int priority, bool keepTracking,
-        shared_ptr<Messenger> const& messenger) {
-    return Ptr(new SqlAlterTablesRequest(serviceProvider, io_service, worker, database, tables, alterSpec,
-                                         onFinish, priority, keepTracking, messenger));
+SqlAlterTablesRequest::Ptr SqlAlterTablesRequest::createAndStart(
+        shared_ptr<Controller> const& controller, string const& workerName, string const& database,
+        vector<string> const& tables, string const& alterSpec, CallbackType const& onFinish, int priority,
+        bool keepTracking, string const& jobId, unsigned int requestExpirationIvalSec) {
+    auto ptr = Ptr(new SqlAlterTablesRequest(controller, workerName, database, tables, alterSpec, onFinish,
+                                             priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-SqlAlterTablesRequest::SqlAlterTablesRequest(ServiceProvider::Ptr const& serviceProvider,
-                                             boost::asio::io_service& io_service, string const& worker,
-                                             string const& database, vector<string> const& tables,
-                                             string const& alterSpec, CallbackType const& onFinish,
-                                             int priority, bool keepTracking,
-                                             shared_ptr<Messenger> const& messenger)
-        : SqlRequest(serviceProvider, io_service, "SQL_ALTER_TABLES", worker, 0, /* maxRows */
-                     priority, keepTracking, messenger),
+SqlAlterTablesRequest::SqlAlterTablesRequest(shared_ptr<Controller> const& controller,
+                                             string const& workerName, string const& database,
+                                             vector<string> const& tables, string const& alterSpec,
+                                             CallbackType const& onFinish, int priority, bool keepTracking)
+        : SqlRequest(controller, "SQL_ALTER_TABLES", workerName, ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::ALTER_TABLE);
@@ -70,7 +64,6 @@ SqlAlterTablesRequest::SqlAlterTablesRequest(ServiceProvider::Ptr const& service
 void SqlAlterTablesRequest::notify(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "[" << ProtocolRequestSql_Type_Name(requestBody.type()) << "]");
-
     notifyDefaultImpl<SqlAlterTablesRequest>(lock, _onFinish);
 }
 

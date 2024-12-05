@@ -93,20 +93,14 @@ public:
     std::string const& database() const { return _database; }
     std::string const& table() const { return _table; }
     std::string const& engine() const { return _engine; }
-
     std::string const& partitionByColumn() const { return _partitionByColumn; }
-
     std::list<SqlColDef> const& columns() const { return _columns; }
-
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
     void notify(replica::Lock const& lock) final;
-
     std::list<SqlRequest::Ptr> launchRequests(replica::Lock const& lock, std::string const& worker,
                                               size_t maxRequestsPerWorker) final;
-
-    void stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) final;
 
 private:
     SqlCreateTablesJob(std::string const& database, std::string const& table, std::string const& engine,
@@ -115,14 +109,11 @@ private:
                        CallbackType const& onFinish, int priority);
 
     // Input parameters
-
     std::string const _database;
     std::string const _table;
     std::string const _engine;
     std::string const _partitionByColumn;
-
     std::list<SqlColDef> const _columns;
-
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.

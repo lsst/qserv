@@ -104,10 +104,9 @@ string Request::state2string(State state, ExtendedState extendedState,
     return state2string(state, extendedState) + "::" + replica::status2string(serverStatus);
 }
 
-Request::Request(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                 string const& type, string const& workerName, int priority, bool keepTracking,
-                 bool allowDuplicate, bool disposeRequired)
-        : _serviceProvider(serviceProvider),
+Request::Request(shared_ptr<Controller> const& controller, string const& type, string const& workerName,
+                 int priority, bool keepTracking, bool allowDuplicate, bool disposeRequired)
+        : _controller(controller),
           _type(type),
           _id(Generators::uniqueId()),
           _workerName(workerName),
@@ -119,14 +118,15 @@ Request::Request(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_se
           _extendedState(NONE),
           _extendedServerStatus(ProtocolStatusExt::NONE),
           _bufferPtr(new ProtocolBuffer(
-                  serviceProvider->config()->get<size_t>("common", "request-buf-size-bytes"))),
-          _worker(serviceProvider->config()->worker(workerName)),
-          _timerIvalSec(serviceProvider->config()->get<unsigned int>("common", "request-retry-interval-sec")),
-          _timer(io_service),
-          _requestExpirationIvalSec(
-                  serviceProvider->config()->get<unsigned int>("controller", "request-timeout-sec")),
-          _requestExpirationTimer(io_service) {
-    _serviceProvider->config()->assertWorkerIsValid(workerName);
+                  controller->serviceProvider()->config()->get<size_t>("common", "request-buf-size-bytes"))),
+          _worker(controller->serviceProvider()->config()->worker(workerName)),
+          _timerIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
+                  "common", "request-retry-interval-sec")),
+          _timer(controller->serviceProvider()->io_service()),
+          _requestExpirationIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
+                  "controller", "request-timeout-sec")),
+          _requestExpirationTimer(controller->serviceProvider()->io_service()) {
+    controller->serviceProvider()->config()->assertWorkerIsValid(workerName);
 
     // This report is used solely for debugging purposes to allow tracking
     // potential memory leaks within applications.
@@ -182,8 +182,7 @@ string Request::toString(bool extended) const {
     return oss.str();
 }
 
-void Request::start(shared_ptr<Controller> const& controller, string const& jobId,
-                    unsigned int requestExpirationIvalSec) {
+void Request::start(string const& jobId, unsigned int requestExpirationIvalSec) {
     replica::Lock lock(_mtx, context() + __func__);
 
     assertState(lock, CREATED, context() + __func__);
@@ -195,16 +194,10 @@ void Request::start(shared_ptr<Controller> const& controller, string const& jobI
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  _requestExpirationIvalSec: " << _requestExpirationIvalSec);
 
-    // Build optional associations with the corresponding Controller and the job
-    //
-    // NOTE: this is done only once, the first time a non-trivial value
-    // of each parameter is presented to the method.
-
-    if (not _controller and controller) _controller = controller;
+    // Build optional associations with the corresponding the job
     if (_jobId.empty() and not jobId.empty()) _jobId = jobId;
 
     _performance.setUpdateStart();
-
     if (_requestExpirationIvalSec) {
         _requestExpirationTimer.cancel();
         _requestExpirationTimer.expires_from_now(boost::posix_time::seconds(_requestExpirationIvalSec));
@@ -212,19 +205,19 @@ void Request::start(shared_ptr<Controller> const& controller, string const& jobI
     }
 
     // Let a subclass to proceed with its own sequence of actions
-
     startImpl(lock);
 
     // Finalize state transition before saving the persistent state
-
     setState(lock, IN_PROGRESS);
+
+    // Register the request with the controller. The request will be unregistered
+    // when the request is finished.
+    _controller->_add(shared_from_this());
 }
 
 void Request::wait() {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (_finished) return;
-
     unique_lock<mutex> onFinishLock(_onFinishMtx);
     _onFinishCv.wait(onFinishLock, [&] { return _finished; });
 }
@@ -288,6 +281,10 @@ void Request::finish(replica::Lock const& lock, ExtendedState extendedState) {
     // this scenario and avoid making any modifications to the request's state.
     setState(lock, FINISHED, extendedState);
 
+    // Unregister the request from the controller. Note that the request gest removed
+    // from the controller's list of active requests only if the request is finished.
+    _controller->_remove(shared_from_this());
+
     // Stop the timer if the one is still running
     _requestExpirationTimer.cancel();
 
@@ -329,5 +326,7 @@ void Request::setState(replica::Lock const& lock, State newState, ExtendedState 
     }
     savePersistentState(lock);
 }
+
+boost::asio::io_service& Request::_ioService() { return controller()->serviceProvider()->io_service(); }
 
 }  // namespace lsst::qserv::replica

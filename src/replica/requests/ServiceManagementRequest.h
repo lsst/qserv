@@ -46,7 +46,7 @@
 
 // Forward declarations
 namespace lsst::qserv::replica {
-class Messenger;
+class Controller;
 }  // namespace lsst::qserv::replica
 
 // This header declarations
@@ -120,19 +120,21 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param serviceProvider provides various services for the application
-     * @param io_service network communication service (BOOST ASIO)
-     * @param workerName identifier of a worker node (the one to be affected by the request)
-     * @param priority a priority level of the request
-     * @param onFinish callback function to be called upon a completion of the request
-     * @param messenger messenger service for workers
+     * Class-specific parameters are documented below:
+     * @param priority The priority level of the request.
+     *
+     * @see The very base class Request for the description of the common parameters
+     *   of all subclasses.
+     *
+     * @return A pointer to the created object.
      */
-    static Ptr create(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                      std::string const& workerName, CallbackType const& onFinish, int priority,
-                      std::shared_ptr<Messenger> const& messenger) {
-        return ServiceManagementRequest<POLICY>::Ptr(new ServiceManagementRequest<POLICY>(
-                serviceProvider, io_service, POLICY::requestName(), workerName, POLICY::requestType(),
-                priority, onFinish, messenger));
+    static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& workerName,
+                              CallbackType const& onFinish = nullptr, int priority = PRIORITY_VERY_HIGH,
+                              std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0) {
+        auto ptr = ServiceManagementRequest<POLICY>::Ptr(new ServiceManagementRequest<POLICY>(
+                controller, POLICY::requestName(), workerName, POLICY::requestType(), priority, onFinish));
+        ptr->start(jobId, requestExpirationIvalSec);
+        return ptr;
     }
 
 protected:
@@ -141,12 +143,10 @@ protected:
     }
 
 private:
-    ServiceManagementRequest(ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-                             char const* requestName, std::string const& workerName,
-                             ProtocolServiceRequestType requestType, int priority,
-                             CallbackType const& onFinish, std::shared_ptr<Messenger> const& messenger)
-            : ServiceManagementRequestBase(serviceProvider, io_service, requestName, workerName, requestType,
-                                           priority, messenger),
+    ServiceManagementRequest(std::shared_ptr<Controller> const& controller, char const* requestName,
+                             std::string const& workerName, ProtocolServiceRequestType requestType,
+                             int priority, CallbackType const& onFinish)
+            : ServiceManagementRequestBase(controller, requestName, workerName, requestType, priority),
               _onFinish(onFinish) {}
 
     // Input parameters

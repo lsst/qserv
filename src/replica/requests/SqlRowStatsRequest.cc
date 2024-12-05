@@ -34,23 +34,23 @@ const uint64_t unlimitedMaxRows = 0;
 
 namespace lsst::qserv::replica {
 
-SqlRowStatsRequest::Ptr SqlRowStatsRequest::create(ServiceProvider::Ptr const& serviceProvider,
-                                                   boost::asio::io_service& io_service, string const& worker,
-                                                   string const& database, vector<string> const& tables,
-                                                   CallbackType const& onFinish, int priority,
-                                                   bool keepTracking,
-                                                   shared_ptr<Messenger> const& messenger) {
-    return Ptr(new SqlRowStatsRequest(serviceProvider, io_service, worker, database, tables, onFinish,
-                                      priority, keepTracking, messenger));
+SqlRowStatsRequest::Ptr SqlRowStatsRequest::createAndStart(shared_ptr<Controller> const& controller,
+                                                           string const& workerName, string const& database,
+                                                           vector<string> const& tables,
+                                                           CallbackType const& onFinish, int priority,
+                                                           bool keepTracking, string const& jobId,
+                                                           unsigned int requestExpirationIvalSec) {
+    auto ptr = Ptr(new SqlRowStatsRequest(controller, workerName, database, tables, onFinish, priority,
+                                          keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-SqlRowStatsRequest::SqlRowStatsRequest(ServiceProvider::Ptr const& serviceProvider,
-                                       boost::asio::io_service& io_service, string const& worker,
+SqlRowStatsRequest::SqlRowStatsRequest(shared_ptr<Controller> const& controller, string const& workerName,
                                        string const& database, vector<string> const& tables,
-                                       CallbackType const& onFinish, int priority, bool keepTracking,
-                                       shared_ptr<Messenger> const& messenger)
-        : SqlRequest(serviceProvider, io_service, "SQL_TABLE_ROW_STATS", worker, ::unlimitedMaxRows, priority,
-                     keepTracking, messenger),
+                                       CallbackType const& onFinish, int priority, bool keepTracking)
+        : SqlRequest(controller, "SQL_TABLE_ROW_STATS", workerName, ::unlimitedMaxRows, priority,
+                     keepTracking),
           _onFinish(onFinish) {
     // Finish initializing the request body's content
     requestBody.set_type(ProtocolRequestSql::TABLE_ROW_STATS);

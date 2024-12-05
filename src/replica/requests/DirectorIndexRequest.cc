@@ -32,6 +32,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
+#include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
@@ -46,9 +47,9 @@ using namespace std::placeholders;
 namespace fs = boost::filesystem;
 
 namespace {
-
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DirectorIndexRequest");
-
+bool const allowDuplicateNo = false;
+bool const disposeRequired = true;
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -59,37 +60,36 @@ ostream& operator<<(ostream& os, DirectorIndexRequestInfo const& info) {
     return os;
 }
 
-DirectorIndexRequest::Ptr DirectorIndexRequest::create(
-        ServiceProvider::Ptr const& serviceProvider, boost::asio::io_service& io_service,
-        string const& workerName, string const& database, string const& directorTable, unsigned int chunk,
-        bool hasTransactions, TransactionId transactionId, CallbackType const& onFinish, int priority,
-        bool keepTracking, shared_ptr<Messenger> const& messenger) {
-    return DirectorIndexRequest::Ptr(new DirectorIndexRequest(
-            serviceProvider, io_service, workerName, database, directorTable, chunk, hasTransactions,
-            transactionId, onFinish, priority, keepTracking, messenger));
+DirectorIndexRequest::Ptr DirectorIndexRequest::createAndStart(
+        std::shared_ptr<Controller> const& controller, string const& workerName, string const& database,
+        string const& directorTable, unsigned int chunk, bool hasTransactions, TransactionId transactionId,
+        CallbackType const& onFinish, int priority, bool keepTracking, string const& jobId,
+        unsigned int requestExpirationIvalSec) {
+    auto ptr = DirectorIndexRequest::Ptr(
+            new DirectorIndexRequest(controller, workerName, database, directorTable, chunk, hasTransactions,
+                                     transactionId, onFinish, priority, keepTracking));
+    ptr->start(jobId, requestExpirationIvalSec);
+    return ptr;
 }
 
-DirectorIndexRequest::DirectorIndexRequest(ServiceProvider::Ptr const& serviceProvider,
-                                           boost::asio::io_service& io_service, string const& workerName,
-                                           string const& database, string const& directorTable,
-                                           unsigned int chunk, bool hasTransactions,
-                                           TransactionId transactionId, CallbackType const& onFinish,
-                                           int priority, bool keepTracking,
-                                           shared_ptr<Messenger> const& messenger)
-        : RequestMessenger(serviceProvider, io_service, "INDEX", workerName, priority, keepTracking,
-                           false,  // allowDuplicate
-                           true,   // disposeRequired
-                           messenger),
+DirectorIndexRequest::DirectorIndexRequest(std::shared_ptr<Controller> const& controller,
+                                           string const& workerName, string const& database,
+                                           string const& directorTable, unsigned int chunk,
+                                           bool hasTransactions, TransactionId transactionId,
+                                           CallbackType const& onFinish, int priority, bool keepTracking)
+        : RequestMessenger(controller, "INDEX", workerName, priority, keepTracking, ::allowDuplicateNo,
+                           ::disposeRequired),
           _database(database),
           _directorTable(directorTable),
           _chunk(chunk),
           _hasTransactions(hasTransactions),
           _transactionId(transactionId),
           _onFinish(onFinish) {
-    Request::serviceProvider()->config()->assertDatabaseIsValid(database);
-    _responseData.fileName = serviceProvider->config()->get<string>("database", "qserv-master-tmp-dir") +
-                             "/" + database + "_" + directorTable + "_" + to_string(chunk) +
-                             (hasTransactions ? "_p" + to_string(transactionId) : "");
+    controller->serviceProvider()->config()->assertDatabaseIsValid(database);
+    _responseData.fileName =
+            controller->serviceProvider()->config()->get<string>("database", "qserv-master-tmp-dir") + "/" +
+            database + "_" + directorTable + "_" + to_string(chunk) +
+            (hasTransactions ? "_p" + to_string(transactionId) : "");
 }
 
 DirectorIndexRequest::~DirectorIndexRequest() {
@@ -121,7 +121,6 @@ void DirectorIndexRequest::_sendInitialRequest(replica::Lock const& lock) {
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
@@ -130,8 +129,7 @@ void DirectorIndexRequest::_sendInitialRequest(replica::Lock const& lock) {
     hdr.set_queued_type(ProtocolQueuedRequestType::INDEX);
     hdr.set_timeout(requestExpirationIvalSec());
     hdr.set_priority(priority());
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
     ProtocolRequestDirectorIndex message;
@@ -150,34 +148,28 @@ void DirectorIndexRequest::_sendInitialRequest(replica::Lock const& lock) {
 void DirectorIndexRequest::awaken(boost::system::error_code const& ec) {
     string const context_ = context() + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
-
     if (isAborted(ec)) return;
-
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
-
     _sendStatusRequest(lock);
 }
 
 void DirectorIndexRequest::_sendStatusRequest(replica::Lock const& lock) {
     // Serialize the Status message header and the request itself into
     // the network buffer.
-
     buffer()->resize();
 
     ProtocolRequestHeader hdr;
     hdr.set_id(id());
     hdr.set_type(ProtocolRequestHeader::REQUEST);
-    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_STATUS);
-    hdr.set_instance_id(serviceProvider()->instanceId());
-
+    hdr.set_management_type(ProtocolManagementRequestType::REQUEST_TRACK);
+    hdr.set_instance_id(controller()->serviceProvider()->instanceId());
     buffer()->serialize(hdr);
 
-    ProtocolRequestStatus message;
+    ProtocolRequestTrack message;
     message.set_id(id());
     message.set_queued_type(ProtocolQueuedRequestType::INDEX);
-
     buffer()->serialize(message);
 
     _send(lock);
@@ -185,10 +177,10 @@ void DirectorIndexRequest::_sendStatusRequest(replica::Lock const& lock) {
 
 void DirectorIndexRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    auto self = shared_from_base<DirectorIndexRequest>();
-    messenger()->send<ProtocolResponseDirectorIndex>(
+    controller()->serviceProvider()->messenger()->send<ProtocolResponseDirectorIndex>(
             workerName(), id(), priority(), buffer(),
-            [self](string const& id, bool success, ProtocolResponseDirectorIndex const& response) {
+            [self = shared_from_base<DirectorIndexRequest>()](string const& id, bool success,
+                                                              ProtocolResponseDirectorIndex const& response) {
                 self->_analyze(success, response);
             });
 }
@@ -205,7 +197,6 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
-
     if (!success) {
         finish(lock, CLIENT_ERROR);
         return;
@@ -252,10 +243,11 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
                     // Also note the elevated priority level for the request disposal operations.
                     // This will guarantee (in most cases) that such requests will be fast-track delivered
                     // to (and processed by) the worker.
-                    auto self = shared_from_base<DirectorIndexRequest>();
-                    dispose(lock, PRIORITY_VERY_HIGH, [self](auto id, auto success, auto message) {
-                        self->_disposed(success, message);
-                    });
+                    dispose(lock, PRIORITY_VERY_HIGH,
+                            [self = shared_from_base<DirectorIndexRequest>()](auto id, auto success,
+                                                                              auto message) {
+                                self->_disposed(success, message);
+                            });
                 }
             } catch (exception const& ex) {
                 _responseData.error = ex.what();
@@ -294,11 +286,9 @@ void DirectorIndexRequest::_analyze(bool success, ProtocolResponseDirectorIndex 
 void DirectorIndexRequest::_disposed(bool success, ProtocolResponseDispose const& message) {
     string const context_ = context() + string(__func__) + " success=" + bool2str(success) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
-
     if (state() == State::FINISHED) return;
     replica::Lock lock(_mtx, context_);
     if (state() == State::FINISHED) return;
-
     if (!success) {
         finish(lock, CLIENT_ERROR);
         return;

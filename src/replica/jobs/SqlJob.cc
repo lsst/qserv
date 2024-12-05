@@ -121,6 +121,13 @@ json SqlJob::getExtendedErrorReport() const {
     return report;
 }
 
+void SqlJob::stopRequest(replica::Lock const& lock, SqlRequest::Ptr const& request) const {
+    auto const noCallBackOnFinish = nullptr;
+    bool const keepTracking = true;
+    StopRequest::createAndStart(controller(), request->workerName(), request->id(), noCallBackOnFinish,
+                                priority(), keepTracking, id());
+}
+
 void SqlJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
