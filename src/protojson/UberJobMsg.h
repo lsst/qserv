@@ -21,6 +21,8 @@
 #ifndef LSST_QSERV_PROTOJSON_UBERJOBMSG_H
 #define LSST_QSERV_PROTOJSON_UBERJOBMSG_H
 
+#define NEWMSGUJ 0  // &&& delete
+
 // System headers
 #include <chrono>
 #include <map>
@@ -205,7 +207,6 @@ public:
     int getAttemptCount() const { return _attemptCount; }
     std::string getChunkQuerySpecDb() const { return _chunkQuerySpecDb; }
     int getChunkId() const { return _chunkId; }
-
     std::vector<int> const& getChunkScanTableIndexes() const { return _chunkScanTableIndexes; }
 
     JobFragment::VectPtr getJobFragments() const { return _jobFragments; }

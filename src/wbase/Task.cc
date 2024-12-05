@@ -109,7 +109,7 @@ atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 /// the util::CommandThreadPool is not called here.
 Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
            size_t templateId, bool hasSubchunks, int subchunkId, string const& db,
-           vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
+          vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
            shared_ptr<FileChannelShared> const& sc,
            std::shared_ptr<wpublish::QueryStatistics> const& queryStats_)
         : _logLvlWT(LOG_LVL_WARN),
@@ -272,8 +272,8 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
 
 std::vector<Task::Ptr> Task::createTasksForChunk(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-        std::shared_ptr<wbase::FileChannelShared> const& sendChannel, proto::ScanInfo const& scanInfo,
-        bool scanInteractive, int maxTableSizeMb,
+        std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
+        protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr, mysql::MySqlConfig const& mySqlConfig,
         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks, uint16_t resultsHttpPort) {
@@ -347,6 +347,33 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
+                    {
+                        ostringstream os;
+                        os << "&&&TEST00 ";
+                        os << " &&&TEST";
+                        os << "; ujData?";
+                        os << "; jobId=" << jdJobId;
+                        os << "; attemptCount=" << jdAttemptCount;
+                        os << "; chunkId=" << jdChunkId;
+                        os << "; fragmentNumber=" << fragmentNumber;
+                        os << "; templateId=" << templateId;
+                        os << "; noSubchunks=" << noSubchunks;
+                        os << "; subchunkId=" << subchunkId;
+                        os << "; chunkQuerySpecDb?";
+                        os << "; scanInfo=" << *scanInfo;
+                        os << "; scanInteractive=" << scanInteractive;
+                        os << "; maxTableSizeMb=" << maxTableSizeMb;
+                        os << "; fragSubTables={";
+                        for (auto const& fsTbl : fragSubTables) {
+                            os << fsTbl.db << "." << fsTbl.tbl << ", ";
+                        }
+                        os << "}";
+                        os << "; fragSubchunkIds=" << util::printable(fragSubchunkIds);
+                        os << "; sendChannel?";
+                        os << "; queryStats?";
+                        os << "; resultsHttpPort=" << resultsHttpPort;
+                        LOGS(_log, LOG_LVL_WARN, "&&&" << os.str());
+                    }
                     auto task = Task::Ptr(new Task(
                             ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, templateId,
                             noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
@@ -356,6 +383,33 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
+                        {
+                            ostringstream os;
+                            os << "&&&TEST01 ";
+                            os << " &&&TEST";
+                            os << "; ujData?";
+                            os << "; jobId=" << jdJobId;
+                            os << "; attemptCount=" << jdAttemptCount;
+                            os << "; chunkId=" << jdChunkId;
+                            os << "; fragmentNumber=" << fragmentNumber;
+                            os << "; templateId=" << templateId;
+                            os << "; noSubchunks=" << hasSubchunks;
+                            os << "; subchunkId=" << subchunkId;
+                            os << "; chunkQuerySpecDb?";
+                            os << "; scanInfo=" << *scanInfo;
+                            os << "; scanInteractive=" << scanInteractive;
+                            os << "; maxTableSizeMb=" << maxTableSizeMb;
+                            os << "; fragSubTables={";
+                            for (auto const& fsTbl : fragSubTables) {
+                                os << fsTbl.db << "." << fsTbl.tbl << ", ";
+                            }
+                            os << "}";
+                            os << "; fragSubchunkIds=" << util::printable(fragSubchunkIds);
+                            os << "; sendChannel?";
+                            os << "; queryStats?";
+                            os << "; resultsHttpPort=" << resultsHttpPort;
+                            LOGS(_log, LOG_LVL_WARN, "&&&" << os.str());
+                        }
                         auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
                                                        fragmentNumber, templateId, hasSubchunks, subchunkId,
                                                        jdQuerySpecDb, scanInfo, scanInteractive,
