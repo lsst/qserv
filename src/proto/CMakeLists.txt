@@ -11,7 +11,6 @@ target_sources(proto PRIVATE
     ${PROTO_PB_HDRS}
     FrameBuffer.cc
     ProtoHeaderWrap.cc
-    ScanTableInfo.cc
 )
 
 target_link_libraries(proto PUBLIC

@@ -39,6 +39,7 @@
 #include "global/intTypes.h"
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
+#include "protojson/ScanTableInfo.h"
 #include "qdisp/JobDescription.h"
 #include "qdisp/ResponseHandler.h"
 #include "qdisp/UberJob.h"
@@ -228,6 +229,12 @@ public:
     /// incomplete UberJobs need to be stopped and possibly reassigned.
     void killIncompleteUberJobsOnWorker(std::string const& workerId);
 
+    // Try to remove this and put in constructor
+    void setScanInfo(protojson::ScanInfo::Ptr const& scanInfo) { _scanInfo = scanInfo; }
+
+    /// Return a pointer to _scanInfo.
+    protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
+
 protected:
     Executive(ExecutiveConfig const& cfg, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,
@@ -337,6 +344,8 @@ private:
 
     /// Flag that is set to true when ready to create and run UberJobs.
     std::atomic<bool> _readyToExecute{false};
+
+    protojson::ScanInfo::Ptr _scanInfo;  ///< &&& doc
 };
 
 }  // namespace qdisp
