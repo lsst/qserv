@@ -21,6 +21,8 @@
 #ifndef LSST_QSERV_PROTOJSON_UBERJOBMSG_H
 #define LSST_QSERV_PROTOJSON_UBERJOBMSG_H
 
+#define NEWMSGUJ 0  // &&& delete
+
 // System headers
 #include <chrono>
 #include <map>
@@ -36,6 +38,7 @@
 #include "global/clock_defs.h"
 #include "global/DbTable.h"
 #include "global/intTypes.h"
+#include "protojson/ScanTableInfo.h"
 #include "protojson/WorkerQueryStatusData.h"
 
 namespace lsst::qserv::qdisp {
@@ -86,7 +89,7 @@ private:
 /// The same db+table name pairs recur frequently, so the individual occurrences
 /// will be replaced with an integer index and use this class to recover the
 /// complete names.
-class JobDbTablesMap {
+class JobDbTablesMap {  // &&& this class can probably be deleted
 public:
     using Ptr = std::shared_ptr<JobDbTablesMap>;
 
@@ -133,23 +136,32 @@ class JobFragment {
 public:
     using Ptr = std::shared_ptr<JobFragment>;
     using Vect = std::vector<Ptr>;
+    using VectPtr = std::shared_ptr<Vect>;
 
     std::string cName(const char* fName) const { return std::string("JobFragment::") + fName; }
 
     JobFragment() = delete;
     JobFragment(JobFragment const&) = delete;
 
-    static Vect createVect(qproc::ChunkQuerySpec const& chunkQuerySpec,
-                           JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                           JobDbTablesMap::Ptr const& dbTablesMap, std::string const& resultTblName);
+    static VectPtr createVect(qproc::ChunkQuerySpec const& chunkQuerySpec,
+                              JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
+                              JobDbTablesMap::Ptr const& dbTablesMap, std::string const& resultTblName);
 
     /// &&& doc
-    static Vect createVectFromJson(nlohmann::json const& ujJson,
-                                   JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                                   JobDbTablesMap::Ptr const& dbTablesMap, std::string const& resultTblName);
+    static VectPtr createVectFromJson(nlohmann::json const& ujJson,
+                                      JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
+                                      JobDbTablesMap::Ptr const& dbTablesMap,
+                                      std::string const& resultTblName);
 
     /// Return a json version of the contents of this class.
     nlohmann::json serializeJson() const;
+
+    std::vector<int> const& getJobSubQueryTempIndexes() const { return _jobSubQueryTempIndexes; }
+    std::vector<int> const& getJobDbTablesIndexes() const { return _jobDbTablesIndexes; }
+    std::vector<int> const& getSubchunkIds() const { return _subchunkIds; }
+    std::string const& getResultTblName() const { return _resultTblName; }
+
+    std::string dump() const;
 
 private:
     JobFragment(JobSubQueryTempMap::Ptr const& subQueryTemplates, JobDbTablesMap::Ptr const& dbTablesMap,
@@ -180,6 +192,7 @@ class JobMsg {
 public:
     using Ptr = std::shared_ptr<JobMsg>;
     using Vect = std::vector<Ptr>;
+    using VectPtr = std::shared_ptr<Vect>;
     std::string cName(const char* fnc) const { return std::string("JobMsg::") + fnc; }
 
     JobMsg() = delete;
@@ -197,6 +210,18 @@ public:
     /// Return a json version of the contents of this class.
     nlohmann::json serializeJson() const;
 
+    JobId getJobId() const { return _jobId; }
+    int getAttemptCount() const { return _attemptCount; }
+    std::string getChunkQuerySpecDb() const { return _chunkQuerySpecDb; }
+    int getScanRating() const { return _scanRating; }
+    bool getScanInteractive() const { return _scanInteractive; }
+    int getChunkId() const { return _chunkId; }
+    std::string getChunkResultName() const { return _chunkResultName; }
+
+    std::vector<int> const& getChunkScanTableIndexes() const { return _chunkScanTableIndexes; }
+
+    JobFragment::VectPtr getJobFragments() const { return _jobFragments; }
+
 private:
     JobMsg(std::shared_ptr<qdisp::JobQuery> const& jobPtr, JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
            JobDbTablesMap::Ptr const& jobDbTablesMap);
@@ -212,7 +237,7 @@ private:
     bool _scanInteractive;
     int _chunkId;
     std::string _chunkResultName;
-    JobFragment::Vect _jobFragments;
+    JobFragment::VectPtr _jobFragments{new JobFragment::Vect()};
 
     JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< Map of all query templates related to this UberJob.
     JobDbTablesMap::Ptr _jobDbTablesMap;          ///< Map of all db.tables related to this UberJob.
@@ -238,15 +263,30 @@ public:
     static Ptr create(unsigned int metaVersion, std::string const& replicationInstanceId,
                       std::string const& replicationAuthKey, CzarContactInfo::Ptr const& czInfo,
                       WorkerContactInfo::Ptr const& wInfo, QueryId qId, UberJobId ujId, int rowLimit,
-                      int maxTableSizeMB, std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs) {
+                      int maxTableSizeMB, ScanInfo::Ptr const& scanInfo_,
+                      std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs) {
         return Ptr(new UberJobMsg(metaVersion, replicationInstanceId, replicationAuthKey, czInfo, wInfo->wId,
-                                  qId, ujId, rowLimit, maxTableSizeMB, jobs));
+                                  qId, ujId, rowLimit, maxTableSizeMB, scanInfo_, jobs));
     }
 
     static Ptr createFromJson(nlohmann::json const& ujJson);
 
     /// Return a json version of the contents of this class.
     nlohmann::json serializeJson() const;
+
+    QueryId getQueryId() const { return _qId; }
+    UberJobId getUberJobId() const { return _ujId; }
+    int getRowLimit() const { return _rowLimit; }
+    std::string getWorkerId() const { return _workerId; }
+    int getMaxTableSizeMb() const { return _maxTableSizeMB; }
+
+    CzarContactInfo::Ptr getCzarContactInfo() const { return _czInfo; }
+    JobSubQueryTempMap::Ptr getJobSubQueryTempMap() const { return _jobSubQueryTempMap; }
+    JobDbTablesMap::Ptr getJobDbTablesMap() const { return _jobDbTablesMap; }
+
+    JobMsg::VectPtr getJobMsgVect() const { return _jobMsgVect; }
+
+    ScanInfo::Ptr getScanInfo() const { return _scanInfo; }
 
     std::string dump() const;
 
@@ -255,14 +295,13 @@ private:
                std::string const& replicationAuthKey,
                //&&&CzarContactInfo::Ptr const& czInfo, WorkerContactInfo::Ptr const& wInfo,
                CzarContactInfo::Ptr const& czInfo, std::string const& workerId, QueryId qId, UberJobId ujId,
-               int rowLimit, int maxTableSizeMB, std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs);
+               int rowLimit, int maxTableSizeMB, ScanInfo::Ptr const& scanInfo_,
+               std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs);
 
     unsigned int _metaVersion;  // "version", http::MetaModule::version
     // czar
     std::string _replicationInstanceId;  // "instance_id", czarConfig->replicationInstanceId()
     std::string _replicationAuthKey;     //"auth_key", czarConfig->replicationAuthKey()
-    //&&& auto [ciwId, ciwHost, ciwManagment, ciwPort] = _wContactInfo->getAll(); (string, string, string,
-    //int)
     CzarContactInfo::Ptr _czInfo;
     std::string _workerId;  // "worker", ciwId
     //&&&WorkerContactInfo::Ptr _wInfo; // &&& probably not needed
@@ -277,9 +316,9 @@ private:
     UberJobId _ujId;  // "uberjobid", _uberJobId
     //&&& CzarIdType _czarId; // "czarid", _czarId
     int _rowLimit;        // "rowlimit", _rowLimit
-    int _maxTableSizeMB;  // &&& Need to add initialization.
+    int _maxTableSizeMB;  //
 
-    std::vector<std::shared_ptr<qdisp::JobQuery>> _jobs;  // &&& needs to be replaced with jobData
+    //&&&std::vector<std::shared_ptr<qdisp::JobQuery>> _jobs;  // &&& needs to be replaced with jobData
     // &&& };
 
     /// Map of all query templates related to this UberJob.
@@ -289,7 +328,9 @@ private:
     JobDbTablesMap::Ptr _jobDbTablesMap{JobDbTablesMap::create()};
 
     /// List of all job data in this UberJob. "jobs", json::array()
-    JobMsg::Vect _jobMsgVect;
+    JobMsg::VectPtr _jobMsgVect{new JobMsg::Vect()};
+
+    ScanInfo::Ptr _scanInfo{ScanInfo::create()};  ///< &&& NEED to add to serialize and createFromJson
 };
 
 }  // namespace lsst::qserv::protojson

@@ -47,22 +47,20 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.UberJobMsg");
 namespace lsst::qserv::protojson {
 
 UberJobMsg::UberJobMsg(unsigned int metaVersion, std::string const& replicationInstanceId,
-                       std::string const& replicationAuthKey,
-                       //&&&CzarContactInfo::Ptr const& czInfo, WorkerContactInfo::Ptr const& wInfo,
-                       CzarContactInfo::Ptr const& czInfo, string const& workerId, QueryId qId,
-                       UberJobId ujId, int rowLimit, int maxTableSizeMB,
+                       std::string const& replicationAuthKey, CzarContactInfo::Ptr const& czInfo,
+                       string const& workerId, QueryId qId, UberJobId ujId, int rowLimit, int maxTableSizeMB,
+                       ScanInfo::Ptr const& scanInfo_,
                        std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs)
         : _metaVersion(metaVersion),
           _replicationInstanceId(replicationInstanceId),
           _replicationAuthKey(replicationAuthKey),
           _czInfo(czInfo),
           _workerId(workerId),
-          //&&&_workerId(wInfo->wId),
-          //&&&_wInfo(wInfo),
           _qId(qId),
           _ujId(ujId),
           _rowLimit(rowLimit),
-          _maxTableSizeMB(maxTableSizeMB) {
+          _maxTableSizeMB(maxTableSizeMB),
+          _scanInfo(scanInfo_) {
     //&&&_jobs(jobs) {
     LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::UberJobMsg start");
 
@@ -70,7 +68,7 @@ UberJobMsg::UberJobMsg(unsigned int metaVersion, std::string const& replicationI
         LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::UberJobMsg loop");
         // This creates the JobMsg objects for all relates jobs and their fragments.
         auto jobMsg = JobMsg::create(jobPtr, _jobSubQueryTempMap, _jobDbTablesMap);
-        _jobMsgVect.push_back(jobMsg);
+        _jobMsgVect->push_back(jobMsg);
     }
     LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::UberJobMsg end");
 }
@@ -89,12 +87,13 @@ json UberJobMsg::serializeJson() const {
                     {"subqueries_map", _jobSubQueryTempMap->serializeJson()},
                     {"dbtables_map", _jobDbTablesMap->serializeJson()},
                     {"maxtablesizemb", _maxTableSizeMB},
+                    {"scaninfo", _scanInfo->serializeJson()},
                     {"jobs", json::array()}};
     LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::serializeJson b");
 
     auto& jsJobs = ujmJson["jobs"];
     LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::serializeJson c");
-    for (auto const& jbMsg : _jobMsgVect) {
+    for (auto const& jbMsg : *_jobMsgVect) {
         LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::serializeJson c1");
         json jsJob = jbMsg->serializeJson();
         jsJobs.push_back(jsJob);
@@ -119,6 +118,14 @@ UberJobMsg::Ptr UberJobMsg::createFromJson(nlohmann::json const& ujmJson) {
         auto czInfo_ = CzarContactInfo::createFromJson(ujmJson["czarinfo"]);
         if (czInfo_ == nullptr) {
             LOGS(_log, LOG_LVL_ERROR, "UberJobMsg::createFromJson czar could not be parsed in " << ujmJson);
+            return nullptr;
+        }
+
+        LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::createFromJson b-b");
+        auto scanInfo_ = ScanInfo::createFromJson(ujmJson["scaninfo"]);
+        if (scanInfo_ == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 "UberJobMsg::createFromJson scanInfo could not be parsed in " << ujmJson);
             return nullptr;
         }
 
@@ -150,7 +157,7 @@ UberJobMsg::Ptr UberJobMsg::createFromJson(nlohmann::json const& ujmJson) {
         std::vector<std::shared_ptr<qdisp::JobQuery>> emptyJobs;
 
         Ptr ujmPtr = Ptr(new UberJobMsg(metaVersion, replicationInstanceId, replicationAuthKey, czInfo,
-                                        workerId, qId, ujId, rowLimit, maxTableSizeMB, emptyJobs));
+                                        workerId, qId, ujId, rowLimit, maxTableSizeMB, scanInfo_, emptyJobs));
 
         LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::createFromJson m");
         auto const& jsSubQueriesMap = http::RequestBodyJSON::required<json>(ujmJson, "subqueries_map");
@@ -167,7 +174,7 @@ UberJobMsg::Ptr UberJobMsg::createFromJson(nlohmann::json const& ujmJson) {
             LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::createFromJson q1");
             JobMsg::Ptr jobMsgPtr =
                     JobMsg::createFromJson(jsUjJob, ujmPtr->_jobSubQueryTempMap, ujmPtr->_jobDbTablesMap);
-            ujmPtr->_jobMsgVect.push_back(jobMsgPtr);
+            ujmPtr->_jobMsgVect->push_back(jobMsgPtr);
         }
         LOGS(_log, LOG_LVL_WARN, "&&& UberJobMsg::createFromJson end");
 
@@ -211,7 +218,7 @@ JobMsg::JobMsg(std::shared_ptr<qdisp::JobQuery> const& jobPtr,
     _chunkQuerySpecDb = chunkQuerySpec->db;
     //&&&{"scanPriority", chunkQuerySpec.scanInfo.scanRating},
     LOGS(_log, LOG_LVL_WARN, "&&& JobMsg::JobMsg d");
-    _scanRating = chunkQuerySpec->scanInfo.scanRating;
+    _scanRating = chunkQuerySpec->scanInfo->scanRating;
     //&&&{"scanInteractive", chunkQuerySpec.scanInteractive},
     LOGS(_log, LOG_LVL_WARN, "&&& JobMsg::JobMsg e");
     _scanInteractive = chunkQuerySpec->scanInteractive;
@@ -227,7 +234,7 @@ JobMsg::JobMsg(std::shared_ptr<qdisp::JobQuery> const& jobPtr,
 
     // Add scan tables (&&& not sure is this is the same for all jobs or not)
     LOGS(_log, LOG_LVL_WARN, "&&& JobMsg::JobMsg h");
-    for (auto const& sTbl : chunkQuerySpec->scanInfo.infoTables) {
+    for (auto const& sTbl : chunkQuerySpec->scanInfo->infoTables) {
         LOGS(_log, LOG_LVL_WARN, "&&& JobMsg::JobMsg h1");
         /* &&&
         nlohmann::json cst = {{"db", sTbl.db},
@@ -280,7 +287,7 @@ nlohmann::json JobMsg::serializeJson() const {
     LOGS(_log, LOG_LVL_WARN, "&&& JobMsg::serializeJson d");
     auto& jsqFrags = jsJobMsg["queryFragments"];
     LOGS(_log, LOG_LVL_WARN, "&&& JobMsg::serializeJson e");
-    for (auto& jFrag : _jobFragments) {
+    for (auto& jFrag : *_jobFragments) {
         LOGS(_log, LOG_LVL_WARN, "&&& JobMsg::serializeJson e1");
         auto jsFrag = jFrag->serializeJson();
         LOGS(_log, LOG_LVL_WARN, "&&& JobMsg::serializeJson e2");
@@ -525,13 +532,13 @@ JobFragment::JobFragment(JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
     LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::JobFragment resultTblName=" << resultTblName);
 }
 
-vector<JobFragment::Ptr> JobFragment::createVect(qproc::ChunkQuerySpec const& chunkQuerySpec,
-                                                 JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                                                 JobDbTablesMap::Ptr const& jobDbTablesMap,
-                                                 string const& resultTable) {
+JobFragment::VectPtr JobFragment::createVect(qproc::ChunkQuerySpec const& chunkQuerySpec,
+                                             JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
+                                             JobDbTablesMap::Ptr const& jobDbTablesMap,
+                                             string const& resultTable) {
     LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVect start");
 
-    vector<Ptr> jFragments;
+    VectPtr jFragments{new Vect()};
     LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVect a");
     if (chunkQuerySpec.nextFragment.get()) {
         LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVect a1");
@@ -551,7 +558,7 @@ vector<JobFragment::Ptr> JobFragment::createVect(qproc::ChunkQuerySpec const& ch
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
             LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVect a3");
-            _addFragment(jFragments, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
+            _addFragment(*jFragments, resultTable, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
                          sPtr->queries, jobSubQueryTempMap, jobDbTablesMap);
             sPtr = sPtr->nextFragment.get();
         }
@@ -564,7 +571,7 @@ vector<JobFragment::Ptr> JobFragment::createVect(qproc::ChunkQuerySpec const& ch
             LOGS(_log, LOG_LVL_TRACE, (chunkQuerySpec.queries).at(t));
         }
         LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVect b2");
-        _addFragment(jFragments, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
+        _addFragment(*jFragments, resultTable, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
                      chunkQuerySpec.queries, jobSubQueryTempMap, jobDbTablesMap);
         LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVect b3");
     }
@@ -613,9 +620,29 @@ void JobFragment::_addFragment(std::vector<Ptr>& jFragments, std::string const& 
         LOGS(_log, LOG_LVL_INFO, jFrag->cName(__func__) << "&&& added subchunkId=" << subchunkId);
     }
     LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::_addFragment e");
+    LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::_addFragment " << jFrag->dump());
+    LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::_addFragment ee");
 
     jFragments.push_back(move(jFrag));
     LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::_addFragment end");
+}
+
+string JobFragment::dump() const {
+    stringstream os;
+    os << "JobFragment resultTbl=" << _resultTblName << " templateIndexes={";
+    for (int j : _jobSubQueryTempIndexes) {
+        os << j << ", ";
+    }
+    os << "} subchunkIds={";
+    for (int j : _subchunkIds) {
+        os << j << ", ";
+    }
+    os << "} dbtbl={";
+    for (int j : _subchunkIds) {
+        os << j << ", ";
+    }
+    os << "}";
+    return os.str();
 }
 
 nlohmann::json JobFragment::serializeJson() const {
@@ -633,14 +660,14 @@ nlohmann::json JobFragment::serializeJson() const {
     return jsFragment;
 }
 
-JobFragment::Vect JobFragment::createVectFromJson(nlohmann::json const& jsFrags,
-                                                  JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                                                  JobDbTablesMap::Ptr const& dbTablesMap,
-                                                  std::string const& resultTblName) {
+JobFragment::VectPtr JobFragment::createVectFromJson(nlohmann::json const& jsFrags,
+                                                     JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
+                                                     JobDbTablesMap::Ptr const& dbTablesMap,
+                                                     std::string const& resultTblName) {
     LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVectFromJson " << jsFrags);
     LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVectFromJson a");
 
-    JobFragment::Vect jobFragments;
+    JobFragment::VectPtr jobFragments{new JobFragment::Vect()};
 
     for (auto const& jsFrag : jsFrags) {
         LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVectFromJson b");
@@ -690,7 +717,7 @@ JobFragment::Vect JobFragment::createVectFromJson(nlohmann::json const& jsFrags,
 
         LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVectFromJson e");
         jobFrag->_subchunkIds = jsFrag["subchunkids"].get<std::vector<int>>();
-        jobFragments.push_back(jobFrag);
+        jobFragments->push_back(jobFrag);
     }
 
     LOGS(_log, LOG_LVL_WARN, "&&& JobFragment::createVectFromJson end");
