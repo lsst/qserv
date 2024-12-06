@@ -105,7 +105,9 @@
 #include "rproc/InfileMerger.h"
 #include "sql/Schema.h"
 #include "util/Bug.h"
+#include "util/InstanceCount.h"  //&&&
 #include "util/IterableFormatter.h"
+#include "util/Histogram.h"  //&&&
 #include "util/QdispPool.h"
 #include "util/ThreadPriority.h"
 #include "qdisp/UberJob.h"
@@ -276,7 +278,8 @@ void UserQuerySelect::submit() {
         qproc::ChunkQuerySpec::Ptr cs;
         {
             std::lock_guard<std::mutex> lock(chunksMtx);
-            cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec);
+            bool fillInChunkIdTag = false;  // do not fill in the chunkId
+            cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
             chunks.push_back(cs->chunkId);
         }
         std::string chunkResultName = _ttn->make(cs->chunkId);
@@ -321,10 +324,15 @@ void UserQuerySelect::submit() {
     }
 }
 
+util::HistogramRolling histoBuildAndS("&&&uj histoBuildAndS", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+util::HistogramRolling histoBuildAndS1("&&&uj histoBuildAndS1", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+
 void UserQuerySelect::buildAndSendUberJobs() {
+    util::InstanceCount ic("UserQuerySelect::buildAndSendUberJobs&&&");
     // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start");
+    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj start " << _uberJobMaxChunks);
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
     if (!_executive->isReadyToExecute()) {
@@ -333,7 +341,9 @@ void UserQuerySelect::buildAndSendUberJobs() {
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
+    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj lock before");
     lock_guard fcLock(_buildUberJobMtx);
+    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj lock after");
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << _executive->getTotalJobs());
 
     vector<qdisp::UberJob::Ptr> uberJobs;
@@ -341,6 +351,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = _executive->unassignedChunksInQuery();
     if (unassignedChunksInQuery.empty()) {
         LOGS(_log, LOG_LVL_TRACE, funcN << " no unassigned Jobs");
+        LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj no unassigned Jobs");
         return;
     }
 
@@ -380,6 +391,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     map<string, vector<qdisp::UberJob::Ptr>> workerJobMap;
     vector<qdisp::Executive::ChunkIdType> missingChunks;
 
+    auto startassign = CLOCK::now();  //&&&
     // unassignedChunksInQuery needs to be in numerical order so that UberJobs contain chunk numbers in
     // numerical order. The workers run shared scans in numerical order of chunk id numbers.
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
@@ -441,10 +453,15 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         auto& ujVectBack = ujVect.back();
         ujVectBack->addJob(jqPtr);
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGS(_log, LOG_LVL_TRACE,
              funcN << " ujVectBack{" << ujVectBack->getIdStr() << " jobCnt=" << ujVectBack->getJobCount()
                    << "}");
     }
+    auto endassign = CLOCK::now();                                       //&&&
+    std::chrono::duration<double> secsassign = endassign - startassign;  // &&&
+    histoBuildAndS.addEntry(endassign, secsassign.count());              //&&&
+    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoBuildAndS.getString(""));
+    auto startwcont = CLOCK::now();  //&&&
 
     if (!missingChunks.empty()) {
         string errStr = funcN + " a worker could not be found for these chunks ";
@@ -454,6 +471,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         errStr += " they will be retried later.";
         LOGS(_log, LOG_LVL_ERROR, errStr);
     }
+    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj waitForWorkerContactMap");
 
     // Add worker contact info to UberJobs. The czar can't do anything without
     // the contact map, so it will wait. This should only ever be an issue at startup.
@@ -475,7 +493,12 @@ void UserQuerySelect::buildAndSendUberJobs() {
             _executive->queueUberJob(ujPtr);
         }
     }
+    auto endwcont = CLOCK::now();                                     //&&&
+    std::chrono::duration<double> secswcont = endwcont - startwcont;  // &&&
+    histoBuildAndS1.addEntry(endwcont, secswcont.count());            //&&&
+    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoBuildAndS1.getString(""));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
+    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj " << _executive->dumpUberJobCounts());
 }
 
 /// Block until a submit()'ed query completes.

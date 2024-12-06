@@ -51,6 +51,7 @@
 #include "czar/CzarRegistry.h"
 #include "global/LogContext.h"
 #include "http/Client.h"
+#include "http/ClientConnPool.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
 #include "proto/worker.pb.h"
@@ -89,13 +90,21 @@ Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName)
 
 void Czar::_monitor() {
     string const funcN("Czar::_monitor");
+    uint16_t loopCount = 0;  // unsigned to wrap around
     while (_monitorLoop) {
+        ++loopCount;
         this_thread::sleep_for(_monitorSleepTime);
         LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
 
         /// Check database for changes in worker chunk assignments and aliveness
         try {
-            _czarFamilyMap->read();
+            // TODO:UJ The read() is incredibly expensive until the database has
+            //         a "changed" field of some kind (preferably timestamp) to
+            //         indicate the last time it changed.
+            //         For Now, just do one read every few times through this loop.
+            if (loopCount % 10 == 0 || true) {
+                _czarFamilyMap->read();
+            }
         } catch (ChunkMapException const& cmex) {
             // There are probably chunks that don't exist on any alive worker,
             // continue on in hopes that workers will show up with the missing chunks
@@ -104,8 +113,7 @@ void Czar::_monitor() {
         }
 
         // Send appropriate messages to all ActiveWorkers. This will
-        // check if workers have died by timeout. The response
-        // from the worker include
+        // check if workers have died by timeout.
         _czarRegistry->sendActiveWorkersMessages();
 
         /// Create new UberJobs (if possible) for all jobs that are
@@ -193,10 +201,10 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     string vectMinRunningSizesStr = _czarConfig->getQdispVectMinRunningSizes();
     vector<int> vectMinRunningSizes = util::String::parseToVectInt(vectMinRunningSizesStr, ":", 0);
     LOGS(_log, LOG_LVL_INFO,
-         "INFO qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
-                                        << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
-                                        << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
-                                        << util::prettyCharList(vectMinRunningSizes));
+         " qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
+                                    << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
+                                    << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
+                                    << util::prettyCharList(vectMinRunningSizes));
     _qdispPool = make_shared<util::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
 
     qdisp::CzarStats::setup(_qdispPool);
@@ -207,6 +215,9 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     int const xrootdSpread = _czarConfig->getXrootdSpread();
     LOGS(_log, LOG_LVL_INFO, "config xrootdSpread=" << xrootdSpread);
     _queryDistributionTestVer = _czarConfig->getQueryDistributionTestVer();
+
+    _commandHttpPool = shared_ptr<http::ClientConnPool>(
+            new http::ClientConnPool(_czarConfig->getCommandMaxHttpConnections()));
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_INFO, "Czar config: " << *_czarConfig);

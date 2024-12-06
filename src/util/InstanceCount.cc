@@ -31,7 +31,8 @@ void InstanceCount::_increment(std::string const& source) {
     auto ret = _instances.insert(entry);
     auto iter = ret.first;
     iter->second += 1;
-    LOGS(_log, LOG_LVL_DEBUG, "InstanceCount " << source << " " << iter->first << "=" << iter->second);
+    LOGS(_log, LOG_LVL_WARN,
+         "InstanceCount " << source << " " << iter->first << "=" << iter->second);  //&&&DEBUG
 }
 
 InstanceCount::~InstanceCount() {
@@ -39,7 +40,8 @@ InstanceCount::~InstanceCount() {
     auto iter = _instances.find(_className);
     if (iter != _instances.end()) {
         iter->second -= 1;
-        LOGS(_log, LOG_LVL_DEBUG, "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
+        LOGS(_log, LOG_LVL_WARN,
+             "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);  //&&&DEBUG
         if (iter->second == 0) {
             _instances.erase(_className);
         }
