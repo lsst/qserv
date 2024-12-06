@@ -450,7 +450,7 @@ string JobFragment::dump() const {
 
 string JobFragment::dump() const {
     stringstream os;
-    os << "JobFragment resultTbl=" << _resultTblName << " templateIndexes={";
+    os << " templateIndexes={";
     for (int j : _jobSubQueryTempIndexes) {
         os << j << ", ";
     }

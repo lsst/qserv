@@ -43,6 +43,7 @@
 #include "qproc/ChunkQuerySpec.h"
 #include "util/Bug.h"
 #include "util/common.h"
+#include "util/Histogram.h"  //&&&
 #include "util/QdispPool.h"
 
 // LSST headers
@@ -100,9 +101,12 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
     return success;
 }
 
-void UberJob::runUberJob() {
+util::HistogramRolling histoRunUberJob("&&&uj histoRunUberJob", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+util::HistogramRolling histoUJSerialize("&&&uj histoUJSerialize", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+
+void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelled
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
-    LOGS(_log, LOG_LVL_ERROR, "&&& jsonTESTrequest start");
+    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
@@ -164,6 +168,10 @@ void UberJob::runUberJob() {
         LOGS(_log, LOG_LVL_WARN, requestContext + " ujresponse failed, ex: " + ex.what());
         exceptionWhat = ex.what();
     }
+    auto endclient = CLOCK::now();                                       //&&&
+    std::chrono::duration<double> secsclient = endclient - startclient;  // &&&
+    histoRunUberJob.addEntry(endclient, secsclient.count());             //&&&
+    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoRunUberJob.getString(""));
     if (!transmitSuccess) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure, try to send jobs elsewhere");
         _unassignJobs();  // locks _jobsMtx
@@ -172,6 +180,7 @@ void UberJob::runUberJob() {
     } else {
         setStatusIfOk(qmeta::JobStatus::REQUEST, cName(__func__) + " transmitSuccess");  // locks _jobsMtx
     }
+    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj runuj end");
     return;
 }
 

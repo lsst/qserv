@@ -129,7 +129,9 @@ void normalize(ChunkSpecVector& specs) {
 ////////////////////////////////////////////////////////////////////////
 // ChunkSpec
 ////////////////////////////////////////////////////////////////////////
-bool ChunkSpec::shouldSplit() const { return subChunks.size() > (unsigned)GOOD_SUBCHUNK_COUNT; }
+//&&&bool ChunkSpec::shouldSplit() const { return subChunks.size() > (unsigned)GOOD_SUBCHUNK_COUNT; }
+//&&& subchunks are handled in their own tasks now, so there's no point in splitting anymore.
+bool ChunkSpec::shouldSplit() const { return false; }
 
 ChunkSpec ChunkSpec::intersect(ChunkSpec const& cs) const {
     ChunkSpec output(*this);
