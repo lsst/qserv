@@ -143,6 +143,7 @@ public:
     JobFragment() = delete;
     JobFragment(JobFragment const&) = delete;
 
+    /* &&&
     static VectPtr createVect(qproc::ChunkQuerySpec const& chunkQuerySpec,
                               JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
                               JobDbTablesMap::Ptr const& dbTablesMap, std::string const& resultTblName);
@@ -152,6 +153,16 @@ public:
                                       JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
                                       JobDbTablesMap::Ptr const& dbTablesMap,
                                       std::string const& resultTblName);
+    */
+
+    static VectPtr createVect(qproc::ChunkQuerySpec const& chunkQuerySpec,
+                              JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
+                              JobDbTablesMap::Ptr const& dbTablesMap);
+
+    /// &&& doc
+    static VectPtr createVectFromJson(nlohmann::json const& ujJson,
+                                      JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
+                                      JobDbTablesMap::Ptr const& dbTablesMap);
 
     /// Return a json version of the contents of this class.
     nlohmann::json serializeJson() const;
@@ -159,20 +170,30 @@ public:
     std::vector<int> const& getJobSubQueryTempIndexes() const { return _jobSubQueryTempIndexes; }
     std::vector<int> const& getJobDbTablesIndexes() const { return _jobDbTablesIndexes; }
     std::vector<int> const& getSubchunkIds() const { return _subchunkIds; }
-    std::string const& getResultTblName() const { return _resultTblName; }
+    //&&&std::string const& getResultTblName() const { return _resultTblName; }
 
     std::string dump() const;
 
 private:
+    /* &&&
     JobFragment(JobSubQueryTempMap::Ptr const& subQueryTemplates, JobDbTablesMap::Ptr const& dbTablesMap,
                 std::string const& resultTblName);
+    */
+    JobFragment(JobSubQueryTempMap::Ptr const& subQueryTemplates, JobDbTablesMap::Ptr const& dbTablesMap);
 
     /// &&& doc
+    static void _addFragment(std::vector<Ptr>& jFragments, DbTableSet const& subChunkTables,
+                             std::vector<int> const& subchunkIds, std::vector<std::string> const& queries,
+                             JobSubQueryTempMap::Ptr const& subQueryTemplates,
+                             JobDbTablesMap::Ptr const& dbTablesMap);
+
+    /* &&&
     static void _addFragment(std::vector<Ptr>& jFragments, std::string const& resultTblName,
                              DbTableSet const& subChunkTables, std::vector<int> const& subchunkIds,
                              std::vector<std::string> const& queries,
                              JobSubQueryTempMap::Ptr const& subQueryTemplates,
                              JobDbTablesMap::Ptr const& dbTablesMap);
+                             */
 
     JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< &&& doc
     std::vector<int> _jobSubQueryTempIndexes;     ///< &&& doc
@@ -182,8 +203,10 @@ private:
 
     std::vector<int> _subchunkIds;  ///< &&& doc
 
+    /* &&&
     std::string _resultTblName;  ///< &&& doc &&& probably not needed here. Replace with
                                  ///< JobMsg::_chunkResultName field.
+     */
 };
 
 /// This class is used to store the information for a single Job (the queries and metadata

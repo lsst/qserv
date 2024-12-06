@@ -59,8 +59,7 @@ namespace qdisp {
 class Executive;
 class ResponseHandler;
 
-/** Description of a job managed by the executive
- */
+/// Description of a job managed by the executive
 class JobDescription {
 public:
     using Ptr = std::shared_ptr<JobDescription>;
