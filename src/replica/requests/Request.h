@@ -62,7 +62,6 @@ namespace lsst::qserv::replica {
  *   the request. The functin type is specific for each subclass.
  * @param priority The (optional) priority level of the request.
  * @param keepTracking The (optional) flagg to keep tracking the request before it finishes or fails.
- * @param allowDuplicate (optional) Follow a previously made request if the current one duplicates it.
  * @param jobId The (optional) unique identifier of a job to which the request belongs.
  * @param requestExpirationIvalSec The (optional) time in seconds after which the request
  *   will expire. The default value of '0' means an effective expiration time will be pull
@@ -162,12 +161,7 @@ public:
     /// @return a unique identifier of the request
     std::string const& id() const { return _id; }
 
-    /**
-     * Normally this is the same request as the one a request object is created with
-     * unless allowing to track duplicate requests (see constructor's options: 'keepTracking'
-     * and 'allowDuplicate') and after the one is found.
-     * @return an effective identifier of a remote (worker-side) request.
-     */
+    /// @return an effective identifier of a remote (worker-side) request
     std::string const& remoteId() const;
 
     /// @return the priority level of the request
@@ -264,7 +258,7 @@ protected:
     /**
      * Construct the request with the pointer to the services provider.
      *
-     * @note options 'keepTracking', 'allowDuplicate' and 'disposeRequired'
+     * @note options 'keepTracking' and 'disposeRequired'
      *   have effect for specific request only.
      *
      * @param controller The Controller associated with the request.
@@ -275,15 +269,12 @@ protected:
      *   the request by the worker service. It may also affect an order requests
      *   are processed locally. Higher number means higher priority.
      * @param keepTracking Keep tracking the request before it finishes or fails
-     * @param allowDuplicate Follow a previously made request if the current one
-     *   duplicates it.
      * @param disposeRequired The flag indicating of the worker-side request
      *   disposal is needed for a particular request. Normally, it's required for
      *   requests which are queued by workers in its processing queues.
      */
     Request(std::shared_ptr<Controller> const& controller, std::string const& type,
-            std::string const& workerName, int priority, bool keepTracking, bool allowDuplicate,
-            bool disposeRequired);
+            std::string const& workerName, int priority, bool keepTracking, bool disposeRequired);
 
     /// @return A shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -310,9 +301,6 @@ protected:
 
     /// @return If 'true' then track request completion (queued requests only)
     bool keepTracking() const { return _keepTracking; }
-
-    /// @return If 'true' then follow a previously made request if the current one duplicates it.
-    bool allowDuplicate() const { return _allowDuplicate; }
 
     /// @return If 'true' the request needs to be disposed at the worker's side upon
     ///   a completion of an operation.
@@ -535,7 +523,6 @@ private:
 
     int const _priority;
     bool const _keepTracking;
-    bool const _allowDuplicate;
     bool const _disposeRequired;
 
     /// An effective identifier of a remote (worker-side) request where
