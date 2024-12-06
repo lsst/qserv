@@ -35,10 +35,11 @@ namespace lsst::qserv::replica {
 
 ReplicationTask::Ptr ReplicationTask::create(Controller::Ptr const& controller,
                                              Task::AbnormalTerminationCallbackType const& onTerminated,
-                                             unsigned int qservSyncTimeoutSec, bool forceQservSync,
-                                             unsigned int replicationIntervalSec, bool purge) {
-    return Ptr(new ReplicationTask(controller, onTerminated, qservSyncTimeoutSec, forceQservSync,
-                                   replicationIntervalSec, purge));
+                                             unsigned int qservSyncTimeoutSec, bool disableQservSync,
+                                             bool forceQservSync, unsigned int replicationIntervalSec,
+                                             bool purge) {
+    return Ptr(new ReplicationTask(controller, onTerminated, qservSyncTimeoutSec, disableQservSync,
+                                   forceQservSync, replicationIntervalSec, purge));
 }
 
 bool ReplicationTask::onRun() {
@@ -49,21 +50,21 @@ bool ReplicationTask::onRun() {
             serviceProvider()->config()->get<int>("controller", "catalog-management-priority-level");
 
     launch<FindAllJob>(priority, saveReplicaInfo, allWorkers);
-    sync(_qservSyncTimeoutSec, _forceQservSync);
+    if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
 
     launch<FixUpJob>(priority);
-    sync(_qservSyncTimeoutSec, _forceQservSync);
+    if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
 
     launch<ReplicateJob>(priority, numReplicas);
-    sync(_qservSyncTimeoutSec, _forceQservSync);
+    if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
 
     bool const estimateOnly = false;
     launch<RebalanceJob>(priority, estimateOnly);
-    sync(_qservSyncTimeoutSec, _forceQservSync);
+    if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
 
     if (_purge) {
         launch<PurgeJob>(priority, numReplicas);
-        sync(_qservSyncTimeoutSec, _forceQservSync);
+        if (!_disableQservSync) sync(_qservSyncTimeoutSec, _forceQservSync);
     }
 
     // Keep on getting calls on this method after a wait time
@@ -72,10 +73,11 @@ bool ReplicationTask::onRun() {
 
 ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
                                  Task::AbnormalTerminationCallbackType const& onTerminated,
-                                 unsigned int qservSyncTimeoutSec, bool forceQservSync,
+                                 unsigned int qservSyncTimeoutSec, bool disableQservSync, bool forceQservSync,
                                  unsigned int replicationIntervalSec, bool purge)
         : Task(controller, "REPLICATION-THREAD  ", onTerminated, replicationIntervalSec),
           _qservSyncTimeoutSec(qservSyncTimeoutSec),
+          _disableQservSync(disableQservSync),
           _forceQservSync(forceQservSync),
           _purge(purge) {}
 

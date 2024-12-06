@@ -70,6 +70,7 @@ struct {
     unsigned int const workerReconfigTimeoutSec = 600;
 
     bool const purge = false;
+    bool const disableQservSync = false;
     bool const forceQservSync = false;
     bool const permanentDelete = false;
 
@@ -111,6 +112,7 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
           _qservSyncTimeoutSec(::defaultOptions.qservSyncTimeoutSec),
           _workerReconfigTimeoutSec(::defaultOptions.workerReconfigTimeoutSec),
           _purge(::defaultOptions.purge),
+          _disableQservSync(::defaultOptions.disableQservSync),
           _forceQservSync(::defaultOptions.forceQservSync),
           _permanentDelete(::defaultOptions.permanentDelete),
           _qservCzarDbUrl(Configuration::qservCzarDbUrl()) {
@@ -155,6 +157,8 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
                             " would override the corresponding parameter specified"
                             " in the Configuration.",
                     _workerReconfigTimeoutSec);
+    parser().flag("qserv-sync-disable", "The flag which disables replica synchroization at Qserv workers.",
+                  _disableQservSync);
     parser().flag("qserv-sync-force",
                   "The flag which would force Qserv workers to update their list of replicas"
                   " even if some of the chunk replicas were still in use by on-going queries."
@@ -212,7 +216,7 @@ int MasterControllerHttpApp::runImpl() {
 
     _replicationTask = ReplicationTask::create(
             _controller, [self](Task::Ptr const& ptr) { self->_isFailed.fail(); }, _qservSyncTimeoutSec,
-            _forceQservSync, _replicationIntervalSec, _purge);
+            _disableQservSync, _forceQservSync, _replicationIntervalSec, _purge);
     _replicationTask->start();
 
     _healthMonitorTask = HealthMonitorTask::create(

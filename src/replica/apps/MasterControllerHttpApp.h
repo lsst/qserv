@@ -144,6 +144,7 @@ private:
     unsigned int _workerReconfigTimeoutSec;
 
     bool _purge;
+    bool _disableQservSync;
     bool _forceQservSync;
     bool _permanentDelete;
 
