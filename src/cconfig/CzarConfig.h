@@ -214,6 +214,9 @@ public:
     /// The maximum number of chunks (basically Jobs) allowed in a single UberJob.
     int getUberJobMaxChunks() const { return _uberJobMaxChunks->getVal(); }
 
+    /// Return the maximum number of http connections to use for czar commands.
+    int getCommandMaxHttpConnections() const { return _commandMaxHttpConnections->getVal(); }
+
     // Parameters of the Czar management service
 
     std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
@@ -307,7 +310,7 @@ private:
     CVTIntPtr _resultMaxConnections =
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxconnections", notReq, 40);
     CVTIntPtr _resultMaxHttpConnections =
-            util::ConfigValTInt::create(_configValMap, "resultdb", "maxhttpconnections", notReq, 8192);
+            util::ConfigValTInt::create(_configValMap, "resultdb", "maxhttpconnections", notReq, 2000);
     CVTIntPtr _oldestResultKeptDays =
             util::ConfigValTInt::create(_configValMap, "resultdb", "oldestResultKeptDays", notReq, 30);
 
@@ -358,9 +361,9 @@ private:
     CVTIntPtr _qdispMaxPriority =
             util::ConfigValTInt::create(_configValMap, "qdisppool", "largestPriority", notReq, 2);
     CVTStrPtr _qdispVectRunSizes =
-            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectRunSizes", notReq, "50:50:50:50");
+            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectRunSizes", notReq, "800:800:500:50");
     CVTStrPtr _qdispVectMinRunningSizes =
-            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectMinRunningSizes", notReq, "0:1:3:3");
+            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectMinRunningSizes", notReq, "0:3:3:3");
 
     CVTIntPtr _xrootdSpread = util::ConfigValTInt::create(_configValMap, "tuning", "xrootdSpread", notReq, 4);
     CVTIntPtr _qMetaSecsBetweenChunkCompletionUpdates = util::ConfigValTInt::create(
@@ -410,7 +413,11 @@ private:
 
     // UberJobs
     CVTIntPtr _uberJobMaxChunks =
-            util::ConfigValTInt::create(_configValMap, "uberjob", "maxChunks", notReq, 10);
+            util::ConfigValTInt::create(_configValMap, "uberjob", "maxChunks", notReq, 1000);
+
+    /// This may impact `_resultMaxHttpConnections` as too many connections may cause kernel memory issues.
+    CVTIntPtr _commandMaxHttpConnections =
+            util::ConfigValTInt::create(_configValMap, "uberjob", "commandMaxHttpConnections", notReq, 2000);
 };
 
 }  // namespace lsst::qserv::cconfig

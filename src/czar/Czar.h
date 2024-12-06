@@ -56,6 +56,10 @@ class ActiveWorkerMap;
 class HttpSvc;
 }  // namespace lsst::qserv::czar
 
+namespace lsst::qserv::http {
+class ClientConnPool;
+}  // namespace lsst::qserv::http
+
 namespace lsst::qserv::util {
 class FileMonitor;
 }  // namespace lsst::qserv::util
@@ -155,6 +159,8 @@ public:
 
     std::shared_ptr<util::QdispPool> getQdispPool() const { return _qdispPool; }
 
+    std::shared_ptr<http::ClientConnPool> getCommandHttpPool() const { return _commandHttpPool; }
+
     /// Startup time of czar, sent to workers so they can detect that the czar was
     /// was restarted when this value changes.
     static uint64_t const czarStartupTime;
@@ -228,7 +234,7 @@ private:
     std::atomic<bool> _monitorLoop{true};
 
     /// Wait time between checks. TODO:UJ set from config
-    std::chrono::milliseconds _monitorSleepTime{15000};
+    std::chrono::milliseconds _monitorSleepTime{15'000};  // &&& config
 
     /// Keeps track of all workers (alive or otherwise) that this czar
     /// may communicate with. Once created, the pointer never changes.
@@ -236,7 +242,7 @@ private:
 
     /// A combined priority queue and thread pool to regulate czar communications
     /// with workers. Once created, the pointer never changes.
-    /// TODO:UJ - It would be better to have a pool for each worker as it
+    /// TODO:UJ - It may be better to have a pool for each worker as it
     ///           may be possible for a worker to have communications
     ///           problems in a way that would wedge the pool. This can
     ///           probably be done fairly easily by having pools
@@ -244,6 +250,10 @@ private:
     ///           This was not possible in xrootd as the czar had
     ///           no reasonable way to know where Jobs were going.
     std::shared_ptr<util::QdispPool> _qdispPool;
+
+    /// Pool of http client connections for sending commands (UberJobs
+    /// and worker status requests).
+    std::shared_ptr<http::ClientConnPool> _commandHttpPool;
 };
 
 }  // namespace lsst::qserv::czar

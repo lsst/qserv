@@ -236,6 +236,7 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
 }
 
 void Executive::queueUberJob(std::shared_ptr<UberJob> const& uberJob) {
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&&uj queueUberJob");
     auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
