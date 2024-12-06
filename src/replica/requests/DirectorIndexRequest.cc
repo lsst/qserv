@@ -49,7 +49,6 @@ namespace fs = std::filesystem;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DirectorIndexRequest");
-bool const allowDuplicateNo = false;
 bool const disposeRequired = true;
 }  // namespace
 
@@ -78,8 +77,7 @@ DirectorIndexRequest::DirectorIndexRequest(std::shared_ptr<Controller> const& co
                                            string const& directorTable, unsigned int chunk,
                                            bool hasTransactions, TransactionId transactionId,
                                            CallbackType const& onFinish, int priority, bool keepTracking)
-        : RequestMessenger(controller, "INDEX", workerName, priority, keepTracking, ::allowDuplicateNo,
-                           ::disposeRequired),
+        : RequestMessenger(controller, "INDEX", workerName, priority, keepTracking, ::disposeRequired),
           _database(database),
           _directorTable(directorTable),
           _chunk(chunk),
