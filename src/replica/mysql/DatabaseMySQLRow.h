@@ -41,6 +41,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/BinaryEncoding.h"
 #include "replica/mysql/DatabaseMySQLExceptions.h"
 
 // Forward declarations
@@ -227,7 +228,7 @@ public:
      * Convert the current row into a JSON object.
      * @return a JSON object representing the current row
      */
-    nlohmann::json toJson() const;
+    nlohmann::json toJson(http::BinaryEncodingMode binaryEncodingMode = http::BinaryEncodingMode::HEX) const;
 
 private:
     /**

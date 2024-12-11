@@ -30,6 +30,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
@@ -72,6 +73,15 @@ ostream& operator<<(ostream& os, Performance const& p) {
        << " w.finish:" << p.w_finish_time << " c.finish:" << p.c_finish_time
        << " length.sec:" << (p.c_finish_time ? (p.c_finish_time - p.c_start_time) / 1000. : '*');
     return os;
+}
+
+json WorkerPerformance::finishedToJson() {
+    WorkerPerformance perf;
+    auto const now = util::TimeUtils::now();
+    perf.receive_time = now;
+    perf.start_time = now;
+    perf.finish_time = now;
+    return perf.toJson();
 }
 
 WorkerPerformance::WorkerPerformance()
