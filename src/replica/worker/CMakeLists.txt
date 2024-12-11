@@ -9,6 +9,11 @@ target_sources(replica_worker PRIVATE
     WorkerEchoRequest.cc
     WorkerFindAllRequest.cc
     WorkerFindRequest.cc
+    WorkerHttpProcessor.cc
+    WorkerHttpProcessorThread.cc
+    WorkerHttpRequest.cc
+    WorkerHttpSvc.cc
+    WorkerHttpSvcMod.cc
     WorkerProcessor.cc
     WorkerProcessorThread.cc
     WorkerReplicationRequest.cc
