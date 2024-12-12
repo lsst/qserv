@@ -80,6 +80,9 @@ vector<ConfigWorker> Registry::workers() const {
             worker.svcHost.addr = hostAddr;
             worker.svcHost.name = hostName;
             worker.svcPort = replicationWorker.at("svc-port").get<uint16_t>();
+            worker.httpSvcHost.addr = hostAddr;
+            worker.httpSvcHost.name = hostName;
+            worker.httpSvcPort = replicationWorker.at("http-svc-port").get<uint16_t>();
             worker.fsHost.addr = hostAddr;
             worker.fsHost.name = hostName;
             worker.fsPort = replicationWorker.at("fs-port").get<uint16_t>();
@@ -121,6 +124,7 @@ void Registry::addWorker(string const& name) const {
                            {{"name", name},
                             {"host-name", hostName},
                             {"svc-port", config->get<uint16_t>("worker", "svc-port")},
+                            {"http-svc-port", config->get<uint16_t>("worker", "http-svc-port")},
                             {"fs-port", config->get<uint16_t>("worker", "fs-port")},
                             {"data-dir", config->get<string>("worker", "data-dir")},
                             {"loader-port", config->get<uint16_t>("worker", "loader-port")},
