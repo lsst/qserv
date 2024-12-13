@@ -129,8 +129,8 @@ public:
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
-    // Queue `uberJob` to be run using the QDispPool.
-    void queueUberJob(std::shared_ptr<UberJob> const& uberJob);
+    /// Add the UberJob `uj` to the list and queue it to be sent to a worker.
+    void addAndQueueUberJob(std::shared_ptr<UberJob> const& uj);
 
     /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
     void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
@@ -196,9 +196,6 @@ public:
     /// Store job status and execution errors for the proxy and qservMeta QMessages.
     /// @see python module lsst.qserv.czar.proxy.unlock()
     void updateProxyMessages();
-
-    /// Add UbjerJobs to this user query.
-    void addUberJobs(std::vector<std::shared_ptr<UberJob>> const& jobsToAdd);
 
     /// Call UserQuerySelect::buildAndSendUberJobs make new UberJobs for
     /// unassigned jobs.
@@ -345,7 +342,7 @@ private:
     /// Flag that is set to true when ready to create and run UberJobs.
     std::atomic<bool> _readyToExecute{false};
 
-    protojson::ScanInfo::Ptr _scanInfo;  ///< &&& doc
+    protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
 };
 
 }  // namespace qdisp
