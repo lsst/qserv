@@ -274,33 +274,6 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
-                    {
-                        ostringstream os;
-                        os << "&&&TEST00 ";
-                        os << " &&&TEST";
-                        os << "; ujData?";
-                        os << "; jobId=" << jdJobId;
-                        os << "; attemptCount=" << jdAttemptCount;
-                        os << "; chunkId=" << jdChunkId;
-                        os << "; fragmentNumber=" << fragmentNumber;
-                        os << "; templateId=" << templateId;
-                        os << "; noSubchunks=" << noSubchunks;
-                        os << "; subchunkId=" << subchunkId;
-                        os << "; chunkQuerySpecDb?";
-                        os << "; scanInfo=" << *scanInfo;
-                        os << "; scanInteractive=" << scanInteractive;
-                        os << "; maxTableSizeMb=" << maxTableSizeMb;
-                        os << "; fragSubTables={";
-                        for (auto const& fsTbl : fragSubTables) {
-                            os << fsTbl.db << "." << fsTbl.tbl << ", ";
-                        }
-                        os << "}";
-                        os << "; fragSubchunkIds=" << util::printable(fragSubchunkIds);
-                        os << "; sendChannel?";
-                        os << "; queryStats?";
-                        os << "; resultsHttpPort=" << resultsHttpPort;
-                        LOGS(_log, LOG_LVL_WARN, "&&&" << os.str());
-                    }
                     auto task = Task::Ptr(new Task(
                             ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, templateId,
                             noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
@@ -310,33 +283,6 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
-                        {
-                            ostringstream os;
-                            os << "&&&TEST01 ";
-                            os << " &&&TEST";
-                            os << "; ujData?";
-                            os << "; jobId=" << jdJobId;
-                            os << "; attemptCount=" << jdAttemptCount;
-                            os << "; chunkId=" << jdChunkId;
-                            os << "; fragmentNumber=" << fragmentNumber;
-                            os << "; templateId=" << templateId;
-                            os << "; noSubchunks=" << hasSubchunks;
-                            os << "; subchunkId=" << subchunkId;
-                            os << "; chunkQuerySpecDb?";
-                            os << "; scanInfo=" << *scanInfo;
-                            os << "; scanInteractive=" << scanInteractive;
-                            os << "; maxTableSizeMb=" << maxTableSizeMb;
-                            os << "; fragSubTables={";
-                            for (auto const& fsTbl : fragSubTables) {
-                                os << fsTbl.db << "." << fsTbl.tbl << ", ";
-                            }
-                            os << "}";
-                            os << "; fragSubchunkIds=" << util::printable(fragSubchunkIds);
-                            os << "; sendChannel?";
-                            os << "; queryStats?";
-                            os << "; resultsHttpPort=" << resultsHttpPort;
-                            LOGS(_log, LOG_LVL_WARN, "&&&" << os.str());
-                        }
                         auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
                                                        fragmentNumber, templateId, hasSubchunks, subchunkId,
                                                        jdQuerySpecDb, scanInfo, scanInteractive,
@@ -400,7 +346,6 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         std::string chunkQuerySpecDb = jobMsg->getChunkQuerySpecDb();
         bool scanInteractive = jobMsg->getScanInteractive();
         int chunkId = jobMsg->getChunkId();
-        std::string chunkResultName = jobMsg->getChunkResultName();
 
         std::vector<int> chunkScanTableIndexes = jobMsg->getChunkScanTableIndexes();
         auto jobFragments = jobMsg->getJobFragments();
@@ -461,23 +406,14 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
     return vect;
 }
 
-//&&&
 std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
         std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
         protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
-        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr
-        //&&&mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-        //&&&std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-        //&&&uint16_t resultsHttpPort = 8080) {
-) {
+        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr) {
     QueryId qId = ujData->getQueryId();
     UberJobId ujId = ujData->getUberJobId();
     CzarIdType czId = ujData->getCzarId();
-
-    //&&& wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
-    //&&& UserQueryInfo::Ptr userQueryInfo = queryStats->getUserQueryInfo();
-
     string funcN(__func__);
     funcN += " QID=" + to_string(qId) + " ";
 
@@ -537,16 +473,9 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
             }
 
             for (string const& fragSubQ : fragSubQueries) {
-                //&&&size_t templateId = userQueryInfo->addTemplate(fragSubQ);
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
-                    /* &&&
-                    auto task = Task::Ptr(new Task(
-                            ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, templateId,
-                            noSubchunks, subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
-                            fragSubTables, fragSubchunkIds, sendChannel, queryStats, resultsHttpPort));
-                            */
                     auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber,
                                                    0, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
                                                    scanInteractive, maxTableSizeMb, fragSubTables,
@@ -556,13 +485,6 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
-                        /* &&&
-                        auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
-                                                       fragmentNumber, templateId, hasSubchunks, subchunkId,
-                                                       jdQuerySpecDb, scanInfo, scanInteractive,
-                                                       maxTableSizeMb, fragSubTables, fragSubchunkIds,
-                                                       sendChannel, queryStats, resultsHttpPort));
-                                                       */
                         auto task = Task::Ptr(new Task(
                                 ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, 0, hasSubchunks,
                                 subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
@@ -576,13 +498,6 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
         }
     }
 
-    /* &&& shouldn't need this
-    for (auto taskPtr : vect) {
-        // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
-        taskPtr->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(taskPtr, chunkResourceMgr, mySqlConfig,
-                                                                     sqlConnMgr, queriesAndChunks));
-    }
-    */
     return vect;
 }
 

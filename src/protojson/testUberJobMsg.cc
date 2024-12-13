@@ -100,29 +100,13 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     string const replicationInstanceId = "repliInstId";
     string const replicationAuthKey = "repliIAuthKey";
 
-    //&&&uint64_t cxrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 5s);
-    //&&&uint64_t wkrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 10s);
-
-    /* &&&
-        string const czrName("czar_name");
-        lsst::qserv::CzarIdType const czrId = 32;
-        int czrPort = 2022;
-        string const czrHost("cz_host");
-        LOGS(_log, LOG_LVL_WARN, "&&& testUJM a");
-        auto czarA =
-                lsst::qserv::protojson::CzarContactInfo::create(czrName, czrId, czrPort, czrHost,
-       cxrStartTime);
-
-
-    LOGS(_log, LOG_LVL_WARN, "&&& testUJM b");
+    LOGS(_log, LOG_LVL_INFO, "testUJM start");
     string jsStr = testA();
     nlohmann::json js = nlohmann::json::parse(jsStr);
     UberJobMsg::Ptr ujm = UberJobMsg::createFromJson(js);
     BOOST_REQUIRE(ujm != nullptr);
-    LOGS(_log, LOG_LVL_WARN, "&&& testUJM c");
 
     nlohmann::json jsUjm = ujm->serializeJson();
-    LOGS(_log, LOG_LVL_WARN, "&&& testUJM d");
 
     LOGS(_log, LOG_LVL_INFO, "js=" << js);
     LOGS(_log, LOG_LVL_INFO, "jsUjm=" << jsUjm);
@@ -138,7 +122,6 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
         LOGS(_log, LOG_LVL_ERROR, "jsUjmCreated=" << jsUjmCreated);
     }
     BOOST_REQUIRE(createdMatchesOriginal);
-    */
 
     BOOST_REQUIRE(parseSerializeReparseCheck(testA(), "A"));
     BOOST_REQUIRE(parseSerializeReparseCheck(testB(), "B"));

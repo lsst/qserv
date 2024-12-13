@@ -99,14 +99,10 @@ void ScanInfo::sortTablesSlowestFirst() {
 }
 
 nlohmann::json ScanInfo::serializeJson() const {
-    LOGS(_log, LOG_LVL_WARN, "&&& ScanInfo::serializeJson a");
     auto jsScanInfo = json({{"infoscanrating", scanRating}, {"infotables", json::array()}});
 
-    LOGS(_log, LOG_LVL_WARN, "&&& ScanInfo::serializeJson b");
     auto& jsInfoTables = jsScanInfo["infotables"];
-    LOGS(_log, LOG_LVL_WARN, "&&& ScanInfo::serializeJson c");
     for (auto const& tInfo : infoTables) {
-        LOGS(_log, LOG_LVL_WARN, "&&& ScanInfo::serializeJson c1");
         json jsTInfo = json({{"sidb", tInfo.db},
                              {"sitable", tInfo.table},
                              {"sirating", tInfo.scanRating},
@@ -115,12 +111,10 @@ nlohmann::json ScanInfo::serializeJson() const {
         jsInfoTables.push_back(jsTInfo);
     }
 
-    LOGS(_log, LOG_LVL_WARN, "&&& ScanInfo::serializeJson end " << jsScanInfo);
     return jsScanInfo;
 }
 
 ScanInfo::Ptr ScanInfo::createFromJson(nlohmann::json const& siJson) {
-    LOGS(_log, LOG_LVL_WARN, "&&& ScanInfo::createFromJson " << siJson);
     Ptr siPtr = create();
     auto& iTbls = siPtr->infoTables;
 
