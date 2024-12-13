@@ -182,10 +182,8 @@ public:
             ujVect.push_back(uJob);
         }
 
-        // Queue up the jobs to be run.
-        addUberJobs(ujVect);
         for (auto const& ujPtr : ujVect) {
-            queueUberJob(ujPtr);
+            addAndQueueUberJob(ujPtr);
         }
         LOGS(_log, LOG_LVL_INFO, "assignJobsToUberJobs() end");
     }

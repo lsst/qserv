@@ -235,9 +235,31 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     }
 }
 
+/* &&&
 void Executive::queueUberJob(std::shared_ptr<UberJob> const& uberJob) {
     LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&&uj queueUberJob");
     auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
+
+    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
+    _jobStartCmdList.push_back(cmd);
+    if (_scanInteractive) {
+        _qdispPool->queCmd(cmd, 0);
+    } else {
+        _qdispPool->queCmd(cmd, 1);
+    }
+}
+*/
+
+void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
+    {
+        lock_guard<mutex> lck(_uberJobsMapMtx);
+        UberJobId ujId = uj->getJobId();
+        _uberJobsMap[ujId] = uj;
+        //&&&uj->setAdded();
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
+    }
+
+    auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
     _jobStartCmdList.push_back(cmd);
@@ -271,15 +293,6 @@ Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
         }
     }
     return unassignedMap;
-}
-
-void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {
-    lock_guard<mutex> lck(_uberJobsMapMtx);
-    for (auto const& uJob : uJobsToAdd) {
-        UberJobId ujId = uJob->getJobId();
-        _uberJobsMap[ujId] = uJob;
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uJob->getJobCount());
-    }
 }
 
 string Executive::dumpUberJobCounts() const {
