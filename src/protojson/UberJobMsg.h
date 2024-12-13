@@ -169,7 +169,6 @@ private:
                              std::vector<int> const& subchunkIds, std::vector<std::string> const& queries,
                              JobSubQueryTempMap::Ptr const& subQueryTemplates,
                              JobDbTablesMap::Ptr const& dbTablesMap);
-                             */
 
     JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< Pointer to indexed list of subquery fragments.
     std::vector<int> _jobSubQueryTempIndexes;     ///< List of subquery template indexes.

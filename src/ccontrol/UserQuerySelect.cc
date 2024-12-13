@@ -103,7 +103,6 @@
 #include "rproc/InfileMerger.h"
 #include "sql/Schema.h"
 #include "util/Bug.h"
-#include "util/InstanceCount.h"  //&&&
 #include "util/IterableFormatter.h"
 #include "util/Histogram.h"  //&&&
 #include "util/QdispPool.h"
@@ -535,10 +534,9 @@ util::HistogramRolling histoBuildAndS("&&&uj histoBuildAndS", {0.1, 1.0, 10.0, 1
 util::HistogramRolling histoBuildAndS1("&&&uj histoBuildAndS1", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
 
 void UserQuerySelect::buildAndSendUberJobs() {
-    util::InstanceCount ic("UserQuerySelect::buildAndSendUberJobs&&&");
     // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " start");
+    LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
     LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj start " << _uberJobMaxChunks);
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
@@ -548,9 +546,9 @@ void UserQuerySelect::buildAndSendUberJobs() {
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
-    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj lock before");
+    util::InstanceCount ica("UserQuerySelect::buildAndSendUberJobs&&&_beforelock");
     lock_guard fcLock(_buildUberJobMtx);
-    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj lock after");
+    util::InstanceCount icb("UserQuerySelect::buildAndSendUberJobs&&&_afterlock");
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << _executive->getTotalJobs());
 
     vector<qdisp::UberJob::Ptr> uberJobs;
@@ -562,10 +560,12 @@ void UserQuerySelect::buildAndSendUberJobs() {
         return;
     }
 
+    // Get czar info and the worker contactMap.
     auto czarPtr = czar::Czar::getCzar();
     auto czFamilyMap = czarPtr->getCzarFamilyMap();
     auto czChunkMap = czFamilyMap->getChunkMap(_queryDbName);
     auto czRegistry = czarPtr->getCzarRegistry();
+    auto const wContactMap = czRegistry->waitForWorkerContactMap();
 
     if (czChunkMap == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, funcN << " no map found for queryDbName=" << _queryDbName);
@@ -595,12 +595,18 @@ void UserQuerySelect::buildAndSendUberJobs() {
     //          again to put those Jobs in new UberJobs. Correctly re-assigning the
     //          Jobs requires accurate information from the registry about which workers
     //          are alive or dead.
-    map<string, vector<qdisp::UberJob::Ptr>> workerJobMap;
+    struct WInfoAndUJPtr {
+        using Ptr = shared_ptr<WInfoAndUJPtr>;
+        qdisp::UberJob::Ptr uberJobPtr;
+        protojson::WorkerContactInfo::Ptr wInf;
+    };
+    //&&& map<string, vector<qdisp::UberJob::Ptr>> workerJobMap;
+    map<string, WInfoAndUJPtr::Ptr> workerJobMap;
     vector<qdisp::Executive::ChunkIdType> missingChunks;
 
     auto startassign = CLOCK::now();  //&&&
     // unassignedChunksInQuery needs to be in numerical order so that UberJobs contain chunk numbers in
-    // numerical order. The workers run shared scans in numerical order of chunk id numbers.
+    // numerical order. The workers run shared scans in numerical order of chunkId numbers.
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
     // and should minimize the time for the first UberJob on the worker to complete.
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
@@ -649,26 +655,43 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         // Add this job to the appropriate UberJob, making the UberJob if needed.
         string workerId = targetWorker->getWorkerId();
-        auto& ujVect = workerJobMap[workerId];
-        if (ujVect.empty() || ujVect.back()->getJobCount() >= _uberJobMaxChunks) {
+        WInfoAndUJPtr::Ptr& wInfUJ = workerJobMap[workerId];
+        if (wInfUJ == nullptr) {
+            wInfUJ = make_shared<WInfoAndUJPtr>();
+            auto iter = wContactMap->find(workerId);  //&&&auto iter = wContactMap->find(wIdKey);
+            if (iter == wContactMap->end()) {
+                // TODO:UJ Not appropriate to throw for this. Need to re-direct all jobs to different workers.
+                //         Also, this really shouldn't happen, but crashing the czar is probably a bad idea,
+                //         so maybe return internal error to the user?
+                throw util::Bug(ERR_LOC, funcN + " TODO:UJ no contact information for " + workerId);
+            }
+            wInfUJ->wInf = iter->second;
+        }
+
+        if (wInfUJ->uberJobPtr == nullptr) {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
             auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
             auto uJob = qdisp::UberJob::create(_executive, respHandler, _executive->getId(), ujId,
                                                _qMetaCzarId, targetWorker);
-            ujVect.push_back(uJob);
+            uJob->setWorkerContactInfo(wInfUJ->wInf);
+            wInfUJ->uberJobPtr = uJob;
+        };
+
+        wInfUJ->uberJobPtr->addJob(jqPtr);
+
+        if (wInfUJ->uberJobPtr->getJobCount() >= _uberJobMaxChunks) {
+            // Queue the UberJob to be sent to a worker
+            _executive->addAndQueueUberJob(wInfUJ->uberJobPtr);
+
+            // Clear the pinter so a new UberJob is created later if needed.
+            wInfUJ->uberJobPtr = nullptr;
         }
-        auto& ujVectBack = ujVect.back();
-        ujVectBack->addJob(jqPtr);
-        LOGS(_log, LOG_LVL_TRACE,
-             funcN << " ujVectBack{" << ujVectBack->getIdStr() << " jobCnt=" << ujVectBack->getJobCount()
-                   << "}");
     }
     auto endassign = CLOCK::now();                                       //&&&
     std::chrono::duration<double> secsassign = endassign - startassign;  // &&&
     histoBuildAndS.addEntry(endassign, secsassign.count());              //&&&
     LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoBuildAndS.getString(""));
-    auto startwcont = CLOCK::now();  //&&&
 
     if (!missingChunks.empty()) {
         string errStr = funcN + " a worker could not be found for these chunks ";
@@ -678,32 +701,17 @@ void UserQuerySelect::buildAndSendUberJobs() {
         errStr += " they will be retried later.";
         LOGS(_log, LOG_LVL_ERROR, errStr);
     }
-    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj waitForWorkerContactMap");
 
-    // Add worker contact info to UberJobs. The czar can't do anything without
-    // the contact map, so it will wait. This should only ever be an issue at startup.
-    auto const wContactMap = czRegistry->waitForWorkerContactMap();
-    for (auto const& [wIdKey, ujVect] : workerJobMap) {
-        auto iter = wContactMap->find(wIdKey);
-        if (iter == wContactMap->end()) {
-            // TODO:UJ Not appropriate to throw for this. Need to re-direct all jobs to different workers.
-            //         Also, this really shouldn't happen, but crashing the czar is probably a bad idea,
-            //         so maybe return internal error to the user?
-            throw util::Bug(ERR_LOC, funcN + " TODO:UJ no contact information for " + wIdKey);
-        }
-        auto const& wContactInfo = iter->second;
-        for (auto const& ujPtr : ujVect) {
-            ujPtr->setWorkerContactInfo(wContactInfo);
-        }
-        _executive->addUberJobs(ujVect);
-        for (auto const& ujPtr : ujVect) {
-            _executive->queueUberJob(ujPtr);
+    // Queue unqued UberJobs, these have less than the max number of jobs.
+    for (auto const& [wIdKey, winfUjPtr] : workerJobMap) {
+        if (winfUjPtr != nullptr) {
+            auto& ujPtr = winfUjPtr->uberJobPtr;
+            if (ujPtr != nullptr) {
+                _executive->addAndQueueUberJob(ujPtr);
+            }
         }
     }
-    auto endwcont = CLOCK::now();                                     //&&&
-    std::chrono::duration<double> secswcont = endwcont - startwcont;  // &&&
-    histoBuildAndS1.addEntry(endwcont, secswcont.count());            //&&&
-    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoBuildAndS1.getString(""));
+
     LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
     LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj " << _executive->dumpUberJobCounts());
 }

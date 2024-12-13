@@ -263,8 +263,16 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     }
 }
 
-void Executive::runUberJob(std::shared_ptr<UberJob> const& uberJob) {
-    auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
+void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
+    {
+        lock_guard<mutex> lck(_uberJobsMapMtx);
+        UberJobId ujId = uj->getJobId();
+        _uberJobsMap[ujId] = uj;
+        //&&&uj->setAdded();
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
+    }
+
+    auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
     _jobStartCmdList.push_back(cmd);
