@@ -45,13 +45,8 @@
 
 namespace lsst::qserv {
 
-namespace proto {
-class TaskMsg;
-}
-
 namespace qproc {
 class ChunkQuerySpec;
-class TaskMsgFactory;
 }  // namespace qproc
 
 namespace qdisp {
@@ -66,10 +61,9 @@ public:
     static JobDescription::Ptr create(qmeta::CzarId czarId, QueryId qId, JobId jobId,
                                       ResourceUnit const& resource,
                                       std::shared_ptr<ResponseHandler> const& respHandler,
-                                      std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                                       std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                                       std::string const& chunkResultName, bool mock = false) {
-        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler, taskMsgFactory,
+        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler,
                                                   chunkQuerySpec, chunkResultName, mock));
         return jd;
     }
@@ -88,8 +82,7 @@ public:
     int getScanRating() const;
 
     /// Increase the attempt count by 1 and return false if that puts it over the limit.
-    /// TODO:UJ scrubbing results unneeded with uj. This should be renamed.
-    bool incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase);
+    bool incrAttemptCount(std::shared_ptr<Executive> const& exec, bool increase);
 
     std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
 
@@ -100,7 +93,6 @@ public:
 private:
     JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
                    std::shared_ptr<ResponseHandler> const& respHandler,
-                   std::shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                    std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                    std::string const& chunkResultName, bool mock = false);
 
@@ -112,7 +104,6 @@ private:
     ResourceUnit _resource;  ///< path, e.g. /q/LSST/23125
 
     std::shared_ptr<ResponseHandler> _respHandler;  // probably MergingHandler
-    std::shared_ptr<qproc::TaskMsgFactory> _taskMsgFactory;
     std::shared_ptr<qproc::ChunkQuerySpec> _chunkQuerySpec;
     std::string _chunkResultName;
 
