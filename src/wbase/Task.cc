@@ -197,6 +197,7 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
 
 Task::~Task() {}
 
+/* &&&
 std::vector<Task::Ptr> Task::createTasksForChunk(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
         std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
@@ -303,6 +304,7 @@ std::vector<Task::Ptr> Task::createTasksForChunk(
     }
     return vect;
 }
+*/
 
 std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         std::shared_ptr<protojson::UberJobMsg> const& ujMsg, std::shared_ptr<UberJobData> const& ujData,

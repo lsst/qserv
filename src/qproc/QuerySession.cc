@@ -418,7 +418,7 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
     if (!_context->hasSubChunks()) {
         cQSpec->queries = _buildChunkQueries(queryTemplates, chunkSpec);
     } else {
-        if (chunkSpec.shouldSplit()) {  //&&& remove case
+        if (chunkSpec.shouldSplit()) {
             ChunkSpecFragmenter frag(chunkSpec);
             ChunkSpec s = frag.get();
             cQSpec->queries = _buildChunkQueries(queryTemplates, s);

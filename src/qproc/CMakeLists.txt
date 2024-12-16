@@ -8,7 +8,6 @@ target_sources(qproc PRIVATE
     IndexMap.cc
     QuerySession.cc
     SecondaryIndex.cc
-    TaskMsgFactory.cc
 )
 
 target_link_libraries(qproc PRIVATE

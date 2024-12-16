@@ -38,7 +38,6 @@
 #include "qdisp/Executive.h"
 #include "qdisp/ResponseHandler.h"
 #include "qproc/ChunkQuerySpec.h"
-#include "qproc/TaskMsgFactory.h"
 
 using namespace std;
 
@@ -50,7 +49,6 @@ namespace lsst::qserv::qdisp {
 
 JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
                                shared_ptr<ResponseHandler> const& respHandler,
-                               shared_ptr<qproc::TaskMsgFactory> const& taskMsgFactory,
                                shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                                string const& chunkResultName, bool mock)
         : _czarId(czarId),
@@ -59,12 +57,11 @@ JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, R
           _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
           _resource(resource),
           _respHandler(respHandler),
-          _taskMsgFactory(taskMsgFactory),
           _chunkQuerySpec(chunkQuerySpec),
           _chunkResultName(chunkResultName),
           _mock(mock) {}
 
-bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive> const& exec, bool increase) {
+bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bool increase) {
     if (increase) {
         ++_attemptCount;
     }
@@ -87,13 +84,6 @@ bool JobDescription::incrAttemptCountScrubResultsJson(std::shared_ptr<Executive>
             return false;
         }
     }
-
-    // build the request
-    auto js = _taskMsgFactory->makeMsgJson(*_chunkQuerySpec, _chunkResultName, _queryId,
-                                           _jobId,  // &&& should be able to delete this
-                                           _attemptCount, _czarId);
-    LOGS(_log, LOG_LVL_DEBUG, "JobDescription::" << __func__ << " js=" << (*js));
-    _jsForWorker = js;  // &&& should be able to delete _jsForWorker
     return true;
 }
 
