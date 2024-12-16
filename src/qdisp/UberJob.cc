@@ -109,52 +109,7 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
     auto exec = _executive.lock();
-#if NEWMSGUJ  // &&&
-    for (auto const& jqPtr : _jobs) {
-        jqPtr->getDescription()->incrAttemptCountScrubResultsJson(exec, true);
-    }
 
-    // Send the uberjob to the worker
-    auto const method = http::Method::POST;
-    auto [ciwId, ciwHost, ciwManagment, ciwPort] = _wContactInfo->getAll();
-    string const url = "http://" + ciwHost + ":" + to_string(ciwPort) + "/queryjob";
-    vector<string> const headers = {"Content-Type: application/json"};
-    auto const& czarConfig = cconfig::CzarConfig::instance();
-
-    // See xrdsvc::httpWorkerCzarModule::_handleQueryJob for json message parsing.
-    json request = {{"version", http::MetaModule::version},
-                    {"instance_id", czarConfig->replicationInstanceId()},
-                    {"auth_key", czarConfig->replicationAuthKey()},
-                    {"worker", ciwId},
-                    {"czarinfo",
-                     {{"name", czarConfig->name()},
-                      {"id", czarConfig->id()},
-                      {"management-port", czarConfig->replicationHttpPort()},
-                      {"management-host-name", util::get_current_host_fqdn()}}},
-                    {"uberjob",
-                     {{"queryid", _queryId},
-                      {"uberjobid", _uberJobId},
-                      {"czarid", _czarId},
-                      {"rowlimit", _rowLimit},
-                      {"jobs", json::array()}}}};
-
-    auto& jsUberJob = request["uberjob"];
-    auto& jsJobs = jsUberJob["jobs"];
-    for (auto const& jbPtr : _jobs) {
-        auto const description = jbPtr->getDescription();
-        if (description == nullptr) {
-            throw util::Bug(ERR_LOC, cName(__func__) + " description=null for job=" + jbPtr->getIdStr());
-        }
-        auto const jsForWorker = jbPtr->getDescription()->getJsForWorker();
-        if (jsForWorker == nullptr) {
-            throw util::Bug(ERR_LOC, cName(__func__) + " jsForWorker=null for job=" + jbPtr->getIdStr());
-        }
-        json jsJob = {{"jobdesc", *jsForWorker}};
-        jsJobs.push_back(jsJob);
-        jbPtr->getDescription()->resetJsForWorker();  // no longer needed.
-    }
-#else                   // &&&
-    //&&&LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj a");
     // Send the uberjob to the worker
     auto const method = http::Method::POST;
     auto [ciwId, ciwHost, ciwManagment, ciwPort] = _wContactInfo->getAll();
@@ -177,7 +132,7 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
     std::chrono::duration<double> secsserialize = endserialize - startserialize;  // &&&
     histoUJSerialize.addEntry(endserialize, secsserialize.count());               //&&&
     LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoUJSerialize.getString(""));
-#endif                  // &&&
+
     jobsLock.unlock();  // unlock so other _jobsMtx threads can advance while this waits for transmit
     LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj c");
     /* &&&

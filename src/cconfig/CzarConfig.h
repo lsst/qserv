@@ -217,6 +217,9 @@ public:
     /// Return the maximum number of http connections to use for czar commands.
     int getCommandMaxHttpConnections() const { return _commandMaxHttpConnections->getVal(); }
 
+    /// Return the sleep time (in milliseconds) between messages sent to active workers.
+    int getMonitorSleepTimeMilliSec() const { return _monitorSleepTimeMilliSec->getVal(); }
+
     // Parameters of the Czar management service
 
     std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
@@ -410,6 +413,8 @@ private:
             util::ConfigValTInt::create(_configValMap, "activeworker", "timeoutDeadSecs", notReq, 60 * 10);
     CVTIntPtr _activeWorkerMaxLifetimeSecs =  // 1hr
             util::ConfigValTInt::create(_configValMap, "activeworker", "maxLifetimeSecs", notReq, 60 * 60);
+    CVTIntPtr _monitorSleepTimeMilliSec =
+            util::ConfigValTInt::create(_configValMap, "activeworker", "monitorSleepTimeMilliSec", notReq, 15'000);
 
     // UberJobs
     CVTIntPtr _uberJobMaxChunks =

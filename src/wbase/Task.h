@@ -168,6 +168,7 @@ public:
     Task(const Task&) = delete;
     virtual ~Task();
 
+/* &&&
     /// Read json to generate a vector of one or more task for a chunk.
     static std::vector<Ptr> createTasksForChunk(  /// &&& delete
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
@@ -177,6 +178,7 @@ public:
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
             uint16_t resultsHttpPort = 8080);
+*/
 
     /// &&&
     static std::vector<Ptr> createTasksFromUberJobMsg(
