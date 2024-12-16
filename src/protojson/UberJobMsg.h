@@ -21,8 +21,6 @@
 #ifndef LSST_QSERV_PROTOJSON_UBERJOBMSG_H
 #define LSST_QSERV_PROTOJSON_UBERJOBMSG_H
 
-#define NEWMSGUJ 0  // &&& delete
-
 // System headers
 #include <chrono>
 #include <map>

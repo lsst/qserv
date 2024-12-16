@@ -257,8 +257,9 @@ BOOST_AUTO_TEST_CASE(Simple) {
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
     vector<Task::Ptr> taskVect =
-            Task::createTasksForChunk(ujData, *msgJson, sChannel, scanInfo, mInfo.scanInteractive,
-                                      mInfo.maxTableSize, crm, newMySqlConfig(), sqlConnMgr, queries);
+            Task::createTasksForUnitTest(ujData, *msgJson, sChannel, scanInfo, mInfo.scanInteractive,
+                                         mInfo.maxTableSize, crm);
+
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
     BOOST_CHECK(a->runQuery());
@@ -307,8 +308,9 @@ BOOST_AUTO_TEST_CASE(Output) {
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
     vector<Task::Ptr> taskVect =
-            Task::createTasksForChunk(ujData, *msgJson, sc, scanInfo, mInfo.scanInteractive,
-                                      mInfo.maxTableSize, crm, newMySqlConfig(), sqlConnMgr, queries);
+            Task::createTasksForUnitTest(ujData, *msgJson, sc, scanInfo, mInfo.scanInteractive,
+                                      mInfo.maxTableSize, crm);
+
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
     BOOST_CHECK(a->runQuery());
