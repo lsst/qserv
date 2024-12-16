@@ -93,7 +93,6 @@
 #include "qproc/geomAdapter.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
-#include "qproc/TaskMsgFactory.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/JoinRef.h"
@@ -241,7 +240,6 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
     assert(_infileMerger);
 
-    auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>();
     _ttn = std::make_shared<TmpTableName>(_qMetaQueryId, _qSession->getOriginal());
     std::vector<int> chunks;
     std::mutex chunksMtx;
@@ -300,8 +298,7 @@ void UserQuerySelect::submit() {
         ru.setAsDbChunk(cs->db, cs->chunkId);
         qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
                 _qMetaCzarId, _executive->getId(), sequence, ru,
-                std::make_shared<MergingHandler>(_infileMerger, chunkResultName), taskMsgFactory, cs,
-                chunkResultName);
+                std::make_shared<MergingHandler>(_infileMerger, chunkResultName), cs, chunkResultName);
         auto job = _executive->add(jobDesc);
         ++sequence;
     }
@@ -327,13 +324,11 @@ void UserQuerySelect::submit() {
 }
 
 util::HistogramRolling histoBuildAndS("&&&uj histoBuildAndS", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoBuildAndS1("&&&uj histoBuildAndS1", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
 
 void UserQuerySelect::buildAndSendUberJobs() {
     // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
-    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj start " << _uberJobMaxChunks);
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
     if (!_executive->isReadyToExecute()) {
@@ -342,17 +337,14 @@ void UserQuerySelect::buildAndSendUberJobs() {
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
-    util::InstanceCount ica("UserQuerySelect::buildAndSendUberJobs&&&_beforelock");
     lock_guard fcLock(_buildUberJobMtx);
-    util::InstanceCount icb("UserQuerySelect::buildAndSendUberJobs&&&_afterlock");
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << _executive->getTotalJobs());
 
     vector<qdisp::UberJob::Ptr> uberJobs;
 
     qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = _executive->unassignedChunksInQuery();
     if (unassignedChunksInQuery.empty()) {
-        LOGS(_log, LOG_LVL_TRACE, funcN << " no unassigned Jobs");
-        LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj no unassigned Jobs");
+        LOGS(_log, LOG_LVL_DEBUG, funcN << " no unassigned Jobs");
         return;
     }
 
@@ -396,7 +388,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
         qdisp::UberJob::Ptr uberJobPtr;
         protojson::WorkerContactInfo::Ptr wInf;
     };
-    //&&& map<string, vector<qdisp::UberJob::Ptr>> workerJobMap;
     map<string, WInfoAndUJPtr::Ptr> workerJobMap;
     vector<qdisp::Executive::ChunkIdType> missingChunks;
 
@@ -406,14 +397,18 @@ void UserQuerySelect::buildAndSendUberJobs() {
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
     // and should minimize the time for the first UberJob on the worker to complete.
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
+
+        bool const increaseAttemptCount = true;
+        jqPtr->getDescription()->incrAttemptCount(_executive, increaseAttemptCount);
+
         // If too many workers are down, there will be a chunk that cannot be found.
         // Just continuing should leave jobs `unassigned` with their attempt count
         // increased. Either the chunk will be found and jobs assigned, or the jobs'
         // attempt count will reach max and the query will be cancelled
         auto lambdaMissingChunk = [&](string const& msg) {
             missingChunks.push_back(chunkId);
-            bool const increaseAttemptCount = true;
-            jqPtr->getDescription()->incrAttemptCountScrubResultsJson(_executive, increaseAttemptCount);
+            //&&&bool const increaseAttemptCount = true;
+            //&&&jqPtr->getDescription()->incrAttemptCountScrubResultsJson(_executive, increaseAttemptCount);
             LOGS(_log, LOG_LVL_ERROR, msg);
         };
 
@@ -454,7 +449,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         WInfoAndUJPtr::Ptr& wInfUJ = workerJobMap[workerId];
         if (wInfUJ == nullptr) {
             wInfUJ = make_shared<WInfoAndUJPtr>();
-            auto iter = wContactMap->find(workerId);  //&&&auto iter = wContactMap->find(wIdKey);
+            auto iter = wContactMap->find(workerId);
             if (iter == wContactMap->end()) {
                 // TODO:UJ Not appropriate to throw for this. Need to re-direct all jobs to different workers.
                 //         Also, this really shouldn't happen, but crashing the czar is probably a bad idea,
@@ -509,7 +504,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
     }
 
     LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
-    LOGS(_log, LOG_LVL_WARN, funcN << " &&&uj " << _executive->dumpUberJobCounts());
 }
 
 /// Block until a submit()'ed query completes.

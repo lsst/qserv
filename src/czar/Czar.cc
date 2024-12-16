@@ -159,6 +159,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _idCounter(),
           _uqFactory(),
           _clientToQuery(),
+          _monitorSleepTime (_czarConfig->getMonitorSleepTimeMilliSec()),
           _activeWorkerMap(new ActiveWorkerMap(_czarConfig)) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
@@ -177,7 +178,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
-    // Figure out which query (if any) was recorded in Czar database before the restart.
+    // Figure out which query (if any) was recorded in Czar databases before the restart.
     // The id will be used as the high-watermark for queries that need to be cancelled.
     // All queries that have identifiers that are strictly less than this one will
     // be affected by the operation.

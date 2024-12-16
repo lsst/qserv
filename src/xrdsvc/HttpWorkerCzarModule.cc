@@ -110,109 +110,6 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     json jsRet;
     vector<wbase::Task::Ptr> ujTasks;
     try {
-#if NEWMSGUJ  // &&&
-              // See qdisp::UberJob::runUberJob() for json message construction.
-        auto const& jsReq = body().objJson;
-        string const targetWorkerId = body().required<string>("worker");
-
-        http::RequestBodyJSON rbCzar(body().required<json>("czarinfo"));
-        auto czarName = rbCzar.required<string>("name");
-        auto czarId = rbCzar.required<qmeta::CzarId>("id");
-        auto czarPort = rbCzar.required<int>("management-port");
-        auto czarHostName = rbCzar.required<string>("management-host-name");
-        LOGS(_log, LOG_LVL_TRACE,
-             __func__ << " czar n=" << czarName << " id=" << czarId << " p=" << czarPort
-                      << " h=" << czarHostName);
-        http::RequestBodyJSON rbUberJob(body().required<json>("uberjob"));
-        auto ujQueryId = rbUberJob.required<QueryId>("queryid");
-        auto ujId = rbUberJob.required<UberJobId>("uberjobid");
-        auto ujCzarId = rbUberJob.required<int>("czarid");
-        auto ujRowLimit = rbUberJob.required<int>("rowlimit");
-        auto ujJobs = rbUberJob.required<json>("jobs");
-        LOGS(_log, LOG_LVL_TRACE,
-             __func__ << " uj qid=" << ujQueryId << " ujid=" << ujId << " czid=" << ujCzarId
-                      << " rowlimit=" << ujRowLimit);
-
-        // Get or create QueryStatistics and UserQueryInfo instances.
-        auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzarId);
-        auto userQueryInfo = queryStats->getUserQueryInfo();
-
-        if (userQueryInfo->getCancelledByCzar()) {
-            throw wbase::TaskException(
-                    ERR_LOC, string("Already cancelled by czar. ujQueryId=") + to_string(ujQueryId));
-        }
-        if (userQueryInfo->isUberJobDead(ujId)) {
-            throw wbase::TaskException(ERR_LOC, string("UberJob already dead. ujQueryId=") +
-                                                        to_string(ujQueryId) + " ujId=" + to_string(ujId));
-        }
-
-        auto ujData = wbase::UberJobData::create(ujId, czarName, czarId, czarHostName, czarPort, ujQueryId,
-                                                 ujRowLimit, targetWorkerId, foreman(), authKey());
-
-        // Find the entry for this queryId, creat a new one if needed.
-        userQueryInfo->addUberJob(ujData);
-        auto channelShared =
-                wbase::FileChannelShared::create(ujData, czarId, czarHostName, czarPort, targetWorkerId);
-        ujData->setFileChannelShared(channelShared);
-
-        // TODO:UJ These items should be stored higher in the message structure as they get
-        //   duplicated and should always be the same within an UberJob.
-        QueryId jdQueryId = 0;
-        auto scanInfo = protojson::ScanInfo::create();
-        bool scanInfoSet = false;
-        bool jdScanInteractive = false;
-        int jdMaxTableSize = 0;
-
-        for (auto const& job : ujJobs) {
-            json const& jsJobDesc = job["jobdesc"];
-            http::RequestBodyJSON rbJobDesc(jsJobDesc);
-            // See qproc::TaskMsgFactory::makeMsgJson for message construction.
-            auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
-            jdQueryId = rbJobDesc.required<QueryId>("queryId");
-            auto const jdJobId = rbJobDesc.required<int>("jobId");
-            auto const jdAttemptCount = rbJobDesc.required<int>("attemptCount");
-            auto const jdQuerySpecDb = rbJobDesc.required<string>("querySpecDb");
-            auto const jdScanPriority = rbJobDesc.required<int>("scanPriority");
-            jdScanInteractive = rbJobDesc.required<bool>("scanInteractive");
-            jdMaxTableSize = rbJobDesc.required<int>("maxTableSize");
-            auto const jdChunkId = rbJobDesc.required<int>("chunkId");
-            LOGS(_log, LOG_LVL_TRACE,
-                 __func__ << " jd cid=" << jdCzarId << " jdQId=" << jdQueryId << " jdJobId=" << jdJobId
-                          << " jdAtt=" << jdAttemptCount << " jdQDb=" << jdQuerySpecDb
-                          << " jdScanPri=" << jdScanPriority << " interactive=" << jdScanInteractive
-                          << " maxTblSz=" << jdMaxTableSize << " chunkId=" << jdChunkId);
-
-            auto const jdChunkScanTables = rbJobDesc.required<json>("chunkScanTables");
-            if (!scanInfoSet) {
-                for (auto const& tbl : jdChunkScanTables) {
-                    http::RequestBodyJSON rbTbl(tbl);
-                    auto const& chunkScanDb = rbTbl.required<string>("db");
-                    auto lockInMemory = rbTbl.required<bool>("lockInMemory");
-                    auto const& chunkScanTable = rbTbl.required<string>("table");
-                    auto tblScanRating = rbTbl.required<int>("tblScanRating");
-                    LOGS(_log, LOG_LVL_TRACE,
-                         __func__ << " chunkSDb=" << chunkScanDb << " lockinmem=" << lockInMemory
-                                  << " csTble=" << chunkScanTable << " tblScanRating=" << tblScanRating);
-                    scanInfo->infoTables.emplace_back(chunkScanDb, chunkScanTable, lockInMemory,
-                                                      tblScanRating);
-                    scanInfoSet = true;
-                }
-            }
-            scanInfo->scanRating = jdScanPriority;
-        }
-
-        ujData->setScanInteractive(jdScanInteractive);
-
-        // create tasks and add them to ujData
-        auto chunkTasks = wbase::Task::createTasksForChunk(
-                ujData, ujJobs, channelShared, scanInfo, jdScanInteractive, jdMaxTableSize,
-                foreman()->chunkResourceMgr(), foreman()->mySqlConfig(), foreman()->sqlConnMgr(),
-                foreman()->queriesAndChunks(), foreman()->httpPort());
-        ujTasks.insert(ujTasks.end(), chunkTasks.begin(), chunkTasks.end());
-
-        channelShared->setTaskCount(ujTasks.size());
-        ujData->addTasks(ujTasks);
-#else  // &&&
         auto const& jsReq = body().objJson;
         auto uberJobMsg = protojson::UberJobMsg::createFromJson(jsReq);
 
@@ -236,20 +133,12 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
                                                         to_string(ujQueryId) + " ujId=" + to_string(ujId));
         }
 
-        /* &&&
-        auto ujData = wbase::UberJobData::create(ujId, czarName, czarId, czarHostName, czarPort, ujQueryId,
-                                                 ujRowLimit, targetWorkerId, foreman(), authKey());
-        */
         auto ujData = wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
                                                  ujCzInfo->czPort, ujQueryId, ujRowLimit, targetWorkerId,
                                                  foreman(), authKey());
 
         // Find the entry for this queryId, create a new one if needed.
         userQueryInfo->addUberJob(ujData);
-        /* &&&
-        auto channelShared =
-                wbase::FileChannelShared::create(ujData, czarId, czarHostName, czarPort, targetWorkerId);
-        */
         auto channelShared = wbase::FileChannelShared::create(ujData, ujCzInfo->czId, ujCzInfo->czHostName,
                                                               ujCzInfo->czPort, targetWorkerId);
 
@@ -260,8 +149,6 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
                 foreman()->sqlConnMgr(), foreman()->queriesAndChunks(), foreman()->httpPort());
         channelShared->setTaskCount(ujTasks.size());
         ujData->addTasks(ujTasks);
-
-#endif  //&&&
 
         // At this point, it looks like the message was sent successfully, update
         // czar touched time.

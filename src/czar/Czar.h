@@ -233,8 +233,8 @@ private:
     /// Set to false on system shutdown to stop _monitorThrd.
     std::atomic<bool> _monitorLoop{true};
 
-    /// Wait time between checks. TODO:UJ set from config
-    std::chrono::milliseconds _monitorSleepTime{15'000};  // &&& config
+    /// Wait time between checks to.
+    std::chrono::milliseconds _monitorSleepTime;
 
     /// Keeps track of all workers (alive or otherwise) that this czar
     /// may communicate with. Once created, the pointer never changes.

@@ -43,7 +43,6 @@
 #include "qdisp/JobQuery.h"
 #include "qmeta/MessageStore.h"
 #include "qproc/ChunkQuerySpec.h"
-#include "qproc/TaskMsgFactory.h"
 #include "util/QdispPool.h"
 #include "util/threadSafe.h"
 
@@ -57,27 +56,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.testQDisp");
 
 typedef util::Sequential<int> SequentialInt;
 typedef vector<qdisp::ResponseHandler::Ptr> RequesterVector;
-
-namespace lsst::qserv::qproc {
-
-// Normally, there's one TaskMsgFactory that all jobs in a user query share.
-// In this case, there's one MockTaskMsgFactory per job with a payload specific
-// for that job.
-class MockTaskMsgFactory : public TaskMsgFactory {
-public:
-    MockTaskMsgFactory(std::string const& mockPayload_) : TaskMsgFactory(), mockPayload(mockPayload_) {}
-
-    shared_ptr<nlohmann::json> makeMsgJson(ChunkQuerySpec const& s, std::string const& chunkResultName,
-                                           QueryId queryId, int jobId, int attemptCount,
-                                           qmeta::CzarId czarId) override {
-        return jsPtr;
-    }
-
-    string mockPayload;
-    shared_ptr<nlohmann::json> jsPtr;
-};
-
-}  // namespace lsst::qserv::qproc
 
 namespace lsst::qserv::qdisp {
 
@@ -201,11 +179,10 @@ public:
 qdisp::JobDescription::Ptr makeMockJobDescription(qdisp::Executive::Ptr const& ex, int sequence,
                                                   ResourceUnit const& ru, std::string msg,
                                                   std::shared_ptr<qdisp::ResponseHandler> const& mHandler) {
-    auto mockTaskMsgFactory = std::make_shared<qproc::MockTaskMsgFactory>(msg);
     auto cqs = std::make_shared<qproc::ChunkQuerySpec>();  // dummy, unused in this case.
     std::string chunkResultName = "dummyResultTableName";
     qmeta::CzarId const czarId = 1;
-    auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, mHandler, mockTaskMsgFactory,
+    auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, mHandler,
                                              cqs, chunkResultName, true);
     return job;
 }

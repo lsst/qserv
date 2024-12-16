@@ -21,8 +21,6 @@
 #ifndef LSST_QSERV_PROTOJSON_UBERJOBMSG_H
 #define LSST_QSERV_PROTOJSON_UBERJOBMSG_H
 
-#define NEWMSGUJ 0  // &&& delete
-
 // System headers
 #include <chrono>
 #include <map>
@@ -109,7 +107,7 @@ public:
     /// @throws std::out_of_range
     std::pair<std::string, std::string> getDbTable(int index) { return _dbTableMap.at(index); }
 
-    /// &&& doc
+    /// &&& TODO:UJ compare with scan rating for entire UberJob
     void setScanRating(int index, int scanRating, bool lockInMemory);
 
     /// Return scanRating(int) and lockInMemory(bool) for the dbTable at `index`.
