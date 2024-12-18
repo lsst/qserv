@@ -265,7 +265,7 @@ The following options for the values of the parameter are allowed in the current
 
     The option ``none`` is not recommended for use in the API. It may be used in some specific cases where the client
     and the service are designed to work with raw binary data, and where the client is confident that the data will be handled correctly
-    witing the JSON representation. In general, it's recommended to use one of the other options for encoding binary data into JSON.
+    within the JSON representation. In general, it's recommended to use one of the other options for encoding binary data into JSON.
 
 Here is an example of the same sequence of 4-bytes encoded into the hexadecimal format:
 
