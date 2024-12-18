@@ -87,79 +87,12 @@ lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
             }
         };
 
-/**
- * This exception is used by the merging handler to signal the file reader
- * that the query has been ended before the file has been completely read.
- * The exception is meant to tell the reader to stop reading the file
- * and return control to the caller.
- */
-class QueryEnded : public std::runtime_error {
-public:
-    using std::runtime_error::runtime_error;
-};
 
-/**
- * The function for reading result files from workers over the HTTP protocol.
- * The function reads the file in chunks and calls the callback function
- * for each chunk of data read from the file.
- */
-string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
-                            function<void(char const*, uint32_t)> const& messageIsReady) {
-    string const context = "MergingHandler::" + string(__func__) + " ";
-
-    LOGS(_log, LOG_LVL_DEBUG, context << "httpUrl=" << httpUrl);
-
-    // Track the file while the control flow is staying within the function.
-    ResultFileTracker const resultFileTracker;
-
-    // The data transmit rate tracker is set up before reading each data message.
-    unique_ptr<lsst::qserv::TimeCountTracker<double>> transmitRateTracker;
-
-    // A location of the next byte to be read from the input file. The variable
-    // is used for error reporting.
-    size_t offset = 0;
-
-    try {
-        string const noClientData;
-        vector<string> const noClientHeaders;
-
-        http::Client reader(http::Method::GET, httpUrl, noClientData, noClientHeaders,
-                            qdisp::QueryRequest::makeHttpClientConfig(),
-                            qdisp::QueryRequest::getHttpConnPool());
-
-        // Starts the tracker to measure the performance of the network I/O.
-        transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
-
-        // Start reading the file. The read() method will call the callback function
-        // for each chunk of data read from the file.
-        reader.read([&](char const* inBuf, size_t inBufSize) {
-            // Check if the end of the file has been reached.
-            // Destroying the tracker will result in stopping the tracker's timer and
-            // reporting the file read rate before proceeding to the merge.
-            transmitRateTracker->addToValue(inBufSize);
-            transmitRateTracker->setSuccess();
-            transmitRateTracker.reset();
-            messageIsReady(inBuf, inBufSize);
-            offset += inBufSize;
-            // Restart the tracker to measure the reading performance of the next chunk of data.
-            transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
-        });
-        if (offset != fileSize) {
-            throw runtime_error(context + "short read");
-        }
-    } catch (QueryEnded const& ex) {
-        // This is a normal condition which should be handled gracefully by the algorithm.
-        LOGS(_log, LOG_LVL_DEBUG, context << ex.what() << ", httpUrl=" << httpUrl);
-    } catch (exception const& ex) {
-        string const errMsg = "failed to open/read: " + httpUrl + ", fileSize: " + to_string(fileSize) +
-                              ", offset: " + to_string(offset) + ", ex: " + string(ex.what());
-        LOGS(_log, LOG_LVL_ERROR, context << errMsg);
-        return errMsg;
-    }
-    return string();
-}
-
-
+/// If success, then everything is fine.
+/// If not success, and not mergeHappened, the user query can be saved by abandoning
+/// this UberJob. If mergeHappened, the result table is fouled and the user query is ruined.
+/// @return bool success - true if operation was successful.
+/// @return bool mergeHappened - true if merging was started.
 std::tuple<bool, bool> readHttpFileAndMergeHttp(
         lsst::qserv::qdisp::UberJob::Ptr const& uberJob, string const& httpUrl,
         function<bool(char const*, uint32_t, bool&)> const& messageIsReady,
@@ -193,10 +126,14 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
     // The value is stays 0 while reading the frame header.
     uint32_t msgSizeBytes = 0;
     bool success = true;
-    bool mergeSuccess = true;
+    bool mergeHappened = false;
     int headerCount = 0;
     uint64_t totalBytesRead = 0;
     try {
+        auto exec = uberJob->getExecutive();
+        if (exec == nullptr || exec->getCancelled()) {
+            throw runtime_error(context + " query was cancelled");
+        }
         string const noClientData;
         vector<string> const noClientHeaders;
         http::ClientConfig clientConfig;
@@ -213,10 +150,11 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
             bool last = false;
             char const* next = inBuf;
             char const* const end = inBuf + inBufSize;
+            LOGS(_log, LOG_LVL_TRACE, context << " next=" << (uint64_t)next << " end=" << (uint64_t)end);
             while ((next < end) && !last) {
-                LOGS(_log, LOG_LVL_WARN,
-                     context << "TODO:UJ next=" << (uint64_t)next << " end=" << (uint64_t)end
-                             << " last=" << last);
+                if (exec->getCancelled()) {
+                    throw runtime_error(context + " query was cancelled");
+                }
                 if (msgSizeBytes == 0) {
                     // Continue or finish reading the frame header.
                     size_t const bytes2read =
@@ -273,9 +211,10 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
                         }
 
                         // Parse and evaluate the message.
-                        mergeSuccess = messageIsReady(msgBuf.get(), msgSizeBytes, last);
+                        mergeHappened = true;
+                        bool messageReadyResult = messageIsReady(msgBuf.get(), msgSizeBytes, last);
                         totalBytesRead += msgSizeBytes;
-                        if (!mergeSuccess) {
+                        if (!messageReadyResult) {
                             success = false;
                             throw runtime_error("message processing failed at offset " +
                                                 to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
@@ -283,14 +222,14 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
                         // Reset the variable to prepare for reading the next header & message (if any).
                         msgSizeBytes = 0;
                     } else {
-                        LOGS(_log, LOG_LVL_WARN,
+                        LOGS(_log, LOG_LVL_TRACE,
                              context << " headerCount=" << headerCount
                                      << " incomplete read diff=" << (msgSizeBytes - msgBufNext));
                     }
                 }
             }
         });
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGS(_log, LOG_LVL_TRACE,
              context << " headerCount=" << headerCount << " msgSizeBytes=" << msgSizeBytes
                      << " totalBytesRead=" << totalBytesRead);
         if (msgSizeBufNext != 0) {
@@ -316,8 +255,8 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
     }
     // If the merge failed, that indicates something went wrong in the local database table,
     // is likely this user query is doomed and should be cancelled.
-    LOGS(_log, LOG_LVL_DEBUG, context << " end succes=" << success << " mergeSuccess=" << mergeSuccess);
-    return {success, mergeSuccess};
+    LOGS(_log, LOG_LVL_DEBUG, context << " end succes=" << success << " mergeSuccess=" << mergeHappened);
+    return {success, mergeHappened};
 }
 
 }  // namespace
@@ -325,11 +264,9 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
 namespace lsst::qserv::ccontrol {
 
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
-        : _infileMerger{merger}, _tableName{tableName} {
-    _initState();
-}
+        : _infileMerger{merger}, _tableName{tableName} {}
 
-MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << _tableName); }
+MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__ << " " << _tableName); }
 
 
 bool MergingHandler::flush(proto::ResponseSummary const& resp) {
@@ -396,83 +333,6 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
 }
 
-void MergingHandler::_initState() { _setError(util::ErrorCode::NONE, string()); }
-
-bool MergingHandler::_queryIsNoLongerActive(shared_ptr<qdisp::JobQuery> const& jobQuery) const {
-    // Check if the query got cancelled for any reason.
-    if (jobQuery->isQueryCancelled()) return true;
-
-    // Check for other indicators that the query may have cancelled or finished.
-    auto executive = jobQuery->getExecutive();
-    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
-        return true;
-    }
-    // The final test is to see if any errors have been reported in a context
-    // of the merger. A presence of errors means that further attempting of merging
-    // makes no sense.
-    return !getError().isNone();
-}
-
-bool MergingHandler::_merge(proto::ResponseSummary const& resp, shared_ptr<qdisp::JobQuery> const& jobQuery) {
-    if (_flushed) throw util::Bug(ERR_LOC, "already flushed");
-    if (resp.transmitsize() == 0) return true;
-
-    // After this final test the job's result processing can't be interrupted.
-    if (_queryIsNoLongerActive(jobQuery)) return true;
-
-    // Read from the http stream and push records into the CSV stream in a separate thread.
-    // Note the fixed capacity of the stream which allows up to 2 records to be buffered
-    // in the stream. This is enough to hide the latency of the HTTP connection and
-    // the time needed to read the file.
-    auto csvStream = mysql::CsvStream::create(2);
-    string fileReadErrorMsg;
-    thread csvThread([&]() {
-        size_t bytesRead = 0;
-        fileReadErrorMsg = ::readHttpFileAndMerge(
-                resp.fileresource_http(), resp.transmitsize(), [&](char const* buf, uint32_t size) {
-                    bool const queryEnded = _queryIsNoLongerActive(jobQuery);
-                    bool last = false;
-                    if (buf == nullptr || size == 0 || queryEnded) {
-                        last = true;
-                    } else {
-                        csvStream->push(buf, size);
-                        bytesRead += size;
-                        last = bytesRead >= resp.transmitsize();
-                    }
-                    if (last) {
-                        csvStream->push(nullptr, 0);
-                        if (queryEnded) {
-                            throw ::QueryEnded(
-                                    "query " + jobQuery->getIdStr() +
-                                    " ended while reading the file, bytesRead=" + to_string(bytesRead) +
-                                    ", transmitsize=" + to_string(resp.transmitsize()));
-                        }
-                    }
-                });
-        // Push the stream terminator to indicate the end of the stream.
-        // It may be neeeded to unblock the table merger which may be still attempting to read
-        // from the CSV stream.
-        if (!fileReadErrorMsg.empty()) {
-            csvStream->push(nullptr, 0);
-        }
-    });
-
-    // Attempt the actual merge.
-    bool const fileMergeSuccess = _infileMerger->merge(resp, csvStream);
-    if (!fileMergeSuccess) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
-        util::Error const& err = _infileMerger->getError();
-        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
-    }
-    csvThread.join();
-    if (!fileReadErrorMsg.empty()) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " result file read failed");
-        _setError(ccontrol::MSG_HTTP_RESULT, fileReadErrorMsg);
-    }
-    _flushed = true;
-    return fileMergeSuccess && fileReadErrorMsg.empty();
-}
-
 bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
                                 proto::ResponseData const& responseData) {
     if (_flushed) {
@@ -488,7 +348,7 @@ bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
 }
 
 void MergingHandler::_setError(int code, std::string const& msg) {
-    LOGS(_log, LOG_LVL_DEBUG, "_setErr: code: " << code << ", message: " << msg);
+    LOGS(_log, LOG_LVL_DEBUG, "_setError: code: " << code << ", message: " << msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
     _error = Error(code, msg);
 }
@@ -535,7 +395,7 @@ tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expe
     }
 
     if (success) {
-        _infileMerger->mergeCompleteFor(uberJob->getJobId());
+        _infileMerger->mergeCompleteFor(uberJob->getUjId());
     }
     return {success, shouldCancel};
 }

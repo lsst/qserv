@@ -298,10 +298,13 @@ public:
 
     /// Make a new FamilyMapType map including ChunkMap and WorkerChunkMap from the data
     /// in `qChunkMap`. Each family has its own ChunkMap and WorkerChunkMap.
+    /// @param qChunkMap - data source for the family map
+    /// @param usingChunkSize - true if the distribution of chunks will depend on the
+    ///                  size of the chunks/
     ///
     /// NOTE: This is likely an expensive operation and should probably only
     ///   be called if new workers have been added or chunks have been moved.
-    std::shared_ptr<FamilyMapType> makeNewMaps(qmeta::QMetaChunkMap const& qChunkMap);
+    std::shared_ptr<FamilyMapType> makeNewMaps(qmeta::QMetaChunkMap const& qChunkMap, bool usingChunkSize);
 
     /// Insert the new element described by the parameters into the `newFamilyMap` as appropriate.
     void insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFamilyMap, std::string const& workerId,
