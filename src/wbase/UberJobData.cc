@@ -26,6 +26,7 @@
 // System headers
 
 // Third party headers
+#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -39,12 +40,15 @@
 #include "http/RequestQuery.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
+#include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wpublish/ChunkInventory.h"
 #include "wpublish/QueriesAndChunks.h"
 
 using namespace std;
 using namespace nlohmann;
+
+namespace fs = boost::filesystem;
 
 namespace {
 
@@ -56,8 +60,10 @@ namespace lsst::qserv::wbase {
 
 UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
                          std::string czarHost, int czarPort, uint64_t queryId, int rowLimit,
-                         std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
-                         std::string const& authKey)
+                         uint64_t maxTableSizeBytes, protojson::ScanInfo::Ptr const& scanInfo,
+                         bool scanInteractive, std::string const& workerId,
+                         std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
+                         uint16_t resultsHttpPort)
         : _uberJobId(uberJobId),
           _czarName(czarName),
           _czarId(czarId),
@@ -65,10 +71,14 @@ UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta
           _czarPort(czarPort),
           _queryId(queryId),
           _rowLimit(rowLimit),
+          _maxTableSizeBytes(maxTableSizeBytes),
           _workerId(workerId),
           _authKey(authKey),
+          _resultsHttpPort(resultsHttpPort),
           _foreman(foreman),
-          _idStr(string("QID=") + to_string(_queryId) + ":ujId=" + to_string(_uberJobId)) {}
+          _scanInteractive(scanInteractive),
+          _scanInfo(scanInfo),
+          _idStr(string("QID=") + to_string(_queryId) + "_ujId=" + to_string(_uberJobId)) {}
 
 void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared) {
     if (_fileChannelShared != nullptr && _fileChannelShared != fileChannelShared) {
@@ -79,10 +89,17 @@ void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const&
 
 void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
                                     uint64_t headerCount) {
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGS(_log, LOG_LVL_INFO,
          cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize
                          << " headerCount=" << headerCount);
 
+    // Latch to prevent errors from being transmitted.
+    // NOTE: Calls to responseError() and responseFileReady() are protected by the
+    //       mutex in FileChannelShared (_tMtx).
+    if (_responseState.exchange(SENDING_FILEURL) != NOTHING) {
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
+    }
     string workerIdStr;
     if (_foreman != nullptr) {
         workerIdStr = _foreman->chunkInventory()->id();
@@ -112,9 +129,19 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
     _queueUJResponse(method, headers, url, requestContext, requestStr);
 }
 
-bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task,
-                                bool cancelled) {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));
+void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl) {
+    // TODO:UJ Maybe register this UberJob as failed with a czar notification method
+    //         so that a secondary means can be used to make certain the czar hears about
+    //         the error. See related TODO:UJ comment in responseFileReady()
+    LOGS(_log, logLvl, cName(__func__));
+    // NOTE: Calls to responseError() and responseFileReady() are protected by the
+    //       mutex in FileChannelShared (_tMtx).
+    if (_responseState == NOTHING) {
+        _responseState = SENDING_ERROR;
+    } else {
+        LOGS(_log, logLvl, cName(__func__) << " Already sending a different message.");
+        return;
+    }
     string errorMsg;
     int errorCode = 0;
     if (!multiErr.empty()) {
@@ -125,9 +152,8 @@ bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task
         errorCode = -1;
     }
     if (!errorMsg.empty() or (errorCode != 0)) {
-        errorMsg = cName(__func__) + " error(s) in result for chunk #" + to_string(task->getChunkId()) +
-                   ": " + errorMsg;
-        LOGS(_log, LOG_LVL_ERROR, errorMsg);
+        errorMsg = cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ": " + errorMsg;
+        LOGS(_log, logLvl, errorMsg);
     }
 
     json request = {{"version", http::MetaModule::version},
@@ -146,7 +172,6 @@ bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task
     string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
     string const requestStr = request.dump();
     _queueUJResponse(method, headers, url, requestContext, requestStr);
-    return true;
 }
 
 void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
@@ -171,6 +196,30 @@ void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string
     }
 }
 
+string UberJobData::_resultFileName() const {
+    // UberJobs have multiple chunks which can each have different attempt numbers.
+    // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
+    return to_string(getCzarId()) + "-" + to_string(getQueryId()) + "-" + to_string(getUberJobId()) + "-0" +
+           ".proto";
+}
+
+string UberJobData::resultFilePath() const {
+    string const resultsDirname = wconfig::WorkerConfig::instance()->resultsDirname();
+    if (resultsDirname.empty()) return resultsDirname;
+    return (fs::path(resultsDirname) / _resultFileName()).string();
+}
+
+std::string UberJobData::resultFileHttpUrl() const {
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
+    if (resultDeliveryProtocol != wconfig::ConfigValResultDeliveryProtocol::HTTP) {
+        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
+                            wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
+    }
+    // TODO:UJ it seems like this should just be part of the FileChannelShared???
+    return "http://" + _foreman->getFqdn() + ":" + to_string(_resultsHttpPort) + "/" + _resultFileName();
+}
+
 void UberJobData::cancelAllTasks() {
     LOGS(_log, LOG_LVL_INFO, cName(__func__));
     if (_cancelled.exchange(true) == false) {
@@ -183,11 +232,12 @@ void UberJobData::cancelAllTasks() {
 
 string UJTransmitCmd::cName(const char* funcN) const {
     stringstream os;
-    os << "UJTransmitCmd::" << funcN << " czId=" << _czarId << " qId=" << _queryId << " ujId=" << _uberJobId;
+    os << "UJTransmitCmd::" << funcN << " czId=" << _czarId << " QID=" << _queryId << "_ujId=" << _uberJobId;
     return os.str();
 }
 
 void UJTransmitCmd::action(util::CmdData* data) {
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__));
     // Make certain _selfPtr is reset before leaving this function.
     // If a retry is needed, duplicate() is called.
     class ResetSelf {
@@ -228,12 +278,13 @@ void UJTransmitCmd::action(util::CmdData* data) {
             auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
             // This will check if the czar is believed to be alive and try the queue the query to be tried
             // again at a lower priority. It it thinks the czar is dead, it will throw it away.
-            // TODO:UJ &&& I have my doubts about this as a reconnected czar may go down in flames
-            //         &&& as it is hit with thousands of these.
-            //         &&& Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
-            //         &&& indicates some messages failed. When the czar sees the flag, it'll request a
-            //         &&& message from the worker that contains all of the failed transmit data and handle
-            //         &&& that. All of these failed transmits should fit in a single message.
+            // TODO:UJ I have my doubts about this as a reconnected czar may go down in flames
+            //         as it is hit with thousands of these. The priority queue in the wPool should
+            //         help limit these to sane amounts, but the alternate plan below is probably safer.
+            //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
+            //         indicates some messages failed. When the czar sees the flag, it'll request a
+            //         message from the worker that contains all of the failed transmit data and handle
+            //         that. All of these failed transmits should fit in a single message.
             if (wCzInfo->checkAlive(CLOCK::now())) {
                 auto wPool = _foreman->getWPool();
                 if (wPool != nullptr) {
@@ -256,8 +307,7 @@ void UJTransmitCmd::action(util::CmdData* data) {
 }
 
 void UJTransmitCmd::kill() {
-    string const funcN("UJTransmitCmd::kill");
-    LOGS(_log, LOG_LVL_WARN, funcN);
+    LOGS(_log, LOG_LVL_WARN, cName(__func__));
     auto sPtr = _selfPtr;
     _selfPtr.reset();
     if (sPtr == nullptr) {
@@ -266,6 +316,7 @@ void UJTransmitCmd::kill() {
 }
 
 UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__));
     auto ujD = _ujData.lock();
     if (ujD == nullptr) {
         return nullptr;

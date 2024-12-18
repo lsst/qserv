@@ -148,62 +148,41 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    std::string cName(const char* func) const { return std::string("Task::") + func; }
+    std::string cName(const char* func) const { return std::string("Task::") + func + " " + _idStr; }
 
     // TODO:UJ too many parameters.
     //  - fragmentNumber seems pointless
     //  - hasSubchunks seems redundant.
     //  Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
-    //  Candidates: scanInfo, maxTableSizeMb, FileChannelShared, resultsHttpPort.
+    //  Candidates: maxTableSizeMb, FileChannelShared, resultsHttpPort.
     //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
-         protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
          std::shared_ptr<FileChannelShared> const& sc,
-         std::shared_ptr<wpublish::QueryStatistics> const& queryStats_, uint16_t resultsHttpPort = 8080);
+         std::shared_ptr<wpublish::QueryStatistics> const& queryStats_);
 
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
 
-/* &&&
-    /// Read json to generate a vector of one or more task for a chunk.
-    static std::vector<Ptr> createTasksForChunk(  /// &&& delete
-            std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-            protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
-            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
-            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-            uint16_t resultsHttpPort = 8080);
-*/
-
-    /// &&&
+    /// Create the Tasks needed to run an UberJob on this worker.
     static std::vector<Ptr> createTasksFromUberJobMsg(
             std::shared_ptr<protojson::UberJobMsg> const& uberJobMsg,
             std::shared_ptr<UberJobData> const& ujData,
             std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-            uint16_t resultsHttpPort = 8080);
+            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
 
-    //&&&
+    /// Create Tasks needed to run unit tests.
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-            protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
-            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr
-            //&&&mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const&
-            // sqlConnMgr,
-            //&&&std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-            //&&&uint16_t resultsHttpPort = 8080);
-    );
+            std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
+            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
 
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
-    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for FileChannelShared
-    std::string user;                                  ///< Incoming username
+    std::string user;  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
 
     /// This is the function the scheduler will run, overriden from the util::Command class.
@@ -232,8 +211,7 @@ public:
 
     TaskState state() const { return _state; }
     std::string getQueryString() const;
-    std::string const& resultFileAbsPath() const { return _resultFileAbsPath; }
-    std::string const& resultFileHttpUrl() const { return _resultFileHttpUrl; }
+
     bool setTaskQueryRunner(
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner* tqr);
@@ -251,9 +229,10 @@ public:
     size_t getTemplateId() const { return _templateId; }
     int getJobId() const { return _jId; }
     int getAttemptCount() const { return _attemptCount; }
-    bool getScanInteractive() { return _scanInteractive; }
-    int64_t getMaxTableSize() const { return _maxTableSize; }
-    protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
+    bool getScanInteractive() const;
+    int64_t getMaxTableSize() const;
+
+    protojson::ScanInfo::Ptr getScanInfo() const;
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
 
@@ -326,12 +305,20 @@ public:
         setFunc(func);
     }
 
+    std::shared_ptr<UberJobData> getUberJobData() const { return _ujData; }
+
     /// Returns the LIMIT of rows for the query enforceable at the worker, where values <= 0 indicate
     /// that there is no limit to the number of rows sent back by the worker.
     /// @see UberJobData::getRowLimit()
     int getRowLimit() { return _rowLimit; }
 
+    int getLvlWT() const { return _logLvlWT; }
+    int getLvlET() const { return _logLvlET; }
+
 private:
+    std::atomic<int> _logLvlWT;  ///< Normally LOG_LVL_WARN, set to TRACE in cancelled Tasks.
+    std::atomic<int> _logLvlET;  ///< Normally LOG_LVL_ERROR, set to TRACE in cancelled Tasks.
+
     std::shared_ptr<FileChannelShared> _sendChannel;  ///< Send channel.
 
     uint64_t const _tSeq = 0;          ///< identifier for the specific task
@@ -350,21 +337,10 @@ private:
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
     std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
 
-    /// The path to the result file.
-    std::string _resultFileAbsPath;
-
-    /// The name of the result file.
-    std::string _resultFileName;
-
-    /// The HTTP URL for the result file: "http://<host>:<http-port>/" + _resultFileName
-    std::string _resultFileHttpUrl;
-
     std::atomic<bool> _queryStarted{false};  ///< Set to true when the query is about to be run.
     std::atomic<bool> _cancelled{false};
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
-    protojson::ScanInfo::Ptr _scanInfo;
-    bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
 
@@ -394,7 +370,10 @@ private:
     /// When > 0, indicates maximum number of rows needed for a result.
     int const _rowLimit;
 
-    bool _unitTest = false;  ///<
+    std::shared_ptr<UberJobData> _ujData;
+    std::string const _idStr;
+
+    bool _unitTest = false;  ///< Only true in unit tests.
 };
 
 }  // namespace lsst::qserv::wbase
