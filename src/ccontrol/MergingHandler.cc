@@ -186,6 +186,7 @@ void MergingHandler::errorFlush(std::string const& msg, int code) {
     LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
 }
 
+
 std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(flushed=" << (_flushed ? "true)" : "false)");
 }

@@ -219,6 +219,7 @@ private:
     JobId _jobId;
     int _attemptCount;
     std::string _chunkQuerySpecDb;
+
     int _chunkId;
     JobFragment::VectPtr _jobFragments{new JobFragment::Vect()};
 
