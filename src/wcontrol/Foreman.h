@@ -72,6 +72,10 @@ class QueryStatistics;
 
 // This header declarations
 
+namespace lsst::qserv::wsched {
+class BlendScheduler;
+}
+
 namespace lsst::qserv::wcontrol {
 
 /// An abstract scheduler interface. Foreman objects use Scheduler instances
@@ -111,8 +115,8 @@ public:
      * @param chunkInventory         - a collection of the SSI resources published by the worker
      * @param sqlConnMgr             - for limiting the number of MySQL connections used for tasks
      */
-    static Ptr create(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
-                      mysql::MySqlConfig const& mySqlConfig,
+    static Ptr create(std::shared_ptr<wsched::BlendScheduler> const& scheduler, unsigned int poolSize,
+                      unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
                       std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
                       std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
                       std::shared_ptr<SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
@@ -148,9 +152,15 @@ public:
 
     std::shared_ptr<wpublish::QueriesAndChunks> getQueriesAndChunks() const { return _queries; }
 
+    std::shared_ptr<wsched::BlendScheduler> getScheduler() const { return _scheduler; }
+
+    /// Return the fqdn for this worker.
+    std::string getFqdn() const { return _fqdn; }
+
 private:
-    Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
-            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
+    Foreman(std::shared_ptr<wsched::BlendScheduler> const& scheduler, unsigned int poolSize,
+            unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
+            std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
             std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
             std::shared_ptr<SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
             std::string const& vectRunSizesStr, std::string const& vectMinRunningSizesStr);
@@ -162,7 +172,7 @@ private:
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
 
     util::ThreadPool::Ptr _pool;
-    Scheduler::Ptr _scheduler;
+    std::shared_ptr<wsched::BlendScheduler> _scheduler;
 
     util::CommandQueue::Ptr _workerCommandQueue;  ///< dedicated queue for the worker commands
     util::ThreadPool::Ptr _workerCommandPool;     ///< dedicated pool for executing worker commands
@@ -196,6 +206,9 @@ private:
 
     /// Map of czar information for all czars that have contacted this worker.
     std::shared_ptr<wcontrol::WCzarInfoMap> const _wCzarInfoMap;
+
+    /// FQDN for this worker.
+    std::string const _fqdn;
 
     static Ptr _globalForeman;  ///< Pointer to the global instance.
 };
