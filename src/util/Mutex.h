@@ -32,7 +32,7 @@
 
 #include "util/Bug.h"
 
-#define USING_VMUTEX 0  // &&& Should be replaced by variable in build.
+#define USING_VMUTEX 0  // TODO:UJ Should be replaced by variable in build.
 
 #ifdef MUTEX_UNITTEST
 #define USING_VMUTEX 1

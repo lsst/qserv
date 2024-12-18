@@ -145,8 +145,8 @@ public:
     /// @return true if this is the first time this function has been called.
     bool getFirstChannelSqlConn() { return _firstChannelSqlConn.exchange(false); }
 
-    /// @return a transmit data object indicating the errors in 'multiErr'.
-    bool buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+    /// Build and transmit a transmit data object indicating the errors in 'multiErr'.
+    void buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
     /// Extract the SQL results and write them into the file and notify Czar after the last
     /// row of the result result set depending on theis channel has been processed.
@@ -284,6 +284,8 @@ private:
     /// much faster to answer the query without scanning all 1000 chunks.
     std::atomic<bool> _rowLimitComplete;
     std::atomic<bool> _dead{false};  ///< Set to true when the contents of the file are no longer useful.
+
+    std::atomic<uint64_t> _bytesWritten{0};  ///< Total bytes written.
 };
 
 }  // namespace lsst::qserv::wbase
