@@ -136,8 +136,9 @@ util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 bool QueryRunner::runQuery() {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_TRACE,
-         __func__ << " tid=" << _task->getIdStr() << " scsId=" << _task->getSendChannel()->getScsId());
+    LOGS(_log, LOG_LVL_WARN,
+         "QueryRunner " << _task->cName(__func__)  //&&& TRACE
+                        << " scsId=" << _task->getSendChannel()->getScsId());
 
     // Start tracking the task.
     auto now = chrono::system_clock::now();
@@ -261,7 +262,9 @@ bool QueryRunner::_dispatchChannel() {
             util::Timer primeT;
             primeT.start();
             _task->queryExecutionStarted();
+            LOGS(_log, LOG_LVL_WARN, "QueryRunner " << _task->cName(__func__) << " sql start");  //&&& TRACE
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
+            LOGS(_log, LOG_LVL_WARN, "QueryRunner " << _task->cName(__func__) << " sql end");  //&&& TRACE
             primeT.stop();
             needToFreeRes = true;
             if (taskSched != nullptr) {

@@ -67,8 +67,7 @@ public:
     bool scanInteractive{false};
     DbTableSet subChunkTables;
     std::vector<int> subChunkIds;
-    std::vector<std::string> queries;  // &&& remove if possible
-    std::vector<std::string> queryTemplates;
+    std::vector<std::string> queries;
     // Consider promoting the concept of container of ChunkQuerySpec
     // in the hopes of increased code cleanliness.
     std::shared_ptr<ChunkQuerySpec> nextFragment;  ///< ad-hoc linked list (consider removal)

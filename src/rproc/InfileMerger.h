@@ -165,6 +165,7 @@ public:
     /// Merge a worker response, which contains a single ResponseData message
     /// Using job query info for early termination of the merge if needed.
     /// @return true if merge was successfully imported.
+    // &&& delete
     bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
                std::shared_ptr<qdisp::JobQuery> const& jq);
 

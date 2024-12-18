@@ -163,12 +163,16 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
                                    to_string(queryId) + " czar=" + to_string(czarId));
         }
+
         qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
         if (uj == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
                                    to_string(queryId) + " ujId=" + to_string(uberJobId) +
                                    " czar=" + to_string(czarId));
         }
+
+        uj->setResultFileSize(fileSize);
+        exec->checkResultFileSize(fileSize);
 
         auto importRes = uj->importResultFile(fileUrl, rowCount, fileSize);
         jsRet = importRes;

@@ -77,8 +77,10 @@ UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandle
           _uberJobId(uberJobId),
           _czarId(czarId),
           _rowLimit(rowLimit),
-          _idStr("QID=" + to_string(_queryId) + ":uj=" + to_string(uberJobId)),
-          _workerData(workerData) {}
+          _idStr("QID=" + to_string(_queryId) + "_ujId=" + to_string(uberJobId)),
+          _workerData(workerData) {
+    LOGS(_log, LOG_LVL_WARN, _idStr << " &&& created");
+}
 
 void UberJob::_setup() {
     UberJob::Ptr ujPtr = shared_from_this();
@@ -87,7 +89,7 @@ void UberJob::_setup() {
 
 bool UberJob::addJob(JobQuery::Ptr const& job) {
     bool success = false;
-    if (job->setUberJobId(getJobId())) {
+    if (job->setUberJobId(getUjId())) {
         lock_guard<mutex> lck(_jobsMtx);
         _jobs.push_back(job);
         success = true;
@@ -167,10 +169,9 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
     bool transmitSuccess = false;
     string exceptionWhat;
     try {
-        //&&&util::InstanceCount ic{"runUberJob&&&"};
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj d");
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj sending");
         json const response = client.readAsJson();
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj d1");
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj worker recv");
         if (0 != response.at("success").get<int>()) {
             transmitSuccess = true;
         } else {
@@ -206,6 +207,7 @@ void UberJob::prepScrubResults() {
 }
 
 void UberJob::_unassignJobs() {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__));
     lock_guard<mutex> lck(_jobsMtx);
     auto exec = _executive.lock();
     if (exec == nullptr) {
@@ -214,7 +216,7 @@ void UberJob::_unassignJobs() {
     }
     for (auto&& job : _jobs) {
         string jid = job->getIdStr();
-        if (!job->unassignFromUberJob(getJobId())) {
+        if (!job->unassignFromUberJob(getUjId())) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not unassign job=" << jid << " cancelling");
             exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "unable to re-assign " + jid,
                                 util::ErrorCode::INTERNAL);
@@ -265,6 +267,7 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
 
 void UberJob::callMarkCompleteFunc(bool success) {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " success=" << success);
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& success=" << success);
 
     lock_guard<mutex> lck(_jobsMtx);
     // Need to set this uberJob's status, however exec->markCompleted will set
@@ -287,11 +290,16 @@ void UberJob::callMarkCompleteFunc(bool success) {
     _jobs.clear();
 }
 
+util::HistogramRolling histoQueImp("&&&uj histoQueImp", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+
 /// Retrieve and process a result file using the file-based protocol
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
 json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
     LOGS(_log, LOG_LVL_DEBUG,
          cName(__func__) << " fileUrl=" << fileUrl << " rowCount=" << rowCount << " fileSize=" << fileSize);
+    LOGS(_log, LOG_LVL_WARN,
+         cName(__func__) << "&&& fileUrl=" << fileUrl << " rowCount=" << rowCount
+                         << " fileSize=" << fileSize);
 
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " import job was cancelled.");
@@ -313,7 +321,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         return _importResultError(false, "rowLimited", "Enough rows already");
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " fileSize=" << fileSize);
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileSize);
 
     bool const statusSet = setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrl);
     if (!statusSet) {
@@ -322,10 +330,15 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     }
 
     weak_ptr<UberJob> ujThis = weak_from_this();
-    // TODO:UJ lambda may not be the best way to do this, alsocheck synchronization - may need a mutex for
-    // merging.
+    auto startQImp = CLOCK::now();  // &&&
+
+    // fileCollectFunc will be put on the queue to run later.
     string const idStr = _idStr;
-    auto fileCollectFunc = [ujThis, fileUrl, rowCount, idStr](util::CmdData*) {
+    auto fileCollectFunc = [ujThis, fileUrl, rowCount, idStr, startQImp](util::CmdData*) {
+        auto endQImp = CLOCK::now();                                   //&&&
+        std::chrono::duration<double> secsQImp = endQImp - startQImp;  // &&&
+        histoQueImp.addEntry(endQImp, secsQImp.count());               //&&&
+        LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoQueImp.getString(""));
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
@@ -435,6 +448,7 @@ json UberJob::_importResultError(bool shouldCancel, string const& errorType, str
 
 void UberJob::_importResultFinish(uint64_t resultRows) {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " &&& start");
 
     auto exec = _executive.lock();
     if (exec == nullptr) {

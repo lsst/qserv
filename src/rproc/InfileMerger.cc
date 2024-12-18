@@ -332,8 +332,13 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
     return ret;
 }
 
+uint32_t histLimitCount = 0;
+util::HistogramRolling histoInfileBuild("&&&uj histoInfileBuild", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+util::HistogramRolling histoMergeSecs("&&&uj histoMergeSecs", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+util::HistogramRolling histoMergeSzB("&&&uj histoMergeSzB", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+
 bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::ResponseData const& responseData) {
-    UberJobId const uJobId = uberJob->getJobId();
+    UberJobId const uJobId = uberJob->getUjId();
     std::string queryIdJobStr = uberJob->getIdStr();
     if (!_queryIdStrSet) {
         _setQueryIdStr(QueryIdHelper::makeIdStr(uberJob->getQueryId()));
@@ -372,13 +377,17 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
     virtFileT.start();
+    auto startInfileBuild = CLOCK::now();  //&&&
     // UberJobs only get one attempt
-    int resultJobId = makeJobIdAttempt(uberJob->getJobId(), 0);
+    int resultJobId = makeJobIdAttempt(uberJob->getUjId(), 0);
     ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(
             responseData, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
+    auto endInfileBuild = CLOCK::now();                                                 //&&&
+    std::chrono::duration<double> secsInfileBuild = endInfileBuild - startInfileBuild;  // &&&
+    histoInfileBuild.addEntry(endInfileBuild, secsInfileBuild.count());                 //&&&
 
     // If the job attempt is invalid, exit without adding rows.
     // It will wait here if rows need to be deleted.
@@ -416,7 +425,8 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
         return true;
     }
 
-    auto start = std::chrono::system_clock::now();
+    //&&&auto start = std::chrono::system_clock::now();
+    auto start = CLOCK::now();
     switch (_dbEngine) {
         case MYISAM:
             ret = _applyMysqlMyIsam(infileStatement, resultSize);
@@ -428,11 +438,20 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
         default:
             throw std::invalid_argument("InfileMerger::_dbEngine is unknown =" + engineToStr(_dbEngine));
     }
-    auto end = std::chrono::system_clock::now();
+    auto end = CLOCK::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG,
          "mergeDur=" << mergeDur.count() << " sema(total=" << _semaMgrConn->getTotalCount()
                      << " used=" << _semaMgrConn->getUsedCount() << ")");
+    std::chrono::duration<double> secs = end - start;  // &&&
+    histoMergeSecs.addEntry(end, secs.count());        //&&&
+    histoMergeSzB.addEntry(end, resultSize);           // &&&
+    if ((++histLimitCount) % 1000 == 0) {
+        LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoInfileBuild.getString(""));
+        LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoMergeSecs.getString(""));
+        LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoMergeSzB.getString(""));
+    }
+
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
