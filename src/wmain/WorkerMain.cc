@@ -238,7 +238,6 @@ void WorkerMain::terminate() {
     {
         lock_guard lck(_terminateMtx);
         if (_terminate.exchange(true)) return;
-        ;
     }
     _terminateCv.notify_all();
     _controlHttpSvc->stop();

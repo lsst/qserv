@@ -151,7 +151,6 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    LOGS(_log, LOG_LVL_TRACE, "QR in flight for sqlConnMgr " << _sqlConnMgr->dump());
     // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
     bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1);
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());

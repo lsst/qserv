@@ -98,7 +98,7 @@ void ScanInfo::sortTablesSlowestFirst() {
     std::sort(infoTables.begin(), infoTables.end(), func);
 }
 
-nlohmann::json ScanInfo::serializeJson() const {
+nlohmann::json ScanInfo::toJson() const {
     auto jsScanInfo = json({{"infoscanrating", scanRating}, {"infotables", json::array()}});
 
     auto& jsInfoTables = jsScanInfo["infotables"];
@@ -127,6 +127,7 @@ ScanInfo::Ptr ScanInfo::createFromJson(nlohmann::json const& siJson) {
         auto lockInMem = http::RequestBodyJSON::required<bool>(jsElem, "silockinmem");
         iTbls.emplace_back(db, table, lockInMem, sRating);
     }
+    siPtr->sortTablesSlowestFirst();
 
     return siPtr;
 }
@@ -137,8 +138,13 @@ std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl) {
     return os;
 }
 
+std::ostream& ScanInfo::dump(std::ostream& os) const {
+    os << "ScanInfo{speed=" << scanRating << " tables: " << util::printable(infoTables) << "}";
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, ScanInfo const& info) {
-    os << "ScanInfo{speed=" << info.scanRating << " tables: " << util::printable(info.infoTables) << "}";
+    info.dump(os);
     return os;
 }
 
