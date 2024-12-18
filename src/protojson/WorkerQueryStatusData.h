@@ -385,7 +385,7 @@ private:
 /// with that czar. Result files will remain until garbage cleanup or the czar
 /// calls for their removal.
 /// TODO:UJ &&& UberJob complete messages that failed to be sent to the czar
-/// TODO:UJ &&& will be added to this message. uber job file response
+/// TODO:UJ &&& will be added to this message. (uberjob file response)
 /// Upon successful completion, the worker will clear all values set by the
 /// the czar.
 /// Currently, this message is expected to only be needed rarely.

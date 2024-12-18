@@ -224,12 +224,9 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, std::string const& czarName)
         : _userQuerySharedResources(makeUserQuerySharedResources(dbModels, czarName)),
+          _qmetaSecondsBetweenUpdates(cconfig::CzarConfig::instance()->getQMetaSecondsBetweenChunkUpdates()),
           _useQservRowCounterOptimization(true),
           _asioIoService() {
-    auto const czarConfig = cconfig::CzarConfig::instance();
-    _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
-            czarConfig->getXrootdFrontendUrl(), czarConfig->getQMetaSecondsBetweenChunkUpdates());
-
     // When czar crashes/exits while some queries are still in flight they
     // are left in EXECUTING state in QMeta. We want to cleanup that state
     // to avoid confusion. Note that when/if clean czar restart is implemented
@@ -357,7 +354,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive = qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
+            executive = qdisp::Executive::create(_qmetaSecondsBetweenUpdates, messageStore, qdispPool,
                                                  _userQuerySharedResources->queryProgress,
                                                  _userQuerySharedResources->queryProgressHistory, qs,
                                                  _asioIoService);
