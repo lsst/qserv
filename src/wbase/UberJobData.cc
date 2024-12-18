@@ -26,6 +26,7 @@
 // System headers
 
 // Third party headers
+#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -346,11 +347,12 @@ void UberJobData::cancelAllTasks() {
 
 string UJTransmitCmd::cName(const char* funcN) const {
     stringstream os;
-    os << "UJTransmitCmd::" << funcN << " czId=" << _czarId << " qId=" << _queryId << " ujId=" << _uberJobId;
+    os << "UJTransmitCmd::" << funcN << " czId=" << _czarId << " QID=" << _queryId << "_ujId=" << _uberJobId;
     return os.str();
 }
 
 void UJTransmitCmd::action(util::CmdData* data) {
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__));
     // Make certain _selfPtr is reset before leaving this function.
     // If a retry is needed, duplicate() is called.
     class ResetSelf {
@@ -391,12 +393,12 @@ void UJTransmitCmd::action(util::CmdData* data) {
             auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
             // This will check if the czar is believed to be alive and try the queue the query to be tried
             // again at a lower priority. It it thinks the czar is dead, it will throw it away.
-            // TODO:UJ &&& I have my doubts about this as a reconnected czar may go down in flames
-            //         &&& as it is hit with thousands of these.
-            //         &&& Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
-            //         &&& indicates some messages failed. When the czar sees the flag, it'll request a
-            //         &&& message from the worker that contains all of the failed transmit data and handle
-            //         &&& that. All of these failed transmits should fit in a single message.
+            // TODO:UJ I have my doubts about this as a reconnected czar may go down in flames
+            //         as it is hit with thousands of these.
+            //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
+            //         indicates some messages failed. When the czar sees the flag, it'll request a
+            //         message from the worker that contains all of the failed transmit data and handle
+            //         that. All of these failed transmits should fit in a single message.
             if (wCzInfo->checkAlive(CLOCK::now())) {
                 auto wPool = _foreman->getWPool();
                 if (wPool != nullptr) {
@@ -419,8 +421,7 @@ void UJTransmitCmd::action(util::CmdData* data) {
 }
 
 void UJTransmitCmd::kill() {
-    string const funcN("UJTransmitCmd::kill");
-    LOGS(_log, LOG_LVL_WARN, funcN);
+    LOGS(_log, LOG_LVL_WARN, cName(__func__));
     auto sPtr = _selfPtr;
     _selfPtr.reset();
     if (sPtr == nullptr) {
@@ -429,6 +430,7 @@ void UJTransmitCmd::kill() {
 }
 
 UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__));
     auto ujD = _ujData.lock();
     if (ujD == nullptr) {
         return nullptr;
