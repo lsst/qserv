@@ -9,8 +9,6 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// qserv headers
-
 using namespace std;
 
 namespace {  // File-scope helpers
