@@ -41,6 +41,10 @@
 
 namespace lsst::qserv {
 
+namespace protojson {
+class ScanInfo;
+}
+
 namespace util {
 class MultiError;
 }
@@ -61,20 +65,26 @@ class UberJobData : public std::enable_shared_from_this<UberJobData> {
 public:
     using Ptr = std::shared_ptr<UberJobData>;
 
+    enum ResponseState { SENDING_ERROR = -1, NOTHING = 0, SENDING_FILEURL = 1 };
+
     UberJobData() = delete;
     UberJobData(UberJobData const&) = delete;
 
     static Ptr create(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
                       std::string const& czarHost, int czarPort, uint64_t queryId, int rowLimit,
-                      std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
-                      std::string const& authKey) {
+                      uint64_t maxTableSizeBytes, std::shared_ptr<protojson::ScanInfo> const& scanInfo,
+                      bool scanInteractive, std::string const& workerId,
+                      std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
+                      uint16_t resultsHttpPort = 8080) {
         return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, rowLimit,
-                                   workerId, foreman, authKey));
+                                   maxTableSizeBytes, scanInfo, scanInteractive, workerId, foreman, authKey,
+                                   resultsHttpPort));
     }
     /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
 
-    void setScanInteractive(bool scanInteractive) { _scanInteractive = scanInteractive; }
+    bool getScanInteractive() const { return _scanInteractive; }
+    std::shared_ptr<protojson::ScanInfo> getScanInfo() const { return _scanInfo; }
 
     UberJobId getUberJobId() const { return _uberJobId; }
     qmeta::CzarId getCzarId() const { return _czarId; }
@@ -82,6 +92,7 @@ public:
     int getCzarPort() const { return _czarPort; }
     uint64_t getQueryId() const { return _queryId; }
     std::string getWorkerId() const { return _workerId; }
+    uint64_t getMaxTableSizeBytes() const { return _maxTableSizeBytes; }
 
     /// Add the tasks defined in the UberJob to this UberJobData object.
     void addTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
@@ -94,9 +105,9 @@ public:
                            uint64_t headerCount);  // TODO:UJ remove headerCount
 
     /// Let the Czar know there's been a problem.
-    bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+    void responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl);
 
-    std::string getIdStr() const { return _idStr; }
+    std::string const& getIdStr() const { return _idStr; }
     std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
 
     bool getCancelled() const { return _cancelled; }
@@ -108,12 +119,20 @@ public:
     /// that there is no limit to the number of rows sent back by the worker.
     /// Workers can only safely limit rows for queries that have the LIMIT clause without other related
     /// clauses like ORDER BY.
-    int getRowLimit() { return _rowLimit; }
+    int getRowLimit() const { return _rowLimit; }
+
+    std::string resultFilePath() const;
+    std::string resultFileHttpUrl() const;
 
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
-                int czarPort, uint64_t queryId, int rowLimit, std::string const& workerId,
-                std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey);
+                int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,
+                std::shared_ptr<protojson::ScanInfo> const& scanInfo, bool scanInteractive,
+                std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
+                std::string const& authKey, uint16_t resultsHttpPort);
+
+    /// Return the name of the file that will contain the results of the query.
+    std::string _resultFileName() const;
 
     /// Queue the response to be sent to the originating czar.
     void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
@@ -127,8 +146,10 @@ private:
     int const _czarPort;
     QueryId const _queryId;
     int const _rowLimit;  ///< If > 0, only read this many rows before return the results.
+    uint64_t const _maxTableSizeBytes;
     std::string const _workerId;
     std::string const _authKey;
+    uint16_t const _resultsHttpPort;  ///<  = 8080
 
     std::shared_ptr<wcontrol::Foreman> const _foreman;
 
@@ -137,12 +158,21 @@ private:
 
     std::mutex _ujTasksMtx;  ///< Protects _ujTasks.
 
-    std::string const _idStr;
-
     /// True if this an interactive (aka high priority) user query.
     std::atomic<bool> _scanInteractive;
 
+    /// Pointer to scan rating and table information.
+    std::shared_ptr<protojson::ScanInfo> _scanInfo;
+
+    std::string const _idStr;
+
     std::atomic<bool> _cancelled{false};  ///< Set to true if this was cancelled.
+
+    /// Either a file ULR or error needs to be sent back to the czar.
+    /// In the case of LIMIT queries, once a file URL has been sent,
+    /// the system must be prevented from sending errors back to the czar
+    /// for Tasks that were cancelled due to the LIMIT already being reached.
+    std::atomic<ResponseState> _responseState{NOTHING};
 };
 
 /// This class puts the information about a locally finished UberJob into a command

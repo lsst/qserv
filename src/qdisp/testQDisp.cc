@@ -145,10 +145,10 @@ public:
 
     ~ExecutiveUT() override = default;
 
-    ExecutiveUT(ExecutiveConfig const& cfg, shared_ptr<qmeta::MessageStore> const& ms,
+    ExecutiveUT(int qmetaTimeBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                 util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QStatus> const& qStatus,
                 shared_ptr<qproc::QuerySession> const& querySession, TestInfo::Ptr const& testInfo_)
-            : Executive(cfg, ms, qdispPool, qStatus, querySession), testInfo(testInfo_) {}
+            : Executive(qmetaTimeBetweenUpdates, ms, qdispPool, qStatus, querySession), testInfo(testInfo_) {}
 
     void assignJobsToUberJobs() override {
         vector<qdisp::UberJob::Ptr> ujVect;
@@ -187,8 +187,8 @@ qdisp::JobDescription::Ptr makeMockJobDescription(qdisp::Executive::Ptr const& e
     auto cqs = std::make_shared<qproc::ChunkQuerySpec>();  // dummy, unused in this case.
     std::string chunkResultName = "dummyResultTableName";
     qmeta::CzarId const czarId = 1;
-    auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, mHandler,
-                                             cqs, chunkResultName, true);
+    auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, mHandler, cqs,
+                                             chunkResultName, true);
     return job;
 }
 
@@ -209,6 +209,7 @@ std::shared_ptr<qdisp::JobQuery> addMockRequests(qdisp::Executive::Ptr const& ex
         qdisp::JobDescription::Ptr job = makeMockJobDescription(ex, sequence.incr(), ru, msg, rv[j]);
         jobQuery = ex->add(job);
     }
+    ex->setAllJobsCreated();
     return jobQuery;
 }
 
@@ -257,8 +258,6 @@ void timeoutFunc(std::atomic<bool>& flagDone, int millisecs) {
 class SetupTest {
 public:
     std::string qrMsg;
-    std::string str;
-    qdisp::ExecutiveConfig::Ptr conf;
     std::shared_ptr<qmeta::MessageStore> ms;
     util::QdispPool::Ptr qdispPool;
     qdisp::ExecutiveUT::PtrUT ex;
@@ -268,15 +267,12 @@ public:
     SetupTest(const char* request, util::QdispPool::Ptr const& qPool_) : qdispPool(qPool_) {
         LOGS(_log, LOG_LVL_INFO, "SetupTest start");
         qrMsg = request;
-        str = qdisp::ExecutiveConfig::getMockStr();
-        conf = std::make_shared<qdisp::ExecutiveConfig>(str, 0);  // No updating of QMeta.
         ms = std::make_shared<qmeta::MessageStore>();
         auto tInfo = qdisp::TestInfo::Ptr(new qdisp::TestInfo());
-        std::shared_ptr<qmeta::QProgress> queryProgress;  // No updating QProgress, nullptr
+        std::shared_ptr<qmeta::QProgress> qProgress;  // No updating QProgress, nullptr
         std::shared_ptr<qmeta::QProgressHistory>
                 queryProgressHistory;  // No updating QProgressHistory, nullptr
-        ex = qdisp::ExecutiveUT::PtrUT(
-                new qdisp::ExecutiveUT(*conf, ms, qdispPool, qProgress,
+        ex = qdisp::ExecutiveUT::PtrUT(new qdisp::ExecutiveUT(60, ms, qdispPool, qProgress,
                                        queryProgressHistory, nullptr, testInfo));
         LOGS(_log, LOG_LVL_INFO, "SetupTest end");
     }
@@ -385,7 +381,7 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         // squash
         SequentialInt sequence(0);
         tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
-        tEnv.ex->squash();
+        tEnv.ex->squash("test");
         usleep(250000);  // Give mock threads a quarter second to complete.
         tEnv.ex->join();
         BOOST_CHECK(tEnv.jqTest->isQueryCancelled() == true);
@@ -398,9 +394,9 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         // squash
         SequentialInt sequence(0);
         executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 20);
-        tEnv.ex->squash();
-        tEnv.ex->squash();  // check that squashing twice doesn't cause issues.
-        usleep(250000);     // Give mock threads a quarter second to complete.
+        tEnv.ex->squash("test");
+        tEnv.ex->squash("test");  // check that squashing twice doesn't cause issues.
+        usleep(250000);           // Give mock threads a quarter second to complete.
         tEnv.ex->join();
     }
 }

@@ -69,14 +69,17 @@ ScanScheduler::ScanScheduler(string const& name, int maxThreads, int maxReserve,
 }
 
 void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
-    wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
-    if (task == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
-        return;
+    auto logLvl = LOG_LVL_TRACE;
+    if (LOG_CHECK_LVL(_log, logLvl)) {
+        wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
+        if (task == nullptr) {
+            LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
+            return;
+        }
+        QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
+        LOGS(_log, logLvl, "commandStart " << getName() << " task=" << task->getIdStr());
     }
-    QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-    LOGS(_log, LOG_LVL_DEBUG, "commandStart " << getName() << " task=" << task->getIdStr());
     // task was registered Inflight when getCmd() was called.
 }
 
@@ -96,11 +99,11 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         lock_guard<mutex> guard(util::CommandQueue::_mx);
         --_inFlight;
         ++_recentlyCompleted;
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGS(_log, LOG_LVL_TRACE,
              "commandFinish " << getName() << " inFlight=" << _inFlight << " " << task->getIdStr());
         _decrChunkTaskCount(task->getChunkId());
     }
-    LOGS(_log, LOG_LVL_DEBUG, "tskEnd chunk=" << task->getChunkId() << " " << task->getIdStr());
+    LOGS(_log, LOG_LVL_TRACE, "tskEnd chunk=" << task->getChunkId() << " " << task->getIdStr());
     // Whenever a Task finishes, sleeping threads need to check if resources
     // are available to run new Tasks.
     _cv.notify_one();
@@ -119,7 +122,7 @@ bool ScanScheduler::_ready() {
     if (_infoChanged) {
         _infoChanged = false;
         logStuff = true;
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGS(_log, LOG_LVL_TRACE,
              getName() << " ScanScheduler::_ready "
                        << " inFlight=" << _inFlight << " maxThreads=" << _maxThreads
                        << " adj=" << _maxThreadsAdj << " activeChunks=" << getActiveChunkCount()
@@ -127,7 +130,7 @@ bool ScanScheduler::_ready() {
     }
     if (_inFlight >= maxInFlight()) {
         if (logStuff) {
-            LOGS(_log, LOG_LVL_DEBUG, getName() << " ScanScheduler::_ready too many in flight " << _inFlight);
+            LOGS(_log, LOG_LVL_TRACE, getName() << " ScanScheduler::_ready too many in flight " << _inFlight);
         }
         return false;
     }
@@ -156,7 +159,7 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait) {
     if (task != nullptr) {
         ++_inFlight;  // in flight as soon as it is off the queue.
         QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGS(_log, LOG_LVL_TRACE,
              "getCmd " << getName() << " tskStart chunk=" << task->getChunkId() << " tid=" << task->getIdStr()
                        << " inflight=" << _inFlight << _taskQueue->queueInfo());
         _infoChanged = true;
@@ -205,15 +208,13 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
 
         tsk->setMemMan(_memMan);
         tasks.push_back(tsk);
-        LOGS(_log, LOG_LVL_INFO, getName() << " queCmd " << tsk->getIdStr());
+        LOGS(_log, LOG_LVL_TRACE, getName() << " queCmd " << tsk->getIdStr());
     }
     // Queue the tasks
     {
         lock_guard<mutex> lock(util::CommandQueue::_mx);
         auto uqCount = _incrCountForUserQuery(qid, tasks.size());
-        LOGS(_log, LOG_LVL_DEBUG,
-             getName() << " queCmd "
-                       << " uqCount=" << uqCount);
+        LOGS(_log, LOG_LVL_TRACE, getName() << " queCmd " << " uqCount=" << uqCount);
         _taskQueue->queueTask(tasks);
         _infoChanged = true;
     }
