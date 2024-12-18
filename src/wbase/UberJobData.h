@@ -96,7 +96,7 @@ public:
     /// Let the Czar know there's been a problem.
     bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
-    std::string getIdStr() const { return _idStr; }
+    std::string const& getIdStr() const { return _idStr; }
     std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
 
     bool getCancelled() const { return _cancelled; }

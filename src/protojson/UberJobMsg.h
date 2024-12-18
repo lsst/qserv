@@ -222,15 +222,16 @@ private:
 
     JobId _jobId;
     int _attemptCount;
-    std::string _chunkQuerySpecDb;
-    int _scanRating;
-    bool _scanInteractive;
+    std::string _chunkQuerySpecDb;  // &&& remove, use value for UJ
+    int _scanRating;                // &&& remove, use value for UJ
+    bool _scanInteractive;          // &&& remove, use value for UJ
     int _chunkId;
     JobFragment::VectPtr _jobFragments{new JobFragment::Vect()};
 
     JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< Map of all query templates related to this UberJob.
     JobDbTablesMap::Ptr _jobDbTablesMap;          ///< Map of all db.tables related to this UberJob.
 
+    // &&& remove, use value for UJ
     std::vector<int> _chunkScanTableIndexes;  ///< list of indexes into _jobDbTablesMap.
 };
 
@@ -277,6 +278,8 @@ public:
 
     ScanInfo::Ptr getScanInfo() const { return _scanInfo; }
 
+    std::string const& getIdStr() const { return _idStr; }
+
 private:
     UberJobMsg(unsigned int metaVersion, std::string const& replicationInstanceId,
                std::string const& replicationAuthKey, CzarContactInfo::Ptr const& czInfo,
@@ -304,6 +307,8 @@ private:
     JobMsg::VectPtr _jobMsgVect{new JobMsg::Vect()};
 
     ScanInfo::Ptr _scanInfo{ScanInfo::create()};  ///< &&& doc
+
+    std::string const _idStr;
 };
 
 }  // namespace lsst::qserv::protojson
