@@ -119,8 +119,7 @@ void QueriesAndChunks::setBlendScheduler(shared_ptr<wsched::BlendScheduler> cons
 
 void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) { _requiredTasksCompleted = value; }
 
-QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId, CzarIdType czarId) {
-    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+QueryStatistics::Ptr QueriesAndChunks::_addQueryId(QueryId qId, CzarIdType czarId) {
     auto itr = _queryStatsMap.find(qId);
     QueryStatistics::Ptr stats;
     if (_queryStatsMap.end() == itr) {
@@ -132,12 +131,28 @@ QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId, CzarIdType czarId
     return stats;
 }
 
+QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId, CzarIdType czarId) {
+    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+    return _addQueryId(qId, czarId);
+}
+
 /// Add statistics for the Task, creating a QueryStatistics object if needed.
 void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto qid = task->getQueryId();
     auto czId = task->getCzarId();
     auto stats = addQueryId(qid, czId);
     stats->addTask(task);
+}
+void QueriesAndChunks::addTasks(vector<wbase::Task::Ptr> const& tasks,
+                                std::vector<util::Command::Ptr>& cmds) {
+    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+    for (auto const& task : tasks) {
+        auto qid = task->getQueryId();
+        auto czId = task->getCzarId();
+        auto stats = _addQueryId(qid, czId);
+        stats->addTask(task);
+        cmds.push_back(task);
+    }
 }
 
 /// Update statistics for the Task that was just queued.
@@ -749,7 +764,7 @@ void ChunkTableStats::addTaskFinished(double minutes) {
     } else {
         _data.avgCompletionTime = minutes;
     }
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "ChkId=" << _chunkId << ":tbl=" << _scanTableName << " completed=" << _data.tasksCompleted
                   << " avgCompletionTime=" << _data.avgCompletionTime);
 }

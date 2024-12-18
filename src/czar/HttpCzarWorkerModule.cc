@@ -98,13 +98,14 @@ json HttpCzarWorkerModule::_workerCzarComIssue() {
 }
 
 json HttpCzarWorkerModule::_handleJobError(string const& func) {
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError start");
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError start " << body().objJson);
+
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then kill the UberJob.
     json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
-        // See qdisp::UberJob::runUberJob() for json message construction. &&&
+        // TODO:UJ see wbase::UberJobData::responseError for message construction
         string const targetWorkerId = body().required<string>("workerid");
         string const czarName = body().required<string>("czar");
         qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
@@ -145,9 +146,9 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     // Parse and verify the json message and then have the uberjob import the file.
     json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
-        // &&& TODO:UJ file response - move construction and parsing
-        // &&& TODO:UJ to a class so it can be added to WorkerCzarComIssue
-        // See qdisp::UberJob::runUberJob() for json message construction. &&&
+        // TODO:UJ file response - move construction and parsing
+        // TODO:UJ to a class so it can be added to WorkerCzarComIssue
+        // See wbase::UberJobData::responseFileReady
         string const targetWorkerId = body().required<string>("workerid");
         string const czarName = body().required<string>("czar");
         qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
@@ -163,12 +164,16 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
                                    to_string(queryId) + " czar=" + to_string(czarId));
         }
+
         qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
         if (uj == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
                                    to_string(queryId) + " ujId=" + to_string(uberJobId) +
                                    " czar=" + to_string(czarId));
         }
+
+        uj->setResultFileSize(fileSize);
+        exec->checkResultFileSize(fileSize);
 
         auto importRes = uj->importResultFile(fileUrl, rowCount, fileSize);
         jsRet = importRes;
