@@ -63,13 +63,15 @@ public:
                                       std::shared_ptr<ResponseHandler> const& respHandler,
                                       std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                                       std::string const& chunkResultName, bool mock = false) {
-        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler,
-                                                  chunkQuerySpec, chunkResultName, mock));
+        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler, chunkQuerySpec,
+                                                  chunkResultName, mock));
         return jd;
     }
 
     JobDescription(JobDescription const&) = delete;
     JobDescription& operator=(JobDescription const&) = delete;
+
+    std::string cName(const char* fnc) { return std::string("JobDescription::") + fnc + " " + _qIdStr; }
 
     JobId id() const { return _jobId; }
     ResourceUnit const& resource() const { return _resource; }
@@ -103,6 +105,7 @@ private:
     int _attemptCount{-1};   ///< Start at -1 so that first attempt will be 0, see incrAttemptCount().
     ResourceUnit _resource;  ///< path, e.g. /q/LSST/23125
 
+    // TODO:UJ delete _respHandler, store errors a different way
     std::shared_ptr<ResponseHandler> _respHandler;  // probably MergingHandler
     std::shared_ptr<qproc::ChunkQuerySpec> _chunkQuerySpec;
     std::string _chunkResultName;
