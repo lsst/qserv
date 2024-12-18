@@ -63,8 +63,8 @@ public:
                                       std::shared_ptr<ResponseHandler> const& respHandler,
                                       std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
                                       std::string const& chunkResultName, bool mock = false) {
-        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler,
-                                                  chunkQuerySpec, chunkResultName, mock));
+        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler, chunkQuerySpec,
+                                                  chunkResultName, mock));
         return jd;
     }
 

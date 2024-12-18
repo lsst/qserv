@@ -95,6 +95,7 @@ private:
     /// Prepare for first call to flush().
     void _initState();
 
+    // &&& delete
     bool _merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
                 std::shared_ptr<qdisp::JobQuery> const& jobQuery);
 

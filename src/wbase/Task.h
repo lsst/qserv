@@ -149,7 +149,7 @@ public:
         bool operator()(Ptr const& x, Ptr const& y);
     };
 
-    std::string cName(const char* func) const { return std::string("Task::") + func; }
+    std::string cName(const char* func) const { return std::string("Task::") + func + " " + _idStr; }
 
     // TODO:UJ too many parameters.
     //  - fragmentNumber seems pointless
@@ -168,18 +168,6 @@ public:
     Task(const Task&) = delete;
     virtual ~Task();
 
-/* &&&
-    /// Read json to generate a vector of one or more task for a chunk.
-    static std::vector<Ptr> createTasksForChunk(  /// &&& delete
-            std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-            protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
-            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
-            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-            uint16_t resultsHttpPort = 8080);
-*/
-
     /// &&&
     static std::vector<Ptr> createTasksFromUberJobMsg(
             std::shared_ptr<protojson::UberJobMsg> const& uberJobMsg,
@@ -195,12 +183,7 @@ public:
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
             std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
             protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
-            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr
-            //&&&mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const&
-            // sqlConnMgr,
-            //&&&std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
-            //&&&uint16_t resultsHttpPort = 8080);
-    );
+            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
 
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
     void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for FileChannelShared
@@ -405,6 +388,9 @@ private:
 
     /// When > 0, indicates maximum number of rows needed for a result.
     int const _rowLimit;
+
+    std::shared_ptr<UberJobData> _ujData;
+    std::string const _idStr;
 
     bool _unitTest = false;  ///<
 };

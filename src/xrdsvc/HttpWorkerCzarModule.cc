@@ -112,6 +112,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     try {
         auto const& jsReq = body().objJson;
         auto uberJobMsg = protojson::UberJobMsg::createFromJson(jsReq);
+        LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& parsed msg");
 
         UberJobId ujId = uberJobMsg->getUberJobId();
         auto ujCzInfo = uberJobMsg->getCzarContactInfo();
@@ -123,6 +124,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         // Get or create QueryStatistics and UserQueryInfo instances.
         auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzInfo->czId);
         auto userQueryInfo = queryStats->getUserQueryInfo();
+        LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& added to stats");
 
         if (userQueryInfo->getCancelledByCzar()) {
             throw wbase::TaskException(
@@ -136,6 +138,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         auto ujData = wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
                                                  ujCzInfo->czPort, ujQueryId, ujRowLimit, targetWorkerId,
                                                  foreman(), authKey());
+        LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& ujData created");
 
         // Find the entry for this queryId, create a new one if needed.
         userQueryInfo->addUberJob(ujData);
@@ -150,8 +153,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         channelShared->setTaskCount(ujTasks.size());
         ujData->addTasks(ujTasks);
 
-        // At this point, it looks like the message was sent successfully, update
-        // czar touched time.
+        // At this point, it looks like the message was sent successfully.
         wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
         wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czarId);
         wCzarInfo->czarMsgReceived(CLOCK::now());

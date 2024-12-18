@@ -235,27 +235,11 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     }
 }
 
-/* &&&
-void Executive::queueUberJob(std::shared_ptr<UberJob> const& uberJob) {
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&&uj queueUberJob");
-    auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
-
-    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
-    _jobStartCmdList.push_back(cmd);
-    if (_scanInteractive) {
-        _qdispPool->queCmd(cmd, 0);
-    } else {
-        _qdispPool->queCmd(cmd, 1);
-    }
-}
-*/
-
 void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     {
         lock_guard<mutex> lck(_uberJobsMapMtx);
-        UberJobId ujId = uj->getJobId();
+        UberJobId ujId = uj->getUjId();
         _uberJobsMap[ujId] = uj;
-        //&&&uj->setAdded();
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
     }
 
@@ -427,7 +411,8 @@ void Executive::markCompleted(JobId jobId, bool success) {
     }
     _unTrack(jobId);
     if (!success && !isRowLimitComplete()) {
-        LOGS(_log, LOG_LVL_ERROR,
+        auto logLvl = (_cancelled) ? LOG_LVL_ERROR : LOG_LVL_TRACE;
+        LOGS(_log, logLvl,
              "Executive: requesting squash, cause: " << " failed (code=" << err.getCode() << " "
                                                      << err.getMsg() << ")");
         squash();  // ask to squash
@@ -756,6 +741,39 @@ void Executive::checkLimitRowComplete() {
     // message is LOG_LVL_WARN.
     LOGS(_log, LOG_LVL_WARN, "LIMIT query has enough rows, canceling superfluous jobs.");
     _squashSuperfluous();
+}
+
+void Executive::checkResultFileSize(uint64_t fileSize) {
+    _totalResultFileSize += fileSize;
+    if (_cancelled) return;
+
+    size_t const MB_SIZE_BYTES = 1024 * 1024;
+    uint64_t maxResultTableSizeBytes = cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES;
+    LOGS(_log, LOG_LVL_TRACE,
+         cName(__func__) << " sz=" << fileSize << " total=" << _totalResultFileSize
+                         << " max=" << maxResultTableSizeBytes);
+    if (_totalResultFileSize > maxResultTableSizeBytes) {
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " total=" << _totalResultFileSize << " max=" << maxResultTableSizeBytes);
+        // _totalResultFileSize may include non zero values from dead UberJobs,
+        // so recalculate it to verify.
+        uint64_t total = 0;
+        {
+            lock_guard<mutex> lck(_uberJobsMapMtx);
+            for (auto const& [ujId, ujPtr] : _uberJobsMap) {
+                total += ujPtr->getResultFileSize();
+            }
+            _totalResultFileSize = total;
+        }
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << "recheck total=" << total << " max=" << maxResultTableSizeBytes);
+        if (total > maxResultTableSizeBytes) {
+            LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
+            ResponseHandler::Error err(0, string("Incomplete result already too large ") + to_string(total));
+            _multiError.push_back(err);
+            squash();
+        }
+    }
 }
 
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {

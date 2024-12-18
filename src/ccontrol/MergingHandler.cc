@@ -125,6 +125,10 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
     int headerCount = 0;
     uint64_t totalBytesRead = 0;
     try {
+        auto exec = uberJob->getExecutive();
+        if (exec == nullptr || exec->getCancelled()) {
+            throw runtime_error(context + " query was cancelled");
+        }
         string const noClientData;
         vector<string> const noClientHeaders;
         http::ClientConfig clientConfig;
@@ -141,10 +145,12 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
             bool last = false;
             char const* next = inBuf;
             char const* const end = inBuf + inBufSize;
+            LOGS(_log, LOG_LVL_INFO,
+                 context << " next=" << (uint64_t)next << " end=" << (uint64_t)end);  // &&& DEBUG
             while ((next < end) && !last) {
-                LOGS(_log, LOG_LVL_WARN,
-                     context << "TODO:UJ next=" << (uint64_t)next << " end=" << (uint64_t)end
-                             << " last=" << last);
+                if (exec->getCancelled()) {
+                    throw runtime_error(context + " query was cancelled");
+                }
                 if (msgSizeBytes == 0) {
                     // Continue or finish reading the frame header.
                     size_t const bytes2read =
@@ -212,15 +218,15 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
                         msgSizeBytes = 0;
                     } else {
                         LOGS(_log, LOG_LVL_WARN,
-                             context << " headerCount=" << headerCount
-                                     << " incomplete read diff=" << (msgSizeBytes - msgBufNext));
+                             context << " headerCount=" << headerCount << " incomplete read diff="
+                                     << (msgSizeBytes - msgBufNext));  // &&& DEBUG
                     }
                 }
             }
         });
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGS(_log, LOG_LVL_WARN,
              context << " headerCount=" << headerCount << " msgSizeBytes=" << msgSizeBytes
-                     << " totalBytesRead=" << totalBytesRead);
+                     << " totalBytesRead=" << totalBytesRead);  // &&&
         if (msgSizeBufNext != 0) {
             throw runtime_error("short read of the message header at offset " +
                                 to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
@@ -380,7 +386,7 @@ tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expe
     }
 
     if (success) {
-        _infileMerger->mergeCompleteFor(uberJob->getJobId());
+        _infileMerger->mergeCompleteFor(uberJob->getUjId());
     }
     return {success, shouldCancel};
 }

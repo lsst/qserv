@@ -159,7 +159,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _idCounter(),
           _uqFactory(),
           _clientToQuery(),
-          _monitorSleepTime (_czarConfig->getMonitorSleepTimeMilliSec()),
+          _monitorSleepTime(_czarConfig->getMonitorSleepTimeMilliSec()),
           _activeWorkerMap(new ActiveWorkerMap(_czarConfig)) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
@@ -402,45 +402,45 @@ void Czar::killQuery(string const& query, string const& clientId) {
     int threadId;
     QueryId queryId;
     if (ccontrol::UserQueryType::isKill(query, threadId)) {
-        LOGS(_log, LOG_LVL_DEBUG, "thread ID: " << threadId);
+        LOGS(_log, LOG_LVL_INFO, "KILL thread ID: " << threadId);
         lock_guard<mutex> lock(_mutex);
 
         // find it in the client map based in client/thread id
         ClientThreadId ctId(clientId, threadId);
         auto iter = _clientToQuery.find(ctId);
         if (iter == _clientToQuery.end()) {
-            LOGS(_log, LOG_LVL_INFO, "Cannot find client thread id: " << threadId);
-            throw std::runtime_error("Unknown thread ID: " + query);
+            LOGS(_log, LOG_LVL_INFO, "KILL Cannot find client thread id: " << threadId);
+            throw std::runtime_error("KILL Unknown thread ID: " + query);
         }
         uq = iter->second.lock();
     } else if (ccontrol::UserQueryType::isCancel(query, queryId)) {
-        LOGS(_log, LOG_LVL_DEBUG, "query ID: " << queryId);
+        LOGS(_log, LOG_LVL_INFO, "KILL query ID: " << queryId);
         lock_guard<mutex> lock(_mutex);
 
         // find it in the client map based in client/thread id
         auto iter = _idToQuery.find(queryId);
         if (iter == _idToQuery.end()) {
-            LOGS(_log, LOG_LVL_INFO, "Cannot find query id: " << queryId);
-            throw std::runtime_error("Unknown or finished query ID: " + query);
+            LOGS(_log, LOG_LVL_INFO, "KILL Cannot find query id: " << queryId);
+            throw std::runtime_error("KILL unknown or finished query ID: " + query);
         }
         uq = iter->second.lock();
     } else {
-        throw std::runtime_error("Failed to parse query: " + query);
+        throw std::runtime_error("KILL failed to parse query: " + query);
     }
 
     // assume this cannot fail or throw
     if (uq) {
-        LOGS(_log, LOG_LVL_DEBUG, "Killing query: " << uq->getQueryId());
+        LOGS(_log, LOG_LVL_INFO, "KILLing query: " << uq->getQueryId());
         // query killing can potentially take very long and we do now want to block
         // proxy from serving other requests so run it in a detached thread
         thread killThread([uq]() {
             uq->kill();
-            LOGS(_log, LOG_LVL_DEBUG, "Finished killing query: " << uq->getQueryId());
+            LOGS(_log, LOG_LVL_INFO, "Finished KILLing query: " << uq->getQueryId());
         });
         killThread.detach();
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Query has expired/finished: " << query);
-        throw std::runtime_error("Query has already finished: " + query);
+        LOGS(_log, LOG_LVL_INFO, "KILL query has expired/finished: " << query);
+        throw std::runtime_error("KILL query has already finished: " + query);
     }
 }
 

@@ -232,6 +232,13 @@ public:
     /// Return a pointer to _scanInfo.
     protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
 
+    /// Add fileSize to `_totalResultFileSize` and check if it exceeds limits.
+    /// If it is too large, check the value against existing UberJob result
+    /// sizes as `_totalResultFileSize` may include failed UberJobs.
+    /// If the sum of all UberJob result files size is too large,
+    /// cancel this user query.
+    void checkResultFileSize(uint64_t fileSize = 0);
+
 protected:
     Executive(ExecutiveConfig const& cfg, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,
@@ -343,6 +350,8 @@ private:
     std::atomic<bool> _readyToExecute{false};
 
     protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
+
+    std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
 };
 
 }  // namespace qdisp

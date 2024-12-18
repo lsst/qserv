@@ -452,12 +452,15 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
+            LOGS(_log, LOG_LVL_WARN,
+                 "FileChannelShared " << task->cName(__func__) << " sending start");  //&&& TRACE
             if (!_sendResponse(tMtxLockA, task, cancelled, multiErr, rowLimitComplete)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
                 break;
             }
-            LOGS(_log, LOG_LVL_TRACE, __func__ << " " << task->getIdStr() << " sending done!!!");
+            LOGS(_log, LOG_LVL_WARN,
+                 "FileChannelShared " << task->cName(__func__) << " sending done!!!");  //&&& TRACE
         }
     }
     transmitT.stop();
