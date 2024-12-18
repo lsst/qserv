@@ -70,25 +70,25 @@ UberJobMsg::UberJobMsg(unsigned int metaVersion, std::string const& replicationI
     }
 }
 
-json UberJobMsg::serializeJson() const {
+json UberJobMsg::toJson() const {
     json ujmJson = {{"version", _metaVersion},
                     {"instance_id", _replicationInstanceId},
                     {"auth_key", _replicationAuthKey},
                     {"worker", _workerId},
                     {"queryid", _qId},
                     {"uberjobid", _ujId},
-                    {"czarinfo", _czInfo->serializeJson()},
+                    {"czarinfo", _czInfo->toJson()},
                     {"rowlimit", _rowLimit},
-                    {"subqueries_map", _jobSubQueryTempMap->serializeJson()},
-                    {"dbtables_map", _jobDbTablesMap->serializeJson()},
+                    {"subqueries_map", _jobSubQueryTempMap->toJson()},
+                    {"dbtables_map", _jobDbTablesMap->toJson()},
                     {"maxtablesizemb", _maxTableSizeMB},
-                    {"scaninfo", _scanInfo->serializeJson()},
+                    {"scaninfo", _scanInfo->toJson()},
                     {"scaninteractive", _scanInteractive},
                     {"jobs", json::array()}};
 
     auto& jsJobs = ujmJson["jobs"];
     for (auto const& jbMsg : *_jobMsgVect) {
-        jsJobs.emplace_back(jbMsg->serializeJson());
+        jsJobs.emplace_back(jbMsg->toJson());
     }
 
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " ujmJson=" << ujmJson);
@@ -138,7 +138,7 @@ UberJobMsg::Ptr UberJobMsg::createFromJson(nlohmann::json const& ujmJson) {
         ujmPtr->_jobSubQueryTempMap = JobSubQueryTempMap::createFromJson(jsSubQueriesMap);
 
         auto jsDbTablesMap = http::RequestBodyJSON::required<json>(ujmJson, "dbtables_map");
-        ujmPtr->_jobDbTablesMap = JobDbTablesMap::createFromJson(jsDbTablesMap);
+        ujmPtr->_jobDbTablesMap = JobDbTableMap::createFromJson(jsDbTablesMap);
 
         for (auto const& jsUjJob : jsUjJobs) {
             JobMsg::Ptr jobMsgPtr =
@@ -154,13 +154,13 @@ UberJobMsg::Ptr UberJobMsg::createFromJson(nlohmann::json const& ujmJson) {
 
 JobMsg::Ptr JobMsg::create(std::shared_ptr<qdisp::JobQuery> const& jobPtr,
                            JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                           JobDbTablesMap::Ptr const& jobDbTablesMap) {
+                           JobDbTableMap::Ptr const& jobDbTablesMap) {
     auto jMsg = Ptr(new JobMsg(jobPtr, jobSubQueryTempMap, jobDbTablesMap));
     return jMsg;
 }
 
 JobMsg::JobMsg(std::shared_ptr<qdisp::JobQuery> const& jobPtr,
-               JobSubQueryTempMap::Ptr const& jobSubQueryTempMap, JobDbTablesMap::Ptr const& jobDbTablesMap)
+               JobSubQueryTempMap::Ptr const& jobSubQueryTempMap, JobDbTableMap::Ptr const& jobDbTablesMap)
         : _jobSubQueryTempMap(jobSubQueryTempMap), _jobDbTablesMap(jobDbTablesMap) {
     auto const descr = jobPtr->getDescription();
     if (descr == nullptr) {
@@ -172,18 +172,11 @@ JobMsg::JobMsg(std::shared_ptr<qdisp::JobQuery> const& jobPtr,
     _chunkQuerySpecDb = chunkQuerySpec->db;
     _chunkId = chunkQuerySpec->chunkId;
 
-    // Add scan tables (TODO:UJ Verify this is the same for all jobs.)
-    for (auto const& sTbl : chunkQuerySpec->scanInfo->infoTables) {
-        int index = jobDbTablesMap->findDbTable(make_pair(sTbl.db, sTbl.table));
-        jobDbTablesMap->setScanRating(index, sTbl.scanRating, sTbl.lockInMemory);
-        _chunkScanTableIndexes.push_back(index);
-    }
-
     // Add fragments
     _jobFragments = JobFragment::createVect(*chunkQuerySpec, jobSubQueryTempMap, jobDbTablesMap);
 }
 
-nlohmann::json JobMsg::serializeJson() const {
+nlohmann::json JobMsg::toJson() const {
     auto jsJobMsg = nlohmann::json({{"jobId", _jobId},
                                     {"attemptCount", _attemptCount},
                                     {"querySpecDb", _chunkQuerySpecDb},
@@ -200,13 +193,13 @@ nlohmann::json JobMsg::serializeJson() const {
 
     auto& jsqFrags = jsJobMsg["queryFragments"];
     for (auto& jFrag : *_jobFragments) {
-        jsqFrags.emplace_back(jFrag->serializeJson());
+        jsqFrags.emplace_back(jFrag->toJson());
     }
 
     return jsJobMsg;
 }
 
-JobMsg::JobMsg(JobSubQueryTempMap::Ptr const& jobSubQueryTempMap, JobDbTablesMap::Ptr const& jobDbTablesMap,
+JobMsg::JobMsg(JobSubQueryTempMap::Ptr const& jobSubQueryTempMap, JobDbTableMap::Ptr const& jobDbTablesMap,
                JobId jobId, int attemptCount, std::string const& chunkQuerySpecDb, int chunkId)
         : _jobId(jobId),
           _attemptCount(attemptCount),
@@ -217,7 +210,7 @@ JobMsg::JobMsg(JobSubQueryTempMap::Ptr const& jobSubQueryTempMap, JobDbTablesMap
 
 JobMsg::Ptr JobMsg::createFromJson(nlohmann::json const& ujJson,
                                    JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                                   JobDbTablesMap::Ptr const& jobDbTablesMap) {
+                                   JobDbTableMap::Ptr const& jobDbTablesMap) {
     JobId jobId = http::RequestBodyJSON::required<JobId>(ujJson, "jobId");
     int attemptCount = http::RequestBodyJSON::required<int>(ujJson, "attemptCount");
     string chunkQuerySpecDb = http::RequestBodyJSON::required<string>(ujJson, "querySpecDb");
@@ -231,11 +224,10 @@ JobMsg::Ptr JobMsg::createFromJson(nlohmann::json const& ujJson,
     jMsgPtr->_chunkScanTableIndexes = jsChunkTblIndexes.get<std::vector<int>>();
     jMsgPtr->_jobFragments =
             JobFragment::createVectFromJson(jsQFrags, jMsgPtr->_jobSubQueryTempMap, jMsgPtr->_jobDbTablesMap);
-
     return jMsgPtr;
 }
 
-json JobSubQueryTempMap::serializeJson() const {
+json JobSubQueryTempMap::toJson() const {
     // std::map<int, std::string> _qTemplateMap;
     json jsSubQueryTemplateMap = {{"subquerytemplate_map", json::array()}};
     auto& jsSqtMap = jsSubQueryTemplateMap["subquerytemplate_map"];
@@ -280,7 +272,7 @@ int JobSubQueryTempMap::findSubQueryTemp(string const& qTemp) {
     return index;
 }
 
-int JobDbTablesMap::findDbTable(pair<string, string> const& dbTablePair) {
+int JobDbTableMap::findDbTable(pair<string, string> const& dbTablePair) {
     // The expected number of templates is expected to be small, less than 4,
     // so this shouldn't be horribly expensive.
     for (auto const& [key, dbTbl] : _dbTableMap) {
@@ -295,89 +287,44 @@ int JobDbTablesMap::findDbTable(pair<string, string> const& dbTablePair) {
     return index;
 }
 
-json JobDbTablesMap::serializeJson() const {
-    json jsDbTablesMap = {{"dbtable_map", json::array()}, {"scanrating_map", json::array()}};
-
-    auto& jsDbTblMap = jsDbTablesMap["dbtable_map"];
+json JobDbTableMap::toJson() const {
+    auto jsDbTblMap = json::array();
     for (auto const& [key, valPair] : _dbTableMap) {
         json jsDbTbl = {{"index", key}, {"db", valPair.first}, {"table", valPair.second}};
         jsDbTblMap.push_back(jsDbTbl);
     }
 
-    auto& jsScanRatingMap = jsDbTablesMap["scanrating_map"];
-    for (auto const& [key, valPair] : _scanRatingMap) {
-        json jsScanR = {{"index", key}, {"scanrating", valPair.first}, {"lockinmem", valPair.second}};
-        jsScanRatingMap.push_back(jsScanR);
-    }
-
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " " << jsDbTablesMap);
-    return jsDbTablesMap;
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " " << jsDbTblMap);
+    return jsDbTblMap;
 }
 
-JobDbTablesMap::Ptr JobDbTablesMap::createFromJson(nlohmann::json const& ujJson) {
+JobDbTableMap::Ptr JobDbTableMap::createFromJson(nlohmann::json const& ujJson) {
     Ptr dbTablesMapPtr = create();
     auto& dbTblMap = dbTablesMapPtr->_dbTableMap;
-    auto& scanRMap = dbTablesMapPtr->_scanRatingMap;
 
-    LOGS(_log, LOG_LVL_TRACE, "JobDbTablesMap::createFromJson " << ujJson);
+    LOGS(_log, LOG_LVL_TRACE, "JobDbTableMap::createFromJson " << ujJson);
 
-    json const& jsDbTbl = ujJson["dbtable_map"];
-    for (auto const& jsElem : jsDbTbl) {
+    for (auto const& jsElem : ujJson) {
         int index = http::RequestBodyJSON::required<int>(jsElem, "index");
         string db = http::RequestBodyJSON::required<string>(jsElem, "db");
         string tbl = http::RequestBodyJSON::required<string>(jsElem, "table");
         auto res = dbTblMap.insert(make_pair(index, make_pair(db, tbl)));
         if (!res.second) {
             throw invalid_argument(dbTablesMapPtr->cName(__func__) + " index=" + to_string(index) + "=" + db +
-                                   +"." + tbl + " index already found in " + to_string(jsDbTbl));
-        }
-    }
-
-    json const& jsScanR = ujJson["scanrating_map"];
-    for (auto const& jsElem : jsScanR) {
-        int index = http::RequestBodyJSON::required<int>(jsElem, "index");
-        int scanR = http::RequestBodyJSON::required<int>(jsElem, "scanrating");
-        bool lockInMem = http::RequestBodyJSON::required<bool>(jsElem, "lockinmem");
-        auto res = scanRMap.insert(make_pair(index, make_pair(scanR, lockInMem)));
-        if (!res.second) {
-            throw invalid_argument(dbTablesMapPtr->cName(__func__) + " index=" + to_string(index) + "=" +
-                                   to_string(scanR) + +", " + to_string(lockInMem) +
-                                   " index already found in " + to_string(jsDbTbl));
+                                   +"." + tbl + " index already found in " + to_string(ujJson));
         }
     }
 
     return dbTablesMapPtr;
 }
 
-void JobDbTablesMap::setScanRating(int index, int scanRating, bool lockInMemory) {
-    auto iter = _scanRatingMap.find(index);
-    if (iter == _scanRatingMap.end()) {
-        _scanRatingMap[index] = make_pair(scanRating, lockInMemory);
-    } else {
-        auto& elem = *iter;
-        auto& pr = elem.second;
-        auto& [sRating, lInMem] = pr;
-        if (sRating != scanRating || lInMem != lockInMemory) {
-            auto [dbName, tblName] = getDbTable(index);
-            LOGS(_log, LOG_LVL_ERROR,
-                 cName(__func__) << " unexpected change in scanRating for " << dbName << "." << tblName
-                                 << " from " << sRating << " to " << scanRating << " lockInMemory from "
-                                 << lInMem << " to " << lockInMemory);
-            if (scanRating > sRating) {
-                sRating = scanRating;
-                lInMem = lockInMemory;
-            }
-        }
-    }
-}
-
 JobFragment::JobFragment(JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                         JobDbTablesMap::Ptr const& jobDbTablesMap)
+                         JobDbTableMap::Ptr const& jobDbTablesMap)
         : _jobSubQueryTempMap(jobSubQueryTempMap), _jobDbTablesMap(jobDbTablesMap) {}
 
 JobFragment::VectPtr JobFragment::createVect(qproc::ChunkQuerySpec const& chunkQuerySpec,
                                              JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                                             JobDbTablesMap::Ptr const& jobDbTablesMap) {
+                                             JobDbTableMap::Ptr const& jobDbTablesMap) {
     VectPtr jFragments{new Vect()};
     if (chunkQuerySpec.nextFragment.get()) {
         qproc::ChunkQuerySpec const* sPtr = &chunkQuerySpec;
@@ -401,7 +348,7 @@ JobFragment::VectPtr JobFragment::createVect(qproc::ChunkQuerySpec const& chunkQ
 void JobFragment::_addFragment(std::vector<Ptr>& jFragments, DbTableSet const& subChunkTables,
                                std::vector<int> const& subchunkIds, std::vector<std::string> const& queries,
                                JobSubQueryTempMap::Ptr const& subQueryTemplates,
-                               JobDbTablesMap::Ptr const& dbTablesMap) {
+                               JobDbTableMap::Ptr const& dbTablesMap) {
     LOGS(_log, LOG_LVL_TRACE, "JobFragment::_addFragment start");
     Ptr jFrag = Ptr(new JobFragment(subQueryTemplates, dbTablesMap));
 
@@ -448,7 +395,7 @@ string JobFragment::dump() const {
     return os.str();
 }
 
-nlohmann::json JobFragment::serializeJson() const {
+nlohmann::json JobFragment::toJson() const {
     json jsFragment = {{"subquerytemplate_indexes", _jobSubQueryTempIndexes},
                        {"dbtables_indexes", _jobDbTablesIndexes},
                        {"subchunkids", _subchunkIds}};
@@ -459,7 +406,7 @@ nlohmann::json JobFragment::serializeJson() const {
 
 JobFragment::VectPtr JobFragment::createVectFromJson(nlohmann::json const& jsFrags,
                                                      JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
-                                                     JobDbTablesMap::Ptr const& dbTablesMap) {
+                                                     JobDbTableMap::Ptr const& dbTablesMap) {
     LOGS(_log, LOG_LVL_TRACE, "JobFragment::createVectFromJson " << jsFrags);
 
     JobFragment::VectPtr jobFragments{new JobFragment::Vect()};
