@@ -71,9 +71,7 @@ public:
     void killUberJob();
 
     QueryId getQueryId() const { return _queryId; }
-    UberJobId getJobId() const {
-        return _uberJobId;
-    }  // &&& TODO:UJ change name when JobBase no longer needed.
+    UberJobId getUjId() const { return _uberJobId; }
     std::string const& getIdStr() const { return _idStr; }
     std::shared_ptr<ResponseHandler> getRespHandler() { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() { return _jobStatus; }
@@ -107,11 +105,14 @@ public:
     /// Get the data for the worker that should handle this UberJob.
     czar::CzarChunkMap::WorkerChunksData::Ptr getWorkerData() { return _workerData; }
 
-    /// Collect and merge the results from the worker.
+    /// Queue the lambda function to collect and merge the results from the worker.
     nlohmann::json importResultFile(std::string const& fileUrl, uint64_t rowCount, uint64_t fileSize);
 
     /// Handle an error from the worker.
     nlohmann::json workerError(int errorCode, std::string const& errorMsg);
+
+    void setResultFileSize(uint64_t fileSize) { _resultFileSize = fileSize; }
+    uint64_t getResultFileSize() { return _resultFileSize; }
 
     std::ostream& dumpOS(std::ostream& os) const;
     std::string dump() const;
@@ -160,6 +161,7 @@ private:
     UberJobId const _uberJobId;
     qmeta::CzarId const _czarId;
     int const _rowLimit;
+    uint64_t _resultFileSize = 0;
 
     std::string const _idStr;
 

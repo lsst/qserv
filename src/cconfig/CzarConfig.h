@@ -118,7 +118,7 @@ public:
      */
     std::string const& getXrootdFrontendUrl() const { return _xrootdFrontendUrl->getVal(); }
 
-    /* Get the maximum number of threads for xrootd to use.
+    /* Get the maximum number of threads for xrootd to use. // TODO:UJ delete
      *
      * @return the maximum number of threads for xrootd to use.
      */
@@ -371,6 +371,7 @@ private:
     CVTStrPtr _qdispVectMinRunningSizes =
             util::ConfigValTStr::create(_configValMap, "qdisppool", "vectMinRunningSizes", notReq, "0:3:3:3");
 
+    // TODO:UJ delete xrootd specific entries.
     CVTIntPtr _xrootdSpread = util::ConfigValTInt::create(_configValMap, "tuning", "xrootdSpread", notReq, 4);
     CVTIntPtr _qMetaSecsBetweenChunkCompletionUpdates = util::ConfigValTInt::create(
             _configValMap, "tuning", "qMetaSecsBetweenChunkCompletionUpdates", notReq, 60);
@@ -416,8 +417,8 @@ private:
             util::ConfigValTInt::create(_configValMap, "activeworker", "timeoutDeadSecs", notReq, 60 * 10);
     CVTIntPtr _activeWorkerMaxLifetimeSecs =  // 1hr
             util::ConfigValTInt::create(_configValMap, "activeworker", "maxLifetimeSecs", notReq, 60 * 60);
-    CVTIntPtr _monitorSleepTimeMilliSec =
-            util::ConfigValTInt::create(_configValMap, "activeworker", "monitorSleepTimeMilliSec", notReq, 15'000);
+    CVTIntPtr _monitorSleepTimeMilliSec = util::ConfigValTInt::create(
+            _configValMap, "activeworker", "monitorSleepTimeMilliSec", notReq, 15'000);
 
     // UberJobs
     CVTIntPtr _uberJobMaxChunks =

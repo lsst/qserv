@@ -60,8 +60,8 @@ UberJobMsg::UberJobMsg(unsigned int metaVersion, std::string const& replicationI
           _ujId(ujId),
           _rowLimit(rowLimit),
           _maxTableSizeMB(maxTableSizeMB),
-          _scanInfo(scanInfo_) {
-
+          _scanInfo(scanInfo_),
+          _idStr("QID=" + to_string(_qId) + "_ujId=" + to_string(_ujId)) {
     for (auto& jobPtr : jobs) {
         // This creates the JobMsg objects for all relates jobs and their fragments.
         auto jobMsg = JobMsg::create(jobPtr, _jobSubQueryTempMap, _jobDbTablesMap);
@@ -192,7 +192,7 @@ nlohmann::json JobMsg::serializeJson() const {
                                     {"queryFragments", json::array()}});
 
     // These are indexes into _jobDbTablesMap, which is shared between all JobMsg in this UberJobMsg.
-    // &&& TODO:UJ queries appear to work even when "chunkscantables_indexes" is wrong
+    // &&& TODO:UJ "chunkscantables_indexes" may be unused.
     auto& jsqCstIndexes = jsJobMsg["chunkscantables_indexes"];
     for (auto const& index : _chunkScanTableIndexes) {
         jsqCstIndexes.push_back(index);
