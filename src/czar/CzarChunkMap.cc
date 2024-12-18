@@ -31,12 +31,11 @@
 
 // Qserv headers
 #include "qmeta/QMeta.h"
+#include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
 #include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
 #include "util/Bug.h"
-#include "util/InstanceCount.h"  //&&&
-#include "util/Histogram.h"      //&&&
 #include "util/TimeUtils.h"
 
 using namespace std;
@@ -333,7 +332,7 @@ bool CzarFamilyMap::_read() {
     LOGS(_log, LOG_LVL_TRACE, "CzarFamilyMap::_read() start");
     // If replacing the map, this may take a bit of time, but it's probably
     // better to wait for new maps if something changed.
-    std::lock_guard gLock(_familyMapMtx); // &&& check waiting is really needed
+    std::lock_guard gLock(_familyMapMtx);
     qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap(_lastUpdateTime);
     if (_lastUpdateTime == qChunkMap.updateTime) {
         LOGS(_log, LOG_LVL_DEBUG,
@@ -344,7 +343,9 @@ bool CzarFamilyMap::_read() {
     }
 
     // Make the new maps.
-    shared_ptr<CzarFamilyMap::FamilyMapType> familyMapPtr = makeNewMaps(qChunkMap);
+    auto czConfig = cconfig::CzarConfig::instance();
+    bool usingChunkSize = czConfig->getFamilyMapUsingChunkSize();
+    shared_ptr<CzarFamilyMap::FamilyMapType> familyMapPtr = makeNewMaps(qChunkMap, usingChunkSize);
 
     verify(familyMapPtr);
 
@@ -356,13 +357,9 @@ bool CzarFamilyMap::_read() {
     return true;
 }
 
-util::HistogramRolling histoMakeNewMaps("&&&uj histoMakeNewMaps", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-
 std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
-        qmeta::QMetaChunkMap const& qChunkMap) {
+        qmeta::QMetaChunkMap const& qChunkMap, bool usingChunkSize) {
     // Create new maps.
-    util::InstanceCount ic("CzarFamilyMap::makeNewMaps&&&");
-    auto startMakeMaps = CLOCK::now();  //&&&
     std::shared_ptr<FamilyMapType> newFamilyMap = make_shared<FamilyMapType>();
 
     // Workers -> Databases map
@@ -376,7 +373,10 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
                 for (qmeta::QMetaChunkMap::ChunkInfo const& chunkInfo : chunks) {
                     try {
                         int64_t chunkNum = chunkInfo.chunk;
-                        CzarChunkMap::SizeT sz = chunkInfo.size;
+                        CzarChunkMap::SizeT sz = 1;
+                        if (usingChunkSize) {
+                            sz = chunkInfo.size;
+                        }
                         LOGS(_log, LOG_LVL_DEBUG,
                              cName(__func__) << "workerdId=" << workerId << " db=" << dbName << " table="
                                              << tableName << " chunk=" << chunkNum << " sz=" << sz);
@@ -416,10 +416,6 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
         }
     }
 
-    auto endMakeMaps = CLOCK::now();                                           //&&&
-    std::chrono::duration<double> secsMakeMaps = endMakeMaps - startMakeMaps;  // &&&
-    histoMakeNewMaps.addEntry(endMakeMaps, secsMakeMaps.count());              //&&&
-    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoMakeNewMaps.getString(""));
     return newFamilyMap;
 }
 
@@ -428,7 +424,7 @@ void CzarFamilyMap::insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFami
                                    CzarChunkMap::SizeT sz) {
     // Get the CzarChunkMap for this family
     auto familyName = getFamilyNameFromDbName(dbName);
-    LOGS(_log, LOG_LVL_INFO,
+    LOGS(_log, LOG_LVL_TRACE,
          cName(__func__) << " familyInsrt{w=" << workerId << " fN=" << familyName << " dbN=" << dbName
                          << " tblN=" << tableName << " chunk=" << chunkIdNum << " sz=" << sz << "}");
     auto& nfMap = *newFamilyMap;
