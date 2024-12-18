@@ -115,6 +115,11 @@ bool ScanScheduler::ready() {
     return _ready();
 }
 
+string ScanScheduler::getRatingStr() const {
+    string const str = "min=" + to_string(_minRating) + " max=" + to_string(_maxRating);
+    return str;
+}
+
 /// Precondition: _mx is locked
 /// Returns true if there is a Task ready to go and we aren't up against any limits.
 bool ScanScheduler::_ready() {
