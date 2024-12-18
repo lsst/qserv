@@ -137,8 +137,8 @@ void WCzarInfo::_sendMessage() {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
-            // TODO:UJ &&& maybe add this czId+ujId to a list of failed uberjobs that can be put
-            // TODO:UJ &&& status return??? Probably overkill.
+            // TODO:UJ Maybe add this czId+ujId to a list of failed uberjobs that can be put
+            // TODO:UJ status return?
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + requestStr + " failed, ex: " + ex.what());
@@ -154,7 +154,8 @@ bool WCzarInfo::checkAlive(TIMEPOINT tmMark) {
     lock_guard<mutex> lg(_wciMtx);
     if (_alive) {
         auto timeSinceContact = tmMark - _lastTouch;
-        if (timeSinceContact >= 120s) {  // TODO:UJ get _deadTime from config &&&
+        std::chrono::seconds deadTime(wconfig::WorkerConfig::instance()->getCzarDeadTimeSec());
+        if (timeSinceContact >= deadTime) {
             // Contact with the czar has timed out.
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " czar timeout");
             _alive = false;
