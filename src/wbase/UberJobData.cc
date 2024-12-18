@@ -102,6 +102,13 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
              cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
     }
 
+    // Latch to prevent errors from being transmitted.
+    // NOTE: Calls to responseError() and responseFileReady() are protected by the
+    //       mutex in FileChannelShared (_tMtx).
+    if (_responseState.exchange(SENDING_FILEURL) != NOTHING) {
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
+    }
     string workerIdStr;
     if (_foreman != nullptr) {
         workerIdStr = _foreman->chunkInventory()->id();

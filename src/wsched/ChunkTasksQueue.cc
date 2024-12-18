@@ -161,6 +161,7 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
     LOGS(_log, LOG_LVL_TRACE,
          "_ready loopB state=" << ChunkTasks::toStr(chunkState) << " iter=" << iter->first << " "
                                << iter->second->cInfo());
+
     _readyChunk = iter->second;
     return true;
 }
