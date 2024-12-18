@@ -128,70 +128,6 @@ struct Fixture {
         return jsJobMsgPtr;
     }
 
-    struct MsgInfo {
-        string const db = "LSST";
-        string const table = "Object";
-        string const qry = "SELECT AVG(yFlux_PS) from LSST.Object_3240";
-        int const chunkId = 3240;
-        int const czarId = 5;
-        string const czarName = "cz5";
-        string const czarHostName = "cz5host";
-        int const czarPort = 3437;
-        string const targWorkerId = "a_worker";
-        std::shared_ptr<lsst::qserv::wcontrol::Foreman> foreman;
-        int const queryId = 23;
-        int const jobId = 1;
-        int const uberJobId = 1;
-        int const attemptCount = 1;
-        int const scanRating = 1;
-        bool const scanInteractive = false;
-        int const maxTableSize = 5000;
-        bool const lockInMemory = false;
-        string const resultName = "resName";
-        string const authKey = "noAuthKey";
-        int const rowLimit = 0;
-    };
-
-    shared_ptr<nlohmann::json> newTaskJson(MsgInfo const& mInfo) {
-        // Derived from TaskMsgFactory::makeMsgJson
-
-        auto jsJobMsgPtr = std::shared_ptr<nlohmann::json>(
-                new nlohmann::json({{"czarId", mInfo.czarId},
-                                    {"queryId", mInfo.queryId},
-                                    {"jobId", mInfo.jobId},
-                                    {"attemptCount", mInfo.attemptCount},
-                                    {"querySpecDb", mInfo.db},
-                                    {"scanPriority", mInfo.scanRating},
-                                    {"scanInteractive", mInfo.scanInteractive},
-                                    {"maxTableSize", mInfo.maxTableSize},
-                                    {"chunkScanTables", nlohmann::json::array()},
-                                    {"chunkId", mInfo.chunkId},
-                                    {"queryFragments", nlohmann::json::array()}}));
-
-        auto& jsJobMsg = *jsJobMsgPtr;
-
-        auto& chunkScanTables = jsJobMsg["chunkScanTables"];
-        nlohmann::json cst = {{"db", mInfo.db},
-                              {"table", mInfo.table},
-                              {"lockInMemory", mInfo.lockInMemory},
-                              {"tblScanRating", mInfo.scanRating}};
-        chunkScanTables.push_back(move(cst));
-
-        auto& jsFragments = jsJobMsg["queryFragments"];
-        nlohmann::json jsFrag = {{"resultTable", mInfo.resultName},
-                                 {"queries", nlohmann::json::array()},
-                                 {"subchunkTables", nlohmann::json::array()},
-                                 {"subchunkIds", nlohmann::json::array()}};
-
-        auto& jsQueries = jsFrag["queries"];
-        nlohmann::json jsQry = {{"subQuery", mInfo.qry}};
-        jsQueries.push_back(move(jsQry));
-
-        jsFragments.push_back(move(jsFrag));
-
-        return jsJobMsgPtr;
-    }
-
     MySqlConfig newMySqlConfig() {
         string user = "qsmaster";
         string password = "";
@@ -250,15 +186,17 @@ BOOST_AUTO_TEST_CASE(Simple) {
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 9);
     auto const queries = queriesAndChunks();
-    auto ujData = lsst::qserv::wbase::UberJobData::create(
-            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-            mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+
     auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
+    auto ujData = lsst::qserv::wbase::UberJobData::create(
+            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+            mInfo.rowLimit, mInfo.maxTableSize, scanInfo, mInfo.scanInteractive, mInfo.targWorkerId,
+            mInfo.foreman, mInfo.authKey);
+
     vector<Task::Ptr> taskVect =
-            Task::createTasksForUnitTest(ujData, *msgJson, sChannel, scanInfo, mInfo.scanInteractive,
-                                         mInfo.maxTableSize, crm);
+            Task::createTasksForUnitTest(ujData, *msgJson, sChannel, mInfo.maxTableSize, crm);
 
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
@@ -301,15 +239,15 @@ BOOST_AUTO_TEST_CASE(Output) {
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 9);
     auto const queries = queriesAndChunks();
-    auto ujData = lsst::qserv::wbase::UberJobData::create(
-            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-            mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
-    vector<Task::Ptr> taskVect =
-            Task::createTasksForUnitTest(ujData, *msgJson, sc, scanInfo, mInfo.scanInteractive,
-                                      mInfo.maxTableSize, crm);
+    auto ujData = lsst::qserv::wbase::UberJobData::create(
+            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+            mInfo.rowLimit, mInfo.maxTableSize, scanInfo, mInfo.scanInteractive, mInfo.targWorkerId,
+            mInfo.foreman, mInfo.authKey);
+
+    vector<Task::Ptr> taskVect = Task::createTasksForUnitTest(ujData, *msgJson, sc, mInfo.maxTableSize, crm);
 
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
