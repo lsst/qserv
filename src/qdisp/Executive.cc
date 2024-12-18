@@ -89,15 +89,14 @@ namespace lsst::qserv::qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(ExecutiveConfig const& cfg, shared_ptr<qmeta::MessageStore> const& ms,
+Executive::Executive(int secondsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                      util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QStatus> const& qStatus,
                      shared_ptr<qproc::QuerySession> const& querySession)
-        : _config(cfg),
-          _messageStore(ms),
+        : _messageStore(ms),
           _qdispPool(qdispPool),
           _qMeta(qStatus),
+          _secondsBetweenQMetaUpdates(chrono::seconds(secondsBetweenUpdates)),
           _querySession(querySession) {
-    _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setupLimit();
     qdisp::CzarStats::get()->addQuery();
 }
@@ -113,17 +112,17 @@ Executive::~Executive() {
     }
     if (_asyncTimer != nullptr) {
         _asyncTimer->cancel();
-        qdisp::CzarStats::get()->untrackQueryProgress(_id);
     }
+    qdisp::CzarStats::get()->untrackQueryProgress(_id);
 }
 
-Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> const& ms,
+Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                                  std::shared_ptr<util::QdispPool> const& qdispPool,
                                  shared_ptr<qmeta::QStatus> const& qMeta,
                                  shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
-    Executive::Ptr ptr(new Executive(c, ms, qdispPool, qMeta, querySession));
+    Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, qMeta, querySession));
 
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
@@ -170,7 +169,7 @@ void Executive::setQueryId(QueryId id) {
     _idStr = QueryIdHelper::makeIdStr(_id);
 
     // Insert into the global executive map.
-    { czar::Czar::getCzar()->insertExecutive(_id, shared_from_this()); }
+    czar::Czar::getCzar()->insertExecutive(_id, shared_from_this());
     qdisp::CzarStats::get()->trackQueryProgress(_id);
 }
 
@@ -196,20 +195,22 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
 
         {
-            lock_guard lock(_cancelled.getMutex());
-            if (_cancelled) {
-                LOGS(_log, LOG_LVL_DEBUG,
-                     "Executive already cancelled, ignoring add(" << jobDesc->id() << ")");
-                return nullptr;
-            }
-
-            if (!_addJobToMap(jobQuery)) {
-                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add");
-                return jobQuery;
+            {
+                lock_guard lock(_cancelled.getMutex());
+                if (_cancelled) {
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         "Executive already cancelled, ignoring add(" << jobDesc->id() << ")");
+                    return nullptr;
+                }
             }
 
             if (!_track(jobQuery->getJobId(), jobQuery)) {
                 LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add");
+                return jobQuery;
+            }
+
+            if (!_addJobToMap(jobQuery)) {
+                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add");
                 return jobQuery;
             }
 
@@ -235,28 +236,12 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     }
 }
 
-/* &&&
-void Executive::queueUberJob(std::shared_ptr<UberJob> const& uberJob) {
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&&uj queueUberJob");
-    auto runUberJobFunc = [uberJob](util::CmdData*) { uberJob->runUberJob(); };
-
-    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
-    _jobStartCmdList.push_back(cmd);
-    if (_scanInteractive) {
-        _qdispPool->queCmd(cmd, 0);
-    } else {
-        _qdispPool->queCmd(cmd, 1);
-    }
-}
-*/
-
 void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     {
         lock_guard<mutex> lck(_uberJobsMapMtx);
-        UberJobId ujId = uj->getJobId();
+        UberJobId ujId = uj->getUjId();
         _uberJobsMap[ujId] = uj;
-        //&&&uj->setAdded();
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
     }
 
     auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };
@@ -427,21 +412,23 @@ void Executive::markCompleted(JobId jobId, bool success) {
     }
     _unTrack(jobId);
     if (!success && !isRowLimitComplete()) {
-        LOGS(_log, LOG_LVL_ERROR,
-             "Executive: requesting squash, cause: " << " failed (code=" << err.getCode() << " "
+        auto logLvl = (_cancelled) ? LOG_LVL_ERROR : LOG_LVL_TRACE;
+        LOGS(_log, logLvl,
+             "Executive: requesting cancel, cause: " << " failed (code=" << err.getCode() << " "
                                                      << err.getMsg() << ")");
-        squash();  // ask to squash
+        squash(string("markComplete error ") + err.getMsg());  // ask to squash
     }
 }
 
-void Executive::squash() {
+void Executive::squash(string const& note) {
     bool alreadyCancelled = _cancelled.exchange(true);
     if (alreadyCancelled) {
         LOGS(_log, LOG_LVL_DEBUG, "Executive::squash() already cancelled! refusing. qid=" << getId());
         return;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "Executive::squash Trying to cancel all queries... qid=" << getId());
+    LOGS(_log, LOG_LVL_WARN,
+         "Executive::squash Trying to cancel all queries... qid=" << getId() << " " << note);
     deque<JobQuery::Ptr> jobsToCancel;
     {
         lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
@@ -450,8 +437,10 @@ void Executive::squash() {
         }
     }
 
+    int cancelCount = 0;
     for (auto const& job : jobsToCancel) {
         job->cancel();
+        ++cancelCount;
     }
 
     // Send a message to all workers saying this czarId + queryId is cancelled.
@@ -461,12 +450,17 @@ void Executive::squash() {
     // cancelled.
     bool const deleteResults = true;
     sendWorkersEndMsg(deleteResults);
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done canceled " << cancelCount << " Jobs");
 }
 
 void Executive::_squashSuperfluous() {
     if (_cancelled) {
-        LOGS(_log, LOG_LVL_INFO, "squashSuperfluous() irrelevant as query already cancelled");
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " irrelevant as query already cancelled");
+        return;
+    }
+
+    if (_superfluous.exchange(true) == true) {
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " irrelevant as query already superfluous");
         return;
     }
 
@@ -485,13 +479,15 @@ void Executive::_squashSuperfluous() {
         }
     }
 
+    int cancelCount = 0;
     for (auto const& job : jobsToCancel) {
         job->cancel(true);
+        ++cancelCount;
     }
 
     bool const keepResults = false;
     sendWorkersEndMsg(keepResults);
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done");
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done canceled " << cancelCount << " Jobs");
 }
 
 void Executive::sendWorkersEndMsg(bool deleteResults) {
@@ -685,6 +681,7 @@ void Executive::_waitAllUntilEmpty() {
     int moreDetailThreshold = 10;
     int complainCount = 0;
     const chrono::seconds statePrintDelay(5);
+    // Loop until all jobs have completed and all jobs have been created.
     while (!_incompleteJobs.empty()) {
         count = _incompleteJobs.size();
         if (count != lastCount) {
@@ -756,6 +753,40 @@ void Executive::checkLimitRowComplete() {
     // message is LOG_LVL_WARN.
     LOGS(_log, LOG_LVL_WARN, "LIMIT query has enough rows, canceling superfluous jobs.");
     _squashSuperfluous();
+}
+
+void Executive::checkResultFileSize(uint64_t fileSize) {
+    _totalResultFileSize += fileSize;
+    if (_cancelled) return;
+
+    size_t const MB_SIZE_BYTES = 1024 * 1024;
+    uint64_t maxResultTableSizeBytes = cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES;
+    LOGS(_log, LOG_LVL_TRACE,
+         cName(__func__) << " sz=" << fileSize << " total=" << _totalResultFileSize
+                         << " max=" << maxResultTableSizeBytes);
+    if (_totalResultFileSize > maxResultTableSizeBytes) {
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " total=" << _totalResultFileSize << " max=" << maxResultTableSizeBytes);
+        // _totalResultFileSize may include non zero values from dead UberJobs,
+        // so recalculate it to verify.
+        uint64_t total = 0;
+        {
+            lock_guard<mutex> lck(_uberJobsMapMtx);
+            for (auto const& [ujId, ujPtr] : _uberJobsMap) {
+                total += ujPtr->getResultFileSize();
+            }
+            _totalResultFileSize = total;
+        }
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << "recheck total=" << total << " max=" << maxResultTableSizeBytes);
+        if (total > maxResultTableSizeBytes) {
+            LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
+            ResponseHandler::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
+                                       string("Incomplete result already too large ") + to_string(total));
+            _multiError.push_back(err);
+            squash("czar, file too large");
+        }
+    }
 }
 
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {

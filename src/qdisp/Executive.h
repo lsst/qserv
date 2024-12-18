@@ -82,17 +82,6 @@ class QdispPool;
 
 namespace qdisp {
 
-struct ExecutiveConfig {
-    typedef std::shared_ptr<ExecutiveConfig> Ptr;
-    ExecutiveConfig(std::string const& serviceUrl_, int secsBetweenChunkUpdates_)
-            : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
-    ExecutiveConfig(int, int) : serviceUrl(getMockStr()) {}
-
-    std::string serviceUrl;          ///< XrdSsi service URL, e.g. localhost:1094
-    int secondsBetweenChunkUpdates;  ///< Seconds between QMeta chunk updates.
-    static std::string getMockStr() { return "Mock"; }
-};
-
 /// class Executive manages the execution of jobs for a UserQuery.
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
@@ -104,7 +93,7 @@ public:
     /// Construct an Executive.
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
+    static Executive::Ptr create(int secsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
                                  std::shared_ptr<util::QdispPool> const& qdispPool,
                                  std::shared_ptr<qmeta::QStatus> const& qMeta,
                                  std::shared_ptr<qproc::QuerySession> const& querySession,
@@ -147,7 +136,7 @@ public:
     void markCompleted(JobId refNum, bool success);
 
     /// Squash all the jobs.
-    void squash();
+    void squash(std::string const& note);
 
     bool getEmpty() { return _empty; }
 
@@ -170,6 +159,9 @@ public:
 
     /// @return true if cancelled
     bool getCancelled() { return _cancelled; }
+
+    /// Return true if LIMIT conditions met.
+    bool getSuperfluous() { return _superfluous; }
 
     std::shared_ptr<util::QdispPool> getQdispPool() { return _qdispPool; }
 
@@ -210,13 +202,13 @@ public:
 
     // The below value should probably be based on the user query, with longer sleeps for slower queries.
     int getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
-    int getMaxAttempts() const { return 5; }           // Should be set by config
+    int getMaxAttempts() const { return 5; }           // TODO:UJ Should be set by config
 
-    /// Calling this indicates the executive is ready to create and execute UberJobs.
-    void setReadyToExecute() { _readyToExecute = true; }
+    /// Calling this indicates all Jobs for this user query have been created.
+    void setAllJobsCreated() { _allJobsCreated = true; }
 
-    /// Returns true if the executive is ready to create and execute UberJobs.
-    bool isReadyToExecute() { return _readyToExecute; }
+    /// Returns true if all jobs have been created.
+    bool isAllJobsCreated() { return _allJobsCreated; }
 
     /// Send a message to all workers to cancel this query.
     /// @param deleteResults - If true, delete all result files for this query on the workers.
@@ -232,8 +224,15 @@ public:
     /// Return a pointer to _scanInfo.
     protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
 
+    /// Add fileSize to `_totalResultFileSize` and check if it exceeds limits.
+    /// If it is too large, check the value against existing UberJob result
+    /// sizes as `_totalResultFileSize` may include failed UberJobs.
+    /// If the sum of all UberJob result files size is too large,
+    /// cancel this user query.
+    void checkResultFileSize(uint64_t fileSize = 0);
+
 protected:
-    Executive(ExecutiveConfig const& cfg, std::shared_ptr<qmeta::MessageStore> const& ms,
+    Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,
               std::shared_ptr<qmeta::QStatus> const& qStatus,
               std::shared_ptr<qproc::QuerySession> const& querySession);
@@ -262,7 +261,6 @@ private:
     /// The stats are pushed to qdisp::CzarStats.
     void _updateStats() const;
 
-    ExecutiveConfig _config;  ///< Personal copy of config
     std::atomic<bool> _empty{true};
     std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
@@ -281,6 +279,9 @@ private:
 
     std::atomic<int> _requestCount{0};   ///< Count of submitted jobs
     util::Flag<bool> _cancelled{false};  ///< Has execution been cancelled.
+
+    /// Set to true when LIMIT conditions have been satisfied.
+    std::atomic<bool> _superfluous{false};
 
     // Mutexes
     mutable std::mutex _incompleteJobsMutex;  ///< protect incompleteJobs map.
@@ -301,7 +302,7 @@ private:
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
     /// Minimum number of seconds between QMeta chunk updates (set by config)
-    std::chrono::seconds _secondsBetweenQMetaUpdates{60};
+    std::chrono::seconds _secondsBetweenQMetaUpdates;
     std::mutex _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
 
     /// true for interactive scans, once set it doesn't change.
@@ -339,10 +340,12 @@ private:
     /// Weak pointer to the UserQuerySelect object for this query.
     std::weak_ptr<ccontrol::UserQuerySelect> _userQuerySelect;
 
-    /// Flag that is set to true when ready to create and run UberJobs.
-    std::atomic<bool> _readyToExecute{false};
+    /// Flag that is set to true when all jobs have been created.
+    std::atomic<bool> _allJobsCreated{false};
 
     protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
+
+    std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
 };
 
 }  // namespace qdisp
