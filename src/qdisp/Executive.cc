@@ -236,25 +236,6 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     }
 }
 
-void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
-    {
-        lock_guard<mutex> lck(_uberJobsMapMtx);
-        UberJobId ujId = uj->getUjId();
-        _uberJobsMap[ujId] = uj;
-        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
-    }
-
-    auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };
-
-    auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(runUberJobFunc));
-    _jobStartCmdList.push_back(cmd);
-    if (_scanInteractive) {
-        _qdispPool->queCmd(cmd, 0);
-    } else {
-        _qdispPool->queCmd(cmd, 1);
-    }
-}
-
 void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     if (_scanInteractive) {
         _qdispPool->queCmd(cmd, 3);
@@ -266,10 +247,9 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
 void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     {
         lock_guard<mutex> lck(_uberJobsMapMtx);
-        UberJobId ujId = uj->getJobId();
+        UberJobId ujId = uj->getUjId();
         _uberJobsMap[ujId] = uj;
-        //&&&uj->setAdded();
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
     }
 
     auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };

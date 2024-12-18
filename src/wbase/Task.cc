@@ -69,6 +69,7 @@ using namespace nlohmann;
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
+
 size_t const MB_SIZE_BYTES = 1024 * 1024;
 
 }  // namespace
@@ -109,12 +110,10 @@ atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 /// the util::CommandThreadPool is not called here.
 Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
            size_t templateId, bool hasSubchunks, int subchunkId, string const& db,
-          vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
+           vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
            shared_ptr<FileChannelShared> const& sc,
            std::shared_ptr<wpublish::QueryStatistics> const& queryStats_)
-        : _logLvlWT(LOG_LVL_WARN),
-          _logLvlET(LOG_LVL_ERROR),
-          _sendChannel(sc),
+        : _sendChannel(sc),
           _tSeq(++taskSequence),
           _qId(ujData->getQueryId()),
           _templateId(templateId),
@@ -168,7 +167,6 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
 
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " created");
 }
-
 
 Task::~Task() {}
 
@@ -244,7 +242,6 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                     auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
                                                    templateId, noSubchunks, subchunkId, chunkQuerySpecDb,
                                                    fragSubTables, fragSubchunkIds, sendChannel, queryStats));
-
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
