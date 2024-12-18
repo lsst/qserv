@@ -39,6 +39,11 @@ class CzarContactInfo;
 class UberJobMsg;
 }  // namespace lsst::qserv::protojson
 
+namespace lsst::qserv::protojson {
+class CzarContactInfo;
+class UberJobMsg;
+}  // namespace lsst::qserv::protojson
+
 namespace lsst::qserv::qhttp {
 class Request;
 class Response;
