@@ -103,7 +103,9 @@ public:
     /// query information for queries with czarId `czId` and queryId less than
     /// or equal to `lastQId`.
     void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId) {
-        _wqsData->setCzarCancelAfterRestart(czId, lastQId);
+        if (_cancelAfterCzarResetSent.exchange(true) == false) {
+            _wqsData->setCzarCancelAfterRestart(czId, lastQId);
+        }
     }
 
     protojson::WorkerContactInfo::Ptr getWInfo() const;
@@ -179,6 +181,9 @@ private:
     State _state{QUESTIONABLE};  ///< current state of this worker.
 
     mutable std::mutex _aMtx;  ///< protects _wInfo, _state, _qIdDoneKeepFiles, _qIdDoneDeleteFiles
+
+    /// Flag to limit sending of czar cancel after reset message.
+    std::atomic<bool> _cancelAfterCzarResetSent{false};
 };
 
 /// This class maintains a list of all workers, indicating which are considered active.

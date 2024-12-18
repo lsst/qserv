@@ -50,6 +50,7 @@
 #include "wdb/ChunkResource.h"
 #include "wdb/SQLBackend.h"
 #include "wpublish/QueriesAndChunks.h"
+#include "wsched/BlendScheduler.h"
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -83,15 +84,15 @@ namespace lsst::qserv::wcontrol {
 
 Foreman::Ptr Foreman::_globalForeman;
 
-Foreman::Ptr Foreman::create(Scheduler::Ptr const& scheduler, unsigned int poolSize,
+Foreman::Ptr Foreman::create(wsched::BlendScheduler::Ptr const& scheduler, unsigned int poolSize,
                              unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
                              wpublish::QueriesAndChunks::Ptr const& queries,
-                             std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
-                             std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr, int qPoolSize,
-                             int maxPriority, std::string const& vectRunSizesStr,
-                             std::string const& vectMinRunningSizesStr) {
+                             shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
+                             shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr, int qPoolSize,
+                             int maxPriority, string const& vectRunSizesStr,
+                             string const& vectMinRunningSizesStr) {
     // Latch
-    static std::atomic<bool> globalForemanSet{false};
+    static atomic<bool> globalForemanSet{false};
     if (globalForemanSet.exchange(true) == true) {
         throw util::Bug(ERR_LOC, "Foreman::create already an existing global Foreman.");
     }
@@ -102,8 +103,9 @@ Foreman::Ptr Foreman::create(Scheduler::Ptr const& scheduler, unsigned int poolS
     return _globalForeman;
 }
 
-Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
-                 mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
+Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int poolSize,
+                 unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
+                 wpublish::QueriesAndChunks::Ptr const& queries,
                  std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
                  std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
                  std::string const& vectRunSizesStr, std::string const& vectMinRunningSizesStr)
@@ -115,7 +117,8 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
           _resourceMonitor(make_shared<ResourceMonitor>()),
           _io_service(),
           _httpServer(qhttp::Server::create(_io_service, 0 /* grab the first available port */)),
-          _wCzarInfoMap(WCzarInfoMap::create()) {
+          _wCzarInfoMap(WCzarInfoMap::create()),
+          _fqdn(util::getCurrentHostFqdnBlocking()) {
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.
@@ -176,10 +179,7 @@ Foreman::~Foreman() {
 
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
     std::vector<util::Command::Ptr> cmds;
-    for (auto const& task : tasks) {
-        _queries->addTask(task);
-        cmds.push_back(task);
-    }
+    _queries->addTasks(tasks, cmds);
     _scheduler->queCmd(cmds);
 }
 
