@@ -68,7 +68,8 @@ public:
     util::Command::Ptr getCmd(bool wait) override;
     void commandStart(util::Command::Ptr const& cmd) override;
     void commandFinish(util::Command::Ptr const& cmd) override;
-    bool isRatingInRange(int rating) { return _minRating <= rating && rating <= _maxRating; }
+    bool isRatingInRange(int rating) const { return _minRating <= rating && rating <= _maxRating; }
+    std::string getRatingStr() const;
 
     // SchedulerBase overrides
     bool ready() override;
