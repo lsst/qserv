@@ -105,10 +105,6 @@ public:
     InfileMerger& operator=(InfileMerger const&) = delete;
     ~InfileMerger() = default;
 
-    /// Merge a worker response, which contains a single message
-    /// @return true if merge was successfully imported.
-    bool merge(proto::ResponseSummary const& resp, std::shared_ptr<mysql::CsvStream> const& csvStream);
-
     /// Merge the result data collected over Http.
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 

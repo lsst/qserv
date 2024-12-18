@@ -65,7 +65,7 @@ public:
 
     static Ptr create() { return Ptr(new JobSubQueryTempMap()); }
 
-    /// &&& doc
+    /// Create JobSubQueryTempMap from result of serializeJson().
     static Ptr createFromJson(nlohmann::json const& ujJson);
 
     /// Find or insert qTemp into the map and return its index.
@@ -87,7 +87,7 @@ private:
 /// The same db+table name pairs recur frequently, so the individual occurrences
 /// will be replaced with an integer index and use this class to recover the
 /// complete names.
-class JobDbTablesMap {  // &&& this class can probably be deleted
+class JobDbTablesMap {  // TODO:UJ this class can probably be deleted
 public:
     using Ptr = std::shared_ptr<JobDbTablesMap>;
 
@@ -97,7 +97,7 @@ public:
 
     static Ptr create() { return Ptr(new JobDbTablesMap()); }
 
-    /// &&& doc
+    /// Create JobDbTablesMap from result of serializeJson().
     static Ptr createFromJson(nlohmann::json const& ujJson);
 
     /// Find or insert the db.table pair into the map and return its index.
@@ -107,11 +107,11 @@ public:
     /// @throws std::out_of_range
     std::pair<std::string, std::string> getDbTable(int index) { return _dbTableMap.at(index); }
 
-    /// &&& TODO:UJ compare with scan rating for entire UberJob
+    /// TODO:UJ compare with scan rating for entire UberJob
     void setScanRating(int index, int scanRating, bool lockInMemory);
 
     /// Return scanRating(int) and lockInMemory(bool) for the dbTable at `index`.
-    /// TODO:UJ &&& lockInMemory is expected to go away.
+    /// TODO:UJ lockInMemory is expected to go away.
     std::pair<int, bool> getScanRating(int index) { return _scanRatingMap[index]; }
 
     nlohmann::json serializeJson() const;
@@ -145,7 +145,7 @@ public:
                               JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
                               JobDbTablesMap::Ptr const& dbTablesMap);
 
-    /// &&& doc
+    /// Create JobFragment from the serializeJson() result.
     static VectPtr createVectFromJson(nlohmann::json const& ujJson,
                                       JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
                                       JobDbTablesMap::Ptr const& dbTablesMap);
@@ -162,19 +162,19 @@ public:
 private:
     JobFragment(JobSubQueryTempMap::Ptr const& subQueryTemplates, JobDbTablesMap::Ptr const& dbTablesMap);
 
-    /// &&& doc
+    /// Add the required data for a query fragment.
     static void _addFragment(std::vector<Ptr>& jFragments, DbTableSet const& subChunkTables,
                              std::vector<int> const& subchunkIds, std::vector<std::string> const& queries,
                              JobSubQueryTempMap::Ptr const& subQueryTemplates,
                              JobDbTablesMap::Ptr const& dbTablesMap);
 
-    JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< &&& doc
-    std::vector<int> _jobSubQueryTempIndexes;     ///< &&& doc
+    JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< Pointer to indexed list of subquery fragments.
+    std::vector<int> _jobSubQueryTempIndexes;     ///< List of subquery template indexes.
 
-    JobDbTablesMap::Ptr _jobDbTablesMap;   ///< &&& doc
-    std::vector<int> _jobDbTablesIndexes;  ///< &&& doc
+    JobDbTablesMap::Ptr _jobDbTablesMap;   ///< Pointer to the tables map
+    std::vector<int> _jobDbTablesIndexes;  ///< List of tables used.
 
-    std::vector<int> _subchunkIds;  ///< &&& doc
+    std::vector<int> _subchunkIds;  ///< List of subchunks for this chunk.
 };
 
 /// This class is used to store the information for a single Job (the queries and metadata
@@ -194,7 +194,7 @@ public:
                       JobSubQueryTempMap::Ptr const& jobSubQueryTempMap,
                       JobDbTablesMap::Ptr const& jobDbTablesMap);
 
-    /// &&& doc
+    /// Create a Job message from the serializeJson() results.
     static Ptr createFromJson(nlohmann::json const& ujJson, JobSubQueryTempMap::Ptr const& subQueryTemplates,
                               JobDbTablesMap::Ptr const& dbTablesMap);
 
@@ -204,8 +204,6 @@ public:
     JobId getJobId() const { return _jobId; }
     int getAttemptCount() const { return _attemptCount; }
     std::string getChunkQuerySpecDb() const { return _chunkQuerySpecDb; }
-    int getScanRating() const { return _scanRating; }
-    bool getScanInteractive() const { return _scanInteractive; }
     int getChunkId() const { return _chunkId; }
 
     std::vector<int> const& getChunkScanTableIndexes() const { return _chunkScanTableIndexes; }
@@ -217,20 +215,18 @@ private:
            JobDbTablesMap::Ptr const& jobDbTablesMap);
 
     JobMsg(JobSubQueryTempMap::Ptr const& jobSubQueryTempMap, JobDbTablesMap::Ptr const& jobDbTablesMap,
-           JobId jobId, int attemptCount, std::string const& chunkQuerySpecDb, int scanRating,
-           bool scanInteractive, int chunkId);
+           JobId jobId, int attemptCount, std::string const& chunkQuerySpecDb, int chunkId);
 
     JobId _jobId;
     int _attemptCount;
-    std::string _chunkQuerySpecDb;
-    int _scanRating;
-    bool _scanInteractive;
+    std::string _chunkQuerySpecDb;  // &&& remove, use value for UJ
     int _chunkId;
     JobFragment::VectPtr _jobFragments{new JobFragment::Vect()};
 
     JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< Map of all query templates related to this UberJob.
     JobDbTablesMap::Ptr _jobDbTablesMap;          ///< Map of all db.tables related to this UberJob.
 
+    // &&& remove, use value for UJ
     std::vector<int> _chunkScanTableIndexes;  ///< list of indexes into _jobDbTablesMap.
 };
 
@@ -252,10 +248,10 @@ public:
     static Ptr create(unsigned int metaVersion, std::string const& replicationInstanceId,
                       std::string const& replicationAuthKey, CzarContactInfo::Ptr const& czInfo,
                       WorkerContactInfo::Ptr const& wInfo, QueryId qId, UberJobId ujId, int rowLimit,
-                      int maxTableSizeMB, ScanInfo::Ptr const& scanInfo_,
+                      int maxTableSizeMB, ScanInfo::Ptr const& scanInfo_, bool scanInteractive_,
                       std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs) {
         return Ptr(new UberJobMsg(metaVersion, replicationInstanceId, replicationAuthKey, czInfo, wInfo->wId,
-                                  qId, ujId, rowLimit, maxTableSizeMB, scanInfo_, jobs));
+                                  qId, ujId, rowLimit, maxTableSizeMB, scanInfo_, scanInteractive_, jobs));
     }
 
     static Ptr createFromJson(nlohmann::json const& ujJson);
@@ -277,11 +273,16 @@ public:
 
     ScanInfo::Ptr getScanInfo() const { return _scanInfo; }
 
+    bool getScanInteractive() const { return _scanInteractive; }
+
+    std::string const& getIdStr() const { return _idStr; }
+
 private:
     UberJobMsg(unsigned int metaVersion, std::string const& replicationInstanceId,
                std::string const& replicationAuthKey, CzarContactInfo::Ptr const& czInfo,
                std::string const& workerId, QueryId qId, UberJobId ujId, int rowLimit, int maxTableSizeMB,
-               ScanInfo::Ptr const& scanInfo_, std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs);
+               ScanInfo::Ptr const& scanInfo_, bool scanInteractive,
+               std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs);
 
     unsigned int _metaVersion;  // "version", http::MetaModule::version
     // czar
@@ -303,7 +304,12 @@ private:
     /// List of all job data in this UberJob. "jobs", json::array()
     JobMsg::VectPtr _jobMsgVect{new JobMsg::Vect()};
 
-    ScanInfo::Ptr _scanInfo{ScanInfo::create()};  ///< &&& doc
+    ScanInfo::Ptr _scanInfo{ScanInfo::create()};  ///< Information for shared scan rating.
+
+    /// True if the user query has been designated interactive (quick + high priority)
+    bool _scanInteractive;
+
+    std::string const _idStr;
 };
 
 }  // namespace lsst::qserv::protojson

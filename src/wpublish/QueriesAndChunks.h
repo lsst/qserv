@@ -199,14 +199,11 @@ public:
     /// @see addQueryId()
     QueryStatistics::Ptr getStats(QueryId qId) const;
 
-    /// Return the statistics for a user query, creating if needed.
-    /// Since it is possible to get messages out of order, there
-    /// are several case where something like a cancellation
-    /// message arrives before any tasks have been created.
-    /// @see getStats()
+    /// @see _addQueryId
     QueryStatistics::Ptr addQueryId(QueryId qId, CzarIdType czarId);
 
     void addTask(wbase::Task::Ptr const& task);
+    void addTasks(std::vector<wbase::Task::Ptr> const& tasks, std::vector<util::Command::Ptr>& cmds);
     void queuedTask(wbase::Task::Ptr const& task);
     void startedTask(wbase::Task::Ptr const& task);
     void finishedTask(wbase::Task::Ptr const& task);
@@ -253,6 +250,14 @@ public:
 private:
     static Ptr _globalQueriesAndChunks;
     QueriesAndChunks(std::chrono::seconds deadAfter, std::chrono::seconds examineAfter);
+
+    /// Return the statistics for a user query, creating if needed.
+    /// Since it is possible to get messages out of order, there
+    /// are several case where something like a cancellation
+    /// message arrives before any tasks have been created.
+    /// @see getStats()
+    /// _queryStatsMapMtx must be locked before calling.
+    QueryStatistics::Ptr _addQueryId(QueryId qId, CzarIdType czarId);
 
     /// @return the statistics for a user query.
     /// _queryStatsMtx must be locked before calling.
