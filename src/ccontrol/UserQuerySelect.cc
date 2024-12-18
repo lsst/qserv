@@ -237,7 +237,6 @@ void UserQuerySelect::submit() {
         LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::submit() executive is null at start");
         return;
     }
-
     _qSession->finalize();
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
@@ -536,18 +535,23 @@ void UserQuerySelect::buildAndSendUberJobs() {
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
-    if (!_executive->isReadyToExecute()) {
+    auto exec = _executive;
+    if (exec == nullptr) {
+        LOGS(_log, LOG_LVL_ERROR, funcN << " called with null exec " << getQueryIdString());
+        return;
+    }
+    if (!exec->isReadyToExecute()) {
         LOGS(_log, LOG_LVL_INFO, funcN << " executive isn't ready to generate UberJobs.");
         return;
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
     lock_guard fcLock(_buildUberJobMtx);
-    LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << _executive->getTotalJobs());
+    LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << exec->getTotalJobs());
 
     vector<qdisp::UberJob::Ptr> uberJobs;
 
-    qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = _executive->unassignedChunksInQuery();
+    qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = exec->unassignedChunksInQuery();
     if (unassignedChunksInQuery.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, funcN << " no unassigned Jobs");
         return;
@@ -602,9 +606,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
     // and should minimize the time for the first UberJob on the worker to complete.
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
-
         bool const increaseAttemptCount = true;
-        jqPtr->getDescription()->incrAttemptCount(_executive, increaseAttemptCount);
+        jqPtr->getDescription()->incrAttemptCount(exec, increaseAttemptCount);
 
         // If too many workers are down, there will be a chunk that cannot be found.
         // Just continuing should leave jobs `unassigned` with their attempt count
@@ -612,9 +615,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         // attempt count will reach max and the query will be cancelled
         auto lambdaMissingChunk = [&](string const& msg) {
             missingChunks.push_back(chunkId);
-            //&&&bool const increaseAttemptCount = true;
-            //&&&jqPtr->getDescription()->incrAttemptCountScrubResultsJson(_executive, increaseAttemptCount);
-            LOGS(_log, LOG_LVL_ERROR, msg);
+            LOGS(_log, LOG_LVL_WARN, msg);
         };
 
         auto iter = chunkMapPtr->find(chunkId);
@@ -668,8 +669,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
             auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
-            auto uJob = qdisp::UberJob::create(_executive, respHandler, _executive->getId(), ujId,
-                                               _qMetaCzarId, targetWorker);
+            auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _qMetaCzarId,
+                                               targetWorker);
             uJob->setWorkerContactInfo(wInfUJ->wInf);
             wInfUJ->uberJobPtr = uJob;
         };
@@ -678,7 +679,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
         if (wInfUJ->uberJobPtr->getJobCount() >= _uberJobMaxChunks) {
             // Queue the UberJob to be sent to a worker
-            _executive->addAndQueueUberJob(wInfUJ->uberJobPtr);
+            exec->addAndQueueUberJob(wInfUJ->uberJobPtr);
 
             // Clear the pinter so a new UberJob is created later if needed.
             wInfUJ->uberJobPtr = nullptr;
@@ -703,12 +704,12 @@ void UserQuerySelect::buildAndSendUberJobs() {
         if (winfUjPtr != nullptr) {
             auto& ujPtr = winfUjPtr->uberJobPtr;
             if (ujPtr != nullptr) {
-                _executive->addAndQueueUberJob(ujPtr);
+                exec->addAndQueueUberJob(ujPtr);
             }
         }
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << _executive->dumpUberJobCounts());
+    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << exec->dumpUberJobCounts());
 }
 
 /// Block until a submit()'ed query completes.

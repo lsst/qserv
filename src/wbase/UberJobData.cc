@@ -185,6 +185,7 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
 void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
                                    std::string const& url_, std::string const& requestContext_,
                                    std::string const& requestStr_) {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__));  // &&&
     util::QdispPool::Ptr wPool;
     if (_foreman != nullptr) {
         wPool = _foreman->getWPool();
@@ -346,11 +347,12 @@ void UberJobData::cancelAllTasks() {
 
 string UJTransmitCmd::cName(const char* funcN) const {
     stringstream os;
-    os << "UJTransmitCmd::" << funcN << " czId=" << _czarId << " qId=" << _queryId << " ujId=" << _uberJobId;
+    os << "UJTransmitCmd::" << funcN << " czId=" << _czarId << " QID=" << _queryId << "_ujId=" << _uberJobId;
     return os.str();
 }
 
 void UJTransmitCmd::action(util::CmdData* data) {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__));  //&&&
     // Make certain _selfPtr is reset before leaving this function.
     // If a retry is needed, duplicate() is called.
     class ResetSelf {
@@ -381,6 +383,7 @@ void UJTransmitCmd::action(util::CmdData* data) {
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + _requestContext + " failed, ex: " + ex.what());
     }
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " &&& transmit finished");
 
     if (!transmitSuccess) {
         auto sPtr = _selfPtr;
@@ -419,8 +422,8 @@ void UJTransmitCmd::action(util::CmdData* data) {
 }
 
 void UJTransmitCmd::kill() {
-    string const funcN("UJTransmitCmd::kill");
-    LOGS(_log, LOG_LVL_WARN, funcN);
+    //&&&string const funcN("UJTransmitCmd::kill");
+    LOGS(_log, LOG_LVL_WARN, cName(__func__));
     auto sPtr = _selfPtr;
     _selfPtr.reset();
     if (sPtr == nullptr) {
@@ -429,6 +432,7 @@ void UJTransmitCmd::kill() {
 }
 
 UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__));  //&&&
     auto ujD = _ujData.lock();
     if (ujD == nullptr) {
         return nullptr;

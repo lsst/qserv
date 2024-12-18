@@ -334,7 +334,7 @@ bool CzarFamilyMap::_read() {
     LOGS(_log, LOG_LVL_TRACE, "CzarFamilyMap::_read() start");
     // If replacing the map, this may take a bit of time, but it's probably
     // better to wait for new maps if something changed.
-    std::lock_guard gLock(_familyMapMtx); // &&& check waiting is really needed
+    std::lock_guard gLock(_familyMapMtx);  // &&& check waiting is really needed
     qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap(_lastUpdateTime);
     if (_lastUpdateTime == qChunkMap.updateTime) {
         LOGS(_log, LOG_LVL_DEBUG,

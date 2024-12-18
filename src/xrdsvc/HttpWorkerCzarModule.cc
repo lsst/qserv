@@ -116,6 +116,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     try {
         auto const& jsReq = body().objJson;
         auto uberJobMsg = protojson::UberJobMsg::createFromJson(jsReq);
+        LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& parsed msg");
 
         UberJobId ujId = uberJobMsg->getUberJobId();
         auto ujCzInfo = uberJobMsg->getCzarContactInfo();
@@ -131,6 +132,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         // Get or create QueryStatistics and UserQueryInfo instances.
         auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzInfo->czId);
         auto userQueryInfo = queryStats->getUserQueryInfo();
+        LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& added to stats");
 
         if (userQueryInfo->getCancelledByCzar()) {
             throw wbase::TaskException(

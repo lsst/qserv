@@ -103,9 +103,6 @@ private:
     /// Call InfileMerger to do the work of merging this data to the result.
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
-    /// Call InfileMerger to do the work of merging this data to the result.
-    bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
-
     /// Set error code and string.
     void _setError(int code, std::string const& msg);
 

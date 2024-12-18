@@ -182,6 +182,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
     UberJobId ujId = ujData->getUberJobId();
     CzarIdType czId = ujData->getCzarId();
 
+    auto startBuildTasks = CLOCK::now();
     vector<Task::Ptr> vect;  // List of created tasks to be returned.
     wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
     UserQueryInfo::Ptr userQueryInfo = queryStats->getUserQueryInfo();

@@ -256,9 +256,8 @@ BOOST_AUTO_TEST_CASE(Simple) {
     auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
-    vector<Task::Ptr> taskVect =
-            Task::createTasksForUnitTest(ujData, *msgJson, sChannel, scanInfo, mInfo.scanInteractive,
-                                         mInfo.maxTableSize, crm);
+    vector<Task::Ptr> taskVect = Task::createTasksForUnitTest(ujData, *msgJson, sChannel, scanInfo,
+                                                              mInfo.scanInteractive, mInfo.maxTableSize, crm);
 
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
@@ -307,9 +306,8 @@ BOOST_AUTO_TEST_CASE(Output) {
     auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
-    vector<Task::Ptr> taskVect =
-            Task::createTasksForUnitTest(ujData, *msgJson, sc, scanInfo, mInfo.scanInteractive,
-                                      mInfo.maxTableSize, crm);
+    vector<Task::Ptr> taskVect = Task::createTasksForUnitTest(ujData, *msgJson, sc, scanInfo,
+                                                              mInfo.scanInteractive, mInfo.maxTableSize, crm);
 
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
