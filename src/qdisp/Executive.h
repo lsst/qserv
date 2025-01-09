@@ -147,7 +147,7 @@ public:
     void markCompleted(JobId refNum, bool success);
 
     /// Squash all the jobs.
-    void squash();
+    void squash(std::string const& note);
 
     bool getEmpty() { return _empty; }
 
@@ -210,13 +210,13 @@ public:
 
     // The below value should probably be based on the user query, with longer sleeps for slower queries.
     int getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
-    int getMaxAttempts() const { return 5; }           // Should be set by config
+    int getMaxAttempts() const { return 50; }          // TODO:UJ Should be set by config
 
-    /// Calling this indicates the executive is ready to create and execute UberJobs.
-    void setReadyToExecute() { _readyToExecute = true; }
+    /// Calling this indicates all Jobs for this user query have been created.
+    void setAllJobsCreated() { _allJobsCreated = true; }
 
-    /// Returns true if the executive is ready to create and execute UberJobs.
-    bool isReadyToExecute() { return _readyToExecute; }
+    /// Returns true if all jobs have been created.
+    bool isAllJobsCreated() { return _allJobsCreated; }
 
     /// Send a message to all workers to cancel this query.
     /// @param deleteResults - If true, delete all result files for this query on the workers.
@@ -346,8 +346,8 @@ private:
     /// Weak pointer to the UserQuerySelect object for this query.
     std::weak_ptr<ccontrol::UserQuerySelect> _userQuerySelect;
 
-    /// Flag that is set to true when ready to create and run UberJobs.
-    std::atomic<bool> _readyToExecute{false};
+    /// Flag that is set to true when all jobs have been created.
+    std::atomic<bool> _allJobsCreated{false};
 
     protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
 

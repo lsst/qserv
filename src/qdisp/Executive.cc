@@ -196,20 +196,22 @@ JobQuery::Ptr Executive::add(JobDescription::Ptr const& jobDesc) {
         QSERV_LOGCONTEXT_QUERY_JOB(jobQuery->getQueryId(), jobQuery->getJobId());
 
         {
-            lock_guard lock(_cancelled.getMutex());
-            if (_cancelled) {
-                LOGS(_log, LOG_LVL_DEBUG,
-                     "Executive already cancelled, ignoring add(" << jobDesc->id() << ")");
-                return nullptr;
-            }
-
-            if (!_addJobToMap(jobQuery)) {
-                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add");
-                return jobQuery;
+            {
+                lock_guard lock(_cancelled.getMutex());
+                if (_cancelled) {
+                    LOGS(_log, LOG_LVL_DEBUG,
+                         "Executive already cancelled, ignoring add(" << jobDesc->id() << ")");
+                    return nullptr;
+                }
             }
 
             if (!_track(jobQuery->getJobId(), jobQuery)) {
                 LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate track add");
+                return jobQuery;
+            }
+
+            if (!_addJobToMap(jobQuery)) {
+                LOGS(_log, LOG_LVL_ERROR, "Executive ignoring duplicate job add");
                 return jobQuery;
             }
 
@@ -240,7 +242,7 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
         lock_guard<mutex> lck(_uberJobsMapMtx);
         UberJobId ujId = uj->getUjId();
         _uberJobsMap[ujId] = uj;
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
+        LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
     }
 
     auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };
@@ -415,18 +417,19 @@ void Executive::markCompleted(JobId jobId, bool success) {
         LOGS(_log, logLvl,
              "Executive: requesting squash, cause: " << " failed (code=" << err.getCode() << " "
                                                      << err.getMsg() << ")");
-        squash();  // ask to squash
+        squash(string("markComplete error ") + err.getMsg());  // ask to squash
     }
 }
 
-void Executive::squash() {
+void Executive::squash(string const& note) {
     bool alreadyCancelled = _cancelled.exchange(true);
     if (alreadyCancelled) {
         LOGS(_log, LOG_LVL_DEBUG, "Executive::squash() already cancelled! refusing. qid=" << getId());
         return;
     }
 
-    LOGS(_log, LOG_LVL_INFO, "Executive::squash Trying to cancel all queries... qid=" << getId());
+    LOGS(_log, LOG_LVL_WARN,
+         "Executive::squash Trying to cancel all queries... qid=" << getId() << " " << note);
     deque<JobQuery::Ptr> jobsToCancel;
     {
         lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
@@ -670,6 +673,7 @@ void Executive::_waitAllUntilEmpty() {
     int moreDetailThreshold = 10;
     int complainCount = 0;
     const chrono::seconds statePrintDelay(5);
+    // Loop until all jobs have completed and all jobs have been created.
     while (!_incompleteJobs.empty()) {
         count = _incompleteJobs.size();
         if (count != lastCount) {
@@ -769,9 +773,10 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
              cName(__func__) << "recheck total=" << total << " max=" << maxResultTableSizeBytes);
         if (total > maxResultTableSizeBytes) {
             LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
-            ResponseHandler::Error err(0, string("Incomplete result already too large ") + to_string(total));
+            ResponseHandler::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
+                                       string("Incomplete result already too large ") + to_string(total));
             _multiError.push_back(err);
-            squash();
+            squash("czar, file too large");
         }
     }
 }
