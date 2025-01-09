@@ -133,6 +133,9 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzInfo->czId);
         auto userQueryInfo = queryStats->getUserQueryInfo();
         LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& added to stats");
+        LOGS(_log, LOG_LVL_WARN,
+             uberJobMsg->getIdStr() << " &&& bytesWritten added to stats maxTableSizeMb=" << maxTableSizeMb
+                                    << " maxTableSizeBytes=" << maxTableSizeBytes);
 
         if (userQueryInfo->getCancelledByCzar()) {
             throw wbase::TaskException(

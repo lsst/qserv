@@ -386,7 +386,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     }
     auto end = CLOCK::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "mergeDur=" << mergeDur.count() << " sema(total=" << _semaMgrConn->getTotalCount()
                      << " used=" << _semaMgrConn->getUsedCount() << ")");
     std::chrono::duration<double> secs = end - start;  // &&&
@@ -403,7 +403,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     }
     _invalidJobAttemptMgr.decrConcurrentMergeCount();
 
-    LOGS(_log, LOG_LVL_DEBUG, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
+    LOGS(_log, LOG_LVL_TRACE, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
 
     return ret;
 }

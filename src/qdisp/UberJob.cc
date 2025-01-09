@@ -106,7 +106,7 @@ util::HistogramRolling histoUJSerialize("&&&uj histoUJSerialize", {0.1, 1.0, 10.
 
 void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelled
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj start");
+    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "                        &&&uj runuj start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);

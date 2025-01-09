@@ -540,7 +540,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
         LOGS(_log, LOG_LVL_ERROR, funcN << " called with null exec " << getQueryIdString());
         return;
     }
-    if (!exec->isReadyToExecute()) {
+
+    if (!exec->isAllJobsCreated()) {
         LOGS(_log, LOG_LVL_INFO, funcN << " executive isn't ready to generate UberJobs.");
         return;
     }
@@ -605,6 +606,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     // numerical order. The workers run shared scans in numerical order of chunkId numbers.
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
     // and should minimize the time for the first UberJob on the worker to complete.
+    LOGS(_log, LOG_LVL_WARN, "         &&&d " << funcN << " start assigning");
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
         bool const increaseAttemptCount = true;
         jqPtr->getDescription()->incrAttemptCount(exec, increaseAttemptCount);

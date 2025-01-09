@@ -231,7 +231,7 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
     // Parse and verify the json message and then kill the UberJob.
     json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
-        // See qdisp::UberJob::runUberJob() for json message construction. &&&
+        // TODO:UJ see wbase::UberJobData::responseError for message construction
         string const targetWorkerId = body().required<string>("workerid");
         string const czarName = body().required<string>("czar");
         qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
@@ -274,7 +274,7 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     try {
         // &&& TODO:UJ file response - move construction and parsing
         // &&& TODO:UJ to a class so it can be added to WorkerCzarComIssue
-        // See qdisp::UberJob::runUberJob() for json message construction. &&&
+        // See wbase::UberJobData::responseFileReady
         string const targetWorkerId = body().required<string>("workerid");
         string const czarName = body().required<string>("czar");
         qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
