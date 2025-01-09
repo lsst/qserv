@@ -106,6 +106,8 @@ public:
     czar::CzarChunkMap::WorkerChunksData::Ptr getWorkerData() { return _workerData; }
 
     /// Queue the lambda function to collect and merge the results from the worker.
+    /// @return a json message indicating success unless the query has been
+    ///         cancelled, limit row complete, or similar.
     nlohmann::json importResultFile(std::string const& fileUrl, uint64_t rowCount, uint64_t fileSize);
 
     /// Handle an error from the worker.

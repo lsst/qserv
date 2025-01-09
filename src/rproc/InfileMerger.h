@@ -162,13 +162,6 @@ public:
 
     std::string engineToStr(InfileMerger::DbEngine engine);
 
-    /// Merge a worker response, which contains a single ResponseData message
-    /// Using job query info for early termination of the merge if needed.
-    /// @return true if merge was successfully imported.
-    // &&& delete
-    bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
-               std::shared_ptr<qdisp::JobQuery> const& jq);
-
     /// Merge the result data collected over Http.
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
