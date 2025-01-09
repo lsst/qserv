@@ -69,7 +69,6 @@
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wpublish/QueriesAndChunks.h"
-#include "xrdsvc/StreamBuffer.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
@@ -132,26 +131,14 @@ void QueryRunner::_setDb() {
     }
 }
 
-size_t QueryRunner::_getDesiredLimit() {
-    double percent = xrdsvc::StreamBuffer::percentOfMaxTotalBytesUsed();
-    size_t minLimit = 1'000'000;
-    size_t maxLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
-    if (percent < 0.1) return maxLimit;
-    double reduce = 1.0 - (percent + 0.2);  // force minLimit when 80% of memory used.
-    if (reduce < 0.0) reduce = 0.0;
-    size_t lim = maxLimit * reduce;
-    if (lim < minLimit) lim = minLimit;
-    return lim;
-}
-
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
-    util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_TRACE,
-         __func__ << " tid=" << _task->getIdStr() << " scsId=" << _task->getSendChannel()->getScsId());
+    LOGS(_log, LOG_LVL_WARN,
+         "QueryRunner " << _task->cName(__func__)  //&&& TRACE
+                        << " scsId=" << _task->getSendChannel()->getScsId());
 
     // Start tracking the task.
     auto now = chrono::system_clock::now();
@@ -270,12 +257,14 @@ bool QueryRunner::_dispatchChannel() {
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
         auto taskSched = _task->getTaskScheduler();
-        if (!_cancelled && !_task->getSendChannel()->isDead()) {
+        if (!_cancelled && !_task->checkCancelled()) {
             string const& query = _task->getQueryString();
             util::Timer primeT;
             primeT.start();
             _task->queryExecutionStarted();
+            LOGS(_log, LOG_LVL_WARN, "QueryRunner " << _task->cName(__func__) << " sql start");  //&&& TRACE
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
+            LOGS(_log, LOG_LVL_WARN, "QueryRunner " << _task->cName(__func__) << " sql end");  //&&& TRACE
             primeT.stop();
             needToFreeRes = true;
             if (taskSched != nullptr) {
@@ -358,14 +347,6 @@ void QueryRunner::cancel() {
                 break;
         }
     }
-
-    auto streamB = _streamBuf.lock();
-    if (streamB != nullptr) {
-        streamB->cancel();
-    }
-
-    // The send channel will die naturally on its own when xrootd stops talking to it
-    // or other tasks call _transmitCancelledError().
 }
 
 QueryRunner::~QueryRunner() {}

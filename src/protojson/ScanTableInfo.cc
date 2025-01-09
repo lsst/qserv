@@ -22,16 +22,27 @@
  */
 
 // Class header
-#include "proto/ScanTableInfo.h"
+#include "protojson/ScanTableInfo.h"
 
 // System headers
 #include <algorithm>
 #include <ostream>
 
 // Qserv headers
+#include "http/RequestBodyJSON.h"
 #include "util/IterableFormatter.h"
 
-namespace lsst::qserv::proto {
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.ScanTableInfo");
+}  // namespace
+
+using namespace std;
+using namespace nlohmann;
+
+namespace lsst::qserv::protojson {
 
 /// @return 0 if equal, -1 if this < rhs, 1 if this > rhs
 int ScanTableInfo::compare(ScanTableInfo const& rhs) const {
@@ -87,6 +98,39 @@ void ScanInfo::sortTablesSlowestFirst() {
     std::sort(infoTables.begin(), infoTables.end(), func);
 }
 
+nlohmann::json ScanInfo::serializeJson() const {
+    auto jsScanInfo = json({{"infoscanrating", scanRating}, {"infotables", json::array()}});
+
+    auto& jsInfoTables = jsScanInfo["infotables"];
+    for (auto const& tInfo : infoTables) {
+        json jsTInfo = json({{"sidb", tInfo.db},
+                             {"sitable", tInfo.table},
+                             {"sirating", tInfo.scanRating},
+                             {"silockinmem", tInfo.lockInMemory}});
+
+        jsInfoTables.push_back(jsTInfo);
+    }
+
+    return jsScanInfo;
+}
+
+ScanInfo::Ptr ScanInfo::createFromJson(nlohmann::json const& siJson) {
+    Ptr siPtr = create();
+    auto& iTbls = siPtr->infoTables;
+
+    siPtr->scanRating = http::RequestBodyJSON::required<int>(siJson, "infoscanrating");
+    json const& jsTbls = http::RequestBodyJSON::required<json>(siJson, "infotables");
+    for (auto const& jsElem : jsTbls) {
+        auto db = http::RequestBodyJSON::required<string>(jsElem, "sidb");
+        auto table = http::RequestBodyJSON::required<string>(jsElem, "sitable");
+        auto sRating = http::RequestBodyJSON::required<int>(jsElem, "sirating");
+        auto lockInMem = http::RequestBodyJSON::required<bool>(jsElem, "silockinmem");
+        iTbls.emplace_back(db, table, lockInMem, sRating);
+    }
+
+    return siPtr;
+}
+
 std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl) {
     os << "(db=" << tbl.db << " table=" << tbl.table;
     os << " lockInMemory=" << tbl.lockInMemory << " scanRating=" << tbl.scanRating << ")";
@@ -98,4 +142,4 @@ std::ostream& operator<<(std::ostream& os, ScanInfo const& info) {
     return os;
 }
 
-}  // namespace lsst::qserv::proto
+}  // namespace lsst::qserv::protojson

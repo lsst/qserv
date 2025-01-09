@@ -2,6 +2,7 @@ add_library(czar OBJECT)
 add_dependencies(czar proto)
 
 target_sources(czar PRIVATE
+    ActiveWorker.cc
     ChttpModule.cc
     Czar.cc
     CzarChunkMap.cc
@@ -26,6 +27,7 @@ target_include_directories(czar PRIVATE
 target_link_libraries(czar PUBLIC
     cconfig
     http
+    protojson
     qdisp
     qhttp
     util

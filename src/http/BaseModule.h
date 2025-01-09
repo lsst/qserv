@@ -221,6 +221,8 @@ protected:
      */
     void sendData(nlohmann::json& result);
 
+    std::string authKey() const { return _authKey; }
+
 private:
     // Input parameters
     std::string const _authKey;

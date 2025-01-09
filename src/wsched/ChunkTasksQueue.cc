@@ -411,7 +411,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
                  "ChunkTasks " << _chunkId << " got task for chunk " << chunkId << " " << task->getIdStr());
         }
         std::vector<memman::TableInfo> tblVect;
-        for (auto const& tbl : scanInfo.infoTables) {
+        for (auto const& tbl : scanInfo->infoTables) {
             memman::TableInfo ti(tbl.db + "/" + tbl.table, lckOptTbl, lckOptIdx);
             tblVect.push_back(ti);
         }
