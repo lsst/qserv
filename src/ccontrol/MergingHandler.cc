@@ -271,9 +271,7 @@ shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
 }
 
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
-        : _infileMerger{merger}, _tableName{tableName} {
-    _initState();
-}
+        : _infileMerger{merger}, _tableName{tableName} {}
 
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << _tableName); }
 
@@ -296,34 +294,6 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
 }
 
-void MergingHandler::_initState() { _setError(0, ""); }
-
-bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
-                            proto::ResponseData const& responseData,
-                            shared_ptr<qdisp::JobQuery> const& jobQuery) {
-    if (_flushed) throw util::Bug(ERR_LOC, "already flushed");
-
-    // Nothing to do if size is zero.
-    if (responseData.row_size() == 0) return true;
-
-    // Do nothing if the query got cancelled for any reason.
-    if (jobQuery->isQueryCancelled()) return true;
-
-    // Check for other indicators that the query may have cancelled or finished.
-    auto executive = jobQuery->getExecutive();
-    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
-        return true;
-    }
-
-    // Attempt the actual merge.
-    if (_infileMerger->merge(responseSummary, responseData)) return true;
-
-    LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
-    util::Error const& err = _infileMerger->getError();
-    _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
-    return false;
-}
-
 bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
                                 proto::ResponseData const& responseData) {
     if (_flushed) {
@@ -339,7 +309,7 @@ bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
 }
 
 void MergingHandler::_setError(int code, std::string const& msg) {
-    LOGS(_log, LOG_LVL_DEBUG, "_setErr: code: " << code << ", message: " << msg);
+    LOGS(_log, LOG_LVL_DEBUG, "_setError: code: " << code << ", message: " << msg);
     std::lock_guard<std::mutex> lock(_errorMutex);
     _error = Error(code, msg);
 }

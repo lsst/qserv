@@ -125,7 +125,7 @@ atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 /// the util::CommandThreadPool is not called here.
 Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
            size_t templateId, bool hasSubchunks, int subchunkId, string const& db,
-           protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSize,
+           protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive,  //&&& int maxTableSize,
            vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
            shared_ptr<FileChannelShared> const& sc,
            std::shared_ptr<wpublish::QueryStatistics> const& queryStats_, uint16_t resultsHttpPort)
@@ -145,7 +145,7 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
           _scanInfo(scanInfo),
           _scanInteractive(scanInteractive),
           _queryStats(queryStats_),
-          _maxTableSize(maxTableSize * ::MB_SIZE_BYTES),
+          //&&&_maxTableSize(maxTableSize * ::MB_SIZE_BYTES),
           _rowLimit(ujData->getRowLimit()),
           _ujData(ujData),
           _idStr(ujData->getIdStr() + " jId=" + to_string(_jId) + " sc=" + to_string(_subchunkId)) {
@@ -237,7 +237,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
     auto jobSubQueryTempMap = ujMsg->getJobSubQueryTempMap();
     auto jobDbTablesMap = ujMsg->getJobDbTablesMap();
     auto jobMsgVect = ujMsg->getJobMsgVect();
-    int maxTableSizeMb = ujMsg->getMaxTableSizeMb();
+    //&&& int maxTableSizeMb = ujMsg->getMaxTableSizeMb();
     auto scanInfo = ujMsg->getScanInfo();
 
     for (auto const& jobMsg : *jobMsgVect) {
@@ -278,7 +278,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                     int const subchunkId = -1;
                     auto task = Task::Ptr(new Task(
                             ujData, jobId, attemptCount, chunkId, fragmentNumber, templateId, noSubchunks,
-                            subchunkId, chunkQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
+                            subchunkId, chunkQuerySpecDb, scanInfo, scanInteractive,  //&&& maxTableSizeMb,
                             fragSubTables, fragSubchunkIds, sendChannel, queryStats, resultsHttpPort));
 
                     vect.push_back(task);
@@ -287,7 +287,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                         bool const hasSubchunks = true;
                         auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
                                                        templateId, hasSubchunks, subchunkId, chunkQuerySpecDb,
-                                                       scanInfo, scanInteractive, maxTableSizeMb,
+                                                       scanInfo, scanInteractive,  //&&&maxTableSizeMb,
                                                        fragSubTables, fragSubchunkIds, sendChannel,
                                                        queryStats, resultsHttpPort));
                         vect.push_back(task);
@@ -386,8 +386,9 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
                     int const subchunkId = -1;
                     auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber,
                                                    0, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
-                                                   scanInteractive, maxTableSizeMb, fragSubTables,
-                                                   fragSubchunkIds, sendChannel, nullptr, 0));
+                                                   //&&&scanInteractive, maxTableSizeMb, fragSubTables,
+                                                   scanInteractive, fragSubTables, fragSubchunkIds,
+                                                   sendChannel, nullptr, 0));
 
                     vect.push_back(task);
                 } else {
@@ -395,7 +396,7 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
                         bool const hasSubchunks = true;
                         auto task = Task::Ptr(new Task(
                                 ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, 0, hasSubchunks,
-                                subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
+                                subchunkId, jdQuerySpecDb, scanInfo, scanInteractive,  //&&& maxTableSizeMb,
                                 fragSubTables, fragSubchunkIds, sendChannel, nullptr, 0));
 
                         vect.push_back(task);
@@ -639,7 +640,8 @@ nlohmann::json Task::getJson() const {
     js["attemptId"] = _attemptCount;
     js["sequenceId"] = _tSeq;
     js["scanInteractive"] = _scanInteractive;
-    js["maxTableSize"] = _maxTableSize;
+    //&&&js["maxTableSize"] = _maxTableSize;
+    js["maxTableSize"] = _ujData->getMaxTableSizeBytes();
     js["cancelled"] = to_string(_cancelled);
     js["state"] = static_cast<uint64_t>(_state.load());
     js["createTime_msec"] = util::TimeUtils::tp2ms(_createTime);
@@ -656,6 +658,8 @@ nlohmann::json Task::getJson() const {
     js["scheduler"] = scheduler == nullptr ? "" : scheduler->getName();
     return js;
 }
+
+int64_t Task::getMaxTableSize() const { return _ujData->getMaxTableSizeBytes(); }
 
 ostream& operator<<(ostream& os, Task const& t) {
     os << "Task: "

@@ -204,6 +204,7 @@ std::shared_ptr<qdisp::JobQuery> addMockRequests(qdisp::Executive::Ptr const& ex
         qdisp::JobDescription::Ptr job = makeMockJobDescription(ex, sequence.incr(), ru, msg, rv[j]);
         jobQuery = ex->add(job);
     }
+    ex->setAllJobsCreated();
     return jobQuery;
 }
 
@@ -377,7 +378,7 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         // squash
         SequentialInt sequence(0);
         tEnv.jqTest = executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 1);
-        tEnv.ex->squash();
+        tEnv.ex->squash("test");
         usleep(250000);  // Give mock threads a quarter second to complete.
         tEnv.ex->join();
         BOOST_CHECK(tEnv.jqTest->isQueryCancelled() == true);
@@ -390,9 +391,9 @@ BOOST_AUTO_TEST_CASE(ExecutiveCancel) {
         // squash
         SequentialInt sequence(0);
         executiveTest(tEnv.ex, sequence, chunkId, tEnv.qrMsg, 20);
-        tEnv.ex->squash();
-        tEnv.ex->squash();  // check that squashing twice doesn't cause issues.
-        usleep(250000);     // Give mock threads a quarter second to complete.
+        tEnv.ex->squash("test");
+        tEnv.ex->squash("test");  // check that squashing twice doesn't cause issues.
+        usleep(250000);           // Give mock threads a quarter second to complete.
         tEnv.ex->join();
     }
 }

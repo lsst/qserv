@@ -428,7 +428,7 @@ void CzarFamilyMap::insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFami
                                    CzarChunkMap::SizeT sz) {
     // Get the CzarChunkMap for this family
     auto familyName = getFamilyNameFromDbName(dbName);
-    LOGS(_log, LOG_LVL_INFO,
+    LOGS(_log, LOG_LVL_TRACE,
          cName(__func__) << " familyInsrt{w=" << workerId << " fN=" << familyName << " dbN=" << dbName
                          << " tblN=" << tableName << " chunk=" << chunkIdNum << " sz=" << sz << "}");
     auto& nfMap = *newFamilyMap;

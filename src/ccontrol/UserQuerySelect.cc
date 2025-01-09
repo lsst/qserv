@@ -167,7 +167,7 @@ void UserQuerySelect::kill() {
             // make a copy of executive pointer to keep it alive and avoid race
             // with pointer being reset in discard() method
             if (exec != nullptr) {
-                exec->squash();
+                exec->squash("UserQuerySelect::kill");
             }
         } catch (UserQueryError const& e) {
             // Silence merger discarding errors, because this object is being
@@ -296,6 +296,7 @@ void UserQuerySelect::submit() {
                 return;
             }
             dbName = cs->db;
+            _queryDbName = dbName;
             dbNameSet = true;
         }
 
@@ -308,13 +309,9 @@ void UserQuerySelect::submit() {
         ++sequence;
     }
 
-    if (dbNameSet) {
-        _queryDbName = dbName;
-    }
-
     /// At this point the executive has a map of all jobs with the chunkIds as the key.
     // This is needed to prevent Czar::_monitor from starting things before they are ready.
-    exec->setReadyToExecute();
+    exec->setAllJobsCreated();
     buildAndSendUberJobs();
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
@@ -341,7 +338,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
         LOGS(_log, LOG_LVL_ERROR, funcN << " called with null exec " << getQueryIdString());
         return;
     }
-    if (!exec->isReadyToExecute()) {
+
+    if (!exec->isAllJobsCreated()) {
         LOGS(_log, LOG_LVL_INFO, funcN << " executive isn't ready to generate UberJobs.");
         return;
     }
@@ -406,6 +404,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     // numerical order. The workers run shared scans in numerical order of chunkId numbers.
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
     // and should minimize the time for the first UberJob on the worker to complete.
+    LOGS(_log, LOG_LVL_WARN, "         &&&d " << funcN << " start assigning");
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
         bool const increaseAttemptCount = true;
         jqPtr->getDescription()->incrAttemptCount(exec, increaseAttemptCount);

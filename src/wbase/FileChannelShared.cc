@@ -378,7 +378,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     transmitT.start();
 
     double bufferFillSecs = 0.0;
-    int64_t bytesTransmitted = 0;
+    int64_t taskBytesWritten = 0;
     int rowsTransmitted = 0;
 
     // Keep reading rows and converting those into messages while any
@@ -407,28 +407,31 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         int bytes = 0;
         int rows = 0;
         hasMoreRows = _writeToFile(tMtxLockA, task, mResult, bytes, rows, multiErr);
-        bytesTransmitted += bytes;
+        _bytesWritten += bytes;
+        taskBytesWritten += bytes;
         rowsTransmitted += rows;
         _rowcount += rows;
         _transmitsize += bytes;
         LOGS(_log, LOG_LVL_TRACE,
-             __func__ << " " << task->getIdStr() << " bytesT=" << bytesTransmitted
-                      << " _tsz=" << _transmitsize);
+             __func__ << " " << task->getIdStr() << " bytesT=" << _bytesWritten << " _tsz=" << _transmitsize);
 
         bufferFillT.stop();
         bufferFillSecs += bufferFillT.getElapsed();
 
-        int64_t const maxTableSize = task->getMaxTableSize();
+        uint64_t const maxTableSize = task->getMaxTableSize();
         // Fail the operation if the amount of data in the result set exceeds the requested
         // "large result" limit (in case one was specified).
-        if (maxTableSize > 0 && bytesTransmitted > maxTableSize) {
-            string const err = "The result set size " + to_string(bytesTransmitted) +
+        LOGS(_log, LOG_LVL_TRACE, "bytesWritten=" << _bytesWritten << " max=" << maxTableSize);
+        if (maxTableSize > 0 && _bytesWritten > maxTableSize) {
+            string const err = "The result set size " + to_string(_bytesWritten) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
                                " bytes, task: " + task->getIdStr();
             multiErr.push_back(util::Error(util::ErrorCode::WORKER_RESULT_TOO_LARGE, err));
             LOGS(_log, LOG_LVL_ERROR, err);
             erred = true;
-            break;
+            //&&&task->cancel();
+            //&&&buildAndTransmitError(multiErr, task, cancelled);
+            return erred;
         }
 
         int const ujRowLimit = task->getRowLimit();
@@ -469,7 +472,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     if (qStats == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "No statistics for " << task->getIdStr());
     } else {
-        qStats->addTaskTransmit(timeSeconds, bytesTransmitted, rowsTransmitted, bufferFillSecs);
+        qStats->addTaskTransmit(timeSeconds, taskBytesWritten, rowsTransmitted, bufferFillSecs);
         LOGS(_log, LOG_LVL_TRACE,
              "TaskTransmit time=" << timeSeconds << " bufferFillSecs=" << bufferFillSecs);
     }

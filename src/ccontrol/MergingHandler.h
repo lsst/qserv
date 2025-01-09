@@ -92,13 +92,6 @@ public:
     }
 
 private:
-    /// Prepare for first call to flush().
-    void _initState();
-
-    // &&& delete
-    bool _merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
-                std::shared_ptr<qdisp::JobQuery> const& jobQuery);
-
     /// Call InfileMerger to do the work of merging this data to the result.
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 

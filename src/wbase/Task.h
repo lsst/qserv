@@ -159,7 +159,7 @@ public:
     //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
-         protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
+         protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive,  //&&&int maxTableSizeMb,
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
          std::shared_ptr<FileChannelShared> const& sc,
          std::shared_ptr<wpublish::QueryStatistics> const& queryStats_, uint16_t resultsHttpPort = 8080);
@@ -236,7 +236,9 @@ public:
     int getJobId() const { return _jId; }
     int getAttemptCount() const { return _attemptCount; }
     bool getScanInteractive() { return _scanInteractive; }
-    int64_t getMaxTableSize() const { return _maxTableSize; }
+    //&&&int64_t getMaxTableSize() const { return _maxTableSize; }
+    int64_t getMaxTableSize() const;
+
     protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
@@ -364,7 +366,7 @@ private:
     /// Stores information on the query's resource usage.
     std::weak_ptr<wpublish::QueryStatistics> const _queryStats;
 
-    int64_t _maxTableSize = 0;
+    //&&&int64_t _maxTableSize = 0;
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
     memman::MemMan::Ptr _memMan;
 
