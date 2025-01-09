@@ -106,7 +106,7 @@ util::HistogramRolling histoUJSerialize("&&&uj histoUJSerialize", {0.1, 1.0, 10.
 
 void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelled
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj start");
+    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "                        &&&uj runuj start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
@@ -119,7 +119,7 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
     vector<string> const headers = {"Content-Type: application/json"};
     auto const& czarConfig = cconfig::CzarConfig::instance();
 
-    int maxTableSizeMB = czarConfig->getMaxTableSizeMB();
+    uint64_t maxTableSizeMB = czarConfig->getMaxTableSizeMB();
     auto czInfo = protojson::CzarContactInfo::create(
             czarConfig->name(), czarConfig->id(), czarConfig->replicationHttpPort(),
             util::get_current_host_fqdn(), czar::Czar::czarStartupTime);
@@ -220,7 +220,7 @@ void UberJob::_unassignJobs() {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not unassign job=" << jid << " cancelling");
             exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "unable to re-assign " + jid,
                                 util::ErrorCode::INTERNAL);
-            exec->squash();
+            exec->squash("_unassignJobs failure");
             return;
         }
         LOGS(_log, LOG_LVL_DEBUG,
@@ -292,14 +292,9 @@ void UberJob::callMarkCompleteFunc(bool success) {
 
 util::HistogramRolling histoQueImp("&&&uj histoQueImp", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
 
-/// Retrieve and process a result file using the file-based protocol
-/// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
 json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
     LOGS(_log, LOG_LVL_DEBUG,
          cName(__func__) << " fileUrl=" << fileUrl << " rowCount=" << rowCount << " fileSize=" << fileSize);
-    LOGS(_log, LOG_LVL_WARN,
-         cName(__func__) << "&&& fileUrl=" << fileUrl << " rowCount=" << rowCount
-                         << " fileSize=" << fileSize);
 
     if (isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " import job was cancelled.");
@@ -398,7 +393,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
     // TODO:UJ see if recoverable errors can be detected on the workers, or
     //   maybe allow a single retry before sending the error back to the user?
     bool recoverableError = false;
-    recoverableError = true;  // TODO:UJ delete after testing
+
     if (recoverableError) {
         // The czar should have new maps before the the new UberJob(s) for
         // these Jobs are created. (see Czar::_monitor)
@@ -408,7 +403,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
         int errState = util::ErrorCode::MYSQLEXEC;
         getRespHandler()->flushHttpError(errorCode, errorMsg, errState);
         exec->addMultiError(errorCode, errorMsg, errState);
-        exec->squash();
+        exec->squash(string("UberJob::workerError ") + errorMsg);
     }
 
     string errType = to_string(errorCode) + ":" + errorMsg;
@@ -427,7 +422,7 @@ json UberJob::_importResultError(bool shouldCancel, string const& errorType, str
         if (shouldCancel) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failing jobs");
             callMarkCompleteFunc(false);  // all jobs failed, no retry
-            exec->squash();
+            exec->squash(string("_importResultError shouldCancel"));
         } else {
             /// - each JobQuery in _jobs needs to be flagged as needing to be
             ///   put in an UberJob and it's attempt count increased and checked
@@ -465,7 +460,7 @@ void UberJob::_importResultFinish(uint64_t resultRows) {
     if (!statusSet) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failed to set status, squashing " << getIdStr());
         // Something has gone very wrong
-        exec->squash();
+        exec->squash("UberJob::_importResultFinish couldn't set status");
         return;
     }
 

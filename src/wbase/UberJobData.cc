@@ -56,8 +56,8 @@ namespace lsst::qserv::wbase {
 
 UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
                          std::string czarHost, int czarPort, uint64_t queryId, int rowLimit,
-                         std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
-                         std::string const& authKey)
+                         uint64_t maxTableSizeBytes, std::string const& workerId,
+                         std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey)
         : _uberJobId(uberJobId),
           _czarName(czarName),
           _czarId(czarId),
@@ -65,6 +65,7 @@ UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta
           _czarPort(czarPort),
           _queryId(queryId),
           _rowLimit(rowLimit),
+          _maxTableSizeBytes(maxTableSizeBytes),
           _workerId(workerId),
           _authKey(authKey),
           _foreman(foreman),

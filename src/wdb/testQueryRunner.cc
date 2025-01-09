@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     auto const queries = queriesAndChunks();
     auto ujData = lsst::qserv::wbase::UberJobData::create(
             mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-            mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+            mInfo.rowLimit, mInfo.maxTableSize, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE(Output) {
     auto const queries = queriesAndChunks();
     auto ujData = lsst::qserv::wbase::UberJobData::create(
             mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-            mInfo.rowLimit, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+            mInfo.rowLimit, mInfo.maxTableSize, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);

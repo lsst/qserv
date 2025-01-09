@@ -120,11 +120,17 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         QueryId ujQueryId = uberJobMsg->getQueryId();
         int ujRowLimit = uberJobMsg->getRowLimit();
         auto targetWorkerId = uberJobMsg->getWorkerId();
+        uint64_t maxTableSizeMb = uberJobMsg->getMaxTableSizeMb();
+        uint64_t const MB_SIZE_BYTES = 1024 * 1024;
+        uint64_t maxTableSizeBytes = maxTableSizeMb * MB_SIZE_BYTES;
 
         // Get or create QueryStatistics and UserQueryInfo instances.
         auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzInfo->czId);
         auto userQueryInfo = queryStats->getUserQueryInfo();
         LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& added to stats");
+        LOGS(_log, LOG_LVL_WARN,
+             uberJobMsg->getIdStr() << " &&& bytesWritten added to stats maxTableSizeMb=" << maxTableSizeMb
+                                    << " maxTableSizeBytes=" << maxTableSizeBytes);
 
         if (userQueryInfo->getCancelledByCzar()) {
             throw wbase::TaskException(
@@ -136,8 +142,8 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         }
 
         auto ujData = wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
-                                                 ujCzInfo->czPort, ujQueryId, ujRowLimit, targetWorkerId,
-                                                 foreman(), authKey());
+                                                 ujCzInfo->czPort, ujQueryId, ujRowLimit, maxTableSizeBytes,
+                                                 targetWorkerId, foreman(), authKey());
         LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& ujData created");
 
         // Find the entry for this queryId, create a new one if needed.

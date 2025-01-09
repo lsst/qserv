@@ -66,10 +66,10 @@ public:
 
     static Ptr create(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
                       std::string const& czarHost, int czarPort, uint64_t queryId, int rowLimit,
-                      std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
-                      std::string const& authKey) {
+                      uint64_t maxTableSizeBytes, std::string const& workerId,
+                      std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey) {
         return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, rowLimit,
-                                   workerId, foreman, authKey));
+                                   maxTableSizeBytes, workerId, foreman, authKey));
     }
     /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
@@ -82,6 +82,7 @@ public:
     int getCzarPort() const { return _czarPort; }
     uint64_t getQueryId() const { return _queryId; }
     std::string getWorkerId() const { return _workerId; }
+    uint64_t getMaxTableSizeBytes() const { return _maxTableSizeBytes; }
 
     /// Add the tasks defined in the UberJob to this UberJobData object.
     void addTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
@@ -112,8 +113,9 @@ public:
 
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
-                int czarPort, uint64_t queryId, int rowLimit, std::string const& workerId,
-                std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey);
+                int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,
+                std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
+                std::string const& authKey);
 
     /// Queue the response to be sent to the originating czar.
     void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
@@ -127,6 +129,7 @@ private:
     int const _czarPort;
     QueryId const _queryId;
     int const _rowLimit;  ///< If > 0, only read this many rows before return the results.
+    uint64_t const _maxTableSizeBytes;
     std::string const _workerId;
     std::string const _authKey;
 
