@@ -45,6 +45,7 @@
 #include "util/common.h"
 #include "util/Histogram.h"  //&&&
 #include "util/QdispPool.h"
+#include "util/InstanceCount.h"
 
 // LSST headers
 #include "lsst/log/Log.h"

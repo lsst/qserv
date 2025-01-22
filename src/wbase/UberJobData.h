@@ -151,6 +151,10 @@ public:
     /// clauses like ORDER BY.
     int getRowLimit() { return _rowLimit; }
 
+    std::string buildUjResultFilePath(std::string const& resultsDirname);
+    std::string resultFilePath();
+    std::string resultFileHttpUrl();
+
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
                 int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,

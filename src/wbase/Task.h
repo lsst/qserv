@@ -176,12 +176,6 @@ public:
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
 
-   /// Create Tasks needed to run unit tests.
-    static std::vector<Ptr> createTasksForUnitTest(
-            std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
-            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
-
     //&&&
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
@@ -219,7 +213,6 @@ public:
 
     TaskState state() const { return _state; }
     std::string getQueryString() const;
-
     bool setTaskQueryRunner(
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner* tqr);
@@ -389,6 +382,7 @@ private:
     int const _rowLimit;
 
     std::shared_ptr<UberJobData> _ujData;
+    //&&&uint16_t const _resultsHttpPort;
     std::string const _idStr;
 
     bool _unitTest = false;  ///< Only true in unit tests.

@@ -249,7 +249,7 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
         lock_guard<mutex> lck(_uberJobsMapMtx);
         UberJobId ujId = uj->getUjId();
         _uberJobsMap[ujId] = uj;
-        LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
     }
 
     auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };

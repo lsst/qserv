@@ -26,6 +26,7 @@
 // System headers
 
 // Third party headers
+#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -185,7 +186,6 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
 void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
                                    std::string const& url_, std::string const& requestContext_,
                                    std::string const& requestStr_) {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));  // &&&
     util::QdispPool::Ptr wPool;
     if (_foreman != nullptr) {
         wPool = _foreman->getWPool();

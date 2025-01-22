@@ -103,6 +103,12 @@ TaskScheduler::TaskScheduler() {
 
 atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 
+/* &&&
+util::HistogramRolling histoTaskA("&&&uj histoTaskA", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+util::HistogramRolling histoTaskB("&&&uj histoTaskB", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+util::HistogramRolling histoTaskC("&&&uj histoTaskC", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
+*/
+
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
@@ -130,8 +136,11 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
           _queryStats(queryStats_),
           _rowLimit(ujData->getRowLimit()),
           _ujData(ujData),
+          //&&&_resultsHttpPort(resultsHttpPort),
           _idStr(ujData->getIdStr() + " jId=" + to_string(_jId) + " sc=" + to_string(_subchunkId)) {
     user = defaultUser;
+
+    //auto startTaskD = CLOCK::now(); //&&&
 
     // Create sets and vectors for 'aquiring' subchunk temporary tables.
     // Fill in _dbTblsAndSubchunks
@@ -206,7 +215,10 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
     auto jobDbTablesMap = ujMsg->getJobDbTablesMap();
     auto jobMsgVect = ujMsg->getJobMsgVect();
 
+    auto startVectLoop = CLOCK::now(); //&&&
+
     for (auto const& jobMsg : *jobMsgVect) {
+        auto startJobStuff = CLOCK::now(); //&&&
         JobId jobId = jobMsg->getJobId();
         int attemptCount = jobMsg->getAttemptCount();
         std::string chunkQuerySpecDb = jobMsg->getChunkQuerySpecDb();
@@ -217,6 +229,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         int fragmentNumber = 0;
 
         for (auto const& fMsg : *jobFragments) {
+            auto startFragLoopA = CLOCK::now(); //&&&
             // These need to be constructed for the fragment
             vector<string> fragSubQueries;
             vector<TaskDbTbl> fragSubTables;
@@ -228,6 +241,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                 fragSubQueries.push_back(fsqStr);
             }
 
+            auto startFragLoopB = CLOCK::now(); //&&&
             vector<int> dbTblIndexes = fMsg->getJobDbTablesIndexes();
             for (int dbTblIndex : dbTblIndexes) {
                 auto [scDb, scTable] = jobDbTablesMap->getDbTable(dbTblIndex);
@@ -237,6 +251,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
 
             fragSubchunkIds = fMsg->getSubchunkIds();
 
+            auto startFragLoopC = CLOCK::now(); //&&&
             for (string const& fragSubQ : fragSubQueries) {
                 size_t templateId = userQueryInfo->addTemplate(fragSubQ);
                 if (fragSubchunkIds.empty()) {
@@ -245,7 +260,6 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                     auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
                                                    templateId, noSubchunks, subchunkId, chunkQuerySpecDb,
                                                    fragSubTables, fragSubchunkIds, sendChannel, queryStats));
-
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
@@ -259,8 +273,20 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                 }
             }
             ++fragmentNumber;
+            auto startFragLoopD = CLOCK::now(); //&&&
+            std::chrono::duration<double> secsFragLoopA = startFragLoopB - startFragLoopA;
+            std::chrono::duration<double> secsFragLoopB = startFragLoopC - startFragLoopB;
+            std::chrono::duration<double> secsFragLoopC = startFragLoopD - startFragLoopC;
+            histoFragLoopA.addEntry(startFragLoopB, secsFragLoopA.count());
+            histoFragLoopB.addEntry(startFragLoopC, secsFragLoopB.count());
+            histoFragLoopC.addEntry(startFragLoopD, secsFragLoopC.count());
         }
+        auto endFragLoop = CLOCK::now(); //&&&
+        std::chrono::duration<double> secsFragLoop = endFragLoop - startFragLoop;
+        histoFragLoop.addEntry(endFragLoop, secsFragLoop.count());
     }
+
+    auto endVectLoop = CLOCK::now(); //&&&
 
     for (auto taskPtr : vect) {
         // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.

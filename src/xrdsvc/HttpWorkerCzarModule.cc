@@ -116,7 +116,6 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
     try {
         auto const& jsReq = body().objJson;
         auto uberJobMsg = protojson::UberJobMsg::createFromJson(jsReq);
-        LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& parsed msg");
 
         UberJobId ujId = uberJobMsg->getUberJobId();
         auto ujCzInfo = uberJobMsg->getCzarContactInfo();
@@ -132,9 +131,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         // Get or create QueryStatistics and UserQueryInfo instances.
         auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzInfo->czId);
         auto userQueryInfo = queryStats->getUserQueryInfo();
-        LOGS(_log, LOG_LVL_WARN, uberJobMsg->getIdStr() << " &&& added to stats");
-        LOGS(_log, LOG_LVL_WARN,
-             uberJobMsg->getIdStr() << " &&& bytesWritten added to stats maxTableSizeMb=" << maxTableSizeMb
+        LOGS(_log, LOG_LVL_DEBUG, uberJobMsg->getIdStr() << " &&& added to stats" << " &&& bytesWritten added to stats maxTableSizeMb=" << maxTableSizeMb
                                     << " maxTableSizeBytes=" << maxTableSizeBytes);
 
         if (userQueryInfo->getCancelledByCzar()) {
@@ -192,7 +189,7 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
         // Find the entry for this queryId, create a new one if needed.
         userQueryInfo->addUberJob(ujData);
         auto channelShared = wbase::FileChannelShared::create(ujData, ujCzInfo->czId, ujCzInfo->czHostName,
-                                                              ujCzInfo->czPort, targetWorkerId);
+                ujCzInfo->czPort, targetWorkerId);
 
         ujData->setFileChannelShared(channelShared);
 
