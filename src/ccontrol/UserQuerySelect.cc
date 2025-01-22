@@ -105,7 +105,6 @@
 #include "sql/Schema.h"
 #include "util/Bug.h"
 #include "util/IterableFormatter.h"
-#include "util/Histogram.h"  //&&&
 #include "util/QdispPool.h"
 #include "util/ThreadPriority.h"
 #include "qdisp/UberJob.h"
@@ -325,7 +324,6 @@ void UserQuerySelect::submit() {
     }
 }
 
-util::HistogramRolling histoBuildAndS("&&&uj histoBuildAndS", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
 
 void UserQuerySelect::buildAndSendUberJobs() {
     // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
@@ -399,12 +397,10 @@ void UserQuerySelect::buildAndSendUberJobs() {
     map<string, WInfoAndUJPtr::Ptr> workerJobMap;
     vector<qdisp::Executive::ChunkIdType> missingChunks;
 
-    auto startassign = CLOCK::now();  //&&&
     // unassignedChunksInQuery needs to be in numerical order so that UberJobs contain chunk numbers in
     // numerical order. The workers run shared scans in numerical order of chunkId numbers.
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
     // and should minimize the time for the first UberJob on the worker to complete.
-    LOGS(_log, LOG_LVL_WARN, "         &&&d " << funcN << " start assigning");
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
         bool const increaseAttemptCount = true;
         jqPtr->getDescription()->incrAttemptCount(exec, increaseAttemptCount);
@@ -415,7 +411,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
         // attempt count will reach max and the query will be cancelled
         auto lambdaMissingChunk = [&](string const& msg) {
             missingChunks.push_back(chunkId);
-            LOGS(_log, LOG_LVL_WARN, msg);
+            auto logLvl = (missingChunks.size()%1000 == 1) ? LOG_LVL_WARN : LOG_LVL_TRACE;
+            LOGS(_log, logLvl, msg);
         };
 
         auto iter = chunkMapPtr->find(chunkId);
@@ -481,14 +478,10 @@ void UserQuerySelect::buildAndSendUberJobs() {
             // Queue the UberJob to be sent to a worker
             exec->addAndQueueUberJob(wInfUJ->uberJobPtr);
 
-            // Clear the pinter so a new UberJob is created later if needed.
+            // Clear the pointer so a new UberJob is created later if needed.
             wInfUJ->uberJobPtr = nullptr;
         }
     }
-    auto endassign = CLOCK::now();                                       //&&&
-    std::chrono::duration<double> secsassign = endassign - startassign;  // &&&
-    histoBuildAndS.addEntry(endassign, secsassign.count());              //&&&
-    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoBuildAndS.getString(""));
 
     if (!missingChunks.empty()) {
         string errStr = funcN + " a worker could not be found for these chunks ";

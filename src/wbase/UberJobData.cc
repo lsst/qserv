@@ -26,6 +26,7 @@
 // System headers
 
 // Third party headers
+#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -39,6 +40,7 @@
 #include "http/RequestQuery.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
+#include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wpublish/ChunkInventory.h"
 #include "wpublish/QueriesAndChunks.h"
@@ -57,7 +59,8 @@ namespace lsst::qserv::wbase {
 UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
                          std::string czarHost, int czarPort, uint64_t queryId, int rowLimit,
                          uint64_t maxTableSizeBytes, std::string const& workerId,
-                         std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey)
+                         std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
+                         uint16_t resultsHttpPort)
         : _uberJobId(uberJobId),
           _czarName(czarName),
           _czarId(czarId),
@@ -68,6 +71,7 @@ UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta
           _maxTableSizeBytes(maxTableSizeBytes),
           _workerId(workerId),
           _authKey(authKey),
+          _resultsHttpPort(resultsHttpPort),
           _foreman(foreman),
           _idStr(string("QID=") + to_string(_queryId) + "_ujId=" + to_string(_uberJobId)) {}
 
@@ -154,7 +158,6 @@ bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task
 void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
                                    std::string const& url_, std::string const& requestContext_,
                                    std::string const& requestStr_) {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));  // &&&
     util::QdispPool::Ptr wPool;
     if (_foreman != nullptr) {
         wPool = _foreman->getWPool();
@@ -172,6 +175,38 @@ void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string
             wPool->queCmd(cmdTransmit, 1);
         }
     }
+}
+
+string UberJobData::buildUjResultFilePath(string const& resultsDirname) {
+    if (resultsDirname.empty()) return resultsDirname;
+    boost::filesystem::path path(resultsDirname);
+    // UberJobs have multiple chunks which can each have different attempt numbers.
+    // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
+    path /= to_string(getCzarId()) + "-" + to_string(getQueryId()) + "-" +
+            to_string(getUberJobId()) + "-0" + ".proto";
+    return path.string();
+}
+
+string UberJobData::resultFilePath() {
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    string resultFilePath = buildUjResultFilePath(workerConfig->resultsDirname());
+    return resultFilePath;
+}
+
+std::string UberJobData::resultFileHttpUrl() {
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
+
+    string resFilePath = resultFilePath();
+    //&&&auto const fqdn = util::get_current_host_fqdn();
+    auto const fqdn = _foreman->getFqdn();
+    if (resultDeliveryProtocol != wconfig::ConfigValResultDeliveryProtocol::HTTP) {
+        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
+                wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
+    }
+    // TODO:UJ it seems like this should just be part of the FileChannelShared???
+    string resultFileHttpUrl = "http://" + fqdn + ":" + to_string(_resultsHttpPort) + resFilePath;
+    return resultFileHttpUrl;
 }
 
 void UberJobData::cancelAllTasks() {

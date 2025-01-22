@@ -302,11 +302,11 @@ FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& 
           _workerId(workerId),
           _protobufArena(make_unique<google::protobuf::Arena>()),
           _scsId(scsSeqId++) {
-    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created scsId=" << _scsId << " ujId=" << _uberJobId);
+    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared created scsId=" << _scsId << " ujId=" << _uberJobId);
 }
 
 FileChannelShared::~FileChannelShared() {
-    LOGS(_log, LOG_LVL_DEBUG, "~FileChannelShared scsId=" << _scsId << " ujId=" << _uberJobId);
+    LOGS(_log, LOG_LVL_TRACE, "~FileChannelShared scsId=" << _scsId << " ujId=" << _uberJobId);
     // Normally, the channel should not be dead at this time. If it's already
     // dead it means there was a problem to process a query or send back a response
     // to Czar. In either case, the file would be useless and it has to be deleted
@@ -319,7 +319,6 @@ FileChannelShared::~FileChannelShared() {
     if (isDead() && !_rowLimitComplete) {
         _removeFile(lock_guard<mutex>(_tMtx));
     }
-    LOGS(_log, LOG_LVL_DEBUG, "~FileChannelShared end");
 }
 
 void FileChannelShared::setTaskCount(int taskCount) { _taskCount = taskCount; }
@@ -458,14 +457,14 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
-            LOGS(_log, LOG_LVL_WARN,
-                 "FileChannelShared " << task->cName(__func__) << " sending start");  //&&& TRACE
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "FileChannelShared " << task->cName(__func__) << " sending start");
             if (!_sendResponse(tMtxLockA, task, cancelled, multiErr, rowLimitComplete)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
                 break;
             }
-            LOGS(_log, LOG_LVL_WARN,
+            LOGS(_log, LOG_LVL_DEBUG,
                  "FileChannelShared " << task->cName(__func__) << " sending done!!!");  //&&& TRACE
         }
     }
@@ -526,7 +525,7 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
     LOGS(_log, LOG_LVL_TRACE, __func__ << " file write " << task->getIdStr() << " start");
     // Create the file if not open.
     if (!_file.is_open()) {
-        _fileName = task->resultFilePath();
+        _fileName = task->getUberJobData()->resultFilePath();
         _file.open(_fileName, ios::out | ios::trunc | ios::binary);
         if (!(_file.is_open() && _file.good())) {
             throw runtime_error("FileChannelShared::" + string(__func__) +
@@ -607,16 +606,17 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     // and response buffers.
     lock_guard<mutex> const streamMutexLock(_streamMutex);
 
+    QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
+
     // This will deallocate any memory managed by the Google Protobuf Arena
     // to avoid unnecessary memory utilization by the application.
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          __func__ << ": Google Protobuf Arena, 1:SpaceUsed=" << _protobufArena->SpaceUsed());
     _protobufArena->Reset();
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          __func__ << ": Google Protobuf Arena, 2:SpaceUsed=" << _protobufArena->SpaceUsed());
 
-    QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
-    LOGS(_log, LOG_LVL_DEBUG, __func__);
+    //&&&LOGS(_log, LOG_LVL_DEBUG, __func__);
     if (isDead() && !mustSend) {
         LOGS(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");
         return false;
@@ -624,7 +624,7 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
 
     // Prepare the response object and serialize in into a message that will
     // be sent to the Czar.
-    string httpFileUrl = task->resultFileHttpUrl();
+    string httpFileUrl = task->getUberJobData()->resultFileHttpUrl();
     _uberJobData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
     return true;
 }

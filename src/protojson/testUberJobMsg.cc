@@ -46,13 +46,6 @@ namespace test = boost::test_tools;
 using namespace lsst::qserv::protojson;
 
 BOOST_AUTO_TEST_SUITE(Suite)
-#if 0   //&&&
-std::string testA() {
-    std::string ta =
-            R"({"maxtablesizemb":5432,"auth_key":"replauthkey","czarinfo":{"czar-startup-time":1732658208085,"id":1,"management-host-name":"3a8b68cf9b67","management-port":40865,"name":"proxy"},"dbtables_map":{"dbtable_map":[],"scanrating_map":[]},"instance_id":"qserv_proj","jobs":[{"attemptCount":0,"chunkId":1234567890,"chunkresultname":"r_1_a0d45001254932466b784acf90323565_1234567890_0","chunkscantables_indexes":[],"jobId":0,"queryFragments":[{"dbtables_indexes":[],"resulttblname":"r_1_a0d45001254932466b784acf90323565_1234567890_0","subchunkids":[],"subquerytemplate_indexes":[0]}],"querySpecDb":"qcase01","scanInteractive":true,"scanPriority":0}],"queryid":1,"rowlimit":0,"subqueries_map":{"subquerytemplate_map":[{"index":0,"template":"SELECT `qcase01.Filter`.`filterId` AS `filterId`,`qcase01.Filter`.`filterName` AS `filterName`,`qcase01.Filter`.`photClam` AS `photClam`,`qcase01.Filter`.`photBW` AS `photBW` FROM `qcase01`.`Filter` AS `qcase01.Filter` WHERE (`qcase01.Filter`.`filterId`<<1)=2"}]},"uberjobid":2,"version":39,"worker":"6c56ba9b-ac40-11ef-acb7-0242c0a8030a"})";
-    return ta;
-}
-#endif  // &&&
 
 string testA() {
     string ta =

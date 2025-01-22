@@ -67,9 +67,10 @@ public:
     static Ptr create(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
                       std::string const& czarHost, int czarPort, uint64_t queryId, int rowLimit,
                       uint64_t maxTableSizeBytes, std::string const& workerId,
-                      std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey) {
+                      std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
+                      uint16_t resultsHttpPort = 8080) {
         return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, rowLimit,
-                                   maxTableSizeBytes, workerId, foreman, authKey));
+                                   maxTableSizeBytes, workerId, foreman, authKey, resultsHttpPort));
     }
     /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
@@ -111,11 +112,15 @@ public:
     /// clauses like ORDER BY.
     int getRowLimit() { return _rowLimit; }
 
+    std::string buildUjResultFilePath(std::string const& resultsDirname);
+    std::string resultFilePath();
+    std::string resultFileHttpUrl();
+
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
                 int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,
                 std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
-                std::string const& authKey);
+                std::string const& authKey, uint16_t resultsHttpPort);
 
     /// Queue the response to be sent to the originating czar.
     void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
@@ -132,6 +137,7 @@ private:
     uint64_t const _maxTableSizeBytes;
     std::string const _workerId;
     std::string const _authKey;
+    uint16_t const _resultsHttpPort; ///<  = 8080
 
     std::shared_ptr<wcontrol::Foreman> const _foreman;
 
