@@ -89,7 +89,7 @@ json UberJobMsg::serializeJson() const {
         jsJobs.emplace_back(jbMsg->serializeJson());
     }
 
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " &&& ujmJson=" << ujmJson);
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " ujmJson=" << ujmJson);
     return ujmJson;
 }
 

@@ -45,6 +45,7 @@
 #include "util/common.h"
 #include "util/Histogram.h"  //&&&
 #include "util/QdispPool.h"
+#include "util/InstanceCount.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -169,6 +170,7 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
     bool transmitSuccess = false;
     string exceptionWhat;
     try {
+    	util::InstanceCount ic("runUJ_T&&&priQ");
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj sending");
         json const response = client.readAsJson();
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj worker recv");
