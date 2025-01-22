@@ -48,7 +48,8 @@ public:
 
     static int getMaxPriority() { return 1000000000; }
 
-    SchedulerBase(std::string const& name, int maxThreads, int maxReserve, int maxActiveChunks, int priority)
+    SchedulerBase(std::string const& name, int maxThreads, int maxReserve, int maxActiveChunks, int priority);
+    /* &&&
             : _name{name},
               _maxReserve{maxReserve},
               _maxReserveDefault{maxReserve},
@@ -71,6 +72,7 @@ public:
         _histRecentlyCompletedTasks = std::make_shared<util::HistogramRolling>("recentlyCompletedTasks",
                                                                                bucketMaxVals, 1h, maxSize);
     }
+    */
     virtual ~SchedulerBase() {}
     SchedulerBase(SchedulerBase const&) = delete;
     SchedulerBase& operator=(SchedulerBase const&) = delete;

@@ -145,8 +145,8 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
             bool last = false;
             char const* next = inBuf;
             char const* const end = inBuf + inBufSize;
-            LOGS(_log, LOG_LVL_INFO,
-                 context << " next=" << (uint64_t)next << " end=" << (uint64_t)end);  // &&& DEBUG
+            LOGS(_log, LOG_LVL_TRACE,
+                 context << " next=" << (uint64_t)next << " end=" << (uint64_t)end);
             while ((next < end) && !last) {
                 if (exec->getCancelled()) {
                     throw runtime_error(context + " query was cancelled");
@@ -217,16 +217,16 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
                         // Reset the variable to prepare for reading the next header & message (if any).
                         msgSizeBytes = 0;
                     } else {
-                        LOGS(_log, LOG_LVL_WARN,
+                        LOGS(_log, LOG_LVL_TRACE,
                              context << " headerCount=" << headerCount << " incomplete read diff="
-                                     << (msgSizeBytes - msgBufNext));  // &&& DEBUG
+                                     << (msgSizeBytes - msgBufNext));
                     }
                 }
             }
         });
-        LOGS(_log, LOG_LVL_WARN,
+        LOGS(_log, LOG_LVL_TRACE,
              context << " headerCount=" << headerCount << " msgSizeBytes=" << msgSizeBytes
-                     << " totalBytesRead=" << totalBytesRead);  // &&&
+                     << " totalBytesRead=" << totalBytesRead);
         if (msgSizeBufNext != 0) {
             throw runtime_error("short read of the message header at offset " +
                                 to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
@@ -273,7 +273,9 @@ shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
         : _infileMerger{merger}, _tableName{tableName} {}
 
-MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << _tableName); }
+MergingHandler::~MergingHandler() {
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << _tableName);
+}
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, msg);

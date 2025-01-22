@@ -368,6 +368,10 @@ private:
     CVTStrPtr _qdispVectMinRunningSizes =
             util::ConfigValTStr::create(_configValMap, "qdisppool", "vectMinRunningSizes", notReq, "0:3:3:3");
 
+    // UberJobs
+    CVTIntPtr _uberJobMaxChunks =
+            util::ConfigValTInt::create(_configValMap, "uberjob", "maxChunks", notReq, 10000);
+
     // TODO:UJ delete xrootd specific entries.
     CVTIntPtr _xrootdSpread = util::ConfigValTInt::create(_configValMap, "tuning", "xrootdSpread", notReq, 4);
     CVTIntPtr _qMetaSecsBetweenChunkCompletionUpdates = util::ConfigValTInt::create(
@@ -416,10 +420,6 @@ private:
             util::ConfigValTInt::create(_configValMap, "activeworker", "maxLifetimeSecs", notReq, 60 * 60);
     CVTIntPtr _monitorSleepTimeMilliSec = util::ConfigValTInt::create(
             _configValMap, "activeworker", "monitorSleepTimeMilliSec", notReq, 15'000);
-
-    // UberJobs
-    CVTIntPtr _uberJobMaxChunks =
-            util::ConfigValTInt::create(_configValMap, "uberjob", "maxChunks", notReq, 1000);
 
     /// This may impact `_resultMaxHttpConnections` as too many connections may cause kernel memory issues.
     CVTIntPtr _commandMaxHttpConnections =

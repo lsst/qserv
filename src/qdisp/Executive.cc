@@ -113,8 +113,9 @@ Executive::~Executive() {
     }
     if (_asyncTimer != nullptr) {
         _asyncTimer->cancel();
-        qdisp::CzarStats::get()->untrackQueryProgress(_id);
+        //&&& qdisp::CzarStats::get()->untrackQueryProgress(_id);
     }
+    qdisp::CzarStats::get()->untrackQueryProgress(_id);
 }
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> const& ms,
@@ -170,7 +171,7 @@ void Executive::setQueryId(QueryId id) {
     _idStr = QueryIdHelper::makeIdStr(_id);
 
     // Insert into the global executive map.
-    { czar::Czar::getCzar()->insertExecutive(_id, shared_from_this()); }
+    czar::Czar::getCzar()->insertExecutive(_id, shared_from_this());
     qdisp::CzarStats::get()->trackQueryProgress(_id);
 }
 
@@ -242,7 +243,7 @@ void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
         lock_guard<mutex> lck(_uberJobsMapMtx);
         UberJobId ujId = uj->getUjId();
         _uberJobsMap[ujId] = uj;
-        LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uj->getJobCount());
     }
 
     auto runUberJobFunc = [uj](util::CmdData*) { uj->runUberJob(); };
@@ -415,7 +416,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
     if (!success && !isRowLimitComplete()) {
         auto logLvl = (_cancelled) ? LOG_LVL_ERROR : LOG_LVL_TRACE;
         LOGS(_log, logLvl,
-             "Executive: requesting squash, cause: " << " failed (code=" << err.getCode() << " "
+             "Executive: requesting cancel, cause: " << " failed (code=" << err.getCode() << " "
                                                      << err.getMsg() << ")");
         squash(string("markComplete error ") + err.getMsg());  // ask to squash
     }
