@@ -54,8 +54,7 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
 }
 
 JobQuery::~JobQuery() {
-    LOGS(_log, LOG_LVL_DEBUG, "~JobQuery");
-    LOGS(_log, LOG_LVL_WARN, "~JobQuery QID=" << _idStr);
+    LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr);
 }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
@@ -131,7 +130,7 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
 
     auto exec = _executive.lock();
     // Do not increase the count as it should have been increased when the job was started.
-    _jobDescription->incrAttemptCount(exec, false);
+    //&&&_jobDescription->incrAttemptCount(exec, false);
     return true;
 }
 

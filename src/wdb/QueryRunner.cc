@@ -127,17 +127,18 @@ bool QueryRunner::_initConnection() {
 void QueryRunner::_setDb() {
     if (_task->getDb() != "") {
         _dbName = _task->getDb();
-        LOGS(_log, LOG_LVL_DEBUG, "QueryRunner overriding dbName with " << _dbName);
+        LOGS(_log, LOG_LVL_TRACE, "QueryRunner overriding dbName with " << _dbName);
     }
 }
 
-util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
+util::TimerHistogram memWaitHisto("initConnection Hist", {1, 5, 10, 20, 40}); //&&&
+std::atomic<uint32_t> memWaitLimiter = 0;
 
 bool QueryRunner::runQuery() {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_WARN,
-         "QueryRunner " << _task->cName(__func__)  //&&& TRACE
+    LOGS(_log, LOG_LVL_TRACE,
+         "QueryRunner " << _task->cName(__func__)
                         << " scsId=" << _task->getSendChannel()->getScsId());
 
     // Start tracking the task.
@@ -169,25 +170,26 @@ bool QueryRunner::runQuery() {
 
     _czarId = _task->getCzarId();
 
-    // Wait for memman to finish reserving resources. This can take several seconds.
-    util::Timer memTimer;
-    memTimer.start();
-    _task->waitForMemMan();
-    memTimer.stop();
-    auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
-    LOGS(_log, LOG_LVL_DEBUG, logMsg);
-
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
         return false;
     }
 
     _setDb();
-    LOGS(_log, LOG_LVL_INFO, "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
+    LOGS(_log, LOG_LVL_TRACE, "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
     // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
     bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1);
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());
+
+    util::Timer memTimer;
+    memTimer.start();
     bool connOk = _initConnection();
+    memTimer.stop();
+    memWaitHisto.addTime(memTimer.getElapsed());
+    if (memWaitLimiter++%100 == 0) {
+        LOGS(_log, LOG_LVL_INFO, "&&& initConnection " << memWaitHisto.getString());
+    }
+
     if (!connOk) {
         // Since there's an error, this will be the last transmit from this QueryRunner.
         if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
@@ -262,14 +264,14 @@ bool QueryRunner::_dispatchChannel() {
             util::Timer primeT;
             primeT.start();
             _task->queryExecutionStarted();
-            LOGS(_log, LOG_LVL_WARN, "QueryRunner " << _task->cName(__func__) << " sql start");  //&&& TRACE
+            LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__) << " sql start");
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
-            LOGS(_log, LOG_LVL_WARN, "QueryRunner " << _task->cName(__func__) << " sql end");  //&&& TRACE
+            LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__) << " sql end");
             primeT.stop();
             needToFreeRes = true;
             if (taskSched != nullptr) {
                 taskSched->histTimeOfRunningTasks->addEntry(primeT.getElapsed());
-                LOGS(_log, LOG_LVL_DEBUG, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
+                LOGS(_log, LOG_LVL_TRACE, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
             } else {
                 LOGS(_log, LOG_LVL_ERROR, "QR runtaskSched == nullptr");
             }

@@ -105,6 +105,8 @@ public:
     BlendScheduler& operator=(BlendScheduler const&) = delete;
     ~BlendScheduler() override = default;
 
+    void queTaskLoad(util::Command::Ptr const& cmd);
+
     void queCmd(util::Command::Ptr const& cmd) override;
     void queCmd(std::vector<util::Command::Ptr> const& cmds) override;
     util::Command::Ptr getCmd(bool wait) override;
@@ -117,8 +119,6 @@ public:
     int getInFlight() const override;
     bool ready() override;
     int applyAvailableThreads(int tempMax) override { return tempMax; }  //< does nothing
-
-    int calcAvailableTheads();
 
     bool isScanSnail(SchedulerBase::Ptr const& scan);
     int moveUserQueryToSnail(QueryId qId, SchedulerBase::Ptr const& source);
@@ -138,7 +138,11 @@ private:
     void _sortScanSchedulers();
     void _logChunkStatus();
     void _logSchedulers();
+
+    /// _schedMtx must be locked before calling.
+    int _calcAvailableTheads();
     ControlCommandQueue _ctrlCmdQueue;  ///< Needed for changing thread pool size.
+    std::deque<util::Command::Ptr> _taskLoadQueue;
 
     int _schedMaxThreads;  ///< maximum number of threads that can run.
 

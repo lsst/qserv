@@ -98,8 +98,8 @@ json HttpCzarWorkerModule::_workerCzarComIssue() {
 }
 
 json HttpCzarWorkerModule::_handleJobError(string const& func) {
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError start");
-    LOGS(_log, LOG_LVL_WARN, "&&& HttpCzarWorkerModule::_handleJobError start " << body().objJson);
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError start " << body().objJson);
+
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then kill the UberJob.
