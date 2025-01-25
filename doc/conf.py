@@ -40,6 +40,7 @@ linkcheck_ignore = [
     r"^https://rubinobs.atlassian.net/browse/",
     r"^https://www.slac.stanford.edu/",
     r".*/_images/",
+    r"^https://dev.mysql.com/doc/refman/",
 ]
 
 mermaid_version = "10.3.0"
