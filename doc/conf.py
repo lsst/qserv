@@ -33,7 +33,7 @@ exclude_patterns = ["misc", "CMakeLists.txt"]
 # Add any URL patterns to ignore (e.g. for private sites, or sites that
 # are frequently down).
 linkcheck_ignore = [
-    r"^https://jira.lsstcorp.org/browse/",
+    r"^https://jira.lsstcorp.org/",
     r"^https://dev.lsstcorp.org/trac",
     r"^https://confluence.lsstcorp.org/display/",
     r"^https://rubinobs.atlassian.net/wiki/",
