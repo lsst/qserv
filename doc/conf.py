@@ -6,9 +6,6 @@ import re
 
 from documenteer.sphinxconfig.utils import form_ltd_edition_name
 
-# Add any paths that contain templates here, relative to this directory.
-templates_path = ["templates"]
-
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
@@ -16,7 +13,7 @@ templates_path = ["templates"]
 # The short X.Y version.
 github_ref = os.getenv("GITHUB_REF")
 if github_ref is None:
-    with contextlib.closing(os.popen('git symbolic-ref HEAD')) as p:
+    with contextlib.closing(os.popen("git symbolic-ref HEAD")) as p:
         github_ref = p.read().strip()
 match = re.match(r"refs/(heads|tags|pull)/(?P<ref>.+)", github_ref)
 if not match:
@@ -44,9 +41,5 @@ linkcheck_ignore = [
     r"^https://www.slac.stanford.edu/",
     r".*/_images/",
 ]
-
-html_additional_pages = {
-    "index": "overview.html"
-}
 
 mermaid_version = "10.3.0"
