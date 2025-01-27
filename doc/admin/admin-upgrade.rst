@@ -1,7 +1,7 @@
 .. _admin-upgrade:
 
-Instructins for upgrading Qserv to newer releases
-=================================================
+Instructions for upgrading Qserv to newer releases
+==================================================
 
 .. _admin-upgrade-mariadb-11-4-4:
 
