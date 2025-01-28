@@ -1,31 +1,5 @@
 from documenteer.conf.guide import *
 
-import contextlib
-import os
-import re
-
-from documenteer.sphinxconfig.utils import form_ltd_edition_name
-
-# The version info for the project you're documenting, acts as replacement for
-# |version| and |release|, also used in various other places throughout the
-# built documents.
-
-# The short X.Y version.
-github_ref = os.getenv("GITHUB_REF")
-if github_ref is None:
-    with contextlib.closing(os.popen("git symbolic-ref HEAD")) as p:
-        github_ref = p.read().strip()
-match = re.match(r"refs/(heads|tags|pull)/(?P<ref>.+)", github_ref)
-if not match:
-    git_ref = "main"
-else:
-    git_ref = match.group("ref")
-
-version = form_ltd_edition_name(git_ref)
-
-# The full version, including alpha/beta/rc tags.
-release = version
-
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 exclude_patterns = ["misc", "CMakeLists.txt"]
