@@ -170,6 +170,7 @@ jobs:
     name: Documentation
     runs-on: ubuntu-20.04
     needs: [image-names, update-base-images]
+    if: false  # Disable old documentation workflow pending migration to new one
     steps:
 
       - name: Install python
@@ -332,7 +333,7 @@ jobs:
         run: |
             ./admin/local/cli/qserv --log-level DEBUG itest-http-ingest \
             --qserv-image ${{ needs.image-names.outputs.qserv-image }}
-  
+
       - name: Check Qserv containers
         if: always()
         run: docker ps -a
