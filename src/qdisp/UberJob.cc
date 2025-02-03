@@ -43,9 +43,7 @@
 #include "qproc/ChunkQuerySpec.h"
 #include "util/Bug.h"
 #include "util/common.h"
-#include "util/Histogram.h"  //&&&
 #include "util/QdispPool.h"
-#include "util/InstanceCount.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -80,7 +78,7 @@ UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandle
           _rowLimit(rowLimit),
           _idStr("QID=" + to_string(_queryId) + "_ujId=" + to_string(uberJobId)),
           _workerData(workerData) {
-    LOGS(_log, LOG_LVL_WARN, _idStr << " &&& created");
+    LOGS(_log, LOG_LVL_TRACE, _idStr << " created");
 }
 
 void UberJob::_setup() {
@@ -102,16 +100,16 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
     return success;
 }
 
-util::HistogramRolling histoRunUberJob("&&&uj histoRunUberJob", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoUJSerialize("&&&uj histoUJSerialize", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-
-void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelled
+void UberJob::runUberJob() {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "                        &&&uj runuj start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
     auto exec = _executive.lock();
+    if (exec == nullptr || exec->getCancelled()) {
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive shutdown");
+        return;
+    }
 
     // Send the uberjob to the worker
     auto const method = http::Method::POST;
@@ -129,35 +127,15 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
     auto uberJobMsg = protojson::UberJobMsg::create(
             http::MetaModule::version, czarConfig->replicationInstanceId(), czarConfig->replicationAuthKey(),
             czInfo, _wContactInfo, _queryId, _uberJobId, _rowLimit, maxTableSizeMB, scanInfoPtr, _jobs);
-    auto startserialize = CLOCK::now();  //&&&
     json request = uberJobMsg->serializeJson();
-    auto endserialize = CLOCK::now();                                             //&&&
-    std::chrono::duration<double> secsserialize = endserialize - startserialize;  // &&&
-    histoUJSerialize.addEntry(endserialize, secsserialize.count());               //&&&
-    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoUJSerialize.getString(""));
 
     jobsLock.unlock();  // unlock so other _jobsMtx threads can advance while this waits for transmit
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj c");
-    /* &&&
-    {  // &&& testing only, delete
-        auto parsedReq = protojson::UberJobMsg::createFromJson(request);
-        json jsParsedReq = parsedReq->serializeJson();
-        if (request == jsParsedReq) {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj YAY!!! ");
-        } else {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj noYAY request != jsParsedReq");
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj request=" << request);
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj jsParsedReq=" << jsParsedReq);
-        }
-    }
-    */
 
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " REQ " << request);
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " REQ " << request);
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
     LOGS(_log, LOG_LVL_TRACE,
          cName(__func__) << " czarPost url=" << url << " request=" << request.dump()
                          << " headers=" << headers[0]);
-    auto startclient = CLOCK::now();  //&&&
 
     auto commandHttpPool = czar::Czar::getCzar()->getCommandHttpPool();
     http::ClientConfig clientConfig;
@@ -170,10 +148,9 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
     bool transmitSuccess = false;
     string exceptionWhat;
     try {
-    	util::InstanceCount ic("runUJ_T&&&priQ");
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj sending");
+        LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " sending");
         json const response = client.readAsJson();
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj worker recv");
+        LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " worker recv");
         if (0 != response.at("success").get<int>()) {
             transmitSuccess = true;
         } else {
@@ -183,10 +160,6 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
         LOGS(_log, LOG_LVL_WARN, requestContext + " ujresponse failed, ex: " + ex.what());
         exceptionWhat = ex.what();
     }
-    auto endclient = CLOCK::now();                                       //&&&
-    std::chrono::duration<double> secsclient = endclient - startclient;  // &&&
-    histoRunUberJob.addEntry(endclient, secsclient.count());             //&&&
-    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoRunUberJob.getString(""));
     if (!transmitSuccess) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure, try to send jobs elsewhere");
         _unassignJobs();  // locks _jobsMtx
@@ -196,7 +169,6 @@ void UberJob::runUberJob() {  // &&& TODO:UJ this should probably check cancelle
     } else {
         setStatusIfOk(qmeta::JobStatus::REQUEST, cName(__func__) + " transmitSuccess");  // locks _jobsMtx
     }
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj runuj end");
     return;
 }
 
@@ -269,7 +241,6 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
 
 void UberJob::callMarkCompleteFunc(bool success) {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " success=" << success);
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " &&& success=" << success);
 
     lock_guard<mutex> lck(_jobsMtx);
     // Need to set this uberJob's status, however exec->markCompleted will set
@@ -291,8 +262,6 @@ void UberJob::callMarkCompleteFunc(bool success) {
     // No longer need these here. Executive should still have copies.
     _jobs.clear();
 }
-
-util::HistogramRolling histoQueImp("&&&uj histoQueImp", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
 
 json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
     LOGS(_log, LOG_LVL_DEBUG,
@@ -327,15 +296,10 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     }
 
     weak_ptr<UberJob> ujThis = weak_from_this();
-    auto startQImp = CLOCK::now();  // &&&
 
     // fileCollectFunc will be put on the queue to run later.
     string const idStr = _idStr;
-    auto fileCollectFunc = [ujThis, fileUrl, rowCount, idStr, startQImp](util::CmdData*) {
-        auto endQImp = CLOCK::now();                                   //&&&
-        std::chrono::duration<double> secsQImp = endQImp - startQImp;  // &&&
-        histoQueImp.addEntry(endQImp, secsQImp.count());               //&&&
-        LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoQueImp.getString(""));
+    auto fileCollectFunc = [ujThis, fileUrl, rowCount, idStr](util::CmdData*) {
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
@@ -445,7 +409,6 @@ json UberJob::_importResultError(bool shouldCancel, string const& errorType, str
 
 void UberJob::_importResultFinish(uint64_t resultRows) {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
-    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " &&& start");
 
     auto exec = _executive.lock();
     if (exec == nullptr) {

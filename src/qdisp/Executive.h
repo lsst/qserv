@@ -210,7 +210,7 @@ public:
 
     // The below value should probably be based on the user query, with longer sleeps for slower queries.
     int getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
-    int getMaxAttempts() const { return 5; }          // TODO:UJ Should be set by config
+    int getMaxAttempts() const { return 5; }           // TODO:UJ Should be set by config
 
     /// Calling this indicates all Jobs for this user query have been created.
     void setAllJobsCreated() { _allJobsCreated = true; }

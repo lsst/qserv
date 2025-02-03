@@ -60,7 +60,6 @@ public:
     QueryId getQueryId() const { return _qid; }
     JobId getJobId() const { return _jobDescription->id(); }
     std::string const& getIdStr() const { return _idStr; }
-    //&&&std::shared_ptr<ResponseHandler> getRespHandler() { return _jobDescription->respHandler(); }
     JobDescription::Ptr getDescription() { return _jobDescription; }
     qmeta::JobStatus::Ptr getStatus() { return _jobStatus; }
 

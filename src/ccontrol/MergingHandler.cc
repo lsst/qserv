@@ -145,8 +145,7 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
             bool last = false;
             char const* next = inBuf;
             char const* const end = inBuf + inBufSize;
-            LOGS(_log, LOG_LVL_TRACE,
-                 context << " next=" << (uint64_t)next << " end=" << (uint64_t)end);
+            LOGS(_log, LOG_LVL_TRACE, context << " next=" << (uint64_t)next << " end=" << (uint64_t)end);
             while ((next < end) && !last) {
                 if (exec->getCancelled()) {
                     throw runtime_error(context + " query was cancelled");
@@ -218,8 +217,8 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
                         msgSizeBytes = 0;
                     } else {
                         LOGS(_log, LOG_LVL_TRACE,
-                             context << " headerCount=" << headerCount << " incomplete read diff="
-                                     << (msgSizeBytes - msgBufNext));
+                             context << " headerCount=" << headerCount
+                                     << " incomplete read diff=" << (msgSizeBytes - msgBufNext));
                     }
                 }
             }
@@ -273,9 +272,7 @@ shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
         : _infileMerger{merger}, _tableName{tableName} {}
 
-MergingHandler::~MergingHandler() {
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << _tableName);
-}
+MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__ << " " << _tableName); }
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, msg);

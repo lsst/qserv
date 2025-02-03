@@ -137,7 +137,7 @@ private:
     uint64_t const _maxTableSizeBytes;
     std::string const _workerId;
     std::string const _authKey;
-    uint16_t const _resultsHttpPort; ///<  = 8080
+    uint16_t const _resultsHttpPort;  ///<  = 8080
 
     std::shared_ptr<wcontrol::Foreman> const _foreman;
 
