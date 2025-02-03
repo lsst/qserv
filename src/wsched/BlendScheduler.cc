@@ -143,16 +143,6 @@ void BlendScheduler::queTaskLoad(util::Command::Ptr const& cmd) {
     notify(false);
 }
 
-
-void BlendScheduler::queTaskLoad(util::Command::Ptr const& cmd) {
-    {
-        lock_guard guardA(util::CommandQueue::_mx);
-        _taskLoadQueue.push_back(cmd);
-    }
-    notify(false);
-}
-
-
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     std::vector<util::Command::Ptr> vect;
     vect.push_back(cmd);
@@ -258,7 +248,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             queryStats->tasksAddedToScheduler(targSched, taskCmds.size());
         }
         _infoChanged = true;
-        notify(false); //&&&notify(true);  // notify all=true
+        notify(false);  //&&&notify(true);  // notify all=true
     }
 }
 
@@ -465,7 +455,6 @@ int BlendScheduler::getInFlight() const {
     }
     return inFlight;
 }
-
 
 void BlendScheduler::_logChunkStatus() {
     if (LOG_CHECK_LVL(_log, LOG_LVL_INFO)) {

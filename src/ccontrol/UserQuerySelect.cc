@@ -409,7 +409,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         // attempt count will reach max and the query will be cancelled
         auto lambdaMissingChunk = [&](string const& msg) {
             missingChunks.push_back(chunkId);
-            auto logLvl = (missingChunks.size()%1000 == 1) ? LOG_LVL_WARN : LOG_LVL_TRACE;
+            auto logLvl = (missingChunks.size() % 1000 == 1) ? LOG_LVL_WARN : LOG_LVL_TRACE;
             LOGS(_log, logLvl, msg);
         };
 

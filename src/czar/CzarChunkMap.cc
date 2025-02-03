@@ -358,7 +358,6 @@ bool CzarFamilyMap::_read() {
     return true;
 }
 
-
 std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
         qmeta::QMetaChunkMap const& qChunkMap, bool usingChunkSize) {
     // Create new maps.

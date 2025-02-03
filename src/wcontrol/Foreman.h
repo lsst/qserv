@@ -169,9 +169,6 @@ private:
     /// was restarted when this value changes.
     uint64_t const _workerStartupTime = millisecSinceEpoch(CLOCK::now());
 
-    /// Set the value of _fdqn.
-    void _setupFqdn();
-
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
 
     util::ThreadPool::Ptr _pool;
