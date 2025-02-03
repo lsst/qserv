@@ -171,7 +171,7 @@ private:
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed
 
     // Contact information for the target worker.
-    protojson::WorkerContactInfo::Ptr _wContactInfo;  // Change to ActiveWorker &&& ???
+    protojson::WorkerContactInfo::Ptr _wContactInfo;  // TODO:UJ Maybe change to ActiveWorker?
 };
 
 }  // namespace lsst::qserv::qdisp

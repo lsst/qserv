@@ -179,9 +179,8 @@ SsiService::SsiService(XrdSsiLogger* log) {
 
     // Set thread pool size.
     unsigned int poolSize = ranges::max({wsched::BlendScheduler::getMinPoolSize(),
-                                         workerConfig->getThreadPoolSize(),
-                                         thread::hardware_concurrency()});
-    poolSize = 64; //&&&
+                                         workerConfig->getThreadPoolSize(), thread::hardware_concurrency()});
+    poolSize = 64;  //&&&
 
     unsigned int maxPoolThreads = max(workerConfig->getMaxPoolThreads(), poolSize);
 
@@ -271,7 +270,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     // in case if the server is run on the dynamically allocated port.
     _controlHttpSvc = HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
                                       //&&&workerConfig->replicationNumHttpThreads());
-    		                          100); // &&& restore
+                                      100);  // &&& restore
     auto const port = _controlHttpSvc->start();
     workerConfig->setReplicationHttpPort(port);
 

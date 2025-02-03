@@ -113,7 +113,6 @@ Executive::~Executive() {
     }
     if (_asyncTimer != nullptr) {
         _asyncTimer->cancel();
-        //&&& qdisp::CzarStats::get()->untrackQueryProgress(_id);
     }
     qdisp::CzarStats::get()->untrackQueryProgress(_id);
 }

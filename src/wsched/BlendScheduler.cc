@@ -135,7 +135,6 @@ void BlendScheduler::_sortScanSchedulers() {
     LOGS(_log, LOG_LVL_TRACE, str);
 }
 
-
 void BlendScheduler::queTaskLoad(util::Command::Ptr const& cmd) {
     {
         lock_guard guardA(util::CommandQueue::_mx);
@@ -143,7 +142,6 @@ void BlendScheduler::queTaskLoad(util::Command::Ptr const& cmd) {
     }
     notify(false);
 }
-
 
 void BlendScheduler::queCmd(util::Command::Ptr const& cmd) {
     std::vector<util::Command::Ptr> vect;
@@ -170,7 +168,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             }
             {
                 //&&&util::LockGuardTimed guardA(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
-            	lock_guard guardA(util::CommandQueue::_mx);
+                lock_guard guardA(util::CommandQueue::_mx);
                 _ctrlCmdQueue.queCmd(cmd);
             }
 
@@ -252,7 +250,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             queryStats->tasksAddedToScheduler(targSched, taskCmds.size());
         }
         _infoChanged = true;
-        notify(false); //&&&notify(true);  // notify all=true
+        notify(false);  //&&&notify(true);  // notify all=true
     }
 }
 
@@ -294,9 +292,9 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     }
     _infoChanged = true;
     if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
-    	_logChunkStatus();
+        _logChunkStatus();
     }
-    notify(false); //&&&notify(true);  // notify all=true
+    notify(false);  //&&&notify(true);  // notify all=true
 }
 
 bool BlendScheduler::ready() {
@@ -372,7 +370,7 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         timeToLock.stop();
 
         if (wait) {
-            util::CommandQueue::_cv.wait(lock, [this](){return _ready();});
+            util::CommandQueue::_cv.wait(lock, [this]() { return _ready(); });
             /* &&&
             while (!_ready()) {
                 timeHeld.stop();
@@ -403,26 +401,26 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
             if (cmd != nullptr) {
                 _sortScanSchedulers();
                 if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
-                wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
-                LOGS(_log, LOG_LVL_TRACE,
-                     "Blend getCmd() using cmd from " << _readySched->getName() << " chunkId="
-                                                      << task->getChunkId() << " QID=" << task->getIdStr());
+                    wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
+                    LOGS(_log, LOG_LVL_TRACE,
+                         "Blend getCmd() using cmd from " << _readySched->getName()
+                                                          << " chunkId=" << task->getChunkId()
+                                                          << " QID=" << task->getIdStr());
                 }
             }
             _readySched.reset();
-
         }
     }
-        if (cmd == nullptr) {
-            // The scheduler didn't have anything, see if there's anything on the control queue,
-            // which could change the size of the pool.
-            cmd = _ctrlCmdQueue.getCmd();
-        }
+    if (cmd == nullptr) {
+        // The scheduler didn't have anything, see if there's anything on the control queue,
+        // which could change the size of the pool.
+        cmd = _ctrlCmdQueue.getCmd();
+    }
     //&&& }
     if (cmd != nullptr) {
         _infoChanged = true;
-        if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE) || (logChunkLimiter++%100 == 0)) {
-        	_logChunkStatus();
+        if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE) || (logChunkLimiter++ % 100 == 0)) {
+            _logChunkStatus();
         }
         notify(false);  // notify all=false
     }
@@ -481,7 +479,6 @@ int BlendScheduler::getInFlight() const {
     }
     return inFlight;
 }
-
 
 void BlendScheduler::_logChunkStatus() {
     if (LOG_CHECK_LVL(_log, LOG_LVL_INFO)) {

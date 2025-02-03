@@ -163,7 +163,7 @@ public:
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
          std::shared_ptr<FileChannelShared> const& sc,
          std::shared_ptr<wpublish::QueryStatistics> const& queryStats_);
-         //&&&, uint16_t resultsHttpPort = 8080);
+    //&&&, uint16_t resultsHttpPort = 8080);
 
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
@@ -177,7 +177,7 @@ public:
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
-            //&&&uint16_t resultsHttpPort = 8080);
+    //&&&uint16_t resultsHttpPort = 8080);
 
     //&&&
     static std::vector<Ptr> createTasksForUnitTest(

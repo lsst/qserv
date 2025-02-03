@@ -127,7 +127,9 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         // Get or create QueryStatistics and UserQueryInfo instances.
         auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzInfo->czId);
         auto userQueryInfo = queryStats->getUserQueryInfo();
-        LOGS(_log, LOG_LVL_DEBUG, uberJobMsg->getIdStr() << " &&& added to stats" << " &&& bytesWritten added to stats maxTableSizeMb=" << maxTableSizeMb
+        LOGS(_log, LOG_LVL_DEBUG,
+             uberJobMsg->getIdStr() << " &&& added to stats"
+                                    << " &&& bytesWritten added to stats maxTableSizeMb=" << maxTableSizeMb
                                     << " maxTableSizeBytes=" << maxTableSizeBytes);
 
         if (userQueryInfo->getCancelledByCzar()) {
@@ -141,8 +143,10 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
 
         std::shared_ptr<wcontrol::Foreman> foremanPtr = foreman();
         std::string authKeyStr = authKey();
-        auto lFunc = [ujId, ujQueryId, ujCzInfo, ujRowLimit, maxTableSizeBytes, targetWorkerId, userQueryInfo, uberJobMsg, foremanPtr, authKeyStr](util::CmdData*) {
-            _buildTasks(ujId, ujQueryId, ujCzInfo, ujRowLimit, maxTableSizeBytes, targetWorkerId, userQueryInfo, uberJobMsg, foremanPtr, authKeyStr);
+        auto lFunc = [ujId, ujQueryId, ujCzInfo, ujRowLimit, maxTableSizeBytes, targetWorkerId, userQueryInfo,
+                      uberJobMsg, foremanPtr, authKeyStr](util::CmdData*) {
+            _buildTasks(ujId, ujQueryId, ujCzInfo, ujRowLimit, maxTableSizeBytes, targetWorkerId,
+                        userQueryInfo, uberJobMsg, foremanPtr, authKeyStr);
         };
 
         util::Command::Ptr taskLoadCmd = std::make_shared<util::Command>(lFunc);
@@ -153,34 +157,40 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         LOGS(_log, LOG_LVL_INFO, "&&& jsRet=" << jsRet);
 
     } catch (wbase::TaskException const& texp) {
-        LOGS(_log, LOG_LVL_ERROR, "HttpWorkerCzarModule::_handleQueryJob wbase::TaskException received " << texp.what());
+        LOGS(_log, LOG_LVL_ERROR,
+             "HttpWorkerCzarModule::_handleQueryJob wbase::TaskException received " << texp.what());
         jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", texp.what()}};
     }
     return jsRet;
 }
 
-void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId, protojson::CzarContactInfo::Ptr const& ujCzInfo, int ujRowLimit, uint64_t maxTableSizeBytes,
-		string const& targetWorkerId, std::shared_ptr<wbase::UserQueryInfo> const& userQueryInfo, protojson::UberJobMsg::Ptr const& uberJobMsg,
-		shared_ptr<wcontrol::Foreman> const& foremanPtr, string const& authKeyStr) {
+void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
+                                       protojson::CzarContactInfo::Ptr const& ujCzInfo, int ujRowLimit,
+                                       uint64_t maxTableSizeBytes, string const& targetWorkerId,
+                                       std::shared_ptr<wbase::UserQueryInfo> const& userQueryInfo,
+                                       protojson::UberJobMsg::Ptr const& uberJobMsg,
+                                       shared_ptr<wcontrol::Foreman> const& foremanPtr,
+                                       string const& authKeyStr) {
     try {
         LOGS(_log, LOG_LVL_DEBUG, __func__ << " &&& qid=" << ujQueryId << "ujId=" << ujId);
-        util::Timer timerParse; // &&&
+        util::Timer timerParse;  // &&&
         timerParse.start();
         auto czarId = ujCzInfo->czId;
-        auto ujData = wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
-                ujCzInfo->czPort, ujQueryId, ujRowLimit, maxTableSizeBytes,
-                targetWorkerId, foremanPtr, authKeyStr, foremanPtr->httpPort());
+        auto ujData =
+                wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
+                                           ujCzInfo->czPort, ujQueryId, ujRowLimit, maxTableSizeBytes,
+                                           targetWorkerId, foremanPtr, authKeyStr, foremanPtr->httpPort());
 
         // Find the entry for this queryId, create a new one if needed.
         userQueryInfo->addUberJob(ujData);
         auto channelShared = wbase::FileChannelShared::create(ujData, ujCzInfo->czId, ujCzInfo->czHostName,
-                ujCzInfo->czPort, targetWorkerId);
+                                                              ujCzInfo->czPort, targetWorkerId);
 
         ujData->setFileChannelShared(channelShared);
 
         auto ujTasks = wbase::Task::createTasksFromUberJobMsg(
                 uberJobMsg, ujData, channelShared, foremanPtr->chunkResourceMgr(), foremanPtr->mySqlConfig(),
-                foremanPtr->sqlConnMgr(), foremanPtr->queriesAndChunks()); //&&&, foremanPtr->httpPort());
+                foremanPtr->sqlConnMgr(), foremanPtr->queriesAndChunks());  //&&&, foremanPtr->httpPort());
         channelShared->setTaskCount(ujTasks.size());
         ujData->addTasks(ujTasks);
 
@@ -195,10 +205,12 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId, protoj
         foremanPtr->processTasks(ujTasks);  // Queues tasks to be run later.
         timer.stop();
 
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " Enqueued UberJob time=" << timer.getElapsed()
-                << " parseTime=" << timerParse.getElapsed() << " " << uberJobMsg->getIdStr());
+        LOGS(_log, LOG_LVL_DEBUG,
+             __func__ << " Enqueued UberJob time=" << timer.getElapsed()
+                      << " parseTime=" << timerParse.getElapsed() << " " << uberJobMsg->getIdStr());
     } catch (wbase::TaskException const& texp) {
-        LOGS(_log, LOG_LVL_ERROR, "HttpWorkerCzarModule::_buildTasks wbase::TaskException received " << texp.what());
+        LOGS(_log, LOG_LVL_ERROR,
+             "HttpWorkerCzarModule::_buildTasks wbase::TaskException received " << texp.what());
         // &&& send a message back saying this UberJobFailed
     }
 }

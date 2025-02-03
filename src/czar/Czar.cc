@@ -202,15 +202,15 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     string vectMinRunningSizesStr = _czarConfig->getQdispVectMinRunningSizes();
     vector<int> vectMinRunningSizes = util::String::parseToVectInt(vectMinRunningSizesStr, ":", 0);
 
-    { //&&& delete this block
-    	vectRunSizesStr = "200:200:50:50";
-    	vectRunSizes = util::String::parseToVectInt(vectRunSizesStr, ":", 1);
-    	qPoolSize = 200;
-    	LOGS(_log, LOG_LVL_WARN,
-    	         "&&& qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
-    	                                    << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
-    	                                    << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
-    	                                    << util::prettyCharList(vectMinRunningSizes));
+    {  //&&& delete this block
+        vectRunSizesStr = "200:200:50:50";
+        vectRunSizes = util::String::parseToVectInt(vectRunSizesStr, ":", 1);
+        qPoolSize = 200;
+        LOGS(_log, LOG_LVL_WARN,
+             "&&& qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
+                                           << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
+                                           << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
+                                           << util::prettyCharList(vectMinRunningSizes));
     }
     LOGS(_log, LOG_LVL_INFO,
          " qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="

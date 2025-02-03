@@ -115,10 +115,10 @@ public:
      * @param chunkInventory         - a collection of the SSI resources published by the worker
      * @param sqlConnMgr             - for limiting the number of MySQL connections used for tasks
      */
-    //&&&static Ptr create(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
-    static Ptr create(std::shared_ptr<wsched::BlendScheduler> const& scheduler,
-                      unsigned int poolSize, unsigned int maxPoolThreads,
-                      mysql::MySqlConfig const& mySqlConfig,
+    //&&&static Ptr create(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int
+    // maxPoolThreads,
+    static Ptr create(std::shared_ptr<wsched::BlendScheduler> const& scheduler, unsigned int poolSize,
+                      unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
                       std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
                       std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
                       std::shared_ptr<SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
@@ -161,9 +161,9 @@ public:
 
 private:
     //&&&Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
-    Foreman(std::shared_ptr<wsched::BlendScheduler> const& scheduler,
-            unsigned int poolSize, unsigned int maxPoolThreads,
-            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
+    Foreman(std::shared_ptr<wsched::BlendScheduler> const& scheduler, unsigned int poolSize,
+            unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
+            std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
             std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
             std::shared_ptr<SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
             std::string const& vectRunSizesStr, std::string const& vectMinRunningSizesStr);
@@ -171,9 +171,6 @@ private:
     /// Startup time of worker, sent to czars so they can detect that the worker was
     /// was restarted when this value changes.
     uint64_t const _workerStartupTime = millisecSinceEpoch(CLOCK::now());
-
-    /// Set the value of _fdqn.
-    void _setupFqdn();
 
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
 
@@ -214,8 +211,8 @@ private:
     /// Map of czar information for all czars that have contacted this worker.
     std::shared_ptr<wcontrol::WCzarInfoMap> const _wCzarInfoMap;
 
-    /// FQDN for this worker. Once set, this is constant.
-    std::string _fqdn;
+    /// FQDN for this worker.
+    std::string const _fqdn;
 
     static Ptr _globalForeman;  ///< Pointer to the global instance.
 };
