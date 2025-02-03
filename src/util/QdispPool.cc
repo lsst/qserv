@@ -99,7 +99,7 @@ util::Command::Ptr PriorityQueue::getCmd(bool wait) {
         ++localLogLimiter;
         // Log this every once in while to INFO so there's some idea of system
         // load without generating crushing amounts of log messages.
-        unsigned int const limitMod = 10; //&&&500;
+        unsigned int const limitMod = 100;
         if (localLogLimiter % limitMod == 0) {
             LOGS(_log, LOG_LVL_INFO, "priQueGet " << _statsStr());
         } else {

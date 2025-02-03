@@ -53,16 +53,13 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
     LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
 
-JobQuery::~JobQuery() {
-    LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr);
-}
+JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel(bool superfluous) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
-    LOGS(_log, LOG_LVL_DEBUG, "JobQuery::cancel() " << superfluous);
-    LOGS(_log, LOG_LVL_WARN, "&&&JobQuery::cancel() " << superfluous);
     if (_cancelled.exchange(true) == false) {
+        LOGS(_log, LOG_LVL_INFO, "JobQuery::cancel() " << superfluous);
         VMUTEX_NOT_HELD(_jqMtx);
         lock_guard lock(_jqMtx);
 
@@ -83,7 +80,7 @@ bool JobQuery::cancel(bool superfluous) {
         }
         return true;
     }
-    LOGS(_log, LOG_LVL_TRACE, "cancel, skipping, already cancelled.");
+    LOGS(_log, LOG_LVL_TRACE, "JobQuery::cancel, skipping, already cancelled.");
     return false;
 }
 
@@ -129,8 +126,7 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
     _uberJobId = -1;
 
     auto exec = _executive.lock();
-    // Do not increase the count as it should have been increased when the job was started.
-    //&&&_jobDescription->incrAttemptCount(exec, false);
+    // Do not increase the attempt count as it should have been increased when the job was started.
     return true;
 }
 

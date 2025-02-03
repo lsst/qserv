@@ -37,7 +37,7 @@
 namespace lsst::qserv::protojson {
 class CzarContactInfo;
 class UberJobMsg;
-} // namespace lsst::qserv::protojson
+}  // namespace lsst::qserv::protojson
 
 namespace lsst::qserv::qhttp {
 class Request;
@@ -46,7 +46,7 @@ class Response;
 
 namespace lsst::qserv::wbase {
 class UserQueryInfo;
-} // namespace lsst::qserv::wbase
+}  // namespace lsst::qserv::wbase
 
 namespace lsst::qserv::wcontrol {
 class Foreman;
@@ -91,11 +91,13 @@ private:
     /// work of deciphering the message, creating UberJobData objects and Task objects.
     nlohmann::json _handleQueryJob(std::string const& func);
 
-    static void _buildTasks(UberJobId ujId, QueryId ujQueryId, std::shared_ptr<protojson::CzarContactInfo> const& ujCzInfo,
-            int ujRowLimit, uint64_t maxTableSizeBytes, std::string const& targetWorkerId,
-            std::shared_ptr<wbase::UserQueryInfo> const& userQueryInfo,
-            std::shared_ptr<protojson::UberJobMsg> const& uberJobMsg,
-            std::shared_ptr<wcontrol::Foreman> const& foremanPtr, std::string const& authKeyStr);
+    static void _buildTasks(UberJobId ujId, QueryId ujQueryId,
+                            std::shared_ptr<protojson::CzarContactInfo> const& ujCzInfo, int ujRowLimit,
+                            uint64_t maxTableSizeBytes, std::string const& targetWorkerId,
+                            std::shared_ptr<wbase::UserQueryInfo> const& userQueryInfo,
+                            std::shared_ptr<protojson::UberJobMsg> const& uberJobMsg,
+                            std::shared_ptr<wcontrol::Foreman> const& foremanPtr,
+                            std::string const& authKeyStr);
 
     /// Verify some aspects of the query and call _handleQueryStatus
     nlohmann::json _queryStatus();

@@ -155,7 +155,8 @@ uint16_t HttpSvc::start() {
         _threads.push_back(make_unique<thread>([self]() { self->_io_service.run(); }));
     }
     auto const actualPort = _httpServerPtr->getPort();
-    LOGS(_log, LOG_LVL_INFO, context + "started on port " + to_string(actualPort) + " numThreads=" + to_string(_numThreads));
+    LOGS(_log, LOG_LVL_INFO,
+         context + "started on port " + to_string(actualPort) + " numThreads=" + to_string(_numThreads));
     return actualPort;
 }
 

@@ -431,8 +431,6 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             multiErr.push_back(util::Error(util::ErrorCode::WORKER_RESULT_TOO_LARGE, err));
             LOGS(_log, LOG_LVL_ERROR, err);
             erred = true;
-            //&&&task->cancel();
-            //&&&buildAndTransmitError(multiErr, task, cancelled);
             return erred;
         }
 
@@ -457,15 +455,13 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
-            LOGS(_log, LOG_LVL_DEBUG,
-                 "FileChannelShared " << task->cName(__func__) << " sending start");
+            LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared " << task->cName(__func__) << " sending start");
             if (!_sendResponse(tMtxLockA, task, cancelled, multiErr, rowLimitComplete)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
                 break;
             }
-            LOGS(_log, LOG_LVL_DEBUG,
-                 "FileChannelShared " << task->cName(__func__) << " sending done!!!");  //&&& TRACE
+            LOGS(_log, LOG_LVL_TRACE, "FileChannelShared " << task->cName(__func__) << " sending done!!!");
         }
     }
     transmitT.stop();
@@ -616,7 +612,6 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     LOGS(_log, LOG_LVL_TRACE,
          __func__ << ": Google Protobuf Arena, 2:SpaceUsed=" << _protobufArena->SpaceUsed());
 
-    //&&&LOGS(_log, LOG_LVL_DEBUG, __func__);
     if (isDead() && !mustSend) {
         LOGS(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");
         return false;

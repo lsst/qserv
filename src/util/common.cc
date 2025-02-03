@@ -93,10 +93,9 @@ std::string getCurrentHostFqdnBlocking() {
             if (!result.empty()) {
                 return result;
             }
-            LOGS(_log, LOG_LVL_ERROR, __func__  << " Empty response for the worker hosts's FQDN.");
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " Empty response for the worker hosts's FQDN.");
         } catch (std::runtime_error const& ex) {
-            LOGS(_log, LOG_LVL_ERROR,
-                    __func__ << " Failed to obtain worker hosts's FQDN, ex: " << ex.what());
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " Failed to obtain worker hosts's FQDN, ex: " << ex.what());
         }
         sleep(1);
     }

@@ -131,15 +131,14 @@ void QueryRunner::_setDb() {
     }
 }
 
-util::TimerHistogram memWaitHisto("initConnection Hist", {1, 5, 10, 20, 40}); //&&&
+util::TimerHistogram memWaitHisto("initConnection Hist", {1, 5, 10, 20, 40});  //&&&
 std::atomic<uint32_t> memWaitLimiter = 0;
 
 bool QueryRunner::runQuery() {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_TRACE,
-         "QueryRunner " << _task->cName(__func__)
-                        << " scsId=" << _task->getSendChannel()->getScsId());
+         "QueryRunner " << _task->cName(__func__) << " scsId=" << _task->getSendChannel()->getScsId());
 
     // Start tracking the task.
     auto now = chrono::system_clock::now();
@@ -186,7 +185,7 @@ bool QueryRunner::runQuery() {
     bool connOk = _initConnection();
     memTimer.stop();
     memWaitHisto.addTime(memTimer.getElapsed());
-    if (memWaitLimiter++%100 == 0) {
+    if (memWaitLimiter++ % 100 == 0) {
         LOGS(_log, LOG_LVL_INFO, "&&& initConnection " << memWaitHisto.getString());
     }
 
