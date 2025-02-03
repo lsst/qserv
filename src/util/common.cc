@@ -53,6 +53,7 @@ string get_current_host_fqdn(bool all) {
     hints.ai_family = AF_UNSPEC;     /* either IPV4 or IPV6 */
     hints.ai_socktype = SOCK_STREAM; /* IP */
     hints.ai_flags = AI_CANONNAME;   /* canonical name */
+    hints.ai_canonname = NULL;
     struct addrinfo* info;
     while (true) {
         int const retCode = getaddrinfo(hostname.data(), "http", &hints, &info);
@@ -63,6 +64,10 @@ string get_current_host_fqdn(bool all) {
     }
     string fqdn;
     for (struct addrinfo* p = info; p != NULL; p = p->ai_next) {
+        if (p->ai_canonname == NULL) {
+            throw runtime_error("Registry::" + string(__func__) +
+                                " getaddrinfo failed: ai_canonname is NULL");
+        }
         if (!fqdn.empty()) {
             if (!all) break;
             fqdn += ",";
