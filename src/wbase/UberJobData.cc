@@ -182,8 +182,8 @@ string UberJobData::buildUjResultFilePath(string const& resultsDirname) {
     boost::filesystem::path path(resultsDirname);
     // UberJobs have multiple chunks which can each have different attempt numbers.
     // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
-    path /= to_string(getCzarId()) + "-" + to_string(getQueryId()) + "-" +
-            to_string(getUberJobId()) + "-0" + ".proto";
+    path /= to_string(getCzarId()) + "-" + to_string(getQueryId()) + "-" + to_string(getUberJobId()) + "-0" +
+            ".proto";
     return path.string();
 }
 
@@ -202,7 +202,7 @@ std::string UberJobData::resultFileHttpUrl() {
     auto const fqdn = _foreman->getFqdn();
     if (resultDeliveryProtocol != wconfig::ConfigValResultDeliveryProtocol::HTTP) {
         throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
-                wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
+                            wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
     }
     // TODO:UJ it seems like this should just be part of the FileChannelShared???
     string resultFileHttpUrl = "http://" + fqdn + ":" + to_string(_resultsHttpPort) + resFilePath;

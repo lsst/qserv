@@ -324,7 +324,6 @@ void UserQuerySelect::submit() {
     }
 }
 
-
 void UserQuerySelect::buildAndSendUberJobs() {
     // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
@@ -411,7 +410,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         // attempt count will reach max and the query will be cancelled
         auto lambdaMissingChunk = [&](string const& msg) {
             missingChunks.push_back(chunkId);
-            auto logLvl = (missingChunks.size()%1000 == 1) ? LOG_LVL_WARN : LOG_LVL_TRACE;
+            auto logLvl = (missingChunks.size() % 1000 == 1) ? LOG_LVL_WARN : LOG_LVL_TRACE;
             LOGS(_log, logLvl, msg);
         };
 

@@ -51,7 +51,7 @@
 #include "wdb/SQLBackend.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/BlendScheduler.h"
-#include "util/Timer.h" // &&&
+#include "util/Timer.h"  // &&&
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -106,9 +106,9 @@ Foreman::Ptr Foreman::create(wsched::BlendScheduler::Ptr const& scheduler, unsig
 }
 
 //&&&Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
-Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler,
-                 unsigned int poolSize, unsigned int maxPoolThreads,
-                 mysql::MySqlConfig const& mySqlConfig, wpublish::QueriesAndChunks::Ptr const& queries,
+Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int poolSize,
+                 unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
+                 wpublish::QueriesAndChunks::Ptr const& queries,
                  std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory,
                  std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr, int qPoolSize, int maxPriority,
                  std::string const& vectRunSizesStr, std::string const& vectMinRunningSizesStr)
@@ -120,10 +120,8 @@ Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler,
           _resourceMonitor(make_shared<ResourceMonitor>()),
           _io_service(),
           _httpServer(qhttp::Server::create(_io_service, 0 /* grab the first available port */)),
-          _wCzarInfoMap(WCzarInfoMap::create()) {
-
-    _setupFqdn();
-
+          _wCzarInfoMap(WCzarInfoMap::create()),
+          _fqdn(util::getCurrentHostFqdnBlocking()) {
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.
@@ -181,23 +179,18 @@ Foreman::~Foreman() {
     _httpServer->stop();
 }
 
-void Foreman::_setupFqdn() {
-    while (_fqdn == "") {
-        _fqdn = util::get_current_host_fqdn();
-    }
-}
-
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
     std::vector<util::Command::Ptr> cmds;
-    util::Timer timerQ; //&&&
+    util::Timer timerQ;  //&&&
     timerQ.start();
     _queries->addTasks(tasks, cmds);
     timerQ.stop();
-    util::Timer timerS; //&&&
+    util::Timer timerS;  //&&&
     timerS.start();
     _scheduler->queCmd(cmds);
     timerS.stop();
-    LOGS(_log, LOG_LVL_WARN, "&&&processTasks  Enqueued UberJob Q=" << timerQ.getElapsed() << " s=" << timerS.getElapsed());
+    LOGS(_log, LOG_LVL_WARN,
+         "&&&processTasks  Enqueued UberJob Q=" << timerQ.getElapsed() << " s=" << timerS.getElapsed());
 }
 
 uint16_t Foreman::httpPort() const { return _httpServer->getPort(); }

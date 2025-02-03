@@ -143,18 +143,17 @@ void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
     auto stats = addQueryId(qid, czId);
     stats->addTask(task);
 }
-void QueriesAndChunks::addTasks(vector<wbase::Task::Ptr> const& tasks, std::vector<util::Command::Ptr>& cmds) {
-	unique_lock<mutex> guardStats(_queryStatsMapMtx);
-	for (auto const& task : tasks) {
-		auto qid = task->getQueryId();
-		auto czId = task->getCzarId();
-		auto stats = _addQueryId(qid, czId);
-	    stats->addTask(task);
-		cmds.push_back(task);
-	}
+void QueriesAndChunks::addTasks(vector<wbase::Task::Ptr> const& tasks,
+                                std::vector<util::Command::Ptr>& cmds) {
+    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+    for (auto const& task : tasks) {
+        auto qid = task->getQueryId();
+        auto czId = task->getCzarId();
+        auto stats = _addQueryId(qid, czId);
+        stats->addTask(task);
+        cmds.push_back(task);
+    }
 }
-
-
 
 /// Update statistics for the Task that was just queued.
 void QueriesAndChunks::queuedTask(wbase::Task::Ptr const& task) {

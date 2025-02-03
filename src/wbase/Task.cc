@@ -37,7 +37,6 @@
 
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
-//&&&#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -66,24 +65,10 @@
 using namespace std;
 using namespace std::chrono_literals;
 using namespace nlohmann;
-//&&&namespace fs = boost::filesystem;
 
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
-
-/* &&&
-string buildUjResultFilePath(lsst::qserv::wbase::UberJobData::Ptr const& ujData,
-                             string const& resultsDirname) {
-    if (resultsDirname.empty()) return resultsDirname;
-    fs::path path(resultsDirname);
-    // UberJobs have multiple chunks which can each have different attempt numbers.
-    // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
-    path /= to_string(ujData->getCzarId()) + "-" + to_string(ujData->getQueryId()) + "-" +
-            to_string(ujData->getUberJobId()) + "-0" + ".proto";
-    return path.string();
-}
-*/
 
 size_t const MB_SIZE_BYTES = 1024 * 1024;
 
@@ -121,23 +106,16 @@ TaskScheduler::TaskScheduler() {
 
 atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 
-/* &&&
-util::HistogramRolling histoTaskA("&&&uj histoTaskA", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoTaskB("&&&uj histoTaskB", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoTaskC("&&&uj histoTaskC", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-*/
-
 /// When the constructor is called, there is not enough information
 /// available to define the action to take when this task is run, so
 /// Command::setFunc() is used set the action later. This is why
 /// the util::CommandThreadPool is not called here.
 Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
            size_t templateId, bool hasSubchunks, int subchunkId, string const& db,
-           protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive,  //&&& int maxTableSize,
+           protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive,
            vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
            shared_ptr<FileChannelShared> const& sc,
            std::shared_ptr<wpublish::QueryStatistics> const& queryStats_)
-           //&&&, uint16_t resultsHttpPort)
         : _sendChannel(sc),
           _tSeq(++taskSequence),
           _qId(ujData->getQueryId()),
@@ -154,32 +132,10 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
           _scanInfo(scanInfo),
           _scanInteractive(scanInteractive),
           _queryStats(queryStats_),
-          //&&&_maxTableSize(maxTableSize * ::MB_SIZE_BYTES),
           _rowLimit(ujData->getRowLimit()),
           _ujData(ujData),
-          //&&&_resultsHttpPort(resultsHttpPort),
           _idStr(ujData->getIdStr() + " jId=" + to_string(_jId) + " sc=" + to_string(_subchunkId)) {
-    //auto startTaskA = CLOCK::now(); //&&&
-    /* &&&
-    // These attributes will be passed back to Czar in the Protobuf response
-    // to advice which result delivery channel to use.
-    auto const workerConfig = wconfig::WorkerConfig::instance();
-    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
-    auto startTaskB = CLOCK::now(); //&&&
-    _resultFilePath = ::buildUjResultFilePath(ujData, workerConfig->resultsDirname());
-    auto startTaskC = CLOCK::now(); //&&&
-    auto const fqdn = util::get_current_host_fqdn();//&&& <----- slow part
-    if (resultDeliveryProtocol == wconfig::ConfigValResultDeliveryProtocol::HTTP) {
-        // TODO:UJ it seems like this should just be part of the FileChannelShared???
-        _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + _resultFilePath;
-    } else {
-        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
-                            wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
-    }
-    */
     user = defaultUser;
-
-    //auto startTaskD = CLOCK::now(); //&&&
 
     // Create sets and vectors for 'aquiring' subchunk temporary tables.
     // Fill in _dbTblsAndSubchunks
@@ -213,65 +169,17 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
 
     _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
 
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " created");  //&&&
-    /* &&&
-    std::chrono::duration<double> secsTaskA = startTaskB - startTaskA;
-    std::chrono::duration<double> secsTaskB = startTaskC - startTaskB;
-    std::chrono::duration<double> secsTaskC = startTaskD - startTaskC;
-    histoTaskA.addEntry(startTaskB, secsTaskA.count());
-    histoTaskB.addEntry(startTaskC, secsTaskB.count());
-    histoTaskC.addEntry(startTaskD, secsTaskC.count());
-    LOGS(_log, LOG_LVL_INFO, "&&&uj histoT "
-            << histoTaskA.getString("")
-            << histoTaskB.getString("")
-            << histoTaskC.getString("")
-            );
-    */
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " created");
 }
-
-/* &&&
-string Task::resultFilePath() {
-    auto const workerConfig = wconfig::WorkerConfig::instance();
-    string resultFilePath = ::buildUjResultFilePath(_ujData, workerConfig->resultsDirname());
-    return resultFilePath;
-}
-
-std::string Task::resultFileHttpUrl() {
-    auto const workerConfig = wconfig::WorkerConfig::instance();
-    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
-
-    string resFilePath = resultFilePath();
-    auto const fqdn = util::get_current_host_fqdn();
-    if (resultDeliveryProtocol != wconfig::ConfigValResultDeliveryProtocol::HTTP) {
-        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
-                wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
-    }
-    // TODO:UJ it seems like this should just be part of the FileChannelShared???
-    string resultFileHttpUrl = "http://" + fqdn + ":" + to_string(_resultsHttpPort) + resFilePath;
-    return resultFileHttpUrl;
-}
-*/
-
 
 Task::~Task() {}
-
-util::HistogramRolling histoBuildTasks("&&&uj histoBuildTasks", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoTaskCount("&&&uj histoTasksCount", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoJobStuff("&&&uj histoJobStuff", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoFragLoop("&&&uj histoFragLoop", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoPreVect("&&&uj histoPreVect", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoVectLoop("&&&uj histoVectLoop", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-
-util::HistogramRolling histoFragLoopA("&&&uj histoFragLoopA", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoFragLoopB("&&&uj histoFragLoopB", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-util::HistogramRolling histoFragLoopC("&&&uj histoFragLoopC", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
 
 std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         std::shared_ptr<protojson::UberJobMsg> const& ujMsg, std::shared_ptr<UberJobData> const& ujData,
         std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr, mysql::MySqlConfig const& mySqlConfig,
         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-        std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) { //&&& , uint16_t resultsHttpPort) {
+        std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
     QueryId qId = ujData->getQueryId();
     UberJobId ujId = ujData->getUberJobId();
     CzarIdType czId = ujData->getCzarId();
@@ -302,10 +210,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
     auto jobMsgVect = ujMsg->getJobMsgVect();
     auto scanInfo = ujMsg->getScanInfo();
 
-    auto startVectLoop = CLOCK::now(); //&&&
-
     for (auto const& jobMsg : *jobMsgVect) {
-        auto startJobStuff = CLOCK::now(); //&&&
         JobId jobId = jobMsg->getJobId();
         int attemptCount = jobMsg->getAttemptCount();
         std::string chunkQuerySpecDb = jobMsg->getChunkQuerySpecDb();
@@ -316,12 +221,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         auto jobFragments = jobMsg->getJobFragments();
         int fragmentNumber = 0;
 
-        auto startFragLoop = CLOCK::now(); //&&&
-        std::chrono::duration<double> secsJobStuff = startFragLoop - startJobStuff;
-        histoJobStuff.addEntry(startFragLoop, secsJobStuff.count());
-
         for (auto const& fMsg : *jobFragments) {
-            auto startFragLoopA = CLOCK::now(); //&&&
             // These need to be constructed for the fragment
             vector<string> fragSubQueries;
             vector<TaskDbTbl> fragSubTables;
@@ -333,7 +233,6 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                 fragSubQueries.push_back(fsqStr);
             }
 
-            auto startFragLoopB = CLOCK::now(); //&&&
             vector<int> dbTblIndexes = fMsg->getJobDbTablesIndexes();
             for (int dbTblIndex : dbTblIndexes) {
                 auto [scDb, scTable] = jobDbTablesMap->getDbTable(dbTblIndex);
@@ -343,16 +242,15 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
 
             fragSubchunkIds = fMsg->getSubchunkIds();
 
-            auto startFragLoopC = CLOCK::now(); //&&&
             for (string const& fragSubQ : fragSubQueries) {
                 size_t templateId = userQueryInfo->addTemplate(fragSubQ);
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
-                    auto task = Task::Ptr(new Task(
-                            ujData, jobId, attemptCount, chunkId, fragmentNumber, templateId, noSubchunks,
-                            subchunkId, chunkQuerySpecDb, scanInfo, scanInteractive,  //&&& maxTableSizeMb,
-                            fragSubTables, fragSubchunkIds, sendChannel, queryStats)); //&&&, resultsHttpPort));
+                    auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
+                                                   templateId, noSubchunks, subchunkId, chunkQuerySpecDb,
+                                                   scanInfo, scanInteractive, fragSubTables, fragSubchunkIds,
+                                                   sendChannel, queryStats));
 
                     vect.push_back(task);
                 } else {
@@ -360,60 +258,20 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                         bool const hasSubchunks = true;
                         auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
                                                        templateId, hasSubchunks, subchunkId, chunkQuerySpecDb,
-                                                       scanInfo, scanInteractive,  //&&&maxTableSizeMb,
-                                                       fragSubTables, fragSubchunkIds, sendChannel,
-                                                       queryStats)); //&&& , resultsHttpPort));
+                                                       scanInfo, scanInteractive, fragSubTables,
+                                                       fragSubchunkIds, sendChannel, queryStats));
                         vect.push_back(task);
                     }
                 }
             }
             ++fragmentNumber;
-            auto startFragLoopD = CLOCK::now(); //&&&
-            std::chrono::duration<double> secsFragLoopA = startFragLoopB - startFragLoopA;
-            std::chrono::duration<double> secsFragLoopB = startFragLoopC - startFragLoopB;
-            std::chrono::duration<double> secsFragLoopC = startFragLoopD - startFragLoopC;
-            histoFragLoopA.addEntry(startFragLoopB, secsFragLoopA.count());
-            histoFragLoopB.addEntry(startFragLoopC, secsFragLoopB.count());
-            histoFragLoopC.addEntry(startFragLoopD, secsFragLoopC.count());
         }
-        auto endFragLoop = CLOCK::now(); //&&&
-        std::chrono::duration<double> secsFragLoop = endFragLoop - startFragLoop;
-        histoFragLoop.addEntry(endFragLoop, secsFragLoop.count());
     }
-
-    auto endVectLoop = CLOCK::now(); //&&&
 
     for (auto taskPtr : vect) {
         // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
         taskPtr->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(taskPtr, chunkResourceMgr, mySqlConfig,
                                                                      sqlConnMgr, queriesAndChunks));
-    }
-
-    { //&&&
-        auto endBuildTasks = CLOCK::now();                                               //&&&
-
-        std::chrono::duration<double> secsPreVectLoop = startVectLoop - startBuildTasks;
-        histoPreVect.addEntry(startVectLoop, secsPreVectLoop.count());
-
-        std::chrono::duration<double> secsVectLoop = endVectLoop - startVectLoop;
-        histoVectLoop.addEntry(endVectLoop, secsVectLoop.count());
-
-        std::chrono::duration<double> secsBuildTasks = endBuildTasks - startBuildTasks;  // &&&
-        histoBuildTasks.addEntry(endBuildTasks, secsBuildTasks.count());                 //&&&
-
-        histoTaskCount.addEntry(endBuildTasks, vect.size());  //&&&
-        // &&& time limit log messages?
-        LOGS(_log, LOG_LVL_INFO, "&&&uj histo "
-                << histoBuildTasks.getString("")
-                << histoTaskCount.getString("")
-                << histoJobStuff.getString("")
-                << histoFragLoop.getString("")
-                << histoPreVect.getString("")
-                << histoVectLoop.getString("")
-                << histoFragLoopA.getString("")
-                << histoFragLoopB.getString("")
-                << histoFragLoopC.getString("")
-                );
     }
 
     return vect;
@@ -491,18 +349,17 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
                     int const subchunkId = -1;
                     auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber,
                                                    0, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
-                                                   //&&&scanInteractive, maxTableSizeMb, fragSubTables,
                                                    scanInteractive, fragSubTables, fragSubchunkIds,
-                                                   sendChannel, nullptr)); //&&&, 0));
+                                                   sendChannel, nullptr));
 
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
-                        auto task = Task::Ptr(new Task(
-                                ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, 0, hasSubchunks,
-                                subchunkId, jdQuerySpecDb, scanInfo, scanInteractive,  //&&& maxTableSizeMb,
-                                fragSubTables, fragSubchunkIds, sendChannel, nullptr)); //&&&, 0));
+                        auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId,
+                                                       fragmentNumber, 0, hasSubchunks, subchunkId,
+                                                       jdQuerySpecDb, scanInfo, scanInteractive,
+                                                       fragSubTables, fragSubchunkIds, sendChannel, nullptr));
 
                         vect.push_back(task);
                     }
@@ -745,7 +602,6 @@ nlohmann::json Task::getJson() const {
     js["attemptId"] = _attemptCount;
     js["sequenceId"] = _tSeq;
     js["scanInteractive"] = _scanInteractive;
-    //&&&js["maxTableSize"] = _maxTableSize;
     js["maxTableSize"] = _ujData->getMaxTableSizeBytes();
     js["cancelled"] = to_string(_cancelled);
     js["state"] = static_cast<uint64_t>(_state.load());

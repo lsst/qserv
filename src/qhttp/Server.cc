@@ -131,17 +131,18 @@ void Server::_accept() {
             return;
         }
         try {
-        	if (!ec) {
-        		LOGS(_log, LOG_LVL_INFO, "&&&qhttp::Server::_accept ok");
-        		LOGLS_INFO(_log, logger(self) << logger(socket) << "connect from " << socket->remote_endpoint());
-        		boost::system::error_code ignore;
-        		socket->set_option(ip::tcp::no_delay(true), ignore);
-        		self->_readRequest(socket);
-        	} else {
-        		LOGLS_ERROR(_log, logger(self) << "accept failed: " << ec.message());
-        	}
+            if (!ec) {
+                LOGS(_log, LOG_LVL_INFO, "&&&qhttp::Server::_accept ok");
+                LOGLS_INFO(_log, logger(self)
+                                         << logger(socket) << "connect from " << socket->remote_endpoint());
+                boost::system::error_code ignore;
+                socket->set_option(ip::tcp::no_delay(true), ignore);
+                self->_readRequest(socket);
+            } else {
+                LOGLS_ERROR(_log, logger(self) << "accept failed: " << ec.message());
+            }
         } catch (boost::system::system_error const& bEx) {
-        	LOGS(_log, LOG_LVL_ERROR, "qhttp::Server::_accept lambda threw " << bEx.what());
+            LOGS(_log, LOG_LVL_ERROR, "qhttp::Server::_accept lambda threw " << bEx.what());
         }
         self->_accept();  // start accept again for the next incoming connection
     });
@@ -218,7 +219,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
                 chrono::duration<double, std::milli> elapsed = chrono::steady_clock::now() - startTime;
                 string logStr;
                 if (LOG_CHECK_LVL(_log, LOG_LVL_INFO)) {
-                	logStr = string("request duration ") + to_string(elapsed.count()) + "ms";
+                    logStr = string("request duration ") + to_string(elapsed.count()) + "ms";
                 }
                 if (!ec && *reuseSocket) {
                     LOGLS_INFO(_log, logger(self) << logger(socket) << logStr << " lingering");
