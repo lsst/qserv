@@ -85,13 +85,6 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
     auto qtempl = stmt->getQueryTemplate();
     _query = qtempl.sqlFragment();
 
-    // we also do not want to return too many results by default
-    // as QMeta can contain a lot of records, limit ourselves
-    // to some reasonable number, users can override with different LIMIT
-    if (!stmt->hasLimit()) {
-        _query += " LIMIT 1000";
-    }
-
     if (stmt->hasOrderBy()) {
         _orderBy = stmt->getOrderBy().sqlFragment();
     }
@@ -107,20 +100,16 @@ UserQueryProcessList::UserQueryProcessList(bool full, sql::SqlConnection* result
           _messageStore(std::make_shared<qdisp::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {
-    // use ShowProcessList view with completion statistics.
-    _query = "SELECT Id, User, Host, db, Command, Time, State, ";
-    _query += full ? "Info, " : "SUBSTRING(Info FROM 1 FOR 100) Info, ";
-    _query += "totalChunks, completedChunks, lastUpdate, ";
-    // These are non-standard but they need to be there because they appear in WHERE
-    _query += "CzarId, Submitted, Completed, ResultLocation";
-    _query += " FROM ShowProcessList";
-
-    // only show stuff for current czar and not too old
-    _query += " WHERE CzarId = " + std::to_string(qMetaCzarId) +
-              " AND "
-              "(Completed IS NULL OR Completed > NOW() - INTERVAL 3 DAY)";
-
-    _orderBy = "Submitted";
+    _query = "SELECT `qi`.`queryId` `ID`,`qi`.`qType` `TYPE`,`qc`.`czar` `CZAR`,`qc`.`czarId` `CZAR_ID`,"
+             "`qi`.`submitted` `SUBMITTED`,`qs`.`lastUpdate` `UPDATED`,`qi`.`chunkCount` `CHUNKS`,"
+             "`qs`.`completedChunks` `CHUNKS_COMPL`,";
+    _query += (full ? "`qi`.`query`" : "SUBSTR(`qi`.`query`,1,32) `QUERY`");
+    _query +=
+            " FROM `QInfo` AS `qi` "
+            " LEFT OUTER JOIN `QStatsTmp` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`"
+            " JOIN `QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`"
+            " WHERE `qi`.`status` = 'EXECUTING'";
+    _orderBy = "`SUBMITTED`";
 }
 
 std::string UserQueryProcessList::getError() const { return std::string(); }
