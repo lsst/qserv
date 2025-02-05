@@ -177,6 +177,11 @@ bool UserQueryType::isProcessListTable(std::string const& dbName, std::string co
            boost::to_upper_copy(tblName) == "PROCESSLIST";
 }
 
+/// Returns true if table name refers to QUERIES table
+bool UserQueryType::isQueriesTable(std::string const& dbName, std::string const& tblName) {
+    return boost::to_upper_copy(dbName) == "INFORMATION_SCHEMA" && boost::to_upper_copy(tblName) == "QUERIES";
+}
+
 /// Returns true if query is SUBMIT ...
 bool UserQueryType::isSubmit(std::string const& query, std::string& stripped) {
     LOGS(_log, LOG_LVL_TRACE, "isSubmit: " << query);

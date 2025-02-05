@@ -76,6 +76,12 @@ public:
     static bool isProcessListTable(std::string const& dbName, std::string const& tblName);
 
     /**
+     *  Returns true if database/table name refers to QUERIES table in
+     *  INFORMATION_SCHEMA pseudo-database.
+     */
+    static bool isQueriesTable(std::string const& dbName, std::string const& tblName);
+
+    /**
      *  Returns true if query is SUBMIT ..., returns query without "SUBMIT"
      *  in `stripped` string.
      */

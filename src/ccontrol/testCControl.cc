@@ -327,6 +327,24 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
     }
 
     struct {
+        const char* db;
+        const char* table;
+    } queries_table_ok[] = {{"INFORMATION_SCHEMA", "QUERIES"},
+                            {"information_schema", "queries"},
+                            {"Information_Schema", "Queries"}};
+    for (auto test : queries_table_ok) {
+        BOOST_CHECK(UserQueryType::isQueriesTable(test.db, test.table));
+    }
+
+    struct {
+        const char* db;
+        const char* table;
+    } queries_table_fail[] = {{"INFORMATIONSCHEMA", "QUERIES"}, {"information_schema", "query"}};
+    for (auto test : queries_table_fail) {
+        BOOST_CHECK(not UserQueryType::isQueriesTable(test.db, test.table));
+    }
+
+    struct {
         const char* query;
         int id;
     } kill_query_ok[] = {
