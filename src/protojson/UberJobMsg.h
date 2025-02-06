@@ -87,7 +87,7 @@ private:
 /// The same db+table name pairs recur frequently, so the individual occurrences
 /// will be replaced with an integer index and use this class to recover the
 /// complete names.
-class JobDbTablesMap {  // &&& this class can probably be deleted
+class JobDbTablesMap {  // TODO:UJ this class can probably be deleted
 public:
     using Ptr = std::shared_ptr<JobDbTablesMap>;
 
@@ -107,11 +107,11 @@ public:
     /// @throws std::out_of_range
     std::pair<std::string, std::string> getDbTable(int index) { return _dbTableMap.at(index); }
 
-    /// &&& TODO:UJ compare with scan rating for entire UberJob
+    /// TODO:UJ compare with scan rating for entire UberJob
     void setScanRating(int index, int scanRating, bool lockInMemory);
 
     /// Return scanRating(int) and lockInMemory(bool) for the dbTable at `index`.
-    /// TODO:UJ &&& lockInMemory is expected to go away.
+    /// TODO:UJ lockInMemory is expected to go away.
     std::pair<int, bool> getScanRating(int index) { return _scanRatingMap[index]; }
 
     nlohmann::json serializeJson() const;

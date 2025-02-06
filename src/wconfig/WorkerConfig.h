@@ -88,9 +88,9 @@ public:
 private:
     ConfigValResultDeliveryProtocol(std::string const& section, std::string const& name, bool required,
                                     std::string const& defVal, bool hidden)
-            : ConfigVal(section, name, required, hidden), _val(parse(defVal)) {}
-    TEnum _val;
-    TEnum _defVal;
+            : ConfigVal(section, name, required, hidden), _defVal(parse(defVal)), _val(_defVal) {}
+    TEnum const _defVal;  ///< Default value for the item this class is storing.
+    TEnum _val;           ///< Value for the item this class is storing.
 };
 
 /// Provide all configuration parameters for a Qserv worker instance.
@@ -411,7 +411,7 @@ private:
     CVTUIntPtr _replicationHttpPort =
             util::ConfigValTUInt::create(_configValMap, "replication", "http_port", required, 0);
     CVTUIntPtr _replicationNumHttpThreads =
-            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
+            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 20);
 
     CVTUIntPtr _mysqlPort = util::ConfigValTUInt::create(_configValMap, "mysql", "port", notReq, 4048);
     CVTStrPtr _mysqlSocket = util::ConfigValTStr::create(_configValMap, "mysql", "socket", notReq, "");
