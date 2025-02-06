@@ -167,12 +167,11 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
                 throw util::Bug(ERR_LOC, "BlendScheduler::queCmd cmds.size() > 1 when no task was set.");
             }
             {
-                //&&&util::LockGuardTimed guardA(util::CommandQueue::_mx, "BlendScheduler::queCmd a");
                 lock_guard guardA(util::CommandQueue::_mx);
                 _ctrlCmdQueue.queCmd(cmd);
             }
 
-            notify(false);  //&&& notify(true);  // notify all=true
+            notify(true);  // notify all=true
             continue;
         }
 
@@ -180,7 +179,6 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
         }
 
-        //&&&util::LockGuardTimed guardB(util::CommandQueue::_mx, "BlendScheduler::queCmd b");
         lock_guard guardB(util::CommandQueue::_mx);
         // Check for scan tables. The information for all tasks should be the same
         // as they all belong to the same query, so only examine the first task.
@@ -250,7 +248,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             queryStats->tasksAddedToScheduler(targSched, taskCmds.size());
         }
         _infoChanged = true;
-        notify(false);  //&&&notify(true);  // notify all=true
+        notify(true);  // notify all=true
     }
 }
 
@@ -294,7 +292,7 @@ void BlendScheduler::commandFinish(util::Command::Ptr const& cmd) {
     if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
         _logChunkStatus();
     }
-    notify(false);  //&&&notify(true);  // notify all=true
+    notify(false);  // notify one
 }
 
 bool BlendScheduler::ready() {
@@ -359,32 +357,16 @@ bool BlendScheduler::_ready() {
 atomic<uint16_t> logChunkLimiter = 0;
 
 util::Command::Ptr BlendScheduler::getCmd(bool wait) {
-    util::Timer timeToLock;
-    util::Timer timeHeld;
     util::Command::Ptr cmd;
-    double totalTimeHeld = 0.0;
     bool ready = false;
     {
-        timeToLock.start();
         unique_lock<mutex> lock(util::CommandQueue::_mx);
-        timeToLock.stop();
-
         if (wait) {
             util::CommandQueue::_cv.wait(lock, [this]() { return _ready(); });
-            /* &&&
-            while (!_ready()) {
-                timeHeld.stop();
-                totalTimeHeld += timeHeld.getElapsed();
-                util::CommandQueue::_cv.wait(lock);
-                timeHeld.start();
-            }
-            */
             ready = true;
         } else {
             ready = _ready();
         }
-
-        timeHeld.start();
 
         if (ready && _taskLoadQueue.size() > 0) {
             cmd = _taskLoadQueue.front();
@@ -411,12 +393,13 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
             _readySched.reset();
         }
     }
+
     if (cmd == nullptr) {
         // The scheduler didn't have anything, see if there's anything on the control queue,
         // which could change the size of the pool.
         cmd = _ctrlCmdQueue.getCmd();
     }
-    //&&& }
+
     if (cmd != nullptr) {
         _infoChanged = true;
         if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE) || (logChunkLimiter++ % 100 == 0)) {
@@ -425,12 +408,6 @@ util::Command::Ptr BlendScheduler::getCmd(bool wait) {
         notify(false);  // notify all=false
     }
     // returning nullptr is acceptable.
-    timeHeld.stop();
-    totalTimeHeld += timeHeld.getElapsed();
-    LOGS(_log, LOG_LVL_TRACE,
-         "lockTime BlendScheduler::getCmd ready toLock=" << timeToLock.getElapsed()
-                                                         << " held=" << timeHeld.getElapsed()
-                                                         << " totalHeld=" << totalTimeHeld);
     return cmd;
 }
 
@@ -448,7 +425,6 @@ int BlendScheduler::_getAdjustedMaxThreads(int oldAdjMax, int inFlight) {
 int BlendScheduler::_calcAvailableTheads() {
     int reserve = 0;
     {
-        //&&&lock_guard<mutex> lg(_schedMtx);
         for (auto const& sched : _schedulers) {
             reserve += sched->desiredThreadReserve();
         }

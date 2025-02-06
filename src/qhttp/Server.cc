@@ -132,7 +132,6 @@ void Server::_accept() {
         }
         try {
             if (!ec) {
-                LOGS(_log, LOG_LVL_INFO, "&&&qhttp::Server::_accept ok");
                 LOGLS_INFO(_log, logger(self)
                                          << logger(socket) << "connect from " << socket->remote_endpoint());
                 boost::system::error_code ignore;
