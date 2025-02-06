@@ -34,7 +34,7 @@ This is illustrated by the following example:
 
 .. code-block:: sql
 
-    SUBMIT SELECT objectId FROM dp02_dc2_catalogs.Object LIMIT 3
+    SUBMIT SELECT COUNT(*) FROM dp02_dc2_catalogs.Object WHERE coord_ra != 0
 
 If the query validation succeded and the query placed into a processing queue, the command will always return one row with
 two columns, where the particularly interesting column is ``jobId``:
@@ -44,8 +44,9 @@ two columns, where the particularly interesting column is ``jobId``:
     +--------+---------------------+
     | jobId  | resultLocation      |
     +--------+---------------------+
-    | 311817 | table:result_311817 |
+    | 313689 | table:result_313689 |
     +--------+---------------------+
+
 
 At this poing the query is running asynchronously. The ``jobId`` is the unique identifier of the query that can be used
 for checking the query status, retrieving the results, or cancelling the query.
@@ -58,39 +59,38 @@ Based on the ``jobId`` returned by the ``SUBMIT`` command, you can check the sta
 
 .. code-block::
 
-    SELECT * FROM information_schema.processlist WHERE id=311817\G
+    SELECT * FROM information_schema.processlist WHERE id=313689\G
 
 **Note**: ``\G`` is a MySQL command that formats the output. It's not part of the SQL syntax.
 The command is quite handy to display result sets comprising many columns or having long values of
 the columns in a more readable format.
 
-The query will return a row with the following columns:
+If the query is still being executed the information schema query will return a row with the following columns:
 
 .. code-block::
 
     *************************** 1. row ***************************
-                 ID: 311817
-               USER: anonymous
-               HOST: NULL
-                 DB: dp02_dc2_catalogs
-            COMMAND: ASYNC
-               TIME: NULL
-              STATE: COMPLETED
-               INFO: SELECT objectId FROM dp02_dc2_catalogs.Object LIMIT 3
-          SUBMITTED: 2024-10-06 20:01:18
-          COMPLETED: 2024-10-06 20:01:18
-           RETURNED: NULL
-             CZARID: 9
-     RESULTLOCATION: table:result_311817
-            NCHUNKS: 1477
-        TotalChunks: NULL
-    CompletedChunks: NULL
-         LastUpdate: NULL
+             ID: 313689
+           TYPE: ASYNC
+           CZAR: proxy
+        CZAR_ID: 9
+      SUBMITTED: 2025-02-06 08:58:18
+        UPDATED: 2025-02-06 08:58:18
+         CHUNKS: 1477
+    CHUNKS_COMP: 739
+          QUERY: SELECT COUNT(*) FROM dp02_dc2_catalogs.Object WHERE coord_ra != 0
 
 Particularly interesting columns here are:
 
 - ``ID``: the unique identifier of the original query (it's the same as ``jobId`` reported by the ``SUBMIT`` command)
-- ``STATE``: the query status, which can be one of: ``EXECUTING``, ``COMPLETED``, ``FAILED``, or ``ABORTED``
+- ``TYPE``: the query type, which is always ``ASYNC`` for asynchronous queries
+- ``SUBMITTED``: the timestamp when the query was submitted
+- ``UPDATED``: the timestamp of the last update of the query status
+- ``CHUNKS``: the total number of chunks to be processed
+- ``CHUNKS_COMP``: the number of chunks already processed
+
+The user may periodically repeat this command to compute the performance metrics of the query execution
+ad to get an estimate of the remaining time to completion.
 
 One can also use the following information commands to get the status of all active queries:
 
@@ -99,10 +99,46 @@ One can also use the following information commands to get the status of all act
     SHOW PROCESSLIST
     SHOW FULL PROCESSLIST
 
-**Note**: once the query is over and the results are retrieved, the corresponding row in the ``information_schema.processlist``
-table will be deleted. And the query status will no longer be available. However, Qserv will still maintain the history
-of the queries in other system tables. You may contact the Qserv administrator to get the history of the queries should
-you need it.
+For example the ``SHOW PROCESSLIST`` command will return:
+
+.. code-block::
+
+    +--------+---------+-------+---------+---------------------+---------------------+--------+--------------+----------------------------------+
+    | ID     | COMMAND | CZAR  | CZAR_ID | SUBMITTED           | UPDATED             | CHUNKS | CHUNKS_COMPL | QUERY                            |
+    +--------+---------+-------+---------+---------------------+---------------------+--------+--------------+----------------------------------+
+    | 313689 | ASYNC   | proxy |       9 | 2025-02-06 08:58:18 | 2025-02-06 08:58:18 |   1477 |            1 | SELECT COUNT(*) FROM dp02_dc2_ca |
+    +--------+---------+-------+---------+---------------------+---------------------+--------+--------------+----------------------------------+
+
+The result set of the ``PROCESSLIST`` queries will be empty if the query has already completed. In this case, the query status can be retrieved
+by querying the query history table:
+
+.. code-block::
+
+    SELECT * FROM information_schema.queries WHERE id=313689\G
+
+The query will return:
+
+.. code-block::
+
+    *************************** 1. row ***************************
+                ID: 313689
+              TYPE: ASYNC
+              CZAR: proxy
+           CZAR_ID: 9
+            STATUS: COMPLETED
+         SUBMITTED: 2025-02-06 08:58:18
+         COMPLETED: 2025-02-06 08:58:21
+          RETURNED: NULL
+            CHUNKS: 1477
+             BYTES: 13856
+    ROWS_COLLECTED: 1477
+              ROWS: 1
+               DBS: dp02_dc2_catalogs
+             QUERY: SELECT COUNT(*) FROM dp02_dc2_catalogs.Object WHERE coord_ra !=0
+
+Particularly interesting columns here are:
+
+- ``STATUS``: the query status, which can be one of: ``EXECUTING``, ``COMPLETED``, ``FAILED``, or ``ABORTED``
 
 Retrieving Results
 ==================
@@ -116,26 +152,24 @@ To retrieve the results of a query, use the following syntax:
 This will return the full results (columns and rows) of the original query corresponding to the provided identifier of
 the query.
 
-For example, the following query will return the results of the query with ``jobId`` of ``311817``:
+For example, the following query will return the results of the query with ``jobId`` of ``313689``:
 
 .. code-block::
 
-    SELECT * FROM qserv_result(311817)
-    +---------------------+
-    | objectId            |
-    +---------------------+
-    | 1248649384967536732 |
-    | 1248649384967536769 |
-    | 1248649384967536891 |
-    +---------------------+
+    SELECT * FROM qserv_result(313689)
+    +-----------+
+    | COUNT(*)  |
+    +-----------+
+    | 278318452 |
+    +-----------+
 
 The command may be called one time only. The query result table will be deleted after returning the result set.
 Any subsequent attempts to retrieve the results will return an error message:
 
 .. code-block::
 
-    SELECT * FROM qserv_result(311817)
-    ERROR 1146 (42S02) at line 1: Table 'qservResult.result_311817' doesn't exist
+    SELECT * FROM qserv_result(313689)
+    ERROR 1146 (42S02) at line 1: Table 'qservResult.result_313689' doesn't exist
 
 Cancellation
 ============
