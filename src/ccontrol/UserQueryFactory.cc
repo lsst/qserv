@@ -45,6 +45,7 @@
 #include "ccontrol/UserQueryFlushChunksCache.h"
 #include "ccontrol/UserQueryInvalid.h"
 #include "ccontrol/UserQueryProcessList.h"
+#include "ccontrol/UserQueryQueries.h"
 #include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQuerySelectCountStar.h"
@@ -94,6 +95,23 @@ bool _stmtRefersToProcessListTable(query::SelectStmt::Ptr& stmt, std::string def
 }
 
 /**
+ * @brief Determine if the table name in the FROM statement refers to QUERIES table.
+ *
+ * @param stmt SelectStmt representing the query.
+ * @param defaultDb Default database name, may be empty.
+ * @return true if the query refers only to the QUERIES table.
+ * @return false if the query does not refer only to the QUERIES table.
+ */
+bool _stmtRefersQueriesTable(query::SelectStmt::Ptr& stmt, std::string defaultDb) {
+    auto const& tableRefList = stmt->getFromList().getTableRefList();
+    if (tableRefList.size() != 1) return false;
+    auto const& tblRef = tableRefList[0];
+    std::string const& db = tblRef->getDb().empty() ? defaultDb : tblRef->getDb();
+    if (UserQueryType::isQueriesTable(db, tblRef->getTable())) return true;
+    return false;
+}
+
+/**
  * @brief Make a UserQueryProcessList (or UserQueryInvalid) from given parameters.
  *
  * @param stmt The SelectStmt representing the query.
@@ -118,6 +136,35 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
         return std::make_shared<UserQueryProcessList>(stmt, sharedResources->resultDbConn.get(),
                                                       sharedResources->qMetaSelect,
                                                       sharedResources->qMetaCzarId, userQueryId, resultDb);
+    } catch (std::exception const& exc) {
+        return std::make_shared<UserQueryInvalid>(exc.what());
+    }
+}
+
+/**
+ * @brief Make a UserQueryQueries (or UserQueryInvalid) from given parameters.
+ *
+ * @param stmt The SelectStmt representing the query.
+ * @param sharedResources Resources used by UserQueryFactory to create UserQueries.
+ * @param userQueryId Unique string identifying the query.
+ * @param resultDb Name of the databse that will contain results.
+ * @param aQuery The original query string.
+ * @param async If the query is to be run asynchronously.
+ * @return std::shared_ptr<UserQuery>, will be a UserQueryQueries or UserQueryInvalid.
+ */
+std::shared_ptr<UserQuery> _makeUserQueryQueries(query::SelectStmt::Ptr& stmt,
+                                                 userQuerySharedResourcesPtr& sharedResources,
+                                                 std::string const& userQueryId, std::string const& resultDb,
+                                                 std::string const& aQuery, bool async) {
+    if (async) {
+        // no point supporting async for these
+        return std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
+    }
+    LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a QUERIES");
+    try {
+        return std::make_shared<UserQueryQueries>(stmt, sharedResources->resultDbConn.get(),
+                                                  sharedResources->qMetaSelect, sharedResources->qMetaCzarId,
+                                                  userQueryId, resultDb);
     } catch (std::exception const& exc) {
         return std::make_shared<UserQueryInvalid>(exc.what());
     }
@@ -258,6 +305,10 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
             return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
                                              async);
+        }
+        if (_stmtRefersQueriesTable(stmt, defaultDb)) {
+            return _makeUserQueryQueries(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
+                                         async);
         }
 
         /// Determine if a SelectStmt is a simple COUNT(*) query and can be run as an optimized query.

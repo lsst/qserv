@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "ccontrol/UserQueryProcessList.h"
+#include "ccontrol/UserQueryQueries.h"
 
 // System headers
 #include <atomic>
@@ -49,10 +49,10 @@
 using namespace lsst::qserv;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryProcessList");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryQueries");
 
 std::string g_nextResultTableId(std::string const& userQueryId) {
-    return "qserv_result_processlist_" + userQueryId;
+    return "qserv_result_queries_" + userQueryId;
 }
 
 }  // namespace
@@ -60,11 +60,11 @@ std::string g_nextResultTableId(std::string const& userQueryId) {
 namespace lsst::qserv::ccontrol {
 
 // Constructor
-UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
-                                           sql::SqlConnection* resultDbConn,
-                                           std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                           qmeta::CzarId qMetaCzarId, std::string const& userQueryId,
-                                           std::string const& resultDb)
+UserQueryQueries::UserQueryQueries(std::shared_ptr<query::SelectStmt> const& statement,
+                                   sql::SqlConnection* resultDbConn,
+                                   std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
+                                   qmeta::CzarId qMetaCzarId, std::string const& userQueryId,
+                                   std::string const& resultDb)
         : _resultDbConn(resultDbConn),
           _qMetaSelect(qMetaSelect),
           _qMetaCzarId(qMetaCzarId),
@@ -72,14 +72,14 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {
     // The SQL statement should be mostly OK alredy but we need to change
-    // table name, instead of INFORMATION_SCHEMA.PROCESSLIST we use special
-    // Qmeta view with the name InfoSchemaProcessList
+    // table name, instead of INFORMATION_SCHEMA.QUERIES we use special
+    // Qmeta view with the name InfoSchemaQueries
     auto stmt = statement->clone();
     for (auto& tblRef : stmt->getFromList().getTableRefList()) {
         // assume all table refs have to be replaced
         // (in practice we accept only one table in FROM
         tblRef->setDb("");
-        tblRef->setTable("InfoSchemaProcessList");
+        tblRef->setTable("InfoSchemaQueries");
     }
 
     auto qtempl = stmt->getQueryTemplate();
@@ -90,35 +90,13 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
     }
 }
 
-UserQueryProcessList::UserQueryProcessList(bool full, sql::SqlConnection* resultDbConn,
-                                           std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                           qmeta::CzarId qMetaCzarId, std::string const& userQueryId,
-                                           std::string const& resultDb)
-        : _resultDbConn(resultDbConn),
-          _qMetaSelect(qMetaSelect),
-          _qMetaCzarId(qMetaCzarId),
-          _messageStore(std::make_shared<qdisp::MessageStore>()),
-          _resultTableName(::g_nextResultTableId(userQueryId)),
-          _resultDb(resultDb) {
-    _query = "SELECT `qi`.`queryId` `ID`,`qi`.`qType` `TYPE`,`qc`.`czar` `CZAR`,`qc`.`czarId` `CZAR_ID`,"
-             "`qi`.`submitted` `SUBMITTED`,`qs`.`lastUpdate` `UPDATED`,`qi`.`chunkCount` `CHUNKS`,"
-             "`qs`.`completedChunks` `CHUNKS_COMPL`,";
-    _query += (full ? "`qi`.`query`" : "SUBSTR(`qi`.`query`,1,32) `QUERY`");
-    _query +=
-            " FROM `QInfo` AS `qi` "
-            " LEFT OUTER JOIN `QStatsTmp` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`"
-            " JOIN `QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`"
-            " WHERE `qi`.`status` = 'EXECUTING'";
-    _orderBy = "`SUBMITTED`";
-}
-
-std::string UserQueryProcessList::getError() const { return std::string(); }
+std::string UserQueryQueries::getError() const { return std::string(); }
 
 // Attempt to kill in progress.
-void UserQueryProcessList::kill() {}
+void UserQueryQueries::kill() {}
 
 // Submit or execute the query.
-void UserQueryProcessList::submit() {
+void UserQueryQueries::submit() {
     // query database
     std::unique_ptr<sql::SqlResults> results;
     try {
@@ -127,7 +105,7 @@ void UserQueryProcessList::submit() {
         LOGS(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
         std::string message = "Internal failure, error in querying QMeta: ";
         message += exc.what();
-        _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
@@ -138,7 +116,7 @@ void UserQueryProcessList::submit() {
     if (errObj.isSet()) {
         LOGS(_log, LOG_LVL_ERROR, "failed to extract schema from result: " << errObj.errMsg());
         std::string message = "Internal failure, failed to extract schema from result: " + errObj.errMsg();
-        _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
@@ -160,7 +138,7 @@ void UserQueryProcessList::submit() {
     if (!_resultDbConn->runQuery(createTable, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "failed to create result table: " << errObj.errMsg());
         std::string message = "Internal failure, failed to create result table: " + errObj.errMsg();
-        _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
@@ -198,7 +176,7 @@ void UserQueryProcessList::submit() {
         if (!bulkInsert.addRow(values, errObj)) {
             LOGS(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
             std::string message = "Internal failure, error updating result table: " + errObj.errMsg();
-            _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
+            _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
             _qState = ERROR;
             return;
         }
@@ -206,7 +184,7 @@ void UserQueryProcessList::submit() {
     if (!bulkInsert.flush(errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
         std::string message = "Internal failure, error updating result table: " + errObj.errMsg();
-        _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
+        _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
     }
@@ -214,7 +192,7 @@ void UserQueryProcessList::submit() {
     _qState = SUCCESS;
 }
 
-std::string UserQueryProcessList::getResultQuery() const {
+std::string UserQueryQueries::getResultQuery() const {
     std::string ret = "SELECT * FROM " + _resultDb + "." + getResultTableName();
     std::string orderBy = _getResultOrderBy();
     if (not orderBy.empty()) {
@@ -224,13 +202,13 @@ std::string UserQueryProcessList::getResultQuery() const {
 }
 
 // Block until a submit()'ed query completes.
-QueryState UserQueryProcessList::join() {
+QueryState UserQueryQueries::join() {
     // everything should be done in submit()
     return _qState;
 }
 
 // Release resources.
-void UserQueryProcessList::discard() {
+void UserQueryQueries::discard() {
     // no resources
 }
 

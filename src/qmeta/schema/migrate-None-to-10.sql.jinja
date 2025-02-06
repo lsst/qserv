@@ -118,64 +118,52 @@ CREATE TABLE IF NOT EXISTS `QStatsTmp` (
 ENGINE = MEMORY
 COMMENT = 'Table to track statistics of running queries.';
 
--- -----------------------------------------------------
--- View `ShowProcessList`
--- This shows abbreviated Qmeta info suitable for "SHOW PROCESSLIST"
--- -----------------------------------------------------
-CREATE OR REPLACE
-  SQL SECURITY INVOKER
-  VIEW `ShowProcessList` AS
-  SELECT DISTINCT
-    `QInfo`.`queryId` `Id`,
-    `QInfo`.`user` `User`,
-    NULL `Host`,
-    GROUP_CONCAT(DISTINCT `QTable`.`dbName`) `db`,
-    `QInfo`.`qType` `Command`,
-    NULL `Time`,
-    `QInfo`.`status` `State`,
-    `QInfo`.`query` `Info`,
-    NULL `Progress`,
-    `QInfo`.`submitted` `Submitted`,
-    `QInfo`.`completed` `Completed`,
-    `QInfo`.`returned` `Returned`,
-    `QInfo`.`czarId` `CzarId`,
-    REPLACE(`QInfo`.`resultLocation`, '#QID#',  `QInfo`.`queryId`) `ResultLocation`,
-    `QStatsTmp`.`totalChunks` `TotalChunks`,
-    `QStatsTmp`.`completedChunks` `CompletedChunks`,
-    `QStatsTmp`.`lastUpdate` `LastUpdate`
-  FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
-       LEFT OUTER JOIN `QStatsTmp` USING (`queryId`)
-  GROUP BY `QInfo`.`queryId`;
-
--- -----------------------------------------------------
+-- ----------------------------------------------------------------------------------------
 -- View `InfoSchemaProcessList`
 -- This shows full Qmeta info suitable for "SELECT ... FROM INFORMATION_SCHEMA.PROCESSLIST"
--- -----------------------------------------------------
+-- ----------------------------------------------------------------------------------------
 CREATE OR REPLACE
   SQL SECURITY INVOKER
   VIEW `InfoSchemaProcessList` AS
-  SELECT DISTINCT
-    `QInfo`.`queryId` `ID`,
-    `QInfo`.`user` `USER`,
-    NULL `HOST`,
-    GROUP_CONCAT(DISTINCT `QTable`.`dbName`) `DB`,
-    `QInfo`.`qType` `COMMAND`,
-    NULL `TIME`,
-    `QInfo`.`status` `STATE`,
-    `QInfo`.`query` `INFO`,
-    `QInfo`.`submitted` `SUBMITTED`,
-    `QInfo`.`completed` `COMPLETED`,
-    `QInfo`.`returned` `RETURNED`,
-    `QInfo`.`czarId` `CZARID`,
-    REPLACE(`QInfo`.`resultLocation`, '#QID#',  `QInfo`.`queryId`) `RESULTLOCATION`,
-    NULLIF(COUNT(`QWorker`.`chunk`), 0) `NCHUNKS`,
-    `QStatsTmp`.`totalChunks` `TotalChunks`,
-    `QStatsTmp`.`completedChunks` `CompletedChunks`,
-    `QStatsTmp`.`lastUpdate` `LastUpdate`
-  FROM `QInfo` LEFT OUTER JOIN `QTable` USING (`queryId`)
-        LEFT OUTER JOIN `QWorker` USING (`queryId`)
-        LEFT OUTER JOIN `QStatsTmp` USING (`queryId`)
-  GROUP BY `QInfo`.`queryId`;
+  SELECT `qi`.`queryId` `ID`,
+         `qi`.`qType` `TYPE`,
+         `qc`.`czar` `CZAR`,
+         `qc`.`czarId` `CZAR_ID`,
+         `qi`.`submitted` `SUBMITTED`,
+         `qs`.`lastUpdate` `UPDATED`,
+         `qi`.`chunkCount` `CHUNKS`,
+         `qs`.`completedChunks` `CHUNKS_COMP`,
+         `qi`.`query` `QUERY`
+    FROM `QInfo` AS `qi`
+    LEFT OUTER JOIN `QStatsTmp` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`
+    JOIN `QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`
+    WHERE `qi`.`status` = 'EXECUTING';
+
+-- ------------------------------------------------------------------------------------
+-- View `InfoSchemaQueries`
+-- This shows full Qmeta info suitable for "SELECT ... FROM INFORMATION_SCHEMA.QUERIES"
+-- ------------------------------------------------------------------------------------
+CREATE OR REPLACE
+  SQL SECURITY INVOKER
+  VIEW `InfoSchemaQueries` AS
+  SELECT `qi`.`queryId` `ID`,
+         `qi`.`qType` `TYPE`,
+         `qc`.`czar` `CZAR`,
+         `qc`.`czarId` `CZAR_ID`,
+         `qi`.`status` `STATUS`,
+         `qi`.`submitted` `SUBMITTED`,
+         `qi`.`completed` `COMPLETED`,
+         `qi`.`returned` `RETURNED`,
+         `qi`.`chunkCount` `CHUNKS`,
+         `qi`.`collectedBytes` `BYTES`,
+         `qi`.`collectedRows` `ROWS_COLLECTED`,
+         `qi`.`finalRows` `ROWS`,
+         GROUP_CONCAT(DISTINCT `qt`.`dbName`) `DBS`,
+         `qi`.`query` `QUERY`
+    FROM `QInfo` AS `qi`
+    JOIN `QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`
+    LEFT OUTER JOIN `QTable` AS `qt` ON `qi`.`queryId`=`qt`.`queryId`
+    GROUP BY `qi`.`queryId`;
 
 -- -----------------------------------------------------
 -- Table `QMetadata`
@@ -219,4 +207,5 @@ COMMENT = 'Table of messages generated during queries.';
 -- Version 7 added final row count to QInfo.
 -- Version 8 replaced INT with BIGINT in the byte and row counter columns of QInfo.
 -- Version 9 removed the full-text index on the query text from QInfo.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '9');
+-- Version 10 redefined schema of the ProcessList tables.
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '10');
