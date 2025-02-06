@@ -192,7 +192,7 @@ nlohmann::json JobMsg::serializeJson() const {
                                     {"queryFragments", json::array()}});
 
     // These are indexes into _jobDbTablesMap, which is shared between all JobMsg in this UberJobMsg.
-    // &&& TODO:UJ "chunkscantables_indexes" may be unused.
+    // TODO:UJ "chunkscantables_indexes" may be unused.
     auto& jsqCstIndexes = jsJobMsg["chunkscantables_indexes"];
     for (auto const& index : _chunkScanTableIndexes) {
         jsqCstIndexes.push_back(index);

@@ -146,8 +146,8 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     // Parse and verify the json message and then have the uberjob import the file.
     json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
-        // &&& TODO:UJ file response - move construction and parsing
-        // &&& TODO:UJ to a class so it can be added to WorkerCzarComIssue
+        // TODO:UJ file response - move construction and parsing
+        // TODO:UJ to a class so it can be added to WorkerCzarComIssue
         // See wbase::UberJobData::responseFileReady
         string const targetWorkerId = body().required<string>("workerid");
         string const czarName = body().required<string>("czar");

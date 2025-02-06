@@ -45,6 +45,7 @@ class Response;
 }  // namespace lsst::qserv::qhttp
 
 namespace lsst::qserv::wbase {
+class UberJobData;
 class UserQueryInfo;
 }  // namespace lsst::qserv::wbase
 
@@ -97,7 +98,7 @@ private:
                             std::shared_ptr<wbase::UserQueryInfo> const& userQueryInfo,
                             std::shared_ptr<protojson::UberJobMsg> const& uberJobMsg,
                             std::shared_ptr<wcontrol::Foreman> const& foremanPtr,
-                            std::string const& authKeyStr);
+                            std::string const& authKeyStr, std::shared_ptr<wbase::UberJobData> const& ujData);
 
     /// Verify some aspects of the query and call _handleQueryStatus
     nlohmann::json _queryStatus();

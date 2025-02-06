@@ -137,8 +137,8 @@ void WCzarInfo::_sendMessage() {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
-            // TODO:UJ &&& maybe add this czId+ujId to a list of failed uberjobs that can be put
-            // TODO:UJ &&& status return??? Probably overkill.
+            // TODO:UJ Maybe add this czId+ujId to a list of failed uberjobs that can be put
+            // TODO:UJ status return?
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + requestStr + " failed, ex: " + ex.what());

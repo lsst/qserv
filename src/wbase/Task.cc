@@ -182,9 +182,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
     UberJobId ujId = ujData->getUberJobId();
     CzarIdType czId = ujData->getCzarId();
 
-    auto startBuildTasks = CLOCK::now();
     vector<Task::Ptr> vect;  // List of created tasks to be returned.
-
     wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
     UserQueryInfo::Ptr userQueryInfo = queryStats->getUserQueryInfo();
 
@@ -387,16 +385,24 @@ void Task::action(util::CmdData* data) {
     // Get a local copy for safety.
     auto qr = _taskQueryRunner;
     bool success = false;
+    string errStr;
     try {
         success = qr->runQuery();
     } catch (UnsupportedError const& e) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " runQuery threw UnsupportedError " << e.what() << tIdStr);
+        errStr = e.what();
     }
     if (not success) {
         LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << tIdStr);
         if (not getSendChannel()->kill("Foreman::_setRunFunc")) {
             LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel already killed " << tIdStr);
         }
+        // Send a message back saying this UberJobFailed, redundant error messages should be
+        // harmless.
+        util::MultiError multiErr;
+        util::Error err(_chunkId, string("UberJob run error ") + errStr);
+        multiErr.push_back(err);
+        _ujData->responseError(multiErr, -1, false);
     }
 
     // The QueryRunner class access to sendChannel for results is over by this point.
