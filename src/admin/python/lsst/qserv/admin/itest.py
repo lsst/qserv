@@ -207,7 +207,7 @@ class ITestQuery:
             "--binary-as-hex",
             "--skip-column-names",
             "-e",
-            f"SELECT STATE FROM INFORMATION_SCHEMA.PROCESSLIST WHERE ID = {query_id}",
+            f"SELECT STATUS FROM INFORMATION_SCHEMA.QUERIES WHERE ID = {query_id}",
         ]
         _log.debug("SQLCmd.execute waiting for query to complete")
         end_time = time.time() + self.async_timeout
