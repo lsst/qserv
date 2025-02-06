@@ -366,7 +366,7 @@ bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared
     }
     // Delete the result file as nobody will come looking for it.
     _kill(tMtxLock, " buildAndTransmitError");
-    return _uberJobData->responseError(multiErr, task, cancelled);
+    return _uberJobData->responseError(multiErr, task->getChunkId(), cancelled);
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,

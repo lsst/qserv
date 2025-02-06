@@ -84,7 +84,6 @@ void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const&
 
 void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
                                     uint64_t headerCount) {
-    //&&&LOGS(_log, LOG_LVL_TRACE,
     LOGS(_log, LOG_LVL_INFO,
          cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize
                          << " headerCount=" << headerCount);
@@ -118,8 +117,10 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
     _queueUJResponse(method, headers, url, requestContext, requestStr);
 }
 
-bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task,
-                                bool cancelled) {
+bool UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool cancelled) {
+    // TODO:UJ Maybe register this UberJob as failed with a czar notification method
+    //         so that a secondary means can be used to make certain the czar hears about
+    //         the error.
     LOGS(_log, LOG_LVL_INFO, cName(__func__));
     string errorMsg;
     int errorCode = 0;
@@ -131,8 +132,7 @@ bool UberJobData::responseError(util::MultiError& multiErr, std::shared_ptr<Task
         errorCode = -1;
     }
     if (!errorMsg.empty() or (errorCode != 0)) {
-        errorMsg = cName(__func__) + " error(s) in result for chunk #" + to_string(task->getChunkId()) +
-                   ": " + errorMsg;
+        errorMsg = cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ": " + errorMsg;
         LOGS(_log, LOG_LVL_ERROR, errorMsg);
     }
 
@@ -198,7 +198,6 @@ std::string UberJobData::resultFileHttpUrl() {
     auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
 
     string resFilePath = resultFilePath();
-    //&&&auto const fqdn = util::get_current_host_fqdn();
     auto const fqdn = _foreman->getFqdn();
     if (resultDeliveryProtocol != wconfig::ConfigValResultDeliveryProtocol::HTTP) {
         throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
@@ -226,7 +225,7 @@ string UJTransmitCmd::cName(const char* funcN) const {
 }
 
 void UJTransmitCmd::action(util::CmdData* data) {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));  //&&&
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__));
     // Make certain _selfPtr is reset before leaving this function.
     // If a retry is needed, duplicate() is called.
     class ResetSelf {
@@ -257,7 +256,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + _requestContext + " failed, ex: " + ex.what());
     }
-    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " &&& transmit finished");
 
     if (!transmitSuccess) {
         auto sPtr = _selfPtr;
@@ -268,12 +266,12 @@ void UJTransmitCmd::action(util::CmdData* data) {
             auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
             // This will check if the czar is believed to be alive and try the queue the query to be tried
             // again at a lower priority. It it thinks the czar is dead, it will throw it away.
-            // TODO:UJ &&& I have my doubts about this as a reconnected czar may go down in flames
-            //         &&& as it is hit with thousands of these.
-            //         &&& Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
-            //         &&& indicates some messages failed. When the czar sees the flag, it'll request a
-            //         &&& message from the worker that contains all of the failed transmit data and handle
-            //         &&& that. All of these failed transmits should fit in a single message.
+            // TODO:UJ I have my doubts about this as a reconnected czar may go down in flames
+            //         as it is hit with thousands of these.
+            //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
+            //         indicates some messages failed. When the czar sees the flag, it'll request a
+            //         message from the worker that contains all of the failed transmit data and handle
+            //         that. All of these failed transmits should fit in a single message.
             if (wCzInfo->checkAlive(CLOCK::now())) {
                 auto wPool = _foreman->getWPool();
                 if (wPool != nullptr) {
@@ -296,7 +294,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
 }
 
 void UJTransmitCmd::kill() {
-    //&&&string const funcN("UJTransmitCmd::kill");
     LOGS(_log, LOG_LVL_WARN, cName(__func__));
     auto sPtr = _selfPtr;
     _selfPtr.reset();
@@ -306,7 +303,7 @@ void UJTransmitCmd::kill() {
 }
 
 UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));  //&&&
+    LOGS(_log, LOG_LVL_INFO, cName(__func__));
     auto ujD = _ujData.lock();
     if (ujD == nullptr) {
         return nullptr;

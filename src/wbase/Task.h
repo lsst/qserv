@@ -159,17 +159,16 @@ public:
     //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
-         protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive,  //&&&int maxTableSizeMb,
+         protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive,
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
          std::shared_ptr<FileChannelShared> const& sc,
          std::shared_ptr<wpublish::QueryStatistics> const& queryStats_);
-    //&&&, uint16_t resultsHttpPort = 8080);
 
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
 
-    /// &&&
+    /// Create the Tasks needed to run an UberJob on this worker.
     static std::vector<Ptr> createTasksFromUberJobMsg(
             std::shared_ptr<protojson::UberJobMsg> const& uberJobMsg,
             std::shared_ptr<UberJobData> const& ujData,
@@ -177,9 +176,8 @@ public:
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
             mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
-    //&&&uint16_t resultsHttpPort = 8080);
 
-    //&&&
+    /// Create Tasks needed to run unit tests.
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
             std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
@@ -217,13 +215,7 @@ public:
 
     TaskState state() const { return _state; }
     std::string getQueryString() const;
-<<<<<<< HEAD
-    std::string const& resultFileAbsPath() const { return _resultFileAbsPath; }
-    std::string const& resultFileHttpUrl() const { return _resultFileHttpUrl; }
-=======
-    //&&&std::string resultFilePath(); // &&&uj move to UberJobData
-    //&&&std::string resultFileHttpUrl(); // &&&uj move to UberJobData
->>>>>>> 615077b46 (Contention testing.)
+
     bool setTaskQueryRunner(
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
     void freeTaskQueryRunner(TaskQueryRunner* tqr);
@@ -242,7 +234,6 @@ public:
     int getJobId() const { return _jId; }
     int getAttemptCount() const { return _attemptCount; }
     bool getScanInteractive() { return _scanInteractive; }
-    //&&&int64_t getMaxTableSize() const { return _maxTableSize; }
     int64_t getMaxTableSize() const;
 
     protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
@@ -352,26 +343,6 @@ private:
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
     std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
 
-    /* &&&
-    /// The path to the result file.
-    std::string _resultFileAbsPath;
-
-    /// The name of the result file.
-    std::string _resultFileName;
-
-<<<<<<< HEAD
-    /// The HTTP URL for the result file: "http://<host>:<http-port>/" + _resultFileName
-    std::string _resultFileHttpUrl;
-=======
-    /// The XROOTD URL for the result file: "xroot://<host>:<xrootd-port>" + "/" + _resultFileAbsPath
-    /// @note an extra '/' after server:port spec is required to make a "valid" XROOTD url
-    //&&&std::string _resultFileXrootUrl;
-
-    /// The HTTP URL for the result file: "http://<host>:<http-port>" + _resultFilePath
-    //&&&std::string _resultFileHttpUrl;
-    */
->>>>>>> 615077b46 (Contention testing.)
-
     std::atomic<bool> _queryStarted{false};  ///< Set to true when the query is about to be run.
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
@@ -385,7 +356,6 @@ private:
     /// Stores information on the query's resource usage.
     std::weak_ptr<wpublish::QueryStatistics> const _queryStats;
 
-    //&&&int64_t _maxTableSize = 0;
     std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
     memman::MemMan::Ptr _memMan;
 
@@ -411,7 +381,6 @@ private:
     int const _rowLimit;
 
     std::shared_ptr<UberJobData> _ujData;
-    //&&&uint16_t const _resultsHttpPort;
     std::string const _idStr;
 
     bool _unitTest = false;  ///<

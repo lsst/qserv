@@ -103,7 +103,7 @@ private:
     int _attemptCount{-1};   ///< Start at -1 so that first attempt will be 0, see incrAttemptCount().
     ResourceUnit _resource;  ///< path, e.g. /q/LSST/23125
 
-    // &&& delete _respHandler, store errors a different way
+    // TODO:UJ delete _respHandler, store errors a different way
     std::shared_ptr<ResponseHandler> _respHandler;  // probably MergingHandler
     std::shared_ptr<qproc::ChunkQuerySpec> _chunkQuerySpec;
     std::string _chunkResultName;

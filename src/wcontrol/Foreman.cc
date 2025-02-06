@@ -51,7 +51,6 @@
 #include "wdb/SQLBackend.h"
 #include "wpublish/QueriesAndChunks.h"
 #include "wsched/BlendScheduler.h"
-#include "util/Timer.h"  // &&&
 
 using namespace std;
 namespace fs = boost::filesystem;
@@ -85,7 +84,6 @@ namespace lsst::qserv::wcontrol {
 
 Foreman::Ptr Foreman::_globalForeman;
 
-//&&&Foreman::Ptr Foreman::create(Scheduler::Ptr const& scheduler, unsigned int poolSize,
 Foreman::Ptr Foreman::create(wsched::BlendScheduler::Ptr const& scheduler, unsigned int poolSize,
                              unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
                              wpublish::QueriesAndChunks::Ptr const& queries,
@@ -105,7 +103,6 @@ Foreman::Ptr Foreman::create(wsched::BlendScheduler::Ptr const& scheduler, unsig
     return _globalForeman;
 }
 
-//&&&Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
 Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int poolSize,
                  unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
                  wpublish::QueriesAndChunks::Ptr const& queries,
@@ -181,16 +178,8 @@ Foreman::~Foreman() {
 
 void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
     std::vector<util::Command::Ptr> cmds;
-    util::Timer timerQ;  //&&&
-    timerQ.start();
     _queries->addTasks(tasks, cmds);
-    timerQ.stop();
-    util::Timer timerS;  //&&&
-    timerS.start();
     _scheduler->queCmd(cmds);
-    timerS.stop();
-    LOGS(_log, LOG_LVL_WARN,
-         "&&&processTasks  Enqueued UberJob Q=" << timerQ.getElapsed() << " s=" << timerS.getElapsed());
 }
 
 uint16_t Foreman::httpPort() const { return _httpServer->getPort(); }

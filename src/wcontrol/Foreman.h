@@ -115,8 +115,6 @@ public:
      * @param chunkInventory         - a collection of the SSI resources published by the worker
      * @param sqlConnMgr             - for limiting the number of MySQL connections used for tasks
      */
-    //&&&static Ptr create(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int
-    // maxPoolThreads,
     static Ptr create(std::shared_ptr<wsched::BlendScheduler> const& scheduler, unsigned int poolSize,
                       unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
                       std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
@@ -160,7 +158,6 @@ public:
     std::string getFqdn() const { return _fqdn; }
 
 private:
-    //&&&Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigned int maxPoolThreads,
     Foreman(std::shared_ptr<wsched::BlendScheduler> const& scheduler, unsigned int poolSize,
             unsigned int maxPoolThreads, mysql::MySqlConfig const& mySqlConfig,
             std::shared_ptr<wpublish::QueriesAndChunks> const& queries,
@@ -175,7 +172,6 @@ private:
     std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
 
     util::ThreadPool::Ptr _pool;
-    //&&&Scheduler::Ptr _scheduler;
     std::shared_ptr<wsched::BlendScheduler> _scheduler;
 
     util::CommandQueue::Ptr _workerCommandQueue;  ///< dedicated queue for the worker commands

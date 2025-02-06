@@ -180,15 +180,7 @@ bool QueryRunner::runQuery() {
     bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1);
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());
 
-    util::Timer memTimer;
-    memTimer.start();
     bool connOk = _initConnection();
-    memTimer.stop();
-    memWaitHisto.addTime(memTimer.getElapsed());
-    if (memWaitLimiter++ % 100 == 0) {
-        LOGS(_log, LOG_LVL_INFO, "&&& initConnection " << memWaitHisto.getString());
-    }
-
     if (!connOk) {
         // Since there's an error, this will be the last transmit from this QueryRunner.
         if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {

@@ -42,6 +42,7 @@
 
 namespace lsst::qserv::wconfig {
 
+
 /// Provide all configuration parameters for a Qserv worker instance.
 /// Parse an INI configuration file, identify required parameters and ignore
 /// others, analyze and store them inside private member variables, use default
@@ -353,7 +354,7 @@ private:
     CVTUIntPtr _replicationHttpPort =
             util::ConfigValTUInt::create(_configValMap, "replication", "http_port", required, 0);
     CVTUIntPtr _replicationNumHttpThreads =
-            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
+            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 20);
 
     CVTUIntPtr _mysqlPort = util::ConfigValTUInt::create(_configValMap, "mysql", "port", notReq, 4048);
     CVTStrPtr _mysqlSocket = util::ConfigValTStr::create(_configValMap, "mysql", "socket", notReq, "");

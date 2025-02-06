@@ -96,7 +96,7 @@ public:
                            uint64_t headerCount);  // TODO:UJ remove headerCount
 
     /// Let the Czar know there's been a problem.
-    bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+    bool responseError(util::MultiError& multiErr, int chunkId, bool cancelled);
 
     std::string const& getIdStr() const { return _idStr; }
     std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
