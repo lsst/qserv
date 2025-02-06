@@ -180,7 +180,6 @@ SsiService::SsiService(XrdSsiLogger* log) {
     // Set thread pool size.
     unsigned int poolSize = ranges::max({wsched::BlendScheduler::getMinPoolSize(),
                                          workerConfig->getThreadPoolSize(), thread::hardware_concurrency()});
-    poolSize = 64;  //&&&
 
     unsigned int maxPoolThreads = max(workerConfig->getMaxPoolThreads(), poolSize);
 

@@ -180,9 +180,6 @@ void Foreman::processTasks(vector<wbase::Task::Ptr> const& tasks) {
     std::vector<util::Command::Ptr> cmds;
     _queries->addTasks(tasks, cmds);
     _scheduler->queCmd(cmds);
-    timerS.stop();
-    LOGS(_log, LOG_LVL_WARN,
-         "&&&processTasks  Enqueued UberJob Q=" << timerQ.getElapsed() << " s=" << timerS.getElapsed());
 }
 
 uint16_t Foreman::httpPort() const { return _httpServer->getPort(); }

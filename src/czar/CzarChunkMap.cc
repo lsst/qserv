@@ -36,7 +36,6 @@
 #include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
 #include "util/Bug.h"
-#include "util/InstanceCount.h"  //&&&
 #include "util/TimeUtils.h"
 
 using namespace std;
@@ -361,7 +360,6 @@ bool CzarFamilyMap::_read() {
 std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
         qmeta::QMetaChunkMap const& qChunkMap, bool usingChunkSize) {
     // Create new maps.
-    util::InstanceCount ic("CzarFamilyMap::makeNewMaps&&&");
     std::shared_ptr<FamilyMapType> newFamilyMap = make_shared<FamilyMapType>();
 
     // Workers -> Databases map

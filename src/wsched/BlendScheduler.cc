@@ -248,7 +248,7 @@ void BlendScheduler::queCmd(std::vector<util::Command::Ptr> const& cmds) {
             queryStats->tasksAddedToScheduler(targSched, taskCmds.size());
         }
         _infoChanged = true;
-        notify(false);  //&&&notify(true);  // notify all=true
+        notify(true);  // notify all=true
     }
 }
 

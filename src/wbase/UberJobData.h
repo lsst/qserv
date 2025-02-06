@@ -105,37 +105,7 @@ public:
                            uint64_t headerCount);  // TODO:UJ remove headerCount
 
     /// Let the Czar know there's been a problem.
-    void responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl);
-
-    std::string const& getIdStr() const { return _idStr; }
-    std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
-
-    bool getCancelled() const { return _cancelled; }
-
-    /// Cancel all Tasks in this UberJob.
-    void cancelAllTasks();
-
-    /// Returns the LIMIT of rows for the query enforceable at the worker, where values <= 0 indicate
-    /// that there is no limit to the number of rows sent back by the worker.
-    /// Workers can only safely limit rows for queries that have the LIMIT clause without other related
-    /// clauses like ORDER BY.
-    int getRowLimit() const { return _rowLimit; }
-
-    std::string resultFilePath() const;
-    std::string resultFileHttpUrl() const;
-
-    /// Add the tasks defined in the UberJob to this UberJobData object.
-    void addTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
-        std::lock_guard<std::mutex> tLg(_ujTasksMtx);
-        _ujTasks.insert(_ujTasks.end(), tasks.begin(), tasks.end());
-    }
-
-    /// Let the czar know the result is ready.
-    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
-                           uint64_t headerCount);  // TODO:UJ remove headerCount
-
-    /// Let the Czar know there's been a problem.
-    bool responseError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
+    bool responseError(util::MultiError& multiErr, int chunkId, bool cancelled);
 
     std::string const& getIdStr() const { return _idStr; }
     std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }

@@ -175,12 +175,6 @@ bool QueryRunner::runQuery() {
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());
 
     bool connOk = _initConnection();
-    memTimer.stop();
-    memWaitHisto.addTime(memTimer.getElapsed());
-    if (memWaitLimiter++ % 100 == 0) {
-        LOGS(_log, LOG_LVL_INFO, "&&& initConnection " << memWaitHisto.getString());
-    }
-
     if (!connOk) {
         // Since there's an error, this will be the last transmit from this QueryRunner.
         _task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled);
