@@ -124,7 +124,7 @@ arrow::Status ParquetFile::setupBatchReader(int maxBufferSize) {
     reader_builder.properties(arrow_reader_props);
 
     ARROW_ASSIGN_OR_RAISE(_arrow_reader_gbl, reader_builder.Build());
-    ARROW_RETURN_NOT_OK(_arrow_reader_gbl->GetRecordBatchReader(&_rb_reader_gbl));
+    ARROW_ASSIGN_OR_RAISE(_rb_reader_gbl, _arrow_reader_gbl->GetRecordBatchReader());
 
     // Compute the nimber of lines read by each batch in function of the maximum memory
     //     allocated to the process
@@ -165,7 +165,7 @@ int ParquetFile::_getTotalRowNumber(std::string fileName) const {
     PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(fileName, arrow::default_memory_pool()));
 
     std::unique_ptr<parquet::arrow::FileReader> reader;
-    PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader));
+    PARQUET_ASSIGN_OR_THROW(reader, parquet::arrow::OpenFile(infile, arrow::default_memory_pool()));
 
     std::shared_ptr<parquet::FileMetaData> metadata = reader->parquet_reader()->metadata();
 
