@@ -58,7 +58,8 @@ namespace lsst::qserv::wbase {
 
 UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
                          std::string czarHost, int czarPort, uint64_t queryId, int rowLimit,
-                         uint64_t maxTableSizeBytes, std::string const& workerId,
+                         uint64_t maxTableSizeBytes, protojson::ScanInfo::Ptr const& scanInfo,
+                         bool scanInteractive, std::string const& workerId,
                          std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
                          uint16_t resultsHttpPort)
         : _uberJobId(uberJobId),
@@ -73,6 +74,8 @@ UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta
           _authKey(authKey),
           _resultsHttpPort(resultsHttpPort),
           _foreman(foreman),
+          _scanInteractive(scanInteractive),
+          _scanInfo(scanInfo),
           _idStr(string("QID=") + to_string(_queryId) + "_ujId=" + to_string(_uberJobId)) {}
 
 void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared) {
