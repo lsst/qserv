@@ -41,6 +41,10 @@
 
 namespace lsst::qserv {
 
+namespace protojson {
+class ScanInfo;
+}
+
 namespace util {
 class MultiError;
 }
@@ -66,16 +70,19 @@ public:
 
     static Ptr create(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
                       std::string const& czarHost, int czarPort, uint64_t queryId, int rowLimit,
-                      uint64_t maxTableSizeBytes, std::string const& workerId,
+                      uint64_t maxTableSizeBytes, std::shared_ptr<protojson::ScanInfo> const& scanInfo,
+                      bool scanInteractive, std::string const& workerId,
                       std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
                       uint16_t resultsHttpPort = 8080) {
         return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, rowLimit,
-                                   maxTableSizeBytes, workerId, foreman, authKey, resultsHttpPort));
+                                   maxTableSizeBytes, scanInfo, scanInteractive, workerId, foreman, authKey,
+                                   resultsHttpPort));
     }
     /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
 
-    void setScanInteractive(bool scanInteractive) { _scanInteractive = scanInteractive; }
+    bool getScanInteractive() const { return _scanInteractive; }
+    std::shared_ptr<protojson::ScanInfo> getScanInfo() const { return _scanInfo; }
 
     UberJobId getUberJobId() const { return _uberJobId; }
     qmeta::CzarId getCzarId() const { return _czarId; }
@@ -119,6 +126,7 @@ public:
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
                 int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,
+                std::shared_ptr<protojson::ScanInfo> const& scanInfo, bool scanInteractive,
                 std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
                 std::string const& authKey, uint16_t resultsHttpPort);
 
@@ -146,10 +154,13 @@ private:
 
     std::mutex _ujTasksMtx;  ///< Protects _ujTasks.
 
-    std::string const _idStr;
-
     /// True if this an interactive (aka high priority) user query.
     std::atomic<bool> _scanInteractive;
+
+    /// Pointer to scan rating and table information.
+    std::shared_ptr<protojson::ScanInfo> _scanInfo;
+
+    std::string const _idStr;
 
     std::atomic<bool> _cancelled{false};  ///< Set to true if this was cancelled.
 };

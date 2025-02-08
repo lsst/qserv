@@ -123,10 +123,13 @@ void UberJob::runUberJob() {
             czarConfig->name(), czarConfig->id(), czarConfig->replicationHttpPort(),
             util::get_current_host_fqdn(), czar::Czar::czarStartupTime);
     auto scanInfoPtr = exec->getScanInfo();
+    bool scanInteractive = exec->getScanInteractive();
 
     auto uberJobMsg = protojson::UberJobMsg::create(
             http::MetaModule::version, czarConfig->replicationInstanceId(), czarConfig->replicationAuthKey(),
-            czInfo, _wContactInfo, _queryId, _uberJobId, _rowLimit, maxTableSizeMB, scanInfoPtr, _jobs);
+            czInfo, _wContactInfo, _queryId, _uberJobId, _rowLimit, maxTableSizeMB, scanInfoPtr,
+            scanInteractive, _jobs);
+
     json request = uberJobMsg->serializeJson();
 
     jobsLock.unlock();  // unlock so other _jobsMtx threads can advance while this waits for transmit

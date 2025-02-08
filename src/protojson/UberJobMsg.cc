@@ -49,7 +49,7 @@ namespace lsst::qserv::protojson {
 UberJobMsg::UberJobMsg(unsigned int metaVersion, std::string const& replicationInstanceId,
                        std::string const& replicationAuthKey, CzarContactInfo::Ptr const& czInfo,
                        string const& workerId, QueryId qId, UberJobId ujId, int rowLimit, int maxTableSizeMB,
-                       ScanInfo::Ptr const& scanInfo_,
+                       ScanInfo::Ptr const& scanInfo_, bool scanInteractive_,
                        std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs)
         : _metaVersion(metaVersion),
           _replicationInstanceId(replicationInstanceId),
@@ -61,6 +61,7 @@ UberJobMsg::UberJobMsg(unsigned int metaVersion, std::string const& replicationI
           _rowLimit(rowLimit),
           _maxTableSizeMB(maxTableSizeMB),
           _scanInfo(scanInfo_),
+          _scanInteractive(scanInteractive_),
           _idStr("QID=" + to_string(_qId) + "_ujId=" + to_string(_ujId)) {
     for (auto& jobPtr : jobs) {
         // This creates the JobMsg objects for all relates jobs and their fragments.
@@ -82,6 +83,7 @@ json UberJobMsg::serializeJson() const {
                     {"dbtables_map", _jobDbTablesMap->serializeJson()},
                     {"maxtablesizemb", _maxTableSizeMB},
                     {"scaninfo", _scanInfo->serializeJson()},
+                    {"scaninteractive", _scanInteractive},
                     {"jobs", json::array()}};
 
     auto& jsJobs = ujmJson["jobs"];
@@ -123,12 +125,14 @@ UberJobMsg::Ptr UberJobMsg::createFromJson(nlohmann::json const& ujmJson) {
         auto rowLimit = http::RequestBodyJSON::required<int>(ujmJson, "rowlimit");
         auto maxTableSizeMB = http::RequestBodyJSON::required<int>(ujmJson, "maxtablesizemb");
         auto czInfo = CzarContactInfo::createFromJson(ujmJson["czarinfo"]);
+        auto scanInteractive_ = http::RequestBodyJSON::required<bool>(ujmJson, "scaninteractive");
         auto jsUjJobs = http::RequestBodyJSON::required<json>(ujmJson, "jobs");
 
         std::vector<std::shared_ptr<qdisp::JobQuery>> emptyJobs;
 
         Ptr ujmPtr = Ptr(new UberJobMsg(metaVersion, replicationInstanceId, replicationAuthKey, czInfo,
-                                        workerId, qId, ujId, rowLimit, maxTableSizeMB, scanInfo_, emptyJobs));
+                                        workerId, qId, ujId, rowLimit, maxTableSizeMB, scanInfo_,
+                                        scanInteractive_, emptyJobs));
 
         auto const& jsSubQueriesMap = http::RequestBodyJSON::required<json>(ujmJson, "subqueries_map");
         ujmPtr->_jobSubQueryTempMap = JobSubQueryTempMap::createFromJson(jsSubQueriesMap);
@@ -166,8 +170,6 @@ JobMsg::JobMsg(std::shared_ptr<qdisp::JobQuery> const& jobPtr,
     _jobId = descr->id();
     _attemptCount = descr->getAttemptCount();
     _chunkQuerySpecDb = chunkQuerySpec->db;
-    _scanRating = chunkQuerySpec->scanInfo->scanRating;
-    _scanInteractive = chunkQuerySpec->scanInteractive;
     _chunkId = chunkQuerySpec->chunkId;
 
     // Add scan tables (TODO:UJ Verify this is the same for all jobs.)
@@ -185,8 +187,6 @@ nlohmann::json JobMsg::serializeJson() const {
     auto jsJobMsg = nlohmann::json({{"jobId", _jobId},
                                     {"attemptCount", _attemptCount},
                                     {"querySpecDb", _chunkQuerySpecDb},
-                                    {"scanPriority", _scanRating},
-                                    {"scanInteractive", _scanInteractive},
                                     {"chunkId", _chunkId},
                                     {"chunkscantables_indexes", nlohmann::json::array()},
                                     {"queryFragments", json::array()}});
@@ -207,13 +207,10 @@ nlohmann::json JobMsg::serializeJson() const {
 }
 
 JobMsg::JobMsg(JobSubQueryTempMap::Ptr const& jobSubQueryTempMap, JobDbTablesMap::Ptr const& jobDbTablesMap,
-               JobId jobId, int attemptCount, std::string const& chunkQuerySpecDb, int scanRating,
-               bool scanInteractive, int chunkId)
+               JobId jobId, int attemptCount, std::string const& chunkQuerySpecDb, int chunkId)
         : _jobId(jobId),
           _attemptCount(attemptCount),
           _chunkQuerySpecDb(chunkQuerySpecDb),
-          _scanRating(scanRating),
-          _scanInteractive(scanInteractive),
           _chunkId(chunkId),
           _jobSubQueryTempMap(jobSubQueryTempMap),
           _jobDbTablesMap(jobDbTablesMap) {}
@@ -224,14 +221,12 @@ JobMsg::Ptr JobMsg::createFromJson(nlohmann::json const& ujJson,
     JobId jobId = http::RequestBodyJSON::required<JobId>(ujJson, "jobId");
     int attemptCount = http::RequestBodyJSON::required<int>(ujJson, "attemptCount");
     string chunkQuerySpecDb = http::RequestBodyJSON::required<string>(ujJson, "querySpecDb");
-    int scanRating = http::RequestBodyJSON::required<int>(ujJson, "scanPriority");
-    bool scanInteractive = http::RequestBodyJSON::required<bool>(ujJson, "scanInteractive");
     int chunkId = http::RequestBodyJSON::required<int>(ujJson, "chunkId");
 
     json jsQFrags = http::RequestBodyJSON::required<json>(ujJson, "queryFragments");
 
-    Ptr jMsgPtr = Ptr(new JobMsg(jobSubQueryTempMap, jobDbTablesMap, jobId, attemptCount, chunkQuerySpecDb,
-                                 scanRating, scanInteractive, chunkId));
+    Ptr jMsgPtr = Ptr(
+            new JobMsg(jobSubQueryTempMap, jobDbTablesMap, jobId, attemptCount, chunkQuerySpecDb, chunkId));
     json jsChunkTblIndexes = http::RequestBodyJSON::required<json>(ujJson, "chunkscantables_indexes");
     jMsgPtr->_chunkScanTableIndexes = jsChunkTblIndexes.get<std::vector<int>>();
     jMsgPtr->_jobFragments =
