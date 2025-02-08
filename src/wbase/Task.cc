@@ -110,7 +110,6 @@ atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 /// the util::CommandThreadPool is not called here.
 Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
            size_t templateId, bool hasSubchunks, int subchunkId, string const& db,
-           protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive,
            vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
            shared_ptr<FileChannelShared> const& sc,
            std::shared_ptr<wpublish::QueryStatistics> const& queryStats_)

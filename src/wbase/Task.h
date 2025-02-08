@@ -179,8 +179,7 @@ public:
     /// Create Tasks needed to run unit tests.
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-            protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
+            std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
 
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
