@@ -125,6 +125,8 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         uint64_t maxTableSizeMb = uberJobMsg->getMaxTableSizeMb();
         uint64_t const MB_SIZE_BYTES = 1024 * 1024;
         uint64_t maxTableSizeBytes = maxTableSizeMb * MB_SIZE_BYTES;
+        auto scanInfo = uberJobMsg->getScanInfo();
+        bool scanInteractive = uberJobMsg->getScanInteractive();
 
         // Get or create QueryStatistics and UserQueryInfo instances.
         auto queryStats = foreman()->getQueriesAndChunks()->addQueryId(ujQueryId, ujCzInfo->czId);
@@ -144,10 +146,10 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
 
         // It is important to create UberJobData at this point as it will be the only way to
         // inform the czar of errors after this function returns.
-        auto ujData =
-                wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
-                                           ujCzInfo->czPort, ujQueryId, ujRowLimit, maxTableSizeBytes,
-                                           targetWorkerId, foremanPtr, authKeyStr, foremanPtr->httpPort());
+        auto ujData = wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
+                                                 ujCzInfo->czPort, ujQueryId, ujRowLimit, maxTableSizeBytes,
+                                                 scanInfo, scanInteractive, targetWorkerId, foremanPtr,
+                                                 authKeyStr, foremanPtr->httpPort());
 
         auto lFunc = [ujId, ujQueryId, ujCzInfo, ujRowLimit, maxTableSizeBytes, targetWorkerId, userQueryInfo,
                       uberJobMsg, foremanPtr, authKeyStr, ujData](util::CmdData*) {

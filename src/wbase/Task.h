@@ -155,11 +155,10 @@ public:
     //  - fragmentNumber seems pointless
     //  - hasSubchunks seems redundant.
     //  Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
-    //  Candidates: scanInfo, maxTableSizeMb, FileChannelShared, resultsHttpPort.
+    //  Candidates: maxTableSizeMb, FileChannelShared, resultsHttpPort.
     //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
-         protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive,
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
          std::shared_ptr<FileChannelShared> const& sc,
          std::shared_ptr<wpublish::QueryStatistics> const& queryStats_);
@@ -180,8 +179,7 @@ public:
     /// Create Tasks needed to run unit tests.
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-            protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
+            std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
 
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
@@ -232,10 +230,10 @@ public:
     size_t getTemplateId() const { return _templateId; }
     int getJobId() const { return _jId; }
     int getAttemptCount() const { return _attemptCount; }
-    bool getScanInteractive() { return _scanInteractive; }
+    bool getScanInteractive() const;
     int64_t getMaxTableSize() const;
 
-    protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
+    protojson::ScanInfo::Ptr getScanInfo() const;
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
     bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
@@ -347,8 +345,6 @@ private:
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
-    protojson::ScanInfo::Ptr _scanInfo;
-    bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
 

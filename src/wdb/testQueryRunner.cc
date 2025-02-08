@@ -99,8 +99,6 @@ struct Fixture {
                                     {"jobId", mInfo.jobId},
                                     {"attemptCount", mInfo.attemptCount},
                                     {"querySpecDb", mInfo.db},
-                                    {"scanPriority", mInfo.scanRating},
-                                    {"scanInteractive", mInfo.scanInteractive},
                                     {"maxTableSize", mInfo.maxTableSize},
                                     {"chunkScanTables", nlohmann::json::array()},
                                     {"chunkId", mInfo.chunkId},
@@ -161,14 +159,17 @@ BOOST_AUTO_TEST_CASE(Simple) {
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 9);
     auto const queries = queriesAndChunks();
-    auto ujData = lsst::qserv::wbase::UberJobData::create(
-            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-            mInfo.rowLimit, mInfo.maxTableSize, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
+
     auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
-    vector<Task::Ptr> taskVect = Task::createTasksForUnitTest(ujData, *msgJson, sChannel, scanInfo,
-                                                              mInfo.scanInteractive, mInfo.maxTableSize, crm);
+    auto ujData = lsst::qserv::wbase::UberJobData::create(
+            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+            mInfo.rowLimit, mInfo.maxTableSize, scanInfo, mInfo.scanInteractive, mInfo.targWorkerId,
+            mInfo.foreman, mInfo.authKey);
+
+    vector<Task::Ptr> taskVect =
+            Task::createTasksForUnitTest(ujData, *msgJson, sChannel, mInfo.maxTableSize, crm);
 
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
@@ -186,14 +187,15 @@ BOOST_AUTO_TEST_CASE(Output) {
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);
     SqlConnMgr::Ptr sqlConnMgr = make_shared<SqlConnMgr>(20, 9);
     auto const queries = queriesAndChunks();
-    auto ujData = lsst::qserv::wbase::UberJobData::create(
-            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
-            mInfo.rowLimit, mInfo.maxTableSize, mInfo.targWorkerId, mInfo.foreman, mInfo.authKey);
     auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
     scanInfo->scanRating = mInfo.scanRating;
     scanInfo->infoTables.emplace_back(mInfo.db, mInfo.table, mInfo.lockInMemory, mInfo.scanRating);
-    vector<Task::Ptr> taskVect = Task::createTasksForUnitTest(ujData, *msgJson, sc, scanInfo,
-                                                              mInfo.scanInteractive, mInfo.maxTableSize, crm);
+    auto ujData = lsst::qserv::wbase::UberJobData::create(
+            mInfo.uberJobId, mInfo.czarName, mInfo.czarId, mInfo.czarHostName, mInfo.czarPort, mInfo.queryId,
+            mInfo.rowLimit, mInfo.maxTableSize, scanInfo, mInfo.scanInteractive, mInfo.targWorkerId,
+            mInfo.foreman, mInfo.authKey);
+
+    vector<Task::Ptr> taskVect = Task::createTasksForUnitTest(ujData, *msgJson, sc, mInfo.maxTableSize, crm);
 
     Task::Ptr task = taskVect[0];
     QueryRunner::Ptr a(QueryRunner::newQueryRunner(task, crm, newMySqlConfig(), sqlConnMgr, queries));
