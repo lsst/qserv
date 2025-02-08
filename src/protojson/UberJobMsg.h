@@ -204,8 +204,6 @@ public:
     JobId getJobId() const { return _jobId; }
     int getAttemptCount() const { return _attemptCount; }
     std::string getChunkQuerySpecDb() const { return _chunkQuerySpecDb; }
-    int getScanRating() const { return _scanRating; }
-    bool getScanInteractive() const { return _scanInteractive; }
     int getChunkId() const { return _chunkId; }
 
     std::vector<int> const& getChunkScanTableIndexes() const { return _chunkScanTableIndexes; }
@@ -217,14 +215,11 @@ private:
            JobDbTablesMap::Ptr const& jobDbTablesMap);
 
     JobMsg(JobSubQueryTempMap::Ptr const& jobSubQueryTempMap, JobDbTablesMap::Ptr const& jobDbTablesMap,
-           JobId jobId, int attemptCount, std::string const& chunkQuerySpecDb, int scanRating,
-           bool scanInteractive, int chunkId);
+           JobId jobId, int attemptCount, std::string const& chunkQuerySpecDb, int chunkId);
 
     JobId _jobId;
     int _attemptCount;
     std::string _chunkQuerySpecDb;  // &&& remove, use value for UJ
-    int _scanRating;                // &&& remove, use value for UJ
-    bool _scanInteractive;          // &&& remove, use value for UJ
     int _chunkId;
     JobFragment::VectPtr _jobFragments{new JobFragment::Vect()};
 
@@ -253,10 +248,10 @@ public:
     static Ptr create(unsigned int metaVersion, std::string const& replicationInstanceId,
                       std::string const& replicationAuthKey, CzarContactInfo::Ptr const& czInfo,
                       WorkerContactInfo::Ptr const& wInfo, QueryId qId, UberJobId ujId, int rowLimit,
-                      int maxTableSizeMB, ScanInfo::Ptr const& scanInfo_,
+                      int maxTableSizeMB, ScanInfo::Ptr const& scanInfo_, bool scanInteractive_,
                       std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs) {
         return Ptr(new UberJobMsg(metaVersion, replicationInstanceId, replicationAuthKey, czInfo, wInfo->wId,
-                                  qId, ujId, rowLimit, maxTableSizeMB, scanInfo_, jobs));
+                                  qId, ujId, rowLimit, maxTableSizeMB, scanInfo_, scanInteractive_, jobs));
     }
 
     static Ptr createFromJson(nlohmann::json const& ujJson);
@@ -278,13 +273,16 @@ public:
 
     ScanInfo::Ptr getScanInfo() const { return _scanInfo; }
 
+    bool getScanInteractive() const { return _scanInteractive; }
+
     std::string const& getIdStr() const { return _idStr; }
 
 private:
     UberJobMsg(unsigned int metaVersion, std::string const& replicationInstanceId,
                std::string const& replicationAuthKey, CzarContactInfo::Ptr const& czInfo,
                std::string const& workerId, QueryId qId, UberJobId ujId, int rowLimit, int maxTableSizeMB,
-               ScanInfo::Ptr const& scanInfo_, std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs);
+               ScanInfo::Ptr const& scanInfo_, bool scanInteractive,
+               std::vector<std::shared_ptr<qdisp::JobQuery>> const& jobs);
 
     unsigned int _metaVersion;  // "version", http::MetaModule::version
     // czar
@@ -307,6 +305,9 @@ private:
     JobMsg::VectPtr _jobMsgVect{new JobMsg::Vect()};
 
     ScanInfo::Ptr _scanInfo{ScanInfo::create()};  ///< Information for shared scan rating.
+
+    /// True if the user query has been designated interactive (quick + high priority)
+    bool _scanInteractive;
 
     std::string const _idStr;
 };

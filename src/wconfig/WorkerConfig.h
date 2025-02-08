@@ -220,6 +220,10 @@ public:
     /// @param port The actual port number.
     void setReplicationHttpPort(uint16_t port);
 
+    /// The number of seconds a czar needs to be incommunicado before being considered
+    /// dead by a worker.
+    unsigned int getCzarDeadTimeSec() const { return _czarDeadTimeSec->getVal(); }
+
     /// @return the JSON representation of the configuration parameters.
     /// @note The object has two collections of the parameters: 'input' - for
     /// parameters that were proided to the construction of the class, and
@@ -373,6 +377,8 @@ private:
             util::ConfigValTStr::create(_configValMap, "qpool", "RunSizes", notReq, "30:20:20:10");
     CVTStrPtr _qPoolMinRunningSizes =
             util::ConfigValTStr::create(_configValMap, "qpool", "MinRunningSizes", notReq, "3:3:3:3");
+    CVTUIntPtr _czarDeadTimeSec =
+            util::ConfigValTUInt::create(_configValMap, "czar", "DeadTimeSec", notReq, 180);
 };
 
 }  // namespace lsst::qserv::wconfig

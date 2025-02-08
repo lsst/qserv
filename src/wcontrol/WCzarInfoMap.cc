@@ -154,7 +154,8 @@ bool WCzarInfo::checkAlive(TIMEPOINT tmMark) {
     lock_guard<mutex> lg(_wciMtx);
     if (_alive) {
         auto timeSinceContact = tmMark - _lastTouch;
-        if (timeSinceContact >= 120s) {  // TODO:UJ get _deadTime from config &&&
+        std::chrono::seconds deadTime(wconfig::WorkerConfig::instance()->getCzarDeadTimeSec());
+        if (timeSinceContact >= deadTime) {
             // Contact with the czar has timed out.
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " czar timeout");
             _alive = false;
