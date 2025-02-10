@@ -227,6 +227,7 @@ int QhttpTestApp::runImpl() {
                       cout << ::timestamp() << "Request: " << ::senderIpAddr(req) << "  /body/dump" << endl;
                   qhttp::MultiPartParser::parse(req, make_shared<::SimpleRequestProcessor>(resp));
               }}});
+    httpServer->addStaticContent("/static/*", "/tmp");
 
     // Make sure the service started before launching any BOOST ASIO threads.
     // This will prevent threads from finishing due to a lack of work to be done.
