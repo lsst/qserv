@@ -68,14 +68,15 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
 
-string buildResultFilePath(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMsg,
-                           string const& resultsDirname) {
+string buildResultFileName(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMsg) {
+    return to_string(taskMsg->czarid()) + "-" + to_string(taskMsg->queryid()) + "-" +
+           to_string(taskMsg->jobid()) + "-" + to_string(taskMsg->chunkid()) + "-" +
+           to_string(taskMsg->attemptcount()) + ".proto";
+}
+
+string buildResultFilePath(string const& resultFileName, string const& resultsDirname) {
     if (resultsDirname.empty()) return resultsDirname;
-    fs::path path(resultsDirname);
-    path /= to_string(taskMsg->czarid()) + "-" + to_string(taskMsg->queryid()) + "-" +
-            to_string(taskMsg->jobid()) + "-" + to_string(taskMsg->chunkid()) + "-" +
-            to_string(taskMsg->attemptcount()) + ".proto";
-    return path.string();
+    return fs::weakly_canonical(fs::path(resultsDirname) / resultFileName).string();
 }
 
 size_t const MB_SIZE_BYTES = 1024 * 1024;
@@ -139,15 +140,16 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
     // to advice which result delivery channel to use.
     auto const workerConfig = wconfig::WorkerConfig::instance();
     auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
-    _resultFilePath = ::buildResultFilePath(t, workerConfig->resultsDirname());
+    _resultFileName = ::buildResultFileName(t);
+    _resultFileAbsPath = ::buildResultFilePath(_resultFileName, workerConfig->resultsDirname());
     auto const fqdn = util::get_current_host_fqdn();
     if (resultDeliveryProtocol == wconfig::ConfigValResultDeliveryProtocol::XROOT) {
         // NOTE: one extra '/' after the <host>[:<port>] spec is required to make
         // a "valid" XROOTD url.
         _resultFileXrootUrl = "xroot://" + fqdn + ":" + to_string(workerConfig->resultsXrootdPort()) + "/" +
-                              _resultFilePath;
+                              _resultFileAbsPath;
     } else if (resultDeliveryProtocol == wconfig::ConfigValResultDeliveryProtocol::HTTP) {
-        _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + _resultFilePath;
+        _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + "/" + _resultFileName;
     } else {
         throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
                             wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));

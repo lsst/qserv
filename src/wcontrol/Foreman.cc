@@ -110,17 +110,9 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
     _mark = make_shared<util::HoldTrack::Mark>(ERR_LOC, "Forman Test Msg");
 
     // Read-only access to the result files via the HTTP protocol's method "GET"
-    //
-    // NOTE: The following config doesn't seem to work due to multiple instances
-    //       of '/' that's present in a value passed for the pattern parameter
-    //      (the first parameter) of the called method.
-    //
-    // _httpServer->addStaticContent(workerConfig->resultsDirname() + "/*", "/");
-    //
-    // Using this insecure config instead. The problem will get fixed later.
     auto const workerConfig = wconfig::WorkerConfig::instance();
-    _httpServer->addStaticContent("/*", "/");
-    _httpServer->addHandler("DELETE", workerConfig->resultsDirname() + "/:file",
+    _httpServer->addStaticContent("/*", workerConfig->resultsDirname());
+    _httpServer->addHandler("DELETE", "/:file",
                             [](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                 resp->sendStatus(::removeResultFile(req->path));
                             });

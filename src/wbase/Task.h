@@ -207,7 +207,7 @@ public:
     TaskState state() const { return _state; }
     std::string getQueryString() const;
     int getQueryFragmentNum() { return _queryFragmentNum; }
-    std::string const& resultFilePath() const { return _resultFilePath; }
+    std::string const& resultFileAbsPath() const { return _resultFileAbsPath; }
     std::string const& resultFileXrootUrl() const { return _resultFileXrootUrl; }
     std::string const& resultFileHttpUrl() const { return _resultFileHttpUrl; }
     bool setTaskQueryRunner(
@@ -334,13 +334,16 @@ private:
     std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
 
     /// The path to the result file.
-    std::string _resultFilePath;
+    std::string _resultFileAbsPath;
 
-    /// The XROOTD URL for the result file: "xroot://<host>:<xrootd-port>" + "/" + _resultFilePath
+    /// The name of the result file.
+    std::string _resultFileName;
+
+    /// The XROOTD URL for the result file: "xroot://<host>:<xrootd-port>" + "/" + _resultFileAbsPath
     /// @note an extra '/' after server:port spec is required to make a "valid" XROOTD url
     std::string _resultFileXrootUrl;
 
-    /// The HTTP URL for the result file: "http://<host>:<http-port>" + _resultFilePath
+    /// The HTTP URL for the result file: "http://<host>:<http-port>/" + _resultFileName
     std::string _resultFileHttpUrl;
 
     std::atomic<bool> _queryStarted{false};  ///< Set to true when the query is about to be run.
