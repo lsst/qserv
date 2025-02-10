@@ -85,6 +85,8 @@ size_t const MB_SIZE_BYTES = 1024 * 1024;
 
 namespace lsst::qserv::wbase {
 
+string const Task::_fqdn = util::get_current_host_fqdn();
+
 // Task::ChunkEqual functor
 bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if (!x || !y) {
@@ -142,14 +144,13 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
     auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
     _resultFileName = ::buildResultFileName(t);
     _resultFileAbsPath = ::buildResultFilePath(_resultFileName, workerConfig->resultsDirname());
-    auto const fqdn = util::get_current_host_fqdn();
     if (resultDeliveryProtocol == wconfig::ConfigValResultDeliveryProtocol::XROOT) {
         // NOTE: one extra '/' after the <host>[:<port>] spec is required to make
         // a "valid" XROOTD url.
-        _resultFileXrootUrl = "xroot://" + fqdn + ":" + to_string(workerConfig->resultsXrootdPort()) + "/" +
+        _resultFileXrootUrl = "xroot://" + _fqdn + ":" + to_string(workerConfig->resultsXrootdPort()) + "/" +
                               _resultFileAbsPath;
     } else if (resultDeliveryProtocol == wconfig::ConfigValResultDeliveryProtocol::HTTP) {
-        _resultFileHttpUrl = "http://" + fqdn + ":" + to_string(resultsHttpPort) + "/" + _resultFileName;
+        _resultFileHttpUrl = "http://" + _fqdn + ":" + to_string(resultsHttpPort) + "/" + _resultFileName;
     } else {
         throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
                             wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));

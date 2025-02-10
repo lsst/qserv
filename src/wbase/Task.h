@@ -381,6 +381,8 @@ private:
     TIMEPOINT _bootedTime;
 
     bool _unitTest = false;  ///<
+
+    static std::string const _fqdn;  ///< Fully qualified domain name of the host. Acquired once at startup.
 };
 
 }  // namespace lsst::qserv::wbase
