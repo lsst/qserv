@@ -168,7 +168,6 @@ void UberJob::runUberJob() {
         _unassignJobs();  // locks _jobsMtx
         setStatusIfOk(qmeta::JobStatus::RESPONSE_ERROR,
                       cName(__func__) + " not transmitSuccess " + exceptionWhat);
-
     } else {
         setStatusIfOk(qmeta::JobStatus::REQUEST, cName(__func__) + " transmitSuccess");  // locks _jobsMtx
     }
@@ -310,26 +309,37 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
             return;
         }
         uint64_t resultRows = 0;
-        auto [flushSuccess, flushShouldCancel] =
+        auto [flushSuccess, mergeHappened] =
                 ujPtr->getRespHandler()->flushHttp(fileUrl, rowCount, resultRows);
-        LOGS(_log, LOG_LVL_DEBUG, ujPtr->cName(__func__) << "::fileCollectFunc");
+        LOGS(_log, LOG_LVL_TRACE,
+             ujPtr->cName(__func__) << "::fileCollectFunc success=" << flushSuccess
+                                    << " mergeHappened=" << mergeHappened);
         if (!flushSuccess) {
-            // This would probably indicate malformed file+rowCount or
-            // writing the result table failed.
+            bool flushShouldCancel = false;
+            if (mergeHappened) {
+                // This would probably indicate malformed file+rowCount or writing the result table failed.
+                // If any merging happened, the result table is ruined.
+                LOGS(_log, LOG_LVL_ERROR,
+                     ujPtr->cName(__func__)
+                             << "::fileCollectFunc flushHttp failed after merging, results ruined.");
+                flushShouldCancel = true;
+            } else {
+                // Perhaps something went wrong with file collection, so it is worth trying the jobs again
+                // by abandoning this UberJob.
+                LOGS(_log, LOG_LVL_ERROR,
+                     ujPtr->cName(__func__) << "::fileCollectFunc flushHttp failed, retrying Jobs.");
+            }
             ujPtr->_importResultError(flushShouldCancel, "mergeError", "merging failed");
         }
 
-        // At this point all data for this job have been read, there's no point in
-        // having XrdSsi wait for anything.
+        // At this point all data for this job have been read.
         ujPtr->_importResultFinish(resultRows);
     };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(fileCollectFunc));
     exec->queueFileCollect(cmd);
 
-    // If the query meets the limit row complete complete criteria, it will start
-    // squashing superfluous results so the answer can be returned quickly.
-
+    // The file collection has been queued for later, let the worker know that it's okay so far.
     json jsRet = {{"success", 1}, {"errortype", ""}, {"note", "queued for collection"}};
     return jsRet;
 }
