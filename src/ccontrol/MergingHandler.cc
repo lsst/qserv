@@ -87,7 +87,11 @@ lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
             }
         };
 
-
+/// If success, then everything is fine.
+/// If not success, and not mergeHappened, the user query can be saved by abandoning
+/// this UberJob. If mergeHappened, the result table is fouled and the user query is ruined.
+/// @return bool success - true if operation was successful.
+/// @return bool mergeHappened - true if merging was started.
 std::tuple<bool, bool> readHttpFileAndMergeHttp(
         lsst::qserv::qdisp::UberJob::Ptr const& uberJob, string const& httpUrl,
         function<bool(char const*, uint32_t, bool&)> const& messageIsReady,
@@ -121,7 +125,7 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
     // The value is stays 0 while reading the frame header.
     uint32_t msgSizeBytes = 0;
     bool success = true;
-    bool mergeSuccess = true;
+    bool mergeHappened = false;
     int headerCount = 0;
     uint64_t totalBytesRead = 0;
     try {
@@ -206,9 +210,12 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
                         }
 
                         // Parse and evaluate the message.
-                        mergeSuccess = messageIsReady(msgBuf.get(), msgSizeBytes, last);
+                        //&&&mergeHappened = messageIsReady(msgBuf.get(), msgSizeBytes, last);
+                        mergeHappened = true;
+                        bool messageReadyResult = messageIsReady(msgBuf.get(), msgSizeBytes, last);
                         totalBytesRead += msgSizeBytes;
-                        if (!mergeSuccess) {
+                        //&&&if (!mergeHappened) {
+                        if (!messageReadyResult) {
                             success = false;
                             throw runtime_error("message processing failed at offset " +
                                                 to_string(offset - msgSizeBytes) + ", file: " + httpUrl);
@@ -249,8 +256,8 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
     }
     // If the merge failed, that indicates something went wrong in the local database table,
     // is likely this user query is doomed and should be cancelled.
-    LOGS(_log, LOG_LVL_DEBUG, context << " end succes=" << success << " mergeSuccess=" << mergeSuccess);
-    return {success, mergeSuccess};
+    LOGS(_log, LOG_LVL_DEBUG, context << " end succes=" << success << " mergeSuccess=" << mergeHappened);
+    return {success, mergeHappened};
 }
 
 }  // namespace
