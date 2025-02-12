@@ -28,7 +28,6 @@
 #include <stdexcept>
 
 // Third party headers
-#include "XrdSsi/XrdSsiLogger.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -43,20 +42,6 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.cconfig.CzarConfig");
 
-void QservLogger(struct timeval const& mtime, unsigned long tID, const char* msg, int mlen) {
-    static log4cxx::spi::LocationInfo xrdLoc(
-            "client", log4cxx::spi::LocationInfo::calcShortFileName("client"), "<xrdssi>", 0);
-    static LOG_LOGGER myLog = LOG_GET("lsst.qserv.xrdssi.msgs");
-
-    if (myLog.isInfoEnabled()) {
-        while (mlen && msg[mlen - 1] == '\n') --mlen;  // strip all trailing newlines
-        std::string theMsg(msg, mlen);
-        lsst::log::Log::MDC("LWP", std::to_string(tID));
-        myLog.logMsg(log4cxx::Level::getInfo(), xrdLoc, theMsg);
-    }
-}
-
-bool dummy = XrdSsiLogger::SetMCB(QservLogger, XrdSsiLogger::mcbClient);
 }  // namespace
 
 namespace lsst::qserv::cconfig {

@@ -94,8 +94,6 @@ public:
 
     ~CzarChunkMap();
 
-    ~CzarChunkMap();
-
     class WorkerChunksData;
 
     /// Essentially a structure for storing data about which tables and workers are associated with this

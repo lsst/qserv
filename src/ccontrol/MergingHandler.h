@@ -39,6 +39,7 @@ class ResponseSummary;
 }  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::qdisp {
+class Executive;
 class JobQuery;
 class UberJob;
 }  // namespace lsst::qserv::qdisp
@@ -64,20 +65,8 @@ public:
     virtual ~MergingHandler();
 
     /// @param merger downstream merge acceptor
-    /// @param tableName target table for incoming data
-    MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName);
-
-    /// Process the response and read the result file if no error was reported by a worker.
-    /// @return true if successful (no error)
-    bool flush(proto::ResponseSummary const& resp) override;
-
-    /// @see ResponseHandler::flushHttp
-    /// @see MerginHandler::_mergeHttp
-    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
-                                     uint64_t& resultRows) override;
-
-    /// @see ResponseHandler::flushHttpError
-    void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
+    MergingHandler(std::shared_ptr<rproc::InfileMerger> const& merger,
+                   std::shared_ptr<qdisp::Executive> const& exec);
 
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
@@ -93,18 +82,12 @@ public:
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override;
 
-    /// @return an error code and description
-    Error getError() const override {
-        std::lock_guard<std::mutex> lock(_errorMutex);
-        return _error;
-    }
-
 private:
     /// Call InfileMerger to do the work of merging this data to the result.
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
     /// Set error code and string.
-    void _setError(int code, std::string const& msg);
+    void _setError(int code, std::string const& msg, int errorState);
 
     /// Check if the query is no longer active.
     /// This is used to prevent the query from being processed after it has been cancelled
@@ -114,12 +97,11 @@ private:
     bool _queryIsNoLongerActive(std::shared_ptr<qdisp::JobQuery> const& jobQuery) const;
 
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
-    std::string _tableName;                              ///< Target table name
-    Error _error;                                        ///< Error description
     std::atomic<bool> _errorSet{false};                  ///< Set to true when an error is set.
-    mutable std::mutex _errorMutex;                      ///< Protect readers from partial updates
     bool _flushed{false};                                ///< flushed to InfileMerger?
     std::string _wName{"~"};                             ///< worker name
+
+    std::weak_ptr<qdisp::Executive> _executive;  ///< Weak pointer to the executive for errors.
 };
 
 }  // namespace lsst::qserv::ccontrol
