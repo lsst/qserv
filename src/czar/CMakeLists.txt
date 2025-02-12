@@ -1,4 +1,5 @@
 add_library(czar SHARED)
+add_dependencies(czar proto)
 
 target_sources(czar PRIVATE
     ActiveWorker.cc
@@ -20,32 +21,28 @@ target_sources(czar PRIVATE
     WorkerIngestProcessor.cc
 )
 
-target_include_directories(czar PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
 
 target_link_libraries(czar PUBLIC
     cconfig
     http
+    partition
     protojson
     qdisp
     qhttp
     util
     log
-    XrdSsiLib
     cpp-httplib
     boost_program_options
 )
 
 install(
-    TARGETS czar
+	TARGETS czar
 )
 
 function(CZAR_UTILS)
     foreach(UTIL IN ITEMS ${ARGV})
         add_executable(${UTIL})
         target_sources(${UTIL} PRIVATE ${UTIL}.cc)
-        target_include_directories(${UTIL} PRIVATE ${XROOTD_INCLUDE_DIRS})
         target_link_libraries(${UTIL} PRIVATE
             cconfig
             ccontrol
@@ -53,7 +50,6 @@ function(CZAR_UTILS)
             global
             mysql
             parser
-            partition
             qana
             qdisp
             qproc
@@ -83,7 +79,7 @@ function(czar_tests)
             qana
             qdisp
             qproc
-            qserv_meta
+            qmeta
             query
             rproc
             sql
