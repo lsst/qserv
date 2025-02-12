@@ -163,64 +163,6 @@ jobs:
           QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
-  documentation:
-    name: Documentation
-    runs-on: ubuntu-20.04
-    needs: [image-names, update-base-images]
-    if: false  # Disable old documentation workflow pending migration to new one
-    steps:
-
-      - name: Install python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install click
-        run: |
-          python -m pip install --upgrade pip
-          pip install click pyyaml requests
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          submodules: true
-          fetch-depth: 0  # 0 is "all history and branch tags"
-
-      - name: Check for changes
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-              docs:
-                - 'doc/**'
-
-      - name: Prepare user build image
-        if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
-        run: |
-          ./admin/local/cli/qserv --log-level DEBUG build-user-build-image \
-          --group docker_outer \
-          --build-image ${{ needs.image-names.outputs.build-image }} \
-          --user-build-image ${{ needs.image-names.outputs.user-build-image }}
-
-      - name: Build docs
-        if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
-        run: |
-          ./admin/local/cli/qserv build-docs --cmake --linkcheck \
-          --user-build-image ${{ needs.image-names.outputs.user-build-image }}
-        env:
-          QSERV_GH_EVENT_NAME: ${{ github.event_name }}
-          QSERV_GH_HEAD_REF: ${{ github.head_ref }}
-          QSERV_GH_REF: ${{ github.ref }}
-
-      - name: Upload to LSST the Docs
-        if: needs.update-base-images.outputs.build-rebuilt == 'True' || steps.filter.outputs.docs == 'true'
-        uses: lsst-sqre/ltd-upload@v1
-        with:
-          project: "Qserv"
-          dir: "build/doc/html"
-          username: ${{ secrets.LTD_USERNAME }}
-          password: ${{ secrets.LTD_PASSWORD }}
-
   update-run-image:
     name: Update Qserv image
     runs-on: ubuntu-20.04
@@ -337,67 +279,67 @@ jobs:
 
       - name: Replication Controller Log
         if: always()
-        run: docker logs ${USER}_repl_controller_1
+        run: docker logs ${USER}-repl-controller-1
 
       - name: Replication Registry Log
         if: always()
-        run: docker logs ${USER}_repl_registry_1
+        run: docker logs ${USER}-repl-registry-1
 
       - name: Replication Database Log
         if: always()
-        run: docker logs ${USER}_repl_mariadb_1
+        run: docker logs ${USER}-repl-mariadb-1
 
       - name: Replication Worker 0 Log
         if: always()
-        run: docker logs ${USER}_repl_worker_0_1
+        run: docker logs ${USER}-repl-worker-0-1
 
       - name: Replication Worker 1 Log
         if: always()
-        run: docker logs ${USER}_repl_worker_1_1
+        run: docker logs ${USER}-repl-worker-1-1
 
       - name: Czar MySQL Proxy Log
         if: always()
-        run: docker logs ${USER}_czar_proxy_1
+        run: docker logs ${USER}-czar-proxy-1
 
       - name: Czar HTTP Frontend Log
         if: always()
-        run: docker logs ${USER}_czar_http_1
+        run: docker logs ${USER}-czar-http-1
 
       - name: Czar CMSD Log
         if: always()
-        run: docker logs ${USER}_czar_cmsd_1
+        run: docker logs ${USER}-czar-cmsd-1
 
       - name: Czar XROOTD Log
         if: always()
-        run: docker logs ${USER}_czar_xrootd_1
+        run: docker logs ${USER}-czar-xrootd-1
 
       - name: Czar MariaDB Log
         if: always()
-        run: docker logs ${USER}_czar_mariadb_1
+        run: docker logs ${USER}-czar-mariadb-1
 
       - name: Qzerv Worker 0 CMSD Log
         if: always()
-        run: docker logs ${USER}_worker_cmsd_0_1
+        run: docker logs ${USER}-worker-cmsd-0-1
 
       - name: Qzerv Worker 0 XROOTD Log
         if: always()
-        run: docker logs ${USER}_worker_xrootd_0_1
+        run: docker logs ${USER}-worker-xrootd-0-1
 
       - name: Qzerv Worker 0 MariaDB Log
         if: always()
-        run: docker logs ${USER}_worker_mariadb_0_1
+        run: docker logs ${USER}-worker-mariadb-0-1
 
       - name: Qzerv Worker 1 CMSD Log
         if: always()
-        run: docker logs ${USER}_worker_cmsd_1_1
+        run: docker logs ${USER}-worker-cmsd-1-1
 
       - name: Qzerv Worker 1 XROOTD Log
         if: always()
-        run: docker logs ${USER}_worker_xrootd_1_1
+        run: docker logs ${USER}-worker-xrootd-1-1
 
       - name: Qzerv Worker 1 MariaDB Log
         if: always()
-        run: docker logs ${USER}_worker_mariadb_1_1
+        run: docker logs ${USER}-worker-mariadb-1-1
 
       - name: Remove integration test volumes
         run: |
@@ -411,7 +353,7 @@ jobs:
   notify-on-fail:
     name: Notify Slack if fail on main
     runs-on: ubuntu-20.04
-    needs: [documentation, compose-integration-tests]
+    needs: [compose-integration-tests]
     if: github.ref == 'refs/heads/main' && failure()
     steps:
       - name: Notify
