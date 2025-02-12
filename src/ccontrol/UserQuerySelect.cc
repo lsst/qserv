@@ -86,7 +86,8 @@
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
 #include "qdisp/Executive.h"
-#include "qdisp/MessageStore.h"
+#include "qdisp/JobQuery.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QMeta.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMeta.h"
@@ -284,7 +285,6 @@ void UserQuerySelect::submit() {
             cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
             chunks.push_back(cs->chunkId);
         }
-        std::string chunkResultName = _ttn->make(cs->chunkId);
 
         // This should only need to be set once as all jobs should have the same database name.
         if (cs->db != dbName) {
@@ -299,9 +299,8 @@ void UserQuerySelect::submit() {
 
         ResourceUnit ru;
         ru.setAsDbChunk(cs->db, cs->chunkId);
-        qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
-                _qMetaCzarId, exec->getId(), sequence, ru,
-                std::make_shared<MergingHandler>(_infileMerger, chunkResultName), cs, chunkResultName);
+        qdisp::JobDescription::Ptr jobDesc =
+                qdisp::JobDescription::create(_qMetaCzarId, exec->getId(), sequence, ru, cs);
         auto job = exec->add(jobDesc);
         ++sequence;
     }
@@ -337,6 +336,14 @@ void UserQuerySelect::buildAndSendUberJobs() {
     if (!exec->isAllJobsCreated()) {
         LOGS(_log, LOG_LVL_INFO, funcN << " executive isn't ready to generate UberJobs.");
         return;
+    }
+
+    if (exec->getCancelled() || exec->getSuperfluous()) {
+        LOGS(_log, LOG_LVL_INFO, funcN << " executive cancelled.");
+    }
+
+    if (exec->getSuperfluous()) {
+        LOGS(_log, LOG_LVL_INFO, funcN << " executive superfluous, result already found.");
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
@@ -394,6 +401,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     map<string, WInfoAndUJPtr::Ptr> workerJobMap;
     vector<qdisp::Executive::ChunkIdType> missingChunks;
 
+    int attemptCountIncreased = 0;
     // unassignedChunksInQuery needs to be in numerical order so that UberJobs contain chunk numbers in
     // numerical order. The workers run shared scans in numerical order of chunkId numbers.
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
@@ -401,6 +409,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
         bool const increaseAttemptCount = true;
         jqPtr->getDescription()->incrAttemptCount(exec, increaseAttemptCount);
+        attemptCountIncreased++;
 
         // If too many workers are down, there will be a chunk that cannot be found.
         // Just continuing should leave jobs `unassigned` with their attempt count
@@ -462,7 +471,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
         if (wInfUJ->uberJobPtr == nullptr) {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
-            auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
+            auto respHandler =
+                    ccontrol::MergingHandler::Ptr(new ccontrol::MergingHandler(_infileMerger, exec));
             auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _qMetaCzarId,
                                                targetWorker);
             uJob->setWorkerContactInfo(wInfUJ->wInf);
@@ -487,6 +497,11 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         errStr += " they will be retried later.";
         LOGS(_log, LOG_LVL_ERROR, errStr);
+    }
+
+    if (attemptCountIncreased > 0) {
+        LOGS(_log, LOG_LVL_WARN,
+             funcN << " increased attempt count for " << attemptCountIncreased << " Jobs");
     }
 
     // Queue unqued UberJobs, these have less than the max number of jobs.
