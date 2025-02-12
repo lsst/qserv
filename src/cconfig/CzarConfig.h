@@ -221,6 +221,9 @@ public:
     /// Return the sleep time (in milliseconds) between messages sent to active workers.
     int getMonitorSleepTimeMilliSec() const { return _monitorSleepTimeMilliSec->getVal(); }
 
+    /// Return true if family map chunk distribution should depend on chunk size.
+    bool getFamilyMapUsingChunkSize() const { return _familyMapUsingChunkSize->getVal(); }
+
     // Parameters of the Czar management service
 
     std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
@@ -423,6 +426,10 @@ private:
             util::ConfigValTInt::create(_configValMap, "activeworker", "maxLifetimeSecs", notReq, 60 * 60);
     CVTIntPtr _monitorSleepTimeMilliSec = util::ConfigValTInt::create(
             _configValMap, "activeworker", "monitorSleepTimeMilliSec", notReq, 15'000);
+
+    // FamilyMap
+    CVTBoolPtr _familyMapUsingChunkSize =
+            util::ConfigValTBool::create(_configValMap, "familymap", "usingChunkSize", notReq, 0);
 
     /// This may impact `_resultMaxHttpConnections` as too many connections may cause kernel memory issues.
     CVTIntPtr _commandMaxHttpConnections =
