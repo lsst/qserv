@@ -34,7 +34,6 @@
 
 // Third-party headers
 #include "curl/curl.h"
-#include "XrdCl/XrdClFile.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -127,7 +126,7 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
     uint32_t msgSizeBytes = 0;
     bool success = true;
     bool mergeHappened = false;
-    int headerCount = 0;
+    uint64_t headerCount = 0;
     uint64_t totalBytesRead = 0;
     try {
         auto exec = uberJob->getExecutive();
@@ -211,11 +210,9 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
                         }
 
                         // Parse and evaluate the message.
-                        //&&&mergeHappened = messageIsReady(msgBuf.get(), msgSizeBytes, last);
                         mergeHappened = true;
                         bool messageReadyResult = messageIsReady(msgBuf.get(), msgSizeBytes, last);
                         totalBytesRead += msgSizeBytes;
-                        //&&&if (!mergeHappened) {
                         if (!messageReadyResult) {
                             success = false;
                             throw runtime_error("message processing failed at offset " +
@@ -265,10 +262,23 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
 
 namespace lsst::qserv::ccontrol {
 
-MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
-        : _infileMerger{merger}, _tableName{tableName} {}
+shared_ptr<http::ClientConnPool> MergingHandler::_httpConnPool;
+mutex MergingHandler::_httpConnPoolMutex;
 
-MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__ << " " << _tableName); }
+shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
+    lock_guard<mutex> const lock(_httpConnPoolMutex);
+    if (nullptr == _httpConnPool) {
+        _httpConnPool = make_shared<http::ClientConnPool>(
+                cconfig::CzarConfig::instance()->getResultMaxHttpConnections());
+    }
+    return _httpConnPool;
+}
+
+MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> const& merger,
+                               std::shared_ptr<qdisp::Executive> const& exec)
+        : _infileMerger(merger), _executive(exec) {}
+
+MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__); }
 
 
 bool MergingHandler::flush(proto::ResponseSummary const& resp) {
@@ -316,21 +326,14 @@ bool MergingHandler::flush(proto::ResponseSummary const& resp) {
 }
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
-    _setError(code, msg);
+    _setError(code, msg, util::ErrorCode::RESULT_IMPORT);
     // Might want more info from result service.
     // Do something about the error. FIXME.
     LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
 }
 
-// Note that generally we always have an _infileMerger object except during
-// a unit test. I suppose we could try to figure out how to create one.
-//
-void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
-    if (_infileMerger) _infileMerger->prepScrub(jobId, attemptCount);
-}
-
 std::ostream& MergingHandler::print(std::ostream& os) const {
-    return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
+    return os << "MergingRequester(flushed=" << (_flushed ? "true)" : "false)");
 }
 
 bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
@@ -342,29 +345,16 @@ bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
     if (!success) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
         util::Error const& err = _infileMerger->getError();
-        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
+        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg(), util::ErrorCode::RESULT_IMPORT);
     }
     return success;
 }
 
-bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
-                                proto::ResponseData const& responseData) {
-    if (_flushed) {
-        throw util::Bug(ERR_LOC, "already flushed");
-    }
-    bool const success = _infileMerger->mergeHttp(uberJob, responseData);
-    if (!success) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
-        util::Error const& err = _infileMerger->getError();
-        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
-    }
-    return success;
-}
-
-void MergingHandler::_setError(int code, std::string const& msg) {
+void MergingHandler::_setError(int code, std::string const& msg, int errorState) {
     LOGS(_log, LOG_LVL_DEBUG, "_setError: code: " << code << ", message: " << msg);
-    std::lock_guard<std::mutex> lock(_errorMutex);
-    _error = Error(code, msg);
+    auto exec = _executive.lock();
+    if (exec == nullptr) return;
+    exec->addMultiError(code, msg, errorState);
 }
 
 tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expectedRows,
@@ -414,10 +404,9 @@ tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t expe
     return {success, shouldCancel};
 }
 
-void MergingHandler::flushHttpError(int errorCode, std::string const& errorMsg, int status) {
+void MergingHandler::flushHttpError(int errorCode, std::string const& errorMsg, int errState) {
     if (!_errorSet.exchange(true)) {
-        _error = util::Error(errorCode, errorMsg, util::ErrorCode::MYSQLEXEC);
-        _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());
+        _setError(errorCode, errorMsg, errState);
     }
 }
 

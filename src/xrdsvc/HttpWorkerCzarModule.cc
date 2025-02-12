@@ -248,13 +248,6 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);
     wCzarInfo->czarMsgReceived(CLOCK::now());
 
-    auto const czInfo = wqsData->getCzInfo();
-    LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
-    CzarIdType czId = czInfo->czId;
-    wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
-    wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);
-    wCzarInfo->czarMsgReceived(CLOCK::now());
-
     // For all queryId and czarId items, if the item can't be found, it is simply ignored. Anything that
     // is missed will eventually be picked up by other mechanisms, such as results being rejected
     // by the czar. This almost never happen, but the system should respond gracefully.
