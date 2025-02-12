@@ -12,7 +12,7 @@
 #-------------------------------------------------------------------------------------------------------------
 
 ARG QSERV_BUILD_BASE=qserv/lite-build:latest
-FROM ${QSERV_BUILD_BASE} as lite-build-user
+FROM ${QSERV_BUILD_BASE} AS lite-build-user
 
 ARG USER
 ARG UID

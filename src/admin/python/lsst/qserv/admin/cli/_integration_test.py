@@ -102,7 +102,8 @@ def wait_for_db_service(db_uri: str, checkdb: str) -> None:
         ) as connection:
             with closing(connection.cursor()) as cursor:
                 cursor.execute("show databases;")
-                return [str(row[0]) for row in cursor.fetchall()]
+                result: List[str] = []
+                return [str(db) for (db,) in cursor.fetchall()]
 
     databases = get_databases()
     if checkdb in databases:

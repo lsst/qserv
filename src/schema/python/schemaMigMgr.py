@@ -344,7 +344,12 @@ class SchemaMigMgr(metaclass=ABCMeta):
                         stmt = f.read()
                 _log.debug(f"Migration statement: {stmt}")
                 if stmt:
-                    for result in cursor.execute(stmt, multi=True):
+                    for result in cursor.execute(stmt, multi=True): # type: ignore
+                        # Cast here because MySQLCursorAbtract does not have with_rows for some reason, even though both of
+                        # its subclasses do...
+                        result = cast(
+                            Union[mysql.connector.cursor.MySQLCursor, mysql.connector.cursor_cext.CMySQLCursor], result
+                        )
                         if result.with_rows:
                             result.fetchall()
                 else:

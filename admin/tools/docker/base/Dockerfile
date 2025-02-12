@@ -28,6 +28,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         clang \
         clang-tools-extra \
         docker-ce-cli \
+        docker-compose-plugin \
         flex \
         gcc-c++ \
         gdb \
@@ -50,7 +51,9 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         patch \
         protobuf-compiler \
         protobuf-devel \
-        python3-devel \
+        python3.12 \
+        python3.12-devel \
+        python3.12-pip \
         tree \
         vim \
     && dnf clean all \
@@ -58,7 +61,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
 
 RUN dnf update -y \
     && dnf install -y \
-       https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm \
+       https://apache.jfrog.io/artifactory/arrow/almalinux/9/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
     && dnf config-manager --set-enabled crb \
     && dnf install -y \
@@ -143,11 +146,13 @@ RUN cd /tmp \
 
 RUN cd /tmp \
     && git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp \
-    && mkdir aws-sdk-cpp/build \
-    && cd aws-sdk-cpp/build \
+    && cd aws-sdk-cpp \
+    && git checkout tags/1.11.505 \
+    && mkdir build \
+    && cd build \
     && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_ONLY="s3" -DUSE_TLS_V1_3=on -DCPP_STANDARD=17 \
-    && cmake --build . \
-    && cmake --install . \
+    && make -j8 \
+    && make install \
     && cd /tmp \
     && rm -rf aws-sdk-cpp
 
@@ -155,17 +160,17 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && echo /usr/local/lib64 >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
 
-RUN pip3 install \
+RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+
+RUN pip3.12 install \
     backoff \
     backoff-stubs \
-    "click==8.1.3" \
+    click \
     deprecated \
-    docker-compose \
     documenteer[guide] \
     jinja2 \
-    "sphinx-rtd-theme>=1.2.0rc3" \
     mypy \
-    "mysql-connector-python==8.0.31" \
+    "mysql-connector-python==8.3.0" \
     numpy \
     pybind11[global] \
     pyyaml \
@@ -220,8 +225,8 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         openssl \
         procps-ng \
         protobuf \
-        python3 \
-        pip \
+        python3.12 \
+        python3.12-pip \
         tree \
         vim \
         lsof \
@@ -234,7 +239,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
 # FIXME: Keep only binaries, and not devel libraries
 RUN dnf update -y \
     && dnf install -y \
-       https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm \
+       https://apache.jfrog.io/artifactory/arrow/almalinux/9/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
     && dnf config-manager --set-enabled crb \
     && dnf install -y arrow1900-libs \
@@ -252,7 +257,7 @@ RUN mkdir -p /qserv/data && \
     mkdir -p /var/run/xrootd && \
     chown qserv:qserv /qserv/data /config-etc /config-etc/ssl /qserv/run/tmp /var/run/xrootd
 
-RUN alternatives --install /usr/bin/python python /usr/bin/python3.9 1
+RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 ENV PYTHONPATH "${PYTHONPATH}:/usr/local/python"
 
 COPY --from=lite-build /usr/local/lib64/liblog4cxx.so /usr/local/lib64/
@@ -276,12 +281,12 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && echo /usr/local/lib64 >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
 
-RUN pip3 install \
+RUN pip3.12 install \
     backoff \
-    "click==8.1.3" \
+    click \
     deprecated \
     jinja2 \
-    "mysql-connector-python==8.0.31" \
+    "mysql-connector-python==8.3.0" \
     pyyaml \
     requests \
     requests_toolbelt \

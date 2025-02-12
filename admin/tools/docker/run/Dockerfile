@@ -12,7 +12,7 @@
 #-------------------------------------------------------------------------------------------------------------
 
 ARG QSERV_RUN_BASE=qserv/lite-run-base:latest
-FROM ${QSERV_RUN_BASE} as lite-qserv
+FROM ${QSERV_RUN_BASE} AS lite-qserv
 
 COPY --chown=qserv:qserv bin/ /usr/local/bin/
 COPY --chown=qserv:qserv lib64/ /usr/local/lib64/

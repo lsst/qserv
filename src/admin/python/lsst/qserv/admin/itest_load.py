@@ -64,10 +64,10 @@ def execute(cursor: MySQLCursorAbstract, stmt: str, multi: bool = False) -> None
     results = []
     # cursors may contain results objects (if multi==True) or a MySQLCursor (if
     # multi==False)
-    cursors = []
+    cursors: List[Any] = []
 
     if multi:
-        cursors = cursor.execute(stmt, multi=True)
+        cursors = cursor.execute(stmt, multi=True)  # type: ignore
     else:
         cursor.execute(stmt, multi=False)
         cursors = [cursor]
