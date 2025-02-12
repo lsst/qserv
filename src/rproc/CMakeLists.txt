@@ -11,8 +11,9 @@ target_link_libraries(rproc PUBLIC
     log
 )
 
-install(TARGETS rproc
-    EXPORT qserv
+
+install(
+    TARGETS rproc
 )
 
 install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/rproc/schema/)
