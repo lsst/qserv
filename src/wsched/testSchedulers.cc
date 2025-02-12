@@ -303,7 +303,6 @@ BOOST_AUTO_TEST_CASE(Grouping) {
 }
 
 BOOST_AUTO_TEST_CASE(GroupMaxThread) {
-
 #if 0   // &&& fix and re-enable
     // Test that maxThreads is meaningful.
     LOGS(_log, LOG_LVL_WARN, "Test_case GroupMaxThread");

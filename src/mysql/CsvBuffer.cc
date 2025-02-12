@@ -33,11 +33,15 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "mysql/LocalInfileError.h"
 #include "mysql/MySqlUtils.h"
 
 namespace {
+
 std::string const mysqlNull("\\N");
 int const largeRowThreshold = 500 * 1024;  // should be less than 0.5 * infileBufferSize
 

@@ -77,6 +77,7 @@ LocalInfile::LocalInfile(char const* filename, std::shared_ptr<CsvBuffer> csvBuf
 }
 
 LocalInfile::~LocalInfile() {
+    LOGS(_log, LOG_LVL_TRACE, "~LocalInfile");
     if (_buffer) {
         delete[] _buffer;
     }
@@ -130,6 +131,8 @@ int LocalInfile::getError(char* buf, unsigned int bufLen) {
     }
     return 0;
 }
+
+LocalInfile::Mgr::~Mgr() { LOGS(_log, LOG_LVL_TRACE, "LocalInfile::Mgr::~Mgr()"); }
 
 void LocalInfile::Mgr::attach(MYSQL* mysql) {
     mysql_set_local_infile_handler(mysql, local_infile_init, local_infile_read, local_infile_end,
