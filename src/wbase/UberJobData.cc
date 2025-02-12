@@ -38,6 +38,7 @@
 #include "http/Method.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
+#include "protojson/JobReadyMsg.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
 #include "wconfig/WorkerConfig.h"
@@ -87,11 +88,9 @@ void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const&
     _fileChannelShared = fileChannelShared;
 }
 
-void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
-                                    uint64_t headerCount) {
+void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize) {
     LOGS(_log, LOG_LVL_INFO,
-         cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize
-                         << " headerCount=" << headerCount);
+         cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize);
 
     // Latch to prevent errors from being transmitted.
     // NOTE: Calls to responseError() and responseFileReady() are protected by the
@@ -100,14 +99,6 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
         LOGS(_log, LOG_LVL_ERROR,
              cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
     }
-    string workerIdStr;
-    if (_foreman != nullptr) {
-        workerIdStr = _foreman->chunkInventory()->id();
-    } else {
-        workerIdStr = "dummyWorkerIdStr";
-        LOGS(_log, LOG_LVL_INFO,
-             cName(__func__) << " _foreman was null, which should only happen in unit tests");
-    }
 
     string workerIdStr;
     if (_foreman != nullptr) {
@@ -118,17 +109,11 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
-    json request = {{"version", http::MetaModule::version},
-                    {"workerid", workerIdStr},
-                    {"auth_key", _authKey},
-                    {"czar", _czarName},
-                    {"czarid", _czarId},
-                    {"queryid", _queryId},
-                    {"uberjobid", _uberJobId},
-                    {"fileUrl", httpFileUrl},
-                    {"rowCount", rowCount},
-                    {"fileSize", fileSize},
-                    {"headerCount", headerCount}};
+    auto repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
+    auto repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
+    auto jrMsg = protojson::JobReadyMsg::create(repliInstId, repliAuthKey, workerIdStr, _czarName, _czarId,
+                                                _queryId, _uberJobId, httpFileUrl, rowCount, fileSize);
+    json request = jrMsg->serializeJson();
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};
@@ -219,23 +204,23 @@ string UberJobData::resultFilePath() const {
 }
 
 std::string UberJobData::resultFileHttpUrl() const {
-    auto const workerConfig = wconfig::WorkerConfig::instance();
-    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
-    if (resultDeliveryProtocol != wconfig::ConfigValResultDeliveryProtocol::HTTP) {
-        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
-                            wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
-    }
     // TODO:UJ it seems like this should just be part of the FileChannelShared???
     return "http://" + _foreman->getFqdn() + ":" + to_string(_resultsHttpPort) + "/" + _resultFileName();
 }
 
 void UberJobData::cancelAllTasks() {
     LOGS(_log, LOG_LVL_INFO, cName(__func__));
+    int count = 0;
     if (_cancelled.exchange(true) == false) {
         lock_guard<mutex> lg(_ujTasksMtx);
         for (auto const& task : _ujTasks) {
-            task->cancel();
+            auto tsk = task.lock();
+            if (tsk != nullptr) {
+                tsk->cancel(false);
+                ++count;
+            }
         }
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " cancelled " << count << " Tasks");
     }
 }
 
@@ -290,111 +275,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
             // TODO:UJ I have my doubts about this as a reconnected czar may go down in flames
             //         as it is hit with thousands of these. The priority queue in the wPool should
             //         help limit these to sane amounts, but the alternate plan below is probably safer.
-            //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
-            //         indicates some messages failed. When the czar sees the flag, it'll request a
-            //         message from the worker that contains all of the failed transmit data and handle
-            //         that. All of these failed transmits should fit in a single message.
-            if (wCzInfo->checkAlive(CLOCK::now())) {
-                auto wPool = _foreman->getWPool();
-                if (wPool != nullptr) {
-                    Ptr replacement = duplicate();
-                    if (replacement != nullptr) {
-                        wPool->queCmd(replacement, 2);
-                    } else {
-                        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " replacement was null");
-                    }
-                } else {
-                    // No thread pool, should only be possible in unit tests.
-                    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " no wPool");
-                    return;
-                }
-            }
-        } else {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _selfPtr was null, assuming job killed.");
-        }
-    }
-}
-
-void UJTransmitCmd::kill() {
-    LOGS(_log, LOG_LVL_WARN, cName(__func__));
-    auto sPtr = _selfPtr;
-    _selfPtr.reset();
-    if (sPtr == nullptr) {
-        return;
-    }
-}
-
-UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));
-    auto ujD = _ujData.lock();
-    if (ujD == nullptr) {
-        return nullptr;
-    }
-    Ptr newPtr = create(_foreman, ujD, _method, _headers, _url, _requestContext, _requestStr);
-    newPtr->_attemptCount = _attemptCount;
-    return newPtr;
-}
-
-void UberJobData::cancelAllTasks() {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));
-    if (_cancelled.exchange(true) == false) {
-        lock_guard<mutex> lg(_ujTasksMtx);
-        for (auto const& task : _ujTasks) {
-            task->cancel();
-        }
-    }
-}
-
-string UJTransmitCmd::cName(const char* funcN) const {
-    stringstream os;
-    os << "UJTransmitCmd::" << funcN << " czId=" << _czarId << " QID=" << _queryId << "_ujId=" << _uberJobId;
-    return os.str();
-}
-
-void UJTransmitCmd::action(util::CmdData* data) {
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__));
-    // Make certain _selfPtr is reset before leaving this function.
-    // If a retry is needed, duplicate() is called.
-    class ResetSelf {
-    public:
-        ResetSelf(UJTransmitCmd* ujtCmd) : _ujtCmd(ujtCmd) {}
-        ~ResetSelf() { _ujtCmd->_selfPtr.reset(); }
-        UJTransmitCmd* const _ujtCmd;
-    };
-    ResetSelf resetSelf(this);
-
-    _attemptCount++;
-    auto ujPtr = _ujData.lock();
-    if (ujPtr == nullptr || ujPtr->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
-        return;
-    }
-    http::Client client(_method, _url, _requestStr, _headers);
-    bool transmitSuccess = false;
-    try {
-        json const response = client.readAsJson();
-        if (0 != response.at("success").get<int>()) {
-            transmitSuccess = true;
-        } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");
-            // There's no point in re-sending as the czar got the message and didn't like
-            // it.
-        }
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + _requestContext + " failed, ex: " + ex.what());
-    }
-
-    if (!transmitSuccess) {
-        auto sPtr = _selfPtr;
-        if (_foreman != nullptr && sPtr != nullptr) {
-            // Do not reset _selfPtr as re-queuing may be needed several times.
-            LOGS(_log, LOG_LVL_WARN,
-                 cName(__func__) << " no response for transmit, putting on failed transmit queue.");
-            auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
-            // This will check if the czar is believed to be alive and try the queue the query to be tried
-            // again at a lower priority. It it thinks the czar is dead, it will throw it away.
-            // TODO:UJ I have my doubts about this as a reconnected czar may go down in flames
-            //         as it is hit with thousands of these.
             //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
             //         indicates some messages failed. When the czar sees the flag, it'll request a
             //         message from the worker that contains all of the failed transmit data and handle

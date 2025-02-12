@@ -43,6 +43,8 @@
 #include "util/Error.h"
 #include "util/EventThread.h"
 
+#include "util/InstanceCount.h"
+
 // Forward declarations
 namespace lsst::qserv {
 namespace mysql {
@@ -104,9 +106,6 @@ public:
     InfileMerger(InfileMerger const&) = delete;
     InfileMerger& operator=(InfileMerger const&) = delete;
     ~InfileMerger() = default;
-
-    /// Merge the result data collected over Http.
-    bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
     /// Merge the result data collected over Http.
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
@@ -175,6 +174,8 @@ private:
     bool _applySqlLocal(std::string const& sql, sql::SqlResults& results);
     bool _applySqlLocal(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
+
+    util::InstanceCount const _icIm{"InfileMerger"};
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);
     void _fixupTargetName();

@@ -83,9 +83,9 @@ class CommandForThreadPool : public CommandTracked {
 public:
     using Ptr = std::shared_ptr<CommandForThreadPool>;
 
-    CommandForThreadPool() = default;
+    CommandForThreadPool() : CommandTracked() {}
     explicit CommandForThreadPool(std::function<void(CmdData*)> func) : CommandTracked{func} {}
-    virtual ~CommandForThreadPool();
+    ~CommandForThreadPool() override;
 
     /// Return true if the number of threads created and still existing is
     /// greater than the max.

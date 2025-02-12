@@ -18,3 +18,6 @@ target_link_libraries(proto PUBLIC
     protobuf
 )
 
+install(
+	TARGETS proto
+)

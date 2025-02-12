@@ -53,3 +53,6 @@ qproc_tests(
     testQueryAnaIn
     testQueryAnaOrderBy
 )
+
+# set_tests_properties(testQueryAnaGeneral PROPERTIES WILL_FAIL 1)
+

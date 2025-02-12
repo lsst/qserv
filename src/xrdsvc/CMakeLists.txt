@@ -1,12 +1,11 @@
 add_library(xrdsvc SHARED)
-add_dependencies(xrdsvc proto)
 
-target_sources(qserv_xrdsvc PRIVATE
+target_sources(xrdsvc PRIVATE
     HttpModule.cc
     HttpMonitorModule.cc
     HttpReplicaMgtModule.cc
-    HttpWorkerCzarModule.cc
     HttpSvc.cc
+    HttpWorkerCzarModule.cc
     SsiProvider.cc
     SsiService.cc
 )
@@ -19,13 +18,15 @@ target_link_libraries(xrdsvc PUBLIC
     boost_filesystem
     boost_system
     global
+    http
     log
     mysql
-    http
+    protojson
     sql
     wbase
     wconfig
     wcontrol
+    wdb
     wpublish
     wsched
     XrdSsiLib
