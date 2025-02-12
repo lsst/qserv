@@ -53,7 +53,6 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         protobuf-devel \
         python3.12 \
         python3.12-devel \
-        python3.12-pip \
         tree \
         vim \
     && dnf clean all \
@@ -162,7 +161,9 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
 
 RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
-RUN pip3.12 install \
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN uv pip install --system\
     backoff \
     backoff-stubs \
     click \
@@ -226,7 +227,6 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         procps-ng \
         protobuf \
         python3.12 \
-        python3.12-pip \
         tree \
         vim \
         lsof \
@@ -281,7 +281,9 @@ RUN echo /usr/local/lib > /etc/ld.so.conf.d/local.conf \
     && echo /usr/local/lib64 >> /etc/ld.so.conf.d/local.conf \
     && ldconfig
 
-RUN pip3.12 install \
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+RUN uv pip install --system \
     backoff \
     click \
     deprecated \
