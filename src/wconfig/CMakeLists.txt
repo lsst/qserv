@@ -23,6 +23,3 @@ target_link_libraries(testSanityCheck
 
 add_test(NAME testSanityCheck COMMAND testSanityCheck)
 
-install(
-    TARGETS wconfig
-)

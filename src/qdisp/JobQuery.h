@@ -119,23 +119,6 @@ protected:
         return _uberJobId >= 0;
     }
 
-    /// @return true if _uberJobId was set, it can only be set if it is unassigned
-    ///         or by the current owner.
-    /// NOTE: _jqMtx must be held before calling this
-    bool _setUberJobId(UberJobId ujId);
-
-    /// NOTE: _jqMtx must be held before calling this
-    UberJobId _getUberJobId() const {
-        VMUTEX_HELD(_jqMtx);
-        return _uberJobId;
-    }
-
-    /// NOTE: _jqMtx must be held before calling this
-    bool _isInUberJob() const {
-        VMUTEX_HELD(_jqMtx);
-        return _uberJobId >= 0;
-    }
-
     // Values that don't change once set.
     std::weak_ptr<Executive> _executive;
     /// The job description needs to survive until the task is complete.
