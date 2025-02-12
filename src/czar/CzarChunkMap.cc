@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "qmeta/QMeta.h"
+#include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
 #include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
@@ -342,7 +343,9 @@ bool CzarFamilyMap::_read() {
     }
 
     // Make the new maps.
-    shared_ptr<CzarFamilyMap::FamilyMapType> familyMapPtr = makeNewMaps(qChunkMap);
+    auto czConfig = cconfig::CzarConfig::instance();
+    bool usingChunkSize = czConfig->getFamilyMapUsingChunkSize();
+    shared_ptr<CzarFamilyMap::FamilyMapType> familyMapPtr = makeNewMaps(qChunkMap, usingChunkSize);
 
     verify(familyMapPtr);
 
@@ -355,7 +358,7 @@ bool CzarFamilyMap::_read() {
 }
 
 std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
-        qmeta::QMetaChunkMap const& qChunkMap) {
+        qmeta::QMetaChunkMap const& qChunkMap, bool usingChunkSize) {
     // Create new maps.
     std::shared_ptr<FamilyMapType> newFamilyMap = make_shared<FamilyMapType>();
 
@@ -370,7 +373,10 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
                 for (qmeta::QMetaChunkMap::ChunkInfo const& chunkInfo : chunks) {
                     try {
                         int64_t chunkNum = chunkInfo.chunk;
-                        CzarChunkMap::SizeT sz = chunkInfo.size;
+                        CzarChunkMap::SizeT sz = 1;
+                        if (usingChunkSize) {
+                            sz = chunkInfo.size;
+                        }
                         LOGS(_log, LOG_LVL_DEBUG,
                              cName(__func__) << "workerdId=" << workerId << " db=" << dbName << " table="
                                              << tableName << " chunk=" << chunkNum << " sz=" << sz);
