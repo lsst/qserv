@@ -251,7 +251,7 @@ private:
     bool _isUberJob;  ///< true if this is using UberJob http. To be removed when _sendChannel goes away.
 
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
-    std::shared_ptr<UberJobData> _uberJobData;               ///< Contains czar contact info.
+    std::weak_ptr<UberJobData> _uberJobData;                 ///< Contains czar contact info.
 
     UberJobId const _uberJobId;       ///< The UberJobId
     qmeta::CzarId const _czarId;      ///< id of the czar that requested this task(s). TODO:UJ delete
@@ -297,7 +297,6 @@ private:
 
     int64_t _rowcount = 0;       ///< The total numnber of rows in all result sets of a query.
     uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
-    uint64_t _headerCount = 0;   ///< Count of headers received.
 
     /// _rowLimitComplete indicates that there is a LIMIT clause in the user query that
     /// can be applied to the queries given to workers. It's important to apply it

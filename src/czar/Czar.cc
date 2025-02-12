@@ -116,9 +116,6 @@ void Czar::_monitor() {
         // check if workers have died by timeout.
         _czarRegistry->sendActiveWorkersMessages();
 
-        // &&& Send appropriate messages to all ActiveWorkers
-        _czarRegistry->sendActiveWorkersMessages();
-
         /// Create new UberJobs (if possible) for all jobs that are
         /// unassigned for any reason.
         map<QueryId, shared_ptr<qdisp::Executive>> execMap;
@@ -249,13 +246,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // Start the monitor thread
     thread monitorThrd(&Czar::_monitor, this);
     _monitorThrd = move(monitorThrd);
-}
-
-Czar::~Czar() {
-    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
-    _monitorLoop = false;
-    _monitorThrd.join();
-    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
 }
 
 Czar::~Czar() {

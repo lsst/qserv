@@ -113,7 +113,9 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
            vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
            shared_ptr<FileChannelShared> const& sc,
            std::shared_ptr<wpublish::QueryStatistics> const& queryStats_)
-        : _sendChannel(sc),
+        : _logLvlWT(LOG_LVL_WARN),
+          _logLvlET(LOG_LVL_ERROR),
+          _sendChannel(sc),
           _tSeq(++taskSequence),
           _qId(ujData->getQueryId()),
           _templateId(templateId),
@@ -266,7 +268,6 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
 
     return vect;
 }
-
 
 std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
@@ -424,13 +425,19 @@ wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
 }
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
-void Task::cancel() {
+void Task::cancel(bool logIt) {
     if (_cancelled.exchange(true)) {
         // Was already cancelled.
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr());
+    if (logIt) {
+        if (!_ujData->getCancelled()) {
+            LOGS(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr() << " UberJob still live.");
+        } else {
+            LOGS(_log, LOG_LVL_TRACE, "Task::cancel " << getIdStr());
+        }
+    }
     auto qr = _taskQueryRunner;  // Need a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
         qr->cancel();
@@ -451,13 +458,13 @@ bool Task::checkCancelled() {
     return _cancelled;
 }
 
-/// @return true if task has already been cancelled.
-bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
+bool Task::setTaskQueryRunner(wdb::QueryRunner::Ptr const& taskQueryRunner) {
     _taskQueryRunner = taskQueryRunner;
     return checkCancelled();
 }
 
-void Task::freeTaskQueryRunner(TaskQueryRunner* tqr) {
+void Task::freeTaskQueryRunner(wdb::QueryRunner* tqr) {
+    // Only free _taskQueryRunner if it's the expected one.
     if (_taskQueryRunner.get() == tqr) {
         _taskQueryRunner.reset();
     } else {

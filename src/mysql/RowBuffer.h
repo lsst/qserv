@@ -42,6 +42,7 @@ namespace lsst::qserv::mysql {
 /// shallow, and does not perform any memory management.
 struct Row {
     Row() : row(nullptr), lengths(nullptr), numFields(-1) {}
+    virtual ~Row();
 
     // Shallow copies all-around.
     Row(char** row_, unsigned long int* lengths_, int numFields_)
@@ -67,7 +68,7 @@ class RowBuffer {
 public:
     typedef std::shared_ptr<RowBuffer> Ptr;
 
-    virtual ~RowBuffer() {}
+    virtual ~RowBuffer();
 
     /// Fetch a number of bytes into a buffer. Return the number of bytes
     /// fetched. Returning less than bufLen does NOT indicate EOF.

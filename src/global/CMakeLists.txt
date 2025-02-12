@@ -8,6 +8,10 @@ target_sources(global PRIVATE
     stringUtil.cc
 )
 
+install(
+	TARGETS global
+)
+
 target_link_libraries(global PUBLIC
     log
 )

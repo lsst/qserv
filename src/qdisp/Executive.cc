@@ -236,14 +236,6 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     }
 }
 
-void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
-    if (_scanInteractive) {
-        _qdispPool->queCmd(cmd, 3);
-    } else {
-        _qdispPool->queCmd(cmd, 3);
-    }
-}
-
 void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     {
         lock_guard<mutex> lck(_uberJobsMapMtx);
@@ -286,63 +278,6 @@ Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
         }
     }
     return unassignedMap;
-}
-
-string Executive::dumpUberJobCounts() const {
-    stringstream os;
-    os << "exec=" << getIdStr();
-    int totalJobs = 0;
-    {
-        lock_guard<mutex> ujmLck(_uberJobsMapMtx);
-        for (auto const& [ujKey, ujPtr] : _uberJobsMap) {
-            int jobCount = ujPtr->getJobCount();
-            totalJobs += jobCount;
-            os << "{" << ujKey << ":" << ujPtr->getIdStr() << " jobCount=" << jobCount << "}";
-        }
-    }
-    {
-        lock_guard<recursive_mutex> jmLck(_jobMapMtx);
-        os << " ujTotalJobs=" << totalJobs << " execJobs=" << _jobMap.size();
-    }
-    return os.str();
-}
-
-void Executive::assignJobsToUberJobs() {
-    auto uqs = _userQuerySelect.lock();
-    if (uqs != nullptr) {
-        uqs->buildAndSendUberJobs();
-    }
-}
-
-void Executive::addMultiError(int errorCode, std::string const& errorMsg, int errorState) {
-    util::Error err(errorCode, errorMsg, errorState);
-    {
-        lock_guard<mutex> lock(_errorsMutex);
-        _multiError.push_back(err);
-        LOGS(_log, LOG_LVL_DEBUG,
-             cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
-    }
-}
-
-Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
-    lock_guard<mutex> lck(_chunkToJobMapMtx);
-
-    ChunkIdJobMapType unassignedMap;
-    for (auto const& [key, jobPtr] : _chunkToJobMap) {
-        if (!jobPtr->isInUberJob()) {
-            unassignedMap[key] = jobPtr;
-        }
-    }
-    return unassignedMap;
-}
-
-void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {
-    lock_guard<mutex> lck(_uberJobsMapMtx);
-    for (auto const& uJob : uJobsToAdd) {
-        UberJobId ujId = uJob->getJobId();
-        _uberJobsMap[ujId] = uJob;
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uJob->getJobCount());
-    }
 }
 
 string Executive::dumpUberJobCounts() const {
@@ -433,17 +368,14 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(JobId jobId, bool success) {
-    ResponseHandler::Error err;
+    string errStr;
+    util::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
     if (!success && !isRowLimitComplete()) {
         {
             lock_guard<mutex> lock(_incompleteJobsMutex);
-            auto iter = _incompleteJobs.find(jobId);
-            if (iter != _incompleteJobs.end()) {
-                auto jobQuery = iter->second;
-                err = jobQuery->getDescription()->respHandler()->getError();
-            } else {
+            if (_incompleteJobs.count(jobId) == 0) {
                 string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
                              " size=" + to_string(_incompleteJobs.size());
                 // If the user query has been cancelled, this is expected for jobs that have not yet
@@ -457,8 +389,14 @@ void Executive::markCompleted(JobId jobId, bool success) {
                 return;
             }
         }
-        LOGS(_log, LOG_LVL_WARN,
-             "Executive: error executing " << err << " (status: " << err.getStatus() << ")");
+
+        {
+            lock_guard<mutex> lock(_errorsMutex);
+            errStr = _multiError.firstErrorStr();
+            err = _multiError.firstError();
+        }
+
+        LOGS(_log, LOG_LVL_DEBUG, "Executive: error executing " << err);
         {
             lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
@@ -468,20 +406,10 @@ void Executive::markCompleted(JobId jobId, bool success) {
             job->getStatus()->updateInfoNoErrorOverwrite(id, qmeta::JobStatus::RESULT_ERROR, "EXECFAIL",
                                                          err.getCode(), err.getMsg());
         }
-        {
-            lock_guard<mutex> lock(_errorsMutex);
-            _multiError.push_back(err);
-            LOGS(_log, LOG_LVL_TRACE,
-                 "Currently " << _multiError.size() << " registered errors: " << _multiError);
-        }
     }
     _unTrack(jobId);
     if (!success && !isRowLimitComplete()) {
-        auto logLvl = (_cancelled) ? LOG_LVL_ERROR : LOG_LVL_TRACE;
-        LOGS(_log, logLvl,
-             "Executive: requesting cancel, cause: " << " failed (code=" << err.getCode() << " "
-                                                     << err.getMsg() << ")");
-        squash(string("markComplete error ") + err.getMsg());  // ask to squash
+        squash("markComplete error " + errStr);  // ask to squash
     }
 }
 
@@ -553,44 +481,6 @@ void Executive::_squashSuperfluous() {
     bool const keepResults = false;
     sendWorkersEndMsg(keepResults);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done canceled " << cancelCount << " Jobs");
-}
-
-void Executive::sendWorkersEndMsg(bool deleteResults) {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " terminating this query deleteResults=" << deleteResults);
-    auto cz = czar::Czar::getCzar();
-    if (cz != nullptr) {  // Possible in unit tests.
-        cz->getCzarRegistry()->endUserQueryOnWorkers(_id, deleteResults);
-    }
-}
-
-void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
-    if (_cancelled) {
-        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " irrelevant as query already cancelled");
-        return;
-    }
-
-    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " killing incomplete UberJobs on " << workerId);
-    deque<UberJob::Ptr> ujToCancel;
-    {
-        lock_guard<mutex> lockUJMap(_uberJobsMapMtx);
-        for (auto const& [ujKey, ujPtr] : _uberJobsMap) {
-            auto ujStatus = ujPtr->getStatus()->getState();
-            if (ujStatus != qmeta::JobStatus::RESPONSE_DONE && ujStatus != qmeta::JobStatus::COMPLETE) {
-                // RESPONSE_DONE indicates the result file has been read by
-                // the czar, so before that point the worker's data is
-                // likely destroyed. COMPLETE indicates all jobs in the
-                // UberJob are complete.
-                if (ujPtr->getWorkerContactInfo()->wId == workerId) {
-                    ujToCancel.push_back(ujPtr);
-                }
-            }
-        }
-    }
-
-    for (auto const& uj : ujToCancel) {
-        uj->killUberJob();
-        uj->setStatusIfOk(qmeta::JobStatus::CANCEL, getIdStr() + " killIncomplete on worker=" + workerId);
-    }
 }
 
 void Executive::sendWorkersEndMsg(bool deleteResults) {
@@ -884,8 +774,8 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
              cName(__func__) << "recheck total=" << total << " max=" << maxResultTableSizeBytes);
         if (total > maxResultTableSizeBytes) {
             LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
-            ResponseHandler::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
-                                       string("Incomplete result already too large ") + to_string(total));
+            util::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
+                            "Incomplete result already too large " + to_string(total));
             _multiError.push_back(err);
             squash("czar, file too large");
         }

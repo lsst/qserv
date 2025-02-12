@@ -37,6 +37,9 @@ namespace lsst::qserv::rproc {
 class ProtoRowBuffer : public mysql::RowBuffer {
 public:
     ProtoRowBuffer(proto::ResponseData const& res);
+
+    ~ProtoRowBuffer() override = default;
+
     unsigned fetch(char* buffer, unsigned bufLen) override;
     std::string dump() const override;
 
