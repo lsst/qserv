@@ -176,6 +176,7 @@ RUN uv pip install --system\
     numpy \
     pybind11[global] \
     pyyaml \
+    ruff \
     sqlalchemy \
     sqlalchemy-stubs \
     types-PyYAML \
