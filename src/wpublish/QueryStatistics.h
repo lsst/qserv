@@ -39,6 +39,7 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "util/InstanceCount.h"
 #include "wbase/Task.h"
 #include "wsched/SchedulerBase.h"
 
@@ -172,6 +173,7 @@ private:
     explicit QueryStatistics(QueryId queryId, CzarIdType czarId);
     bool _isMostlyDead() const;
 
+    util::InstanceCount const _icqs{"QueryStatistics"};
     mutable std::mutex _qStatsMtx;
 
     std::chrono::system_clock::time_point _touched = std::chrono::system_clock::now();

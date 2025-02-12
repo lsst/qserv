@@ -29,6 +29,7 @@
 // Qserv headers
 #include "global/clock_defs.h"
 #include "lsst/log/Log.h"
+#include "protojson/WorkerCzarComIssue.h"
 #include "protojson/WorkerQueryStatusData.h"
 
 // Boost unit test header

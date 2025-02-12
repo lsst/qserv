@@ -416,7 +416,7 @@ bool WorkerQueryStatusData::handleResponseJson(nlohmann::json const& jsResp) {
 
     bool workerRestarted = false;
     auto workerStartupTime = http::RequestBodyJSON::required<uint64_t>(jsResp, "w-startup-time");
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " workerStartupTime=" << workerStartupTime);
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " workerStartupTime=" << workerStartupTime);
     if (!_wInfo->checkWStartupTime(workerStartupTime)) {
         LOGS(_log, LOG_LVL_ERROR,
              cName(__func__) << " startup time for worker=" << _wInfo->dump()
@@ -435,77 +435,6 @@ string WorkerQueryStatusData::_dump() const {
     VMUTEX_HELD(_infoMtx);
     stringstream os;
     os << "ActiveWorker " << ((_wInfo == nullptr) ? "?" : _wInfo->dump());
-    return os.str();
-}
-
-shared_ptr<json> WorkerCzarComIssue::serializeJson() {
-    shared_ptr<json> jsCzarReqPtr = make_shared<json>();
-    json& jsCzarR = *jsCzarReqPtr;
-    lock_guard _lgWciMtx(_wciMtx);
-    if (_wInfo == nullptr || _czInfo == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _wInfo or _czInfo was null");
-        return jsCzarReqPtr;
-    }
-
-    jsCzarR["version"] = http::MetaModule::version;
-    jsCzarR["instance_id"] = _replicationInstanceId;
-    jsCzarR["auth_key"] = _replicationAuthKey;
-    jsCzarR["czarinfo"] = _czInfo->serializeJson();
-    jsCzarR["czar"] = _czInfo->czName;
-    jsCzarR["workerinfo"] = _wInfo->serializeJson();
-
-    jsCzarR["thoughtczarwasdead"] = _thoughtCzarWasDead;
-
-    // TODO:UJ add list of failed transmits
-
-    return jsCzarReqPtr;
-}
-
-WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const& jsCzarReq,
-                                                           std::string const& replicationInstanceId_,
-                                                           std::string const& replicationAuthKey_) {
-    string const fName("WorkerCzarComIssue::createFromJson");
-    LOGS(_log, LOG_LVL_DEBUG, fName);
-    try {
-        if (jsCzarReq["version"] != http::MetaModule::version) {
-            LOGS(_log, LOG_LVL_ERROR, fName << " bad version");
-            return nullptr;
-        }
-
-        auto czInfo_ = CzarContactInfo::createFromJson(jsCzarReq["czarinfo"]);
-        auto now = CLOCK::now();
-        auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsCzarReq["workerinfo"], now);
-        if (czInfo_ == nullptr || wInfo_ == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, fName << " or worker info could not be parsed in " << jsCzarReq);
-        }
-        auto wccIssue = create(replicationInstanceId_, replicationAuthKey_);
-        wccIssue->setContactInfo(wInfo_, czInfo_);
-        wccIssue->_thoughtCzarWasDead =
-                http::RequestBodyJSON::required<bool>(jsCzarReq, "thoughtczarwasdead");
-        return wccIssue;
-    } catch (invalid_argument const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, string("WorkerQueryStatusData::createJson invalid ") << exc.what());
-    }
-    return nullptr;
-}
-
-json WorkerCzarComIssue::serializeResponseJson() {
-    json jsResp = {{"success", 1}, {"errortype", "none"}, {"note", ""}};
-
-    // TODO:UJ add lists of uberjobs that are scheduled to have files collected because of this message.
-    return jsResp;
-}
-
-string WorkerCzarComIssue::dump() const {
-    lock_guard _lgWciMtx(_wciMtx);
-    return _dump();
-}
-
-string WorkerCzarComIssue::_dump() const {
-    stringstream os;
-    os << "WorkerCzarComIssue wInfo=" << ((_wInfo == nullptr) ? "?" : _wInfo->dump());
-    os << " czInfo=" << _czInfo->dump();
-    os << " thoughtCzarWasDead=" << _thoughtCzarWasDead;
     return os.str();
 }
 
