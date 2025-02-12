@@ -328,22 +328,6 @@ public:
             std::chrono::time_point<std::chrono::system_clock> const& prevUpdateTime =
                     std::chrono::time_point<std::chrono::system_clock>()) = 0;
 
-    /**
-     * Fetch the chunk map which was updated after the specified time point.
-     * @param prevUpdateTime The cut off time for the chunk map age. Note that the default
-     *   value of the parameter represents the start time of the UNIX Epoch. Leaving the default
-     *   value forces an attempt to read the map from the database if the one would exist
-     *   in there.
-     * @return Return the most current chunk disposition or the empty object if the persistent
-     *   map is older than it was requested.The result could be evaluated by calling
-     *   method empty() on the result object.
-     * @throws EmptyTableError if the corresponding metadata table doesn't have any record
-     * @throws SqlError for any other error related to MySQL
-     */
-    virtual QMetaChunkMap getChunkMap(
-            std::chrono::time_point<std::chrono::system_clock> const& prevUpdateTime =
-                    std::chrono::time_point<std::chrono::system_clock>()) = 0;
-
 protected:
     // Default constructor
     QMeta() {}

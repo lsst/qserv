@@ -31,6 +31,7 @@
 
 // qserv headers
 #include "http/Client.h"
+#include "protojson/WorkerCzarComIssue.h"
 #include "protojson/WorkerQueryStatusData.h"
 #include "util/Bug.h"
 #include "util/Histogram.h"

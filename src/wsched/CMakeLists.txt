@@ -9,6 +9,10 @@ target_sources(wsched PRIVATE
     SchedulerBase.cc
 )
 
+install(
+	TARGETS wsched
+)
+
 target_link_libraries(wsched PUBLIC
     log
 )
@@ -18,10 +22,6 @@ install(
 )
 
 add_executable(testSchedulers testSchedulers.cc)
-
-target_include_directories(testSchedulers PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
 
 target_link_libraries(testSchedulers PUBLIC
     wsched
