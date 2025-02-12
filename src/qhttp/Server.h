@@ -99,8 +99,8 @@ public:
     //      header files for details.  Convenience functions are provided here to instantiate and install
     //      these.
 
-    void addStaticContent(std::string const& path, std::string const& rootDirectory);
-    AjaxEndpoint::Ptr addAjaxEndpoint(std::string const& path);
+    void addStaticContent(std::string const& pattern, std::string const& rootDirectory);
+    AjaxEndpoint::Ptr addAjaxEndpoint(std::string const& pattern);
 
     //----- setRequestTimeout() allows the user to override the default 5 minute start-of-request to
     //      end-of-response timeout.  Must be called before start(), or between calls to stop() and start().

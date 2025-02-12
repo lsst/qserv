@@ -456,7 +456,7 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
     LOGS(_log, LOG_LVL_TRACE, __func__ << " file write " << task->getIdStr() << " start");
     // Create the file if not open.
     if (!_file.is_open()) {
-        _fileName = task->resultFilePath();
+        _fileName = task->resultFileAbsPath();
         _file.open(_fileName, ios::out | ios::trunc | ios::binary);
         if (!(_file.is_open() && _file.good())) {
             throw runtime_error("FileChannelShared::" + string(__func__) +
