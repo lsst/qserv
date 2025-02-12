@@ -88,28 +88,6 @@ public:
     /// `deleteWorkerResults` is true.
     void endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults);
 
-    /// Return _contactMap, the object that the returned pointer points to is
-    /// constant and no attempts should be made to change it.
-    http::WorkerContactInfo::WCMapPtr getWorkerContactMap() {
-        std::lock_guard<std::mutex> lockG(_mapMtx);
-        return _contactMap;
-    }
-
-    /// Return _contactMap, the object that the returned pointer points to is
-    /// constant and no attempts should be made to change it. This
-    /// function will wait forever for a valid contact map to be ready.
-    protojson::WorkerContactInfo::WCMapPtr waitForWorkerContactMap() const;
-
-    /// Send all live workers the `WorkerQueryStatusData` message for
-    /// that worker. This may result in the worker sending back the
-    /// `WorkerCzarComIssue` message if there were communication problems.
-    void sendActiveWorkersMessages();
-
-    /// Add the query id to the list of queries to end on workers and
-    /// send the messages, deleting all result files if
-    /// `deleteWorkerResults` is true.
-    void endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults);
-
 private:
     CzarRegistry() = delete;
     CzarRegistry(std::shared_ptr<cconfig::CzarConfig> const& czarConfig,
