@@ -55,6 +55,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         python3.12-devel \
         tree \
         vim \
+        zip \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
@@ -75,7 +76,7 @@ RUN curl -s "https://cmake.org/files/v3.31/cmake-3.31.5-linux-x86_64.tar.gz" \
 RUN cd /tmp \
     && git clone https://github.com/apache/logging-log4cxx \
     && cd logging-log4cxx \
-    && git checkout rel/v1.1.0 \
+    && git checkout rel/v1.3.1 \
     && mkdir build \
     && cd build \
     && cmake .. \
