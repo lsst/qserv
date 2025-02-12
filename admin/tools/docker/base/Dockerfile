@@ -69,7 +69,7 @@ RUN dnf update -y \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
-RUN curl -s "https://cmake.org/files/v3.17/cmake-3.17.2-Linux-x86_64.tar.gz" \
+RUN curl -s "https://cmake.org/files/v3.31/cmake-3.31.5-linux-x86_64.tar.gz" \
     | tar --strip-components=1 -xz -C /usr/local
 
 RUN cd /tmp \
@@ -107,7 +107,7 @@ RUN cd /usr/share/java \
     && cmake -DANTLR4_INSTALL=on .. \
     && make -j8 \
     && make install \
-    && cp ../cmake/FindANTLR.cmake /usr/local/share/cmake-3.17/Modules/ \
+    && cp ../cmake/FindANTLR.cmake /usr/local/share/cmake-3.31/Modules/ \
     && cd /tmp \
     && rm -rf antlr4
 
