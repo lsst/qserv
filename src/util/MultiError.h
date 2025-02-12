@@ -78,6 +78,10 @@ public:
      */
     int firstErrorCode() const;
 
+    std::string firstErrorStr() const;
+
+    util::Error firstError() const;
+
     virtual ~MultiError() throw() {}
 
     /** Overload output operator for this class

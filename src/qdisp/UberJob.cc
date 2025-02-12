@@ -205,28 +205,6 @@ void UberJob::_unassignJobs() {
     _jobs.clear();
 }
 
-void UberJob::_unassignJobs() {
-    lock_guard<mutex> lck(_jobsMtx);
-    auto exec = _executive.lock();
-    if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " exec is null");
-        return;
-    }
-    for (auto&& job : _jobs) {
-        string jid = job->getIdStr();
-        if (!job->unassignFromUberJob(getUjId())) {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not unassign job=" << jid << " cancelling");
-            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "unable to re-assign " + jid,
-                                util::ErrorCode::INTERNAL);
-            exec->squash();
-            return;
-        }
-        LOGS(_log, LOG_LVL_DEBUG,
-             cName(__func__) << " job=" << jid << " attempts=" << job->getAttemptCount());
-    }
-    _jobs.clear();
-}
-
 bool UberJob::isQueryCancelled() {
     auto exec = _executive.lock();
     if (exec == nullptr) {
@@ -253,24 +231,6 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
         LOGS(_log, LOG_LVL_WARN,
              cName(__func__) << " already error current=" << _jobStatus->stateStr(currentState)
                              << " new=" << _jobStatus->stateStr(newState));
-        return false;
-    }
-
-    _jobStatus->updateInfo(getIdStr(), newState, msg);
-    for (auto&& jq : _jobs) {
-        jq->getStatus()->updateInfo(jq->getIdStr(), newState, msg);
-    }
-    return true;
-}
-
-void UberJob::callMarkCompleteFunc(bool success) {
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " success=" << success);
-
-    // Overwriting errors is probably not a good idea.
-    if (currentState >= qmeta::JobStatus::CANCEL && currentState < qmeta::JobStatus::COMPLETE) {
-        LOGS(_log, LOG_LVL_WARN,
-             getIdStr() << "UberJob::" << __func__ << " already error current="
-                        << _jobStatus->stateStr(currentState) << " new=" << _jobStatus->stateStr(newState));
         return false;
     }
 
@@ -556,4 +516,3 @@ std::string UberJob::dump() const {
 std::ostream& operator<<(std::ostream& os, UberJob const& uj) { return uj.dumpOS(os); }
 
 }  // namespace lsst::qserv::qdisp
-

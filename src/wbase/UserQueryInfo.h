@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "util/InstanceCount.h"
 
 // This header declarations
 namespace lsst::qserv::wbase {
@@ -93,6 +94,7 @@ public:
 private:
     UserQueryInfo(QueryId qId, CzarIdType czId);
 
+    util::InstanceCount const _icUqi{"UserQueryInfo"};
     QueryId const _qId;  ///< The User Query Id number.
     CzarIdType const _czarId;
 

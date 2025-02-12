@@ -39,6 +39,8 @@
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
 
+#include "util/InstanceCount.h"
+
 namespace lsst::qserv {
 
 namespace protojson {
@@ -101,11 +103,10 @@ public:
     }
 
     /// Let the czar know the result is ready.
-    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
-                           uint64_t headerCount);  // TODO:UJ remove headerCount
+    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize);
 
     /// Let the Czar know there's been a problem.
-    bool responseError(util::MultiError& multiErr, int chunkId, bool cancelled);
+    void responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl);
 
     std::string const& getIdStr() const { return _idStr; }
     std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
@@ -119,11 +120,10 @@ public:
     /// that there is no limit to the number of rows sent back by the worker.
     /// Workers can only safely limit rows for queries that have the LIMIT clause without other related
     /// clauses like ORDER BY.
-    int getRowLimit() { return _rowLimit; }
+    int getRowLimit() const { return _rowLimit; }
 
-    std::string buildUjResultFilePath(std::string const& resultsDirname);
-    std::string resultFilePath();
-    std::string resultFileHttpUrl();
+    std::string resultFilePath() const;
+    std::string resultFileHttpUrl() const;
 
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
@@ -154,7 +154,7 @@ private:
 
     std::shared_ptr<wcontrol::Foreman> const _foreman;
 
-    std::vector<std::shared_ptr<wbase::Task>> _ujTasks;
+    std::vector<std::weak_ptr<wbase::Task>> _ujTasks;
     std::shared_ptr<FileChannelShared> _fileChannelShared;
 
     std::mutex _ujTasksMtx;  ///< Protects _ujTasks.

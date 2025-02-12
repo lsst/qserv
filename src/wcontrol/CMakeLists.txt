@@ -13,13 +13,9 @@ install(
     TARGETS wcontrol
 )
 
-target_include_directories(wcontrol PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
 
 target_link_libraries(wcontrol PUBLIC
     log
-    XrdSsiLib
     qhttp
     wdb
 )
