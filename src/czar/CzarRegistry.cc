@@ -235,16 +235,4 @@ void CzarRegistry::endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults) 
     _activeWorkerMap->sendActiveWorkersMessages();
 }
 
-void CzarRegistry::endUserQueryOnWorkers(QueryId qId, bool deleteWorkerResults) {
-    // Add query id to the appropriate list.
-    if (deleteWorkerResults) {
-        _activeWorkerMap->addToDoneDeleteFiles(qId);
-    } else {
-        _activeWorkerMap->addToDoneKeepFiles(qId);
-    }
-
-    // With lists updated, send out messages.
-    _activeWorkerMap->sendActiveWorkersMessages();
-}
-
 }  // namespace lsst::qserv::czar

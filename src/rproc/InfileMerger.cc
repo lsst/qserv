@@ -60,6 +60,7 @@
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
+#include "qdisp/UberJob.h"
 #include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
@@ -186,12 +187,6 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
         return true;
     }
 
-    std::unique_ptr<util::SemaLock> semaLock;
-    if (_dbEngine != MYISAM) {
-        // needed for parallel merging with INNODB and MEMORY
-        semaLock.reset(new util::SemaLock(*_semaMgrConn));
-    }
-
     TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
                                                     bool success) {
         if (!success) return;
@@ -206,18 +201,10 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     util::Timer virtFileT;
     virtFileT.start();
     // UberJobs only get one attempt
-    int resultJobId = makeJobIdAttempt(uberJob->getUjId(), 0);
-    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(
-            responseData, resultJobId, _jobIdColName, _jobIdSqlType, _jobIdMysqlType);
+    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(responseData);
     std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
-
-    // If the job attempt is invalid, exit without adding rows.
-    // It will wait here if rows need to be deleted.
-    if (_invalidJobAttemptMgr.incrConcurrentMergeCount(resultJobId)) {
-        return true;
-    }
 
     size_t const resultSize = responseData.transmitsize();
     size_t tResultSize;
@@ -250,18 +237,9 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     }
 
     auto start = CLOCK::now();
-    switch (_dbEngine) {
-        case MYISAM:
-            ret = _applyMysqlMyIsam(infileStatement, resultSize);
-            break;
-        case INNODB:
-            [[fallthrough]];
-        case MEMORY:
-            ret = _applyMysqlInnoDb(infileStatement, resultSize);
-            break;
-        default:
-            throw std::invalid_argument("InfileMerger::_dbEngine is unknown =" + engineToStr(_dbEngine));
-    }
+
+    // Always using MyIsam
+    ret = _applyMysqlMyIsam(infileStatement, resultSize);
     auto end = CLOCK::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_TRACE,
@@ -271,10 +249,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
-    _invalidJobAttemptMgr.decrConcurrentMergeCount();
-
     LOGS(_log, LOG_LVL_TRACE, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
-
     return ret;
 }
 
