@@ -448,24 +448,6 @@ string JobFragment::dump() const {
     return os.str();
 }
 
-string JobFragment::dump() const {
-    stringstream os;
-    os << " templateIndexes={";
-    for (int j : _jobSubQueryTempIndexes) {
-        os << j << ", ";
-    }
-    os << "} subchunkIds={";
-    for (int j : _subchunkIds) {
-        os << j << ", ";
-    }
-    os << "} dbtbl={";
-    for (int j : _subchunkIds) {
-        os << j << ", ";
-    }
-    os << "}";
-    return os.str();
-}
-
 nlohmann::json JobFragment::serializeJson() const {
     json jsFragment = {{"subquerytemplate_indexes", _jobSubQueryTempIndexes},
                        {"dbtables_indexes", _jobDbTablesIndexes},

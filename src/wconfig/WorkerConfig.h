@@ -435,7 +435,6 @@ private:
             util::ConfigValTUInt::create(_configValMap, "czar", "DeadTimeSec", notReq, 180);
     CVTUIntPtr _czarComNumHttpThreads =
             util::ConfigValTUInt::create(_configValMap, "czar", "ComNumHttpThreads", notReq, 40);
-
 };
 
 }  // namespace lsst::qserv::wconfig
