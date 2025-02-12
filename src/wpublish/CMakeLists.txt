@@ -7,10 +7,6 @@ target_sources(wpublish PRIVATE
     QueryStatistics.cc
 )
 
-target_include_directories(wpublish PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
-
 install(
     TARGETS wpublish
 )
@@ -19,8 +15,6 @@ target_link_libraries(wpublish PUBLIC
     log
     proto
     protobuf
-    XrdSsiLib
-    XrdCl
 )
 
 add_executable(testChunkInventory testChunkInventory.cc)
@@ -32,7 +26,3 @@ target_link_libraries(testChunkInventory PUBLIC
 )
 
 add_test(NAME testChunkInventory COMMAND testChunkInventory)
-
-install(
-    TARGETS wpublish
-)

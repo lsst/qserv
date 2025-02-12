@@ -365,7 +365,10 @@ void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared
     }
     // Delete the result file as nobody will come looking for it.
     _kill(tMtxLock, " buildAndTransmitError");
-    _uberJobData->responseError(multiErr, task->getChunkId(), cancelled, task->getLvlET());
+    auto ujd = _uberJobData.lock();
+    if (ujd != nullptr) {
+        ujd->responseError(multiErr, task->getChunkId(), cancelled, task->getLvlET());
+    }
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
@@ -421,16 +424,6 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             LOGS(_log, LOG_LVL_ERROR, err);
             erred = true;
             return erred;
-        }
-
-        int const ujRowLimit = task->getRowLimit();
-        bool rowLimitComplete = false;
-        if (ujRowLimit > 0 && _rowcount >= ujRowLimit) {
-            // There are enough rows to satisfy the query, so stop reading
-            hasMoreRows = false;
-            rowLimitComplete = true;
-            LOGS(_log, LOG_LVL_DEBUG,
-                 __func__ << " enough rows for query rows=" << _rowcount << " " << task->getIdStr());
         }
 
         int const ujRowLimit = task->getRowLimit();
@@ -579,7 +572,10 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     // Prepare the response object and serialize in into a message that will
     // be sent to the Czar.
     string httpFileUrl = task->getUberJobData()->resultFileHttpUrl();
-    _uberJobData->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
+    auto ujd = _uberJobData.lock();
+    if (ujd != nullptr) {
+        ujd->responseFileReady(httpFileUrl, _rowcount, _transmitsize);
+    }
     return true;
 }
 

@@ -29,6 +29,8 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
+#include "protojson/JobReadyMsg.h"
+#include "protojson/WorkerCzarComIssue.h"
 #include "qdisp/Executive.h"
 #include "qdisp/UberJob.h"
 #include "global/intTypes.h"
@@ -146,19 +148,15 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     // Parse and verify the json message and then have the uberjob import the file.
     json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
-        // TODO:UJ file response - move construction and parsing
-        // TODO:UJ to a class so it can be added to WorkerCzarComIssue
-        // See wbase::UberJobData::responseFileReady
-        string const targetWorkerId = body().required<string>("workerid");
-        string const czarName = body().required<string>("czar");
-        qmeta::CzarId const czarId = body().required<qmeta::CzarId>("czarid");
-        QueryId const queryId = body().required<QueryId>("queryid");
-        UberJobId const uberJobId = body().required<UberJobId>("uberjobid");
-        string const fileUrl = body().required<string>("fileUrl");
-        uint64_t const rowCount = body().required<uint64_t>("rowCount");
-        uint64_t const fileSize = body().required<uint64_t>("fileSize");
+        string const repliInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
+        string const repliAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
+        auto const& jsReq = body().objJson;
+        auto jrMsg = protojson::JobReadyMsg::createFromJson(jsReq, repliInstanceId, repliAuthKey);
 
         // Find UberJob
+        auto queryId = jrMsg->getQueryId();
+        auto czarId = jrMsg->getCzarId();
+        auto uberJobId = jrMsg->getUberJobId();
         qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
         if (exec == nullptr) {
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
@@ -172,10 +170,11 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
                                    " czar=" + to_string(czarId));
         }
 
-        uj->setResultFileSize(fileSize);
-        exec->checkResultFileSize(fileSize);
+        uj->setResultFileSize(jrMsg->getFileSize());
+        exec->checkResultFileSize(jrMsg->getFileSize());
 
-        auto importRes = uj->importResultFile(fileUrl, rowCount, fileSize);
+        auto importRes =
+                uj->importResultFile(jrMsg->getFileUrl(), jrMsg->getRowCount(), jrMsg->getFileSize());
         jsRet = importRes;
 
     } catch (std::invalid_argument const& iaEx) {
