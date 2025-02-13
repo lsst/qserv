@@ -24,7 +24,7 @@ jobs:
     # could change from job to job, breaking the running workflow in a difficult
     # to understand way.
     name: Save image names
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       build-image: ${{ steps.image-names.outputs.build-image }}
       user-build-image: ${{ steps.image-names.outputs.user-build-image }}
@@ -62,7 +62,7 @@ jobs:
 
   update-base-images:
     name: Update base images
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: image-names
     outputs:
       build-rebuilt: ${{ steps.rebuild.outputs.build-rebuilt }}
@@ -122,7 +122,7 @@ jobs:
 
   update-mariadb-image:
     name: Update MariaDB image
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: image-names
     outputs:
       rebuilt: ${{ steps.rebuild.outputs.rebuilt }}
@@ -165,7 +165,7 @@ jobs:
 
   update-run-image:
     name: Update Qserv image
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [image-names, update-base-images]
     steps:
 
@@ -217,7 +217,7 @@ jobs:
 
   compose-integration-tests:
     name: Integration tests (compose)
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [image-names, update-mariadb-image, update-run-image]
     steps:
 
@@ -352,7 +352,7 @@ jobs:
 
   notify-on-fail:
     name: Notify Slack if fail on main
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs: [compose-integration-tests]
     if: github.ref == 'refs/heads/main' && failure()
     steps:
