@@ -71,10 +71,6 @@ public:
     /// @param tableName target table for incoming data
     MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName);
 
-    /// Process the response and read the result file if no error was reported by a worker.
-    /// @return true if successful (no error)
-    bool flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) override;
-
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
     std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
@@ -85,11 +81,6 @@ public:
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
-
-    /// @return true if the receiver has completed its duties.
-    bool finished() const override;
-
-    bool reset() override;  ///< Reset the state that a request can be retried.
 
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override;
@@ -104,12 +95,6 @@ public:
     void prepScrubResults(int jobId, int attempt) override;
 
 private:
-    /// Prepare for first call to flush().
-    void _initState();
-
-    bool _merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData,
-                std::shared_ptr<qdisp::JobQuery> const& jobQuery);
-
     /// Call InfileMerger to do the work of merging this data to the result.
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 

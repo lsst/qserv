@@ -42,7 +42,7 @@
 
 // Local headers
 #include "global/stringTypes.h"
-#include "qdisp/SharedResources.h"
+#include "util/QdispPool.h"
 
 namespace lsst::qserv::ccontrol {
 class UserQuery;
@@ -82,7 +82,7 @@ public:
     /// @param msgTableName: Name of the message table without database name.
     /// @return new UserQuery object
     std::shared_ptr<UserQuery> newUserQuery(std::string const& query, std::string const& defaultDb,
-                                            qdisp::SharedResources::Ptr const& qdispSharedResources,
+                                            std::shared_ptr<util::QdispPool> const& qdispPool,
                                             std::string const& userQueryId, std::string const& msgTableName,
                                             std::string const& resultDb);
 

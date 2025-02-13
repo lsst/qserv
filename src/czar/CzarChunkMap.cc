@@ -31,6 +31,7 @@
 
 // Qserv headers
 #include "qmeta/QMeta.h"
+#include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
 #include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
@@ -84,20 +85,22 @@ void CzarChunkMap::verify() {
 
     for (auto const& [chunkId, chunkDataPtr] : chunkMap) {
         if (chunkDataPtr == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, " chunkId=" << chunkId << " had nullptr");
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " chunkId=" << chunkId << " had nullptr");
             ++errorCount;
             continue;
         }
         auto primeScanWkr = chunkDataPtr->_primaryScanWorker.lock();
         if (primeScanWkr == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, " chunkId=" << chunkId << " missing primaryScanWorker");
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << " chunkId=" << chunkId << " missing primaryScanWorker");
             ++errorCount;
             continue;
         }
         if (primeScanWkr->_sharedScanChunkMap.find(chunkId) == primeScanWkr->_sharedScanChunkMap.end()) {
             LOGS(_log, LOG_LVL_ERROR,
-                 " chunkId=" << chunkId << " should have been (and was not) in the sharedScanChunkMap for "
-                             << primeScanWkr->_workerId);
+                 cName(__func__) << " chunkId=" << chunkId
+                                 << " should have been (and was not) in the sharedScanChunkMap for "
+                                 << primeScanWkr->_workerId);
             ++errorCount;
             continue;
         }
@@ -105,7 +108,8 @@ void CzarChunkMap::verify() {
         if (iter != allChunkIds.end()) {
             allChunkIds.erase(iter);
         } else {
-            LOGS(_log, LOG_LVL_ERROR, " chunkId=" << chunkId << " chunkId was not in allChunks list");
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << " chunkId=" << chunkId << " chunkId was not in allChunks list");
             ++errorCount;
             continue;
         }
@@ -118,14 +122,14 @@ void CzarChunkMap::verify() {
             allMissingIds += to_string(cId) + ",";
         }
         LOGS(_log, LOG_LVL_ERROR,
-             " There were " << missing << " missing chunks from the scan list " << allMissingIds);
+             cName(__func__) << " There were " << missing << " missing chunks from the scan list "
+                             << allMissingIds);
         ++errorCount;
     }
 
     if (errorCount > 0) {
-        // TODO:UJ There may be an argument to keep the new maps even if there are problems
-        // with them. For current testing, it's probably best to leave it how it is so that
-        // it's easier to isolate problems.
+        // Original creation of the family map will keep re-reading until there are no problems.
+        // _monitor will log this and keep using the old maps.
         throw ChunkMapException(ERR_LOC, "verification failed with " + to_string(errorCount) + " errors");
     }
 }
@@ -161,20 +165,21 @@ void CzarChunkMap::ChunkData::_calcTotalBytes() {
 
 void CzarChunkMap::ChunkData::addToWorkerHasThis(std::shared_ptr<WorkerChunksData> const& worker) {
     if (worker == nullptr) {
-        throw ChunkMapException(ERR_LOC, string(__func__) + " worker was null");
+        throw ChunkMapException(ERR_LOC, cName(__func__) + " worker was null");
     }
 
     _workerHasThisMap[worker->_workerId] = worker;
 }
 
-std::map<std::string, std::weak_ptr<CzarChunkMap::WorkerChunksData>>
-CzarChunkMap::ChunkData::getWorkerHasThisMapCopy() const {
-    std::map<std::string, std::weak_ptr<WorkerChunksData>> newMap = _workerHasThisMap;
+map<string, weak_ptr<CzarChunkMap::WorkerChunksData>> CzarChunkMap::ChunkData::getWorkerHasThisMapCopy()
+        const {
+    map<string, weak_ptr<WorkerChunksData>> newMap = _workerHasThisMap;
     return newMap;
 }
 
-void CzarChunkMap::organize() {
+shared_ptr<CzarChunkMap::ChunkVector> CzarChunkMap::organize() {
     auto chunksSortedBySize = make_shared<ChunkVector>();
+    auto missingChunks = make_shared<ChunkVector>();
 
     calcChunkMap(*_chunkMap, *chunksSortedBySize);
 
@@ -182,36 +187,45 @@ void CzarChunkMap::organize() {
     //  - _workerChunkMap has a map of workerData by worker id with each worker having a map of ChunkData
     //  - _chunkMap has a map of all chunkData by chunk id
     //  - chunksSortedBySize a list of chunks sorted with largest first.
-    // From here need to assign shared scan chunk priority
-    // Go through the chunksSortedBySize list and assign each chunk to worker that has it with the smallest
-    // totalScanSize.
+    // From here need to assign shared scan chunk priority (i.e. the worker
+    //    that will handle the chunk in shared scans, unless it is dead.)
+    // Go through the chunksSortedBySize list and assign each chunk to worker that has both:
+    //    - a copy of the chunk
+    //    - the worker currently has the smallest totalScanSize.
+    // When this is done, all workers should have lists of chunks with similar total sizes
+    // and missing chunks should be empty.
     for (auto&& chunkData : *chunksSortedBySize) {
         SizeT smallest = std::numeric_limits<SizeT>::max();
         WorkerChunksData::Ptr smallestWkr = nullptr;
+        // Find worker with smallest total size.
         for (auto&& [wkrId, wkrDataWeak] : chunkData->_workerHasThisMap) {
             auto wkrData = wkrDataWeak.lock();
             if (wkrData == nullptr) {
-                LOGS(_log, LOG_LVL_ERROR, __func__ << " unexpected null weak ptr for " << wkrId);
+                LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " unexpected null weak ptr for " << wkrId);
                 continue;  // maybe the next one will be okay.
             }
+
             LOGS(_log, LOG_LVL_DEBUG,
-                 __func__ << " wkrId=" << wkrData << " tsz=" << wkrData->_sharedScanTotalSize
-                          << " smallest=" << smallest);
+                 cName(__func__) << " wkrId=" << wkrData << " tsz=" << wkrData->_sharedScanTotalSize
+                                 << " smallest=" << smallest);
             if (wkrData->_sharedScanTotalSize < smallest) {
                 smallestWkr = wkrData;
                 smallest = smallestWkr->_sharedScanTotalSize;
             }
         }
         if (smallestWkr == nullptr) {
-            throw ChunkMapException(ERR_LOC, string(__func__) + " no smallesWkr found for chunk=" +
-                                                     to_string(chunkData->_chunkId));
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) + " no smallesWkr found for chunk=" + to_string(chunkData->_chunkId));
+            missingChunks->push_back(chunkData);
+        } else {
+            smallestWkr->_sharedScanChunkMap[chunkData->_chunkId] = chunkData;
+            smallestWkr->_sharedScanTotalSize += chunkData->_totalBytes;
+            chunkData->_primaryScanWorker = smallestWkr;
+            LOGS(_log, LOG_LVL_DEBUG,
+                 " chunk=" << chunkData->_chunkId << " assigned to scan on " << smallestWkr->_workerId);
         }
-        smallestWkr->_sharedScanChunkMap[chunkData->_chunkId] = chunkData;
-        smallestWkr->_sharedScanTotalSize += chunkData->_totalBytes;
-        chunkData->_primaryScanWorker = smallestWkr;
-        LOGS(_log, LOG_LVL_DEBUG,
-             " chunk=" << chunkData->_chunkId << " assigned to scan on " << smallestWkr->_workerId);
     }
+    return missingChunks;
 }
 
 string CzarChunkMap::ChunkData::dump() const {
@@ -229,6 +243,34 @@ string CzarChunkMap::ChunkData::dump() const {
     }
     os << "}}";
     return os.str();
+}
+
+bool CzarChunkMap::WorkerChunksData::isDead() {
+    if (_activeWorker == nullptr) {
+        // At startup, these may not be available
+        auto czarPtr = Czar::getCzar();
+        if (czarPtr == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << " czarPtr is null, this should only happen in unit test.");
+            return false;
+        }
+        auto awMap = Czar::getCzar()->getActiveWorkerMap();
+        if (awMap == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " awMap is null.");
+            return true;
+        }
+        _activeWorker = awMap->getActiveWorker(_workerId);
+        if (_activeWorker == nullptr) {
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " activeWorker not found.");
+            return true;
+        }
+    }
+    auto wState = _activeWorker->getState();
+    bool dead = wState == ActiveWorker::DEAD;
+    if (dead) {
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " is dead");
+    }
+    return dead;
 }
 
 string CzarChunkMap::WorkerChunksData::dump() const {
@@ -292,7 +334,7 @@ bool CzarFamilyMap::_read() {
     // better to wait for new maps if something changed.
     std::lock_guard gLock(_familyMapMtx);
     qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap(_lastUpdateTime);
-    if (_lastUpdateTime >= qChunkMap.updateTime) {
+    if (_lastUpdateTime == qChunkMap.updateTime) {
         LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) << " no need to read "
                              << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime)
@@ -301,7 +343,9 @@ bool CzarFamilyMap::_read() {
     }
 
     // Make the new maps.
-    shared_ptr<CzarFamilyMap::FamilyMapType> familyMapPtr = makeNewMaps(qChunkMap);
+    auto czConfig = cconfig::CzarConfig::instance();
+    bool usingChunkSize = czConfig->getFamilyMapUsingChunkSize();
+    shared_ptr<CzarFamilyMap::FamilyMapType> familyMapPtr = makeNewMaps(qChunkMap, usingChunkSize);
 
     verify(familyMapPtr);
 
@@ -314,7 +358,7 @@ bool CzarFamilyMap::_read() {
 }
 
 std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
-        qmeta::QMetaChunkMap const& qChunkMap) {
+        qmeta::QMetaChunkMap const& qChunkMap, bool usingChunkSize) {
     // Create new maps.
     std::shared_ptr<FamilyMapType> newFamilyMap = make_shared<FamilyMapType>();
 
@@ -329,7 +373,10 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
                 for (qmeta::QMetaChunkMap::ChunkInfo const& chunkInfo : chunks) {
                     try {
                         int64_t chunkNum = chunkInfo.chunk;
-                        CzarChunkMap::SizeT sz = chunkInfo.size;
+                        CzarChunkMap::SizeT sz = 1;
+                        if (usingChunkSize) {
+                            sz = chunkInfo.size;
+                        }
                         LOGS(_log, LOG_LVL_DEBUG,
                              cName(__func__) << "workerdId=" << workerId << " db=" << dbName << " table="
                                              << tableName << " chunk=" << chunkNum << " sz=" << sz);
@@ -350,10 +397,23 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
         }
     }
 
-    // this needs to be done for each CzarChunkMap in the family map.
+    // This needs to be done for each CzarChunkMap in the family map.
     for (auto&& [familyName, chunkMapPtr] : *newFamilyMap) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " working on " << familyName);
-        chunkMapPtr->organize();
+        auto missing = chunkMapPtr->organize();
+        if (missing != nullptr && !missing->empty()) {
+            // TODO:UJ Some element of the dashboard should be made aware of this. Also,
+            // TODO:UJ maybe this should check all families before throwing.
+            // TODO:UJ There are implications that maybe the replicator should not
+            // TODO:UJ tell the czar about families/databases that do not have
+            // TODO:UJ at least one copy of each chunk with data loaded on a worker.
+            string chunkIdStr;
+            for (auto const& chunkData : *missing) {
+                chunkIdStr += to_string(chunkData->getChunkId()) + " ";
+            }
+            throw ChunkMapException(
+                    ERR_LOC, cName(__func__) + " family=" + familyName + " is missing chunks " + chunkIdStr);
+        }
     }
 
     return newFamilyMap;
@@ -364,7 +424,7 @@ void CzarFamilyMap::insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFami
                                    CzarChunkMap::SizeT sz) {
     // Get the CzarChunkMap for this family
     auto familyName = getFamilyNameFromDbName(dbName);
-    LOGS(_log, LOG_LVL_INFO,
+    LOGS(_log, LOG_LVL_TRACE,
          cName(__func__) << " familyInsrt{w=" << workerId << " fN=" << familyName << " dbN=" << dbName
                          << " tblN=" << tableName << " chunk=" << chunkIdNum << " sz=" << sz << "}");
     auto& nfMap = *newFamilyMap;
