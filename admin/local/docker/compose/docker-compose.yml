@@ -1,4 +1,3 @@
-version: "3.9"
 x-worker-mariadb:
     &worker-mariadb
     image: "${QSERV_MARIADB_IMAGE:?err}"
@@ -20,7 +19,7 @@ x-worker-cmsd:
     &worker-cmsd
     image: "${QSERV_IMAGE:?err}"
     init: true
-    # ports are published in worker_xrootd because this container uses that container's network stack.
+    # ports are published in worker-xrootd because this container uses that container's network stack.
 x-worker-xrootd:
     &worker-xrootd
     image: "${QSERV_IMAGE:?err}"
@@ -81,8 +80,8 @@ networks:
                 - subnet: 192.168.3.0/24
 
 services:
-    # worker 0 uses and validates ip+port to connect to the worker_mariadb
-    worker_mariadb_0:
+    # worker 0 uses and validates ip+port to connect to the worker-mariadb
+    worker-mariadb-0:
         << : *worker-mariadb
         volumes:
             - << : *worker-mariadb-cnf-volume
@@ -98,8 +97,8 @@ services:
             - type: volume
               source: volume_worker_0_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
-        network_mode: "service:worker_xrootd_0"
-    worker_xrootd_0:
+        network_mode: "service:worker-xrootd-0"
+    worker-xrootd-0:
         << : *worker-xrootd
         command: >
           entrypoint worker-xrootd
@@ -109,10 +108,10 @@ services:
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
-          --repl-registry-host repl_registry
+          --repl-registry-host repl-registry
           --repl-registry-port 25082
           --results-dirname /qserv/data/results
-          --cmsd-manager-name czar_xrootd
+          --cmsd-manager-name czar-xrootd
           --mysql-monitor-password CHANGEME_MONITOR
           --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
         volumes:
@@ -132,22 +131,22 @@ services:
         networks:
             default:
                 aliases:
-                    - worker_cmsd_0
-                    - worker_mariadb_0
-    worker_cmsd_0:
+                    - worker-cmsd-0
+                    - worker-mariadb-0
+    worker-cmsd-0:
         << : *worker-cmsd
         command: >
           entrypoint worker-cmsd
-          --db-uri mysql://qsmaster:CHANGEME2@worker_mariadb_0:3306
+          --db-uri mysql://qsmaster:CHANGEME2@worker-mariadb-0:3306
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster:CHANGEME2@127.0.0.1:3306/qservw_worker 0 0"
           --results-dirname /qserv/data/results
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
-          --repl-registry-host repl_registry
+          --repl-registry-host repl-registry
           --repl-registry-port 25082
-          --cmsd-manager-name czar_xrootd
-        network_mode: "service:worker_xrootd_0"
+          --cmsd-manager-name czar-xrootd
+        network_mode: "service:worker-xrootd-0"
         volumes:
             - type: volume
               source: volume_worker_0_results
@@ -162,18 +161,18 @@ services:
               source: volume_worker_0_mariadb_run
               target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
             - << : *log-volume
-    repl_worker_0:
+    repl-worker-0:
         << : *repl-worker
         command: >
           entrypoint worker-repl
-          --db-admin-uri mysql://root:CHANGEME@worker_mariadb_0:3306/qservw_worker
-          --repl-connection mysql://qsreplica@repl_mariadb:3306/qservReplica
+          --db-admin-uri mysql://root:CHANGEME@worker-mariadb-0:3306/qservw_worker
+          --repl-connection mysql://qsreplica@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey
-          --registry-host=repl_registry
+          --registry-host=repl-registry
           --debug
         volumes:
             - type: volume
@@ -186,8 +185,8 @@ services:
               source: volume_worker_0_home
               target: /home/qserv
             - << : *log-volume
-    # worker 1 uses and validates socket file (where possible) to connect to the worker_mariadb
-    worker_mariadb_1:
+    # worker 1 uses and validates socket file (where possible) to connect to the worker-mariadb
+    worker-mariadb-1:
         << : *worker-mariadb
         volumes:
             - << : *worker-mariadb-cnf-volume
@@ -203,8 +202,8 @@ services:
             - type: volume
               source: volume_worker_1_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
-        network_mode: "service:worker_xrootd_1"
-    worker_xrootd_1:
+        network_mode: "service:worker-xrootd-1"
+    worker-xrootd-1:
         << : *worker-xrootd
         command: >
           entrypoint --log-level DEBUG worker-xrootd
@@ -214,10 +213,10 @@ services:
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
-          --repl-registry-host repl_registry
+          --repl-registry-host repl-registry
           --repl-registry-port 25082
           --results-dirname /qserv/data/results
-          --cmsd-manager-name czar_xrootd
+          --cmsd-manager-name czar-xrootd
           --mysql-monitor-password CHANGEME_MONITOR
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
@@ -238,22 +237,22 @@ services:
         networks:
             default:
                 aliases:
-                    - worker_cmsd_1
-                    - worker_mariadb_1
-    worker_cmsd_1:
+                    - worker-cmsd-1
+                    - worker-mariadb-1
+    worker-cmsd-1:
         << : *worker-cmsd
         command: >
           entrypoint --log-level DEBUG worker-cmsd
-          --db-uri mysql://qsmaster:CHANGEME2@worker_mariadb_1:3306?socket=/qserv/mariadb/run/mysqld.sock
+          --db-uri mysql://qsmaster:CHANGEME2@worker-mariadb-1:3306?socket=/qserv/mariadb/run/mysqld.sock
           --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster:CHANGEME2@127.0.0.1:3306/qservw_worker 0 0"
           --results-dirname /qserv/data/results
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
-          --repl-registry-host repl_registry
+          --repl-registry-host repl-registry
           --repl-registry-port 25082
-          --cmsd-manager-name czar_xrootd
-        network_mode: "service:worker_xrootd_1"
+          --cmsd-manager-name czar-xrootd
+        network_mode: "service:worker-xrootd-1"
         volumes:
             - type: volume
               source: volume_worker_1_results
@@ -268,19 +267,19 @@ services:
               source: volume_worker_1_mariadb_run
               target: /qserv/mariadb/run
             - << : *log-volume
-    repl_worker_1:
+    repl-worker-1:
         << : *repl-worker
         # qserv-replica-worker app does not support socket file yet.
         command: >
           entrypoint worker-repl
-          --db-admin-uri mysql://root:CHANGEME@worker_mariadb_1:3306/qservw_worker
-          --repl-connection mysql://qsreplica@repl_mariadb:3306/qservReplica
+          --db-admin-uri mysql://root:CHANGEME@worker-mariadb-1:3306/qservw_worker
+          --repl-connection mysql://qsreplica@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey
-          --registry-host=repl_registry
+          --registry-host=repl-registry
           --debug
         volumes:
             - type: volume
@@ -293,13 +292,13 @@ services:
               source: volume_worker_1_home
               target: /home/qserv
             - << : *log-volume
-    czar_xrootd:
+    czar-xrootd:
         image: "${QSERV_IMAGE:?err}"
         init: true
         command: >
           entrypoint xrootd-manager
-          --cmsd-manager-name czar_xrootd
-        hostname: czar_xrootd
+          --cmsd-manager-name czar-xrootd
+        hostname: czar-xrootd
         expose:
             - "1094"
             - "2131"
@@ -314,13 +313,13 @@ services:
         networks:
             default:
                 aliases:
-                    - czar_cmsd
-    czar_cmsd:
+                    - czar-cmsd
+    czar-cmsd:
         image: "${QSERV_IMAGE:?err}"
         init: true
         # NOTE!! cms-delay-servers must match the number of workers being launched!
         command: entrypoint cmsd-manager --cms-delay-servers 2
-        network_mode: "service:czar_xrootd"
+        network_mode: "service:czar-xrootd"
         volumes:
             - type: volume
               source: volume_czar_xrootd
@@ -329,11 +328,11 @@ services:
               source: volume_czar_home
               target: /home/qserv
             - << : *log-volume
-    czar_mariadb:
+    czar-mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
         command: --port 3306
-        network_mode: "service:czar_proxy"
+        network_mode: "service:czar-proxy"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
         volumes:
@@ -352,7 +351,7 @@ services:
             - type: volume
               source: volume_czar_mariadb_run
               target: /var/run/mysqld
-    czar_proxy:
+    czar-proxy:
         image: "${QSERV_IMAGE:?err}"
         init: true
         command: >
@@ -360,12 +359,12 @@ services:
           --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
-          --xrootd-manager czar_xrootd
+          --xrootd-manager czar-xrootd
           --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
-          --repl-registry-host repl_registry
+          --repl-registry-host repl-registry
           --repl-registry-port 25082
         volumes:
             - type: volume
@@ -382,21 +381,21 @@ services:
               target: /qserv/mariadb/run
             - << : *log-volume
         expose:
-            - "3306" # for czar_mariadb
+            - "3306" # for czar-mariadb
             - "4040"
         networks:
             default:
                 aliases:
-                    - czar_mariadb
+                    - czar-mariadb
         # ports:
         #     - "127.0.0.1:4040:4040"
-    czar_http:
+    czar-http:
         image: "${QSERV_IMAGE:?err}"
         init: true
         command: >
           entrypoint --log-level DEBUG czar-http
-          --db-uri mysql://qsmaster:CHANGEME2@czar_mariadb:3306/
-          --xrootd-manager czar_xrootd
+          --db-uri mysql://qsmaster:CHANGEME2@czar-mariadb:3306/
+          --xrootd-manager czar-xrootd
           --czar-name http
           --http-port 4048
           --http-threads 4
@@ -409,7 +408,7 @@ services:
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
-          --repl-registry-host repl_registry
+          --repl-registry-host repl-registry
           --repl-registry-port 25082
         volumes:
             - type: volume
@@ -423,7 +422,7 @@ services:
             - "4048"
         ports:
             - "0.0.0.0:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
-    repl_mariadb:
+    repl-mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
         command: --port 3306
@@ -441,21 +440,21 @@ services:
             - type: volume
               source: volume_repl_mariadb_lib
               target: /var/lib/mysql
-    repl_controller:
+    repl-controller:
         image: "${QSERV_IMAGE:?err}"
         init: true
         command: >
           entrypoint --log-level DEBUG replication-controller
-          --db-uri mysql://qsreplica@repl_mariadb:3306/qservReplica
-          --db-admin-uri mysql://root:CHANGEME@repl_mariadb:3306/qservReplica
-          --qserv-czar-db=mysql://root:CHANGEME@czar_mariadb:3306/qservMeta
+          --db-uri mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
+          --qserv-czar-db=mysql://root:CHANGEME@czar-mariadb:3306/qservMeta
           --log-cfg-file=/config-etc/log/log-repl-controller.cnf
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey
-          --xrootd-host=czar_xrootd
-          --registry-host=repl_registry
+          --xrootd-host=czar-xrootd
+          --registry-host=repl-registry
           --controller-auto-register-workers=1
           --qserv-sync-force
           --debug
@@ -474,13 +473,13 @@ services:
               source: ../../../../src/www
               target: /usr/local/qserv/www
             - << : *log-volume
-    repl_registry:
+    repl-registry:
         image: "${QSERV_IMAGE:?err}"
         init: true
         command: >
           entrypoint --log-level DEBUG replication-registry
-          --db-uri mysql://qsreplica@repl_mariadb:3306/qservReplica
-          --db-admin-uri mysql://root:CHANGEME@repl_mariadb:3306/qservReplica
+          --db-uri mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-registry.cnf
           --
           --instance-id=qserv_proj

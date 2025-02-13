@@ -128,10 +128,10 @@ def add_network_option(args: List[str], project: str) -> None:
         The list of arguments to append the network option to.
     project : `str`
         The project name that is used to derive a network name, follows
-        docker-compose conventions, so if the project name is "foo" then the
+        docker compose conventions, so if the project name is "foo" then the
         network name will be "foo_default".
     """
-    # this is the network name given to compose clusters when docker-compose is run with the -p option:
+    # this is the network name given to compose clusters when docker compose is run with the -p option:
     args.append(f"--network={project}_default")
 
 
@@ -1605,7 +1605,7 @@ def up(
     dashboard_port: Optional[int],
     http_frontend_port: Optional[int],
 ) -> None:
-    """Send docker-compose up and down commands.
+    """Send docker compose up and down commands.
 
     Parameters
     ----------
@@ -1624,7 +1624,7 @@ def up(
     http_frontend_port : `int` or `None`
         The host port to use for the qserv HTTP frontend.
     """
-    args = ["docker-compose", "-f", yaml_file]
+    args = ["docker", "compose", "-f", yaml_file]
     if project:
         args.extend(["-p", project])
     args.extend(["up", "-d"])
@@ -1653,14 +1653,14 @@ def down(
     qserv_image: str,
     mariadb_image: str,
 ) -> None:
-    """Send docker-compose up and down commands.
+    """Send docker compose up and down commands.
 
     Parameters
     ----------
     yaml_file : `str`
         Path to the yaml file that describes the compose cluster.
     volume : `bool`
-        Pass the -v flag to docker-compose, to remove cluster volumes.
+        Pass the -v flag to docker compose, to remove cluster volumes.
     dry : `bool`
         If True do not run the command; print what would have been run.
     project : `str`
@@ -1671,7 +1671,8 @@ def down(
         The name of the qserv being used.
     """
     args = [
-        "docker-compose",
+        "docker",
+        "compose",
         "-f",
         yaml_file,
     ]
