@@ -168,7 +168,8 @@ commands = OrderedDict(
         (
             "worker-cmsd",
             CommandInfo(
-                "cmsd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}",
+                "cmsd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi "
+                "{{xrdssi_cfg_path}}",
             ),
         ),
         (
@@ -182,7 +183,8 @@ commands = OrderedDict(
         (
             "worker-xrootd",
             CommandInfo(
-                "xrootd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}",
+                "xrootd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi "
+                "{{xrdssi_cfg_path}}",
             ),
         ),
         (
@@ -333,7 +335,7 @@ option_cmd_default = partial(
 )
 
 
-class options_cms(OptionGroup):  # noqa: N801
+class options_cms(OptionGroup):
     """Applies the option_cmd and the option_cmd_default decorators to a
     click.command function.
     """
@@ -371,7 +373,8 @@ def load_simple(repl_ctrl_uri: str, repl_auth_key: str, load_http: bool) -> None
 @entrypoint.command()
 @option_repl_connection(
     help=option_repl_connection.keywords["help"]
-    + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
+    + " If provided will wait for the replication system to be responsive before "
+    "loading data (does not guarantee system readiness)."
 )
 @option_unload()
 @option_load()
@@ -415,7 +418,8 @@ def integration_test(
 @entrypoint.command()
 @option_repl_connection(
     help=option_repl_connection.keywords["help"]
-    + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
+    + " If provided will wait for the replication system to be responsive before "
+    "loading data (does not guarantee system readiness)."
 )
 @option_unload()
 @option_load()
@@ -459,7 +463,8 @@ def integration_test_http(
 @entrypoint.command()
 @option_repl_connection(
     help=option_repl_connection.keywords["help"]
-    + " If provided will wait for the replication system to be responsive before loading data (does not guarantee system readyness)."
+    + " If provided will wait for the replication system to be responsive before "
+    "loading data (does not guarantee system readiness)."
 )
 @option_run_tests()
 @option_keep_results()
@@ -633,15 +638,15 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
     "--http-threads",
     default="2",
     show_default=True,
-    help="The number of the request processing threads in the REST service. The value of the parameter is passed"
-    " as a command-line parameter to the application.",
+    help="The number of the request processing threads in the REST service. The value of the parameter is "
+    "passed as a command-line parameter to the application.",
 )
 @click.option(
     "--http-worker-ingest-threads",
     default="2",
     show_default=True,
-    help="The number of the request processing threads in the REST service. The value of the parameter is passed"
-    " as a command-line parameter to the application.",
+    help="The number of the request processing threads in the REST service. The value of the parameter is "
+    "passed as a command-line parameter to the application.",
 )
 @click.option(
     "--http-ssl-cert-file",
