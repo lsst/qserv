@@ -478,8 +478,7 @@ class ReplicationInterface:
             _log.debug("ingest file args: %s", args)
             res = subprocess.run(
                 args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 encoding="utf-8",
                 errors="replace",
             )
