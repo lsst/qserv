@@ -652,7 +652,7 @@ class ITestQueryHttp:
                 f.write("\n")
             for row in res["rows"]:
                 line: str = ""
-                for col_idx in range(0, len(row)):
+                for col_idx in range(len(row)):
                     if col_idx != 0:
                         line = line + "\t"
                     # This prefix needs to be added to make the binary string compatible with
