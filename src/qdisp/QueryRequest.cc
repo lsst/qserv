@@ -73,7 +73,7 @@ QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery)
 QueryRequest::~QueryRequest() {
     QSERV_LOGCONTEXT_QUERY_JOB(_qid, _jobid);
     LOGS(_log, LOG_LVL_TRACE, __func__);
-    if (!_finishedCalled) {
+    if (!_finishedCalled.exchange(true)) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " cleaning up calling Finished");
         bool ok = Finished();
         if (!ok) {
@@ -303,8 +303,8 @@ void QueryRequest::cleanup() {
     // _finishStatusMutex before it is unlocked.
     // This should reset _jobquery and _keepAlive without risk of either being deleted
     // before being reset.
-    shared_ptr<JobQuery> jq(move(_jobQuery));
-    shared_ptr<QueryRequest> keep(move(_keepAlive));
+    _jobQuery = nullptr;
+    _keepAlive = nullptr;
 }
 
 /// Finalize under error conditions and retry or report completion
@@ -330,11 +330,11 @@ bool QueryRequest::_errorFinish(bool stopTrying) {
     // Make the calls outside of the mutex lock.
     LOGS(_log, LOG_LVL_DEBUG, "calling Finished(stopTrying=" << stopTrying << ")");
     bool ok = Finished();
-    _finishedCalled = true;
+    if (_finishedCalled.exchange(true)) {
+        LOGS(_log, LOG_LVL_WARN, "QueryRequest::_errorFinish Finished() already called");
+    }
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRequest::_errorFinish NOT ok");
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::_errorFinish ok");
     }
 
     if (!_retried.exchange(true) && !stopTrying) {
@@ -374,11 +374,11 @@ void QueryRequest::_finish() {
     }
 
     bool ok = Finished();
-    _finishedCalled = true;
+    if (_finishedCalled.exchange(true)) {
+        LOGS(_log, LOG_LVL_WARN, "QueryRequest::finish Finished() already called");
+    }
     if (!ok) {
         LOGS(_log, LOG_LVL_ERROR, "QueryRequest::finish Finished() !ok ");
-    } else {
-        LOGS(_log, LOG_LVL_DEBUG, "QueryRequest::finish Finished() ok.");
     }
     _callMarkComplete(true);
     cleanup();
