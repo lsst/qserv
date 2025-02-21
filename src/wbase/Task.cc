@@ -76,8 +76,6 @@ size_t const MB_SIZE_BYTES = 1024 * 1024;
 
 namespace lsst::qserv::wbase {
 
-string const Task::_fqdn = util::get_current_host_fqdn();
-
 // Task::ChunkEqual functor
 bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if (!x || !y) {
