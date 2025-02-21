@@ -224,7 +224,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
             false);
     wsched::BlendScheduler::Ptr blendSched = make_shared<wsched::BlendScheduler>(
             "BlendSched", queries, maxThread, group, snail, scanSchedulers);
-    blendSched->setPrioritizeByInFlight(false);  // TODO: set in configuration file.
+    blendSched->setPrioritizeByInFlight(workerConfig->getPrioritizeByInFlight());
     queries->setBlendScheduler(blendSched);
 
     unsigned int requiredTasksCompleted = workerConfig->getRequiredTasksCompleted();
@@ -268,7 +268,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     // by the Replication System. Update the port number in the configuration
     // in case if the server is run on the dynamically allocated port.
     _controlHttpSvc = HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
-                                      workerConfig->replicationNumHttpThreads());
+                                      workerConfig->getCzarComNumHttpThreads());
 
     auto const port = _controlHttpSvc->start();
     workerConfig->setReplicationHttpPort(port);

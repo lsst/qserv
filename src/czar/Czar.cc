@@ -210,12 +210,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _qdispPool = make_shared<util::QdispPool>(qPoolSize, maxPriority, vectRunSizes, vectMinRunningSizes);
 
     qdisp::CzarStats::setup(_qdispPool);
-    int xrootdCBThreadsMax = _czarConfig->getXrootdCBThreadsMax();
-    int xrootdCBThreadsInit = _czarConfig->getXrootdCBThreadsInit();
-    LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsMax=" << xrootdCBThreadsMax);
-    LOGS(_log, LOG_LVL_INFO, "config xrootdCBThreadsInit=" << xrootdCBThreadsInit);
-    int const xrootdSpread = _czarConfig->getXrootdSpread();
-    LOGS(_log, LOG_LVL_INFO, "config xrootdSpread=" << xrootdSpread);
     _queryDistributionTestVer = _czarConfig->getQueryDistributionTestVer();
 
     _commandHttpPool = shared_ptr<http::ClientConnPool>(

@@ -82,17 +82,6 @@ class QdispPool;
 
 namespace qdisp {
 
-struct ExecutiveConfig {
-    typedef std::shared_ptr<ExecutiveConfig> Ptr;
-    ExecutiveConfig(std::string const& serviceUrl_, int secsBetweenChunkUpdates_)
-            : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
-    ExecutiveConfig(int, int) : serviceUrl(getMockStr()) {}
-
-    std::string serviceUrl;          ///< XrdSsi service URL, e.g. localhost:1094
-    int secondsBetweenChunkUpdates;  ///< Seconds between QMeta chunk updates.
-    static std::string getMockStr() { return "Mock"; }
-};
-
 /// class Executive manages the execution of jobs for a UserQuery.
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
@@ -104,7 +93,7 @@ public:
     /// Construct an Executive.
     /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
     /// instead of a real XrdSsiService
-    static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<qmeta::MessageStore> const& ms,
+    static Executive::Ptr create(int secsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
                                  std::shared_ptr<util::QdispPool> const& qdispPool,
                                  std::shared_ptr<qmeta::QStatus> const& qMeta,
                                  std::shared_ptr<qproc::QuerySession> const& querySession,
@@ -240,7 +229,7 @@ public:
     void checkResultFileSize(uint64_t fileSize = 0);
 
 protected:
-    Executive(ExecutiveConfig const& cfg, std::shared_ptr<qmeta::MessageStore> const& ms,
+    Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,
               std::shared_ptr<qmeta::QStatus> const& qStatus,
               std::shared_ptr<qproc::QuerySession> const& querySession);
@@ -269,7 +258,6 @@ private:
     /// The stats are pushed to qdisp::CzarStats.
     void _updateStats() const;
 
-    ExecutiveConfig _config;  ///< Personal copy of config
     std::atomic<bool> _empty{true};
     std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
@@ -308,7 +296,7 @@ private:
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
     /// Minimum number of seconds between QMeta chunk updates (set by config)
-    std::chrono::seconds _secondsBetweenQMetaUpdates{60};
+    std::chrono::seconds _secondsBetweenQMetaUpdates;
     std::mutex _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
 
     /// true for interactive scans, once set it doesn't change.

@@ -140,6 +140,9 @@ public:
     /// @return slow shared scan priority
     unsigned int getPrioritySnail() const { return _prioritySnail->getVal(); }
 
+    /// @return Prioritize by number of inFLight tasks per scheduler.
+    bool getPrioritizeByInFlight() const { return _prioritizeByInFlight->getVal(); }
+
     /// @return maximum concurrent chunks for fast shared scan
     unsigned int getMaxActiveChunksFast() const { return _maxActiveChunksFast->getVal(); }
 
@@ -159,11 +162,6 @@ public:
     unsigned int getReservedInteractiveSqlConnections() const {
         return _ReservedInteractiveSqlConnections->getVal();
     }
-
-    /// @return the maximum number of concurrent transmits to a czar
-    unsigned int getMaxTransmits() const { return _maxTransmits->getVal(); }
-
-    int getMaxPerQid() const { return _maxPerQid->getVal(); }
 
     /// @return the name of a folder where query results will be stored
     std::string const resultsDirname() const { return _resultsDirname->getVal(); }
@@ -223,6 +221,9 @@ public:
     /// The number of seconds a czar needs to be incommunicado before being considered
     /// dead by a worker.
     unsigned int getCzarDeadTimeSec() const { return _czarDeadTimeSec->getVal(); }
+
+    /// Return the number of threads HttpSvc use for communicating with the czar.
+    unsigned int getCzarComNumHttpThreads() const { return _czarComNumHttpThreads->getVal(); }
 
     /// @return the JSON representation of the configuration parameters.
     /// @note The object has two collections of the parameters: 'input' - for
@@ -299,6 +300,9 @@ private:
             util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_med", notReq, 3);
     CVTUIntPtr _priorityFast =
             util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_fast", notReq, 4);
+    CVTBoolPtr _prioritizeByInFlight =
+            util::ConfigValTBool::create(_configValMap, "results", "prioritize_by_inflight", notReq, false);
+
     CVTUIntPtr _maxReserveSlow =
             util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_slow", notReq, 2);
     CVTUIntPtr _maxReserveSnail =
@@ -331,9 +335,6 @@ private:
             util::ConfigValTUInt::create(_configValMap, "sqlconnections", "maxsqlconn", notReq, 800);
     CVTUIntPtr _ReservedInteractiveSqlConnections = util::ConfigValTUInt::create(
             _configValMap, "sqlconnections", "reservedinteractivesqlconn", notReq, 50);
-    CVTUIntPtr _maxTransmits =
-            util::ConfigValTUInt::create(_configValMap, "transmit", "maxtransmits", notReq, 40);
-    CVTIntPtr _maxPerQid = util::ConfigValTInt::create(_configValMap, "transmit", "maxperqid", notReq, 3);
     CVTStrPtr _resultsDirname =
             util::ConfigValTStr::create(_configValMap, "results", "dirname", notReq, "/qserv/data/results");
     CVTUIntPtr _resultsXrootdPort =
@@ -374,11 +375,13 @@ private:
     CVTIntPtr _qPoolMaxPriority =
             util::ConfigValTInt::create(_configValMap, "qpool", "MaxPriority", notReq, 2);
     CVTStrPtr _qPoolRunSizes =
-            util::ConfigValTStr::create(_configValMap, "qpool", "RunSizes", notReq, "30:20:20:10");
+            util::ConfigValTStr::create(_configValMap, "qpool", "RunSizes", notReq, "50:20:10");
     CVTStrPtr _qPoolMinRunningSizes =
-            util::ConfigValTStr::create(_configValMap, "qpool", "MinRunningSizes", notReq, "3:3:3:3");
+            util::ConfigValTStr::create(_configValMap, "qpool", "MinRunningSizes", notReq, "3:3:3");
     CVTUIntPtr _czarDeadTimeSec =
             util::ConfigValTUInt::create(_configValMap, "czar", "DeadTimeSec", notReq, 180);
+    CVTUIntPtr _czarComNumHttpThreads =
+            util::ConfigValTUInt::create(_configValMap, "czar", "ComNumHttpThreads", notReq, 40);
 };
 
 }  // namespace lsst::qserv::wconfig

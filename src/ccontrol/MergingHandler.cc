@@ -210,11 +210,9 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
                         }
 
                         // Parse and evaluate the message.
-                        //&&&mergeHappened = messageIsReady(msgBuf.get(), msgSizeBytes, last);
                         mergeHappened = true;
                         bool messageReadyResult = messageIsReady(msgBuf.get(), msgSizeBytes, last);
                         totalBytesRead += msgSizeBytes;
-                        //&&&if (!mergeHappened) {
                         if (!messageReadyResult) {
                             success = false;
                             throw runtime_error("message processing failed at offset " +
