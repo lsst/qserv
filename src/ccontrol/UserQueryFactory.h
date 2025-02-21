@@ -92,7 +92,7 @@ public:
 
 private:
     std::shared_ptr<UserQuerySharedResources> _userQuerySharedResources;
-    std::shared_ptr<qdisp::ExecutiveConfig> _executiveConfig;
+    int _qmetaSecondsBetweenUpdates;  ///< Seconds between qmeta updates.
     bool _useQservRowCounterOptimization;
     bool _debugNoMerge = false;
     // BOOST ASIO service is started to process asynchronous timer requests

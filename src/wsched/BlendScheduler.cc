@@ -111,8 +111,8 @@ void BlendScheduler::_sortScanSchedulers() {
         if (a == _scanSnail) return false;
         if (b == _scanSnail) return true;
 
-        // base on the number of scans in flight.
         if (_prioritizeByInFlight) {
+            // More scans in flight means lower priority.
             auto aInFlight = a->getInFlight() - a->getPriority();
             auto bInFlight = b->getInFlight() - b->getPriority();
             if (aInFlight < bInFlight) return true;
