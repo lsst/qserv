@@ -119,11 +119,10 @@ public:
     /// that there is no limit to the number of rows sent back by the worker.
     /// Workers can only safely limit rows for queries that have the LIMIT clause without other related
     /// clauses like ORDER BY.
-    int getRowLimit() { return _rowLimit; }
+    int getRowLimit() const { return _rowLimit; }
 
-    std::string buildUjResultFilePath(std::string const& resultsDirname);
-    std::string resultFilePath();
-    std::string resultFileHttpUrl();
+    std::string resultFilePath() const;
+    std::string resultFileHttpUrl() const;
 
 private:
     UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
