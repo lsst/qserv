@@ -140,10 +140,10 @@ public:
 
     ~ExecutiveUT() override = default;
 
-    ExecutiveUT(ExecutiveConfig const& cfg, shared_ptr<qmeta::MessageStore> const& ms,
+    ExecutiveUT(int qmetaTimeBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                 util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QStatus> const& qStatus,
                 shared_ptr<qproc::QuerySession> const& querySession, TestInfo::Ptr const& testInfo_)
-            : Executive(cfg, ms, qdispPool, qStatus, querySession), testInfo(testInfo_) {}
+            : Executive(qmetaTimeBetweenUpdates, ms, qdispPool, qStatus, querySession), testInfo(testInfo_) {}
 
     void assignJobsToUberJobs() override {
         vector<qdisp::UberJob::Ptr> ujVect;
@@ -253,8 +253,6 @@ void timeoutFunc(std::atomic<bool>& flagDone, int millisecs) {
 class SetupTest {
 public:
     std::string qrMsg;
-    std::string str;
-    qdisp::ExecutiveConfig::Ptr conf;
     std::shared_ptr<qmeta::MessageStore> ms;
     util::QdispPool::Ptr qdispPool;
     qdisp::ExecutiveUT::PtrUT ex;
@@ -264,13 +262,10 @@ public:
     SetupTest(const char* request, util::QdispPool::Ptr const& qPool_) : qdispPool(qPool_) {
         LOGS(_log, LOG_LVL_INFO, "SetupTest start");
         qrMsg = request;
-        str = qdisp::ExecutiveConfig::getMockStr();
-        conf = std::make_shared<qdisp::ExecutiveConfig>(str, 0);  // No updating of QMeta.
         ms = std::make_shared<qmeta::MessageStore>();
         auto tInfo = qdisp::TestInfo::Ptr(new qdisp::TestInfo());
         std::shared_ptr<qmeta::QStatus> qStatus;  // No updating QStatus, nullptr
-        ex = qdisp::ExecutiveUT::PtrUT(
-                new qdisp::ExecutiveUT(*conf, ms, qdispPool, qStatus, nullptr, testInfo));
+        ex = qdisp::ExecutiveUT::PtrUT(new qdisp::ExecutiveUT(60, ms, qdispPool, qStatus, nullptr, testInfo));
         LOGS(_log, LOG_LVL_INFO, "SetupTest end");
     }
     ~SetupTest() {}

@@ -89,15 +89,14 @@ namespace lsst::qserv::qdisp {
 ////////////////////////////////////////////////////////////////////////
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
-Executive::Executive(ExecutiveConfig const& cfg, shared_ptr<qmeta::MessageStore> const& ms,
+Executive::Executive(int secondsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                      util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QStatus> const& qStatus,
                      shared_ptr<qproc::QuerySession> const& querySession)
-        : _config(cfg),
-          _messageStore(ms),
+        : _messageStore(ms),
           _qdispPool(qdispPool),
           _qMeta(qStatus),
+          _secondsBetweenQMetaUpdates(chrono::seconds(secondsBetweenUpdates)),
           _querySession(querySession) {
-    _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setupLimit();
     qdisp::CzarStats::get()->addQuery();
 }
@@ -117,13 +116,13 @@ Executive::~Executive() {
     qdisp::CzarStats::get()->untrackQueryProgress(_id);
 }
 
-Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<qmeta::MessageStore> const& ms,
+Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                                  std::shared_ptr<util::QdispPool> const& qdispPool,
                                  shared_ptr<qmeta::QStatus> const& qMeta,
                                  shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
-    Executive::Ptr ptr(new Executive(c, ms, qdispPool, qMeta, querySession));
+    Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, qMeta, querySession));
 
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
