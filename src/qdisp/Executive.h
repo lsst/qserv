@@ -82,7 +82,6 @@ class QdispPool;
 
 namespace qdisp {
 
-
 /// class Executive manages the execution of jobs for a UserQuery.
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
