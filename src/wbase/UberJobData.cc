@@ -48,6 +48,8 @@
 using namespace std;
 using namespace nlohmann;
 
+namespace fs = boost::filesystem;
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.UberJobData");
@@ -180,35 +182,28 @@ void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string
     }
 }
 
-string UberJobData::buildUjResultFilePath(string const& resultsDirname) {
-    if (resultsDirname.empty()) return resultsDirname;
-    boost::filesystem::path path(resultsDirname);
+string UberJobData::_resultFileName() const {
     // UberJobs have multiple chunks which can each have different attempt numbers.
     // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
-    path /= to_string(getCzarId()) + "-" + to_string(getQueryId()) + "-" + to_string(getUberJobId()) + "-0" +
-            ".proto";
-    return path.string();
+    return to_string(getCzarId()) + "-" + to_string(getQueryId()) + "-" + to_string(getUberJobId()) + "-0" +
+           ".proto";
 }
 
-string UberJobData::resultFilePath() {
-    auto const workerConfig = wconfig::WorkerConfig::instance();
-    string resultFilePath = buildUjResultFilePath(workerConfig->resultsDirname());
-    return resultFilePath;
+string UberJobData::resultFilePath() const {
+    string const resultsDirname = wconfig::WorkerConfig::instance()->resultsDirname();
+    if (resultsDirname.empty()) return resultsDirname;
+    return (fs::path(resultsDirname) / _resultFileName()).string();
 }
 
-std::string UberJobData::resultFileHttpUrl() {
+std::string UberJobData::resultFileHttpUrl() const {
     auto const workerConfig = wconfig::WorkerConfig::instance();
     auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
-
-    string resFilePath = resultFilePath();
-    auto const fqdn = _foreman->getFqdn();
     if (resultDeliveryProtocol != wconfig::ConfigValResultDeliveryProtocol::HTTP) {
         throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
                             wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
     }
     // TODO:UJ it seems like this should just be part of the FileChannelShared???
-    string resultFileHttpUrl = "http://" + fqdn + ":" + to_string(_resultsHttpPort) + resFilePath;
-    return resultFileHttpUrl;
+    return "http://" + _foreman->getFqdn() + ":" + to_string(_resultsHttpPort) + "/" + _resultFileName();
 }
 
 void UberJobData::cancelAllTasks() {
