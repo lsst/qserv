@@ -35,8 +35,8 @@ FUNCTION(partition_apps)
             partition
             boost_filesystem
             sphgeom
-	    arrow
-	    parquet
+            arrow
+            parquet
         )
         install(TARGETS ${APP})
     ENDFOREACH()
