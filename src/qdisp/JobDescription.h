@@ -71,6 +71,8 @@ public:
     JobDescription(JobDescription const&) = delete;
     JobDescription& operator=(JobDescription const&) = delete;
 
+    std::string cName(const char* fnc) { return std::string("JobDescription::") + fnc + " " + _qIdStr; }
+
     JobId id() const { return _jobId; }
     ResourceUnit const& resource() const { return _resource; }
     std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }

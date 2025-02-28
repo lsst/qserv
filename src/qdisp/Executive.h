@@ -160,6 +160,9 @@ public:
     /// @return true if cancelled
     bool getCancelled() { return _cancelled; }
 
+    /// Return true if LIMIT conditions met.
+    bool getSuperfluous() { return _superfluous; }
+
     std::shared_ptr<util::QdispPool> getQdispPool() { return _qdispPool; }
 
     /// Add 'rowCount' to the total number of rows in the result table.
@@ -276,6 +279,9 @@ private:
 
     std::atomic<int> _requestCount{0};   ///< Count of submitted jobs
     util::Flag<bool> _cancelled{false};  ///< Has execution been cancelled.
+
+    /// Set to true when LIMIT conditions have been satisfied.
+    std::atomic<bool> _superfluous{false};
 
     // Mutexes
     mutable std::mutex _incompleteJobsMutex;  ///< protect incompleteJobs map.

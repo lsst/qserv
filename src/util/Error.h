@@ -74,7 +74,8 @@ struct ErrorCode {
  */
 class Error {
 public:
-    Error(int code = ErrorCode::NONE, std::string const& msg = "", int status = ErrorCode::NONE);
+    Error(int code = ErrorCode::NONE, std::string const& msg = "", int status = ErrorCode::NONE,
+          bool logLvLErr = true);
 
     /** Overload output operator for current class
      *

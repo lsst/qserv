@@ -65,6 +65,8 @@ class UberJobData : public std::enable_shared_from_this<UberJobData> {
 public:
     using Ptr = std::shared_ptr<UberJobData>;
 
+    enum ResponseState { SENDING_ERROR = -1, NOTHING = 0, SENDING_FILEURL = 1 };
+
     UberJobData() = delete;
     UberJobData(UberJobData const&) = delete;
 
@@ -103,7 +105,7 @@ public:
                            uint64_t headerCount);  // TODO:UJ remove headerCount
 
     /// Let the Czar know there's been a problem.
-    bool responseError(util::MultiError& multiErr, int chunkId, bool cancelled);
+    void responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl);
 
     std::string const& getIdStr() const { return _idStr; }
     std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
@@ -165,6 +167,12 @@ private:
     std::string const _idStr;
 
     std::atomic<bool> _cancelled{false};  ///< Set to true if this was cancelled.
+
+    /// Either a file ULR or error needs to be sent back to the czar.
+    /// In the case of LIMIT queries, once a file URL has been sent,
+    /// the system must be prevented from sending errors back to the czar
+    /// for Tasks that were cancelled due to the LIMIT already being reached.
+    std::atomic<ResponseState> _responseState{NOTHING};
 };
 
 /// This class puts the information about a locally finished UberJob into a command

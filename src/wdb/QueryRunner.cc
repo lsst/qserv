@@ -162,17 +162,11 @@ bool QueryRunner::runQuery() {
     Release release(_task, this, _queriesAndChunks);
 
     if (_task->checkCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started." << _task->getIdStr());
+        LOGS(_log, LOG_LVL_TRACE, "runQuery, task was cancelled before it started." << _task->getIdStr());
         return false;
     }
 
     _czarId = _task->getCzarId();
-
-    if (_task->checkCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
-        return false;
-    }
-
 
     _setDb();
     LOGS(_log, LOG_LVL_TRACE, "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
@@ -183,17 +177,12 @@ bool QueryRunner::runQuery() {
     bool connOk = _initConnection();
     if (!connOk) {
         // Since there's an error, this will be the last transmit from this QueryRunner.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
-            LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
-        }
+        _task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled);
         return false;
     }
 
     // Run the query and send the results back.
-    if (!_dispatchChannel()) {
-        return false;
-    }
-    return true;
+    return _dispatchChannel();
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
@@ -301,10 +290,7 @@ bool QueryRunner::_dispatchChannel() {
         erred = true;
         // Send results. This needs to happen after the error check.
         // If any errors were found, send an error back.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
-            LOGS(_log, LOG_LVL_WARN,
-                 " Could not report error to czar as sendChannel not accepting msgs." << _task->getIdStr());
-        }
+        _task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled);
     }
     return !erred;
 }
@@ -312,16 +298,20 @@ bool QueryRunner::_dispatchChannel() {
 void QueryRunner::cancel() {
     // QueryRunner::cancel() should only be called by Task::cancel()
     // to keep the bookkeeping straight.
-    LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
-    util::HoldTrack::Mark mark(ERR_LOC, "QR cancel() QID=" + _task->getIdStr());
-    _cancelled = true;
+    LOGS(_log, LOG_LVL_TRACE, "Trying QueryRunner::cancel() call " << _task->getIdStr());
+
+    bool alreadyCancelled = _cancelled.exchange(true);
+    if (alreadyCancelled) {
+        LOGS(_log, LOG_LVL_WARN, "already cancelled" << _task->getIdStr());
+        return;
+    }
 
     if (_mysqlConn == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
+        LOGS(_log, LOG_LVL_TRACE, "QueryRunner::cancel() no MysqlConn");
     } else {
         switch (_mysqlConn->cancel()) {
             case -1:
-                LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
+                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
                 break;
             case 0:
                 LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
