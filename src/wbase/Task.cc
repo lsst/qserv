@@ -113,7 +113,9 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
            vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
            shared_ptr<FileChannelShared> const& sc,
            std::shared_ptr<wpublish::QueryStatistics> const& queryStats_)
-        : _sendChannel(sc),
+        : _logLvlWT(LOG_LVL_WARN),
+          _logLvlET(LOG_LVL_ERROR),
+          _sendChannel(sc),
           _tSeq(++taskSequence),
           _qId(ujData->getQueryId()),
           _templateId(templateId),

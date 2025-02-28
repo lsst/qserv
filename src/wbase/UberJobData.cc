@@ -100,14 +100,6 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
         LOGS(_log, LOG_LVL_ERROR,
              cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
     }
-    string workerIdStr;
-    if (_foreman != nullptr) {
-        workerIdStr = _foreman->chunkInventory()->id();
-    } else {
-        workerIdStr = "dummyWorkerIdStr";
-        LOGS(_log, LOG_LVL_INFO,
-             cName(__func__) << " _foreman was null, which should only happen in unit tests");
-    }
 
     string workerIdStr;
     if (_foreman != nullptr) {
@@ -288,7 +280,8 @@ void UJTransmitCmd::action(util::CmdData* data) {
             // This will check if the czar is believed to be alive and try the queue the query to be tried
             // again at a lower priority. It it thinks the czar is dead, it will throw it away.
             // TODO:UJ I have my doubts about this as a reconnected czar may go down in flames
-            //         as it is hit with thousands of these.
+            //         as it is hit with thousands of these. The priority queue in the wPool should
+            //         help limit these to sane amounts, but the alternate plan below is probably safer.
             //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
             //         indicates some messages failed. When the czar sees the flag, it'll request a
             //         message from the worker that contains all of the failed transmit data and handle
