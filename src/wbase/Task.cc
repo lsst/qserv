@@ -113,7 +113,9 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
            vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
            shared_ptr<FileChannelShared> const& sc,
            std::shared_ptr<wpublish::QueryStatistics> const& queryStats_)
-        : _sendChannel(sc),
+        : _logLvlWT(LOG_LVL_WARN),
+          _logLvlET(LOG_LVL_ERROR),
+          _sendChannel(sc),
           _tSeq(++taskSequence),
           _qId(ujData->getQueryId()),
           _templateId(templateId),
@@ -387,23 +389,18 @@ void Task::action(util::CmdData* data) {
         errStr = e.what();
     }
     if (not success) {
-        LOGS(_log, LOG_LVL_ERROR, "runQuery failed " << tIdStr);
-        if (not getSendChannel()->kill("Foreman::_setRunFunc")) {
-            LOGS(_log, LOG_LVL_WARN, "runQuery sendChannel already killed " << tIdStr);
+        LOGS(_log, _logLvlET, "runQuery failed " << tIdStr);
+        if (not getSendChannel()->kill("Task::action")) {
+            LOGS(_log, _logLvlWT, "runQuery sendChannel already killed " << tIdStr);
         }
         // Send a message back saying this UberJobFailed, redundant error messages should be
         // harmless.
         util::MultiError multiErr;
-        util::Error err(_chunkId, string("UberJob run error ") + errStr);
+        bool logLvl = (_logLvlET != LOG_LVL_TRACE);
+        util::Error err(_chunkId, string("UberJob run error ") + errStr, util::ErrorCode::NONE, logLvl);
         multiErr.push_back(err);
-        _ujData->responseError(multiErr, -1, false);
+        _ujData->responseError(multiErr, -1, false, _logLvlET);
     }
-
-    // The QueryRunner class access to sendChannel for results is over by this point.
-    // 'task' contains statistics that are still useful. However, the resources used
-    // by sendChannel need to be freed quickly.
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " calling resetSendChannel() for " << tIdStr);
-    resetSendChannel();  // Frees the SendChannel instance
 }
 
 string Task::getQueryString() const {
@@ -436,20 +433,14 @@ void Task::cancel() {
         return;
     }
 
-    util::HoldTrack::Mark markA(ERR_LOC, "Task::cancel");
     LOGS(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr());
     auto qr = _taskQueryRunner;  // Need a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
         qr->cancel();
     }
 
-    // At this point, this code doesn't do anything. It may be
-    // useful to remove this task from the scheduler, but it
-    // seems doubtful that that would improve performance.
-    auto sched = _taskScheduler.lock();
-    if (sched != nullptr) {
-        sched->taskCancelled(this);
-    }
+    _logLvlWT = LOG_LVL_TRACE;
+    _logLvlET = LOG_LVL_TRACE;
 }
 
 bool Task::checkCancelled() {

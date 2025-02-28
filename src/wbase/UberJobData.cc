@@ -93,6 +93,13 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
          cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize
                          << " headerCount=" << headerCount);
 
+    // Latch to prevent errors from being transmitted.
+    // NOTE: Calls to responseError() and responseFileReady() are protected by the
+    //       mutex in FileChannelShared (_tMtx).
+    if (_responseState.exchange(SENDING_FILEURL) != NOTHING) {
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
+    }
     string workerIdStr;
     if (_foreman != nullptr) {
         workerIdStr = _foreman->chunkInventory()->id();
@@ -122,11 +129,19 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
     _queueUJResponse(method, headers, url, requestContext, requestStr);
 }
 
-bool UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool cancelled) {
+void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl) {
     // TODO:UJ Maybe register this UberJob as failed with a czar notification method
     //         so that a secondary means can be used to make certain the czar hears about
-    //         the error.
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));
+    //         the error. See related TODO:UJ comment in responseFileReady()
+    LOGS(_log, logLvl, cName(__func__));
+    // NOTE: Calls to responseError() and responseFileReady() are protected by the
+    //       mutex in FileChannelShared (_tMtx).
+    if (_responseState == NOTHING) {
+        _responseState = SENDING_ERROR;
+    } else {
+        LOGS(_log, logLvl, cName(__func__) << " Already sending a different message.");
+        return;
+    }
     string errorMsg;
     int errorCode = 0;
     if (!multiErr.empty()) {
@@ -138,7 +153,7 @@ bool UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
     }
     if (!errorMsg.empty() or (errorCode != 0)) {
         errorMsg = cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ": " + errorMsg;
-        LOGS(_log, LOG_LVL_ERROR, errorMsg);
+        LOGS(_log, logLvl, errorMsg);
     }
 
     json request = {{"version", http::MetaModule::version},
@@ -157,7 +172,6 @@ bool UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
     string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
     string const requestStr = request.dump();
     _queueUJResponse(method, headers, url, requestContext, requestStr);
-    return true;
 }
 
 void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
@@ -265,7 +279,8 @@ void UJTransmitCmd::action(util::CmdData* data) {
             // This will check if the czar is believed to be alive and try the queue the query to be tried
             // again at a lower priority. It it thinks the czar is dead, it will throw it away.
             // TODO:UJ I have my doubts about this as a reconnected czar may go down in flames
-            //         as it is hit with thousands of these.
+            //         as it is hit with thousands of these. The priority queue in the wPool should
+            //         help limit these to sane amounts, but the alternate plan below is probably safer.
             //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
             //         indicates some messages failed. When the czar sees the flag, it'll request a
             //         message from the worker that contains all of the failed transmit data and handle

@@ -69,12 +69,12 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
     if (exec != nullptr) {
         int maxAttempts = exec->getMaxAttempts();
         if (_attemptCount > 0) {
-            LOGS(_log, LOG_LVL_INFO, "JoBDescription::" << __func__ << " attempts=" << _attemptCount);
+            LOGS(_log, LOG_LVL_INFO, cName(__func__) << " attempts=" << _attemptCount);
         }
         if (_attemptCount > maxAttempts) {
             LOGS(_log, LOG_LVL_ERROR,
-                 "JoQDescription::" << __func__ << " attempts(" << _attemptCount << ") > maxAttempts("
-                                    << maxAttempts << ") cancelling");
+                 cName(__func__) << " attempts(" << _attemptCount << ") > maxAttempts(" << maxAttempts
+                                 << ") cancelling");
             exec->addMultiError(qmeta::JobStatus::RETRY_ERROR,
                                 "max attempts reached " + to_string(_attemptCount) + " " + _qIdStr,
                                 util::ErrorCode::INTERNAL);
@@ -84,7 +84,9 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
     }
 
     if (_attemptCount >= MAX_JOB_ATTEMPTS) {
-        LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << " attemptCount greater than max number of retries " << _attemptCount
+                             << " max=" << MAX_JOB_ATTEMPTS);
         return false;
     }
 
