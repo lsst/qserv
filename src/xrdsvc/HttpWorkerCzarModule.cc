@@ -218,7 +218,7 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
         util::MultiError multiErr;
         util::Error err(-1, string("UberJob parse error ") + texp.what());
         multiErr.push_back(err);
-        ujData->responseError(multiErr, -1, false);
+        ujData->responseError(multiErr, -1, false, LOG_LVL_ERROR);
     }
 }
 

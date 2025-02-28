@@ -183,8 +183,7 @@ public:
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
 
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
-    void resetSendChannel() { _sendChannel.reset(); }  ///< reset the shared pointer for FileChannelShared
-    std::string user;                                  ///< Incoming username
+    std::string user;  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
 
     /// This is the function the scheduler will run, overriden from the util::Command class.
@@ -321,7 +320,13 @@ public:
     /// @see UberJobData::getRowLimit()
     int getRowLimit() { return _rowLimit; }
 
+    int getLvlWT() const { return _logLvlWT; }
+    int getLvlET() const { return _logLvlET; }
+
 private:
+    std::atomic<int> _logLvlWT;  ///< Normally LOG_LVL_WARN, set to TRACE in cancelled Tasks.
+    std::atomic<int> _logLvlET;  ///< Normally LOG_LVL_ERROR, set to TRACE in cancelled Tasks.
+
     std::shared_ptr<FileChannelShared> _sendChannel;  ///< Send channel.
 
     uint64_t const _tSeq = 0;          ///< identifier for the specific task
@@ -378,7 +383,7 @@ private:
     std::shared_ptr<UberJobData> _ujData;
     std::string const _idStr;
 
-    bool _unitTest = false;  ///<
+    bool _unitTest = false;  ///< Only true in unit tests.
 };
 
 }  // namespace lsst::qserv::wbase

@@ -437,8 +437,10 @@ void Executive::squash(string const& note) {
         }
     }
 
+    int cancelCount = 0;
     for (auto const& job : jobsToCancel) {
         job->cancel();
+        ++cancelCount;
     }
 
     // Send a message to all workers saying this czarId + queryId is cancelled.
@@ -448,12 +450,17 @@ void Executive::squash(string const& note) {
     // cancelled.
     bool const deleteResults = true;
     sendWorkersEndMsg(deleteResults);
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done");
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::squash done canceled " << cancelCount << " Jobs");
 }
 
 void Executive::_squashSuperfluous() {
     if (_cancelled) {
-        LOGS(_log, LOG_LVL_INFO, "squashSuperfluous() irrelevant as query already cancelled");
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " irrelevant as query already cancelled");
+        return;
+    }
+
+    if (_superfluous.exchange(true) == true) {
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " irrelevant as query already superfluous");
         return;
     }
 
@@ -472,13 +479,15 @@ void Executive::_squashSuperfluous() {
         }
     }
 
+    int cancelCount = 0;
     for (auto const& job : jobsToCancel) {
         job->cancel(true);
+        ++cancelCount;
     }
 
     bool const keepResults = false;
     sendWorkersEndMsg(keepResults);
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done");
+    LOGS(_log, LOG_LVL_DEBUG, "Executive::squashSuperfluous done canceled " << cancelCount << " Jobs");
 }
 
 void Executive::sendWorkersEndMsg(bool deleteResults) {

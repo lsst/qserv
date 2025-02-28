@@ -483,20 +483,28 @@ wbase::Task::Ptr ChunkTasks::getTask(bool useFlexibleLock) {
 
 void ChunkTasks::taskComplete(wbase::Task::Ptr const& task) { _inFlightTasks.erase(task.get()); }
 
-std::string ChunkTasks::cInfo() const {
+std::string ChunkTasks::cInfo(bool listTasks) const {
     std::stringstream os;
     os << " cInfo(chkId=" << _chunkId << " act=" << _active << " starv=" << _resourceStarved
        << " readyTask=" << _readyTask << " inF=" << _inFlightTasks.size() << " (act=" << _activeTasks.size()
        << " ";
-    for (auto const& tsk : _activeTasks._tasks) {
-        os << tsk->getIdStr() << ", ";
+    if (listTasks) {
+        for (auto const& tsk : _activeTasks._tasks) {
+            os << tsk->getIdStr() << ", ";
+        }
+    } else {
+        os << "...";
     }
+
     os << ") (pend.sz=" << _pendingTasks.size() << " ";
-    for (auto const& tsk : _pendingTasks) {
-        os << tsk->getIdStr() << ", ";
+    if (listTasks) {
+        for (auto const& tsk : _pendingTasks) {
+            os << tsk->getIdStr() << ", ";
+        }
+    } else {
+        os << "...";
     }
     os << "))";
-
     return os.str();
 }
 

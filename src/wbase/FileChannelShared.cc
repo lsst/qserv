@@ -359,17 +359,17 @@ bool FileChannelShared::isRowLimitComplete() const {
     return _rowLimitComplete;
 }
 
-bool FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
+void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
     lock_guard<mutex> const tMtxLock(_tMtx);
     if (_rowLimitComplete) {
         LOGS(_log, LOG_LVL_WARN,
              __func__ << " already enough rows, this call likely a side effect" << task->getIdStr());
-        return false;
+        return;
     }
     // Delete the result file as nobody will come looking for it.
     _kill(tMtxLock, " buildAndTransmitError");
-    return _uberJobData->responseError(multiErr, task->getChunkId(), cancelled);
+    _uberJobData->responseError(multiErr, task->getChunkId(), cancelled, task->getLvlET());
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
@@ -488,10 +488,10 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 }
 
 bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string const& note) {
-    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared::" << __func__ << " " << note);
+    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared::" << __func__ << " " << note);
     bool oldVal = _dead.exchange(true);
     if (!oldVal) {
-        LOGS(_log, LOG_LVL_WARN, "FileChannelShared first kill call " << note);
+        LOGS(_log, LOG_LVL_WARN, "FileChannelShared::" << __func__ << " first kill call " << note);
     }
     return oldVal;
 }

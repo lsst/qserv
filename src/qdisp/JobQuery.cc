@@ -59,7 +59,7 @@ JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }
 bool JobQuery::cancel(bool superfluous) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     if (_cancelled.exchange(true) == false) {
-        LOGS(_log, LOG_LVL_INFO, "JobQuery::cancel() " << superfluous);
+        LOGS(_log, LOG_LVL_TRACE, "JobQuery::cancel() " << superfluous);
         VMUTEX_NOT_HELD(_jqMtx);
         lock_guard lock(_jqMtx);
 
