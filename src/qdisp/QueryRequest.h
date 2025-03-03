@@ -85,6 +85,7 @@ public:
 
     static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
         Ptr newQueryRequest(new QueryRequest(jobQuery));
+        newQueryRequest->_keepAlive = newQueryRequest;
         return newQueryRequest;
     }
 

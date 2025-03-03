@@ -127,6 +127,9 @@ RUN cd /tmp \
     && git clone https://github.com/xrootd/xrootd.git \
     && cd xrootd \
     && git checkout tags/v5.6.2 \
+    && git config --global user.email "qserv@slac.stanford.edu" \
+    && git config --global user.name "Qserv" \
+    && git cherry-pick f48a11c92daad3e164ebf8b8f248c3b8bae06888 \
     && mkdir build \
     && cd build \
     && cmake -DENABLE_PYTHON=off .. \
