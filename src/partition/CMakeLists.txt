@@ -48,6 +48,7 @@ partition_apps(
     sph-estimate-stats
     sph-htm-index
     sph-layout
+    sph-parq2csv
     sph-partition-matches
     sph-partition
 )
