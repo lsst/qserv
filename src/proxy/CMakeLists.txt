@@ -19,5 +19,5 @@ target_link_libraries(czarProxy PRIVATE
     qserv_czar
 )
 
-install(TARGETS czarProxy DESTINATION ${CMAKE_INSTALL_PREFIX}/lua/qserv/lib)
-install(FILES mysqlProxy.lua DESTINATION ${CMAKE_INSTALL_PREFIX}/lua/qserv/scripts)
+install(TARGETS czarProxy DESTINATION lua/qserv/lib)
+install(FILES mysqlProxy.lua DESTINATION lua/qserv/scripts)
