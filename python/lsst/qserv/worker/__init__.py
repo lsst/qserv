@@ -1,3 +1,0 @@
-"""
-Top level worker module
-"""

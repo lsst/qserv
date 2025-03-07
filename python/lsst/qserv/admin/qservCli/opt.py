@@ -38,7 +38,7 @@ _log = logging.getLogger(__name__)
 
 
 # The location of the root directory ("qserv root") relative to this file:
-relative_qserv_root = "../../../../../../../../"
+relative_qserv_root = "../../../../../"
 
 
 class EV:
@@ -180,10 +180,10 @@ class ImageName:
     """
 
     # paths to dockerfiles relative to qserv root:
-    base_dockerfile = "admin/tools/docker/base/Dockerfile"
-    user_dockerfile = "admin/tools/docker/build-user/Dockerfile"
-    run_base_dockerfile = "admin/tools/docker/base/Dockerfile"
-    mariadb_dockerfile = "admin/tools/docker/mariadb/Dockerfile"
+    base_dockerfile = "deploy/docker/base/Dockerfile"
+    user_dockerfile = "deploy/docker/build-user/Dockerfile"
+    run_base_dockerfile = "deploy/docker/base/Dockerfile"
+    mariadb_dockerfile = "deploy/docker/mariadb/Dockerfile"
 
     image_types = ("qserv", "run-base", "mariadb", "build-base", "build-user")
 
@@ -279,7 +279,7 @@ class ImageName:
 env_qserv_root = FlagEnvVal(
     "--qserv-root",
     "QSERV_ROOT",
-    os.path.abspath(os.path.join(__file__, relative_qserv_root)),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), relative_qserv_root)),
 )
 env_image_tag = EnvVal(env_var="QSERV_IMAGE_TAG", description="the tag of all qserv image names")
 env_qserv_image = FlagEnvVal(

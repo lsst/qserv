@@ -43,11 +43,11 @@ from .opt import (
 )
 
 # The location where the lite-build and run-base images should be built from:
-base_image_build_subdir = "admin/tools/docker/base"
-user_build_image_subdir = "admin/tools/docker/build-user"
-run_image_build_subdir = "admin/tools/docker/run"
-mariadb_image_subdir = "admin/tools/docker/mariadb"
-mypy_cfg_file = "src/admin/python/mypy.ini"
+base_image_build_subdir = "deploy/docker/base"
+user_build_image_subdir = "deploy/docker/build-user"
+run_image_build_subdir = "deploy/docker/run"
+mariadb_image_subdir = "deploy/docker/mariadb"
+mypy_cfg_file = "mypy.ini"
 
 # the location of the testdata dir within qserv_root:
 testdata_subdir = "itest_src"
@@ -340,8 +340,14 @@ def mypy(
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
-    # qserv_py_modules is relative to the build folder inside the build container:
-    qserv_py_modules = "install/python/lsst/qserv"
+    # elements of qserv_py_modules are relative to the qserv root inside the build container:
+    qserv_py_modules = [
+        "bin/entrypoint",
+        "bin/qserv",
+        "bin/qserv-kraken",
+        "bin/qserv-smig",
+        "python",
+    ]
     args = [
         "docker",
         "run",
@@ -355,9 +361,13 @@ def mypy(
         build_dir(qserv_build_root.format(user=user)),
         build_image,
         "mypy",
+<<<<<<< HEAD
         qserv_py_modules,
         "--exclude",
         "lsst/qserv/.*/tests",
+=======
+        *qserv_py_modules,
+>>>>>>> c3e3271ed (python)
     ]
     mypy_ini_file = os.path.join(qserv_build_root.format(user=user), mypy_cfg_file)
     args.extend(["--config-file", mypy_ini_file])
