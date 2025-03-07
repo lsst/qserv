@@ -1,4 +1,3 @@
-
 add_library(replica SHARED)
 
 target_compile_options(replica PRIVATE
@@ -71,8 +70,7 @@ replica_utils(
     qserv-replica-worker
 )
 
-install(DIRECTORY python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/replica)
-install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/replica/schema/)
+install(DIRECTORY schema/ DESTINATION qserv/smig/replica/schema/)
 
 install(
     TARGETS replica
