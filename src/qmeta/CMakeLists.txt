@@ -34,7 +34,3 @@ target_link_libraries(testQMeta
 
 # don't add test, needs fix; DM-30562: fix Qserv unit tests that prompt for an sql connection
 # add_test(NAME testQMeta COMMAND testQMeta)
-
-#-----------------------------------------------------------------------------
-
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/qmeta)
