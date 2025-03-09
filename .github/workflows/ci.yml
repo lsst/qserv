@@ -54,11 +54,11 @@ jobs:
       - name: Save image names
         id: image-names
         run: |
-          echo "build-image=$(./admin/local/cli/qserv env --build-image)" >> "$GITHUB_OUTPUT"
-          echo "user-build-image=$(./admin/local/cli/qserv env --user-build-image)" >> "$GITHUB_OUTPUT"
-          echo "run-base-image=$(./admin/local/cli/qserv env --run-base-image)" >> "$GITHUB_OUTPUT"
-          echo "mariadb-image=$(./admin/local/cli/qserv env --mariadb-image)" >> "$GITHUB_OUTPUT"
-          echo "qserv-image=$(./admin/local/cli/qserv env --qserv-image)" >> "$GITHUB_OUTPUT"
+          echo "build-image=$(./bin/qserv env --build-image)" >> "$GITHUB_OUTPUT"
+          echo "user-build-image=$(./bin/qserv env --user-build-image)" >> "$GITHUB_OUTPUT"
+          echo "run-base-image=$(./bin/qserv env --run-base-image)" >> "$GITHUB_OUTPUT"
+          echo "mariadb-image=$(./bin/qserv env --mariadb-image)" >> "$GITHUB_OUTPUT"
+          echo "qserv-image=$(./bin/qserv env --qserv-image)" >> "$GITHUB_OUTPUT"
 
   update-base-images:
     name: Update base images
@@ -94,11 +94,11 @@ jobs:
       - name: Rebuild and push build image if needed
         id: rebuild
         run: |
-          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
+          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
             echo "Build image already on docker hub; skipping..."
             echo "build-rebuilt=False" >> "$GITHUB_OUTPUT"
           else
-            ./admin/local/cli/qserv --log-level DEBUG build-build-image --push-image \
+            ./bin/qserv --log-level DEBUG build-build-image --push-image \
             --build-image ${{ needs.image-names.outputs.build-image }}
             echo "build-rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
@@ -108,11 +108,11 @@ jobs:
 
       - name: Rebuild and push run base image if needed
         run: |
-          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.run-base-image }}) == "True" ]]; then
+          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.run-base-image }}) == "True" ]]; then
             echo "Run base image already on docker hub; skipping..."
             echo "run-base-rebuilt=False" >> "$GITHUB_OUTPUT"
           else
-            ./admin/local/cli/qserv --log-level DEBUG build-run-base-image --push-image \
+            ./bin/qserv --log-level DEBUG build-run-base-image --push-image \
             --run-base-image ${{ needs.image-names.outputs.run-base-image }}
             echo "run-base-rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
@@ -152,11 +152,11 @@ jobs:
       - name: Rebuild and push if needed
         id: rebuild
         run: |
-          if [[ $(./admin/local/cli/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
+          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
             echo "MariaDB image already on docker hub; skipping..."
             echo "rebuilt=False" >> "$GITHUB_OUTPUT"
           else
-            ./admin/local/cli/qserv --log-level DEBUG build-mariadb-image --push-image --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
+            ./bin/qserv --log-level DEBUG build-mariadb-image --push-image --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
             echo "rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
         env:
@@ -196,14 +196,14 @@ jobs:
 
       - name: Prepare user build image
         run: |
-          ./admin/local/cli/qserv --log-level DEBUG build-user-build-image \
+          ./bin/qserv --log-level DEBUG build-user-build-image \
           --group docker_outer \
           --build-image ${{ needs.image-names.outputs.build-image }} \
           --user-build-image ${{ needs.image-names.outputs.user-build-image }}
 
       - name: Build lite-qserv image
         run: |
-          ./admin/local/cli/qserv --log-level DEBUG build \
+          ./bin/qserv --log-level DEBUG build \
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
           --run-base-image ${{ needs.image-names.outputs.run-base-image }} \
           --user-build-image ${{ needs.image-names.outputs.user-build-image }} \
@@ -249,7 +249,7 @@ jobs:
 
       - name: Launch qserv
         run: |
-          ./admin/local/cli/qserv --log-level DEBUG up \
+          ./bin/qserv --log-level DEBUG up \
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
           --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
 
@@ -258,19 +258,19 @@ jobs:
 
       - name: Run integration tests
         run: |
-          ./admin/local/cli/qserv --log-level DEBUG itest \
+          ./bin/qserv --log-level DEBUG itest \
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
           --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
 
       - name: Run integration tests of the HTTP frontend
         run: |
-          ./admin/local/cli/qserv --log-level DEBUG itest-http --reload --load-http \
+          ./bin/qserv --log-level DEBUG itest-http --reload --load-http \
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
           --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
 
       - name: Run integration tests of ingesting user tables via the HTTP frontend
         run: |
-            ./admin/local/cli/qserv --log-level DEBUG itest-http-ingest \
+            ./bin/qserv --log-level DEBUG itest-http-ingest \
             --qserv-image ${{ needs.image-names.outputs.qserv-image }}
 
       - name: Check Qserv containers
@@ -343,11 +343,11 @@ jobs:
 
       - name: Remove integration test volumes
         run: |
-          ./admin/local/cli/qserv --log-level DEBUG itest-rm
+          ./bin/qserv --log-level DEBUG itest-rm
 
       - name: Shut down qserv
         run: |
-          ./admin/local/cli/qserv --log-level DEBUG down \
+          ./bin/qserv --log-level DEBUG down \
           -v
 
   notify-on-fail:
