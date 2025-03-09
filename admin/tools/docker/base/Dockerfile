@@ -129,7 +129,7 @@ RUN cd /tmp \
     && git checkout tags/v5.6.2 \
     && git config --global user.email "qserv@slac.stanford.edu" \
     && git config --global user.name "Qserv" \
-    && git cherry-pick f48a11c92daad3e164ebf8b8f248c3b8bae06888 \
+    && git cherry-pick d85915a3927261e49859c3e13075bce1dfefcbe4 \
     && mkdir build \
     && cd build \
     && cmake -DENABLE_PYTHON=off .. \
