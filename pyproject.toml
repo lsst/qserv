@@ -1,17 +1,21 @@
 [tool.ruff]
 line-length = 110
 target-version = "py312"
+output-format = "concise"
 extend-include = [
-    "./admin/local/cli/qserv",
-    "./src/admin/bin/entrypoint",
-    "./src/admin/bin/qserv-kraken",
+    "./bin/entrypoint",
+    "./bin/qserv",
+    "./bin/qserv-kraken",
+    "./bin/qserv-smig",
 ]
 extend-exclude = [
     "build/*",
-    "extern/*",
+    "data/*",
+    "deploy/*",
     "doc/conf.py",
+    "etc/*",
+    "extern/*",
 ]
-output-format = "concise"
 
 [tool.ruff.lint]
 select = [
@@ -26,5 +30,67 @@ select = [
     "UP",   # pyupgrade
     "W",    # pycodestyle
 ]
-ignore = [
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+scripts_are_modules = true
+files = [
+    "bin/entrypoint",
+    "bin/qserv",
+    "bin/qserv-kraken",
+    "bin/qserv-smig",
+    "python",
+]
+exclude = [
+    "build/*",
+    "data/*",
+    "deploy/*",
+    "doc/conf.py",
+    "etc/*",
+    "extern/*",
+    "python/lsst/utils",
+    "python/lsst/qserv/testing",
+    "python/lsst/qserv/.*/tests",
+    "src/*",
+]
+
+[tool.tox]
+envlist = ["docs", "docs-linkcheck"]
+isolated_build = false
+work_dir = "build/.tox"
+
+[tool.tox.env_run_base]
+skip_install = true
+description = "Python environment"
+deps = [
+    "sphinx",
+    "documenteer[guide]",
+]
+
+[tool.tox.env.docs]
+description = "Build documentation (HTML) with Sphinx"
+allowlist_externals = ["mkdir", "sphinx-build"]
+commands = [
+    ["sphinx-build",
+        "-b", "html",
+        "-d", "build/doc/doctrees",
+        "--keep-going", "-n", "-W", "-T",
+        "doc",
+        "build/doc/html"
+    ],
+]
+
+[tool.tox.env.docs-linkcheck]
+description = "Check links in the documentation"
+allowlist_externals = ["mkdir", "sphinx-build"]
+commands = [
+    ["sphinx-build",
+        "-b", "linkcheck",
+        "-d", "build/doc/doctrees",
+        "--keep-going", "-n", "-W", "-T",
+        "doc",
+        "build/doc/linkcheck"
+    ],
 ]
