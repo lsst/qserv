@@ -21,7 +21,7 @@ that are not directly related to ``Object`` are also partitioned by position,
 using the same scheme and parameters. This results in perfectly aligned
 partition boundaries, simplifying the implementation of near-neighbor joins.
 The following excerpt from
-`Qserv: A distributed shared-nothing database for the LSST catalog <http://dl.acm.org/citation.cfm?id=2063364>`_
+`Qserv: A distributed shared-nothing database for the LSST catalog <https://dl.acm.org/doi/10.1145/2063348.2063364>`_
 further describes some of the motivations for partitioning data in Qserv:
 
   Qserv divides data into spatial partitions of roughly the same area. Since
