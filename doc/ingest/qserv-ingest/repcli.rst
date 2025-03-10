@@ -6,7 +6,7 @@ Pre-requisites
 --------------
 
 - A k8s-hosted Qserv instance embedding a test case dataset.
-- `telepresence <https://www.telepresence.io/docs/latest/quick-start/>`_ client installed on workstation
+- `telepresence <https://www.telepresence.io/docs/quick-start/>`_ client installed on workstation
 
 Procedure
 ---------
