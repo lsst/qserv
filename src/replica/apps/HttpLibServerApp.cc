@@ -25,6 +25,7 @@
 // System headers
 #include <chrono>
 #include <iostream>
+#include <fstream>
 
 // Third party headers
 #include <httplib.h>
