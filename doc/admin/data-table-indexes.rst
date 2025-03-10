@@ -9,7 +9,7 @@ Data Table Indexes
 
     All operations on indexes are only allowed on databases that are in the published state. The system will
     refuse all requests on databases that are in a process of being ingested. This is done for three reasons:
-    
+
     #. To avoid interfering with the catalog ingest operations.
     #. To prevent returning an inconsistent (or wrong) state of the indexes
     #. To prevent transient errors due to potential race conditions since the overall state of the distributed catalogs
@@ -125,7 +125,7 @@ Where:
 
 ``job_state`` : *string*
     The completion status (state) of the corresponding C++ job classes:
-    
+
     - ``lsst::qserv::replica::SqlGetIndexesJob``
     - ``lsst::qserv::replica::SqlCreateIndexesJob``
     - ``lsst::qserv::replica::SqlDropIndexesJob``
@@ -133,7 +133,7 @@ Where:
     The status will be serialized into a string. The explanation of the possible values could be found in
     the following C++ header:
 
-    - https://github.com/lsst/qserv/blob/master/src/replica/jobs/Job.h
+    - https://github.com/lsst/qserv/blob/main/src/replica/jobs/Job.h
 
     Look for this enum type:
 
@@ -155,7 +155,7 @@ Where:
     descriptions of problems with managing indexes for the corresponding tables.
 
     .. note:
-    
+
         Only the problematic tables (if any) would be mentioned in the report. If no problems were seen during
         the index management operations then a collection of workers and tables will be empty.
 
@@ -273,14 +273,14 @@ Where:
 
 ``comment`` : *string* := ``""``
     The optional comment for the index. The value will be passed via the ``COMMENT`` parameter of the MySQL index
-    creation command: 
+    creation command:
 
     .. code-block:: sql
 
         CREATE ... INDEX ... COMMENT 'string' ...
 
 ``columns`` : *array*
-    The required non-empty array of JSON  objects keys mentioned in the key_part  of the index creation statements: 
+    The required non-empty array of JSON  objects keys mentioned in the key_part  of the index creation statements:
 
     .. code-block:: sql
 
@@ -298,7 +298,7 @@ Where:
     ``length`` : *number*
         The required length of a substring used for the index. It only has a meaning for columns of
         types: ``TEXT``, ``CHAR(N)``, ``VARCHAR(N)``, ``BLOB`` , etc. And it must be always 0 for other column
-        types (numeric, etc.). Otherwise, an index creation request will fail. 
+        types (numeric, etc.). Otherwise, an index creation request will fail.
 
     ``ascending`` : *number*
         The required sorting order of the column in the index. It translates into ``ASC`` or ``DESC`` options
@@ -462,7 +462,7 @@ In case of successful completion of the request the JSON object returned by the 
                     "comment" : <string>,
                     "status" : <string>,
                     "num_replicas_total" : <number>,
-                    "num_replicas" : <number>, 
+                    "num_replicas" : <number>,
                     "columns" : [
                         {   "name" : <string>,
                             "seq" : <number>,
@@ -483,7 +483,7 @@ Where:
     The name of the index (the key).
 
 ``unique`` : *number*
-    The numeric flag indicates of the index's keys are unique, where a value of ``0`` means they're unique. Any other 
+    The numeric flag indicates of the index's keys are unique, where a value of ``0`` means they're unique. Any other
     value would mean the opposite.
 
 ``type`` : *string*
