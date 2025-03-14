@@ -37,7 +37,6 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         glib2-devel \
         glibc-langpack-en \
         java-devel \
-        jemalloc \
         libcurl-devel \
         libevent-devel \
         libtool \
@@ -72,6 +71,17 @@ RUN dnf update -y \
 
 RUN curl -s "https://cmake.org/files/v3.31/cmake-3.31.5-linux-x86_64.tar.gz" \
     | tar --strip-components=1 -xz -C /usr/local
+
+RUN cd /tmp \
+    && git clone https://github.com/jemalloc/jemalloc \
+    && cd jemalloc \
+    && git checkout tags/5.3.0 \
+    && ./autogen.sh \
+    && ./configure --enable-prof \
+    && make -j8 \
+    && make install \
+    && cd /tmp \
+    && rm -rf jemalloc
 
 RUN cd /tmp \
     && git clone https://github.com/apache/logging-log4cxx \
@@ -223,7 +233,6 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         boost-thread \
         glib2 \
         glibc-langpack-en \
-        jemalloc \
         libevent \
         libuuid \
         lua5.1 \
@@ -264,6 +273,10 @@ RUN mkdir -p /qserv/data && \
 
 RUN alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 ENV PYTHONPATH "${PYTHONPATH}:/usr/local/python"
+
+COPY --from=lite-build /usr/local/bin/jemalloc* /usr/local/bin/
+COPY --from=lite-build /usr/local/lib/pkgconfig/jemalloc.pc /usr/local/lib/pkgconfig/
+COPY --from=lite-build /usr/local/lib/libjemalloc* /usr/local/lib
 
 COPY --from=lite-build /usr/local/lib64/liblog4cxx.so /usr/local/lib64/
 COPY --from=lite-build /usr/local/lib/libantlr4-runtime.so /usr/local/lib/
