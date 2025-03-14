@@ -68,7 +68,7 @@ class LogMonitor(Monitor):
             tags = {}
 
         if _ts is None:
-            _ts = int(round(time.time() * 1e6))
+            _ts = round(time.time() * 1e6)
 
         # add static tags
         if self._tags:
@@ -222,7 +222,7 @@ class MPMonitor:
             if tags is None:
                 tags = {}
             if _ts is None:
-                _ts = int(round(time.time() * 1e6))
+                _ts = round(time.time() * 1e6)
             self._buffer.append((name, tags, _ts, kw))
             if len(self._buffer) >= self._buffer_size:
                 self.flush()
