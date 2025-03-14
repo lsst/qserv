@@ -640,7 +640,8 @@ class ITestQueryHttp:
         res = req.json()
         if res["success"] == 0:
             raise RuntimeError(
-                f"Failed to delete the result set of the detached query: {query_id}, server serror: {res['error']}"
+                f"Failed to delete the result set of the detached query: {query_id}, "
+                f"server serror: {res['error']}"
             )
 
     def _write_result(self, outfile: str, res: Any) -> None:

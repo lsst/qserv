@@ -31,7 +31,7 @@ from lsst.qserv.schema import smig
 _def_scripts = os.path.join(os.environ.get("QSERV_DIR", ""), "share/qserv/schema")
 
 
-def main():
+def main() -> int | None:
     parser = argparse.ArgumentParser(description="Qserv database schema migration.")
 
     parser.add_argument(
@@ -87,7 +87,7 @@ def main():
     parser.add_argument("module", help="Name of Qserv module for which to update schema, e.g. qmeta.")
 
     args = parser.parse_args()
-    smig(**args)
+    return smig(**args)
 
 
 if __name__ == "__main__":
