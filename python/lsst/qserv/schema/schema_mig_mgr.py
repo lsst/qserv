@@ -30,7 +30,7 @@ import logging
 import os
 import re
 from abc import ABCMeta, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import closing
 from dataclasses import dataclass
 from typing import cast
@@ -223,12 +223,12 @@ class SchemaMigMgr(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def current_version(self) -> int | type[Uninitialized]:
+    def current_version(self) -> Version:
         """Returns current schema version.
 
         Returns
         -------
-        version : `int` or ``Uninitialized``
+        version : `Version`
             The current schema version.
         """
 
@@ -304,7 +304,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         # docs. Assuming it's because the connection was rejected, and hoping that
         # retry will succeed.
     )
-    def apply_migrations(self, migrations: list[Migration]) -> Version | None:
+    def apply_migrations(self, migrations: Sequence[Migration]) -> Version | None:
         """Apply migrations.
 
         Parameters
@@ -487,7 +487,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         _log.debug("latest version from migration scripts: %s", version)
         if version is None:
             # no migration scripts - current version is latest
-            version = Version(self.current_version())
+            version = self.current_version()
             _log.debug("no migration scripts, returning current version %s", version)
         return version
 
