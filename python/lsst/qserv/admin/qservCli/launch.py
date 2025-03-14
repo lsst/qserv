@@ -47,7 +47,7 @@ base_image_build_subdir = "deploy/docker/base"
 user_build_image_subdir = "deploy/docker/build-user"
 run_image_build_subdir = "deploy/docker/run"
 mariadb_image_subdir = "deploy/docker/mariadb"
-mypy_cfg_file = "mypy.ini"
+mypy_cfg_file = "pyproject.toml"
 
 # the location of the testdata dir within qserv_root:
 testdata_subdir = "data"
@@ -358,19 +358,13 @@ def mypy(
         "--mount",
         root_mount(qserv_root, qserv_build_root, user),
         "-w",
-        build_dir(qserv_build_root.format(user=user)),
+        qserv_build_root.format(user=user),
         build_image,
         "mypy",
-<<<<<<< HEAD
-        qserv_py_modules,
         "--exclude",
         "lsst/qserv/.*/tests",
-=======
         *qserv_py_modules,
->>>>>>> c3e3271ed (python)
     ]
-    mypy_ini_file = os.path.join(qserv_build_root.format(user=user), mypy_cfg_file)
-    args.extend(["--config-file", mypy_ini_file])
     if dry:
         print(" ".join(args))
         return
