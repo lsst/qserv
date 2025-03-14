@@ -1,4 +1,4 @@
-add_library(wpublish OBJECT)
+add_library(wpublish SHARED)
 add_dependencies(wpublish proto)
 
 target_sources(wpublish PRIVATE
@@ -9,6 +9,10 @@ target_sources(wpublish PRIVATE
 
 target_include_directories(wpublish PRIVATE
     ${XROOTD_INCLUDE_DIRS}
+)
+
+install(
+    TARGETS wpublish
 )
 
 target_link_libraries(wpublish PUBLIC

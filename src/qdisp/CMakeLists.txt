@@ -1,4 +1,4 @@
-add_library(qdisp OBJECT)
+add_library(qdisp SHARED)
 add_dependencies(qdisp proto)
 
 target_sources(qdisp PRIVATE
@@ -24,6 +24,10 @@ target_link_libraries(qdisp PUBLIC
     XrdSsiLib
 )
 
+install(
+    TARGETS qdisp
+)
+
 add_executable(testQDisp testQDisp.cc)
 
 target_include_directories(testQDisp PRIVATE
@@ -38,8 +42,8 @@ target_link_libraries(testQDisp
     qana
     qdisp
     qproc
-    qserv_css
-    qserv_meta
+    css
+    qmeta
     query
     rproc
     xrdreq

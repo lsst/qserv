@@ -1,4 +1,4 @@
-add_library(proto OBJECT)
+add_library(proto SHARED)
 
 target_compile_options(proto PRIVATE
     -Wno-maybe-uninitialized
@@ -17,6 +17,10 @@ target_sources(proto PRIVATE
 target_link_libraries(proto PUBLIC
     log
     protobuf
+)
+
+install(
+    TARGETS proto
 )
 
 add_executable(testProtocol testProtocol.cc)

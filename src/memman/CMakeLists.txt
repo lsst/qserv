@@ -1,4 +1,4 @@
-add_library(memman OBJECT)
+add_library(memman SHARED)
 
 target_sources(memman PRIVATE
     MemFile.cc
@@ -10,4 +10,8 @@ target_sources(memman PRIVATE
 
 target_link_libraries(memman PUBLIC
     log
+)
+
+install(
+    TARGETS memman
 )

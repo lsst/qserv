@@ -1,4 +1,4 @@
-add_library(ccontrol OBJECT)
+add_library(ccontrol SHARED)
 add_dependencies(ccontrol proto)
 
 target_include_directories(ccontrol PRIVATE
@@ -37,6 +37,10 @@ target_link_libraries(ccontrol PUBLIC
     XrdCl
 )
 
+install(
+    TARGETS ccontrol
+)
+
 FUNCTION(ccontrol_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
@@ -48,8 +52,8 @@ FUNCTION(ccontrol_tests)
             qana
             qdisp
             qproc
-            qserv_css
-            qserv_meta
+            css
+            qmeta
             query
             rproc
             xrdreq

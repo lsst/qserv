@@ -1,4 +1,4 @@
-add_library(global OBJECT)
+add_library(global SHARED)
 
 target_sources(global PRIVATE
     DbTable.cc
@@ -10,6 +10,10 @@ target_sources(global PRIVATE
 
 target_link_libraries(global PUBLIC
     log
+)
+
+install(
+    TARGETS global
 )
 
 add_executable(testResourceUnit testResourceUnit.cc)

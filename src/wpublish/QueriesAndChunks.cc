@@ -193,15 +193,15 @@ void QueriesAndChunks::_finishedTaskForChunk(wbase::Task::Ptr const& task, doubl
     if (res.second) {
         res.first->second = make_shared<ChunkStatistics>(task->getChunkId());
     }
+    auto ptr = res.first->second;
     ul.unlock();
-    auto iter = res.first->second;
     proto::ScanInfo& scanInfo = task->getScanInfo();
     string tblName;
     if (!scanInfo.infoTables.empty()) {
         proto::ScanTableInfo& sti = scanInfo.infoTables.at(0);
         tblName = ChunkTableStats::makeTableName(sti.db, sti.table);
     }
-    ChunkTableStats::Ptr tableStats = iter->add(tblName, minutes);
+    ChunkTableStats::Ptr tableStats = ptr->add(tblName, minutes);
 }
 
 /// Go through the list of possibly dead queries and remove those that are too old.
@@ -692,9 +692,10 @@ ChunkTableStats::Ptr ChunkStatistics::add(string const& scanTableName, double mi
     if (res.second) {
         iter->second = make_shared<ChunkTableStats>(_chunkId, scanTableName);
     }
+    auto ptr = iter->second;
     ul.unlock();
-    iter->second->addTaskFinished(minutes);
-    return iter->second;
+    ptr->addTaskFinished(minutes);
+    return ptr;
 }
 
 /// @return the statistics for a table. nullptr if the table is not found.

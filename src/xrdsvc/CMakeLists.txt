@@ -1,7 +1,7 @@
-add_library(qserv_xrdsvc OBJECT)
-add_dependencies(qserv_xrdsvc proto)
+add_library(xrdsvc SHARED)
+add_dependencies(xrdsvc proto)
 
-target_sources(qserv_xrdsvc PRIVATE
+target_sources(xrdsvc PRIVATE
     ChannelStream.cc
     HttpModule.cc
     HttpMonitorModule.cc
@@ -13,14 +13,27 @@ target_sources(qserv_xrdsvc PRIVATE
     StreamBuffer.cc
 )
 
-target_include_directories(qserv_xrdsvc PRIVATE
+target_include_directories(xrdsvc PRIVATE
     ${XROOTD_INCLUDE_DIRS}
 )
 
-target_link_libraries(qserv_xrdsvc PUBLIC
+target_link_libraries(xrdsvc PUBLIC
     boost_filesystem
     boost_system
+    global
     log
+    memman
+    mysql
     http
+    sql
+    wbase
+    wconfig
+    wcontrol
+    wpublish
+    wsched
     XrdSsiLib
+)
+
+install(
+    TARGETS xrdsvc
 )

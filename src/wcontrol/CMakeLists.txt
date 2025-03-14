@@ -1,4 +1,4 @@
-add_library(wcontrol OBJECT)
+add_library(wcontrol SHARED)
 add_dependencies(wcontrol proto)
 
 target_sources(wcontrol PRIVATE
@@ -6,6 +6,10 @@ target_sources(wcontrol PRIVATE
     ResourceMonitor.cc
     SqlConnMgr.cc
     WorkerStats.cc
+)
+
+install(
+    TARGETS wcontrol
 )
 
 target_include_directories(wcontrol PRIVATE
@@ -16,4 +20,5 @@ target_link_libraries(wcontrol PUBLIC
     log
     XrdSsiLib
     qhttp
+    wdb
 )

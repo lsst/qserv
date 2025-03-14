@@ -45,10 +45,6 @@
 #include "wbase/Task.h"
 #include "wdb/ChunkResource.h"
 
-namespace lsst::qserv::xrdsvc {
-class StreamBuffer;
-}  // namespace lsst::qserv::xrdsvc
-
 namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
 }  // namespace lsst::qserv::wcontrol
@@ -71,7 +67,7 @@ public:
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
     QueryRunner& operator=(QueryRunner const&) = delete;
-    ~QueryRunner();
+    virtual ~QueryRunner() = default;
 
     bool runQuery() override;
 
@@ -91,24 +87,16 @@ protected:
 
 private:
     bool _initConnection();
-    void _setDb();
 
     /// Dispatch with output sent through a SendChannel
     bool _dispatchChannel();
     MYSQL_RES* _primeResult(std::string const& query);  ///< Obtain a result handle for a query.
 
-    static size_t _getDesiredLimit();
-
     wbase::Task::Ptr const _task;  ///< Actual task
-
-    qmeta::CzarId _czarId = 0;  ///< To be replaced with the czarId of the requesting czar.
 
     /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
-    std::string _dbName;
     std::atomic<bool> _cancelled{false};
-    std::weak_ptr<xrdsvc::StreamBuffer> _streamBuf;  ///< used release condition variable on cancel.
-    std::atomic<bool> _removedFromThreadPool{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 

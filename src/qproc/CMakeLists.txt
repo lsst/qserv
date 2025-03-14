@@ -1,4 +1,4 @@
-add_library(qproc OBJECT)
+add_library(qproc SHARED)
 add_dependencies(qproc proto)
 
 target_sources(qproc PRIVATE
@@ -17,6 +17,10 @@ target_link_libraries(qproc PRIVATE
     sphgeom
 )
 
+install(
+    TARGETS qproc
+)
+
 FUNCTION(qproc_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc ../tests/QueryAnaHelper.cc)
@@ -29,8 +33,8 @@ FUNCTION(qproc_tests)
             qdisp
             qproc
             query
-            qserv_css
-            qserv_meta
+            css
+            qmeta
             rproc
             xrdreq
             Boost::unit_test_framework
