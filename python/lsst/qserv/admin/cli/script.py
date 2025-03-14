@@ -80,7 +80,7 @@ def _jitter(f: float) -> float:
     jitter=_jitter,  # Don't add jitter (random small changes up or down) to the wait time.
     giveup=lambda e: bool(os.environ.get("UNIT_TEST", False)),
 )
-def _wait_for_update(smig_func: Callable[[], None]) -> None:
+def _wait_for_update(smig_func: Callable[[], int | None]) -> None:
     """Wrapper for a smig function that includes a backoff for the case where
     the module needs to be updated but does not get updated by this process,
     allowing the process to wait here for the module to be updated.
@@ -94,7 +94,7 @@ def _do_smig(
     connection: str,
     update: bool,
     *,
-    mig_mgr_args: MigMgrArgs = None,
+    mig_mgr_args: MigMgrArgs | None = None,
 ) -> None:
     """Run schema migration on a module's database.
 
