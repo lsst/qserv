@@ -123,6 +123,7 @@ bool QueryRunner::_initConnection() {
     return true;
 }
 
+
 bool QueryRunner::runQuery() {
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
