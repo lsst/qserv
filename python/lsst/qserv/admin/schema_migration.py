@@ -25,6 +25,9 @@ __all__ = ["make_migration_manager"]
 
 
 from collections.abc import Sequence
+from typing import cast
+
+from lsst.qserv.schema.schema_mig_mgr import Version
 
 from ..schema import Migration, SchemaMigMgr, Uninitialized
 
@@ -35,12 +38,12 @@ class AdminMigrationManager(SchemaMigMgr):
     def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
 
-    def current_version(self) -> int | None:
+    def current_version(self) -> Version:
         """Returns current schema version.
 
         Returns
         -------
-        version : `int` or ``Uninitialized``
+        version : `Version`
             The current schema version.
         """
         # Currently the database has been initialized with user data or it has
@@ -51,12 +54,12 @@ class AdminMigrationManager(SchemaMigMgr):
         cursor.execute(stmt)
         result = cursor.fetchone()
         try:
-            count = result[0]
+            count = cast(tuple[int], result)[0]
         except Exception as e:
             raise RuntimeError(f"Could not extract version from query result: {result}.") from e
-        return Uninitialized if count == 0 else 0
+        return Version(Uninitialized) if count == 0 else Version(0)
 
-    def apply_migrations(self, migrations: Sequence[Migration]) -> int:
+    def apply_migrations(self, migrations: Sequence[Migration]) -> Version:
         """Apply migrations.
 
         Parameters
