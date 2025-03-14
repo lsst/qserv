@@ -139,7 +139,7 @@ def _load_migration_mgr(
 def smig(
     do_migrate: bool,
     check: bool,
-    final: int,
+    final: int | None,
     scripts: str,
     connection: str,
     module: str,
@@ -155,7 +155,7 @@ def smig(
     check : `bool`
         Check that migration is needed, script returns 0 if schema is
         up-to-date, 1 otherwise.
-    final : `int`
+    final : `int` or `None`
         Stop migration at given version, by default update to latest version.
     scripts : `str`
         Location for migration scripts.
@@ -269,7 +269,7 @@ class VersionMismatchError(RuntimeError):
     This can be handled by @backoff which may retry later.
     """
 
-    def __init__(self, module: str, current: int | type[Uninitialized], latest: Version):
+    def __init__(self, module: str, current: Version, latest: Version):
         super().__init__(f"Module {module} schema is at version {current}, latest is {latest}")
 
 
