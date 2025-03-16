@@ -8,10 +8,14 @@ import argparse
 import functools
 import logging
 import os
+from collections.abc import Callable
 
-import MySQLdb
+from lsst.qserv.testing import mock_db
 
-from . import mock_db
+import mysql.connector
+from mysql.connector.abstracts import MySQLConnectionAbstract
+from mysql.connector.pooling import PooledMySQLConnection
+
 from .config import Config
 from .monitor import InfluxDBFileMonitor, LogMonitor
 from .runner_mgr import RunnerManager
@@ -19,7 +23,7 @@ from .runner_mgr import RunnerManager
 _LOG = logging.getLogger(__name__)
 
 
-def _log_config(level, slot):
+def _log_config(level: int, slot: int | None) -> None:
     levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
     if slot is None:
         simple_format = "%(asctime)s %(levelname)7s %(name)s -- %(message)s"
@@ -29,7 +33,7 @@ def _log_config(level, slot):
     logging.basicConfig(format=simple_format, level=level)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Test harness to generate load for QServ")
 
     parser.add_argument(
@@ -141,9 +145,9 @@ def main():
         if num_slots is None or slot is None:
             parser.error("cannot determine slurm configuration, envvar is not set")
             return 2
-        num_slots = int(num_slots)
-        if num_slots > 1:
-            args.num_slots = num_slots
+        num_slots_int = int(num_slots)
+        if num_slots_int > 1:
+            args.num_slots = num_slots_int
             args.slot = int(slot)
 
     _log_config(args.verbose, args.slot)
@@ -157,16 +161,22 @@ def main():
         print(cfg.to_yaml())
 
     # connection factory
+    conn_factory: Callable[..., PooledMySQLConnection | MySQLConnectionAbstract | mock_db.MockConnection]
     if args.dummy_db:
         conn_factory = mock_db.connect
     else:
         conn_factory = functools.partial(
-            MySQLdb.connect, host=args.host, port=args.port, user=args.user, passwd=args.password, db=args.db
+            mysql.connector.connect,
+            host=args.host,
+            port=args.port,
+            user=args.user,
+            passwd=args.password,
+            db=args.db,
         )
 
     # monitor
     tags = None if args.slot is None else {"slot": args.slot}
-    monitor = None
+    monitor: LogMonitor | InfluxDBFileMonitor | None = None
     if args.monitor == "log":
         monitor = LogMonitor(logging.getLogger("metrics"), tags=tags)
     elif args.monitor == "influxdb-file":
