@@ -51,7 +51,6 @@ exclude = [
     "etc/*",
     "extern/*",
     "python/lsst/utils",
-    "python/lsst/qserv/testing",
     "python/lsst/qserv/.*/tests",
     "src/*",
 ]
