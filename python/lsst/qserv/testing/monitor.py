@@ -5,6 +5,7 @@ import multiprocessing
 import queue
 import time
 from abc import ABC, abstractmethod
+from typing import Any, Self, TextIO
 
 _LOG = logging.getLogger(__name__)
 
@@ -13,7 +14,13 @@ class Monitor(ABC):
     """Interface definition for monitoring."""
 
     @abstractmethod
-    def add_metrics(self, name, tags=None, _ts=None, **kw):
+    def add_metrics(
+        self: Self,
+        name: str,
+        tags: dict[str, Any] | None = None,
+        _ts: int | None = None,
+        **kw: Any,
+    ) -> None:
         """Add more metrics to the monitor.
 
         Parameters
@@ -33,7 +40,7 @@ class Monitor(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def close(self):
+    def close(self: Self) -> None:
         """Flush all data and close destination."""
         raise NotImplementedError()
 
@@ -53,7 +60,13 @@ class LogMonitor(Monitor):
         Dictionary with tags and tag values to add to all metrics.
     """
 
-    def __init__(self, logger, level=logging.INFO, prefix="monitor", tags=None):
+    def __init__(
+        self: Self,
+        logger: str | logging.Logger,
+        level: int = logging.INFO,
+        prefix: str = "monitor",
+        tags: dict[str, Any] | None = None,
+    ) -> None:
         if not isinstance(logger, logging.Logger):
             logger = logging.getLogger(logger)
         self._logger = logger
@@ -61,7 +74,13 @@ class LogMonitor(Monitor):
         self._prefix = prefix
         self._tags = tags
 
-    def add_metrics(self, name, tags=None, _ts=None, **kw):
+    def add_metrics(
+        self: Self,
+        name: str,
+        tags: dict[str, Any] | None = None,
+        _ts: int | None = None,
+        **kw: Any,
+    ) -> None:
         # Docstring inherited from Monitor.
 
         if tags is None:
@@ -76,12 +95,14 @@ class LogMonitor(Monitor):
             alltags.update(tags)
             tags = alltags
 
-        values = ", ".join(f"{k}={v}" for k, v in kw.items())
-        tags = ", ".join(f"{k}={v}" for k, v in tags.items())
+        values_str = ", ".join(f"{k}={v}" for k, v in kw.items())
+        tags_str = ", ".join(f"{k}={v}" for k, v in tags.items())
 
-        self._logger.log(self._level, "%s: %s {%s} tags={%s} time=%s", self._prefix, name, values, tags, _ts)
+        self._logger.log(
+            self._level, "%s: %s {%s} tags={%s} time=%s", self._prefix, name, values_str, tags_str, _ts
+        )
 
-    def close(self):
+    def close(self: Self) -> None:
         # Docstring inherited from Monitor.
         pass
 
@@ -107,7 +128,18 @@ class InfluxDBFileMonitor(Monitor):
         Dictionary with tags and tag values to add to all metrics.
     """
 
-    def __init__(self, path, period_sec=None, dbname=None, tags=None):
+    path: str | None
+
+    _file: TextIO | None
+    _open_time: float | None
+
+    def __init__(
+        self: Self,
+        path: str,
+        period_sec: int | None = None,
+        dbname: str | None = None,
+        tags: dict[str, Any] | None = None,
+    ) -> None:
         self._path = path
         self._period = period_sec
         self._dbname = dbname
@@ -117,13 +149,19 @@ class InfluxDBFileMonitor(Monitor):
         if self._period is not None and "%T" not in self._path:
             self._path += ".%T"
 
-        self._openTime = None
+        self._open_time = None
         self._file = None
         self.path = None
 
         self._open()
 
-    def add_metrics(self, name, tags=None, _ts=None, **kw):
+    def add_metrics(
+        self: Self,
+        name: str,
+        tags: dict[str, Any] | None = None,
+        _ts: int | None = None,
+        **kw: Any,
+    ) -> None:
         # Docstring inherited from Monitor.
 
         if tags is None:
@@ -132,7 +170,7 @@ class InfluxDBFileMonitor(Monitor):
         now = time.time()
 
         # rollover to a new file if needed
-        if self._period is not None and now - self._openTime >= self._period:
+        if self._period is not None and (self._open_time is None or now - self._open_time >= self._period):
             self._open()
 
         # add static tags
@@ -144,25 +182,25 @@ class InfluxDBFileMonitor(Monitor):
         if _ts is None:
             _ts = int(now * 1e6)
 
-        tags = [name] + [f"{k}={v}" for k, v in tags.items()]
-        tags = ",".join(tags)
-        values = ",".join(f"{k}={v}" for k, v in kw.items())
-        print(f"{tags} {values} {_ts}", file=self._file)
+        tags_seq = [name] + [f"{k}={v}" for k, v in tags.items()]
+        tags_str = ",".join(tags_seq)
+        values_str = ",".join(f"{k}={v}" for k, v in kw.items())
+        print(f"{tags_str} {values_str} {_ts}", file=self._file)
 
-    def close(self):
+    def close(self: Self) -> None:
         # Docstring inherited from Monitor.
         if self._file:
             self._file.close()
 
-    def _open(self):
+    def _open(self: Self) -> None:
         """Open next file"""
         if self._file:
             self._file.close()
 
-        self._openTime = time.time()
+        self._open_time = time.time()
         self.path = self._path
         if "%T" in self.path:
-            ts = time.strftime("%Y%m%dT%H%M%S", time.localtime(self._openTime))
+            ts = time.strftime("%Y%m%dT%H%M%S", time.localtime(self._open_time))
             self.path = self.path.replace("%T", ts)
 
         _LOG.debug("Opening InfluxDB output file %s", self.path)
@@ -196,6 +234,8 @@ class MPMonitor:
         Monitor to forward all metrics to.
     """
 
+    _queue: multiprocessing.Queue
+
     class ChildMonitor(Monitor):
         """Implementation of Monitor passed to child process.
 
@@ -212,12 +252,20 @@ class MPMonitor:
             buffer.
         """
 
-        def __init__(self, queue, buffer_size=100):
+        _buffer: list[tuple[str, dict[str, Any], int, dict[str, Any]]]
+
+        def __init__(self: Self, queue: multiprocessing.Queue, buffer_size: int = 100):
             self._queue = queue
             self._buffer_size = buffer_size
             self._buffer = []
 
-        def add_metrics(self, name, tags=None, _ts=None, **kw):
+        def add_metrics(
+            self: Self,
+            name: str,
+            tags: dict[str, Any] | None = None,
+            _ts: int | None = None,
+            **kw: Any,
+        ) -> None:
             # Docstring inherited from Monitor.
             if tags is None:
                 tags = {}
@@ -227,25 +275,25 @@ class MPMonitor:
             if len(self._buffer) >= self._buffer_size:
                 self.flush()
 
-        def flush(self):
+        def flush(self: Self) -> None:
             self._queue.put(self._buffer)
             self._buffer = []
 
-        def close(self):
+        def close(self: Self) -> None:
             # Docstring inherited from Monitor.
             self.flush()
             self._queue.close()
 
-    def __init__(self, monitor):
+    def __init__(self: Self, monitor: Monitor):
         self._monitor = monitor
         # make a queue for monitoring data
         self._queue = multiprocessing.Queue()
 
-    def child_monitor(self):
+    def child_monitor(self: Self) -> Monitor:
         """Make instance of Monitor for use by sub-process"""
         return MPMonitor.ChildMonitor(self._queue)
 
-    def process(self, period):
+    def process(self: Self, period: float | None) -> None:
         """Process metrics from queue.
 
         Parameters
@@ -255,7 +303,7 @@ class MPMonitor:
             until it's empty and return.
         """
 
-        def _forward_metrics(items):
+        def _forward_metrics(items: list[tuple[str, dict[str, Any], int, dict[str, Any]]]) -> None:
             for item in items:
                 name, tags, _ts, kw = item
                 self._monitor.add_metrics(name, tags=tags, _ts=_ts, **kw)

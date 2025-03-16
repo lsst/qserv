@@ -5,6 +5,8 @@ __all__ = ["Config", "QueryFactory"]
 import contextlib
 import logging
 import random
+from collections.abc import Generator
+from typing import Self, TextIO
 
 import numpy as np
 import yaml
@@ -13,7 +15,7 @@ _LOG = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def _make_file(path_or_file):
+def _make_file(path_or_file: str | TextIO) -> Generator[TextIO, None, None]:
     """Context manager that makes a file out of argument.
 
     Parameters
@@ -21,7 +23,7 @@ def _make_file(path_or_file):
     path_or_file : `str` or file object
         Path name for a file or a file object.
     """
-    if hasattr(path_or_file, "read"):
+    if isinstance(path_or_file, TextIO):
         yield path_or_file
     else:
         with open(path_or_file) as file:
@@ -37,11 +39,11 @@ class _ValueRandomUniform:
         Range for generated numbers.
     """
 
-    def __init__(self, min, max):
+    def __init__(self: Self, min: float, max: float) -> None:
         self._min = float(min)
         self._max = float(max)
 
-    def __call__(self):
+    def __call__(self) -> float:
         return random.uniform(self._min, self._max)
 
 
@@ -54,11 +56,11 @@ class _ValueRandomUniformInt:
         Range for generated numbers.
     """
 
-    def __init__(self, min, max):
+    def __init__(self: Self, min: int, max: int) -> None:
         self._min = float(min)
         self._max = float(max)
 
-    def __call__(self):
+    def __call__(self) -> int:
         return int(random.uniform(self._min, self._max))
 
 
@@ -73,7 +75,9 @@ class _ValueIntFromFile:
         One of "random" or "sequential".
     """
 
-    def __init__(self, path, mode="random"):
+    _array: np.ndarray | list[int]
+
+    def __init__(self: Self, path: str, mode: str = "random") -> None:
         # read all numbers from file as integers
         if path == "/dev/null":
             # for testing only
@@ -84,7 +88,7 @@ class _ValueIntFromFile:
         assert mode in ("random", "sequential")
         self._seq = 0
 
-    def __call__(self):
+    def __call__(self) -> int:
         if self._mode == "random":
             return random.choice(self._array)
         else:
@@ -108,12 +112,12 @@ class QueryFactory:
         with a description of how to generate variable value.
     """
 
-    def __init__(self, txt, variables=None):
+    def __init__(self: Self, txt: str, variables: dict[str, dict] | None = None) -> None:
         self._txt = txt
         self._vars = {}
         if variables is not None:
             for var, config in variables.items():
-                generator = None
+                generator: _ValueRandomUniform | _ValueRandomUniformInt | _ValueIntFromFile | None = None
                 if "distribution" in config:
                     if config["distribution"] == "uniform":
                         min = config.get("min", 0.0)
@@ -131,7 +135,7 @@ class QueryFactory:
                     raise ValueError(f"Cannot parse variable configuration {var} = {config}")
                 self._vars[var] = generator
 
-    def query(self):
+    def query(self: Self) -> str:
         """Return next query to execute.
 
         Returns
@@ -157,7 +161,10 @@ class Config:
         List of dictionaries, cannot be empty.
     """
 
-    def __init__(self, configs):
+    _config: dict
+    _queries: dict
+
+    def __init__(self: Self, configs: list[dict]) -> None:
         if not configs:
             raise ValueError("empty configurations list")
 
@@ -190,7 +197,7 @@ class Config:
                     raise ValueError(f"Unexpected query configuration: {qkey}: {qcfg}")
 
     @classmethod
-    def from_yaml(cls, config_files):
+    def from_yaml(cls: type[Self], config_files: list[str | TextIO]) -> Self:
         """Make configuration from bunch of YAML files
 
         Parameters
@@ -210,7 +217,7 @@ class Config:
                 configs.append(yaml.load(file, Loader=yaml.SafeLoader))
         return cls(configs)
 
-    def to_yaml(self):
+    def to_yaml(self: Self) -> str:
         """Convert current config to YAML string.
 
         Returns
@@ -220,7 +227,7 @@ class Config:
         """
         return yaml.dump(self._config)
 
-    def classes(self):
+    def classes(self: Self) -> set[str]:
         """Return set of classes defined in configuration.
 
         Returns
@@ -230,7 +237,7 @@ class Config:
         """
         return self._classes
 
-    def queries(self, q_class):
+    def queries(self: Self, q_class: str) -> dict[str, QueryFactory]:
         """Return queries for given class.
 
         Parameters
@@ -246,7 +253,7 @@ class Config:
         """
         return self._queries[q_class]
 
-    def concurrent_queries(self, q_class):
+    def concurrent_queries(self: Self, q_class: str) -> int:
         """Return number of concurrent queries for given class.
 
         Parameters
@@ -261,7 +268,7 @@ class Config:
         """
         return self._config["queryClasses"][q_class]["concurrentQueries"]
 
-    def max_rate(self, q_class):
+    def max_rate(self: Self, q_class: str) -> float:
         """Return maximum rate for given class.
 
         Parameters
@@ -276,7 +283,7 @@ class Config:
         """
         return self._config["queryClasses"][q_class].get("maxRate")
 
-    def arraysize(self, q_class):
+    def arraysize(self: Self, q_class: str) -> int:
         """Return array size for fetchmany().
 
         Parameters
@@ -291,7 +298,7 @@ class Config:
         """
         return self._config["queryClasses"][q_class].get("arraysize")
 
-    def split(self, n_workers, i_worker):
+    def split(self: Self, n_workers: int, i_worker: int) -> Self:
         """Divide configuration (or its workload) between number of workers.
 
         If we want to run test with multiple workers we need to divide work
@@ -328,7 +335,7 @@ class Config:
         return self.__class__([self._config, dict(queryClasses=overrides)])
 
     @staticmethod
-    def _merge(config1, config2):
+    def _merge(config1: dict, config2: dict) -> dict:
         """Merge two config objects, return result.
 
         If configuration present in both then second one overrides first.

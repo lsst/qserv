@@ -4,9 +4,17 @@ __all__ = ["RunnerManager"]
 
 import logging
 import time
+from collections.abc import Callable
 from multiprocessing import Process
+from typing import Self
 
-from .monitor import MPMonitor
+from lsst.qserv.testing.config import Config
+from lsst.qserv.testing.mock_db import MockConnection
+
+from mysql.connector.abstracts import MySQLConnectionAbstract
+from mysql.connector.pooling import PooledMySQLConnection
+
+from .monitor import Monitor, MPMonitor
 from .query_runner import QueryRunner
 
 _LOG = logging.getLogger(__name__)
@@ -31,14 +39,21 @@ class RunnerManager:
         Monitoring instance
     """
 
-    def __init__(self, config, connection_factory, slot, runtime_limit=None, monitor=None):
+    def __init__(
+        self: Self,
+        config: Config,
+        connection_factory: Callable[..., PooledMySQLConnection | MySQLConnectionAbstract | MockConnection],
+        slot: int,
+        runtime_limit: float | None = None,
+        monitor: Monitor | None = None,
+    ) -> None:
         self._config = config
         self._connectionFactory = connection_factory
         self._slot = slot
         self._runTimeLimit = runtime_limit
         self._monitor = monitor
 
-    def run(self):
+    def run(self) -> None:
         """Start all runners and wait until they are done."""
 
         monitor = None

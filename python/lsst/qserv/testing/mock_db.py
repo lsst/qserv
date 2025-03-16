@@ -4,13 +4,16 @@ import logging
 import re
 import time
 from collections import namedtuple
+from typing import Any, Self
 
 _LOG = logging.getLogger(__name__)
 
 _num_re = re.compile(r"\d+")
 
 
-ColDesriptor = namedtuple("ColDesriptor", "name type_code display_size internal_size precision scale null_ok")
+ColDescriptor = namedtuple(
+    "ColDescriptor", "name type_code display_size internal_size precision scale null_ok"
+)
 
 
 class MockCursor:
@@ -20,13 +23,16 @@ class MockCursor:
     """
 
     arraysize = 1
+    _query: str | None
+    n_rows: int
+    rows: list[tuple[int, str]]
 
-    def __init__(self):
+    def __init__(self: Self) -> None:
         self._query = None
         self.n_rows = 0
         self.rows = []
 
-    def execute(self, query):
+    def execute(self: Self, query: str) -> None:
         _LOG.debug("executing query: %s", query)
         self._query = query
         self.n_rows = 2
@@ -40,12 +46,12 @@ class MockCursor:
         # spend at least few milliseconds in query
         time.sleep(0.01)
 
-    def fetchall(self):
+    def fetchall(self: Self) -> list[tuple[int, str]]:
         rows = self.rows
         self.rows = []
         return rows
 
-    def fetchmany(self, arraysize=None):
+    def fetchmany(self: Self, arraysize: int | None = None) -> list[tuple[int, str]]:
         if arraysize is None:
             arraysize = self.arraysize
         rows = self.rows[:arraysize]
@@ -53,17 +59,17 @@ class MockCursor:
         return rows
 
     @property
-    def rowcount(self):
+    def rowcount(self: Self) -> int:
         return self.n_rows
 
     @property
-    def description(self):
+    def description(self: Self) -> list[ColDescriptor]:
         # some randome codes
         return [
-            ColDesriptor(
+            ColDescriptor(
                 name="ID", type_code=1, display_size=10, internal_size=4, precision=0, scale=1, null_ok=False
             ),
-            ColDesriptor(
+            ColDescriptor(
                 name="name",
                 type_code=15,
                 display_size=32,
@@ -76,11 +82,11 @@ class MockCursor:
 
 
 class MockConnection:
-    def cursor(self):
+    def cursor(self: Self) -> MockCursor:
         return MockCursor()
 
 
-def connect(*args, **kwargs):
+def connect(*args: Any, **kwargs: Any) -> MockConnection:
     """Can take any parameters so it can be used as replacement for
     MySQLdb.connect() method.
     """

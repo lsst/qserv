@@ -5,6 +5,15 @@ __all__ = ["QueryRunner"]
 import logging
 import random
 import time
+from collections.abc import Callable
+from typing import Self
+
+from lsst.qserv.testing.config import QueryFactory
+from lsst.qserv.testing.mock_db import ColDescriptor, MockConnection, MockCursor
+from lsst.qserv.testing.monitor import Monitor
+
+from mysql.connector.abstracts import MySQLConnectionAbstract, MySQLCursorAbstract, RowItemType, RowType
+from mysql.connector.pooling import PooledMySQLConnection
 
 _LOG = logging.getLogger(__name__)
 
@@ -35,16 +44,16 @@ class QueryRunner:
     """
 
     def __init__(
-        self,
-        queries,
-        max_rate,
-        connection_factory,
-        runner_id,
-        arraysize=None,
-        query_count_limit=None,
-        run_time_limit=None,
-        monitor=None,
-    ):
+        self: Self,
+        queries: dict[str, QueryFactory],
+        max_rate: float | None,
+        connection_factory: Callable[[], PooledMySQLConnection | MySQLConnectionAbstract | MockConnection],
+        runner_id: str,
+        arraysize: int | None = None,
+        query_count_limit: int | None = None,
+        run_time_limit: float | None = None,
+        monitor: Monitor | None = None,
+    ) -> None:
         self._queries = queries
         self._queryKeys = list(queries.keys())
         self._maxRate = max_rate
@@ -55,9 +64,9 @@ class QueryRunner:
         self._runTimeLimit = run_time_limit
         self._monitor = monitor
 
-    def __call__(self):
+    def __call__(self) -> None:
         conn = self._connectionFactory()
-        cursor = conn.cursor()
+        cursor: MySQLCursorAbstract | MockCursor = conn.cursor()
 
         n_queries = 0
         exec_time_cum = 0.0
@@ -89,7 +98,7 @@ class QueryRunner:
             query = self._queries[qkey].query()
 
             # may need to throttle it
-            sleep_time = 0
+            sleep_time = 0.0
             if self._maxRate is not None:
                 now = time.time()
                 t_next = t_start + n_queries / self._maxRate
@@ -117,7 +126,7 @@ class QueryRunner:
 
             # fetch all data, do not fill memory with fetchall(), better
             # to iterate, hopefully it retrieves more than one row a a time
-            rows = 42
+            rows: list[RowType | dict[str, RowItemType]] = []
             while rows:
                 if self._arraysize:
                     rows = cursor.fetchmany(self._arraysize)
@@ -140,12 +149,13 @@ class QueryRunner:
 
             # size is a guess
             row_size = 0
-            for column in cursor.description:
-                if column.internal_size is not None:
-                    row_size += column.internal_size
-                else:
-                    # order of magnitude correct for qserv data
-                    row_size + 4
+            if cursor.description is not None:
+                for column in cursor.description:
+                    if isinstance(column, ColDescriptor) and column.internal_size is not None:
+                        row_size += column.internal_size
+                    else:
+                        # order of magnitude correct for qserv data
+                        row_size + 4
 
             result_size = row_size * n_rows
 
