@@ -25,7 +25,6 @@
 #include <cstdlib>
 #include <algorithm>
 #include <iostream>
-#include <map>
 #include <set>
 #include <vector>
 #include "boost/algorithm/string/predicate.hpp"
@@ -125,6 +124,8 @@ void defineInputOptions(po::options_description& opts) {
                         "directory, then all the files and symbolic links to files in "
                         "the directory are treated as inputs. This option must be "
                         "specified at least once.");
+    input.add_options()("in.is-parquet", po::bool_switch()->default_value(false),
+                        "If true, input files are assumed to be parquet files.");
     opts.add(input);
 }
 
@@ -141,7 +142,6 @@ InputLines const makeInputLines(ConfigStore const& config) {
                 "using --in.path.");
     }
     std::vector<fs::path> paths;
-    bool bIsParquetFile = false;
     for (auto&& s : config.get<std::vector<std::string>>("in.path")) {
         fs::path p(s);
         fs::file_status stat = fs::status(p);
@@ -154,32 +154,33 @@ InputLines const makeInputLines(ConfigStore const& config) {
                 }
             }
         }
-        if (!bIsParquetFile)
-            bIsParquetFile = (boost::algorithm::ends_with(s.c_str(), ".parquet") ||
-                              boost::algorithm::ends_with(s.c_str(), ".parq"));
     }
     if (paths.empty()) {
         throw std::runtime_error(
                 "No non-empty input files found among the "
                 "files and directories specified via --in.path.");
     }
-
-    // return InputLines(paths, blockSize * MiB, false, names);
-    if (!bIsParquetFile) return InputLines(paths, blockSize * MiB, false);
+    if (!config.flag("in.is-parquet")) return InputLines(paths, blockSize * MiB, false);
 
     // In case input files are parquet files, data from config file have to be transfered to the parquet
     // reading class Arrow : collect parameter name list to be read from parquet file
-    std::vector<std::string> names;
+    std::vector<std::string> columns;
+    std::set<std::string> optional;
     std::string st_null = "";
     std::string st_delimiter = "";
     std::string st_escape = "";
 
-    if (config.has("in.csv.field")) names = config.get<std::vector<std::string>>("in.csv.field");
+    if (config.has("in.csv.field")) columns = config.get<std::vector<std::string>>("in.csv.field");
+    if (config.has("in.csv.optional")) {
+        for (auto const& column : config.get<std::vector<std::string>>("in.csv.optional")) {
+            optional.insert(column);
+        }
+    }
     if (config.has("in.csv.null")) st_null = config.get<std::string>("in.csv.null");
     if (config.has("in.csv.delimiter")) st_delimiter = config.get<std::string>("in.csv.delimiter");
     if (config.has("in.csv.escape")) st_escape = config.get<std::string>("in.csv.escape");
 
-    ConfigParamArrow const configParamArrow{names, st_null, st_delimiter, st_escape};
+    ConfigParamArrow const configParamArrow{columns, optional, st_null, st_delimiter, st_escape};
 
     // Direct parquet file reading is not possible using MT - March 2023
     if (config.has("mr.num-workers") && config.get<int>("mr.num-workers") > 1)
@@ -231,21 +232,21 @@ void ensureOutputFieldExists(ConfigStore& config, std::string const& opt) {
     if (!config.has(opt)) {
         return;
     }
-    std::vector<std::string> names;
+    std::vector<std::string> columns;
     if (!config.has("out.csv.field")) {
         if (!config.has("in.csv.field")) {
-            std::cerr << "Input CSV field names not specified." << std::endl;
+            std::cerr << "Input CSV column names not specified." << std::endl;
             std::exit(EXIT_FAILURE);
         }
-        names = config.get<std::vector<std::string>>("in.csv.field");
+        columns = config.get<std::vector<std::string>>("in.csv.field");
     } else {
-        names = config.get<std::vector<std::string>>("out.csv.field");
+        columns = config.get<std::vector<std::string>>("out.csv.field");
     }
-    std::string const name = config.get<std::string>(opt);
-    if (std::find(names.begin(), names.end(), name) == names.end()) {
-        names.push_back(name);
+    std::string const column = config.get<std::string>(opt);
+    if (std::find(columns.begin(), columns.end(), column) == columns.end()) {
+        columns.push_back(column);
     }
-    config.set("out.csv.field", names);
+    config.set("out.csv.field", columns);
 }
 
 std::vector<int32_t> const chunksToDuplicate(Chunker const& chunker, ConfigStore const& config) {
