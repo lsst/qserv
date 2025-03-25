@@ -41,6 +41,8 @@
 #include "global/intTypes.h"
 #include "qmeta/types.h"
 
+#include "util/InstanceCount.h" //&&&
+
 // Forward decl
 namespace lsst::qserv::qmeta {
 class MessageStore;
@@ -50,7 +52,7 @@ namespace lsst::qserv::ccontrol {
 
 /// UserQuery : interface for user query data. Not thread-safe, although
 /// its delegates are thread-safe as appropriate.
-class UserQuery {
+class UserQuery { util::InstanceCount ic{"UserQuery&&&"};
 public:
     typedef std::shared_ptr<UserQuery> Ptr;
 

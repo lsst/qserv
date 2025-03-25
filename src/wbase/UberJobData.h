@@ -39,6 +39,8 @@
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
 
+#include "util/InstanceCount.h"
+
 namespace lsst::qserv {
 
 namespace protojson {
@@ -61,7 +63,7 @@ class Task;
 
 /// This class tracks all Tasks associates with the UberJob on the worker
 /// and reports status to the czar.
-class UberJobData : public std::enable_shared_from_this<UberJobData> {
+class UberJobData : public std::enable_shared_from_this<UberJobData> { util::InstanceCount icuj{"UberJobData&&&"};
 public:
     using Ptr = std::shared_ptr<UberJobData>;
 
@@ -153,7 +155,7 @@ private:
 
     std::shared_ptr<wcontrol::Foreman> const _foreman;
 
-    std::vector<std::shared_ptr<wbase::Task>> _ujTasks;
+    std::vector<std::weak_ptr<wbase::Task>> _ujTasks;
     std::shared_ptr<FileChannelShared> _fileChannelShared;
 
     std::mutex _ujTasksMtx;  ///< Protects _ujTasks.

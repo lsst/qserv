@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "util/InstanceCount.h"
 
 // This header declarations
 namespace lsst::qserv::wbase {
@@ -40,7 +41,7 @@ class UberJobData;
 
 /// This class contains information about a user query that is effectively the same
 /// for all Task's in the user query.
-class UserQueryInfo {
+class UserQueryInfo { util::InstanceCount icuqi{"UserQueryInfo&&&"};
 public:
     using Ptr = std::shared_ptr<UserQueryInfo>;
     using Map = std::map<QueryId, std::weak_ptr<UserQueryInfo>>;

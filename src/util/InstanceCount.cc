@@ -4,6 +4,7 @@
 #include "util/InstanceCount.h"
 
 // System Headers
+#include <atomic> //&&&
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -27,6 +28,8 @@ InstanceCount::InstanceCount(InstanceCount const& other) : _className{other._cla
 
 InstanceCount::InstanceCount(InstanceCount&& origin) : _className{origin._className} { _increment("mov"); }
 
+std::atomic<uint64_t> instanceDestructLogLimiter{0}; //&&&
+
 void InstanceCount::_increment(std::string const& source) {
     std::lock_guard<std::recursive_mutex> lg(_mx);
     std::pair<std::string const, int> entry(_className, 0);
@@ -34,26 +37,30 @@ void InstanceCount::_increment(std::string const& source) {
     auto iter = ret.first;
     iter->second += 1;
     LOGS(_log, LOG_LVL_TRACE, "InstanceCount " << source << " " << iter->first << "=" << iter->second);
+    if ((++instanceDestructLogLimiter) % 10000 == 0) {
+        LOGS(_log, LOG_LVL_DEBUG, "&&& ~InstanceCount brief ");
+        LOGS(_log, LOG_LVL_DEBUG, "&&& ~InstanceCount brief " << *this);
+    }
 }
 
-uint16_t instanceDestructLogLimiter = 0;
 
 InstanceCount::~InstanceCount() {
+    LOGS(_log, LOG_LVL_WARN, "~InstanceCount &&&tst");
     std::lock_guard<std::recursive_mutex> lg(_mx);
-    ++instanceDestructLogLimiter;
+
     auto iter = _instances.find(_className);
     if (iter != _instances.end()) {
         iter->second -= 1;
-        LOGS(_log, LOG_LVL_TRACE, "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
-        if (instanceDestructLogLimiter % 1000 == 0) {
-            LOGS(_log, LOG_LVL_DEBUG, "~InstanceCount brief " << *this);
-        }
+        LOGS(_log, LOG_LVL_WARN, "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
         if (iter->second == 0) {
+            //LOGS(_log, LOG_LVL_WARN, "~InstanceCount &&&" << iter->first << "=" << iter->second << " : " << *this);
             _instances.erase(_className);
         }
     } else {
         LOGS(_log, LOG_LVL_ERROR, "~InstanceCount " << _className << " was not found! : " << *this);
     }
+
+
 }
 
 int InstanceCount::getCount() {

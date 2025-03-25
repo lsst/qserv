@@ -274,10 +274,15 @@ shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
     return _httpConnPool;
 }
 
+/*&&&
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
-        : _infileMerger{merger}, _tableName{tableName} {}
+        : _infileMerger{merger}, _tableNameOld{tableName} {}
+*/
+MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger)
+        : _infileMerger{merger} {}
 
-MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__ << " " << _tableName); }
+
+MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__ ); }
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, msg);
@@ -294,7 +299,7 @@ void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
 }
 
 std::ostream& MergingHandler::print(std::ostream& os) const {
-    return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
+    return os << "MergingRequester(flushed=" << (_flushed ? "true)" : "false)");
 }
 
 bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,

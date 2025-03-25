@@ -45,10 +45,11 @@
 #include "qdisp/UberJob.h"
 #include "qmeta/JobStatus.h"
 #include "util/EventThread.h"
-#include "util/InstanceCount.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
 #include "util/ThreadPool.h"
+
+#include "util/InstanceCount.h" //&&&
 
 namespace lsst::qserv {
 
@@ -83,7 +84,7 @@ class QdispPool;
 namespace qdisp {
 
 /// class Executive manages the execution of jobs for a UserQuery.
-class Executive : public std::enable_shared_from_this<Executive> {
+class Executive : public std::enable_shared_from_this<Executive> { util::InstanceCount icex{"Executive&&&"};
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;

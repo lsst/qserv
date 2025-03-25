@@ -47,6 +47,8 @@
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
 
+#include "util/InstanceCount.h"
+
 // Forward declarations
 namespace lsst::qserv::mysql {
 class MySqlConfig;
@@ -81,7 +83,7 @@ public:
 };
 
 /// Base class for tracking a database query for a worker Task.
-class TaskQueryRunner {
+class TaskQueryRunner { util::InstanceCount icqr{"TaskQueryRunner&&&"};
 public:
     using Ptr = std::shared_ptr<TaskQueryRunner>;
     virtual ~TaskQueryRunner() {};
@@ -90,7 +92,7 @@ public:
 };
 
 /// Class for storing database + table name.
-class TaskDbTbl {
+class TaskDbTbl { util::InstanceCount icqr{"TaskDbTbl&&&"};
 public:
     TaskDbTbl() = delete;
     TaskDbTbl(std::string const& db_, std::string const& tbl_) : db(db_), tbl(tbl_) {}
@@ -102,7 +104,7 @@ class Task;
 
 /// Base class for scheduling Tasks.
 /// Allows the scheduler to take appropriate action when a task is cancelled.
-class TaskScheduler {
+class TaskScheduler { util::InstanceCount icts{"TaskScheduler&&&"};
 public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     TaskScheduler();
@@ -119,7 +121,7 @@ public:
 /// (over-the-wire) additional concrete info related to physical
 /// execution conditions.
 /// Task is non-copyable
-class Task : public util::CommandForThreadPool {
+class Task : public util::CommandForThreadPool { util::InstanceCount ictsk{"Task&&&"};
 public:
     static std::string const defaultUser;
     using Ptr = std::shared_ptr<Task>;

@@ -226,7 +226,10 @@ void UberJobData::cancelAllTasks() {
     if (_cancelled.exchange(true) == false) {
         lock_guard<mutex> lg(_ujTasksMtx);
         for (auto const& task : _ujTasks) {
-            task->cancel();
+            auto tsk = task.lock();
+            if (tsk != nullptr) {
+                tsk->cancel();
+            }
         }
     }
 }

@@ -43,6 +43,8 @@
 #include "util/EventThread.h"
 #include "util/SemaMgr.h"
 
+#include "util/InstanceCount.h"
+
 // Forward declarations
 namespace lsst::qserv {
 namespace mysql {
@@ -96,7 +98,7 @@ public:
 /// and perform the appropriate post-processing before returning.  merge() right
 /// now expects a parsed ResponseData message.
 /// At present, Result messages are not chained.
-class InfileMerger {
+class InfileMerger { util::InstanceCount icmim{"InfileMerger&&&"};
 public:
     explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm,
                           std::shared_ptr<util::SemaMgr> const& semaMgrConn);

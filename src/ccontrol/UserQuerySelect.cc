@@ -268,6 +268,7 @@ void UserQuerySelect::submit() {
     string dbName("");
     bool dbNameSet = false;
 
+    auto mergingHandler = std::make_shared<MergingHandler>(_infileMerger);
     for (auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e && !exec->getCancelled();
          ++i) {
         auto& chunkSpec = *i;
@@ -300,9 +301,14 @@ void UserQuerySelect::submit() {
 
         ResourceUnit ru;
         ru.setAsDbChunk(cs->db, cs->chunkId);
+        /* &&&
         qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
                 _qMetaCzarId, exec->getId(), sequence, ru,
                 std::make_shared<MergingHandler>(_infileMerger, chunkResultName), cs, chunkResultName);
+                */
+        qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
+                _qMetaCzarId, exec->getId(), sequence, ru,
+                mergingHandler, cs, chunkResultName);
         auto job = exec->add(jobDesc);
         ++sequence;
     }
@@ -403,6 +409,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     map<string, WInfoAndUJPtr::Ptr> workerJobMap;
     vector<qdisp::Executive::ChunkIdType> missingChunks;
 
+    int attemptCountIncreased = 0;
     // unassignedChunksInQuery needs to be in numerical order so that UberJobs contain chunk numbers in
     // numerical order. The workers run shared scans in numerical order of chunkId numbers.
     // Numerical order keeps the number of partially complete UberJobs running on a worker to a minimum,
@@ -410,6 +417,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     for (auto const& [chunkId, jqPtr] : unassignedChunksInQuery) {
         bool const increaseAttemptCount = true;
         jqPtr->getDescription()->incrAttemptCount(exec, increaseAttemptCount);
+        attemptCountIncreased++;
 
         // If too many workers are down, there will be a chunk that cannot be found.
         // Just continuing should leave jobs `unassigned` with their attempt count
@@ -471,7 +479,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
         if (wInfUJ->uberJobPtr == nullptr) {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
-            auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
+            //&&&auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
+            auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger);
             auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _qMetaCzarId,
                                                targetWorker);
             uJob->setWorkerContactInfo(wInfUJ->wInf);
@@ -496,6 +505,10 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         errStr += " they will be retried later.";
         LOGS(_log, LOG_LVL_ERROR, errStr);
+    }
+
+    if (attemptCountIncreased > 0) {
+        LOGS(_log, LOG_LVL_WARN, funcN << " increased attempt count for " << attemptCountIncreased << " Jobs");
     }
 
     // Queue unqued UberJobs, these have less than the max number of jobs.
