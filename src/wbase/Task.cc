@@ -433,7 +433,11 @@ void Task::cancel() {
         return;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr());
+    if (!_ujData->getCancelled()) {
+        LOGS(_log, LOG_LVL_INFO, "Task::cancel " << getIdStr() << " UberJob still live.");
+    } else {
+        LOGS(_log, LOG_LVL_TRACE, "Task::cancel " << getIdStr());
+    }
     auto qr = _taskQueryRunner;  // Need a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
         qr->cancel();

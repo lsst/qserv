@@ -36,6 +36,7 @@
 // Qserv headers
 #include "global/ResourceUnit.h"
 #include "mysql/MySqlConfig.h"
+//#include "util/InstanceCount.h" //&&&
 
 // Forward declarations
 namespace lsst::qserv::sql {
@@ -63,7 +64,7 @@ public:
  * It includes helper functions for checking the resulting data structure for
  * the existence of certain xrootd paths.
  */
-class ChunkInventory {
+class ChunkInventory { //util::InstanceCount ic{"ChunkInventory&&&"};
 public:
     // These should be converted to unordered_* with C++11
     typedef std::set<int> ChunkMap;

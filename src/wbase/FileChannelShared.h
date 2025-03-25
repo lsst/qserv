@@ -251,7 +251,7 @@ private:
     bool _isUberJob;  ///< true if this is using UberJob http. To be removed when _sendChannel goes away.
 
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
-    std::shared_ptr<UberJobData> _uberJobData;               ///< Contains czar contact info.
+    std::weak_ptr<UberJobData> _uberJobData;               ///< Contains czar contact info.
 
     UberJobId const _uberJobId;       ///< The UberJobId
     qmeta::CzarId const _czarId;      ///< id of the czar that requested this task(s). TODO:UJ delete

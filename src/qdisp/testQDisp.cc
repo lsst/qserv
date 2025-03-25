@@ -214,10 +214,9 @@ std::shared_ptr<qdisp::JobQuery> executiveTest(qdisp::ExecutiveUT::PtrUT const& 
     // Test class Executive::add
     // Modeled after ccontrol::UserQuery::submit()
     ResourceUnit ru;
-    std::string chunkResultName = "mock";
     std::shared_ptr<rproc::InfileMerger> infileMerger;
-    ccontrol::MergingHandler::Ptr mh =
-            std::make_shared<ccontrol::MergingHandler>(infileMerger, chunkResultName);
+    ccontrol::MergingHandler::Ptr mh = std::make_shared<ccontrol::MergingHandler>(infileMerger);
+
     RequesterVector rv;
     for (int j = 0; j < copies; ++j) {
         rv.push_back(mh);

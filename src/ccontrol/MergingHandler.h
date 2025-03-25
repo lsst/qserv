@@ -31,6 +31,8 @@
 // Qserv headers
 #include "qdisp/ResponseHandler.h"
 
+#include "mysql/LocalInfile.h" //&&&
+
 // Forward declarations
 
 namespace lsst::qserv::http {
@@ -62,14 +64,15 @@ namespace lsst::qserv::ccontrol {
 /// Do to the way the code works, MerginHandler is effectively single threaded.
 /// The worker can only send the data for this job back over a single channel
 /// and it can only send one transmit on that channel at a time.
-class MergingHandler : public qdisp::ResponseHandler {
+class MergingHandler : public qdisp::ResponseHandler {  mysql::InstanceMCount icmim{"MergingHandler&&&"};
 public:
     typedef std::shared_ptr<MergingHandler> Ptr;
     virtual ~MergingHandler();
 
     /// @param merger downstream merge acceptor
     /// @param tableName target table for incoming data
-    MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName);
+    //&&&MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName);
+    MergingHandler(std::shared_ptr<rproc::InfileMerger> merger);
 
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
@@ -110,7 +113,7 @@ private:
     static std::mutex _httpConnPoolMutex;
 
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
-    std::string _tableName;                              ///< Target table name
+    //&&&std::string _tableNameOld;                              ///< Target table name
     Error _error;                                        ///< Error description
     std::atomic<bool> _errorSet{false};                  ///< Set to true when an error is set.
     mutable std::mutex _errorMutex;                      ///< Protect readers from partial updates
