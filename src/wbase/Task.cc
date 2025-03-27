@@ -426,16 +426,18 @@ wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
 }
 
 /// Flag the Task as cancelled, try to stop the SQL query, and try to remove it from the schedule.
-void Task::cancel() {
+void Task::cancel(bool logIt) {
     if (_cancelled.exchange(true)) {
         // Was already cancelled.
         return;
     }
 
-    if (!_ujData->getCancelled()) {
-        LOGS(_log, LOG_LVL_INFO, "Task::cancel " << getIdStr() << " UberJob still live.");
-    } else {
-        LOGS(_log, LOG_LVL_TRACE, "Task::cancel " << getIdStr());
+    if (logIt) {
+        if (!_ujData->getCancelled()) {
+            LOGS(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr() << " UberJob still live.");
+        } else {
+            LOGS(_log, LOG_LVL_TRACE, "Task::cancel " << getIdStr());
+        }
     }
     auto qr = _taskQueryRunner;  // Need a copy in case _taskQueryRunner is reset.
     if (qr != nullptr) {
@@ -457,13 +459,12 @@ bool Task::checkCancelled() {
     return _cancelled;
 }
 
-/// @return true if task has already been cancelled.
-bool Task::setTaskQueryRunner(TaskQueryRunner::Ptr const& taskQueryRunner) {
+bool Task::setTaskQueryRunner(wdb::QueryRunner::Ptr const& taskQueryRunner) {
     _taskQueryRunner = taskQueryRunner;
     return checkCancelled();
 }
 
-void Task::freeTaskQueryRunner(TaskQueryRunner* tqr) {
+void Task::freeTaskQueryRunner(wdb::QueryRunner* tqr) {
     if (_taskQueryRunner.get() == tqr) {
         _taskQueryRunner.reset();
     } else {

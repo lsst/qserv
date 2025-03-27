@@ -34,12 +34,12 @@ namespace lsst::qserv::rproc {
 
 /// ProtoRowBuffer is an implementation of RowBuffer designed to allow a
 /// LocalInfile object to use a Protobufs Result message as a row source
-class ProtoRowBuffer : public mysql::RowBuffer {  mysql::InstanceMCount ic{"ProtoRowBuffer&&&"};
+class ProtoRowBuffer : public mysql::RowBuffer {
 public:
     ProtoRowBuffer(proto::ResponseData const& res, int jobId, std::string const& jobIdColName,
                    std::string const& jobIdSqlType, int jobIdMysqlType);
 
-    //~ProtoRowBuffer() override = default; &&&
+    ~ProtoRowBuffer() override;
 
     unsigned fetch(char* buffer, unsigned bufLen) override;
     std::string dump() const override;

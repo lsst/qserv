@@ -10,14 +10,14 @@ target_sources(qdisp PRIVATE
     UberJob.cc
 )
 
-target_include_directories(qdisp PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
 
 target_link_libraries(qdisp PUBLIC
     cconfig
     log
-    XrdSsiLib
+)
+
+install(
+	TARGETS qdisp
 )
 
 install(
@@ -26,14 +26,11 @@ install(
 
 add_executable(testQDisp testQDisp.cc)
 
-target_include_directories(testQDisp PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
-
 target_link_libraries(testQDisp
     cconfig
     ccontrol
     czar
+    mysql
     parser
     qana
     qdisp

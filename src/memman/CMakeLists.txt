@@ -8,6 +8,10 @@ target_sources(memman PRIVATE
     Memory.cc
 )
 
+install(
+	TARGETS memman
+)
+
 target_link_libraries(memman PUBLIC
     log
 )

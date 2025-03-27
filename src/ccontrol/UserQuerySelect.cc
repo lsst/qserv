@@ -268,7 +268,6 @@ void UserQuerySelect::submit() {
     string dbName("");
     bool dbNameSet = false;
 
-    auto mergingHandler = std::make_shared<MergingHandler>(_infileMerger);
     for (auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e && !exec->getCancelled();
          ++i) {
         auto& chunkSpec = *i;
@@ -286,7 +285,6 @@ void UserQuerySelect::submit() {
             cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
             chunks.push_back(cs->chunkId);
         }
-        std::string chunkResultName = _ttn->make(cs->chunkId);
 
         // This should only need to be set once as all jobs should have the same database name.
         if (cs->db != dbName) {
@@ -301,14 +299,8 @@ void UserQuerySelect::submit() {
 
         ResourceUnit ru;
         ru.setAsDbChunk(cs->db, cs->chunkId);
-        /* &&&
-        qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
-                _qMetaCzarId, exec->getId(), sequence, ru,
-                std::make_shared<MergingHandler>(_infileMerger, chunkResultName), cs, chunkResultName);
-                */
-        qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
-                _qMetaCzarId, exec->getId(), sequence, ru,
-                mergingHandler, cs, chunkResultName);
+        qdisp::JobDescription::Ptr jobDesc =
+                qdisp::JobDescription::create(_qMetaCzarId, exec->getId(), sequence, ru, cs);
         auto job = exec->add(jobDesc);
         ++sequence;
     }
@@ -479,8 +471,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         if (wInfUJ->uberJobPtr == nullptr) {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
-            //&&&auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, uberResultName);
-            auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger);
+            auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, exec);
             auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _qMetaCzarId,
                                                targetWorker);
             uJob->setWorkerContactInfo(wInfUJ->wInf);
@@ -508,7 +499,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
     }
 
     if (attemptCountIncreased > 0) {
-        LOGS(_log, LOG_LVL_WARN, funcN << " increased attempt count for " << attemptCountIncreased << " Jobs");
+        LOGS(_log, LOG_LVL_WARN,
+             funcN << " increased attempt count for " << attemptCountIncreased << " Jobs");
     }
 
     // Queue unqued UberJobs, these have less than the max number of jobs.

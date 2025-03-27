@@ -66,7 +66,8 @@ class SqlConnMgr;
 }
 namespace lsst::qserv::wdb {
 class ChunkResourceMgr;
-}
+class QueryRunner;
+}  // namespace lsst::qserv::wdb
 namespace lsst::qserv::wpublish {
 class QueriesAndChunks;
 class QueryStatistics;
@@ -82,17 +83,8 @@ public:
     explicit TaskException(util::Issue::Context const& ctx, std::string const& msg) : util::Issue(ctx, msg) {}
 };
 
-/// Base class for tracking a database query for a worker Task.
-class TaskQueryRunner { util::InstanceCount icqr{"TaskQueryRunner&&&"};
-public:
-    using Ptr = std::shared_ptr<TaskQueryRunner>;
-    virtual ~TaskQueryRunner() {};
-    virtual bool runQuery() = 0;
-    virtual void cancel() = 0;  ///< Repeated calls to cancel() must be harmless.
-};
-
 /// Class for storing database + table name.
-class TaskDbTbl { util::InstanceCount icqr{"TaskDbTbl&&&"};
+class TaskDbTbl {
 public:
     TaskDbTbl() = delete;
     TaskDbTbl(std::string const& db_, std::string const& tbl_) : db(db_), tbl(tbl_) {}
@@ -104,7 +96,7 @@ class Task;
 
 /// Base class for scheduling Tasks.
 /// Allows the scheduler to take appropriate action when a task is cancelled.
-class TaskScheduler { util::InstanceCount icts{"TaskScheduler&&&"};
+class TaskScheduler {
 public:
     using Ptr = std::shared_ptr<TaskScheduler>;
     TaskScheduler();
@@ -121,7 +113,7 @@ public:
 /// (over-the-wire) additional concrete info related to physical
 /// execution conditions.
 /// Task is non-copyable
-class Task : public util::CommandForThreadPool { util::InstanceCount ictsk{"Task&&&"};
+class Task : public util::CommandForThreadPool {
 public:
     static std::string const defaultUser;
     using Ptr = std::shared_ptr<Task>;
@@ -206,7 +198,7 @@ public:
     /// This functional also attempts to inform the scheduler for this
     /// `Task` that is has been cancelled. The scheduler currently does
     /// nothing in this case.
-    void cancel();
+    void cancel(bool logIt = true);
 
     /// Check if this task should be cancelled and call cancel() as needed.
     /// @return true if this task was or needed to be cancelled.
@@ -214,9 +206,9 @@ public:
 
     TaskState state() const { return _state; }
     std::string getQueryString() const;
-    bool setTaskQueryRunner(
-            TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
-    void freeTaskQueryRunner(TaskQueryRunner* tqr);
+    /// Return true if already cancelled.
+    bool setTaskQueryRunner(std::shared_ptr<wdb::QueryRunner> const& taskQueryRunner);
+    void freeTaskQueryRunner(wdb::QueryRunner* tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
     TaskScheduler::Ptr getTaskScheduler() const { return _taskScheduler.lock(); }
     friend std::ostream& operator<<(std::ostream& os, Task const& t);
@@ -350,7 +342,7 @@ private:
     std::atomic<bool> _queryStarted{false};  ///< Set to true when the query is about to be run.
     std::atomic<bool> _cancelled{false};
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
-    TaskQueryRunner::Ptr _taskQueryRunner;
+    std::shared_ptr<wdb::QueryRunner> _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.

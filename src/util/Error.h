@@ -74,8 +74,11 @@ struct ErrorCode {
  */
 class Error {
 public:
-    Error(int code = ErrorCode::NONE, std::string const& msg = "", int status = ErrorCode::NONE,
-          bool logLvLErr = true);
+    Error(int code, std::string const& msg = "", int status = ErrorCode::NONE, bool logLvLErr = true);
+
+    Error() = default;
+    Error(Error const&) = default;
+    Error& operator=(Error const&) = default;
 
     /** Overload output operator for current class
      *
@@ -101,9 +104,9 @@ public:
     bool isNone() { return (_code == util::ErrorCode::NONE); }
 
 private:
-    int _code;
-    std::string _msg;
-    int _status;
+    int _code = ErrorCode::NONE;
+    std::string _msg{""};
+    int _status = ErrorCode::NONE;
 };
 
 }  // namespace lsst::qserv::util

@@ -223,14 +223,17 @@ std::string UberJobData::resultFileHttpUrl() const {
 
 void UberJobData::cancelAllTasks() {
     LOGS(_log, LOG_LVL_INFO, cName(__func__));
+    int count = 0;
     if (_cancelled.exchange(true) == false) {
         lock_guard<mutex> lg(_ujTasksMtx);
         for (auto const& task : _ujTasks) {
             auto tsk = task.lock();
             if (tsk != nullptr) {
-                tsk->cancel();
+                tsk->cancel(false);
+                ++count;
             }
         }
+        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " cancelled " << count << " Tasks");
     }
 }
 

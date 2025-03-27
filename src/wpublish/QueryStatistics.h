@@ -39,9 +39,9 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "util/InstanceCount.h"
 #include "wbase/Task.h"
 #include "wsched/SchedulerBase.h"
-#include "util/InstanceCount.h" //&&&
 
 namespace lsst::qserv::wbase {
 class UserQueryInfo;
@@ -52,7 +52,7 @@ namespace lsst::qserv::wpublish {
 
 /// Statistics for a single user query.
 /// This class stores some statistics for each Task in the user query on this worker.
-class QueryStatistics { util::InstanceCount icqs{"QueryStatistics&&&"};
+class QueryStatistics {
 public:
     using Ptr = std::shared_ptr<QueryStatistics>;
 
@@ -125,7 +125,7 @@ public:
     /// This is a sum total of all `Task`s added. `Task`s are not removed
     /// when they finish.
     /// Copying is fine, but setting one equal to another would cause issues.
-    class SchedulerTasksInfo { util::InstanceCount icsti{"SchedulerTasksInfo&&&"};
+    class SchedulerTasksInfo {
     public:
         SchedulerTasksInfo() = delete;
         SchedulerTasksInfo(std::shared_ptr<wsched::SchedulerBase> const& sched_, int taskCount_)
@@ -173,6 +173,7 @@ private:
     explicit QueryStatistics(QueryId queryId, CzarIdType czarId);
     bool _isMostlyDead() const;
 
+    util::InstanceCount icqs{"QueryStatistics"};
     mutable std::mutex _qStatsMtx;
 
     std::chrono::system_clock::time_point _touched = std::chrono::system_clock::now();

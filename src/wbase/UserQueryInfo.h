@@ -41,7 +41,7 @@ class UberJobData;
 
 /// This class contains information about a user query that is effectively the same
 /// for all Task's in the user query.
-class UserQueryInfo { util::InstanceCount icuqi{"UserQueryInfo&&&"};
+class UserQueryInfo {
 public:
     using Ptr = std::shared_ptr<UserQueryInfo>;
     using Map = std::map<QueryId, std::weak_ptr<UserQueryInfo>>;

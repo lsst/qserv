@@ -63,7 +63,7 @@ class Task;
 
 /// This class tracks all Tasks associates with the UberJob on the worker
 /// and reports status to the czar.
-class UberJobData : public std::enable_shared_from_this<UberJobData> { util::InstanceCount icuj{"UberJobData&&&"};
+class UberJobData : public std::enable_shared_from_this<UberJobData> {
 public:
     using Ptr = std::shared_ptr<UberJobData>;
 

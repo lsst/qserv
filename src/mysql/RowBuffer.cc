@@ -34,10 +34,17 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "mysql/LocalInfileError.h"
 #include "proto/worker.pb.h"
 #include "sql/Schema.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.RowBuffer");
+}
 
 ////////////////////////////////////////////////////////////////////////
 // Helpful constants
@@ -123,6 +130,8 @@ inline int addColumn(char* cursor, char* colData, int colSize) {
     }
     return added;
 }
+
+Row::~Row() { LOGS(_log, LOG_LVL_TRACE, "Row::~Row()"); }
 
 class ResRowBuffer : public RowBuffer {
 public:
@@ -282,4 +291,6 @@ std::shared_ptr<RowBuffer> RowBuffer::newResRowBuffer(MYSQL_RES* result) {
     Ptr p = std::make_shared<ResRowBuffer>(result);
     return p;
 }
+
+RowBuffer::~RowBuffer() { LOGS(_log, LOG_LVL_TRACE, "~RowBuffer()"); }
 }  // namespace lsst::qserv::mysql

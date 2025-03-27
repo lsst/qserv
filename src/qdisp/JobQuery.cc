@@ -66,18 +66,15 @@ bool JobQuery::cancel(bool superfluous) {
         ostringstream os;
         os << _idStr << " cancel";
         LOGS(_log, LOG_LVL_DEBUG, os.str());
-        if (!superfluous) {
-            getDescription()->respHandler()->errorFlush(os.str(), -1);
-        }
-        auto executive = _executive.lock();
-        if (executive == nullptr) {
+        auto exec = _executive.lock();
+        if (exec == nullptr) {
             LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
             return false;
         }
-        executive->markCompleted(getJobId(), false);
         if (!superfluous) {
-            _jobDescription->respHandler()->processCancel();
+            exec->addMultiError(-1, os.str(), util::ErrorCode::RESULT_IMPORT);
         }
+        exec->markCompleted(getJobId(), false);
         return true;
     }
     LOGS(_log, LOG_LVL_TRACE, "JobQuery::cancel, skipping, already cancelled.");
