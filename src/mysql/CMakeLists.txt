@@ -1,4 +1,4 @@
-add_library(mysql OBJECT)
+add_library(mysql SHARED)
 add_dependencies(mysql proto)
 
 target_sources(mysql PRIVATE
@@ -13,6 +13,10 @@ target_sources(mysql PRIVATE
 target_link_libraries(mysql PUBLIC
     log
     mysqlclient_r
+)
+
+install(
+    TARGETS mysql
 )
 
 add_executable(testLocalInfile testLocalInfile.cc)

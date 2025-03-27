@@ -1,4 +1,4 @@
-add_library(wdb OBJECT)
+add_library(wdb SHARED)
 add_dependencies(wdb proto)
 
 target_sources(wdb PRIVATE
@@ -15,6 +15,10 @@ target_include_directories(wdb PRIVATE
 target_link_libraries(wdb PUBLIC
     log
     XrdSsiLib
+)
+
+install(
+    TARGETS wdb
 )
 
 FUNCTION(wdb_tests)

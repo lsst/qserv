@@ -1,4 +1,4 @@
-add_library(wbase OBJECT)
+add_library(wbase SHARED)
 add_dependencies(wbase proto)
 
 target_sources(wbase PRIVATE
@@ -8,6 +8,10 @@ target_sources(wbase PRIVATE
     Task.cc
     UserQueryInfo.cc
     WorkerCommand.cc
+)
+
+install(
+    TARGETS wbase
 )
 
 target_include_directories(wbase PRIVATE

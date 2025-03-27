@@ -24,7 +24,7 @@ target_link_libraries(replica PUBLIC
     replica_services
     replica_util
     replica_worker
-    qserv_css
+    css
     xrdreq
     xrdsvc
     XrdCl

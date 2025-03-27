@@ -8,7 +8,7 @@ antlr_target(QSMySqlParser QSMySqlParser.g4 PARSER LISTENER
     COMPILE_FLAGS -lib ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-add_library(parser OBJECT)
+add_library(parser SHARED)
 
 target_include_directories(parser PRIVATE 
     ${ANTLR4_INCLUDE_DIR}
@@ -27,4 +27,8 @@ target_sources(parser PRIVATE
 target_link_libraries(parser PUBLIC
     log
     antlr4-runtime
+)
+
+install(
+    TARGETS parser
 )

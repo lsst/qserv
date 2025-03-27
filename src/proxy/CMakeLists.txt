@@ -16,8 +16,18 @@ target_include_directories(czarProxy PRIVATE
 target_link_libraries(czarProxy PRIVATE
     log
     lua-5.1
-    qserv_czar
-)
+    cconfig
+    ccontrol
+    czar
+    parser
+    qana
+    query
+    qdisp
+    qproc
+    rproc
+    css
+    qmeta
+    xrdreq)
 
 install(TARGETS czarProxy DESTINATION ${CMAKE_INSTALL_PREFIX}/lua/qserv/lib)
 install(FILES mysqlProxy.lua DESTINATION ${CMAKE_INSTALL_PREFIX}/lua/qserv/scripts)

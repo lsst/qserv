@@ -1,4 +1,4 @@
-add_library(wsched OBJECT)
+add_library(wsched SHARED)
 add_dependencies(wsched proto)
 
 target_sources(wsched PRIVATE
@@ -11,6 +11,10 @@ target_sources(wsched PRIVATE
 
 target_link_libraries(wsched PUBLIC
     log
+)
+
+install(
+    TARGETS wsched
 )
 
 add_executable(testSchedulers testSchedulers.cc)
