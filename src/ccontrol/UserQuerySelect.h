@@ -47,8 +47,6 @@
 #include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
 
-#include "util/InstanceCount.h" //&&&
-
 // Forward declarations
 namespace lsst::qserv::qdisp {
 class Executive;
@@ -85,7 +83,7 @@ namespace lsst::qserv::ccontrol {
 class TmpTableName;
 
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
-class UserQuerySelect : public UserQuery {  util::InstanceCount ic{"UserQuerySelect&&&"};
+class UserQuerySelect : public UserQuery {
 public:
     UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                     std::shared_ptr<qmeta::MessageStore> const& messageStore,
@@ -102,7 +100,7 @@ public:
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
 
-    //&&& ~UserQuerySelect() override = default;
+    ~UserQuerySelect() override = default;
 
     /**
      *  @param resultLocation:  Result location, if empty use result table with unique

@@ -87,8 +87,6 @@ public:
     }
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override {}
     void errorFlush(std::string const& msg, int code) override {};
-    Error getError() const override { return util::Error(); }
-    void processCancel() override {};
     void prepScrubResults(int jobId, int attempt) override {};
 
     /// Print a string representation of the receiver to an ostream
@@ -182,8 +180,7 @@ qdisp::JobDescription::Ptr makeMockJobDescription(qdisp::Executive::Ptr const& e
     auto cqs = std::make_shared<qproc::ChunkQuerySpec>();  // dummy, unused in this case.
     std::string chunkResultName = "dummyResultTableName";
     qmeta::CzarId const czarId = 1;
-    auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, mHandler, cqs,
-                                             chunkResultName, true);
+    auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, cqs, true);
     return job;
 }
 
@@ -215,7 +212,7 @@ std::shared_ptr<qdisp::JobQuery> executiveTest(qdisp::ExecutiveUT::PtrUT const& 
     // Modeled after ccontrol::UserQuery::submit()
     ResourceUnit ru;
     std::shared_ptr<rproc::InfileMerger> infileMerger;
-    ccontrol::MergingHandler::Ptr mh = std::make_shared<ccontrol::MergingHandler>(infileMerger);
+    ccontrol::MergingHandler::Ptr mh = std::make_shared<ccontrol::MergingHandler>(infileMerger, ex);
 
     RequesterVector rv;
     for (int j = 0; j < copies; ++j) {

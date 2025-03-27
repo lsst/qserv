@@ -1,6 +1,6 @@
-add_library(qserv_css SHARED)
+add_library(css SHARED)
 
-target_sources(qserv_css PRIVATE
+target_sources(css PRIVATE
     CssAccess.cc
     CssConfig.cc
     DbInterfaceMySql.cc
@@ -9,19 +9,21 @@ target_sources(qserv_css PRIVATE
     KvInterfaceImplMySql.cc
 )
 
-target_link_libraries(qserv_css PUBLIC
-    qserv_common
+target_link_libraries(css PUBLIC
+    mysql
+    sql
     log
+    util
 )
 
-install(TARGETS qserv_css)
+install(TARGETS css)
 install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/css/schema/)
 
 FUNCTION(css_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
-            qserv_css
+            css
             Boost::unit_test_framework
         )
         add_test(NAME ${TEST} COMMAND ${TEST})

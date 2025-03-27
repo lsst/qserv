@@ -1,4 +1,4 @@
-add_library(query OBJECT)
+add_library(query SHARED)
 add_dependencies(query proto)
 
 target_sources(query PRIVATE
@@ -45,6 +45,10 @@ target_link_libraries(query PUBLIC
     sphgeom
 )
 
+install(
+	TARGETS query
+)
+
 FUNCTION(query_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
@@ -56,8 +60,8 @@ FUNCTION(query_tests)
             qana
             qdisp
             qproc
-            qserv_css
-            qserv_meta
+            css
+            qmeta
             query
             rproc
             Boost::unit_test_framework

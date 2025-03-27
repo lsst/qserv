@@ -1,4 +1,4 @@
-add_library(wbase OBJECT)
+add_library(wbase SHARED)
 add_dependencies(wbase proto)
 
 target_sources(wbase PRIVATE
@@ -10,12 +10,12 @@ target_sources(wbase PRIVATE
     UserQueryInfo.cc
 )
 
-target_include_directories(wbase PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
+install(
+	TARGETS wbase
 )
+
 
 target_link_libraries(wbase PUBLIC
     boost_regex
     log
-    XrdSsiLib
 )

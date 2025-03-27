@@ -1,4 +1,4 @@
-add_library(util OBJECT)
+add_library(util SHARED)
 
 target_sources(util PRIVATE
     AsyncTimer.cc
@@ -38,6 +38,10 @@ target_link_libraries(util PUBLIC
     boost_filesystem
     boost_system
     log
+)
+
+install(
+	TARGETS util
 )
 
 FUNCTION(util_tests)

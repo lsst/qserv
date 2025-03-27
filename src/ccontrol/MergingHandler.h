@@ -31,8 +31,6 @@
 // Qserv headers
 #include "qdisp/ResponseHandler.h"
 
-#include "mysql/LocalInfile.h" //&&&
-
 // Forward declarations
 
 namespace lsst::qserv::http {
@@ -45,6 +43,7 @@ class ResponseSummary;
 }  // namespace lsst::qserv::proto
 
 namespace lsst::qserv::qdisp {
+class Executive;
 class JobQuery;
 class UberJob;
 }  // namespace lsst::qserv::qdisp
@@ -64,15 +63,14 @@ namespace lsst::qserv::ccontrol {
 /// Do to the way the code works, MerginHandler is effectively single threaded.
 /// The worker can only send the data for this job back over a single channel
 /// and it can only send one transmit on that channel at a time.
-class MergingHandler : public qdisp::ResponseHandler {  mysql::InstanceMCount icmim{"MergingHandler&&&"};
+class MergingHandler : public qdisp::ResponseHandler {
 public:
     typedef std::shared_ptr<MergingHandler> Ptr;
     virtual ~MergingHandler();
 
     /// @param merger downstream merge acceptor
-    /// @param tableName target table for incoming data
-    //&&&MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName);
-    MergingHandler(std::shared_ptr<rproc::InfileMerger> merger);
+    MergingHandler(std::shared_ptr<rproc::InfileMerger> const& merger,
+                   std::shared_ptr<qdisp::Executive> const& exec);
 
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
@@ -80,19 +78,13 @@ public:
                                      uint64_t& resultRows) override;
 
     /// @see ResponseHandler::flushHttpError
-    void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
+    void flushHttpError(int errorCode, std::string const& errorMsg, int errState) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
 
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override;
-
-    /// @return an error code and description
-    Error getError() const override {
-        std::lock_guard<std::mutex> lock(_errorMutex);
-        return _error;
-    }
 
     /// Prepare to scrub the results from jobId-attempt from the result table.
     void prepScrubResults(int jobId, int attempt) override;
@@ -102,7 +94,7 @@ private:
     bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
     /// Set error code and string.
-    void _setError(int code, std::string const& msg);
+    void _setError(int code, std::string const& msg, int errorState);
 
     // All instances of the HTTP client class are members of the same pool. This allows
     // connection reuse and a significant reduction of the kernel memory pressure.
@@ -113,12 +105,11 @@ private:
     static std::mutex _httpConnPoolMutex;
 
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
-    //&&&std::string _tableNameOld;                              ///< Target table name
-    Error _error;                                        ///< Error description
     std::atomic<bool> _errorSet{false};                  ///< Set to true when an error is set.
-    mutable std::mutex _errorMutex;                      ///< Protect readers from partial updates
     bool _flushed{false};                                ///< flushed to InfileMerger?
     std::string _wName{"~"};                             ///< worker name
+
+    std::weak_ptr<qdisp::Executive> _executive;  ///< Weak pointer to the executive for errors.
 };
 
 }  // namespace lsst::qserv::ccontrol

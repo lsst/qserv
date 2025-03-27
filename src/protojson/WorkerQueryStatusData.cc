@@ -416,7 +416,7 @@ bool WorkerQueryStatusData::handleResponseJson(nlohmann::json const& jsResp) {
 
     bool workerRestarted = false;
     auto workerStartupTime = http::RequestBodyJSON::required<uint64_t>(jsResp, "w-startup-time");
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " workerStartupTime=" << workerStartupTime);
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " workerStartupTime=" << workerStartupTime);
     if (!_wInfo->checkWStartupTime(workerStartupTime)) {
         LOGS(_log, LOG_LVL_ERROR,
              cName(__func__) << " startup time for worker=" << _wInfo->dump()

@@ -52,6 +52,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         protobuf-devel \
         python3.12 \
         python3.12-devel \
+        jemalloc \
         tree \
         vim \
         zip \

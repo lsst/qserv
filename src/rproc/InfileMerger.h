@@ -151,7 +151,7 @@ private:
 /// and perform the appropriate post-processing before returning.  merge() right
 /// now expects a parsed ResponseData message.
 /// At present, Result messages are not chained.
-class InfileMerger { util::InstanceCount icmim{"InfileMerger&&&"};
+class InfileMerger {
 public:
     explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm,
                           std::shared_ptr<util::SemaMgr> const& semaMgrConn);
@@ -229,6 +229,8 @@ private:
     bool _applySqlLocal(std::string const& sql, sql::SqlResults& results);
     bool _applySqlLocal(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
+
+    util::InstanceCount _icIm{"InfileMerger"};
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);
     void _fixupTargetName();

@@ -36,30 +36,6 @@
 
 namespace lsst::qserv::mysql {
 
-#if 1 //&&&
-// &&& delete InstanceMCount
-class InstanceMCount {
-public:
-    InstanceMCount(std::string const& className);
-    InstanceMCount(InstanceMCount const& other);
-    InstanceMCount(InstanceMCount&& origin);
-    ~InstanceMCount();
-
-    InstanceMCount& operator=(InstanceMCount const& o) = default;
-
-    int getCount();  //< Return the number of instances of _className.
-
-    friend std::ostream& operator<<(std::ostream& out, InstanceMCount const& instanceCount);
-
-private:
-    std::string _className;                        //< Names of the of which this is a member.
-    static std::map<std::string, int> _instances;  //< Map of instances per class name.
-    static std::recursive_mutex _mx;               //< Protects _instances.
-
-    void _increment(std::string const& source);
-};
-#endif //&&&
-
 class RowBuffer;  // Forward. Defined in LocalInfile.cc
 
 /// LocalInfile : a virtual LOCAL INFILE handler for mysql to use.
@@ -78,7 +54,7 @@ class RowBuffer;  // Forward. Defined in LocalInfile.cc
 /// LocalInfile objects directly: they instead use the
 /// LocalInfile::Mgr interface that generates them and manages them
 /// implicitly.
-class LocalInfile : boost::noncopyable { InstanceMCount ic{"LocalInfile&&&"};
+class LocalInfile : boost::noncopyable {
 public:
     class Mgr;  // Helper for attaching to MYSQL*
 
@@ -113,10 +89,10 @@ private:
 /// See:
 /// http://dev.mysql.com/doc/refman/5.5/en/mysql-set-local-infile-handler.html
 /// for more information on the required interface.
-class LocalInfile::Mgr : boost::noncopyable { InstanceMCount icmgr{"LocalInfile_Mgr&&&"};
+class LocalInfile::Mgr : boost::noncopyable {
 public:
     Mgr() {}
-    ~Mgr() {}
+    ~Mgr();
 
     // User interface //////////////////////////////////////////////////
     /// Attach the handler to a mysql client connection

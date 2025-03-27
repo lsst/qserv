@@ -1,4 +1,4 @@
-add_library(wdb OBJECT)
+add_library(wdb SHARED)
 add_dependencies(wdb proto)
 
 target_sources(wdb PRIVATE
@@ -7,21 +7,18 @@ target_sources(wdb PRIVATE
     SQLBackend.cc
 )
 
-target_include_directories(wdb PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
 
 target_link_libraries(wdb PUBLIC
     log
-    XrdSsiLib
+)
+
+install(
+	TARGETS wdb
 )
 
 FUNCTION(wdb_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
-        target_include_directories(${TEST} PRIVATE
-            ${XROOTD_INCLUDE_DIRS}
-        )
         target_link_libraries(${TEST} PUBLIC
             crypto
             xrdsvc

@@ -368,17 +368,15 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(JobId jobId, bool success) {
-    ResponseHandler::Error err;
+    string errStr;
+    util::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
     if (!success && !isRowLimitComplete()) {
         {
             lock_guard<mutex> lock(_incompleteJobsMutex);
             auto iter = _incompleteJobs.find(jobId);
-            if (iter != _incompleteJobs.end()) {
-                auto jobQuery = iter->second;
-                err = jobQuery->getDescription()->respHandler()->getError();
-            } else {
+            if (iter == _incompleteJobs.end()) {
                 string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
                              " size=" + to_string(_incompleteJobs.size());
                 // If the user query has been cancelled, this is expected for jobs that have not yet
@@ -392,8 +390,14 @@ void Executive::markCompleted(JobId jobId, bool success) {
                 return;
             }
         }
-        LOGS(_log, LOG_LVL_WARN,
-             "Executive: error executing " << err << " (status: " << err.getStatus() << ")");
+
+        {
+            lock_guard<mutex> lock(_errorsMutex);
+            errStr = _multiError.firstErrorStr();
+            err = _multiError.firstError();
+        }
+
+        LOGS(_log, LOG_LVL_DEBUG, "Executive: error executing " << err);
         {
             lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
@@ -403,20 +407,10 @@ void Executive::markCompleted(JobId jobId, bool success) {
             job->getStatus()->updateInfoNoErrorOverwrite(id, qmeta::JobStatus::RESULT_ERROR, "EXECFAIL",
                                                          err.getCode(), err.getMsg());
         }
-        {
-            lock_guard<mutex> lock(_errorsMutex);
-            _multiError.push_back(err);
-            LOGS(_log, LOG_LVL_TRACE,
-                 "Currently " << _multiError.size() << " registered errors: " << _multiError);
-        }
     }
     _unTrack(jobId);
     if (!success && !isRowLimitComplete()) {
-        auto logLvl = (_cancelled) ? LOG_LVL_ERROR : LOG_LVL_TRACE;
-        LOGS(_log, logLvl,
-             "Executive: requesting cancel, cause: " << " failed (code=" << err.getCode() << " "
-                                                     << err.getMsg() << ")");
-        squash(string("markComplete error ") + err.getMsg());  // ask to squash
+        squash(string("markComplete error ") + errStr);  // ask to squash
     }
 }
 
@@ -781,8 +775,8 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
              cName(__func__) << "recheck total=" << total << " max=" << maxResultTableSizeBytes);
         if (total > maxResultTableSizeBytes) {
             LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
-            ResponseHandler::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
-                                       string("Incomplete result already too large ") + to_string(total));
+            util::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
+                            string("Incomplete result already too large ") + to_string(total));
             _multiError.push_back(err);
             squash("czar, file too large");
         }

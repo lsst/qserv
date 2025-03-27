@@ -1,4 +1,4 @@
-add_library(rproc OBJECT)
+add_library(rproc SHARED)
 add_dependencies(rproc proto)
 
 target_sources(rproc PRIVATE
@@ -10,6 +10,10 @@ target_link_libraries(rproc PUBLIC
     boost_regex
     cconfig
     log
+)
+
+install(
+	TARGETS rproc
 )
 
 install(DIRECTORY python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/rproc)
@@ -27,8 +31,8 @@ FUNCTION(rproc_tests)
             qdisp
             qproc
             query
-            qserv_css
-            qserv_meta
+            css
+            qmeta
             rproc
             Boost::unit_test_framework
             Threads::Threads

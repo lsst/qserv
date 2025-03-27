@@ -1,4 +1,4 @@
-add_library(global OBJECT)
+add_library(global SHARED)
 
 target_sources(global PRIVATE
     DbTable.cc
@@ -6,6 +6,10 @@ target_sources(global PRIVATE
     ResourceUnit.cc
     sqltoken.cc
     stringUtil.cc
+)
+
+install(
+	TARGETS global
 )
 
 target_link_libraries(global PUBLIC

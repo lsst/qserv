@@ -58,7 +58,7 @@ namespace lsst::qserv::wdb {
 /// On the worker, run a query related to a Task, hold the resources needed to run the query,
 /// and write the results to the supplied SendChannel.
 ///
-class QueryRunner : public wbase::TaskQueryRunner, public std::enable_shared_from_this<QueryRunner> {
+class QueryRunner : public std::enable_shared_from_this<QueryRunner> {
 public:
     using Ptr = std::shared_ptr<QueryRunner>;
     static QueryRunner::Ptr newQueryRunner(
@@ -70,13 +70,14 @@ public:
     QueryRunner& operator=(QueryRunner const&) = delete;
     ~QueryRunner();
 
-    bool runQuery() override;
+    bool runQuery();
 
     /// Cancel the action (in-progress). This should only be called
     /// by Task::cancel(), so if this needs to be cancelled elsewhere,
     /// call Task::cancel().
     /// This should kill an in progress SQL command.
-    void cancel() override;
+    /// Repeated calls to cancel() must be harmless.
+    void cancel();
 
 protected:
     QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,

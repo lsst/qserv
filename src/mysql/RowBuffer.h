@@ -32,8 +32,6 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
-#include "mysql/LocalInfile.h" //&&&
-
 namespace lsst::qserv::proto {
 class Result;
 }  // namespace lsst::qserv::proto
@@ -42,8 +40,9 @@ namespace lsst::qserv::mysql {
 
 /// Row is a mysql row abstraction that bundles field sizes and counts. Row is
 /// shallow, and does not perform any memory management.
-struct Row { InstanceMCount ic{"mysql_Row&&&"};
+struct Row {
     Row() : row(nullptr), lengths(nullptr), numFields(-1) {}
+    virtual ~Row();
 
     // Shallow copies all-around.
     Row(char** row_, unsigned long int* lengths_, int numFields_)
@@ -65,11 +64,11 @@ struct Row { InstanceMCount ic{"mysql_Row&&&"};
 /// RowBuffer: an buffer from which arbitrarily-sized buckets of bytes
 /// can be read. The buffer represents a tab-separated-field,
 /// line-delimited-tuple sequence of tuples.
-class RowBuffer { InstanceMCount ic{"mysql_RowBuffer&&&"};
+class RowBuffer {
 public:
     typedef std::shared_ptr<RowBuffer> Ptr;
 
-    virtual ~RowBuffer() {}
+    virtual ~RowBuffer();
 
     /// Fetch a number of bytes into a buffer. Return the number of bytes
     /// fetched. Returning less than bufLen does NOT indicate EOF.
