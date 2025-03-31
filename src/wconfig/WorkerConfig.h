@@ -88,9 +88,9 @@ public:
 private:
     ConfigValResultDeliveryProtocol(std::string const& section, std::string const& name, bool required,
                                     std::string const& defVal, bool hidden)
-            : ConfigVal(section, name, required, hidden), _val(parse(defVal)) {}
-    TEnum _val;
-    TEnum _defVal;
+            : ConfigVal(section, name, required, hidden), _defVal(parse(defVal)), _val(_defVal) {}
+    TEnum const _defVal;  ///< Default value for the item this class is storing.
+    TEnum _val;           ///< Value for the item this class is storing.
 };
 
 /// Provide all configuration parameters for a Qserv worker instance.
