@@ -69,7 +69,6 @@
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
 #include "wpublish/QueriesAndChunks.h"
-#include "xrdsvc/StreamBuffer.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QueryRunner");
@@ -124,26 +123,6 @@ bool QueryRunner::_initConnection() {
     return true;
 }
 
-/// Override _dbName with _msg->db() if available.
-void QueryRunner::_setDb() {
-    if (_task->getDb() != "") {
-        _dbName = _task->getDb();
-        LOGS(_log, LOG_LVL_DEBUG, "QueryRunner overriding dbName with " << _dbName);
-    }
-}
-
-size_t QueryRunner::_getDesiredLimit() {
-    double percent = xrdsvc::StreamBuffer::percentOfMaxTotalBytesUsed();
-    size_t minLimit = 1'000'000;
-    size_t maxLimit = proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT;
-    if (percent < 0.1) return maxLimit;
-    double reduce = 1.0 - (percent + 0.2);  // force minLimit when 80% of memory used.
-    if (reduce < 0.0) reduce = 0.0;
-    size_t lim = maxLimit * reduce;
-    if (lim < minLimit) lim = minLimit;
-    return lim;
-}
-
 util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
 
 bool QueryRunner::runQuery() {
@@ -180,8 +159,6 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    _czarId = _task->getCzarId();
-
     // Wait for memman to finish reserving resources. This can take several seconds.
     util::Timer memTimer;
     memTimer.start();
@@ -195,8 +172,8 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    _setDb();
-    LOGS(_log, LOG_LVL_INFO, "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
+    LOGS(_log, LOG_LVL_INFO,
+         "Exec in flight for Db=" << _task->getDb() << " sqlConnMgr " << _sqlConnMgr->dump());
     // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
     bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1);
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());
@@ -233,8 +210,6 @@ public:
     using Ptr = std::shared_ptr<ChunkResourceRequest>;
 
     ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr, wbase::Task& task)
-            // Use old-school member initializers because gcc 4.8.5
-            // miscompiles the code when using brace initializers (DM-4704).
             : _mgr(mgr), _task(task) {}
 
     // Since each Task has only one subchunk, fragment number isn't needed.
@@ -339,8 +314,7 @@ void QueryRunner::cancel() {
     if (_mysqlConn == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
     } else {
-        int status = _mysqlConn->cancel();
-        switch (status) {
+        switch (_mysqlConn->cancel()) {
             case -1:
                 LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
                 break;
@@ -358,35 +332,6 @@ void QueryRunner::cancel() {
                 break;
         }
     }
-
-    auto streamB = _streamBuf.lock();
-    if (streamB != nullptr) {
-        streamB->cancel();
-    }
-
-    // The send channel will die naturally on its own when xrootd stops talking to it
-    // or other tasks call _transmitCancelledError().
 }
 
-QueryRunner::~QueryRunner() {}
-
 }  // namespace lsst::qserv::wdb
-
-// Future idea: Query cache
-// Pseudocode: Record query in query cache table
-/*
-  result = runQuery(db.get(),
-  "INSERT INTO qcache.Queries "
-  "(queryTime, query, db, path) "
-  "VALUES (NOW(), ?, "
-  "'" + dbName + "'"
-  ", "
-  "'" + _task->resultPath + "'"
-  ")",
-  script);
-  if (result.size() != 0) {
-  _errorNo = EIO;
-  _errorDesc += result;
-  return false;
-  }
-*/
