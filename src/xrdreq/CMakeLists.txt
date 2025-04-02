@@ -1,4 +1,4 @@
-add_library(xrdreq OBJECT)
+add_library(xrdreq SHARED)
 add_dependencies(xrdreq proto)
 
 target_sources(xrdreq PRIVATE
@@ -17,6 +17,10 @@ target_link_libraries(xrdreq PUBLIC
     protobuf
     XrdSsiLib
     XrdCl
+)
+
+install(
+    TARGETS xrdreq
 )
 
 FUNCTION(XRDREQ_UTILS)

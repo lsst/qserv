@@ -1,4 +1,4 @@
-add_library(czar OBJECT)
+add_library(czar SHARED)
 
 target_sources(czar PRIVATE
     ChttpModule.cc
@@ -31,6 +31,10 @@ target_link_libraries(czar PUBLIC
     boost_program_options
 )
 
+install(
+    TARGETS czar
+)
+
 function(CZAR_UTILS)
     foreach(UTIL IN ITEMS ${ARGV})
         add_executable(${UTIL})
@@ -46,7 +50,7 @@ function(CZAR_UTILS)
             qana
             qdisp
             qproc
-            qserv_meta
+            qmeta
             query
             rproc
             sql
