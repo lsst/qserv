@@ -64,3 +64,10 @@ xrd.port 1094
 
 # Uncomment the following line for detailed xrootd debugging
 # xrootd.trace all debug
+
+# Enforce the default limits for the number of threads created/managed by XROOTD.
+# Formally, these defaults are supposed to be enforced by the implementation
+# as stated in: https://xrootd.web.cern.ch/doc/dev57/xrd_config.htm#_Toc171719950
+# In reality, no limit is set. The problem was reported to the XROOT developers
+# in: https://github.com/xrootd/xrootd/issues/2468
+xrd.sched mint 8 maxt 2048 avlt 512 idle 780
