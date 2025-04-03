@@ -102,7 +102,7 @@ UserQueryProcessList::UserQueryProcessList(bool full, sql::SqlConnection* result
           _resultDb(resultDb) {
     _query = "SELECT `qi`.`queryId` `ID`,`qi`.`qType` `TYPE`,`qc`.`czar` `CZAR`,`qc`.`czarId` `CZAR_ID`,"
              "`qi`.`submitted` `SUBMITTED`,`qs`.`lastUpdate` `UPDATED`,`qi`.`chunkCount` `CHUNKS`,"
-             "`qs`.`completedChunks` `CHUNKS_COMPL`,";
+             "`qs`.`completedChunks` `CHUNKS_COMP`,";
     _query += (full ? "`qi`.`query`" : "SUBSTR(`qi`.`query`,1,32) `QUERY`");
     _query +=
             " FROM `QInfo` AS `qi` "
