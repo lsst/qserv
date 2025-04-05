@@ -744,7 +744,7 @@ def prepare_data(
 
 
 # These defaults match connection options used in
-# admin/local/docker/compose/docker-compose.yml
+# deploy/compose/docker-compose.yml
 czar_connection_default = "mysql://root:CHANGEME@czar-proxy:3306"
 worker_connections_default = [
     "mysql://root:CHANGEME@worker-db-0:3306",

@@ -8,9 +8,9 @@ qserv-http-user: qsmaster
 qserv-http-password: CHANGEME2
 czar-db-admin-uri: mysql://root:CHANGEME@czar-mariadb:3306
 # The folder where the itest sources will be mounted in the container:
-qserv-testdata-dir: /tmp/qserv/itest_src
+qserv-testdata-dir: /tmp/qserv/data
 # The path to the test case folders, relative to qserv-testdata-dir
-qserv-testdata-test-case-dir: datasets
+qserv-testdata-test-case-dir: .
 # The location where itest query results will be written. (After writing they
 # are evaluated/compared by the itest tool)
 testdata-output: /qserv/data/
@@ -24,7 +24,7 @@ test_cases:
   - id: case01
     instance_id: qserv_proj
     build_table_stats: True
-    root: /tmp/qserv/itest_src/datasets/case01
+    root: /tmp/qserv/data/case01
     data: data/{table_name}.tsv.gz
     schema: data/schema/{table_name}.schema
     partition:
@@ -55,7 +55,7 @@ test_cases:
       # The second problem is that it won't work in the Qserv async mode SUBMIT SHOW COLUMNS...
       - "3008"
   - id: case02
-    root: /tmp/qserv/itest_src/datasets/case02
+    root: /tmp/qserv/data/case02
     data: data/{table_name}.csv.gz
     schema: data/schema/{table_name}.schema
     partition:
@@ -79,7 +79,7 @@ test_cases:
       - "3020"
       - "3020.2"
   - id: case03
-    root: /tmp/qserv/itest_src/datasets/case03
+    root: /tmp/qserv/data/case03
     data: data/{table_name}.csv.gz
     schema: data/schema/{table_name}.schema
     partition:
@@ -115,7 +115,7 @@ test_cases:
                 # sync interface. So, this looks like a bug or the missing functionality
                 # that needs to be adressed.
   - id: case04
-    root: /tmp/qserv/itest_src/datasets/case04
+    root: /tmp/qserv/data/case04
     data: data/{table_name}.csv.gz
     schema: data/schema/{table_name}.schema
     partition:
