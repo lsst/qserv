@@ -2,7 +2,7 @@
 
 The dataset is available in repository:
 git://git.lsstcorp.org/LSST/DMS/testdata/qserv_testdata.git
-See datasets/case<id>/data directories
+See case<id>/data directories
 
 # MySQL permissions
 

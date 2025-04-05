@@ -408,7 +408,7 @@ itest_default = OptDefault(
     opt=["--itest-file"],
     default=None,
     ev=env_qserv_root,
-    val=lambda ev_val: os.path.join(ev_val, "src/admin/etc/integration_tests.yaml"),
+    val=lambda ev_val: os.path.join(ev_val, "etc/integration_tests.yaml"),
 )
 itest_container_default = OptDefault(
     opt=["--itest-container"],
@@ -444,7 +444,7 @@ compose_file_default = OptDefault(
     opt=["--file", "yaml_file"],
     default=None,
     ev=env_qserv_root,
-    val=lambda ev_val: os.path.join(ev_val, "admin/local/docker/compose/docker-compose.yml"),
+    val=lambda ev_val: os.path.join(ev_val, "deploy/compose/docker-compose.yml"),
 )
 build_container_default = OptDefault(
     opt=["--build-container-name"],
