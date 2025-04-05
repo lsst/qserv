@@ -20,7 +20,7 @@ COPY --chown=qserv:qserv lua/ /usr/local/lua/
 COPY --chown=qserv:qserv python/ /usr/local/python/
 COPY --chown=qserv:qserv qserv/ /usr/local/qserv/
 COPY --chown=qserv:qserv etc/ /usr/local/etc/
-COPY --chown=qserv:qserv log/log.cnf /config-etc/log/log.cnf
+COPY --chown=qserv:qserv etc/log.cnf /config-etc/log/log.cnf
 
 RUN ldconfig
 
