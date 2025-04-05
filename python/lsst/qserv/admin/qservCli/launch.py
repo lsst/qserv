@@ -50,7 +50,7 @@ mariadb_image_subdir = "deploy/docker/mariadb"
 mypy_cfg_file = "mypy.ini"
 
 # the location of the testdata dir within qserv_root:
-testdata_subdir = "itest_src"
+testdata_subdir = "data"
 
 _log = logging.getLogger(__name__)
 
