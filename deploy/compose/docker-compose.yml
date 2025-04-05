@@ -8,7 +8,7 @@ x-worker-mariadb:
 x-worker-mariadb-cnf-volume:
     &worker-mariadb-cnf-volume
     - type: bind
-      source: ../../../../src/admin/templates/mariadb/etc/my.cnf
+      source: ../../src/admin/templates/mariadb/etc/my.cnf
       target: /etc/mysql/my.cnf
 x-log-volume:
     &log-volume
@@ -340,7 +340,7 @@ services:
               source: volume_czar_mariadb_data
               target: /qserv/data
             - type: bind
-              source: ../../../../src/admin/templates/mariadb/etc/my.cnf
+              source: ../../src/admin/templates/mariadb/etc/my.cnf
               target: /etc/mysql/my.cnf
             - type: volume
               source: volume_czar_mariadb_lib
@@ -437,7 +437,7 @@ services:
               source: volume_repl_mariadb_data
               target: /qserv/data
             - type: bind
-              source: ../../../../src/admin/templates/repl-db/etc/my.cnf
+              source: ../../src/admin/templates/repl-db/etc/my.cnf
               target: /etc/mysql/my.cnf
             - type: volume
               source: volume_repl_mariadb_lib
@@ -472,7 +472,7 @@ services:
               source: volume_repl_mariadb_home
               target: /home/qserv
             - type: bind
-              source: ../../../../src/www
+              source: ../../src/www
               target: /usr/local/qserv/www
             - << : *log-volume
     repl-registry:
