@@ -1140,7 +1140,13 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
             auto const& table = database.findTable(tableName);
             // Skip tables that have been published.
             if (table.isPublished) continue;
-            string const query = g.createTable(table.database, table.name, ifNotExists, table.columns);
+            // The prototype table should have the same schema as the corresponding data tables
+            // to ensure the same limitations on the column types and the number of columns
+            // are applied to both classes of tables.
+            list<string> const noKeys;
+            string const tableEngine = "MyISAM";
+            string const query = g.createTable(table.database, table.name, ifNotExists, table.columns, noKeys,
+                                               tableEngine);
             statements.push_back(query);
         }
 
