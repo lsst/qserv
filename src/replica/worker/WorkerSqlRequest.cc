@@ -313,12 +313,14 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
                 auto const& key = _request.index_columns(i);
                 keys.emplace_back(make_tuple(key.name(), key.length(), key.ascending()));
             }
-            string const query =
-                    g.createIndex(databaseTable, _request.index_name(), spec, keys, _request.index_comment());
+            bool const ifNotExists = true;
+            string const query = g.createIndex(databaseTable, _request.index_name(), spec, keys, ifNotExists,
+                                               _request.index_comment());
             return Query(query, databaseTable.str);
         }
         case ProtocolRequestSql::DROP_TABLE_INDEX: {
-            string const query = g.dropIndex(databaseTable, _request.index_name());
+            bool const ifExists = true;
+            string const query = g.dropIndex(databaseTable, _request.index_name(), ifExists);
             return Query(query, databaseTable.str);
         }
         case ProtocolRequestSql::GET_TABLE_INDEX: {

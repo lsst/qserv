@@ -1011,8 +1011,8 @@ public:
     std::string createIndex(IDTYPE const& tableNameOrId, std::string const& indexName,
                             std::string const& spec,
                             std::list<std::tuple<std::string, unsigned int, bool>> const& keys,
-                            std::string const& comment = std::string()) const {
-        return _createIndex(id(tableNameOrId), indexName, spec, keys, comment);
+                            bool ifNotExists = false, std::string const& comment = std::string()) const {
+        return _createIndex(id(tableNameOrId), indexName, spec, keys, ifNotExists, comment);
     }
 
     template <typename IDTYPE>
@@ -1021,8 +1021,10 @@ public:
     }
 
     template <typename IDTYPE>
-    std::string dropIndex(IDTYPE const& tableNameOrId, std::string const& indexName) const {
-        return "DROP INDEX " + id(indexName).str + " ON " + id(tableNameOrId).str;
+    std::string dropIndex(IDTYPE const& tableNameOrId, std::string const& indexName,
+                          bool ifExists = false) const {
+        return "DROP INDEX " + std::string(ifExists ? "IF EXISTS " : "") + id(indexName).str + " ON " +
+               id(tableNameOrId).str;
     }
 
     // Generators for GRANT
@@ -1193,7 +1195,7 @@ private:
 
     std::string _createIndex(SqlId const& tableId, std::string const& indexName, std::string const& spec,
                              std::list<std::tuple<std::string, unsigned int, bool>> const& keys,
-                             std::string const& comment) const;
+                             bool ifNotExists, std::string const& comment) const;
 
     /// The optional connection is set by the class's constructor.
     std::shared_ptr<Connection> _conn;
