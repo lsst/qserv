@@ -283,7 +283,9 @@ bool IngestRequestMgr::cancel(unsigned int id) {
     unique_lock<mutex> lock(_mtx);
     // Scan input queues of all active databases.
     for (auto&& databaseItr : _input) {
-        string const& databaseName = databaseItr.first;
+        // Make a copy of the database name to avoid dereferencing the iterator after
+        // the database entry gets deleted from _input. This will also invalidate the iterator.
+        string const databaseName = databaseItr.first;
         list<shared_ptr<IngestRequest>>& queue = databaseItr.second;
         auto const itr = find_if(queue.cbegin(), queue.cend(), [id](auto const& request) {
             return request->transactionContribInfo().id == id;
