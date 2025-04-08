@@ -49,6 +49,8 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
 
     QueryGenerator const g;
 
+    bool const ifExists = true;
+    bool const ifNotExists = true;
     TransactionId const transactionId = 12;
     vector<string> const workers0, workers2 = {"worker-1", "worker-2"};
     vector<string> const databases0, databases2 = {"dbA", "dbB"};
@@ -277,7 +279,6 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {" LIMIT 123", g.limit(123, 0)},
             {" LIMIT 123 OFFSET 1", g.limit(123, 1)},
 
-            // Complete INSERT queries
             {"INSERT INTO `Object` VALUES ()", g.insert("Object")},
             {"INSERT INTO `Object` VALUES (123456,'abc',1)", g.insert("Object", 123456, "abc", true)},
             {insertPacked, g.insertPacked("Object", g.packIds("col1", "col2"), g.packVals(1, "abc"),
@@ -291,13 +292,11 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
                              g.packVals(Sql::NULL_, Sql::NOW, "Vera Rubin"),
                              g.packVals(Sql::NULL_, Sql::NOW, "Igor Gaponenko")})},
 
-            // Complete UPDATE queries
             {"UPDATE `Object` SET `col1`='abc',`col2`=345",
              g.update("Object", make_pair("col1", "abc"), make_pair("col2", 345))},
             {"UPDATE `Object` SET `col1`='abc',`col2`=345 WHERE `id`=123",
              g.update("Object", make_pair("col1", "abc"), make_pair("col2", 345)) + g.where(g.eq("id", 123))},
 
-            // Complete DELETE queries
             {"DELETE FROM `workers`", g.delete_("workers")},
             {"DELETE FROM `config`.`workers` WHERE `is_offline`=1 AND `worker` IN ('worker-1','worker-2')",
              g.delete_(g.id("config", "workers")) +
@@ -323,13 +322,11 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
 
             {"CREATE TABLE `dst` LIKE `src`", g.createTableLike("dst", "src")},
             {"CREATE TABLE IF NOT EXISTS `dst` LIKE `src`",
-             g.createTableLike(g.id("dst"), g.id("src"), true)},
+             g.createTableLike(g.id("dst"), g.id("src"), ifNotExists)},
 
-            // DROP TABLE [IF EXISTS] ...
             {"DROP TABLE `table`", g.dropTable("table")},
-            {"DROP TABLE IF EXISTS `table`", g.dropTable("table", true)},
+            {"DROP TABLE IF EXISTS `table`", g.dropTable("table", ifExists)},
 
-            // REPLACE INTO ...
             {"REPLACE INTO `table` VALUES (1,'abc')", g.replace("", "table", 1, "abc")},
             {"REPLACE INTO `db`.`table` VALUES (1,'abc',LAST_INSERT_ID())",
              g.replace("db", "table", 1, "abc", Sql::LAST_INSERT_ID)},
@@ -366,27 +363,24 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {"SELECT * INTO OUTFILE '/tmp/file.csv' " + csv::Dialect().sqlOptions(),
              g.select(Sql::STAR) + g.intoOutfile("/tmp/file.csv")},
 
-            // CREATE DATABASE [IF NOT EXISTS] ...
             {"CREATE DATABASE `database`", g.createDb("database")},
-            {"CREATE DATABASE IF NOT EXISTS `database`", g.createDb("database", true)},
+            {"CREATE DATABASE IF NOT EXISTS `database`", g.createDb("database", ifNotExists)},
 
-            // DROP DATABASE [IF EXISTS] ...
             {"DROP DATABASE `database`", g.dropDb("database")},
-            {"DROP DATABASE IF EXISTS `database`", g.dropDb("database", true)},
+            {"DROP DATABASE IF EXISTS `database`", g.dropDb("database", ifExists)},
             {"DROP DATABASE `database`", g.dropDb(g.id("database"))},
 
-            // ALTER TABLE ...
             {"ALTER TABLE `table`", g.alterTable("table")},
             {"ALTER TABLE `table` REMOVE PARTITIONING", g.alterTable("table", "REMOVE PARTITIONING")},
             {"ALTER TABLE `table`  REMOVE PARTITIONING", g.alterTable("table", g.removePartitioning())},
             {"ALTER TABLE `database`.`table`", g.alterTable(g.id("database", "table"))},
             {" REMOVE PARTITIONING", g.removePartitioning()},
             {" ADD PARTITION (PARTITION `p12` VALUES IN (12))", g.addPartition(12)},
-            {" ADD PARTITION IF NOT EXISTS (PARTITION `p12` VALUES IN (12))", g.addPartition(12, true)},
+            {" ADD PARTITION IF NOT EXISTS (PARTITION `p12` VALUES IN (12))",
+             g.addPartition(12, ifNotExists)},
             {" DROP PARTITION `p2`", g.dropPartition(2)},
-            {" DROP PARTITION IF EXISTS `p3`", g.dropPartition(3, true)},
+            {" DROP PARTITION IF EXISTS `p3`", g.dropPartition(3, ifExists)},
 
-            // LOAD DATA [LOCAL] INFILE  ...
             {"LOAD DATA INFILE '/tmp/infile.csv' INTO TABLE `table` " + csv::Dialect().sqlOptions(),
              g.loadDataInfile("/tmp/infile.csv", "table")},
             {"LOAD DATA INFILE '/tmp/infile.csv' INTO TABLE `database`.`table` " +
@@ -398,7 +392,6 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
                      csv::Dialect().sqlOptions(),
              g.loadDataInfile("/tmp/infile.csv", "table", "latin1")},
 
-            // GRANT ...
             {"GRANT ALL ON `db`.* TO 'qsreplica'@'localhost'",
              g.grant("ALL", "db", "qsreplica", "localhost")},
             {"GRANT SELECT,UPDATE,DELETE ON `db`.`table` TO 'qsreplica'@'127.0.0.1'",
@@ -407,11 +400,22 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             // Table indexes management
             {"CREATE UNIQUE INDEX `idx_worker_status` ON `workers` (`worker` ASC,`status` DESC) COMMENT "
              "'Unique composite index on workers and tables.'",
-             g.createIndex("workers", "idx_worker_status", "UNIQUE", indexKeys,
+             g.createIndex("workers", "idx_worker_status", "UNIQUE", indexKeys, !ifNotExists,
                            "Unique composite index on workers and tables.")},
             {"CREATE INDEX `idx_worker` ON `db`.`workers` (`worker`(16) ASC) COMMENT 'Non-unique index on "
              "workers.'",
-             g.createIndex(g.id("db", "workers"), "idx_worker", "", indexKeys2,
+             g.createIndex(g.id("db", "workers"), "idx_worker", "", indexKeys2, !ifNotExists,
+                           "Non-unique index on workers.")},
+
+            {"CREATE UNIQUE INDEX IF NOT EXISTS `idx_worker_status` ON `workers` (`worker` ASC,`status` "
+             "DESC) COMMENT "
+             "'Unique composite index on workers and tables.'",
+             g.createIndex("workers", "idx_worker_status", "UNIQUE", indexKeys, ifNotExists,
+                           "Unique composite index on workers and tables.")},
+            {"CREATE INDEX IF NOT EXISTS `idx_worker` ON `db`.`workers` (`worker`(16) ASC) COMMENT "
+             "'Non-unique index on "
+             "workers.'",
+             g.createIndex(g.id("db", "workers"), "idx_worker", "", indexKeys2, ifNotExists,
                            "Non-unique index on workers.")},
 
             {"SHOW INDEXES FROM `workers`", g.showIndexes("workers")},
@@ -419,6 +423,11 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
 
             {"DROP INDEX `idx_ObjectId` ON `table`", g.dropIndex("table", "idx_ObjectId")},
             {"DROP INDEX `idx_ObjectId` ON `db`.`table`", g.dropIndex(g.id("db", "table"), "idx_ObjectId")},
+
+            {"DROP INDEX IF EXISTS `idx_ObjectId` ON `table`",
+             g.dropIndex("table", "idx_ObjectId", ifExists)},
+            {"DROP INDEX IF EXISTS `idx_ObjectId` ON `db`.`table`",
+             g.dropIndex(g.id("db", "table"), "idx_ObjectId", ifExists)},
 
             {"SHOW WARNINGS", g.warnings()},
             {"SHOW WARNINGS LIMIT 64", g.warnings() + g.limit(64)},

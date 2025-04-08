@@ -195,7 +195,7 @@ string QueryGenerator::_setVars(SqlVarScope scope, string const& packedVars) con
 }
 
 string QueryGenerator::_createIndex(SqlId const& tableId, string const& indexName, string const& spec,
-                                    list<tuple<string, unsigned int, bool>> const& keys,
+                                    list<tuple<string, unsigned int, bool>> const& keys, bool ifNotExists,
                                     string const& comment) const {
     string packedKeys;
     for (auto&& key : keys) {
@@ -208,7 +208,9 @@ string QueryGenerator::_createIndex(SqlId const& tableId, string const& indexNam
     }
     string sql = "CREATE ";
     if (!spec.empty()) sql += spec + " ";
-    sql += "INDEX " + id(indexName).str + " ON " + id(tableId).str + " (" + packedKeys + ")" + " COMMENT " +
+    sql += "INDEX ";
+    if (ifNotExists) sql += "IF NOT EXISTS ";
+    sql += id(indexName).str + " ON " + id(tableId).str + " (" + packedKeys + ")" + " COMMENT " +
            val(comment).str;
     return sql;
 }
