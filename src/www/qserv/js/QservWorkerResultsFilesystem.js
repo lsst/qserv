@@ -63,7 +63,6 @@ function(CSSLoader,
       <thead class="thead-light">
         <tr>
           <th class="sticky">worker</th>
-          <th class="sticky">protocol</th>
           <th class="sticky">folder</th>
           <th class="sticky" style="text-align:right;">capacity [GB]</th>
           <th class="sticky" style="text-align:right;">free [GB]</th>
@@ -163,7 +162,6 @@ function(CSSLoader,
                     html += `
 <tr worker="${worker}" class="display-worker-files" title="${workerFilesInspectTitle}">
   <th>${worker}</th>
-  <td>${filesystem.protocol}</td>
   <td>${filesystem.folder}</td>
   <td style="text-align:right;"><pre>${QservWorkerResultsFilesystem._bytes2gb(filesystem.capacity_bytes)}</pre></td>
   <td style="text-align:right;"><pre>${QservWorkerResultsFilesystem._bytes2gb(filesystem.free_bytes)}</pre></td>
