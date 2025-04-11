@@ -99,8 +99,7 @@ message ResponseSummary {
     optional uint32 rowcount = 6 [default = 0];
     optional uint64 transmitsize = 7 [default = 0];
     optional int32 attemptcount = 8 [default = 0];
-    optional string fileresource_xroot = 9 [default = ""];
-    optional string fileresource_http = 10 [default = ""];
+    required string fileresource_http = 11;
 }
 
 message RowBundle {
