@@ -60,7 +60,6 @@ from .options import (
     option_repl_registry_port,
     option_repl_http_port,
     option_results_dirname,
-    option_results_protocol,
     option_run,
     option_run_tests,
     option_keep_results,
@@ -767,7 +766,6 @@ def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
 @option_repl_registry_port(required=True)
 @option_repl_http_port(required=True)
 @option_results_dirname()
-@option_results_protocol()
 @option_cmsd_manager_name()
 @option_debug()
 @option_cmsd_worker_cfg_file()
@@ -806,7 +804,6 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 @option_repl_registry_port(required=True)
 @option_repl_http_port(required=True)
 @option_results_dirname()
-@option_results_protocol()
 @option_cmsd_manager_name()
 @option_mysql_monitor_password()
 @option_db_qserv_user()
