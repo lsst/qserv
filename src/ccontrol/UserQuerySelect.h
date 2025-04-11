@@ -100,6 +100,8 @@ public:
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
 
+    ~UserQuerySelect() override = default;
+
     /**
      *  @param resultLocation:  Result location, if empty use result table with unique
      *                          name generated from query ID.

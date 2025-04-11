@@ -1,4 +1,4 @@
-add_library(wcontrol OBJECT)
+add_library(wcontrol SHARED)
 add_dependencies(wcontrol proto)
 
 target_sources(wcontrol PRIVATE
@@ -9,12 +9,12 @@ target_sources(wcontrol PRIVATE
     WCzarInfoMap.cc
 )
 
-target_include_directories(wcontrol PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
+install(
+	TARGETS wcontrol
 )
+
 
 target_link_libraries(wcontrol PUBLIC
     log
-    XrdSsiLib
     qhttp
 )

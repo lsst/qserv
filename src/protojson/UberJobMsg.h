@@ -219,14 +219,14 @@ private:
 
     JobId _jobId;
     int _attemptCount;
-    std::string _chunkQuerySpecDb;  // &&& remove, use value for UJ
+    std::string _chunkQuerySpecDb;
     int _chunkId;
     JobFragment::VectPtr _jobFragments{new JobFragment::Vect()};
 
     JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< Map of all query templates related to this UberJob.
     JobDbTablesMap::Ptr _jobDbTablesMap;          ///< Map of all db.tables related to this UberJob.
 
-    // &&& remove, use value for UJ
+    // TODO:UJ remove, use value for UJ
     std::vector<int> _chunkScanTableIndexes;  ///< list of indexes into _jobDbTablesMap.
 };
 

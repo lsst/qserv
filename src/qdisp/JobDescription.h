@@ -60,25 +60,23 @@ public:
     using Ptr = std::shared_ptr<JobDescription>;
     static JobDescription::Ptr create(qmeta::CzarId czarId, QueryId qId, JobId jobId,
                                       ResourceUnit const& resource,
-                                      std::shared_ptr<ResponseHandler> const& respHandler,
                                       std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
-                                      std::string const& chunkResultName, bool mock = false) {
-        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, respHandler, chunkQuerySpec,
-                                                  chunkResultName, mock));
+                                      bool mock = false) {
+        JobDescription::Ptr jd(new JobDescription(czarId, qId, jobId, resource, chunkQuerySpec, mock));
         return jd;
     }
 
     JobDescription(JobDescription const&) = delete;
     JobDescription& operator=(JobDescription const&) = delete;
 
+    virtual ~JobDescription();
+
     std::string cName(const char* fnc) { return std::string("JobDescription::") + fnc + " " + _qIdStr; }
 
     JobId id() const { return _jobId; }
     ResourceUnit const& resource() const { return _resource; }
-    std::shared_ptr<ResponseHandler> respHandler() { return _respHandler; }
     int getAttemptCount() const { return _attemptCount; }
     std::shared_ptr<qproc::ChunkQuerySpec> getChunkQuerySpec() { return _chunkQuerySpec; }
-    std::string getChunkResultName() { return _chunkResultName; }
 
     bool getScanInteractive() const;
     int getScanRating() const;
@@ -94,9 +92,7 @@ public:
 
 private:
     JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
-                   std::shared_ptr<ResponseHandler> const& respHandler,
-                   std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
-                   std::string const& chunkResultName, bool mock = false);
+                   std::shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec, bool mock = false);
 
     qmeta::CzarId _czarId;
     QueryId _queryId;
@@ -105,10 +101,7 @@ private:
     int _attemptCount{-1};   ///< Start at -1 so that first attempt will be 0, see incrAttemptCount().
     ResourceUnit _resource;  ///< path, e.g. /q/LSST/23125
 
-    // TODO:UJ delete _respHandler, store errors a different way
-    std::shared_ptr<ResponseHandler> _respHandler;  // probably MergingHandler
     std::shared_ptr<qproc::ChunkQuerySpec> _chunkQuerySpec;
-    std::string _chunkResultName;
 
     bool _mock{false};  ///< True if this is a mock in a unit test.
 

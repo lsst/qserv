@@ -1,9 +1,8 @@
-add_library(ccontrol OBJECT)
+add_library(ccontrol SHARED)
 add_dependencies(ccontrol proto)
 
 target_include_directories(ccontrol PRIVATE
     ${ANTLR4_INCLUDE_DIR}
-    ${XROOTD_INCLUDE_DIRS}
 )
 
 target_sources(ccontrol PRIVATE
@@ -29,11 +28,15 @@ target_sources(ccontrol PRIVATE
 target_link_libraries(ccontrol PUBLIC
     boost_regex
     cconfig
+    css
     log
     parser
-    replica
+	proto
     sphgeom
-    XrdCl
+)
+
+install(
+	TARGETS ccontrol
 )
 
 FUNCTION(ccontrol_tests)
@@ -47,8 +50,8 @@ FUNCTION(ccontrol_tests)
             qana
             qdisp
             qproc
-            qserv_css
-            qserv_meta
+            css
+            qmeta
             query
             rproc
             Boost::unit_test_framework
@@ -63,3 +66,6 @@ ccontrol_tests(
     testCControl
     testUserQueryType
 )
+
+# set_tests_properties(testCControl PROPERTIES WILL_FAIL 1)
+

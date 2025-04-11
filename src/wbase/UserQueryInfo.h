@@ -32,6 +32,7 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "util/InstanceCount.h"
 
 // This header declarations
 namespace lsst::qserv::wbase {

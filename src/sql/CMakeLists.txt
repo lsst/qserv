@@ -1,4 +1,4 @@
-add_library(sql OBJECT)
+add_library(sql SHARED)
 
 target_sources(sql PRIVATE
     MockSql.cc
@@ -11,6 +11,10 @@ target_sources(sql PRIVATE
     SqlTransaction.cc
     SqlTransactionScope.cc
     statement.cc
+)
+
+install(
+	TARGETS sql
 )
 
 target_link_libraries(sql PUBLIC

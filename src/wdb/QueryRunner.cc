@@ -144,7 +144,7 @@ bool QueryRunner::runQuery() {
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
-        Release(wbase::Task::Ptr t, wbase::TaskQueryRunner* tqr,
+        Release(wbase::Task::Ptr t, QueryRunner* tqr,
                 shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks)
                 : _t{t}, _tqr{tqr}, _queriesAndChunks(queriesAndChunks) {}
         ~Release() {
@@ -154,7 +154,7 @@ bool QueryRunner::runQuery() {
 
     private:
         wbase::Task::Ptr _t;
-        wbase::TaskQueryRunner* _tqr;
+        QueryRunner* _tqr;
         shared_ptr<wpublish::QueriesAndChunks> const _queriesAndChunks;
     };
     Release release(_task, this, _queriesAndChunks);

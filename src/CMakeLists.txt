@@ -21,7 +21,7 @@ find_package(Protobuf REQUIRED)
 find_package(pybind11 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(XRootD REQUIRED)
-find_package(httplib REQUIRED)
+#&&& find_package(httplib REQUIRED)
 find_package(aws-c-auth REQUIRED)
 find_package(aws-c-cal REQUIRED)
 find_package(aws-c-common REQUIRED)
@@ -94,58 +94,3 @@ add_subdirectory(xrdsvc)
 
 #-----------------------------------------------------------------------------
 
-add_library(qserv_common SHARED)
-
-target_link_libraries(qserv_common PUBLIC
-    global
-    memman
-    proto
-    mysql
-    sql
-    util
-    protojson
-)
-
-install(
-    TARGETS qserv_common
-)
-
-#-----------------------------------------------------------------------------
-
-add_library(xrdsvc SHARED)
-
-target_link_libraries(xrdsvc PUBLIC
-    wbase
-    wcontrol
-    wconfig
-    wdb
-    wpublish
-    wsched
-    qserv_xrdsvc
-    qserv_common
-)
-
-install(
-    TARGETS xrdsvc
-)
-
-#-----------------------------------------------------------------------------
-
-add_library(qserv_czar SHARED)
-
-target_link_libraries(qserv_czar PUBLIC
-    ccontrol
-    czar
-    parser
-    qana
-    query
-    qdisp
-    qproc
-    rproc
-    qserv_css
-    qserv_meta
-)
-
-install(
-    TARGETS qserv_czar
-)

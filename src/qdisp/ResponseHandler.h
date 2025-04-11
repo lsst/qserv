@@ -53,7 +53,6 @@ class UberJob;
 /// segment of results.
 class ResponseHandler {
 public:
-    typedef util::Error Error;
     using BufPtr = std::shared_ptr<std::vector<char>>;
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
@@ -77,12 +76,6 @@ public:
 
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
-
-    /// @return an error code and description
-    virtual Error getError() const = 0;
-
-    /// Do anything that needs to be done if this job gets cancelled.
-    virtual void processCancel() {};
 
     /// Scrub the results from jobId-attempt from the result table.
     virtual void prepScrubResults(int jobId, int attempt) = 0;

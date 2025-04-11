@@ -43,6 +43,8 @@
 #include "util/EventThread.h"
 #include "util/SemaMgr.h"
 
+#include "util/InstanceCount.h"
+
 // Forward declarations
 namespace lsst::qserv {
 namespace mysql {
@@ -227,6 +229,8 @@ private:
     bool _applySqlLocal(std::string const& sql, sql::SqlResults& results);
     bool _applySqlLocal(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
+
+    util::InstanceCount _icIm{"InfileMerger"};
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);
     void _fixupTargetName();

@@ -34,16 +34,16 @@ using namespace std;
 
 namespace lsst::qserv::util {
 
-std::string MultiError::toString() const {
-    std::ostringstream oss;
+string MultiError::toString() const {
+    ostringstream oss;
     oss << *this;
     return oss.str();
 }
 
-std::string MultiError::toOneLineString() const {
-    std::ostringstream oss;
-    if (!this->empty()) {
-        if (this->size() > 1) {
+string MultiError::toOneLineString() const {
+    ostringstream oss;
+    if (!empty()) {
+        if (size() > 1) {
             std::ostream_iterator<Error> string_it(oss, ", ");
             std::copy(_errorVector.begin(), _errorVector.end() - 1, string_it);
         }
@@ -53,6 +53,22 @@ std::string MultiError::toOneLineString() const {
 }
 
 int MultiError::firstErrorCode() const { return empty() ? ErrorCode::NONE : _errorVector.front().getCode(); }
+
+string MultiError::firstErrorStr() const {
+    ostringstream os;
+    if (!empty()) {
+        os << _errorVector.front();
+    }
+    return os.str();
+}
+
+util::Error MultiError::firstError() const {
+    Error err;
+    if (!empty()) {
+        err = _errorVector.front();
+    }
+    return err;
+}
 
 bool MultiError::empty() const { return _errorVector.empty(); }
 

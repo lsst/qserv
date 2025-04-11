@@ -1,6 +1,6 @@
-add_library(qserv_meta SHARED)
+add_library(qmeta SHARED)
 
-target_sources(qserv_meta PRIVATE
+target_sources(qmeta PRIVATE
     JobStatus.cc
     MessageStore.cc
     QMeta.cc
@@ -10,22 +10,25 @@ target_sources(qserv_meta PRIVATE
     QStatusMysql.cc
 )
 
-target_link_libraries(qserv_meta PUBLIC
+target_link_libraries(qmeta PUBLIC
     cconfig
-    qserv_common
+    global
+    http
+    mysql
     log
-    mysqlclient_r
-    http 
+    util 
 )
 
-install(TARGETS qserv_meta)
+install(TARGETS qmeta)
 install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/qmeta/schema/)
 
 add_executable(testQMeta testQMeta.cc)
 
 target_link_libraries(testQMeta
     cconfig
-    qserv_meta
+    proto
+    qmeta
+    sql
     Boost::unit_test_framework
     Threads::Threads
 )

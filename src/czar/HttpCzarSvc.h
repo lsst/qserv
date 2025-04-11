@@ -43,10 +43,6 @@ namespace httplib {
 class SSLServer;
 }  // namespace httplib
 
-namespace lsst::qserv::wcontrol {
-class Foreman;
-}  // namespace lsst::qserv::wcontrol
-
 // This header declarations
 namespace lsst::qserv::czar {
 

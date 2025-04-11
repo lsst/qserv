@@ -1,4 +1,4 @@
-add_library(qana OBJECT)
+add_library(qana SHARED)
 add_dependencies(qana proto)
 
 target_sources(qana PRIVATE
@@ -21,6 +21,10 @@ target_link_libraries(qana PUBLIC
     log
 )
 
+install(
+	TARGETS qana
+)
+
 FUNCTION(qana_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
@@ -33,8 +37,8 @@ FUNCTION(qana_tests)
             qdisp
             qproc
             query
-            qserv_css
-            qserv_meta
+            css
+            qmeta
             rproc
             Boost::unit_test_framework
             Threads::Threads

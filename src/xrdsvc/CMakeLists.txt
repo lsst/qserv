@@ -1,24 +1,38 @@
-add_library(qserv_xrdsvc OBJECT)
-add_dependencies(qserv_xrdsvc proto)
+add_library(xrdsvc SHARED)
 
-target_sources(qserv_xrdsvc PRIVATE
+target_sources(xrdsvc PRIVATE
     HttpModule.cc
     HttpMonitorModule.cc
     HttpReplicaMgtModule.cc
-    HttpWorkerCzarModule.cc
     HttpSvc.cc
+    HttpWorkerCzarModule.cc
     SsiProvider.cc
     SsiService.cc
 )
 
-target_include_directories(qserv_xrdsvc PRIVATE
+target_include_directories(xrdsvc PRIVATE
     ${XROOTD_INCLUDE_DIRS}
 )
 
-target_link_libraries(qserv_xrdsvc PUBLIC
+target_link_libraries(xrdsvc PUBLIC
     boost_filesystem
     boost_system
-    log
+    global
     http
+    log
+    memman
+    mysql
+    protojson
+    sql
+    wbase
+    wconfig
+    wcontrol
+    wdb
+    wpublish
+    wsched
     XrdSsiLib
+)
+
+install(
+	TARGETS xrdsvc
 )

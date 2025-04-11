@@ -4,11 +4,27 @@
 #define LSST_QSERV_UTIL_INSTANCECOUNT_H
 
 // System headers
+#include <atomic>
 #include <map>
 #include <mutex>
 #include <string>
 
 namespace lsst::qserv::util {
+
+class InstanceCount;
+
+class InstanceCountData {
+    InstanceCountData();
+    ~InstanceCountData();
+
+    friend InstanceCount;
+    friend std::ostream& operator<<(std::ostream& out, InstanceCount const& instanceCount);
+
+private:
+    std::map<std::string, int64_t> _instances;  //< Map of instances per class name.
+    std::recursive_mutex _mx;                   //< Protects _instances.
+    std::atomic<uint64_t> _instanceLogLimiter{0};
+};
 
 /// This a utility class to track the number of instances of any class where it is a member.
 //
@@ -26,9 +42,8 @@ public:
     friend std::ostream& operator<<(std::ostream& out, InstanceCount const& instanceCount);
 
 private:
-    std::string _className;                        //< Names of the of which this is a member.
-    static std::map<std::string, int> _instances;  //< Map of instances per class name.
-    static std::recursive_mutex _mx;               //< Protects _instances.
+    std::string _className;            ///< Name of instance being counted.
+    static InstanceCountData _icData;  ///< Map of counts and other data.
 
     void _increment(std::string const& source);
 };

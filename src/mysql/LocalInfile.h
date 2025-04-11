@@ -92,7 +92,7 @@ private:
 class LocalInfile::Mgr : boost::noncopyable {
 public:
     Mgr() {}
-    ~Mgr() {}
+    ~Mgr();
 
     // User interface //////////////////////////////////////////////////
     /// Attach the handler to a mysql client connection

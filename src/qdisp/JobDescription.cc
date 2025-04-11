@@ -48,18 +48,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobDescription");
 namespace lsst::qserv::qdisp {
 
 JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
-                               shared_ptr<ResponseHandler> const& respHandler,
-                               shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec,
-                               string const& chunkResultName, bool mock)
+                               shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec, bool mock)
         : _czarId(czarId),
           _queryId(qId),
           _jobId(jobId),
           _qIdStr(QueryIdHelper::makeIdStr(_queryId, _jobId)),
           _resource(resource),
-          _respHandler(respHandler),
           _chunkQuerySpec(chunkQuerySpec),
-          _chunkResultName(chunkResultName),
           _mock(mock) {}
+
+JobDescription::~JobDescription() { LOGS(_log, LOG_LVL_TRACE, "~JobDescription()"); }
 
 bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bool increase) {
     if (increase) {
@@ -69,7 +67,7 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
     if (exec != nullptr) {
         int maxAttempts = exec->getMaxAttempts();
         if (_attemptCount > 0) {
-            LOGS(_log, LOG_LVL_INFO, cName(__func__) << " attempts=" << _attemptCount);
+            LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " attempts=" << _attemptCount);
         }
         if (_attemptCount > maxAttempts) {
             LOGS(_log, LOG_LVL_ERROR,
