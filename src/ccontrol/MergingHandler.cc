@@ -203,6 +203,7 @@ bool MergingHandler::flush(proto::ResponseSummary const& resp) {
     }
 
     bool const success = _merge(resp, jobQuery);
+
     if (success) {
         _infileMerger->mergeCompleteFor(resp.jobid());
         qdisp::CzarStats::get()->addTotalRowsRecv(resp.rowcount());
@@ -247,7 +248,6 @@ bool MergingHandler::_queryIsNoLongerActive(shared_ptr<qdisp::JobQuery> const& j
     if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
         return true;
     }
-
     // The final test is to see if any errors have been reported in a context
     // of the merger. A presence of errors means that further attempting of merging
     // makes no sense.

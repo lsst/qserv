@@ -181,6 +181,7 @@ private:
     bool _isFinished = false;                           ///< Completed?
     std::atomic<bool> _resultSizeLimitExceeded{false};  ///< Large result query?
     std::mutex _sqlMutex;                               ///< Protection for SQL connection
+
     mysql::MySqlConnection _mysqlConn;
     std::mutex _mysqlMutex;
     mysql::LocalInfile::Mgr _infileMgr;

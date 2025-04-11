@@ -217,6 +217,7 @@ bool InfileMerger::merge(proto::ResponseSummary const& resp,
 
     auto start = std::chrono::system_clock::now();
     ret = _applyMysqlMyIsam(infileStatement, resp.transmitsize());
+
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
