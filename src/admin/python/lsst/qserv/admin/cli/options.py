@@ -182,17 +182,6 @@ option_results_dirname = partial(
 )
 
 
-resultProtocolChoices = ["XROOT", "HTTP"]
-option_results_protocol = partial(
-    click.option,
-    "--results-protocol",
-    help=f"Result delivery protocol. Allowed options are [{'|'.join(resultProtocolChoices)}]",
-    default="HTTP",
-    type=click.Choice(resultProtocolChoices, case_sensitive=False),
-    show_default=True,
-)
-
-
 option_run = partial(
     click.option,
     "--run/--no-run",

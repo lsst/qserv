@@ -64,19 +64,14 @@ std::string printCharVect(std::vector<char> const& cVect) {
 
 namespace lsst::qserv::rproc {
 
-ProtoRowBuffer::ProtoRowBuffer(proto::ResponseData const& res, int jobId, std::string const& jobIdColName,
-                               std::string const& jobIdSqlType, int jobIdMysqlType)
+ProtoRowBuffer::ProtoRowBuffer(proto::ResponseData const& res)
         : _colSep("\t"),
           _rowSep("\n"),
           _nullToken("\\N"),
           _result(res),
           _rowIdx(0),
           _rowTotal(res.row_size()),
-          _currentRow(0),
-          _jobIdColName(jobIdColName),
-          _jobIdSqlType(jobIdSqlType),
-          _jobIdMysqlType(jobIdMysqlType) {
-    _jobIdStr = std::string("'") + std::to_string(jobId) + "'";
+          _currentRow(0) {
     if (_result.row_size() > 0) {
         _initCurrentRow();
     }

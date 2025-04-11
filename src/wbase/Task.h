@@ -208,7 +208,6 @@ public:
     std::string getQueryString() const;
     int getQueryFragmentNum() { return _queryFragmentNum; }
     std::string const& resultFileAbsPath() const { return _resultFileAbsPath; }
-    std::string const& resultFileXrootUrl() const { return _resultFileXrootUrl; }
     std::string const& resultFileHttpUrl() const { return _resultFileHttpUrl; }
     bool setTaskQueryRunner(
             TaskQueryRunner::Ptr const& taskQueryRunner);  ///< return true if already cancelled.
@@ -338,10 +337,6 @@ private:
 
     /// The name of the result file.
     std::string _resultFileName;
-
-    /// The XROOTD URL for the result file: "xroot://<host>:<xrootd-port>" + "/" + _resultFileAbsPath
-    /// @note an extra '/' after server:port spec is required to make a "valid" XROOTD url
-    std::string _resultFileXrootUrl;
 
     /// The HTTP URL for the result file: "http://<host>:<http-port>/" + _resultFileName
     std::string _resultFileHttpUrl;

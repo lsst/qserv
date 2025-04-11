@@ -63,10 +63,7 @@ JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, int jobId, Res
           _chunkResultName(chunkResultName),
           _mock(mock) {}
 
-bool JobDescription::incrAttemptCountScrubResults() {
-    if (_attemptCount >= 0) {
-        _respHandler->prepScrubResults(_jobId, _attemptCount);  // Registers the job-attempt as invalid
-    }
+bool JobDescription::incrAttemptCount() {
     ++_attemptCount;
     if (_attemptCount > MAX_JOB_ATTEMPTS) {
         LOGS(_log, LOG_LVL_ERROR, "attemptCount greater than maximum number of retries " << _attemptCount);
