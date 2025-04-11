@@ -155,16 +155,8 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                             " czarid:" + std::to_string(taskMsg->has_czarid()));
                 return;
             }
-            switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
-                case wconfig::ConfigValResultDeliveryProtocol::XROOT:
-                case wconfig::ConfigValResultDeliveryProtocol::HTTP:
-                    _channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
-                                                                      _foreman->chunkInventory()->id());
-                    break;
-                default:
-                    throw std::runtime_error("SsiRequest::" + std::string(__func__) +
-                                             " unsupported result delivery protocol");
-            }
+            _channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
+                                                              _foreman->chunkInventory()->id());
             auto const tasks = wbase::Task::createTasks(taskMsg, _channelShared, _foreman->chunkResourceMgr(),
                                                         _foreman->mySqlConfig(), _foreman->sqlConnMgr(),
                                                         _foreman->queriesAndChunks(), _foreman->httpPort());
@@ -203,34 +195,25 @@ void SsiRequest::execute(XrdSsiRequest& req) {
                  "QueryManagement: op=" << proto::QueryManagement_Operation_Name(request.op())
                                         << " query_id=" << request.query_id());
 
-            switch (wconfig::WorkerConfig::instance()->resultDeliveryProtocol()) {
-                case wconfig::ConfigValResultDeliveryProtocol::XROOT:
-                case wconfig::ConfigValResultDeliveryProtocol::HTTP:
-                    switch (request.op()) {
-                        case proto::QueryManagement::CANCEL_AFTER_RESTART:
-                            // TODO: locate and cancel the coresponding tasks, remove the tasks
-                            //       from the scheduler queues.
-                            wbase::FileChannelShared::cleanUpResultsOnCzarRestart(request.czar_id(),
-                                                                                  request.query_id());
-                            break;
-                        case proto::QueryManagement::CANCEL:
-                            // TODO: locate and cancel the coresponding tasks, remove the tasks
-                            //       from the scheduler queues.
-                            wbase::FileChannelShared::cleanUpResults(request.czar_id(), request.query_id());
-                            break;
-                        case proto::QueryManagement::COMPLETE:
-                            wbase::FileChannelShared::cleanUpResults(request.czar_id(), request.query_id());
-                            break;
-                        default:
-                            reportError("QueryManagement: op=" +
-                                        proto::QueryManagement_Operation_Name(request.op()) +
-                                        " is not supported by the current implementation.");
-                            return;
-                    }
+            switch (request.op()) {
+                case proto::QueryManagement::CANCEL_AFTER_RESTART:
+                    // TODO: locate and cancel the coresponding tasks, remove the tasks
+                    //       from the scheduler queues.
+                    wbase::FileChannelShared::cleanUpResultsOnCzarRestart(request.czar_id(),
+                                                                          request.query_id());
+                    break;
+                case proto::QueryManagement::CANCEL:
+                    // TODO: locate and cancel the coresponding tasks, remove the tasks
+                    //       from the scheduler queues.
+                    wbase::FileChannelShared::cleanUpResults(request.czar_id(), request.query_id());
+                    break;
+                case proto::QueryManagement::COMPLETE:
+                    wbase::FileChannelShared::cleanUpResults(request.czar_id(), request.query_id());
                     break;
                 default:
-                    throw std::runtime_error("SsiRequest::" + std::string(__func__) +
-                                             " unsupported result delivery protocol");
+                    reportError("QueryManagement: op=" + proto::QueryManagement_Operation_Name(request.op()) +
+                                " is not supported by the current implementation.");
+                    return;
             }
 
             // Send back the empty response since no info is expected by a caller

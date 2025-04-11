@@ -48,42 +48,6 @@ mutex WorkerConfig::_mtxOnInstance;
 
 shared_ptr<WorkerConfig> WorkerConfig::_instance;
 
-ConfigValResultDeliveryProtocol::TEnum ConfigValResultDeliveryProtocol::parse(string const& str) {
-    // Convert to upper case for case-insensitive comparisons.
-    string strUp;
-    for (auto ch : str) {
-        strUp += toupper(ch);
-    }
-    if (str.empty() || strUp == "HTTP") {
-        return HTTP;
-    } else if (strUp == "XROOT") {
-        return XROOT;
-    }
-    throw util::ConfigException(ERR_LOC, string("ConfigValResultDeliveryProtocol::") + __func__ +
-                                                 " could not parse '" + str + "'.");
-}
-
-void ConfigValResultDeliveryProtocol::setValFromConfigStoreChild(util::ConfigStore const& configStore) {
-    std::string str = configStore.getRequired(getSectionDotName());
-    try {
-        setVal(parse(str));
-    } catch (util::ConfigException const& exc) {
-        // Throw a similar exception with additional information.
-        throw util::ConfigException(ERR_LOC, getSectionDotName() + " " + exc.what());
-    }
-}
-
-string ConfigValResultDeliveryProtocol::toString(TEnum protocol) {
-    switch (protocol) {
-        case HTTP:
-            return "HTTP";
-        case XROOT:
-            return "XROOT";
-    }
-    throw util::ConfigException(ERR_LOC, "WorkerConfig::" + string(__func__) + ": unknown protocol " +
-                                                 to_string(static_cast<int>(protocol)));
-}
-
 shared_ptr<WorkerConfig> WorkerConfig::create(string const& configFileName) {
     lock_guard<mutex> const lock(_mtxOnInstance);
     if (_instance == nullptr) {
