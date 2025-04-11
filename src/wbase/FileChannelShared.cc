@@ -173,11 +173,8 @@ void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId) {
 json FileChannelShared::statusToJson() {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     auto const config = wconfig::WorkerConfig::instance();
-    string const protocol =
-            wconfig::ConfigValResultDeliveryProtocol::toString(config->resultDeliveryProtocol());
     fs::path const dirPath = config->resultsDirname();
-    json result = json::object({{"protocol", protocol},
-                                {"folder", dirPath.string()},
+    json result = json::object({{"folder", dirPath.string()},
                                 {"capacity_bytes", -1},
                                 {"free_bytes", -1},
                                 {"available_bytes", -1},
@@ -553,7 +550,6 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     response.set_wname(_workerId);
     response.set_queryid(queryId);
     response.set_jobid(jobId);
-    response.set_fileresource_xroot(task->resultFileXrootUrl());
     response.set_fileresource_http(task->resultFileHttpUrl());
     response.set_attemptcount(task->getAttemptCount());
     response.set_rowcount(_rowcount);
