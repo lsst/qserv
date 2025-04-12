@@ -80,7 +80,7 @@ bool JobQuery::runJob() {
         LOGS(_log, LOG_LVL_DEBUG, "runJob checking attempt=" << _jobDescription->getAttemptCount());
         std::lock_guard<std::recursive_mutex> lock(_rmutex);
         if (_jobDescription->getAttemptCount() < _getMaxAttempts()) {
-            bool okCount = _jobDescription->incrAttemptCountScrubResults();
+            bool okCount = _jobDescription->incrAttemptCount();
             if (!okCount) {
                 criticalErr("hit structural max of retries");
                 return false;

@@ -43,6 +43,5 @@ FUNCTION(rproc_tests)
 ENDFUNCTION()
 
 rproc_tests(
-    testInvalidJobAttemptMgr
     testProtoRowBuffer
 )

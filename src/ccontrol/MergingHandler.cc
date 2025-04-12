@@ -321,13 +321,6 @@ bool MergingHandler::reset() {
     return true;
 }
 
-// Note that generally we always have an _infileMerger object except during
-// a unit test. I suppose we could try to figure out how to create one.
-//
-void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
-    if (_infileMerger) _infileMerger->prepScrub(jobId, attemptCount);
-}
-
 std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
 }

@@ -84,59 +84,6 @@ public:
     bool debugNoMerge = false;
 };
 
-/// This class is used to remove invalid rows from cancelled job attempts.
-/// Removing the invalid rows from the result table can be very expensive,
-/// so steps are taken to only do it when rows are known to exist in the
-/// result table.
-///
-/// The rows can only be safely deleted from the result table when
-/// nothing is writing to the table. To minimize the time locking the mutex
-/// and allow multiple entities to write to the table concurrently, the
-/// number of task writing to the table is tracked with _concurrentMergeCount.
-/// Deletes are only to be allowed when _concurrentMergeCount is 0.
-class InvalidJobAttemptMgr {
-public:
-    using jASetType = std::set<int>;
-    using deleteFuncType = std::function<bool(jASetType const&)>;
-
-    InvalidJobAttemptMgr() {}
-    void setDeleteFunc(deleteFuncType func) { _deleteFunc = func; }
-
-    /// @return true if jobIdAttempt is invalid.
-    /// Wait if rows need to be deleted.
-    /// Then, add job-attempt to _jobIdAttemptsHaveRows and increment
-    /// _concurrentMergeCount to keep rows from being deleted before
-    /// decrConcurrentMergeCount is called.
-    bool incrConcurrentMergeCount(int jobIdAttempt);
-    void decrConcurrentMergeCount();
-
-    /// @return true if query results are valid. If it returns false, the query results are invalid.
-    /// This function will stop all merging to the result table and delete all invalid
-    /// rows in the table. If it returns false, invalid rows remain in the result table,
-    /// and the query should probably be cancelled.
-    bool holdMergingForRowDelete(std::string const& msg = "");
-
-    /// @return true if jobIdAttempt is in the invalid set.
-    bool isJobAttemptInvalid(int jobIdAttempt);
-
-    bool prepScrub(int jobIdAttempt);
-
-private:
-    /// Precondition: must hold _iJAMtx before calling.
-    /// @return true if jobIdAttempt is in the invalid set.
-    bool _isJobAttemptInvalid(int jobIdAttempt);
-    void _cleanupIJA();  ///< Helper to send notice to all waiting on _cv.
-
-    std::mutex _iJAMtx;
-    jASetType _invalidJobAttempts;     ///< Set of job-attempts that failed.
-    jASetType _invalidJAWithRows;      ///< Set of job-attempts that failed and have rows in result table.
-    jASetType _jobIdAttemptsHaveRows;  ///< Set of job-attempts that have rows in result table.
-    int _concurrentMergeCount{0};
-    bool _waitFlag{false};
-    std::condition_variable _cv;
-    deleteFuncType _deleteFunc;
-};
-
 /// InfileMerger is a row-based merger that imports rows from result messages
 /// and inserts them into a MySQL table, as specified during construction by
 /// InfileMergerConfig.
@@ -178,10 +125,6 @@ public:
     bool finalize(size_t& collectedBytes, int64_t& rowCount);
     /// Check if the object has completed all processing.
     bool isFinished() const;
-
-    bool prepScrub(int jobId, int attempt);
-    bool scrubResults(int jobId, int attempt);
-    int makeJobIdAttempt(int jobId, int attemptCount);
 
     void setMergeStmtFromList(std::shared_ptr<query::SelectStmt> const& mergeStmt) const;
 
@@ -232,39 +175,13 @@ private:
     util::Error _error;                            ///< Error state
     bool _isFinished = false;                      ///< Completed?
     std::mutex _sqlMutex;                          ///< Protection for SQL connection
-
-    /**
-     * @brief Put a "jobId" column first in the provided schema.
-     *
-     * The jobId column is used to keep track of what job number and attempt number each row in the results
-     * table came from.
-     *
-     * The schema must match the schema of the results returned by workers (and workers add the JobId column
-     * first in the schema).
-     *
-     * @note This will change _jobIdColName if it conflicts with a column name in the user query.
-     *
-     * @param schema The schema to be modified.
-     */
-    void _addJobIdColumnToSchema(sql::Schema& schema);
-
     mysql::MySqlConnection _mysqlConn;
-
     std::mutex _mysqlMutex;
     mysql::LocalInfile::Mgr _infileMgr;
-
     std::shared_ptr<qproc::DatabaseModels> _databaseModels;  ///< Used to create result table.
-
-    std::mutex _queryIdStrMtx;  ///< protects _queryIdStr
+    std::mutex _queryIdStrMtx;                               ///< protects _queryIdStr
     std::atomic<bool> _queryIdStrSet{false};
     std::string _queryIdStr{"QI=?"};  ///< Unknown until results start coming back from workers.
-
-    std::string _jobIdColName;                   ///< Name of the jobId column in the result table.
-    int const _jobIdMysqlType{MYSQL_TYPE_LONG};  ///< 4 byte integer.
-    std::string const _jobIdSqlType{"INT(9)"};   ///< The 9 only affects '0' padding with ZEROFILL.
-
-    InvalidJobAttemptMgr _invalidJobAttemptMgr;
-    bool _deleteInvalidRows(std::set<int> const& jobIdAttempts);
     int const _maxSqlConnectionAttempts =
             10;  ///< maximum number of times to retry connecting to the SQL database.
 
