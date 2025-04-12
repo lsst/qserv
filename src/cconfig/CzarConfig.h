@@ -151,7 +151,6 @@ public:
     /// Getters for result aggregation options.
     int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
-    std::string getResultEngine() const { return _resultEngine->getVal(); }
     int getResultMaxConnections() const { return _resultMaxConnections->getVal(); }
 
     /// The size of the TCP connection pool witin the client API that is used
@@ -288,8 +287,6 @@ private:
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxtablesize_mb", notReq, 5001);
     CVTIntPtr _maxSqlConnectionAttempts =
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxsqlconnectionattempts", notReq, 10);
-    CVTStrPtr _resultEngine =
-            util::ConfigValTStr::create(_configValMap, "resultdb", "engine", notReq, "myisam");
     CVTIntPtr _resultMaxConnections =
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxconnections", notReq, 40);
     CVTIntPtr _resultMaxHttpConnections =

@@ -142,22 +142,8 @@ InfileMerger::InfileMerger(rproc::InfileMergerConfig const& c,
           _maxResultTableSizeBytes(cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES),
           _semaMgrConn(semaMgrConn) {
     _fixupTargetName();
-    _setEngineFromStr(cconfig::CzarConfig::instance()->getResultEngine());
-    if (_dbEngine == MYISAM) {
-        LOGS(_log, LOG_LVL_INFO, "Engine is MYISAM, serial");
-        if (!_setupConnectionMyIsam()) {
-            throw util::Error(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
-        }
-    } else {
-        if (_dbEngine == INNODB) {
-            LOGS(_log, LOG_LVL_INFO, "Engine is INNODB, parallel, semaMgrConn=" << *_semaMgrConn);
-        } else if (_dbEngine == MEMORY) {
-            LOGS(_log, LOG_LVL_INFO, "Engine is MEMORY, parallel, semaMgrConn=" << *_semaMgrConn);
-        } else {
-            throw util::Error(util::ErrorCode::INTERNAL, "SQL engine is unknown" + std::to_string(_dbEngine));
-        }
-        // Shared connection not used for parallel inserts.
-        _mysqlConn.closeMySqlConn();
+    if (!_setupConnectionMyIsam()) {
+        throw util::Error(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
     }
 
     // The DEBUG level is good here since this report will be made onces per query,
@@ -169,39 +155,6 @@ InfileMerger::InfileMerger(rproc::InfileMergerConfig const& c,
     _invalidJobAttemptMgr.setDeleteFunc([this](InvalidJobAttemptMgr::jASetType const& jobAttempts) -> bool {
         return _deleteInvalidRows(jobAttempts);
     });
-}
-
-InfileMerger::~InfileMerger() {}
-
-void InfileMerger::_setEngineFromStr(std::string const& engineName) {
-    std::string eName;
-    for (auto&& c : engineName) {
-        eName += toupper(c);
-    }
-    if (eName == "INNODB") {
-        _dbEngine = INNODB;
-    } else if (eName == "MEMORY") {
-        _dbEngine = MEMORY;
-    } else if (eName == "MYISAM") {
-        _dbEngine = MYISAM;
-    } else {
-        LOGS(_log, LOG_LVL_ERROR, "unknown dbEngine=" << engineName << " using default MYISAM");
-        _dbEngine = MYISAM;
-    }
-    LOGS(_log, LOG_LVL_INFO, "set engine to " << engineToStr(_dbEngine));
-}
-
-std::string InfileMerger::engineToStr(InfileMerger::DbEngine engine) {
-    switch (engine) {
-        case MYISAM:
-            return "MYISAM";
-        case INNODB:
-            return "INNODB";
-        case MEMORY:
-            return "MEMORY";
-        default:
-            return "UNKNOWN";
-    }
 }
 
 std::string InfileMerger::_getQueryIdStr() {
@@ -241,12 +194,6 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
     auto executive = jq->getExecutive();
     if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
         return true;
-    }
-
-    std::unique_ptr<util::SemaLock> semaLock;
-    if (_dbEngine != MYISAM) {
-        // needed for parallel merging with INNODB and MEMORY
-        semaLock.reset(new util::SemaLock(*_semaMgrConn));
     }
 
     TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
@@ -301,22 +248,10 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
 
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.
-    if (_config.debugNoMerge) {
-        return true;
-    }
+    if (_config.debugNoMerge) return true;
 
     auto start = std::chrono::system_clock::now();
-    switch (_dbEngine) {
-        case MYISAM:
-            ret = _applyMysqlMyIsam(infileStatement, resultSize);
-            break;
-        case INNODB:  // Fallthrough
-        case MEMORY:
-            ret = _applyMysqlInnoDb(infileStatement, resultSize);
-            break;
-        default:
-            throw std::invalid_argument("InfileMerger::_dbEngine is unknown =" + engineToStr(_dbEngine));
-    }
+    ret = _applyMysqlMyIsam(infileStatement, resultSize);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG,
@@ -365,48 +300,6 @@ bool InfileMerger::_applyMysqlMyIsam(std::string const& query, size_t resultSize
     }
     LOGS(_log, LOG_LVL_ERROR,
          "InfileMerger::_applyMysqlMyIsam mysql_real_query() " + ::lastMysqlError(_mysqlConn.getMySql()));
-    return false;
-}
-
-bool InfileMerger::_applyMysqlInnoDb(std::string const& query, size_t resultSize) {
-    mysql::MySqlConnection mySConn(_config.mySqlConfig);
-    if (!mySConn.connected()) {
-        if (!_setupConnectionInnoDb(mySConn)) {
-            LOGS(_log, LOG_LVL_ERROR, "InfileMerger::_applyMysqlInnoDb _setupConnectionInnoDb() failed!!!");
-            return false;  // Reconnection failed. This is an error.
-        }
-    }
-
-    // Track the operation while the control flow is staying within the function.
-    ::ResultMergeTracker const resultMergeTracker;
-
-    // This starts a timer of the result merge rate tracker. The tracker will report
-    // the counter (if set) upon leaving the method.
-    lsst::qserv::TimeCountTracker<double> mergeRateTracker(::reportMergeRate);
-
-    int rc = mysql_real_query(mySConn.getMySql(), query.data(), query.size());
-    if (rc == 0) {
-        mergeRateTracker.addToValue(resultSize);
-        mergeRateTracker.setSuccess();
-        return true;
-    }
-    LOGS(_log, LOG_LVL_ERROR,
-         "InfileMerger::_applyMysqlInnoDb mysql_real_query() " + ::lastMysqlError(mySConn.getMySql()));
-    return false;
-}
-
-bool InfileMerger::_setupConnectionInnoDb(mysql::MySqlConnection& mySConn) {
-    // Make 10 attempts to open the connection. They can fail when the
-    // system is busy.
-    for (int j = 0; j < sqlConnectionAttempts(); ++j) {
-        if (mySConn.connect()) {
-            _infileMgr.attach(mySConn.getMySql());
-            return true;
-        } else {
-            LOGS(_log, LOG_LVL_ERROR, "_setupConnectionInnoDb failed connect attempt " << j);
-            sleep(1);
-        }
-    }
     return false;
 }
 
@@ -555,21 +448,7 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
         return false;
     }
     _addJobIdColumnToSchema(schema);
-    std::string createStmt = sql::formCreateTable(_mergeTable, schema);
-    switch (_dbEngine) {
-        case MYISAM:
-            createStmt += " ENGINE=MyISAM";
-            break;
-        case INNODB:
-            createStmt += " ENGINE=InnoDB";
-            break;
-        case MEMORY:
-            createStmt += " ENGINE=MEMORY";
-            break;
-        default:
-            throw std::invalid_argument("InfileMerger::makeResultsTableForQuery unknown engine " +
-                                        engineToStr(_dbEngine));
-    }
+    std::string const createStmt = sql::formCreateTable(_mergeTable, schema) + " ENGINE=MyISAM";
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
         _error = util::Error(util::ErrorCode::CREATE_TABLE,
@@ -673,6 +552,14 @@ void InfileMerger::_fixupTargetName() {
     } else {
         _mergeTable = _config.targetTable;
     }
+}
+
+bool InfileMerger::_setupConnectionMyIsam() {
+    if (_mysqlConn.connect()) {
+        _infileMgr.attach(_mysqlConn.getMySql());
+        return true;
+    }
+    return false;
 }
 
 bool InvalidJobAttemptMgr::incrConcurrentMergeCount(int jobIdAttempt) {

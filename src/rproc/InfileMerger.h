@@ -153,11 +153,7 @@ public:
     InfileMerger() = delete;
     InfileMerger(InfileMerger const&) = delete;
     InfileMerger& operator=(InfileMerger const&) = delete;
-    ~InfileMerger();
-
-    enum DbEngine { MYISAM, INNODB, MEMORY };
-
-    std::string engineToStr(InfileMerger::DbEngine engine);
+    ~InfileMerger() = default;
 
     /// Merge a worker response, which contains a single ResponseData message
     /// Using job query info for early termination of the merge if needed.
@@ -214,12 +210,10 @@ public:
     bool makeResultsTableForQuery(query::SelectStmt const& stmt);
 
     int sqlConnectionAttempts() { return _maxSqlConnectionAttempts; }
-
     size_t getTotalResultSize() const;
 
 private:
     bool _applyMysqlMyIsam(std::string const& query, size_t resultSize);
-    bool _applyMysqlInnoDb(std::string const& query, size_t resultSize);
     void _setupRow();
     bool _applySql(std::string const& sql);
     bool _applySqlLocal(std::string const& sql, std::string const& logMsg, sql::SqlResults& results);
@@ -230,22 +224,9 @@ private:
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);
     void _fixupTargetName();
-
-    /// Set the engine name from the string engineName. Default to MYISAM.
-    void _setEngineFromStr(std::string const& engineName);
-
-    bool _setupConnectionMyIsam() {
-        if (_mysqlConn.connect()) {
-            _infileMgr.attach(_mysqlConn.getMySql());
-            return true;
-        }
-        return false;
-    }
-
-    bool _setupConnectionInnoDb(mysql::MySqlConnection& mySConn);
+    bool _setupConnectionMyIsam();
 
     InfileMergerConfig _config;                    ///< Configuration
-    DbEngine _dbEngine = MYISAM;                   ///< ENGINE used for aggregating results.
     std::shared_ptr<sql::SqlConnection> _sqlConn;  ///< SQL connection
     std::string _mergeTable;                       ///< Table for result loading
     util::Error _error;                            ///< Error state
