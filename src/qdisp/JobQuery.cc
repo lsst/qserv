@@ -63,16 +63,15 @@ bool JobQuery::cancel(bool superfluous) {
         VMUTEX_NOT_HELD(_jqMtx);
         lock_guard lock(_jqMtx);
 
-        ostringstream os;
-        os << _idStr << " cancel";
-        LOGS(_log, LOG_LVL_DEBUG, os.str());
+        string const context = _idStr + " cancel";
+        LOGS(_log, LOG_LVL_DEBUG, context);
         auto exec = _executive.lock();
         if (exec == nullptr) {
             LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
             return false;
         }
         if (!superfluous) {
-            exec->addMultiError(-1, os.str(), util::ErrorCode::RESULT_IMPORT);
+            exec->addMultiError(-1, context, util::ErrorCode::RESULT_IMPORT);
         }
         exec->markCompleted(getJobId(), false);
         return true;

@@ -21,14 +21,14 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.InstanceCount");
 
 namespace lsst::qserv::util {
 
-InstanceCountData InstanceCount::_icData;
+InstanceCount::InstanceCountData InstanceCount::_icData;
 
-InstanceCountData::InstanceCountData() {
+InstanceCount::InstanceCountData::InstanceCountData() {
     std::cout << "InstanceCountData " << " mx=" << (void*)(&_mx) << " _inst=" << (void*)(&_instances)
               << " t=" << (void*)(this) << endl;
 }
 
-InstanceCountData::~InstanceCountData() {
+InstanceCount::InstanceCountData::~InstanceCountData() {
     cout << "~InstanceCountData " << " mx=" << (void*)(&_mx) << " _inst=" << (void*)(&_instances)
          << " t=" << (void*)(this) << endl;
 }

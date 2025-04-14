@@ -208,6 +208,8 @@ public:
     std::string getQueryString() const;
     /// Return true if already cancelled.
     bool setTaskQueryRunner(std::shared_ptr<wdb::QueryRunner> const& taskQueryRunner);
+
+    /// Free this instances TaskQueryRunner object, but only if the pointer matches `tqr`
     void freeTaskQueryRunner(wdb::QueryRunner* tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
     TaskScheduler::Ptr getTaskScheduler() const { return _taskScheduler.lock(); }

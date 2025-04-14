@@ -57,8 +57,6 @@ JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, R
           _chunkQuerySpec(chunkQuerySpec),
           _mock(mock) {}
 
-JobDescription::~JobDescription() { LOGS(_log, LOG_LVL_TRACE, "~JobDescription()"); }
-
 bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bool increase) {
     if (increase) {
         ++_attemptCount;

@@ -69,7 +69,7 @@ public:
     JobDescription(JobDescription const&) = delete;
     JobDescription& operator=(JobDescription const&) = delete;
 
-    virtual ~JobDescription();
+    virtual ~JobDescription() = default;
 
     std::string cName(const char* fnc) { return std::string("JobDescription::") + fnc + " " + _qIdStr; }
 

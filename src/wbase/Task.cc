@@ -466,6 +466,7 @@ bool Task::setTaskQueryRunner(wdb::QueryRunner::Ptr const& taskQueryRunner) {
 }
 
 void Task::freeTaskQueryRunner(wdb::QueryRunner* tqr) {
+    // Only free _taskQueryRunner if it's the expected one.
     if (_taskQueryRunner.get() == tqr) {
         _taskQueryRunner.reset();
     } else {

@@ -55,20 +55,13 @@ string MultiError::toOneLineString() const {
 int MultiError::firstErrorCode() const { return empty() ? ErrorCode::NONE : _errorVector.front().getCode(); }
 
 string MultiError::firstErrorStr() const {
+    if (empty()) return string();
     ostringstream os;
-    if (!empty()) {
-        os << _errorVector.front();
-    }
+    os << _errorVector.front();
     return os.str();
 }
 
-util::Error MultiError::firstError() const {
-    Error err;
-    if (!empty()) {
-        err = _errorVector.front();
-    }
-    return err;
-}
+util::Error MultiError::firstError() const { return empty() ? Error() : _errorVector.front(); }
 
 bool MultiError::empty() const { return _errorVector.empty(); }
 

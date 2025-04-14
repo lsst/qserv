@@ -261,7 +261,7 @@ private:
     /// The stats are pushed to qdisp::CzarStats.
     void _updateStats() const;
 
-    util::InstanceCount _icEx{"Executive"};
+    util::InstanceCount const _icEx{"Executive"};
     std::atomic<bool> _empty{true};
     std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
