@@ -92,4 +92,66 @@ json MySqlUtils::processList(MySqlConfig const& config, bool full) {
     return result;
 }
 
+int escapeString(char* dest, char const* src, int srcLength) {
+    // mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
+    assert(srcLength >= 0);
+    assert(srcLength < std::numeric_limits<int>::max() / 2);
+    char const* end = src + srcLength;
+    char const* originalSrc = src;
+    while (src != end) {
+        switch (*src) {
+            case '\0':
+                *dest++ = '\\';
+                *dest++ = '0';
+                break;
+            case '\b':
+                *dest++ = '\\';
+                *dest++ = 'b';
+                break;
+            case '\n':
+                *dest++ = '\\';
+                *dest++ = 'n';
+                break;
+            case '\r':
+                *dest++ = '\\';
+                *dest++ = 'r';
+                break;
+            case '\t':
+                *dest++ = '\\';
+                *dest++ = 't';
+                break;
+            case '\032':
+                *dest++ = '\\';
+                *dest++ = 'Z';
+                break;
+            default:
+                *dest++ = *src;
+                break;
+                // Null (\N) is not treated by escaping in this context.
+        }
+        ++src;
+    }
+    return src - originalSrc;
+}
+
+int escapeAppendString(std::string& dest, char const* srcData, size_t srcSize, bool quote, char quoteChar) {
+    if (srcSize == 0) return srcSize;
+    int const existingSize = dest.size();
+    assert(existingSize < std::numeric_limits<int>::max() / 2);
+    assert(srcSize < std::numeric_limits<int>::max() / 2);
+    assert(existingSize + (quote ? 2 : 0) + 2 * srcSize < std::numeric_limits<int>::max());
+    if (quote) {
+        dest.resize(existingSize + 2 + 2 * srcSize);
+        dest[existingSize] = quoteChar;
+        int const valSize = mysql::escapeString(dest.begin() + existingSize + 1, srcData, srcData + srcSize);
+        dest[existingSize + 1 + valSize] = quoteChar;
+        dest.resize(existingSize + 2 + valSize);
+    } else {
+        dest.resize(existingSize + 2 * srcSize);
+        int const valSize = mysql::escapeString(dest.begin() + existingSize, srcData, srcData + srcSize);
+        dest.resize(existingSize + valSize);
+    }
+    return dest.size() - existingSize;
+}
+
 }  // namespace lsst::qserv::mysql

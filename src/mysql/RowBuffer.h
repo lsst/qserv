@@ -32,10 +32,6 @@
 // Third-party headers
 #include <mysql/mysql.h>
 
-namespace lsst::qserv::proto {
-class Result;
-}  // namespace lsst::qserv::proto
-
 namespace lsst::qserv::mysql {
 
 /// Row is a mysql row abstraction that bundles field sizes and counts. Row is

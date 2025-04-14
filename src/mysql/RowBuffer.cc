@@ -36,8 +36,7 @@
 
 // Qserv headers
 #include "mysql/LocalInfileError.h"
-#include "proto/worker.pb.h"
-#include "sql/Schema.h"
+#include "mysql/MySqlUtils.h"
 
 ////////////////////////////////////////////////////////////////////////
 // Helpful constants
@@ -64,48 +63,6 @@ inline int addString(char* cursor, std::string const& s) {
     return sSize;
 }
 
-inline int escapeString(char* dest, char const* src, int srcLength) {
-    // mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
-    assert(srcLength >= 0);
-    assert(srcLength < std::numeric_limits<int>::max() / 2);
-    char const* end = src + srcLength;
-    char const* originalSrc = src;
-    while (src != end) {
-        switch (*src) {
-            case '\0':
-                *dest++ = '\\';
-                *dest++ = '0';
-                break;
-            case '\b':
-                *dest++ = '\\';
-                *dest++ = 'b';
-                break;
-            case '\n':
-                *dest++ = '\\';
-                *dest++ = 'n';
-                break;
-            case '\r':
-                *dest++ = '\\';
-                *dest++ = 'r';
-                break;
-            case '\t':
-                *dest++ = '\\';
-                *dest++ = 't';
-                break;
-            case '\032':
-                *dest++ = '\\';
-                *dest++ = 'Z';
-                break;
-            default:
-                *dest++ = *src;
-                break;
-                // Null (\N) is not treated by escaping in this context.
-        }
-        ++src;
-    }
-    return src - originalSrc;
-}
-
 inline int maxColFootprint(int columnLength, std::string const& sep) {
     const int overhead = 2 + sep.size();  // NULL decl + sep size
     return overhead + (2 * columnLength);
@@ -117,7 +74,7 @@ inline int addColumn(char* cursor, char* colData, int colSize) {
         // Sanitize field.
         // Don't need mysql_real_escape_string, because we can
         // use the simple LOAD DATA INFILE escaping rules
-        added = escapeString(cursor, colData, colSize);
+        added = mysql::escapeString(cursor, colData, colSize);
     } else {
         added = addString(cursor, mysqlNull);
     }
@@ -238,8 +195,8 @@ bool ResRowBuffer::_fetchRow(Row& r) {
 /// This is unfinished code, but is only triggered for rows > 500kB.  Also,
 /// RowBuffer objects are used to buffer rows for LocalInfile, and because
 /// ResRowBuffer is an implementation that fetches rows from a MYSQL_RES handle,
-/// and Qserv will generally use rows received over-the-wire in protobufs
-/// messages, ResRowBuffer objects are not planned for use in a normally
+/// and Qserv will generally use rows received from workers as CSV-formatted
+/// files, ResRowBuffer objects are not planned for use in a normally
 /// operating Qserv system. Still, ResRowBuffer is useful for *testing*
 /// LocalInfile (e.g., loading the result of a SELECT statement using LOAD DATA
 /// INFILE).
