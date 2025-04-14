@@ -91,9 +91,6 @@ public:
         return _error;
     }
 
-    /// Prepare to scrub the results from jobId-attempt from the result table.
-    void prepScrubResults(int jobId, int attempt) override;
-
 private:
     /// Prepare for first call to flush().
     void _initState();

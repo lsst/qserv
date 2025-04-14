@@ -49,6 +49,7 @@
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
+#include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
 #include "rproc/InfileMerger.h"
 #include "util/Bug.h"
@@ -321,13 +322,6 @@ bool MergingHandler::reset() {
     return true;
 }
 
-// Note that generally we always have an _infileMerger object except during
-// a unit test. I suppose we could try to figure out how to create one.
-//
-void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
-    if (_infileMerger) _infileMerger->prepScrub(jobId, attemptCount);
-}
-
 std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
 }
@@ -337,16 +331,27 @@ void MergingHandler::_initState() { _setError(0, ""); }
 bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
                             proto::ResponseData const& responseData,
                             shared_ptr<qdisp::JobQuery> const& jobQuery) {
-    if (_flushed) {
-        throw util::Bug(ERR_LOC, "already flushed");
+    if (_flushed) throw util::Bug(ERR_LOC, "already flushed");
+
+    // Nothing to do if size is zero.
+    if (responseData.row_size() == 0) return true;
+
+    // Do nothing if the query got cancelled for any reason.
+    if (jobQuery->isQueryCancelled()) return true;
+
+    // Check for other indicators that the query may have cancelled or finished.
+    auto executive = jobQuery->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
+        return true;
     }
-    bool success = _infileMerger->merge(responseSummary, responseData, jobQuery);
-    if (!success) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
-        util::Error const& err = _infileMerger->getError();
-        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
-    }
-    return success;
+
+    // Attempt the actual merge.
+    if (_infileMerger->merge(responseSummary, responseData)) return true;
+
+    LOGS(_log, LOG_LVL_WARN, __func__ << " failed");
+    util::Error const& err = _infileMerger->getError();
+    _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
+    return false;
 }
 
 void MergingHandler::_setError(int code, std::string const& msg) {

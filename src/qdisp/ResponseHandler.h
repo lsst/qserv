@@ -82,9 +82,6 @@ public:
     /// Do anything that needs to be done if this job gets cancelled.
     virtual void processCancel() {};
 
-    /// Scrub the results from jobId-attempt from the result table.
-    virtual void prepScrubResults(int jobId, int attempt) = 0;
-
     std::weak_ptr<JobQuery> getJobQuery() { return _jobQuery; }
 
 private:

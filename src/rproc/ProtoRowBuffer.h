@@ -36,8 +36,7 @@ namespace lsst::qserv::rproc {
 /// LocalInfile object to use a Protobufs Result message as a row source
 class ProtoRowBuffer : public mysql::RowBuffer {
 public:
-    ProtoRowBuffer(proto::ResponseData const& res, int jobId, std::string const& jobIdColName,
-                   std::string const& jobIdSqlType, int jobIdMysqlType);
+    ProtoRowBuffer(proto::ResponseData const& res);
     unsigned fetch(char* buffer, unsigned bufLen) override;
     std::string dump() const override;
 
@@ -129,10 +128,11 @@ private:
     template <typename T>
     int _copyRowBundle(T& dest, proto::RowBundle const& rb) {
         int sizeBefore = dest.size();
-        // Add jobId
-        dest.insert(dest.end(), _jobIdStr.begin(), _jobIdStr.end());
         for (int ci = 0, ce = rb.column_size(); ci != ce; ++ci) {
-            dest.insert(dest.end(), _colSep.begin(), _colSep.end());
+            // Don't add column separator before the first column
+            if (ci != 0) {
+                dest.insert(dest.end(), _colSep.begin(), _colSep.end());
+            }
             if (!rb.isnull(ci)) {
                 copyColumn(dest, rb.column(ci));
             } else {
@@ -150,12 +150,6 @@ private:
     int _rowIdx;                    ///< Row index
     int _rowTotal;                  ///< Total row count
     std::vector<char> _currentRow;  ///< char buffer representing current row.
-
-    /// Name and type for jobId column in result table. Passed from InfileMerger.
-    std::string _jobIdStr;  ///< String form of jobId.
-    std::string const _jobIdColName;
-    std::string const _jobIdSqlType;
-    int const _jobIdMysqlType;
 };
 
 }  // namespace lsst::qserv::rproc
