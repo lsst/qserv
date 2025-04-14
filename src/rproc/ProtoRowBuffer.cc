@@ -77,8 +77,6 @@ ProtoRowBuffer::ProtoRowBuffer(proto::ResponseData const& res)
     }
 }
 
-ProtoRowBuffer::~ProtoRowBuffer() { LOGS(_log, LOG_LVL_TRACE, "~ProtoRowBuffer()"); }
-
 /// Fetch a up to a single row from from the Result message
 unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
     unsigned fetched = 0;

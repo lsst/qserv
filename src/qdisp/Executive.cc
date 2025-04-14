@@ -440,8 +440,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
     if (!success && !isRowLimitComplete()) {
         {
             lock_guard<mutex> lock(_incompleteJobsMutex);
-            auto iter = _incompleteJobs.find(jobId);
-            if (iter == _incompleteJobs.end()) {
+            if (_incompleteJobs.count(jobId) == 0) {
                 string msg = "Executive::markCompleted failed to find TRACKED " + idStr +
                              " size=" + to_string(_incompleteJobs.size());
                 // If the user query has been cancelled, this is expected for jobs that have not yet
@@ -475,7 +474,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
     }
     _unTrack(jobId);
     if (!success && !isRowLimitComplete()) {
-        squash(string("markComplete error ") + errStr);  // ask to squash
+        squash("markComplete error " + errStr);  // ask to squash
     }
 }
 
@@ -841,7 +840,7 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
         if (total > maxResultTableSizeBytes) {
             LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
             util::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
-                            string("Incomplete result already too large ") + to_string(total));
+                            "Incomplete result already too large " + to_string(total));
             _multiError.push_back(err);
             squash("czar, file too large");
         }

@@ -74,7 +74,8 @@ struct ErrorCode {
  */
 class Error {
 public:
-    Error(int code, std::string const& msg = "", int status = ErrorCode::NONE, bool logLvLErr = true);
+    explicit Error(int code, std::string const& msg = "", int status = ErrorCode::NONE,
+                   bool logLvLErr = true);
 
     Error() = default;
     Error(Error const&) = default;
@@ -105,7 +106,7 @@ public:
 
 private:
     int _code = ErrorCode::NONE;
-    std::string _msg{""};
+    std::string _msg;
     int _status = ErrorCode::NONE;
 };
 

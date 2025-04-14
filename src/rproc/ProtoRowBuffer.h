@@ -39,7 +39,7 @@ public:
     ProtoRowBuffer(proto::ResponseData const& res, int jobId, std::string const& jobIdColName,
                    std::string const& jobIdSqlType, int jobIdMysqlType);
 
-    ~ProtoRowBuffer() override;
+    ~ProtoRowBuffer() override = default;
 
     unsigned fetch(char* buffer, unsigned bufLen) override;
     std::string dump() const override;
