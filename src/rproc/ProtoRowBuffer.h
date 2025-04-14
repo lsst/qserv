@@ -24,9 +24,11 @@
 #define LSST_QSERV_RPROC_PROTOROWBUFFER_H
 
 // System headers
-#include <limits>
+#include <string>
+#include <vector>
 
 // Qserv headers
+#include "mysql/MySqlUtils.h"
 #include "mysql/RowBuffer.h"
 #include "proto/worker.pb.h"
 
@@ -40,82 +42,14 @@ public:
     unsigned fetch(char* buffer, unsigned bufLen) override;
     std::string dump() const override;
 
-    /// Escape a bytestring for LOAD DATA INFILE, as specified by MySQL doc:
-    /// https://dev.mysql.com/doc/refman/5.1/en/load-data.html
-    /// This is limited to:
-    /// Character    Escape Sequence
-    /// \0     An ASCII NUL (0x00) character
-    /// \b     A backspace character
-    /// \n     A newline (linefeed) character
-    /// \r     A carriage return character
-    /// \t     A tab character.
-    /// \Z     ASCII 26 (Control+Z)
-    /// \N     NULL
-    ///
-    /// @return the number of bytes written to dest
-    template <typename Iter, typename CIter>
-    static inline int escapeString(Iter destBegin, CIter srcBegin, CIter srcEnd) {
-        // mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
-        // empty string isn't escaped
-        if (srcEnd == srcBegin) return 0;
-        assert(srcEnd - srcBegin > 0);
-        assert(srcEnd - srcBegin < std::numeric_limits<int>::max() / 2);
-        Iter destI = destBegin;
-        for (CIter i = srcBegin; i != srcEnd; ++i) {
-            switch (*i) {
-                case '\0':
-                    *destI++ = '\\';
-                    *destI++ = '0';
-                    break;
-                case '\b':
-                    *destI++ = '\\';
-                    *destI++ = 'b';
-                    break;
-                case '\n':
-                    *destI++ = '\\';
-                    *destI++ = 'n';
-                    break;
-                case '\r':
-                    *destI++ = '\\';
-                    *destI++ = 'r';
-                    break;
-                case '\t':
-                    *destI++ = '\\';
-                    *destI++ = 't';
-                    break;
-                case '\032':
-                    *destI++ = '\\';
-                    *destI++ = 'Z';
-                    break;
-                case '\\': {
-                    auto const nextI = i + 1;
-                    if (srcEnd == nextI) {
-                        *destI++ = *i;
-                    } else if (*nextI != 'N') {
-                        *destI++ = '\\';
-                        *destI++ = '\\';
-                    } else {
-                        // in this case don't modify anything, because Null (\N) is not treated by escaping in
-                        // this context.
-                        *destI++ = *i;
-                    }
-                    break;
-                }
-                default:
-                    *destI++ = *i;
-                    break;
-            }
-        }
-        return destI - destBegin;
-    }
-
     /// Copy a rawColumn to an STL container
     template <typename T>
     static inline int copyColumn(T& dest, std::string const& rawColumn) {
         int existingSize = dest.size();
         dest.resize(existingSize + 2 + 2 * rawColumn.size());
         dest[existingSize] = '\'';
-        int valSize = escapeString(dest.begin() + existingSize + 1, rawColumn.begin(), rawColumn.end());
+        int valSize =
+                mysql::escapeString(dest.begin() + existingSize + 1, rawColumn.begin(), rawColumn.end());
         dest[existingSize + 1 + valSize] = '\'';
         dest.resize(existingSize + 2 + valSize);
         return 2 + valSize;
