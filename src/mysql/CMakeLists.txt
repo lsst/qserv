@@ -26,6 +26,22 @@ target_link_libraries(testLocalInfile
     Boost::unit_test_framework
 )
 
+FUNCTION(mysql_tests)
+    FOREACH(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            mysql
+            Boost::unit_test_framework
+            Threads::Threads
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    ENDFOREACH()
+ENDFUNCTION()
+
+mysql_tests(
+    testMySqlUtils
+)
+
 # Even though the test is commented out, leave this so it's findable by searching for
 # text similar to other WILL_FAIL tests.
 # WILL_FAIL does not work, I think because it exits with an error "Failed to connect to MySQL: Error"
