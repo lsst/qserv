@@ -64,35 +64,6 @@ using namespace std;
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.MergingHandler");
 
-string xrootdStatus2str(XrdCl::XRootDStatus const& s) {
-    return "status=" + to_string(s.status) + ", code=" + to_string(s.code) + ", errNo=" + to_string(s.errNo) +
-           ", message='" + s.GetErrorMessage() + "'";
-}
-
-/**
- * Extract the file path (including both slashes) from the XROOTD-style URL.
- * Input:
- *   @code
- *   "xroot://<server>:<port>//<path>""
- *   @code
- * Output:
- *   @code
- *   "//<path>""
- *   @code
- */
-string xrootUrl2path(string const& xrootUrl) {
-    string const delim = "//";
-    auto firstPos = xrootUrl.find(delim, 0);
-    if (string::npos != firstPos) {
-        // Resume serching at the first character following the delimiter.
-        auto secondPos = xrootUrl.find(delim, firstPos + 2);
-        if (string::npos != secondPos) {
-            return xrootUrl.substr(secondPos);
-        }
-    }
-    throw runtime_error("MergingHandler::" + string(__func__) + " illegal file resource url: " + xrootUrl);
-}
-
 /**
  * Instances of this class are used to update statistic counter on starting
  * and finishing operations with the result files.
@@ -113,127 +84,6 @@ lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
                 lsst::qserv::qdisp::CzarStats::get()->addFileReadRate(bytes / seconds.count());
             }
         };
-
-bool readXrootFileResourceAndMerge(string const& xrootUrl,
-                                   function<bool(char const*, uint32_t, bool&)> const& messageIsReady) {
-    string const context = "MergingHandler::" + string(__func__) + " ";
-
-    LOGS(_log, LOG_LVL_DEBUG, context << "xrootUrl=" << xrootUrl);
-
-    // Track the file while the control flow is staying within the function.
-    ResultFileTracker const resultFileTracker;
-
-    // The algorithm will read the input file to locate result objects containing rows
-    // and call the provided callback for each such row.
-    XrdCl::File file;
-    XrdCl::XRootDStatus status;
-    status = file.Open(xrootUrl, XrdCl::OpenFlags::Read);
-    if (!status.IsOK()) {
-        LOGS(_log, LOG_LVL_ERROR,
-             context << "failed to open " << xrootUrl << ", " << xrootdStatus2str(status));
-        return false;
-    }
-
-    // A value of the flag is set by the message processor when it's time to finish
-    // or abort reading  the file.
-    bool last = false;
-
-    // Temporary buffer for messages read from the file. The buffer will be (re-)allocated
-    // as needed to get the largest message. Note that a size of the messages won't exceed
-    // a limit set in ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT.
-    unique_ptr<char[]> buf;
-    size_t bufSize = 0;
-
-    uint64_t offset = 0;  // A location of the next byte to be read from the input file.
-    bool success = true;
-    try {
-        while (!last) {
-            // This starts a timer of the data transmit rate tracker.
-            auto transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
-
-            // Read the frame header that carries a size of the subsequent message.
-            uint32_t msgSizeBytes = 0;
-            uint32_t bytesRead = 0;
-            status = file.Read(offset, sizeof(uint32_t), reinterpret_cast<char*>(&msgSizeBytes), bytesRead);
-            if (!status.IsOK()) {
-                throw runtime_error(context + "failed to read next frame header (" +
-                                    to_string(sizeof(uint32_t)) + " bytes) at offset " + to_string(offset) +
-                                    " from " + xrootUrl + ", " + xrootdStatus2str(status));
-            }
-            offset += bytesRead;
-
-            if (bytesRead == 0) break;
-            if (bytesRead != sizeof(uint32_t)) {
-                throw runtime_error(context + "read " + to_string(bytesRead) + " bytes instead of " +
-                                    to_string(sizeof(uint32_t)) +
-                                    " bytes when reading next frame header at offset " +
-                                    to_string(offset - bytesRead) + " from " + xrootUrl + ", " +
-                                    xrootdStatus2str(status));
-            }
-            if (msgSizeBytes == 0) break;
-            if (msgSizeBytes > ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) {
-                throw runtime_error(context + "message size of " + to_string(msgSizeBytes) +
-                                    " bytes at the frame header read at offset " +
-                                    to_string(offset - bytesRead) + " exceeds the hard limit set to " +
-                                    to_string(ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT) + " bytes, from " +
-                                    xrootUrl + ", " + xrootdStatus2str(status));
-            }
-
-            // (Re-)allocate the buffer if needed.
-            if (bufSize < msgSizeBytes) {
-                bufSize = msgSizeBytes;
-                buf.reset(new char[bufSize]);
-            }
-
-            // Read the message.
-            size_t bytes2read = msgSizeBytes;
-            while (bytes2read != 0) {
-                uint32_t bytesRead = 0;
-                status = file.Read(offset, bytes2read, buf.get(), bytesRead);
-                if (!status.IsOK()) {
-                    throw runtime_error(context + "failed to read " + to_string(bytes2read) +
-                                        " bytes at offset " + to_string(offset) + " from " + xrootUrl + ", " +
-                                        xrootdStatus2str(status));
-                }
-                if (bytesRead == 0) {
-                    throw runtime_error(context + "read 0 bytes instead of " + to_string(bytes2read) +
-                                        " bytes at offset " + to_string(offset) + " from " + xrootUrl + ", " +
-                                        xrootdStatus2str(status));
-                }
-                offset += bytesRead;
-                bytes2read -= bytesRead;
-            }
-
-            // Destroying the tracker will result in stopping the tracker's timer and
-            // reporting the file read rate before proceeding to the merge.
-            transmitRateTracker->addToValue(msgSizeBytes);
-            transmitRateTracker->setSuccess();
-            transmitRateTracker.reset();
-
-            // Proceed to the result merge
-            success = messageIsReady(buf.get(), msgSizeBytes, last);
-            if (!success) break;
-        }
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, ex.what());
-        success = false;
-    }
-    status = file.Close();
-    if (!status.IsOK()) {
-        LOGS(_log, LOG_LVL_WARN,
-             context << "failed to close " << xrootUrl << ", " << xrootdStatus2str(status));
-    }
-
-    // Remove the file from the worker if it still exists. Report and ignore errors.
-    // The files will be garbage-collected by workers.
-    XrdCl::FileSystem fileSystem(xrootUrl);
-    status = fileSystem.Rm(xrootUrl2path(xrootUrl));
-    if (!status.IsOK()) {
-        LOGS(_log, LOG_LVL_WARN,
-             context << "failed to remove " << xrootUrl << ", " << xrootdStatus2str(status));
-    }
-    return success;
-}
 
 bool readHttpFileAndMerge(string const& httpUrl,
                           function<bool(char const*, uint32_t, bool&)> const& messageIsReady,
@@ -442,17 +292,8 @@ bool MergingHandler::flush(proto::ResponseSummary const& responseSummary, uint32
         throw runtime_error("MergingHandler::flush ** message deserialization failed **");
     };
 
-    bool success = false;
-    if (!responseSummary.fileresource_xroot().empty()) {
-        success = ::readXrootFileResourceAndMerge(responseSummary.fileresource_xroot(), dataMerger);
-    } else if (!responseSummary.fileresource_http().empty()) {
-        success = ::readHttpFileAndMerge(responseSummary.fileresource_http(), dataMerger,
-                                         MergingHandler::_getHttpConnPool());
-    } else {
-        string const err = "Unexpected result delivery protocol";
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
-        throw util::Bug(ERR_LOC, err);
-    }
+    bool const success = ::readHttpFileAndMerge(responseSummary.fileresource_http(), dataMerger,
+                                                MergingHandler::_getHttpConnPool());
     if (success) {
         _infileMerger->mergeCompleteFor(responseSummary.jobid());
     }

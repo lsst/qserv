@@ -141,20 +141,9 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
     // These attributes will be passed back to Czar in the Protobuf response
     // to advice which result delivery channel to use.
     auto const workerConfig = wconfig::WorkerConfig::instance();
-    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
     _resultFileName = ::buildResultFileName(t);
     _resultFileAbsPath = ::buildResultFilePath(_resultFileName, workerConfig->resultsDirname());
-    if (resultDeliveryProtocol == wconfig::ConfigValResultDeliveryProtocol::XROOT) {
-        // NOTE: one extra '/' after the <host>[:<port>] spec is required to make
-        // a "valid" XROOTD url.
-        _resultFileXrootUrl = "xroot://" + _fqdn + ":" + to_string(workerConfig->resultsXrootdPort()) + "/" +
-                              _resultFileAbsPath;
-    } else if (resultDeliveryProtocol == wconfig::ConfigValResultDeliveryProtocol::HTTP) {
-        _resultFileHttpUrl = "http://" + _fqdn + ":" + to_string(resultsHttpPort) + "/" + _resultFileName;
-    } else {
-        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
-                            wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
-    }
+    _resultFileHttpUrl = "http://" + _fqdn + ":" + to_string(resultsHttpPort) + "/" + _resultFileName;
     if (t->has_user()) {
         user = t->user();
     } else {

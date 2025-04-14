@@ -42,57 +42,6 @@
 
 namespace lsst::qserv::wconfig {
 
-/// This class handles the special case for the configuration value representing
-/// the communications protocol used which can have a text value of "HTTP" or "
-/// "XROOTD", case-insenitive.
-class ConfigValResultDeliveryProtocol : public util::ConfigVal {
-public:
-    using CvrdpPtr = std::shared_ptr<ConfigValResultDeliveryProtocol>;
-    enum TEnum {
-        HTTP = 0,  ///< Use HTTP protocol
-        XROOT = 1  ///< Use XROOTD file protocol
-    };
-
-    ConfigValResultDeliveryProtocol() = delete;
-    virtual ~ConfigValResultDeliveryProtocol() = default;
-
-    static CvrdpPtr create(util::ConfigValMap& configValMap, std::string const& section,
-                           std::string const& name, bool required, std::string const& defVal,
-                           bool hidden = false) {
-        auto newPtr = CvrdpPtr(new ConfigValResultDeliveryProtocol(section, name, required, defVal, hidden));
-        addToMapBase(configValMap, newPtr);
-        return newPtr;
-    }
-
-    /// Return the appropriate TEnum for the given `str`, where "" returns HTTP.
-    /// @throws ConfigException
-    static TEnum parse(std::string const& str);
-
-    /// Convert the TEnum `protocol` to the appropriate string.
-    static std::string toString(TEnum protocol);
-
-    /// Return the string value of this object.
-    std::string getValStrDanger() const override { return toString(_val); }
-
-    /// Return the string default value of this object.
-    std::string getDefValStrDanger() const override { return toString(_defVal); }
-
-    void setValFromConfigStoreChild(util::ConfigStore const& configStore) override;
-    TEnum getVal() const { return _val; }
-
-    void setVal(TEnum val) {
-        _val = val;
-        logValSet();
-    }
-
-private:
-    ConfigValResultDeliveryProtocol(std::string const& section, std::string const& name, bool required,
-                                    std::string const& defVal, bool hidden)
-            : ConfigVal(section, name, required, hidden), _defVal(parse(defVal)), _val(_defVal) {}
-    TEnum const _defVal;  ///< Default value for the item this class is storing.
-    TEnum _val;           ///< Value for the item this class is storing.
-};
-
 /// Provide all configuration parameters for a Qserv worker instance.
 /// Parse an INI configuration file, identify required parameters and ignore
 /// others, analyze and store them inside private member variables, use default
@@ -226,11 +175,6 @@ public:
 
     /// @return the number of the BOOST ASIO threads for servicing HTGTP requests
     size_t resultsNumHttpThreads() const { return _resultsNumHttpThreads->getVal(); }
-
-    /// @return the result delivery method
-    ConfigValResultDeliveryProtocol::TEnum resultDeliveryProtocol() const {
-        return _resultDeliveryProtocol->getVal();
-    }
 
     /// @return 'true' if result files (if any) left after the previous run of the worker
     /// had to be deleted from the corresponding folder.
@@ -373,8 +317,6 @@ private:
             util::ConfigValTUInt::create(_configValMap, "results", "xrootd_port", notReq, 1094);
     CVTUIntPtr _resultsNumHttpThreads =
             util::ConfigValTUInt::create(_configValMap, "results", "num_http_threads", notReq, 1);
-    ConfigValResultDeliveryProtocol::CvrdpPtr _resultDeliveryProtocol =
-            ConfigValResultDeliveryProtocol::create(_configValMap, "results", "protocol", notReq, "HTTP");
     CVTBoolPtr _resultsCleanUpOnStart =
             util::ConfigValTBool::create(_configValMap, "results", "clean_up_on_start", notReq, true);
 
