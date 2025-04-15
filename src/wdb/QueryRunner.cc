@@ -127,8 +127,7 @@ bool QueryRunner::runQuery() {
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_TRACE,
-         __func__ << " tid=" << _task->getIdStr() << " scsId=" << _task->getSendChannel()->getScsId());
+    LOGS(_log, LOG_LVL_TRACE, __func__ << " tid=" << _task->getIdStr());
 
     // Start tracking the task.
     auto now = chrono::system_clock::now();
