@@ -75,8 +75,6 @@ class FileChannelShared {
 public:
     using Ptr = std::shared_ptr<FileChannelShared>;
 
-    static std::atomic<uint64_t> scsSeqId;  ///< Source for unique _scsId numbers
-
     /**
      * This method gets called upon receiving a notification from Czar about
      * the Czar service restart. The method will clean result files corresponding
@@ -137,9 +135,6 @@ public:
 
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
-
-    /// @return the sendChannelShared sequence number, which is always valid.
-    uint64_t getScsId() const { return _scsId; }
 
     /// @return the current sql connection count
     int getSqlConnectionCount() { return _sqlConnectionCount; }
@@ -237,8 +232,6 @@ private:
     // Allocatons/deletion of the data messages are managed by Google Protobuf Arena.
     std::unique_ptr<google::protobuf::Arena> _protobufArena;
     proto::ResponseData* _responseData = 0;
-
-    uint64_t const _scsId;  ///< id number for this FileChannelShared
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using FileChannelShared.

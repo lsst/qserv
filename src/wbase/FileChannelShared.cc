@@ -112,8 +112,6 @@ size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
 
 namespace lsst::qserv::wbase {
 
-atomic<uint64_t> FileChannelShared::scsSeqId{0};
-
 mutex FileChannelShared::_resultsDirCleanupMtx;
 
 void FileChannelShared::cleanUpResultsOnCzarRestart(uint32_t czarId, QueryId queryId) {
@@ -267,8 +265,7 @@ FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendC
         : _sendChannel(sendChannel),
           _czarId(czarId),
           _workerId(workerId),
-          _protobufArena(make_unique<google::protobuf::Arena>()),
-          _scsId(scsSeqId++) {
+          _protobufArena(make_unique<google::protobuf::Arena>()) {
     LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created");
     if (_sendChannel == nullptr) {
         throw util::Bug(ERR_LOC, "FileChannelShared constructor given nullptr");
