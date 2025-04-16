@@ -42,7 +42,7 @@
 #include "util/Bug.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
-#include "util/ResultFileNameParser.h"
+#include "util/ResultFileName.h"
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
 #include "xrdsvc/StreamBuffer.h"
@@ -62,7 +62,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.FileChannelShared");
 
 bool isResultFile(fs::path const& filePath) {
     return filePath.has_filename() && filePath.has_extension() &&
-           (filePath.extension() == util::ResultFileNameParser::fileExt);
+           (filePath.extension() == util::ResultFileName::fileExt);
 }
 
 /**
@@ -124,8 +124,8 @@ void FileChannelShared::cleanUpResultsOnCzarRestart(uint32_t czarId, QueryId que
     size_t const numFilesRemoved = ::cleanUpResultsImpl(
             context, dirPath, [czarId, queryId, &context](string const& fileName) -> bool {
                 try {
-                    auto const fileAttributes = util::ResultFileNameParser(fileName);
-                    return (fileAttributes.czarId == czarId) && (fileAttributes.queryId <= queryId);
+                    auto const fileAttributes = util::ResultFileName(fileName);
+                    return (fileAttributes.czarId() == czarId) && (fileAttributes.queryId() <= queryId);
                 } catch (exception const& ex) {
                     LOGS(_log, LOG_LVL_WARN,
                          context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
@@ -156,8 +156,8 @@ void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId) {
     size_t const numFilesRemoved = ::cleanUpResultsImpl(
             context, dirPath, [&context, czarId, queryId](string const& fileName) -> bool {
                 try {
-                    auto const fileAttributes = util::ResultFileNameParser(fileName);
-                    return (fileAttributes.czarId == czarId) && (fileAttributes.queryId == queryId);
+                    auto const fileAttributes = util::ResultFileName(fileName);
+                    return (fileAttributes.czarId() == czarId) && (fileAttributes.queryId() == queryId);
                 } catch (exception const& ex) {
                     LOGS(_log, LOG_LVL_WARN,
                          context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
@@ -223,7 +223,7 @@ json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned in
                 ++numTotal;
 
                 // Skip files not matching the query criteria if the one was requested.
-                json const jsonTask = util::ResultFileNameParser(filePath).toJson();
+                json const jsonTask = util::ResultFileName(filePath).toJson();
                 QueryId const queryId = jsonTask.at("query_id");
                 if (!queryIdsFilter.empty() && !queryIdsFilter.contains(queryId)) continue;
 

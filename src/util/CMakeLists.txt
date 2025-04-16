@@ -20,7 +20,7 @@ target_sources(util PRIVATE
     Issue.cc
     MultiError.cc
     Mutex.cc
-    ResultFileNameParser.cc
+    ResultFileName.cc
     SemaMgr.cc
     StringHash.cc
     String.cc
@@ -61,7 +61,7 @@ util_tests(
     testCommon
     testConfigStore
     testEventThread
-    testFileNameParser
+    testResultFileName
     testIterableFormatter
     testHistogram
     testMultiError
