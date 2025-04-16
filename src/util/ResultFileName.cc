@@ -34,7 +34,7 @@ namespace fs = boost::filesystem;
 
 namespace lsst::qserv::util {
 
-string const ResultFileName::fileExt = ".proto";
+string const ResultFileName::fileExt = ".csv";
 
 ResultFileName::ResultFileName(qmeta::CzarId czarId, QueryId queryId, uint32_t jobId, uint32_t chunkId,
                                uint32_t attemptCount)
