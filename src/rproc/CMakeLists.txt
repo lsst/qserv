@@ -3,7 +3,7 @@ add_dependencies(rproc proto)
 
 target_sources(rproc PRIVATE
     InfileMerger.cc
-    ProtoRowBuffer.cc
+    ProtoCsvBuffer.cc
 )
 
 target_link_libraries(rproc PUBLIC
@@ -43,5 +43,5 @@ FUNCTION(rproc_tests)
 ENDFUNCTION()
 
 rproc_tests(
-    testProtoRowBuffer
+    testProtoCsvBuffer
 )
