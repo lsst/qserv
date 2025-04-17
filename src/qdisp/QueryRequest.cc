@@ -199,13 +199,12 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
         throw util::Bug(ERR_LOC, err);
     }
-    uint32_t resultRows = 0;
-    if (!jq->getDescription()->respHandler()->flush(responseSummary, resultRows)) {
+    if (!jq->getDescription()->respHandler()->flush(responseSummary)) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " not flushOk");
         _flushError(jq);
         return false;
     }
-    _totalRows += resultRows;
+    _totalRows += responseSummary.rowcount();
 
     // At this point all data for this job have been read, there's no point in
     // having XrdSsi wait for anything.
