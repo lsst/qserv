@@ -36,7 +36,8 @@
 
 namespace lsst::qserv::mysql {
 
-class RowBuffer;  // Forward. Defined in LocalInfile.cc
+// Forward declarations
+class CsvBuffer;
 
 /// LocalInfile : a virtual LOCAL INFILE handler for mysql to use.
 /// Do not inherit. Used in mysql_set_local_infile_handler .
@@ -48,7 +49,7 @@ class RowBuffer;  // Forward. Defined in LocalInfile.cc
 /// the mysqld's data directory (likely only possible with MyISAM
 /// tables).
 /// LocalInfile objects can obtain rows directly from a query result
-/// via a MYSQL_RES* result handle, or via a RowBuffer object, which
+/// via a MYSQL_RES* result handle, or via a CsvBuffer object, which
 /// is an abstract interface to a buffer of table rows (with constant
 /// schema). In general, client code will not need to construct
 /// LocalInfile objects directly: they instead use the
@@ -59,7 +60,7 @@ public:
     class Mgr;  // Helper for attaching to MYSQL*
 
     LocalInfile(char const* filename, MYSQL_RES* result);
-    LocalInfile(char const* filename, std::shared_ptr<RowBuffer> rowBuffer);
+    LocalInfile(char const* filename, std::shared_ptr<CsvBuffer> csvBuffer);
     ~LocalInfile();
 
     /// Read up to bufLen bytes of infile contents into buf.
@@ -71,7 +72,7 @@ public:
     /// @return an error code if available
     int getError(char* buf, unsigned int bufLen);
     /// @return true if the instance is valid for usage.
-    inline bool isValid() const { return static_cast<bool>(_rowBuffer); }
+    inline bool isValid() const { return static_cast<bool>(_csvBuffer); }
 
 private:
     char* _buffer;                          ///< Internal buffer for passing to mysql
@@ -79,7 +80,7 @@ private:
     char* _leftover;                        ///< Ptr to bytes not yet sent to mysql
     unsigned _leftoverSize;                 ///< Size of bytes not yet sent in _leftover
     std::string _filename;                  ///< virtual filename for mysql
-    std::shared_ptr<RowBuffer> _rowBuffer;  ///< Underlying row source
+    std::shared_ptr<CsvBuffer> _csvBuffer;  ///< Underlying row source
 };
 
 /// Do not inherit or copy. Used in mysql_set_local_infile_handler
@@ -91,8 +92,8 @@ private:
 /// for more information on the required interface.
 class LocalInfile::Mgr : boost::noncopyable {
 public:
-    Mgr() {}
-    ~Mgr() {}
+    Mgr() = default;
+    ~Mgr() = default;
 
     // User interface //////////////////////////////////////////////////
     /// Attach the handler to a mysql client connection
@@ -104,15 +105,15 @@ public:
     void prepareSrc(std::string const& filename, MYSQL_RES* result);
 
     /// Prepare a local infile from a MYSQL_RES* and link it to an
-    /// auto-generated filename. A RowBuffer object is constructed and
+    /// auto-generated filename. A CsvBuffer object is constructed and
     /// used internally.
     /// @return generated filename
     std::string prepareSrc(MYSQL_RES* result);
 
-    /// Prepare a local infile from a RowBuffer and link it to an
+    /// Prepare a local infile from a CsvBuffer and link it to an
     /// auto-generated filename.
     /// @return generated filename
-    std::string prepareSrc(std::shared_ptr<RowBuffer> const& rowbuffer);
+    std::string prepareSrc(std::shared_ptr<CsvBuffer> const& csvBuffer);
 
     // mysql_local_infile_handler interface ////////////////////////////////
     // These function pointers are needed to attach a handler
@@ -122,19 +123,19 @@ public:
 
     static int local_infile_error(void* ptr, char* error_msg, unsigned int error_msg_len);
 
-    std::string insertBuffer(std::shared_ptr<RowBuffer> const& rb);
-    void setBuffer(std::string const& s, std::shared_ptr<RowBuffer> const& rb);
-    std::shared_ptr<RowBuffer> get(std::string const& s);
+    std::string insertBuffer(std::shared_ptr<CsvBuffer> const& csvBuffer);
+    void setBuffer(std::string const& s, std::shared_ptr<CsvBuffer> const& csvBuffer);
+    std::shared_ptr<CsvBuffer> get(std::string const& filename);
 
 private:
     /// @return next filename
     std::string _nextFilename();
 
     /// @return true if new element inserted
-    bool _set(std::string const& s, std::shared_ptr<RowBuffer> const& rb);
+    bool _set(std::string const& filename, std::shared_ptr<CsvBuffer> const& csvBuffer);
 
-    typedef std::map<std::string, std::shared_ptr<RowBuffer>> RowBufferMap;
-    RowBufferMap _map;
+    typedef std::map<std::string, std::shared_ptr<CsvBuffer>> CsvBufferMap;
+    CsvBufferMap _map;
     std::mutex _mapMutex;
 };
 
