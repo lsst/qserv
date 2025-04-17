@@ -46,10 +46,10 @@
 // Forward declarations
 namespace lsst::qserv {
 namespace mysql {
+class CsvStream;
 class MysqlConfig;
-}
+}  // namespace mysql
 namespace proto {
-class ResponseData;
 class ResponseSummary;
 }  // namespace proto
 namespace qdisp {
@@ -90,7 +90,8 @@ public:
 /// To use, construct a configured instance, then call merge() to kick off the
 /// merging process, and finalize() to wait for outstanding merging processes
 /// and perform the appropriate post-processing before returning.  merge() right
-/// now expects a parsed ResponseData message.
+/// now expects a fragment of the CSV-formatted stream which is ready to be ingested
+/// into the result table.
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
@@ -101,9 +102,10 @@ public:
     InfileMerger& operator=(InfileMerger const&) = delete;
     ~InfileMerger() = default;
 
-    /// Merge a worker response, which contains a single ResponseData message
+    /// Merge a worker response, which contains a single message
     /// @return true if merge was successfully imported.
-    bool merge(proto::ResponseSummary const& responseSummary, proto::ResponseData const& responseData);
+    bool merge(proto::ResponseSummary const& responseSummary,
+               std::shared_ptr<mysql::CsvStream> const& csvStream);
 
     /// Indicate the merge for the job is complete.
     void mergeCompleteFor(int jobId);
