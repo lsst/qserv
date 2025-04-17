@@ -6,7 +6,7 @@ target_sources(mysql PRIVATE
     MySqlConfig.cc
     MySqlConnection.cc
     MySqlUtils.cc
-    RowBuffer.cc
+    CsvBuffer.cc
     SchemaFactory.cc
 )
 
@@ -40,6 +40,7 @@ ENDFUNCTION()
 
 mysql_tests(
     testMySqlUtils
+    testCsvBuffer
 )
 
 # Even though the test is commented out, leave this so it's findable by searching for

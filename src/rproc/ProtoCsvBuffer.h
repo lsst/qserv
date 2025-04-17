@@ -20,8 +20,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_RPROC_PROTOROWBUFFER_H
-#define LSST_QSERV_RPROC_PROTOROWBUFFER_H
+#ifndef LSST_QSERV_RPROC_PROTOCSVBUFFER_H
+#define LSST_QSERV_RPROC_PROTOCSVBUFFER_H
 
 // System headers
 #include <string>
@@ -29,16 +29,16 @@
 
 // Qserv headers
 #include "mysql/MySqlUtils.h"
-#include "mysql/RowBuffer.h"
+#include "mysql/CsvBuffer.h"
 #include "proto/worker.pb.h"
 
 namespace lsst::qserv::rproc {
 
-/// ProtoRowBuffer is an implementation of RowBuffer designed to allow a
+/// ProtoCsvBuffer is an implementation of CsvBuffer designed to allow a
 /// LocalInfile object to use a Protobufs Result message as a row source
-class ProtoRowBuffer : public mysql::RowBuffer {
+class ProtoCsvBuffer : public mysql::CsvBuffer {
 public:
-    ProtoRowBuffer(proto::ResponseData const& res);
+    ProtoCsvBuffer(proto::ResponseData const& res);
     unsigned fetch(char* buffer, unsigned bufLen) override;
     std::string dump() const override;
 
@@ -87,4 +87,4 @@ private:
 };
 
 }  // namespace lsst::qserv::rproc
-#endif  // LSST_QSERV_RPROC_PROTOROWBUFFER_H
+#endif  // LSST_QSERV_RPROC_PROTOCSVBUFFER_H

@@ -22,12 +22,11 @@
  */
 
 // Class header
-#include "mysql/RowBuffer.h"
+#include "mysql/CsvBuffer.h"
 
 // System headers
+#include <algorithm>
 #include <cassert>
-#include <limits>
-#include <sstream>
 #include <stdexcept>
 #include <string.h>
 
@@ -38,27 +37,43 @@
 #include "mysql/LocalInfileError.h"
 #include "mysql/MySqlUtils.h"
 
-////////////////////////////////////////////////////////////////////////
-// Helpful constants
-////////////////////////////////////////////////////////////////////////
+namespace {
 std::string const mysqlNull("\\N");
-// should be less than 0.5 * infileBufferSize
-int const largeRowThreshold = 500 * 1024;
+int const largeRowThreshold = 500 * 1024;  // should be less than 0.5 * infileBufferSize
+
+}  // namespace
 
 namespace lsst::qserv::mysql {
-////////////////////////////////////////////////////////////////////////
-// Helpers
-////////////////////////////////////////////////////////////////////////
-inline unsigned updateEstRowSize(unsigned lastRowSize, Row const& r) {
-    unsigned rowSize = r.minRowSize();
-    if (lastRowSize < rowSize) {
-        return rowSize;
+
+/// Row is a mysql row abstraction that bundles field sizes and counts. Row is
+/// shallow, and does not perform any memory management.
+struct Row {
+    Row() : row(nullptr), lengths(nullptr), numFields(-1) {}
+
+    // Shallow copies all-around.
+    Row(char** row_, unsigned long int* lengths_, int numFields_)
+            : row(row_), lengths(lengths_), numFields(numFields_) {}
+
+    unsigned int minRowSize() const {
+        unsigned int sum = 0;
+        for (int i = 0; i < numFields; ++i) {
+            sum += lengths[i];
+        }
+        return sum;
     }
-    return lastRowSize;
+
+    char** row;
+    unsigned long int* lengths;
+    int numFields;
+};
+
+inline unsigned updateEstRowSize(unsigned lastRowSize, Row const& r) {
+    unsigned const rowSize = r.minRowSize();
+    return lastRowSize < rowSize ? rowSize : lastRowSize;
 }
 
 inline int addString(char* cursor, std::string const& s) {
-    int sSize = s.size();
+    int const sSize = s.size();
     memcpy(cursor, s.data(), sSize);
     return sSize;
 }
@@ -76,14 +91,14 @@ inline int addColumn(char* cursor, char* colData, int colSize) {
         // use the simple LOAD DATA INFILE escaping rules
         added = mysql::escapeString(cursor, colData, colSize);
     } else {
-        added = addString(cursor, mysqlNull);
+        added = addString(cursor, ::mysqlNull);
     }
     return added;
 }
 
-class ResRowBuffer : public RowBuffer {
+class ResCsvBuffer : public CsvBuffer {
 public:
-    ResRowBuffer(MYSQL_RES* result);
+    ResCsvBuffer(MYSQL_RES* result);
     unsigned fetch(char* buffer, unsigned bufLen) override;
     unsigned int _addRow(Row r, char* cursor, int remaining);
     bool _fetchRow(Row& r);
@@ -104,7 +119,7 @@ private:
     std::string _rowSep;
 };
 
-ResRowBuffer::ResRowBuffer(MYSQL_RES* result)
+ResCsvBuffer::ResCsvBuffer(MYSQL_RES* result)
         : _result(result), _useLargeRow(false), _fieldOffset(0), _sep("\t"), _rowSep("\n") {
     // Defer actual row fetching until fetch() is called
     assert(result);
@@ -112,16 +127,16 @@ ResRowBuffer::ResRowBuffer(MYSQL_RES* result)
     // cout << _numFields << " fields per row\n";
 }
 
-std::string ResRowBuffer::dump() const {
-    std::string str = std::string("ResRowBuffer _numFields=") + std::to_string(_numFields);
+std::string ResCsvBuffer::dump() const {
+    std::string str = std::string("ResCsvBuffer _numFields=") + std::to_string(_numFields);
     return str;
 }
 
-unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
+unsigned ResCsvBuffer::fetch(char* buffer, unsigned bufLen) {
     unsigned fetchSize = 0;
     unsigned estRowSize = 0;
     if (bufLen <= 0) {
-        throw LocalInfileError("ResRowBuffer::fetch Can't fetch non-positive bytes");
+        throw LocalInfileError("ResCsvBuffer::fetch Can't fetch non-positive bytes");
     }
     if (_useLargeRow) {
         return _fetchFromLargeRow(buffer, bufLen);
@@ -136,7 +151,7 @@ unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
             return fetchSize;
         }
         estRowSize = updateEstRowSize(estRowSize, r);
-        if (estRowSize > static_cast<unsigned>(largeRowThreshold)) {
+        if (estRowSize > static_cast<unsigned>(::largeRowThreshold)) {
             _initializeLargeRow(r);
             unsigned largeFetchSize = _fetchFromLargeRow(buffer + fetchSize, bufLen - fetchSize);
             return fetchSize + largeFetchSize;
@@ -154,7 +169,7 @@ unsigned ResRowBuffer::fetch(char* buffer, unsigned bufLen) {
 
 /// Add a row to the buffer pointed to by cursor.
 /// @return the number of bytes added.
-unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
+unsigned int ResCsvBuffer::_addRow(Row r, char* cursor, int remaining) {
     assert(remaining >= 0);  // negative remaining is nonsensical
     char* original = cursor;
     unsigned sepSize = _sep.size();
@@ -162,10 +177,9 @@ unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
     // null-terminator for mysql_real_escape_string
     unsigned allocRowSize = (2 * r.minRowSize()) + ((r.numFields - 1) * sepSize) + 1;
     if (allocRowSize > static_cast<unsigned>(remaining)) {
-        // Make buffer size in LocalInfile larger than largest
-        // row.
+        // Make buffer size in LocalInfile larger than largest row.
         // largeRowThreshold should prevent this.
-        throw LocalInfileError("ResRowBuffer::_addRow: Buffer too small for row");
+        throw LocalInfileError("ResCsvBuffer::_addRow: Buffer too small for row");
     }
     for (int i = 0; i < r.numFields; ++i) {
         if (i) {  // add separator
@@ -178,7 +192,7 @@ unsigned int ResRowBuffer::_addRow(Row r, char* cursor, int remaining) {
 }
 
 /// Fetch a row from _result and fill the caller-supplied Row.
-bool ResRowBuffer::_fetchRow(Row& r) {
+bool ResCsvBuffer::_fetchRow(Row& r) {
     MYSQL_ROW mysqlRow = mysql_fetch_row(_result);
     if (!mysqlRow) {
         return false;
@@ -193,14 +207,14 @@ bool ResRowBuffer::_fetchRow(Row& r) {
 /// Attempt to fill a buffer from a large row that may not completely fit in
 /// the buffer.
 /// This is unfinished code, but is only triggered for rows > 500kB.  Also,
-/// RowBuffer objects are used to buffer rows for LocalInfile, and because
-/// ResRowBuffer is an implementation that fetches rows from a MYSQL_RES handle,
+/// CsvBuffer is an interface for accessing the row data for LocalInfile, and because
+/// ResCsvBuffer is an implementation that fetches rows from a MYSQL_RES handle,
 /// and Qserv will generally use rows received from workers as CSV-formatted
-/// files, ResRowBuffer objects are not planned for use in a normally
-/// operating Qserv system. Still, ResRowBuffer is useful for *testing*
+/// files, ResCsvBuffer objects are not planned for use in a normally
+/// operating Qserv system. Still, ResCsvBuffer is useful for *testing*
 /// LocalInfile (e.g., loading the result of a SELECT statement using LOAD DATA
 /// INFILE).
-unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
+unsigned ResCsvBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
     // Insert field-at-a-time,
     char* cursor = buffer;
     int remaining = bufLen;
@@ -220,23 +234,101 @@ unsigned ResRowBuffer::_fetchFromLargeRow(char* buffer, int bufLen) {
         // FIXME: unfinished
     }
     if (cursor == buffer) {  // Were we able to put anything in?
-        throw LocalInfileError("ResRowBuffer::_fetchFromLargeRow: Buffer too small for single column!");
+        throw LocalInfileError("ResCsvBuffer::_fetchFromLargeRow: Buffer too small for single column!");
     }
     return bufLen - remaining;
 }
 
 /// Init structures for large rows.
-void ResRowBuffer::_initializeLargeRow(Row const& largeRow) {
+void ResCsvBuffer::_initializeLargeRow(Row const& largeRow) {
     _useLargeRow = true;
     _fetchRow(_largeRow);
     _fieldOffset = 0;
 }
 
-////////////////////////////////////////////////////////////////////////
-// RowBuffer Implementation
-////////////////////////////////////////////////////////////////////////
-std::shared_ptr<RowBuffer> RowBuffer::newResRowBuffer(MYSQL_RES* result) {
-    Ptr p = std::make_shared<ResRowBuffer>(result);
-    return p;
+std::shared_ptr<CsvBuffer> newResCsvBuffer(MYSQL_RES* result) {
+    return std::make_shared<ResCsvBuffer>(result);
 }
+
+CsvStream::CsvStream(std::size_t maxRecords) : _maxRecords(maxRecords) {
+    if (maxRecords == 0) {
+        throw std::invalid_argument("CsvStream::CsvStream: maxRecords must be greater than 0");
+    }
+}
+
+void CsvStream::push(char const* data, std::size_t size) {
+    std::unique_lock<std::mutex> lock(_mtx);
+    while (_records.size() >= _maxRecords) {
+        _cv.wait(lock);
+    }
+    if (data != nullptr && size != 0) {
+        _records.emplace_back(std::make_shared<std::string>(data, size));
+    } else {
+        // Empty string is meant to indicate the end of the stream.
+        _records.emplace_back(std::make_shared<std::string>());
+    }
+    _cv.notify_one();
+}
+
+std::shared_ptr<std::string> CsvStream::pop() {
+    std::unique_lock<std::mutex> lock(_mtx);
+    while (_records.empty()) {
+        _cv.wait(lock);
+    }
+    std::shared_ptr<std::string> front = _records.front();
+    _records.pop_front();
+    _cv.notify_one();
+    return front;
+}
+
+bool CsvStream::empty() const {
+    std::unique_lock<std::mutex> lock(_mtx);
+    return _records.empty();
+}
+
+/**
+ * CsvStreamBuffer is a CsvBuffer that reads from a CsvStream. It is used to read
+ * data from a CsvStream in a buffered manner.
+ * @note The current implementation of method fetch() could be further optimized
+ * to fetch more than one record at a time. The current implementation
+ * fetches one record at a time, which may be inefficient for small records.
+ * Though, in practice, this is not an issue in the current design of the result
+ * merging algorithm.
+ */
+class CsvStreamBuffer : public CsvBuffer {
+public:
+    explicit CsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) : _csvStream(csvStream) {}
+
+    unsigned fetch(char* buffer, unsigned bufLen) override {
+        if (bufLen == 0) {
+            throw LocalInfileError("CsvStreamBuffer::fetch Can't fetch non-positive bytes");
+        }
+        if (_str == nullptr) {
+            _str = _csvStream->pop();
+            _offset = 0;
+        }
+        if (_str->empty()) return 0;
+        if (_offset >= _str->size()) {
+            _str = _csvStream->pop();
+            _offset = 0;
+            if (_str->empty()) return 0;
+        }
+        unsigned const bytesToCopy = std::min(bufLen, static_cast<unsigned>(_str->size() - _offset));
+        ::memcpy(buffer, _str->data() + _offset, bytesToCopy);
+        _offset += bytesToCopy;
+        return bytesToCopy;
+    }
+
+    std::string dump() const override { return "CsvStreamBuffer"; }
+
+private:
+    std::shared_ptr<CsvStream> _csvStream;
+    std::shared_ptr<std::string> _str;
+    std::size_t _offset = 0;
+};
+
+std::shared_ptr<CsvBuffer> newCsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) {
+    return std::make_shared<CsvStreamBuffer>(csvStream);
+}
+
 }  // namespace lsst::qserv::mysql

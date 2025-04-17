@@ -62,7 +62,7 @@
 #include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
-#include "rproc/ProtoRowBuffer.h"
+#include "rproc/ProtoCsvBuffer.h"
 #include "sql/Schema.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
@@ -187,8 +187,8 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
     virtFileT.start();
-    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(responseData);
-    std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
+    auto const pCsvBuffer = std::make_shared<ProtoCsvBuffer>(responseData);
+    std::string const virtFile = _infileMgr.prepareSrc(pCsvBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
 

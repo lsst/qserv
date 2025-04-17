@@ -22,20 +22,20 @@
  */
 
 // Class header
-#include "rproc/ProtoRowBuffer.h"
+#include "rproc/ProtoCsvBuffer.h"
 
 // Qserv headers
 #include "proto/worker.pb.h"
 #include "proto/FakeProtocolFixture.h"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE ProtoRowBuffer_1
+#define BOOST_TEST_MODULE ProtoCsvBuffer_1
 #include <boost/test/unit_test.hpp>
 
 namespace test = boost::test_tools;
 namespace gio = google::protobuf::io;
 
-using lsst::qserv::rproc::ProtoRowBuffer;
+using lsst::qserv::rproc::ProtoCsvBuffer;
 
 struct Fixture {
     Fixture(void) {}
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(TestCopyColumn) {
     std::string simple = "Hello my name is bob";
     std::string eSimple = "'" + simple + "'";
     std::string target;
-    int copied = ProtoRowBuffer::copyColumn(target, simple);
+    int copied = ProtoCsvBuffer::copyColumn(target, simple);
     BOOST_CHECK_EQUAL(copied, static_cast<int>(eSimple.size()));
     BOOST_CHECK_EQUAL(target, eSimple);
 }

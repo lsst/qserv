@@ -39,7 +39,7 @@
 
 // Qserv headers
 #include "mysql/LocalInfileError.h"
-#include "mysql/RowBuffer.h"
+#include "mysql/CsvBuffer.h"
 
 namespace {
 
@@ -62,18 +62,18 @@ LocalInfile::LocalInfile(char const* filename, MYSQL_RES* result) : _filename(fi
     _leftover = 0;
     _leftoverSize = 0;
     assert(result);
-    _rowBuffer = RowBuffer::newResRowBuffer(result);
+    _csvBuffer = newResCsvBuffer(result);
 }
 
-LocalInfile::LocalInfile(char const* filename, std::shared_ptr<RowBuffer> rowBuffer)
-        : _filename(filename), _rowBuffer(rowBuffer) {
+LocalInfile::LocalInfile(char const* filename, std::shared_ptr<CsvBuffer> csvBuffer)
+        : _filename(filename), _csvBuffer(csvBuffer) {
     // Should have buffer >= sizeof(single row)
     const int defaultBuffer = infileBufferSize;
     _buffer = new char[defaultBuffer];
     _bufferSize = defaultBuffer;
     _leftover = 0;
     _leftoverSize = 0;
-    assert(_rowBuffer);
+    assert(_csvBuffer);
 }
 
 LocalInfile::~LocalInfile() {
@@ -83,7 +83,7 @@ LocalInfile::~LocalInfile() {
 }
 
 int LocalInfile::read(char* buf, unsigned int bufLen) {
-    assert(_rowBuffer);
+    assert(_csvBuffer);
     // Read into *buf
     unsigned copySize = bufLen;
     unsigned copied = 0;
@@ -102,7 +102,7 @@ int LocalInfile::read(char* buf, unsigned int bufLen) {
         // Leftover couldn't satisfy bufLen, so it's empty.
         // Re-fill the buffer.
 
-        unsigned fetchSize = _rowBuffer->fetch(_buffer, _bufferSize);
+        unsigned fetchSize = _csvBuffer->fetch(_buffer, _bufferSize);
         if (fetchSize == 0) {
             return copied;
         }
@@ -139,30 +139,25 @@ void LocalInfile::Mgr::attach(MYSQL* mysql) {
 void LocalInfile::Mgr::detachReset(MYSQL* mysql) { mysql_set_local_infile_default(mysql); }
 
 void LocalInfile::Mgr::prepareSrc(std::string const& filename, MYSQL_RES* result) {
-    setBuffer(filename, RowBuffer::newResRowBuffer(result));
+    setBuffer(filename, newResCsvBuffer(result));
 }
 
-std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) {
-    return insertBuffer(RowBuffer::newResRowBuffer(result));
-}
+std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) { return insertBuffer(newResCsvBuffer(result)); }
 
-std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<RowBuffer> const& rowBuffer) {
-    LOGS(_log, LOG_LVL_TRACE, "rowBuffer=" << rowBuffer->dump());
-    return insertBuffer(rowBuffer);
+std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<CsvBuffer> const& csvBuffer) {
+    LOGS(_log, LOG_LVL_TRACE, "csvBuffer=" << csvBuffer->dump());
+    return insertBuffer(csvBuffer);
 }
 
 // mysql_local_infile_handler interface
 int LocalInfile::Mgr::local_infile_init(void** ptr, const char* filename, void* userdata) {
     assert(userdata);
     LocalInfile::Mgr* m = static_cast<LocalInfile::Mgr*>(userdata);
-    RowBuffer::Ptr rb = m->get(std::string(filename));
-    assert(rb);
-    LocalInfile* lf = new LocalInfile(filename, rb);
+    auto csvBuffer = m->get(std::string(filename));
+    assert(csvBuffer);
+    LocalInfile* lf = new LocalInfile(filename, csvBuffer);
     *ptr = lf;
-    if (!lf->isValid()) {
-        return 1;
-    }
-    return 0;
+    return lf->isValid() ? 0 : 1;
     // userdata points at attached LocalInfileShared
 }
 
@@ -179,24 +174,24 @@ int LocalInfile::Mgr::local_infile_error(void* ptr, char* error_msg, unsigned in
     return static_cast<LocalInfile*>(ptr)->getError(error_msg, error_msg_len);
 }
 
-std::string LocalInfile::Mgr::insertBuffer(std::shared_ptr<RowBuffer> const& rb) {
-    std::string f = _nextFilename();
-    _set(f, rb);
-    return f;
+std::string LocalInfile::Mgr::insertBuffer(std::shared_ptr<CsvBuffer> const& csvBuffer) {
+    std::string const filename = _nextFilename();
+    _set(filename, csvBuffer);
+    return filename;
 }
 
-void LocalInfile::Mgr::setBuffer(std::string const& s, std::shared_ptr<RowBuffer> const& rb) {
-    bool newElem = _set(s, rb);
+void LocalInfile::Mgr::setBuffer(std::string const& filename, std::shared_ptr<CsvBuffer> const& csvBuffer) {
+    bool newElem = _set(filename, csvBuffer);
     if (!newElem) {
         throw LocalInfileError("Duplicate insertion in LocalInfile::Mgr");
     }
 }
 
-RowBuffer::Ptr LocalInfile::Mgr::get(std::string const& s) {
+std::shared_ptr<CsvBuffer> LocalInfile::Mgr::get(std::string const& filename) {
     std::lock_guard<std::mutex> lock(_mapMutex);
-    RowBufferMap::iterator i = _map.find(s);
+    CsvBufferMap::iterator i = _map.find(filename);
     if (i == _map.end()) {
-        return std::shared_ptr<RowBuffer>();
+        return std::shared_ptr<CsvBuffer>();
     }
     return i->second;
 }
@@ -209,9 +204,9 @@ std::string LocalInfile::Mgr::_nextFilename() {
     return os.str();
 }
 
-bool LocalInfile::Mgr::_set(std::string const& s, std::shared_ptr<RowBuffer> const& rb) {
+bool LocalInfile::Mgr::_set(std::string const& filename, std::shared_ptr<CsvBuffer> const& csvBuffer) {
     std::lock_guard<std::mutex> lock(_mapMutex);
-    auto res = _map.insert(std::pair<std::string, std::shared_ptr<RowBuffer>>(s, rb));
+    auto res = _map.insert(std::pair<std::string, std::shared_ptr<CsvBuffer>>(filename, csvBuffer));
     return res.second;
 }
 

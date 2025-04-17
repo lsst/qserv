@@ -20,7 +20,7 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#include "rproc/ProtoRowBuffer.h"
+#include "rproc/ProtoCsvBuffer.h"
 
 // System headers
 #include <cassert>
@@ -45,7 +45,7 @@ std::string const mysqlNull("\\N");
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.ProtoRowBuffer");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.rproc.ProtoCsvBuffer");
 
 // Print the contents of a char vector, using ascii values for non-printing characters.
 std::string printCharVect(std::vector<char> const& cVect) {
@@ -64,7 +64,7 @@ std::string printCharVect(std::vector<char> const& cVect) {
 
 namespace lsst::qserv::rproc {
 
-ProtoRowBuffer::ProtoRowBuffer(proto::ResponseData const& res)
+ProtoCsvBuffer::ProtoCsvBuffer(proto::ResponseData const& res)
         : _colSep("\t"),
           _rowSep("\n"),
           _nullToken("\\N"),
@@ -78,7 +78,7 @@ ProtoRowBuffer::ProtoRowBuffer(proto::ResponseData const& res)
 }
 
 /// Fetch a up to a single row from from the Result message
-unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
+unsigned ProtoCsvBuffer::fetch(char* buffer, unsigned bufLen) {
     unsigned fetched = 0;
     if (bufLen <= _currentRow.size()) {
         memcpy(buffer, &_currentRow[0], bufLen);
@@ -97,15 +97,15 @@ unsigned ProtoRowBuffer::fetch(char* buffer, unsigned bufLen) {
     return fetched;
 }
 
-std::string ProtoRowBuffer::dump() const {
-    std::string str("ProtoRowBuffer Row " + std::to_string(_rowIdx) + "(");
+std::string ProtoCsvBuffer::dump() const {
+    std::string str("ProtoCsvBuffer Row " + std::to_string(_rowIdx) + "(");
     str += printCharVect(_currentRow);
     str += ")";
     return str;
 }
 
 /// Import the next row into the buffer
-void ProtoRowBuffer::_readNextRow() {
+void ProtoCsvBuffer::_readNextRow() {
     ++_rowIdx;
     if (_rowIdx >= _rowTotal) {
         return;
@@ -118,7 +118,7 @@ void ProtoRowBuffer::_readNextRow() {
 }
 
 /// Setup the row byte buffer
-void ProtoRowBuffer::_initCurrentRow() {
+void ProtoCsvBuffer::_initCurrentRow() {
     // Copy row and reserve 2x size.
     int rowSize = _copyRowBundle(_currentRow, _result.row(_rowIdx));
     LOGS(_log, LOG_LVL_TRACE, "init _rowIdx=" << _rowIdx << " _currentrow=" << printCharVect(_currentRow));
