@@ -32,6 +32,11 @@
 // Qserv headers
 #include "mysql/SchemaFactory.h"
 
+// This macro is used to convert the null pointers (corresponding to SQL NULL) into empty strings.
+// It prevents the undetermined behavior (or crashes) during construction of std::string()
+// when the null pointer is passed into the constructor.
+#define EMPTY_STR_IF_NULL(x) ((x) == nullptr ? "" : (x))
+
 namespace lsst::qserv::sql {
 
 namespace detail {
@@ -116,7 +121,7 @@ bool SqlResults::extractFirstColumn(std::vector<std::string>& ret, SqlErrorObjec
     for (i = 0; i < s; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            ret.push_back(row[0]);
+            ret.push_back(EMPTY_STR_IF_NULL(row[0]));
         }
         mysql_free_result(_results[i]);
     }
@@ -130,8 +135,8 @@ bool SqlResults::extractFirst2Columns(std::vector<std::string>& col1, std::vecto
     for (i = 0; i < s; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            col1.push_back(row[0]);
-            col2.push_back(row[1]);
+            col1.push_back(EMPTY_STR_IF_NULL(row[0]));
+            col2.push_back(EMPTY_STR_IF_NULL(row[1]));
         }
         mysql_free_result(_results[i]);
     }
@@ -145,9 +150,9 @@ bool SqlResults::extractFirst3Columns(std::vector<std::string>& col1, std::vecto
     for (i = 0; i < s; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            col1.push_back(row[0]);
-            col2.push_back(row[1]);
-            col3.push_back(row[2]);
+            col1.push_back(EMPTY_STR_IF_NULL(row[0]));
+            col2.push_back(EMPTY_STR_IF_NULL(row[1]));
+            col3.push_back(EMPTY_STR_IF_NULL(row[2]));
         }
         mysql_free_result(_results[i]);
     }
@@ -162,10 +167,31 @@ bool SqlResults::extractFirst4Columns(std::vector<std::string>& col1, std::vecto
     for (i = 0; i < s; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            col1.push_back(row[0]);
-            col2.push_back(row[1]);
-            col3.push_back(row[2]);
-            col4.push_back(row[3]);
+            col1.push_back(EMPTY_STR_IF_NULL(row[0]));
+            col2.push_back(EMPTY_STR_IF_NULL(row[1]));
+            col3.push_back(EMPTY_STR_IF_NULL(row[2]));
+            col4.push_back(EMPTY_STR_IF_NULL(row[3]));
+        }
+        mysql_free_result(_results[i]);
+    }
+    _results.clear();
+    return true;
+}
+
+bool SqlResults::extractFirst6Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                                      std::vector<std::string>& col3, std::vector<std::string>& col4,
+                                      std::vector<std::string>& col5, std::vector<std::string>& col6,
+                                      SqlErrorObject& errObj) {
+    int i, s = _results.size();
+    for (i = 0; i < s; ++i) {
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(_results[i])) != nullptr) {
+            col1.push_back(EMPTY_STR_IF_NULL(row[0]));
+            col2.push_back(EMPTY_STR_IF_NULL(row[1]));
+            col3.push_back(EMPTY_STR_IF_NULL(row[2]));
+            col4.push_back(EMPTY_STR_IF_NULL(row[3]));
+            col5.push_back(EMPTY_STR_IF_NULL(row[4]));
+            col6.push_back(EMPTY_STR_IF_NULL(row[5]));
         }
         mysql_free_result(_results[i]);
     }
