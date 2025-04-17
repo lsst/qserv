@@ -211,12 +211,6 @@ string UberJobData::resultFilePath() const {
 }
 
 std::string UberJobData::resultFileHttpUrl() const {
-    auto const workerConfig = wconfig::WorkerConfig::instance();
-    auto const resultDeliveryProtocol = workerConfig->resultDeliveryProtocol();
-    if (resultDeliveryProtocol != wconfig::ConfigValResultDeliveryProtocol::HTTP) {
-        throw runtime_error("wbase::Task::Task: unsupported results delivery protocol: " +
-                            wconfig::ConfigValResultDeliveryProtocol::toString(resultDeliveryProtocol));
-    }
     // TODO:UJ it seems like this should just be part of the FileChannelShared???
     return "http://" + _foreman->getFqdn() + ":" + to_string(_resultsHttpPort) + "/" + _resultFileName();
 }

@@ -87,6 +87,7 @@ protected:
 
 private:
     bool _initConnection();
+    void _setDb();
 
     /// Dispatch with output sent through a SendChannel
     bool _dispatchChannel();
@@ -96,6 +97,7 @@ private:
 
     /// Resource reservation
     ChunkResourceMgr::Ptr _chunkResourceMgr;
+    std::atomic<bool> _cancelled{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
 

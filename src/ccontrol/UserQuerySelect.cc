@@ -86,7 +86,8 @@
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
 #include "qdisp/Executive.h"
-#include "qdisp/MessageStore.h"
+#include "qdisp/JobQuery.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QMeta.h"
 #include "qmeta/Exceptions.h"
 #include "qproc/geomAdapter.h"
@@ -471,7 +472,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
         if (wInfUJ->uberJobPtr == nullptr) {
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
-            auto respHandler = make_shared<ccontrol::MergingHandler>(_infileMerger, exec);
+            auto respHandler =
+                    ccontrol::MergingHandler::Ptr(new ccontrol::MergingHandler(_infileMerger, exec));
             auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _qMetaCzarId,
                                                targetWorker);
             uJob->setWorkerContactInfo(wInfUJ->wInf);

@@ -106,10 +106,6 @@ bool JobQuery::_setUberJobId(UberJobId ujId) {
     return true;
 }
 
-ostream& JobQuery::dumpOS(ostream& os) const {
-    return os << "{" << getIdStr() << _jobDescription << " " << _jobStatus << "}";
-}
-
 bool JobQuery::unassignFromUberJob(UberJobId ujId) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     VMUTEX_NOT_HELD(_jqMtx);

@@ -269,7 +269,6 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
     return vect;
 }
 
-
 std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
         std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,

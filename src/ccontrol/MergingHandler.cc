@@ -286,13 +286,6 @@ void MergingHandler::errorFlush(std::string const& msg, int code) {
     LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
 }
 
-// Note that generally we always have an _infileMerger object except during
-// a unit test. I suppose we could try to figure out how to create one.
-//
-void MergingHandler::prepScrubResults(int jobId, int attemptCount) {
-    if (_infileMerger) _infileMerger->prepScrub(jobId, attemptCount);
-}
-
 std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(flushed=" << (_flushed ? "true)" : "false)");
 }
@@ -310,7 +303,6 @@ bool MergingHandler::_mergeHttp(shared_ptr<qdisp::UberJob> const& uberJob,
     }
     return success;
 }
-
 
 void MergingHandler::_setError(int code, std::string const& msg, int errorState) {
     LOGS(_log, LOG_LVL_DEBUG, "_setError: code: " << code << ", message: " << msg);

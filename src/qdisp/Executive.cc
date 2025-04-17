@@ -236,14 +236,6 @@ void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
     }
 }
 
-void Executive::queueFileCollect(util::PriorityCommand::Ptr const& cmd) {
-    if (_scanInteractive) {
-        _qdispPool->queCmd(cmd, 3);
-    } else {
-        _qdispPool->queCmd(cmd, 3);
-    }
-}
-
 void Executive::addAndQueueUberJob(shared_ptr<UberJob> const& uj) {
     {
         lock_guard<mutex> lck(_uberJobsMapMtx);
@@ -286,63 +278,6 @@ Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
         }
     }
     return unassignedMap;
-}
-
-string Executive::dumpUberJobCounts() const {
-    stringstream os;
-    os << "exec=" << getIdStr();
-    int totalJobs = 0;
-    {
-        lock_guard<mutex> ujmLck(_uberJobsMapMtx);
-        for (auto const& [ujKey, ujPtr] : _uberJobsMap) {
-            int jobCount = ujPtr->getJobCount();
-            totalJobs += jobCount;
-            os << "{" << ujKey << ":" << ujPtr->getIdStr() << " jobCount=" << jobCount << "}";
-        }
-    }
-    {
-        lock_guard<recursive_mutex> jmLck(_jobMapMtx);
-        os << " ujTotalJobs=" << totalJobs << " execJobs=" << _jobMap.size();
-    }
-    return os.str();
-}
-
-void Executive::assignJobsToUberJobs() {
-    auto uqs = _userQuerySelect.lock();
-    if (uqs != nullptr) {
-        uqs->buildAndSendUberJobs();
-    }
-}
-
-void Executive::addMultiError(int errorCode, std::string const& errorMsg, int errorState) {
-    util::Error err(errorCode, errorMsg, errorState);
-    {
-        lock_guard<mutex> lock(_errorsMutex);
-        _multiError.push_back(err);
-        LOGS(_log, LOG_LVL_DEBUG,
-             cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
-    }
-}
-
-Executive::ChunkIdJobMapType Executive::unassignedChunksInQuery() {
-    lock_guard<mutex> lck(_chunkToJobMapMtx);
-
-    ChunkIdJobMapType unassignedMap;
-    for (auto const& [key, jobPtr] : _chunkToJobMap) {
-        if (!jobPtr->isInUberJob()) {
-            unassignedMap[key] = jobPtr;
-        }
-    }
-    return unassignedMap;
-}
-
-void Executive::addUberJobs(std::vector<std::shared_ptr<UberJob>> const& uJobsToAdd) {
-    lock_guard<mutex> lck(_uberJobsMapMtx);
-    for (auto const& uJob : uJobsToAdd) {
-        UberJobId ujId = uJob->getJobId();
-        _uberJobsMap[ujId] = uJob;
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " ujId=" << ujId << " uj.sz=" << uJob->getJobCount());
-    }
 }
 
 string Executive::dumpUberJobCounts() const {

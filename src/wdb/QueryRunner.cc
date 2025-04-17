@@ -123,16 +123,6 @@ bool QueryRunner::_initConnection() {
     return true;
 }
 
-
-/// Override _dbName with _msg->db() if available.
-void QueryRunner::_setDb() {
-    if (_task->getDb() != "") {
-        _dbName = _task->getDb();
-        LOGS(_log, LOG_LVL_TRACE, "QueryRunner overriding dbName with " << _dbName);
-    }
-}
-
-
 bool QueryRunner::runQuery() {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
@@ -166,10 +156,7 @@ bool QueryRunner::runQuery() {
         return false;
     }
 
-    _czarId = _task->getCzarId();
-
-    _setDb();
-    LOGS(_log, LOG_LVL_TRACE, "Exec in flight for Db=" << _dbName << " sqlConnMgr " << _sqlConnMgr->dump());
+    LOGS(_log, LOG_LVL_TRACE, "QR in flight for sqlConnMgr " << _sqlConnMgr->dump());
     // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
     bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1);
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());

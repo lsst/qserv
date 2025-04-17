@@ -110,9 +110,6 @@ public:
     /// Merge the result data collected over Http.
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
 
-    /// Merge the result data collected over Http.
-    bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
-
     /// Indicate the merge for the job is complete.
     void mergeCompleteFor(int jobId);
 

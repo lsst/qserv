@@ -78,14 +78,6 @@ public:
                                      uint64_t& resultRows) override;
 
     /// @see ResponseHandler::flushHttpError
-    void flushHttpError(int errorCode, std::string const& errorMsg, int errState) override;
-
-    /// @see ResponseHandler::flushHttp
-    /// @see MerginHandler::_mergeHttp
-    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
-                                     uint64_t& resultRows) override;
-
-    /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
@@ -93,9 +85,6 @@ public:
 
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override;
-
-    /// Prepare to scrub the results from jobId-attempt from the result table.
-    void prepScrubResults(int jobId, int attempt) override;
 
 private:
     /// Call InfileMerger to do the work of merging this data to the result.

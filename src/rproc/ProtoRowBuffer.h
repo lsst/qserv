@@ -36,8 +36,7 @@ namespace lsst::qserv::rproc {
 /// LocalInfile object to use a Protobufs Result message as a row source
 class ProtoRowBuffer : public mysql::RowBuffer {
 public:
-    ProtoRowBuffer(proto::ResponseData const& res, int jobId, std::string const& jobIdColName,
-                   std::string const& jobIdSqlType, int jobIdMysqlType);
+    ProtoRowBuffer(proto::ResponseData const& res);
 
     ~ProtoRowBuffer() override = default;
 

@@ -71,25 +71,11 @@ public:
     /// Add the error to the error output if it is the first error.
     virtual void flushHttpError(int errorCode, std::string const& errorMsg, int status) = 0;
 
-    /// Collect result data from the worker and merge it with the query result table.
-    /// @return success - true if the operation was successful
-    /// @return shouldCancel - if success was false, this being true indicates there
-    ///                   was an unrecoverable error in table writing and the query
-    ///                   should be cancelled.
-    virtual std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
-                                             uint64_t& resultRows) = 0;
-
-    /// Add the error to the error output if it is the first error.
-    virtual void flushHttpError(int errorCode, std::string const& errorMsg, int status) = 0;
-
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
 
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
-
-    /// Scrub the results from jobId-attempt from the result table.
-    virtual void prepScrubResults(int jobId, int attempt) = 0;
 
     std::weak_ptr<UberJob> getUberJob() { return _uberJob; }
 

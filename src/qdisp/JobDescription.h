@@ -88,10 +88,6 @@ public:
 
     void resetJsForWorker() { _jsForWorker.reset(); }
 
-    std::shared_ptr<nlohmann::json> getJsForWorker() { return _jsForWorker; }
-
-    void resetJsForWorker() { _jsForWorker.reset(); }
-
     friend std::ostream& operator<<(std::ostream& os, JobDescription const& jd);
 
 private:
