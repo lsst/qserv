@@ -96,6 +96,9 @@ public:
                               std::vector<std::string>&, std::vector<std::string>&, SqlErrorObject&);
     bool extractFirst4Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
                               std::vector<std::string>&, SqlErrorObject&);
+    bool extractFirst6Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
+                              std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
+                              SqlErrorObject&);
     void freeResults();
 
     /// Return row iterator
