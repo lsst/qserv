@@ -19,8 +19,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_UTIL_RESULTFILENAMEPARSER_H
-#define LSST_QSERV_UTIL_RESULTFILENAMEPARSER_H
+#ifndef LSST_QSERV_UTIL_RESULTFILENAME_H
+#define LSST_QSERV_UTIL_RESULTFILENAME_H
 
 // System headers
 #include <limits>
@@ -47,47 +47,60 @@ class path;
 namespace lsst::qserv::util {
 
 /**
- * Utility class ResultFileNameParser parses the file path, extracts attributes from
- * the file name, validates attribute values to ensure they're in the valid range,
- * and and stored them in the corresponding data members. Parsing is done in the class's
- * constructors. Two forms of the construction are provided for convenience of
- * the client applications.
+ * Class ResultFileName is an abstraction representing result files at workers.
+ * The class has two purposes:
  *
- * The file path is required to have the following format:
+ * - Extracting attributes of a file from the file path/name. Values are parsed, validated
+ *   to ensure they the valid range, and stored in the corresponding data members.
+ * - Building the the file name from its attributes. The file name is built
+ *   according to the same rules as those used for parsing.
+ *
+ * All operations are done in the class's constructors. A few forms of the construction are
+ * provided for convenience of the client applications.
+ *
+ * The file path has the following general format:
  * @code
  *   [<folder>/]<czar-id>-<query-id>-<job-id>-<chunk-id>-<attemptcount>[.<ext>]
  * @code
  */
-class ResultFileNameParser {
+class ResultFileName {
 public:
     /// The file extention including the '.' prefix.
     static std::string const fileExt;
 
-    qmeta::CzarId czarId = 0;
-    QueryId queryId = 0;
-    std::uint32_t jobId = 0;
-    std::uint32_t chunkId = 0;
-    std::uint32_t attemptCount = 0;
+    ResultFileName() = default;
+    ResultFileName(ResultFileName const&) = default;
+    ResultFileName& operator=(ResultFileName const&) = default;
 
-    ResultFileNameParser() = default;
-    ResultFileNameParser(ResultFileNameParser const&) = default;
-    ResultFileNameParser& operator=(ResultFileNameParser const&) = default;
-
-    /// @param filePath The file to be evaluated.
-    /// @throw std::invalid_argument If the file path did not match expectations.
-    explicit ResultFileNameParser(boost::filesystem::path const& filePath);
+    /// This form of constructionstores attributes of a file and generates
+    /// the name of a file in a format specified in the class description section.
+    ResultFileName(qmeta::CzarId czarId, QueryId queryId, std::uint32_t jobId, std::uint32_t chunkId,
+                   std::uint32_t attemptCount);
 
     /// @param filePath The file to be evaluated.
     /// @throw std::invalid_argument If the file path did not match expectations.
-    explicit ResultFileNameParser(std::string const& filePath);
+    explicit ResultFileName(boost::filesystem::path const& filePath);
+
+    /// @param filePath The file to be evaluated.
+    /// @throw std::invalid_argument If the file path did not match expectations.
+    explicit ResultFileName(std::string const& filePath);
+
+    /// @return The name of a file including its extension and excluding the optional base folder.
+    std::string const& fileName() const { return _fileName; }
+
+    qmeta::CzarId czarId() const { return _czarId; }
+    QueryId queryId() const { return _queryId; }
+    std::uint32_t jobId() const { return _jobId; }
+    std::uint32_t chunkId() const { return _chunkId; }
+    std::uint32_t attemptCount() const { return _attemptCount; }
 
     /// @return The JSON object (dictionary) encapsulating values of the attributes.
     nlohmann::json toJson() const;
 
-    bool operator==(ResultFileNameParser const& rhs) const;
-    bool operator!=(ResultFileNameParser const& rhs) const { return operator==(rhs); }
+    bool operator==(ResultFileName const& rhs) const;
+    bool operator!=(ResultFileName const& rhs) const { return operator==(rhs); }
 
-    friend std::ostream& operator<<(std::ostream& os, ResultFileNameParser const& parser);
+    friend std::ostream& operator<<(std::ostream& os, ResultFileName const& parser);
 
 private:
     static std::string _context(std::string const& func);
@@ -107,10 +120,16 @@ private:
                                     "," + std::to_string(maxVal) + "], file=" + _fileName);
     }
 
-    std::string const _fileName;
+    std::string _fileName;
+    qmeta::CzarId _czarId = 0;
+    QueryId _queryId = 0;
+    std::uint32_t _jobId = 0;
+    std::uint32_t _chunkId = 0;
+    std::uint32_t _attemptCount = 0;
+
     std::vector<std::uint64_t> _taskAttributes;
 };
 
 }  // namespace lsst::qserv::util
 
-#endif  // LSST_QSERV_UTIL_RESULTFILENAMEPARSER_H
+#endif  // LSST_QSERV_UTIL_RESULTFILENAME_H

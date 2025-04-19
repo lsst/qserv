@@ -56,13 +56,13 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
+#include "mysql/CsvBuffer.h"
 #include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
-#include "rproc/ProtoRowBuffer.h"
 #include "sql/Schema.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
@@ -167,7 +167,7 @@ void InfileMerger::mergeCompleteFor(int jobId) {
 }
 
 bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
-                         proto::ResponseData const& responseData) {
+                         std::shared_ptr<mysql::CsvStream> const& csvStream) {
     int const jobId = responseSummary.jobid();
     std::string queryIdJobStr = QueryIdHelper::makeIdStr(responseSummary.queryid(), jobId);
     if (!_queryIdStrSet) {
@@ -187,16 +187,15 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
     virtFileT.start();
-    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(responseData);
-    std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
+    auto const csvBuffer = mysql::newCsvStreamBuffer(csvStream);
+    std::string const virtFile = _infileMgr.prepareSrc(csvBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
 
-    size_t const resultSize = responseData.transmitsize();
     size_t tResultSize;
     {
         std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-        _perJobResultSize[jobId] += resultSize;
+        _perJobResultSize[jobId] += responseSummary.transmitsize();
         tResultSize = _totalResultSize + _perJobResultSize[jobId];
     }
     if (tResultSize > _maxResultTableSizeBytes) {
@@ -209,19 +208,16 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
         return false;
     }
 
-    tct->addToValue(resultSize);
+    tct->addToValue(responseSummary.transmitsize());
     tct->setSuccess();
     tct.reset();  // stop transmit recieve timer before merging happens.
-
-    qdisp::CzarStats::get()->addTotalBytesRecv(resultSize);
-    qdisp::CzarStats::get()->addTotalRowsRecv(responseData.rowcount());
 
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.
     if (_config.debugNoMerge) return true;
 
     auto start = std::chrono::system_clock::now();
-    ret = _applyMysqlMyIsam(infileStatement, resultSize);
+    ret = _applyMysqlMyIsam(infileStatement, responseSummary.transmitsize());
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG,

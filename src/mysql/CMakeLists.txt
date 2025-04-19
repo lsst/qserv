@@ -6,7 +6,7 @@ target_sources(mysql PRIVATE
     MySqlConfig.cc
     MySqlConnection.cc
     MySqlUtils.cc
-    RowBuffer.cc
+    CsvBuffer.cc
     SchemaFactory.cc
 )
 
@@ -24,6 +24,23 @@ add_executable(testLocalInfile testLocalInfile.cc)
 target_link_libraries(testLocalInfile
     mysql
     Boost::unit_test_framework
+)
+
+FUNCTION(mysql_tests)
+    FOREACH(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            mysql
+            Boost::unit_test_framework
+            Threads::Threads
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    ENDFOREACH()
+ENDFUNCTION()
+
+mysql_tests(
+    testMySqlUtils
+    testCsvBuffer
 )
 
 # Even though the test is commented out, leave this so it's findable by searching for

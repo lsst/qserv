@@ -40,14 +40,6 @@
 
 // Forward declarations
 
-namespace google::protobuf {
-class Arena;
-}  // namespace google::protobuf
-
-namespace lsst::qserv::proto {
-class ResponseData;
-}  // namespace lsst::qserv::proto
-
 namespace lsst::qserv::wbase {
 class Task;
 }  // namespace lsst::qserv::wbase
@@ -74,8 +66,6 @@ namespace lsst::qserv::wbase {
 class FileChannelShared {
 public:
     using Ptr = std::shared_ptr<FileChannelShared>;
-
-    static std::atomic<uint64_t> scsSeqId;  ///< Source for unique _scsId numbers
 
     /**
      * This method gets called upon receiving a notification from Czar about
@@ -138,9 +128,6 @@ public:
     /// Return a normalized id string.
     static std::string makeIdStr(int qId, int jId);
 
-    /// @return the sendChannelShared sequence number, which is always valid.
-    uint64_t getScsId() const { return _scsId; }
-
     /// @return the current sql connection count
     int getSqlConnectionCount() { return _sqlConnectionCount; }
 
@@ -188,23 +175,21 @@ private:
      * @param bytes - the number of bytes in the result message recorded into the file
      * @param rows - the number of rows extracted from th eresult set
      * @param multiErr - a collector of any errors that were captured during result set processing
-     * @return 'true' if the result set still has more rows to be extracted.
      * @throws std::runtime_error for problems encountered when attemting to create the file
      *   or write into the file.
      */
-    bool _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
-                      MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr);
+    void _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
+                      MYSQL_RES* mResult, std::uint64_t& bytes, std::uint32_t& rows,
+                      util::MultiError& multiErr);
 
-    /**
-     * Extract as many rows as allowed by the Google Protobuf implementation from
-     * from the input result set into the output result object.
-     * @param tMtxLock - a lock on the mutex tMtx
-     * @param mResult - MySQL result to be used as a source
-     * @param rows - the number of rows extracted from the result set
-     * @param tSize - the approximate amount of data extracted from the result set
-     * @return 'true' if there are more rows left in the result set.
-     */
-    bool _fillRows(std::lock_guard<std::mutex> const& tMtxLock, MYSQL_RES* mResult, int& rows, size_t& tSize);
+    /// Write a string into the currently open file.
+    /// @return The number of bytes written.
+    inline std::size_t _writeStringToFile(std::string const& str) {
+        std::size_t const length = str.size();
+        _file.write(str.data(), length);
+        return length;
+    }
+
     /**
      * Unconditionaly close and remove (potentially - the partially written) file.
      * This method gets called in case of any failure detected while processing
@@ -233,12 +218,6 @@ private:
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to pass encoded information to XrdSsi.
     qmeta::CzarId const _czarId;                             ///< id of the czar that requested this task(s).
     std::string const _workerId;                             ///< The unique identifier of the worker.
-
-    // Allocatons/deletion of the data messages are managed by Google Protobuf Arena.
-    std::unique_ptr<google::protobuf::Arena> _protobufArena;
-    proto::ResponseData* _responseData = 0;
-
-    uint64_t const _scsId;  ///< id number for this FileChannelShared
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using FileChannelShared.
