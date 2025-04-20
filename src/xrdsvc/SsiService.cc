@@ -48,8 +48,6 @@
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
-#include "memman/MemMan.h"
-#include "memman/MemManNone.h"
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
 #include "qhttp/Server.h"
@@ -158,26 +156,6 @@ SsiService::SsiService(XrdSsiLogger* log) {
         throw wconfig::WorkerConfigError("Unable to connect to MySQL");
     }
     auto const workerConfig = wconfig::WorkerConfig::instance();
-    string cfgMemMan = workerConfig->getMemManClass();
-    memman::MemMan::Ptr memMan;
-    if (cfgMemMan == "MemManReal") {
-        // Default to 1 gigabyte
-        uint64_t memManSize = workerConfig->getMemManSizeMb() * 1000000;
-        LOGS(_log, LOG_LVL_DEBUG,
-             "Using MemManReal with memManSizeMb=" << workerConfig->getMemManSizeMb()
-                                                   << " location=" << workerConfig->getMemManLocation());
-        memMan = shared_ptr<memman::MemMan>(
-                memman::MemMan::create(memManSize, workerConfig->getMemManLocation()));
-    } else if (cfgMemMan == "MemManNone") {
-        memMan = make_shared<memman::MemManNone>(1, false);
-    } else if (cfgMemMan == "MemManNoneRelaxed") {
-        bool const alwaysLock = true;
-        memMan = make_shared<memman::MemManNone>(1, alwaysLock);
-    } else {
-        LOGS(_log, LOG_LVL_ERROR, "Unrecognized memory manager " << cfgMemMan);
-        throw wconfig::WorkerConfigError("Unrecognized memory manager.");
-    }
-
     int64_t bufferMaxTotalBytes = workerConfig->getBufferMaxTotalGB() * 1'000'000'000LL;
     StreamBuffer::setMaxTotalBytes(bufferMaxTotalBytes);
 
@@ -208,20 +186,20 @@ SsiService::SsiService(XrdSsiLogger* log) {
     vector<wsched::ScanScheduler::Ptr> scanSchedulers{
             make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, workerConfig->getMaxReserveSlow(),
                                                workerConfig->getPrioritySlow(),
-                                               workerConfig->getMaxActiveChunksSlow(), memMan, medium + 1,
-                                               slow, slowScanMaxMinutes),
+                                               workerConfig->getMaxActiveChunksSlow(), medium + 1, slow,
+                                               slowScanMaxMinutes),
             make_shared<wsched::ScanScheduler>("SchedFast", maxThread, workerConfig->getMaxReserveFast(),
                                                workerConfig->getPriorityFast(),
-                                               workerConfig->getMaxActiveChunksFast(), memMan, fastest, fast,
+                                               workerConfig->getMaxActiveChunksFast(), fastest, fast,
                                                fastScanMaxMinutes),
             make_shared<wsched::ScanScheduler>(
                     "SchedMed", maxThread, workerConfig->getMaxReserveMed(), workerConfig->getPriorityMed(),
-                    workerConfig->getMaxActiveChunksMed(), memMan, fast + 1, medium, medScanMaxMinutes),
+                    workerConfig->getMaxActiveChunksMed(), fast + 1, medium, medScanMaxMinutes),
     };
 
     auto snail = make_shared<wsched::ScanScheduler>(
             "SchedSnail", maxThread, workerConfig->getMaxReserveSnail(), workerConfig->getPrioritySnail(),
-            workerConfig->getMaxActiveChunksSnail(), memMan, slow + 1, slowest, snailScanMaxMinutes);
+            workerConfig->getMaxActiveChunksSnail(), slow + 1, slowest, snailScanMaxMinutes);
 
     wpublish::QueriesAndChunks::Ptr queries = wpublish::QueriesAndChunks::setupGlobal(
             chrono::minutes(5), chrono::minutes(2), maxTasksBootedPerUserQuery, maxConcurrentBootedTasks,

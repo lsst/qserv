@@ -123,8 +123,6 @@ bool QueryRunner::_initConnection() {
     return true;
 }
 
-util::TimerHistogram memWaitHisto("memWait Hist", {1, 5, 10, 20, 40});
-
 bool QueryRunner::runQuery() {
     util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
@@ -158,14 +156,6 @@ bool QueryRunner::runQuery() {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started." << _task->getIdStr());
         return false;
     }
-
-    // Wait for memman to finish reserving resources. This can take several seconds.
-    util::Timer memTimer;
-    memTimer.start();
-    _task->waitForMemMan();
-    memTimer.stop();
-    auto logMsg = memWaitHisto.addTime(memTimer.getElapsed(), _task->getIdStr());
-    LOGS(_log, LOG_LVL_DEBUG, logMsg);
 
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");

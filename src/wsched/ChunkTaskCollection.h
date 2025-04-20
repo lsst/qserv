@@ -57,9 +57,6 @@ public:
     /// This function will be called when the Task has completed its first transmit to the czar.
     virtual void taskComplete(wbase::Task::Ptr const& task) = 0;
 
-    /// This is set to true when ready() returns false due to not enough memory available.
-    virtual bool setResourceStarved(bool starved) = 0;
-
     /// Remove task from this collection.
     /// @return a pointer to the removed task or nullptr if the task was not found.
     virtual wbase::Task::Ptr removeTask(wbase::Task::Ptr const& task) = 0;

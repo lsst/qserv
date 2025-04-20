@@ -41,7 +41,6 @@
 // Qserv headers
 #include "global/DbTable.h"
 #include "global/intTypes.h"
-#include "memman/MemMan.h"
 #include "proto/ScanTableInfo.h"
 #include "wbase/TaskState.h"
 #include "util/Histogram.h"
@@ -231,14 +230,6 @@ public:
     proto::ScanInfo& getScanInfo() { return _scanInfo; }
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
-    bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
-    memman::MemMan::Handle getMemHandle() { return _memHandle; }
-    memman::MemMan::Status getMemHandleStatus();
-    void setMemHandle(memman::MemMan::Handle handle) { _memHandle = handle; }
-    void setMemMan(memman::MemMan::Ptr const& memMan) { _memMan = memMan; }
-    void waitForMemMan();
-    bool getSafeToMoveRunning() { return _safeToMoveRunning; }
-    void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; }  ///< For testing only.
 
     static IdSet allIds;  // set of all task jobId numbers that are not complete.
 
@@ -343,7 +334,6 @@ private:
 
     std::atomic<bool> _queryStarted{false};  ///< Set to true when the query is about to be run.
     std::atomic<bool> _cancelled{false};
-    std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
     TaskQueryRunner::Ptr _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
     proto::ScanInfo _scanInfo;
@@ -351,8 +341,6 @@ private:
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
     int64_t _maxTableSize = 0;
-    std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
-    memman::MemMan::Ptr _memMan;
 
     mutable std::mutex _stateMtx;  ///< Mutex to protect state related members _state, _???Time.
     std::atomic<TaskState> _state{TaskState::CREATED};

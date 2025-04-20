@@ -115,15 +115,6 @@ public:
     /// @return max thread reserve for snail shared scan
     unsigned int getMaxReserveSnail() const { return _maxReserveSnail->getVal(); }
 
-    /// @return class name implementing selected memory management
-    std::string const getMemManClass() const { return _memManClass->getVal(); }
-
-    /// @return path to directory where the Memory Manager database resides
-    std::string const getMemManLocation() const { return _memManLocation->getVal(); }
-
-    /// @return maximum amount of memory that can be used by Memory Manager
-    uint64_t getMemManSizeMb() const { return _memManSizeMb->getVal(); }
-
     /// @return a configuration for worker MySQL instance.
     mysql::MySqlConfig const& getMySqlConfig() const { return _mySqlConfig; }
 
@@ -253,11 +244,6 @@ private:
     bool const notReq = false;
     bool const hidden = true;
 
-    CVTStrPtr _memManClass =
-            util::ConfigValTStr::create(_configValMap, "memman", "class", notReq, "MemManReal");
-    CVTUIntPtr _memManSizeMb = util::ConfigValTUInt::create(_configValMap, "memman", "memory", notReq, 1000);
-    CVTStrPtr _memManLocation =
-            util::ConfigValTStr::create(_configValMap, "memman", "location", required, "/qserv/data/mysql");
     CVTUIntPtr _threadPoolSize =
             util::ConfigValTUInt::create(_configValMap, "scheduler", "thread_pool_size", notReq, 0);
     CVTUIntPtr _maxPoolThreads =
