@@ -22,7 +22,6 @@ target_link_libraries(xrdsvc PUBLIC
     boost_system
     global
     log
-    memman
     mysql
     http
     sql

@@ -31,7 +31,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "memman/MemManNone.h"
 #include "mysql/MySqlConfig.h"
 #include "proto/ScanTableInfo.h"
 #include "proto/worker.pb.h"
@@ -91,7 +90,6 @@ Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm, shared_ptr<QueriesAndChunks> con
     locSendSharedPtrs.push_back(sc);
     auto taskVect = Task::createTasks(tm, sc, crm, mySqlConfig, sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];
-    task->setSafeToMoveRunning(true);  // Can't wait for MemMan in unit tests.
     return task;
 }
 
@@ -199,15 +197,14 @@ private:
     int _examineAllSleep{0};         ///< Don't run _examineThread when 0
 
 public:
-    lsst::qserv::memman::MemManNone::Ptr memMan{std::make_shared<lsst::qserv::memman::MemManNone>(1, true)};
     wsched::GroupScheduler::Ptr group{
             std::make_shared<wsched::GroupScheduler>("GroupSched", maxThreads, 2, 3, priority++)};
     wsched::ScanScheduler::Ptr scanSlow{std::make_shared<wsched::ScanScheduler>(
-            "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, memMan, medium + 1, slow, oneHr)};
+            "ScanSlow", maxThreads, 2, priority++, maxActiveChunks, medium + 1, slow, oneHr)};
     wsched::ScanScheduler::Ptr scanMed{std::make_shared<wsched::ScanScheduler>(
-            "ScanMed", maxThreads, 2, priority++, maxActiveChunks, memMan, fast + 1, medium, oneHr)};
+            "ScanMed", maxThreads, 2, priority++, maxActiveChunks, fast + 1, medium, oneHr)};
     wsched::ScanScheduler::Ptr scanFast{std::make_shared<wsched::ScanScheduler>(
-            "ScanFast", maxThreads, 3, priority++, maxActiveChunks, memMan, fastest, fast, _maxScanTimeFast)};
+            "ScanFast", maxThreads, 3, priority++, maxActiveChunks, fastest, fast, _maxScanTimeFast)};
     std::vector<wsched::ScanScheduler::Ptr> scanSchedulers{scanFast, scanMed};
 
     lsst::qserv::wpublish::QueriesAndChunks::Ptr queries;
@@ -335,8 +332,7 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     LOGS(_log, LOG_LVL_DEBUG, "Test_case ScanScheduleTest");
     auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
                                                  maxDarkTasksC, resetForTestingC);
-    auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, false);
-    wsched::ScanScheduler sched{"ScanSchedA", 2, 1, 0, 20, memMan, 0, 100, oneHr};
+    wsched::ScanScheduler sched{"ScanSchedA", 2, 1, 0, 20, 0, 100, oneHr};
 
     lsst::qserv::QueryId qIdInc = 1;
 
@@ -351,10 +347,12 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     Task::Ptr a40 = makeTask(newTaskMsgScan(40, 0, qIdInc++, 0), queries);  // goes on active
     sched.queCmd(a40);
 
+    // TODO: This needs to be evaluated and removed.
     // Making a non-scan message so MemManNone will grant it an empty Handle
     Task::Ptr b41 = makeTask(newTaskMsg(41, qIdInc++, 0), queries);  // goes on active
     sched.queCmd(b41);
 
+    // TODO: This needs to be evaluated and removed.
     // Making a non-scan message so MemManNone will grant it an empty Handle
     Task::Ptr a33 = makeTask(newTaskMsg(33, qIdInc++, 0), queries);  // goes on pending.
     sched.queCmd(a33);
@@ -365,7 +363,7 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     BOOST_CHECK(sched.getInFlight() == 1);
     sched.commandStart(aa38);
     BOOST_CHECK(sched.getInFlight() == 1);
-    BOOST_CHECK(sched.ready() == false);
+    BOOST_CHECK(sched.ready() == true);
     sched.commandFinish(aa38);
     BOOST_CHECK(sched.getInFlight() == 0);
 
@@ -397,6 +395,7 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     LOGS(_log, LOG_LVL_DEBUG, "Test_case BlendScheduleTest");
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
+    // TODO: This needs to be evaluated and removed.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
     SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
@@ -667,6 +666,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
 
 BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
+    // TODO: This needs to be evaluated and removed.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
     SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
@@ -848,10 +848,8 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksTest start");
     auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
                                                  maxDarkTasksC, resetForTestingC);
-    // MemManNone always returns that memory is available.
-    auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int chunkId = 7;
-    wsched::ChunkTasks chunkTasks{chunkId, memMan};
+    wsched::ChunkTasks chunkTasks{chunkId};
     lsst::qserv::QueryId qIdInc = 1;
 
     BOOST_CHECK(chunkTasks.empty() == true);
@@ -921,12 +919,10 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksQueueTest start");
     auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
                                                  maxDarkTasksC, resetForTestingC);
-    // MemManNone always returns that memory is available.
-    auto memMan = std::make_shared<lsst::qserv::memman::MemManNone>(1, true);
     int firstChunkId = 100;
     int secondChunkId = 150;
     int chunkId = firstChunkId;
-    wsched::ChunkTasksQueue ctl{nullptr, memMan};
+    wsched::ChunkTasksQueue ctl{nullptr};
     lsst::qserv::QueryId qIdInc = 1;
 
     BOOST_CHECK(ctl.empty() == true);
