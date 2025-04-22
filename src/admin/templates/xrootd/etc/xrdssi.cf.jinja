@@ -66,13 +66,6 @@ maxsqlconn = 980
 # This value must be less than maxsqlconn. 
 reservedinteractivesqlconn = 930
 
-[transmits]
-# Maximum number of concurrent transmits to a czar.
-maxtransmits = 50
-# If more than this number of large transmits is happening at once, wait to
-# start more transmits until some are done.
-maxalreadytransmitting = 10
-
 [results]
 
 # The name of a folder where query results will be stored.

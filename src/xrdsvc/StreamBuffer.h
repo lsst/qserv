@@ -66,16 +66,7 @@ public:
     static StreamBuffer::Ptr createWithMove(std::string &input,
                                             std::shared_ptr<wbase::Task> const &task = nullptr);
 
-    /// Set the maximum number of bytes that can be used by all instances of this class.
-    static void setMaxTotalBytes(int64_t maxBytes);
-
-    /// @return the percent of totalBytes used out of _maxTotalByes.
-    static double percentOfMaxTotalBytesUsed();
-
     size_t getSize() const { return _dataStr.size(); }
-
-    /// @Return total number of bytes used by ALL StreamBuffer objects.
-    static size_t getTotalBytes() { return _totalBytes; }
 
     /// Call to recycle the buffer when finished (normally called by XrdSsi).
     void Recycle() override;
@@ -90,7 +81,7 @@ public:
     /// Unblock the condition variable on cancel.
     void cancel();
 
-    ~StreamBuffer() override;
+    ~StreamBuffer() override = default;
 
 private:
     /// This constructor will invalidate 'input'.
@@ -115,12 +106,6 @@ private:
     /// Pointer for worker statistics.
     /// NOTE: This will be nullptr for many things, so check before using.
     std::shared_ptr<wcontrol::WorkerStats> _wStats;
-
-    // Members associated with limiting memory use.
-    static std::atomic<int64_t> _totalBytes;  ///< Total bytes currently in use by all StreamBuffer instances.
-    static std::atomic<int64_t> _maxTotalBytes;
-    static std::mutex _createMtx;
-    static std::condition_variable _createCv;
 };
 
 }  // namespace lsst::qserv::xrdsvc

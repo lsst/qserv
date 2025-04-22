@@ -156,8 +156,6 @@ SsiService::SsiService(XrdSsiLogger* log) {
         throw wconfig::WorkerConfigError("Unable to connect to MySQL");
     }
     auto const workerConfig = wconfig::WorkerConfig::instance();
-    int64_t bufferMaxTotalBytes = workerConfig->getBufferMaxTotalGB() * 1'000'000'000LL;
-    StreamBuffer::setMaxTotalBytes(bufferMaxTotalBytes);
 
     // Set thread pool size.
     unsigned int poolSize = ranges::max({wsched::BlendScheduler::getMinPoolSize(),

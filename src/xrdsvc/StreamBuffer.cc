@@ -42,37 +42,8 @@ using namespace std;
 
 namespace lsst::qserv::xrdsvc {
 
-atomic<int64_t> StreamBuffer::_maxTotalBytes{40'000'000'000};
-atomic<int64_t> StreamBuffer::_totalBytes(0);
-mutex StreamBuffer::_createMtx;
-condition_variable StreamBuffer::_createCv;
-
-void StreamBuffer::setMaxTotalBytes(int64_t maxBytes) {
-    string const context = "StreamBuffer::" + string(__func__) + " ";
-    LOGS(_log, LOG_LVL_INFO, context << "maxBytes=" << maxBytes);
-    if (maxBytes < 0) {
-        throw invalid_argument(context + "negative " + to_string(maxBytes));
-    }
-    if (maxBytes < 1'000'000'000LL) {
-        LOGS(_log, LOG_LVL_ERROR, "Very small value for " << context << maxBytes);
-    }
-    _maxTotalBytes = maxBytes;
-}
-
-double StreamBuffer::percentOfMaxTotalBytesUsed() {
-    double percent = ((double)_totalBytes) / ((double)_maxTotalBytes);
-    if (percent < 0.0) percent = 0.0;
-    if (percent > 1.0) percent = 1.0;
-    return percent;
-}
-
 // Factory function, because this should be able to delete itself when Recycle() is called.
 StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input, std::shared_ptr<wbase::Task> const &task) {
-    unique_lock<mutex> uLock(_createMtx);
-    if (_totalBytes >= _maxTotalBytes) {
-        LOGS(_log, LOG_LVL_WARN, "StreamBuffer at memory limit " << _totalBytes);
-    }
-    _createCv.wait(uLock, []() { return _totalBytes < _maxTotalBytes; });
     Ptr ptr(new StreamBuffer(input, task));
     ptr->_selfKeepAlive = ptr;
     return ptr;
@@ -95,14 +66,6 @@ StreamBuffer::StreamBuffer(std::string &input, wbase::Task::Ptr const &task) : _
     if (_wStats != nullptr) {
         _wStats->startQueryRespConcurrentQueued(_createdTime);
     }
-
-    _totalBytes += _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "StreamBuffer::_totalBytes=" << _totalBytes << " thisSize=" << _dataStr.size());
-}
-
-StreamBuffer::~StreamBuffer() {
-    _totalBytes -= _dataStr.size();
-    LOGS(_log, LOG_LVL_DEBUG, "~StreamBuffer::_totalBytes=" << _totalBytes);
 }
 
 void StreamBuffer::startTimer() {
