@@ -150,14 +150,6 @@ public:
         return _ReservedInteractiveSqlConnections->getVal();
     }
 
-    /// @return the maximum number of gigabytes that can be used by StreamBuffers
-    unsigned int getBufferMaxTotalGB() const { return _bufferMaxTotalGB->getVal(); }
-
-    /// @return the maximum number of concurrent transmits to a czar
-    unsigned int getMaxTransmits() const { return _maxTransmits->getVal(); }
-
-    int getMaxPerQid() const { return _maxPerQid->getVal(); }
-
     /// @return the name of a folder where query results will be stored
     std::string const resultsDirname() const { return _resultsDirname->getVal(); }
 
@@ -292,11 +284,6 @@ private:
             util::ConfigValTUInt::create(_configValMap, "sqlconnections", "maxsqlconn", notReq, 800);
     CVTUIntPtr _ReservedInteractiveSqlConnections = util::ConfigValTUInt::create(
             _configValMap, "sqlconnections", "reservedinteractivesqlconn", notReq, 50);
-    CVTUIntPtr _bufferMaxTotalGB =
-            util::ConfigValTUInt::create(_configValMap, "transmit", "buffermaxtotalgb", notReq, 41);
-    CVTUIntPtr _maxTransmits =
-            util::ConfigValTUInt::create(_configValMap, "transmit", "maxtransmits", notReq, 40);
-    CVTIntPtr _maxPerQid = util::ConfigValTInt::create(_configValMap, "transmit", "maxperqid", notReq, 3);
     CVTStrPtr _resultsDirname =
             util::ConfigValTStr::create(_configValMap, "results", "dirname", notReq, "/qserv/data/results");
     CVTUIntPtr _resultsXrootdPort =
