@@ -52,6 +52,7 @@
 #include "util/common.h"
 #include "util/HoldTrack.h"
 #include "util/IterableFormatter.h"
+#include "util/ResultFileName.h"
 #include "util/TimeUtils.h"
 #include "wbase/Base.h"
 #include "wbase/FileChannelShared.h"
@@ -69,9 +70,10 @@ namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.Task");
 
 string buildResultFileName(shared_ptr<lsst::qserv::proto::TaskMsg> const& taskMsg) {
-    return to_string(taskMsg->czarid()) + "-" + to_string(taskMsg->queryid()) + "-" +
-           to_string(taskMsg->jobid()) + "-" + to_string(taskMsg->chunkid()) + "-" +
-           to_string(taskMsg->attemptcount()) + ".proto";
+    auto const resultFileName =
+            lsst::qserv::util::ResultFileName(taskMsg->czarid(), taskMsg->queryid(), taskMsg->jobid(),
+                                              taskMsg->chunkid(), taskMsg->attemptcount());
+    return resultFileName.fileName();
 }
 
 string buildResultFilePath(string const& resultFileName, string const& resultsDirname) {

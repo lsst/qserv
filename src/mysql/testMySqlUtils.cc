@@ -22,20 +22,14 @@
  */
 
 // Class header
-#include "rproc/ProtoRowBuffer.h"
-
-// Qserv headers
-#include "proto/worker.pb.h"
-#include "proto/FakeProtocolFixture.h"
+#include "mysql/MySqlUtils.h"
 
 // Boost unit test header
-#define BOOST_TEST_MODULE ProtoRowBuffer_1
+#define BOOST_TEST_MODULE MySQLUtils_1
 #include <boost/test/unit_test.hpp>
 
 namespace test = boost::test_tools;
-namespace gio = google::protobuf::io;
-
-using lsst::qserv::rproc::ProtoRowBuffer;
+// namespace gio = google::protobuf::io;
 
 struct Fixture {
     Fixture(void) {}
@@ -50,32 +44,20 @@ BOOST_AUTO_TEST_CASE(TestEscape) {
     char src[] = "abcdef \0 \b \n \r \t \032 \\N \\";
     // sizeof includes the last null
     std::string test1(src, (sizeof(src) / sizeof(src[0])) - 1);
-
     std::string eTest1 = "abcdef \\0 \\b \\n \\r \\t \\Z \\N \\";
     std::string target(test1.size() * 2, 'X');
 
-    int count = ProtoRowBuffer::escapeString(target.begin(), test1.begin(), test1.end());
+    int count = lsst::qserv::mysql::escapeString(target.begin(), test1.begin(), test1.end());
     BOOST_CHECK_EQUAL(count, static_cast<int>(eTest1.size()));
     BOOST_CHECK_EQUAL(target.substr(0, count), eTest1);
 }
 
 BOOST_AUTO_TEST_CASE(TestEscapeEmptyString) {
     std::string test1("");
-
     std::string target("XXX");
-
-    int count = ProtoRowBuffer::escapeString(target.begin(), test1.begin(), test1.end());
+    int count = lsst::qserv::mysql::escapeString(target.begin(), test1.begin(), test1.end());
     BOOST_CHECK_EQUAL(count, 0);
     BOOST_CHECK_EQUAL(target.substr(0, count), "");
-}
-
-BOOST_AUTO_TEST_CASE(TestCopyColumn) {
-    std::string simple = "Hello my name is bob";
-    std::string eSimple = "'" + simple + "'";
-    std::string target;
-    int copied = ProtoRowBuffer::copyColumn(target, simple);
-    BOOST_CHECK_EQUAL(copied, static_cast<int>(eSimple.size()));
-    BOOST_CHECK_EQUAL(target, eSimple);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

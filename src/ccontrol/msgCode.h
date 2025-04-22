@@ -42,6 +42,7 @@ const int MSG_MERGED = 1500;
 const int MSG_ERASED = 1600;
 const int MSG_EXEC_SQUASHED = 1990;
 const int MSG_FINALIZED = 2000;
+const int MSG_HTTP_RESULT = 2010;
 
 }  // namespace lsst::qserv::ccontrol
 

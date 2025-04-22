@@ -62,9 +62,8 @@ public:
 
     /// Process a request for pulling and merging a job result into the result table
     /// @param responseSummary - worker response to be analyzed and processed
-    /// @param resultRows - number of result rows in this result.
     /// @return true if successful (no error)
-    virtual bool flush(proto::ResponseSummary const& responseSummary, uint32_t& resultRows) = 0;
+    virtual bool flush(proto::ResponseSummary const& responseSummary) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;

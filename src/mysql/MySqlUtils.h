@@ -23,6 +23,8 @@
 #define LSST_QSERV_MYSQL_MYSQLUTILS_H
 
 // System headers
+#include <cassert>
+#include <limits>
 #include <stdexcept>
 
 // Third-party headers
@@ -65,6 +67,96 @@ public:
      */
     static nlohmann::json processList(MySqlConfig const& config, bool full = false);
 };
+
+/**
+ * Escape a bytestring for LOAD DATA INFILE, as specified by MySQL doc:
+ * https://dev.mysql.com/doc/refman/5.1/en/load-data.html
+ *
+ * This implementation is limited to:
+ *
+ *   Char  Escape Sequence
+ *   ----  ----------------
+ *   \0    An ASCII NUL (0x00) character
+ *   \b    A backspace character
+ *   \n    A newline (linefeed) character
+ *   \r    A carriage return character
+ *   \t    A tab character.
+ *   \Z    ASCII 26 (Control+Z)
+ *   \N    NULL
+ *
+ *  @return the number of bytes written to dest
+ */
+template <typename Iter, typename CIter>
+inline int escapeString(Iter destBegin, CIter srcBegin, CIter srcEnd) {
+    // mysql_real_escape_string(_mysql, cursor, col, r.lengths[i]);
+    // empty string isn't escaped
+    if (srcEnd == srcBegin) return 0;
+    assert(srcEnd - srcBegin > 0);
+    assert(srcEnd - srcBegin < std::numeric_limits<int>::max() / 2);
+    Iter destI = destBegin;
+    for (CIter i = srcBegin; i != srcEnd; ++i) {
+        switch (*i) {
+            case '\0':
+                *destI++ = '\\';
+                *destI++ = '0';
+                break;
+            case '\b':
+                *destI++ = '\\';
+                *destI++ = 'b';
+                break;
+            case '\n':
+                *destI++ = '\\';
+                *destI++ = 'n';
+                break;
+            case '\r':
+                *destI++ = '\\';
+                *destI++ = 'r';
+                break;
+            case '\t':
+                *destI++ = '\\';
+                *destI++ = 't';
+                break;
+            case '\032':
+                *destI++ = '\\';
+                *destI++ = 'Z';
+                break;
+            case '\\': {
+                auto const nextI = i + 1;
+                if (srcEnd == nextI) {
+                    *destI++ = *i;
+                } else if (*nextI != 'N') {
+                    *destI++ = '\\';
+                    *destI++ = '\\';
+                } else {
+                    // in this case don't modify anything, because Null (\N) is not treated by escaping in
+                    // this context.
+                    *destI++ = *i;
+                }
+                break;
+            }
+            default:
+                *destI++ = *i;
+                break;
+        }
+    }
+    return destI - destBegin;
+}
+
+/// The specialized version of the function for the char* type.
+int escapeString(char* dest, char const* src, int srcLength);
+
+/**
+ * The specialized version of the function for the std::string type.
+ *
+ * The function will append the result to the destination string. The destination string
+ * will be resized to accommodate the result. The string will be enclosed by tge optionally
+ * specified quote character if requested.
+ *
+ * @note The function will not add the terminating zero to the destination string.
+ * @return The number of bytes added to the destination string.
+ */
+int escapeAppendString(std::string& dest, char const* srcData, size_t srcSize, bool quote = true,
+                       char quoteChar = '\'');
 
 }  // namespace lsst::qserv::mysql
 
