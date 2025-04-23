@@ -133,8 +133,7 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
     }
     LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
     try {
-        return std::make_shared<UserQueryProcessList>(stmt, sharedResources->resultDbConn.get(),
-                                                      sharedResources->qMetaSelect,
+        return std::make_shared<UserQueryProcessList>(stmt, sharedResources->qMetaSelect,
                                                       sharedResources->qMetaCzarId, userQueryId, resultDb);
     } catch (std::exception const& exc) {
         return std::make_shared<UserQueryInvalid>(exc.what());
@@ -411,8 +410,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     } else if (UserQueryType::isShowProcessList(query, full)) {
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
         try {
-            return std::make_shared<UserQueryProcessList>(full, _userQuerySharedResources->resultDbConn.get(),
-                                                          _userQuerySharedResources->qMetaSelect,
+            return std::make_shared<UserQueryProcessList>(full, _userQuerySharedResources->qMetaSelect,
                                                           _userQuerySharedResources->qMetaCzarId, userQueryId,
                                                           resultDb);
         } catch (std::exception const& exc) {
