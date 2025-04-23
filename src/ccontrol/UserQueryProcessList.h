@@ -44,10 +44,6 @@ namespace lsst::qserv::query {
 class SelectStmt;
 }
 
-namespace lsst::qserv::sql {
-class SqlConnection;
-}
-
 namespace lsst::qserv::ccontrol {
 
 /// UserQueryProcessList : implementation of the UserQuery for SHOWPROCESS statements.
@@ -57,13 +53,11 @@ public:
      *  Constructor for "SELECT ... FROM  INFORMATION_SCHEMA.PROCESSLIST ...".
      *
      *  @param statement:     Parsed SELECT statement
-     *  @param resultDbConn:  Connection to results database
      *  @param qMetaSelect:   QMetaSelect instance
      *  @param qMetaCzarId:   Czar ID for QMeta queries
      *  @param userQueryId:   Unique string identifying query
      */
     UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
-                         sql::SqlConnection* resultDbConn,
                          std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, qmeta::CzarId qMetaCzarId,
                          std::string const& userQueryId, std::string const& resultDb);
 
@@ -71,14 +65,13 @@ public:
      *  Constructor for "SHOW [FULL] PROCESSLIST".
      *
      *  @param full:          True if FULL is in query
-     *  @param resultDbConn:  Connection to results database
      *  @param qMetaSelect:   QMetaSelect instance
      *  @param qMetaCzarId:   Czar ID for QMeta queries
      *  @param userQueryId:   Unique string identifying query
      */
-    UserQueryProcessList(bool full, sql::SqlConnection* resultDbConn,
-                         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, qmeta::CzarId qMetaCzarId,
-                         std::string const& userQueryId, std::string const& resultDb);
+    UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
+                         qmeta::CzarId qMetaCzarId, std::string const& userQueryId,
+                         std::string const& resultDb);
 
     UserQueryProcessList(UserQueryProcessList const&) = delete;
     UserQueryProcessList& operator=(UserQueryProcessList const&) = delete;
@@ -118,7 +111,6 @@ private:
     /// @return ORDER BY part of SELECT statement that gets executed by the proxy
     std::string _getResultOrderBy() const { return _orderBy; }
 
-    sql::SqlConnection* _resultDbConn;
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
     qmeta::CzarId const _qMetaCzarId;  ///< Czar ID in QMeta database
     QueryState _qState = UNKNOWN;
