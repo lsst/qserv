@@ -14,7 +14,6 @@ target_sources(ccontrol PRIVATE
     QueryState.cc
     UserQueryAsyncResult.cc
     UserQueryFactory.cc
-    UserQueryFlushChunksCache.cc
     UserQueryProcessList.cc
     UserQueryQueries.cc
     UserQuerySelectCountStar.cc

@@ -51,9 +51,6 @@ public:
     /// Returns true if query is regular SELECT (not isSelectResult())
     static bool isSelect(std::string const& query);
 
-    /// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
-    static bool isFlushChunksCache(std::string const& query, std::string& dbName);
-
     /**
      *  Returns true if query is SHOW [FULL] PROCESSLIST
      *

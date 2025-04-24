@@ -46,12 +46,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryType");
 boost::regex _selectRe(R"(^select\s+.+$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
-// regex for FLUSH QSERV_CHUNKS_CACHE [FOR database]
-// Note that parens around whole string are not part of the regex but raw string literal
-// db name will be in group 3.
-boost::regex _flushEmptyRe(R"(^flush\s+qserv_chunks_cache(\s+for\s+(["`]?)(\w+)\2)?\s*;?\s*$)",
-                           boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
-
 // regex for SHOW [FULL] PROCESSLIST
 // if FULL is present then group 1 is non-empty
 // Note that parens around whole string are not part of the regex but raw string literal
@@ -106,18 +100,6 @@ bool UserQueryType::isSelect(std::string const& query) {
             LOGS(_log, LOG_LVL_TRACE, "isSelect: match select result");
             match = false;
         }
-    }
-    return match;
-}
-
-/// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
-bool UserQueryType::isFlushChunksCache(std::string const& query, std::string& dbName) {
-    LOGS(_log, LOG_LVL_TRACE, "isFlushChunksCache: " << query);
-    boost::smatch sm;
-    bool match = boost::regex_match(query, sm, _flushEmptyRe);
-    if (match) {
-        dbName = sm.str(3);
-        LOGS(_log, LOG_LVL_TRACE, "isFlushChunksCache: match: " << dbName);
     }
     return match;
 }
