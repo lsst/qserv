@@ -48,12 +48,6 @@ namespace lsst::qserv::ccontrol {
 
 class UserQueryType {
 public:
-    /// Returns true if query is DROP DATABASE
-    static bool isDropDb(std::string const& query, std::string& dbName);
-
-    /// Returns true if query is DROP TABLE
-    static bool isDropTable(std::string const& query, std::string& dbName, std::string& tableName);
-
     /// Returns true if query is regular SELECT (not isSelectResult())
     static bool isSelect(std::string const& query);
 

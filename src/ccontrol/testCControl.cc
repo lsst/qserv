@@ -184,63 +184,6 @@ BOOST_AUTO_TEST_CASE(testUserQueryType) {
     struct {
         const char* query;
         const char* db;
-        const char* table;
-    } drop_table_ok[] = {{"DROP TABLE DB.TABLE", "DB", "TABLE"},
-                         {"DROP TABLE DB.TABLE;", "DB", "TABLE"},
-                         {"DROP TABLE DB.TABLE ;", "DB", "TABLE"},
-                         {"DROP TABLE `DB`.`TABLE` ", "DB", "TABLE"},
-                         {"DROP TABLE \"DB\".\"TABLE\"", "DB", "TABLE"},
-                         {"DROP TABLE TABLE", "", "TABLE"},
-                         {"DROP TABLE `TABLE`", "", "TABLE"},
-                         {"DROP TABLE \"TABLE\"", "", "TABLE"},
-                         {"drop\ttable\nDB.TABLE ;", "DB", "TABLE"}};
-
-    for (auto test : drop_table_ok) {
-        std::string db, table;
-        BOOST_CHECK(UserQueryType::isDropTable(test.query, db, table));
-        BOOST_CHECK_EQUAL(db, test.db);
-        BOOST_CHECK_EQUAL(table, test.table);
-    }
-
-    const char* drop_table_fail[] = {"DROP DATABASE DB",           "DROP TABLE",
-                                     "DROP TABLE TABLE; DROP IT;", "DROP TABLE 'DB'.'TABLE'",
-                                     "DROP TABLE db%.TABLE",       "UNDROP TABLE X"};
-    for (auto test : drop_table_fail) {
-        std::string db, table;
-        BOOST_CHECK(not UserQueryType::isDropTable(test, db, table));
-    }
-
-    struct {
-        const char* query;
-        const char* db;
-    } drop_db_ok[] = {{"DROP DATABASE DB", "DB"},      {"DROP SCHEMA DB ", "DB"},
-                      {"DROP DATABASE DB;", "DB"},     {"DROP SCHEMA DB ; ", "DB"},
-                      {"DROP DATABASE `DB` ", "DB"},   {"DROP SCHEMA \"DB\"", "DB"},
-                      {"drop\tdatabase\nd_b ;", "d_b"}};
-    for (auto test : drop_db_ok) {
-        std::string db;
-        BOOST_CHECK(UserQueryType::isDropDb(test.query, db));
-        BOOST_CHECK_EQUAL(db, test.db);
-    }
-
-    const char* drop_db_fail[] = {"DROP TABLE DB",
-                                  "DROP DB",
-                                  "DROP DATABASE",
-                                  "DROP DATABASE DB;;",
-                                  "DROP SCHEMA DB; DROP IT;",
-                                  "DROP SCHEMA DB.TABLE",
-                                  "DROP SCHEMA 'DB'",
-                                  "DROP DATABASE db%",
-                                  "UNDROP DATABASE X",
-                                  "UN DROP DATABASE X"};
-    for (auto test : drop_db_fail) {
-        std::string db;
-        BOOST_CHECK(not UserQueryType::isDropDb(test, db));
-    }
-
-    struct {
-        const char* query;
-        const char* db;
     } flush_empty_ok[] = {
             {"FLUSH QSERV_CHUNKS_CACHE", ""},
             {"FLUSH QSERV_CHUNKS_CACHE\t ", ""},

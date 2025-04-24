@@ -41,7 +41,6 @@
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/ParseRunner.h"
 #include "ccontrol/UserQueryAsyncResult.h"
-#include "ccontrol/UserQueryDrop.h"
 #include "ccontrol/UserQueryFlushChunksCache.h"
 #include "ccontrol/UserQueryInvalid.h"
 #include "ccontrol/UserQueryProcessList.h"
@@ -382,25 +381,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                                                          _userQuerySharedResources->queryMetadata,
                                                          _userQuerySharedResources->resultDbConn.get());
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
-        return uq;
-    } else if (UserQueryType::isDropTable(query, dbName, tableName)) {
-        // processing DROP TABLE
-        if (dbName.empty()) {
-            dbName = defaultDb;
-        }
-        auto uq = std::make_shared<UserQueryDrop>(_userQuerySharedResources->css, dbName, tableName,
-                                                  _userQuerySharedResources->resultDbConn.get(),
-                                                  _userQuerySharedResources->queryMetadata,
-                                                  _userQuerySharedResources->qMetaCzarId);
-        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: " << dbName << "." << tableName);
-        return uq;
-    } else if (UserQueryType::isDropDb(query, dbName)) {
-        // processing DROP DATABASE
-        auto uq = std::make_shared<UserQueryDrop>(_userQuerySharedResources->css, dbName, std::string(),
-                                                  _userQuerySharedResources->resultDbConn.get(),
-                                                  _userQuerySharedResources->queryMetadata,
-                                                  _userQuerySharedResources->qMetaCzarId);
-        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryDrop: db=" << dbName);
         return uq;
     } else if (UserQueryType::isFlushChunksCache(query, dbName)) {
         auto uq = std::make_shared<UserQueryFlushChunksCache>(_userQuerySharedResources->css, dbName,
