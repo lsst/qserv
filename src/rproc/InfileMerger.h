@@ -41,7 +41,6 @@
 #include "sql/SqlConnection.h"
 #include "util/Error.h"
 #include "util/EventThread.h"
-#include "util/SemaMgr.h"
 
 // Forward declarations
 namespace lsst::qserv {
@@ -95,8 +94,7 @@ public:
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
-    explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm,
-                          std::shared_ptr<util::SemaMgr> const& semaMgrConn);
+    explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm);
     InfileMerger() = delete;
     InfileMerger(InfileMerger const&) = delete;
     InfileMerger& operator=(InfileMerger const&) = delete;
@@ -189,8 +187,6 @@ private:
     size_t _totalResultSize = 0;              ///< Size of result so far in bytes.
     std::map<int, size_t> _perJobResultSize;  ///< Result size for each job
     std::mutex _mtxResultSizeMtx;             ///< Protects _perJobResultSize and _totalResultSize.
-
-    std::shared_ptr<util::SemaMgr> _semaMgrConn;  ///< Used to limit the number of open mysql connections.
 };
 
 }  // namespace lsst::qserv::rproc

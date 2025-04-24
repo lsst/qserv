@@ -21,7 +21,6 @@ target_sources(util PRIVATE
     MultiError.cc
     Mutex.cc
     ResultFileName.cc
-    SemaMgr.cc
     StringHash.cc
     String.cc
     Substitution.cc

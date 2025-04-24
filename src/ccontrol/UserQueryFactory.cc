@@ -365,8 +365,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto uq = std::make_shared<UserQuerySelect>(
                 qs, messageStore, executive, _userQuerySharedResources->databaseModels, infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
-                _userQuerySharedResources->queryStatsData, _userQuerySharedResources->semaMgrConnections,
-                _userQuerySharedResources->qMetaCzarId, errorExtra, async, resultDb);
+                _userQuerySharedResources->queryStatsData, _userQuerySharedResources->qMetaCzarId, errorExtra,
+                async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupMerger();
