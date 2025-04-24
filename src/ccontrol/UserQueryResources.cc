@@ -38,7 +38,6 @@ UserQuerySharedResources::UserQuerySharedResources(
         std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
         std::shared_ptr<qmeta::QStatus> const& queryStatsData_,
         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
-        std::shared_ptr<sql::SqlConnection> const& resultDbConn_,
         std::shared_ptr<qproc::DatabaseModels> const& dbModels_, std::string const& czarName,
         int interactiveChunkLimit_)
         : css(css_),
@@ -47,7 +46,6 @@ UserQuerySharedResources::UserQuerySharedResources(
           queryMetadata(queryMetadata_),
           queryStatsData(queryStatsData_),
           qMetaSelect(qMetaSelect_),
-          resultDbConn(resultDbConn_),
           databaseModels(dbModels_),
           interactiveChunkLimit(interactiveChunkLimit_),
           semaMgrConnections(new util::SemaMgr(cconfig::CzarConfig::instance()->getResultMaxConnections())) {

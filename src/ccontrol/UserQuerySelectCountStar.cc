@@ -27,6 +27,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/UserQueryError.h"
 #include "ccontrol/UserQueryType.h"
 #include "qdisp/MessageStore.h"
@@ -34,6 +35,7 @@
 #include "qmeta/QMetaSelect.h"
 #include "query/SelectStmt.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 
 namespace {
@@ -52,15 +54,13 @@ using boost::lexical_cast;
 namespace lsst::qserv::ccontrol {
 
 UserQuerySelectCountStar::UserQuerySelectCountStar(std::string query,
-                                                   std::shared_ptr<sql::SqlConnection> const& resultDbConn,
                                                    std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
                                                    std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                                    std::string const& userQueryId,
                                                    std::string const& rowsTable, std::string const& resultDb,
                                                    std::string const& countSpelling, qmeta::CzarId czarId,
                                                    bool async)
-        : _resultDbConn(resultDbConn),
-          _qMetaSelect(qMetaSelect),
+        : _qMetaSelect(qMetaSelect),
           _queryMetadata(queryMetadata),
           _messageStore(std::make_shared<qdisp::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
@@ -126,7 +126,9 @@ void UserQuerySelectCountStar::submit() {
     // Create a result table, with one column (row_count) and one row (the total number of rows):
     std::string createTable = "CREATE TABLE " + _resultTableName + "(row_count BIGINT UNSIGNED)";
     LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
-    if (!_resultDbConn->runQuery(createTable, errObj)) {
+    auto const czarConfig = cconfig::CzarConfig::instance();
+    auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
+    if (!resultDbConn->runQuery(createTable, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to create result table: " << errObj.errMsg());
         _messageStore->addMessage(-1, "COUNTSTAR", 1051, "Internal error, failed to create result table.",
                                   MessageSeverity::MSG_ERROR);
@@ -149,7 +151,7 @@ void UserQuerySelectCountStar::submit() {
     }
     insertRow += ")";
     LOGS(_log, LOG_LVL_DEBUG, "inserting row count into result table: " << insertRow);
-    if (!_resultDbConn->runQuery(insertRow, errObj)) {
+    if (!resultDbConn->runQuery(insertRow, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to insert row count into result table: " << errObj.errMsg());
         _messageStore->addMessage(-1, "COUNTSTAR", 1051,
                                   "Internal failure, failed to insert the row count into the result table.",

@@ -159,9 +159,8 @@ std::shared_ptr<UserQuery> _makeUserQueryQueries(query::SelectStmt::Ptr& stmt,
     }
     LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a QUERIES");
     try {
-        return std::make_shared<UserQueryQueries>(stmt, sharedResources->resultDbConn.get(),
-                                                  sharedResources->qMetaSelect, sharedResources->qMetaCzarId,
-                                                  userQueryId, resultDb);
+        return std::make_shared<UserQueryQueries>(stmt, sharedResources->qMetaSelect,
+                                                  sharedResources->qMetaCzarId, userQueryId, resultDb);
     } catch (std::exception const& exc) {
         return std::make_shared<UserQueryInvalid>(exc.what());
     }
@@ -214,8 +213,7 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
             std::make_shared<qmeta::QMetaMysql>(czarConfig->getMySqlQmetaConfig(),
                                                 czarConfig->getMaxMsgSourceStore()),
             std::make_shared<qmeta::QStatusMysql>(czarConfig->getMySqlQStatusDataConfig()),
-            std::make_shared<qmeta::QMetaSelect>(czarConfig->getMySqlQmetaConfig()),
-            sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig()), dbModels, czarName,
+            std::make_shared<qmeta::QMetaSelect>(czarConfig->getMySqlQmetaConfig()), dbModels, czarName,
             czarConfig->getInteractiveChunkLimit());
 }
 
@@ -323,9 +321,9 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             qmetaHasDataForSelectCountStarQuery(stmt, _userQuerySharedResources, defaultDb, rowsTable)) {
             LOGS(_log, LOG_LVL_DEBUG, "make UserQuerySelectCountStar");
             auto uq = std::make_shared<UserQuerySelectCountStar>(
-                    query, _userQuerySharedResources->resultDbConn, _userQuerySharedResources->qMetaSelect,
-                    _userQuerySharedResources->queryMetadata, userQueryId, rowsTable, resultDb, countSpelling,
-                    _userQuerySharedResources->qMetaCzarId, async);
+                    query, _userQuerySharedResources->qMetaSelect, _userQuerySharedResources->queryMetadata,
+                    userQueryId, rowsTable, resultDb, countSpelling, _userQuerySharedResources->qMetaCzarId,
+                    async);
             uq->qMetaRegister(resultLocation, msgTableName);
             return uq;
         }
@@ -377,8 +375,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {
         auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _userQuerySharedResources->qMetaCzarId,
-                                                         _userQuerySharedResources->queryMetadata,
-                                                         _userQuerySharedResources->resultDbConn.get());
+                                                         _userQuerySharedResources->queryMetadata);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
         return uq;
     } else if (UserQueryType::isShowProcessList(query, full)) {
