@@ -44,10 +44,6 @@ namespace lsst::qserv::query {
 class SelectStmt;
 }
 
-namespace lsst::qserv::sql {
-class SqlConnection;
-}
-
 namespace lsst::qserv::ccontrol {
 
 /// UserQueryQueries : implementation of the INFORMATION_SCHEMA.QUERIES table.
@@ -57,12 +53,11 @@ public:
      *  Constructor for "SELECT ... FROM  INFORMATION_SCHEMA.QUERIES ...".
      *
      *  @param statement:     Parsed SELECT statement
-     *  @param resultDbConn:  Connection to results database
      *  @param qMetaSelect:   QMetaSelect instance
      *  @param qMetaCzarId:   Czar ID for QMeta queries
      *  @param userQueryId:   Unique string identifying query
      */
-    UserQueryQueries(std::shared_ptr<query::SelectStmt> const& statement, sql::SqlConnection* resultDbConn,
+    UserQueryQueries(std::shared_ptr<query::SelectStmt> const& statement,
                      std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, qmeta::CzarId qMetaCzarId,
                      std::string const& userQueryId, std::string const& resultDb);
 
@@ -104,7 +99,6 @@ private:
     /// @return ORDER BY part of SELECT statement that gets executed by the proxy
     std::string _getResultOrderBy() const { return _orderBy; }
 
-    sql::SqlConnection* _resultDbConn;
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
     qmeta::CzarId const _qMetaCzarId;  ///< Czar ID in QMeta database
     QueryState _qState = UNKNOWN;

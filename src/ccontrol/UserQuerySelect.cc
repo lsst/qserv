@@ -133,8 +133,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                                 std::shared_ptr<qmeta::QStatus> const& queryStatsData,
-                                 std::shared_ptr<util::SemaMgr> const& semaMgrConn, qmeta::CzarId czarId,
+                                 std::shared_ptr<qmeta::QStatus> const& queryStatsData, qmeta::CzarId czarId,
                                  std::string const& errorExtra, bool async, std::string const& resultDb)
         : _qSession(qs),
           _messageStore(messageStore),
@@ -144,7 +143,6 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
           _secondaryIndex(secondaryIndex),
           _queryMetadata(queryMetadata),
           _queryStatsData(queryStatsData),
-          _semaMgrConn(semaMgrConn),
           _qMetaCzarId(czarId),
           _errorExtra(errorExtra),
           _resultDb(resultDb),
@@ -421,8 +419,7 @@ void UserQuerySelect::setupMerger() {
          "setting mergeStmt:" << (_infileMergerConfig->mergeStmt != nullptr
                                           ? _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment()
                                           : "nullptr"));
-    _infileMerger =
-            std::make_shared<rproc::InfileMerger>(*_infileMergerConfig, _databaseModels, _semaMgrConn);
+    _infileMerger = std::make_shared<rproc::InfileMerger>(*_infileMergerConfig, _databaseModels);
 
     auto&& preFlightStmt = _qSession->getPreFlightStmt();
     if (preFlightStmt == nullptr) {

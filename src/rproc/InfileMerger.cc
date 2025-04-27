@@ -129,14 +129,12 @@ namespace lsst::qserv::rproc {
 // InfileMerger public
 ////////////////////////////////////////////////////////////////////////
 InfileMerger::InfileMerger(rproc::InfileMergerConfig const& c,
-                           std::shared_ptr<qproc::DatabaseModels> const& dm,
-                           util::SemaMgr::Ptr const& semaMgrConn)
+                           std::shared_ptr<qproc::DatabaseModels> const& dm)
         : _config(c),
           _mysqlConn(_config.mySqlConfig),
           _databaseModels(dm),
           _maxSqlConnectionAttempts(cconfig::CzarConfig::instance()->getMaxSqlConnectionAttempts()),
-          _maxResultTableSizeBytes(cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES),
-          _semaMgrConn(semaMgrConn) {
+          _maxResultTableSizeBytes(cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES) {
     _fixupTargetName();
     if (!_setupConnectionMyIsam()) {
         throw util::Error(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
@@ -220,9 +218,7 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
     ret = _applyMysqlMyIsam(infileStatement, responseSummary.transmitsize());
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG,
-         "mergeDur=" << mergeDur.count() << " sema(total=" << _semaMgrConn->getTotalCount()
-                     << " used=" << _semaMgrConn->getUsedCount() << ")");
+    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }

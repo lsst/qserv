@@ -53,14 +53,6 @@ class DatabaseModels;
 class SecondaryIndex;
 }  // namespace lsst::qserv::qproc
 
-namespace lsst::qserv::sql {
-class SqlConnection;
-}
-
-namespace lsst::qserv::util {
-class SemaMgr;
-}
-
 namespace lsst::qserv::ccontrol {
 
 /**
@@ -74,7 +66,6 @@ public:
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
                              std::shared_ptr<qmeta::QStatus> const& queryStatsData_,
                              std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
-                             std::shared_ptr<sql::SqlConnection> const& resultDbConn_,
                              std::shared_ptr<qproc::DatabaseModels> const& databaseModels_,
                              std::string const& czarName, int interactiveChunkLimit_);
 
@@ -86,11 +77,9 @@ public:
     std::shared_ptr<qmeta::QMeta> queryMetadata;
     std::shared_ptr<qmeta::QStatus> queryStatsData;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
-    std::shared_ptr<sql::SqlConnection> resultDbConn;
     std::shared_ptr<qproc::DatabaseModels> databaseModels;
     qmeta::CzarId qMetaCzarId;  ///< Czar ID in QMeta database
     int const interactiveChunkLimit;
-    std::shared_ptr<util::SemaMgr> semaMgrConnections;
 
     /**
      * @brief Make a query resources with parameters that are specific to the UserQuery (the id and the

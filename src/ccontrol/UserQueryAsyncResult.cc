@@ -31,11 +31,13 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMeta.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/MessageStore.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 
 namespace {
@@ -46,13 +48,11 @@ namespace lsst::qserv::ccontrol {
 
 // Constructors
 UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId qMetaCzarId,
-                                           std::shared_ptr<qmeta::QMeta> const& qMeta,
-                                           sql::SqlConnection* resultDbConn)
+                                           std::shared_ptr<qmeta::QMeta> const& qMeta)
         : UserQuery(),
           _queryId(queryId),
           _qMetaCzarId(qMetaCzarId),
           _qMeta(qMeta),
-          _resultDbConn(resultDbConn),
           _messageStore(std::make_shared<qdisp::MessageStore>()) {
     LOGS(_log, LOG_LVL_DEBUG, "UserQueryAsyncResult: QID=" << queryId);
 
@@ -119,9 +119,11 @@ void UserQueryAsyncResult::submit() {
     std::string const resultTableName = _qInfo.resultLocation().substr(6);
 
     // check that message and result tables exist
+    auto const czarConfig = cconfig::CzarConfig::instance();
+    auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
     sql::SqlErrorObject sqlErrObj;
-    if (!_resultDbConn->tableExists(_qInfo.msgTableName(), sqlErrObj) or
-        !_resultDbConn->tableExists(resultTableName, sqlErrObj)) {
+    if (!resultDbConn->tableExists(_qInfo.msgTableName(), sqlErrObj) or
+        !resultDbConn->tableExists(resultTableName, sqlErrObj)) {
         std::string message = "Result or message table does not exist, result is likely expired.";
         LOGS(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
@@ -132,7 +134,7 @@ void UserQueryAsyncResult::submit() {
     // into the message store, at this point original result table must be unlocked
     std::string query = "SELECT chunkId, code, message, severity, timeStamp FROM " + _qInfo.msgTableName();
     sql::SqlResults sqlResults;
-    if (!_resultDbConn->runQuery(query, sqlResults, sqlErrObj)) {
+    if (!resultDbConn->runQuery(query, sqlResults, sqlErrObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to retrieve message table data: " << sqlErrObj.errMsg());
         std::string message = "Failed to retrieve message table data.";
         _messageStore->addErrorMessage("SYSTEM_SQL", message);
@@ -167,7 +169,7 @@ void UserQueryAsyncResult::submit() {
     // of results I'm going to drop this table now, meaning result can be only
     // retrieved once.
     query = "DROP TABLE " + _qInfo.msgTableName();
-    if (!_resultDbConn->runQuery(query, sqlErrObj)) {
+    if (!resultDbConn->runQuery(query, sqlErrObj)) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to drop message table: " << sqlErrObj.errMsg());
         // Users do not care about this error, so don't send it upstream.
     } else {

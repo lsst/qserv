@@ -41,28 +41,10 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryType");
 
-// regex for DROP {DATABASE|SCHEMA} dbname; db name can be in quotes;
-// db name will be in group 3.
-// Note that parens around whole string are not part of the regex but raw string literal
-boost::regex _dropDbRe(R"(^drop\s+(database|schema)\s+(["`]?)(\w+)\2\s*;?\s*$)",
-                       boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
-
-// regex for DROP TABLE [dbname.]table; both table and db names can be in quotes;
-// db name will be in group 3, table name in group 5.
-// Note that parens around whole string are not part of the regex but raw string literal
-boost::regex _dropTableRe(R"(^drop\s+table\s+((["`]?)(\w+)\2[.])?(["`]?)(\w+)\4\s*;?\s*$)",
-                          boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
-
 // regex for SELECT *
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _selectRe(R"(^select\s+.+$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
-
-// regex for FLUSH QSERV_CHUNKS_CACHE [FOR database]
-// Note that parens around whole string are not part of the regex but raw string literal
-// db name will be in group 3.
-boost::regex _flushEmptyRe(R"(^flush\s+qserv_chunks_cache(\s+for\s+(["`]?)(\w+)\2)?\s*;?\s*$)",
-                           boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
 // regex for SHOW [FULL] PROCESSLIST
 // if FULL is present then group 1 is non-empty
@@ -107,31 +89,6 @@ boost::regex _setRe(R"(^set\s+.+$)", boost::regex::ECMAScript | boost::regex::ic
 
 namespace lsst::qserv::ccontrol {
 
-/// Returns true if query is DROP DATABASE
-bool UserQueryType::isDropDb(std::string const& query, std::string& dbName) {
-    LOGS(_log, LOG_LVL_TRACE, "isDropDb: " << query);
-    boost::smatch sm;
-    bool match = boost::regex_match(query, sm, _dropDbRe);
-    if (match) {
-        dbName = sm.str(3);
-        LOGS(_log, LOG_LVL_TRACE, "isDropDb: match: " << dbName);
-    }
-    return match;
-}
-
-/// Returns true if query is DROP TABLE
-bool UserQueryType::isDropTable(std::string const& query, std::string& dbName, std::string& tableName) {
-    LOGS(_log, LOG_LVL_TRACE, "isDropTable: " << query);
-    boost::smatch sm;
-    bool match = boost::regex_match(query, sm, _dropTableRe);
-    if (match) {
-        dbName = sm.str(3);
-        tableName = sm.str(5);
-        LOGS(_log, LOG_LVL_TRACE, "isDropTable: match: " << dbName << "." << tableName);
-    }
-    return match;
-}
-
 /// Returns true if query is regular SELECT (not isSelectResult())
 bool UserQueryType::isSelect(std::string const& query) {
     LOGS(_log, LOG_LVL_TRACE, "isSelect: " << query);
@@ -143,18 +100,6 @@ bool UserQueryType::isSelect(std::string const& query) {
             LOGS(_log, LOG_LVL_TRACE, "isSelect: match select result");
             match = false;
         }
-    }
-    return match;
-}
-
-/// Returns true if query is FLUSH QSERV_CHUNKS_CACHE [FOR database]
-bool UserQueryType::isFlushChunksCache(std::string const& query, std::string& dbName) {
-    LOGS(_log, LOG_LVL_TRACE, "isFlushChunksCache: " << query);
-    boost::smatch sm;
-    bool match = boost::regex_match(query, sm, _flushEmptyRe);
-    if (match) {
-        dbName = sm.str(3);
-        LOGS(_log, LOG_LVL_TRACE, "isFlushChunksCache: match: " << dbName);
     }
     return match;
 }
