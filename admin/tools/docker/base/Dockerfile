@@ -155,7 +155,7 @@ RUN cd /tmp \
 RUN cd /tmp \
     && git clone https://github.com/yhirose/cpp-httplib.git \
     && cd cpp-httplib \
-    && git checkout v0.19.0 \
+    && git checkout v0.20.0 \
     && mkdir build \
     && cd build \
     && cmake -DCMAKE_BUILD_TYPE=Release -DHTTPLIB_REQUIRE_OPENSSL=on -DHTTPLIB_COMPILE=on -DBUILD_SHARED_LIBS=on .. \
@@ -262,8 +262,8 @@ RUN dnf update -y \
        https://apache.jfrog.io/artifactory/arrow/almalinux/9/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
     && dnf config-manager --set-enabled crb \
-    && dnf install -y arrow1900-libs \
-    && dnf install -y parquet1900-libs \
+    && dnf install -y arrow2000-libs \
+    && dnf install -y parquet2000-libs \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
