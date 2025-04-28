@@ -885,14 +885,10 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
             string const& table = row[2];
             unsigned int chunk = lsst::qserv::stoui(row[3]);
             size_t const size = stoull(row[4]);
-#if 1  //&&&
             chunkMap.workers[worker][database][table].push_back(QMetaChunkMap::ChunkInfo{chunk, size});
             LOGS(_log, LOG_LVL_TRACE,
                  "QMetaInsrt{worker=" << worker << " dbN=" << database << " tblN=" << table
                                       << " chunk=" << chunk << " sz=" << size);
-#else   //&&&
-            chunkMap.workers[worker][database][table].push_back(ChunkMap::ChunkInfo{chunk, size});
-#endif  //&&&
         }
         chunkMap.updateTime = updateTime;
     } catch (exception const& ex) {
@@ -906,13 +902,9 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string const tableName = "chunkMapStatus";
-#if 1  //&&&
     string const query = "SELECT UNIX_TIMESTAMP(`update_time`) FROM `" + tableName +
                          "` ORDER BY `update_time` DESC LIMIT 1";
 
-#else   //&&&
-    string const query = "SELECT `update_time` FROM `" + tableName + "` ORDER BY `update_time` DESC LIMIT 1";
-#endif  //&&&
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (!_conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);

@@ -510,7 +510,6 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
     LOGS(_log, LOG_LVL_TRACE, __func__ << " _fillRows " << task->getIdStr() << " end");
     _responseData->set_rowcount(rows);
     _responseData->set_transmitsize(tSize);
-    ++_headerCount;
 
     // Serialize the content of the data buffer into the Protobuf data message
     // that will be written into the output file.
@@ -622,7 +621,7 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     string httpFileUrl = task->getUberJobData()->resultFileHttpUrl();
     auto ujd = _uberJobData.lock();
     if (ujd != nullptr) {
-        ujd->responseFileReady(httpFileUrl, _rowcount, _transmitsize, _headerCount);
+        ujd->responseFileReady(httpFileUrl, _rowcount, _transmitsize);
     }
     return true;
 }

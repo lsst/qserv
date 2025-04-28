@@ -125,7 +125,7 @@ std::tuple<bool, bool> readHttpFileAndMergeHttp(
     uint32_t msgSizeBytes = 0;
     bool success = true;
     bool mergeHappened = false;
-    int headerCount = 0;
+    uint64_t headerCount = 0;
     uint64_t totalBytesRead = 0;
     try {
         auto exec = uberJob->getExecutive();

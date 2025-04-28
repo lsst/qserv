@@ -103,8 +103,7 @@ public:
     }
 
     /// Let the czar know the result is ready.
-    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
-                           uint64_t headerCount);  // TODO:UJ remove headerCount
+    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize);
 
     /// Let the Czar know there's been a problem.
     void responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl);

@@ -38,6 +38,7 @@
 #include "http/Method.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
+#include "protojson/JobReadyMsg.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
 #include "wconfig/WorkerConfig.h"
@@ -87,11 +88,9 @@ void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const&
     _fileChannelShared = fileChannelShared;
 }
 
-void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize,
-                                    uint64_t headerCount) {
+void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize) {
     LOGS(_log, LOG_LVL_INFO,
-         cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize
-                         << " headerCount=" << headerCount);
+         cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize);
 
     // Latch to prevent errors from being transmitted.
     // NOTE: Calls to responseError() and responseFileReady() are protected by the
@@ -110,17 +109,11 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
-    json request = {{"version", http::MetaModule::version},
-                    {"workerid", workerIdStr},
-                    {"auth_key", _authKey},
-                    {"czar", _czarName},
-                    {"czarid", _czarId},
-                    {"queryid", _queryId},
-                    {"uberjobid", _uberJobId},
-                    {"fileUrl", httpFileUrl},
-                    {"rowCount", rowCount},
-                    {"fileSize", fileSize},
-                    {"headerCount", headerCount}};
+    auto repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
+    auto repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
+    auto jrMsg = protojson::JobReadyMsg::create(repliInstId, repliAuthKey, workerIdStr, _czarName, _czarId,
+                                                _queryId, _uberJobId, httpFileUrl, rowCount, fileSize);
+    json request = jrMsg->serializeJson();
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};

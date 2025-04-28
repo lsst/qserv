@@ -297,7 +297,6 @@ private:
 
     int64_t _rowcount = 0;       ///< The total numnber of rows in all result sets of a query.
     uint64_t _transmitsize = 0;  ///< The total amount of data (bytes) in all result sets of a query.
-    uint64_t _headerCount = 0;   ///< Count of headers received.
 
     /// _rowLimitComplete indicates that there is a LIMIT clause in the user query that
     /// can be applied to the queries given to workers. It's important to apply it
