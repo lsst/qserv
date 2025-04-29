@@ -41,15 +41,17 @@
 #include "sql/SqlConnection.h"
 #include "util/Error.h"
 #include "util/EventThread.h"
-#include "util/SemaMgr.h"
+
+#include "util/InstanceCount.h"
 
 #include "util/InstanceCount.h"
 
 // Forward declarations
 namespace lsst::qserv {
 namespace mysql {
+class CsvStream;
 class MysqlConfig;
-}
+}  // namespace mysql
 namespace proto {
 class ResponseData;
 class ResponseSummary;
@@ -96,19 +98,25 @@ public:
 /// To use, construct a configured instance, then call merge() to kick off the
 /// merging process, and finalize() to wait for outstanding merging processes
 /// and perform the appropriate post-processing before returning.  merge() right
-/// now expects a parsed ResponseData message.
+/// now expects a fragment of the CSV-formatted stream which is ready to be ingested
+/// into the result table.
 /// At present, Result messages are not chained.
 class InfileMerger {
 public:
-    explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm,
-                          std::shared_ptr<util::SemaMgr> const& semaMgrConn);
+    explicit InfileMerger(InfileMergerConfig const& c, std::shared_ptr<qproc::DatabaseModels> const& dm);
     InfileMerger() = delete;
     InfileMerger(InfileMerger const&) = delete;
     InfileMerger& operator=(InfileMerger const&) = delete;
     ~InfileMerger() = default;
 
+    /// Merge a worker response, which contains a single message
+    /// @return true if merge was successfully imported.
+    bool merge(proto::ResponseSummary const& responseSummary,
+               std::shared_ptr<mysql::CsvStream> const& csvStream);
+
     /// Merge the result data collected over Http.
-    bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
+    bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, uint64_t fileSize,
+                   std::shared_ptr<mysql::CsvStream> const& csvStream);
 
     /// Indicate the merge for the job is complete.
     void mergeCompleteFor(int jobId);
@@ -194,8 +202,6 @@ private:
     size_t _totalResultSize = 0;              ///< Size of result so far in bytes.
     std::map<int, size_t> _perJobResultSize;  ///< Result size for each job
     std::mutex _mtxResultSizeMtx;             ///< Protects _perJobResultSize and _totalResultSize.
-
-    std::shared_ptr<util::SemaMgr> _semaMgrConn;  ///< Used to limit the number of open mysql connections.
 };
 
 }  // namespace lsst::qserv::rproc

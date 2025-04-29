@@ -59,14 +59,12 @@ using namespace std;
 namespace lsst::qserv::wsched {
 
 ScanScheduler::ScanScheduler(string const& name, int maxThreads, int maxReserve, int priority,
-                             int maxActiveChunks, memman::MemMan::Ptr const& memMan, int minRating,
-                             int maxRating, double maxTimeMinutes)
+                             int maxActiveChunks, int minRating, int maxRating, double maxTimeMinutes)
         : SchedulerBase{name, maxThreads, maxReserve, maxActiveChunks, priority},
-          _memMan{memMan},
           _minRating{minRating},
           _maxRating{maxRating},
           _maxTimeMinutes{maxTimeMinutes} {
-    _taskQueue = make_shared<ChunkTasksQueue>(this, _memMan);
+    _taskQueue = make_shared<ChunkTasksQueue>(this);
     assert(_minRating <= _maxRating);
 }
 
@@ -103,27 +101,6 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
         ++_recentlyCompleted;
         LOGS(_log, LOG_LVL_TRACE,
              "commandFinish " << getName() << " inFlight=" << _inFlight << " " << task->getIdStr());
-
-        // If there's an old _memManHandleToUnlock, it needs to be unlocked before a new value is assigned.
-        if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
-            LOGS(_log, LOG_LVL_TRACE,
-                 "ScanScheduler::commandFinish unlocking handle=" << _memManHandleToUnlock);
-            _memMan->unlock(_memManHandleToUnlock);
-            _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
-        }
-
-        // Wait to unlock the tables until after the next call to _ready or commandFinish.
-        // This is done in case only one thread is running on this scheduler as
-        // we don't want to release the tables in case the next Task wants some of them.
-        if (!_taskQueue->empty()) {
-            _memManHandleToUnlock = task->getMemHandle();
-            LOGS(_log, LOG_LVL_TRACE, "setting handleToUnlock handle=" << _memManHandleToUnlock);
-        } else {
-            LOGS(_log, LOG_LVL_TRACE,
-                 "ScanScheduler::commandFinish unlocking handle=" << task->getMemHandle());
-            _memMan->unlock(task->getMemHandle());  // Nothing on the queue, no reason to wait.
-        }
-
         _decrChunkTaskCount(task->getChunkId());
     }
     LOGS(_log, LOG_LVL_TRACE, "tskEnd chunk=" << task->getChunkId() << " " << task->getIdStr());
@@ -161,25 +138,6 @@ bool ScanScheduler::_ready() {
     bool useFlexibleLock = (_inFlight < 1);
     /// Once _taskQueue->ready() has a task ready, it stays on that task until it is used by getTask().
     auto rdy = _taskQueue->ready(useFlexibleLock);  // Only returns true if MemMan grants resources.
-    bool logMemStats = false;
-    // If ready failed, holding on to this is unlikely to help, otherwise the new Task now has its own handle
-    // which and will keep needed files in memory.
-    if (_memManHandleToUnlock != memman::MemMan::HandleType::INVALID) {
-        LOGS(_log, LOG_LVL_TRACE,
-             "ScanScheduler::_ready unlocking handle="
-                     << _memManHandleToUnlock << " "
-                     << _memMan->getStatus(_memManHandleToUnlock).logString());
-        _memMan->unlock(_memManHandleToUnlock);
-        _memManHandleToUnlock = memman::MemMan::HandleType::INVALID;
-        logMemStats = true;
-        if (!rdy) {
-            // Try again now that memory is freed
-            rdy = _taskQueue->ready(useFlexibleLock);  // Only returns true if MemMan grants resources.
-        }
-    }
-    if (rdy || logMemStats) {
-        logMemManStats();
-    }
     return rdy;
 }
 
@@ -247,7 +205,6 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
                 return;
             }
         }
-        tsk->setMemMan(_memMan);
         tasks.push_back(tsk);
         LOGS(_log, LOG_LVL_TRACE, getName() << " queCmd " << tsk->getIdStr());
     }
@@ -294,11 +251,6 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
         LOGS(_log, LOG_LVL_DEBUG, "removeTask not removing running tasks");
         return false;
     }
-    // Removing the task before we're done with MemMan could cause undefined behavior.
-    if (!task->getSafeToMoveRunning()) {
-        LOGS(_log, LOG_LVL_WARN, "removeTask couldn't move as still waiting on MemMan");
-        return false;
-    }
 
     /// Don't remove the task if there are already too many threads in existence.
     if (task->atMaxThreadCount()) {
@@ -318,10 +270,6 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
              "presumably already moved for large result.");
     }
     return false;
-}
-
-void ScanScheduler::logMemManStats() {
-    LOGS(_log, LOG_LVL_TRACE, "Scan " << _memMan->getStatistics().logString());
 }
 
 }  // namespace lsst::qserv::wsched

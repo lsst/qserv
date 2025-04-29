@@ -41,9 +41,6 @@ class QMetaSelect;
 namespace query {
 class SelectStmt;
 }
-namespace sql {
-class SqlConnection;
-}
 }  // namespace lsst::qserv
 
 namespace lsst::qserv::ccontrol {
@@ -53,8 +50,7 @@ class UserQuerySelectCountStar : public UserQuery {
 public:
     typedef std::shared_ptr<UserQuerySelectCountStar> Ptr;
 
-    UserQuerySelectCountStar(std::string query, std::shared_ptr<sql::SqlConnection> const& resultDbConn,
-                             std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
+    UserQuerySelectCountStar(std::string query, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                              std::string const& userQueryId, std::string const& rowsTable,
                              std::string const& resultDb, std::string const& countSpelling,
@@ -112,7 +108,6 @@ public:
 private:
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
 
-    std::shared_ptr<sql::SqlConnection> _resultDbConn;
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
     std::shared_ptr<qmeta::QMeta> const& _queryMetadata;
     std::shared_ptr<qmeta::MessageStore> _messageStore;

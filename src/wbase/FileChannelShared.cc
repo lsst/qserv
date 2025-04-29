@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "global/LogContext.h"
+#include "mysql/MySqlUtils.h"
 #include "proto/ProtoHeaderWrap.h"
 #include "proto/worker.pb.h"
 #include "wbase/Task.h"
@@ -43,7 +44,7 @@
 #include "util/Bug.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
-#include "util/ResultFileNameParser.h"
+#include "util/ResultFileName.h"
 #include "util/Timer.h"
 #include "util/TimeUtils.h"
 
@@ -62,7 +63,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.FileChannelShared");
 
 bool isResultFile(fs::path const& filePath) {
     return filePath.has_filename() && filePath.has_extension() &&
-           (filePath.extension() == util::ResultFileNameParser::fileExt);
+           (filePath.extension() == util::ResultFileName::fileExt);
 }
 
 /**
@@ -112,8 +113,6 @@ size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
 
 namespace lsst::qserv::wbase {
 
-atomic<uint64_t> FileChannelShared::scsSeqId{0};
-
 mutex FileChannelShared::_resultsDirCleanupMtx;
 
 void FileChannelShared::cleanUpResultsOnCzarRestart(uint32_t czarId, QueryId queryId) {
@@ -126,8 +125,8 @@ void FileChannelShared::cleanUpResultsOnCzarRestart(uint32_t czarId, QueryId que
     size_t const numFilesRemoved = ::cleanUpResultsImpl(
             context, dirPath, [czarId, queryId, &context](string const& fileName) -> bool {
                 try {
-                    auto const fileAttributes = util::ResultFileNameParser(fileName);
-                    return (fileAttributes.czarId == czarId) && (fileAttributes.queryId <= queryId);
+                    auto const fileAttributes = util::ResultFileName(fileName);
+                    return (fileAttributes.czarId() == czarId) && (fileAttributes.queryId() <= queryId);
                 } catch (exception const& ex) {
                     LOGS(_log, LOG_LVL_WARN,
                          context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
@@ -158,8 +157,8 @@ void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId) {
     size_t const numFilesRemoved = ::cleanUpResultsImpl(
             context, dirPath, [&context, czarId, queryId](string const& fileName) -> bool {
                 try {
-                    auto const fileAttributes = util::ResultFileNameParser(fileName);
-                    return (fileAttributes.czarId == czarId) && (fileAttributes.queryId == queryId);
+                    auto const fileAttributes = util::ResultFileName(fileName);
+                    return (fileAttributes.czarId() == czarId) && (fileAttributes.queryId() == queryId);
                 } catch (exception const& ex) {
                     LOGS(_log, LOG_LVL_WARN,
                          context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
@@ -225,7 +224,7 @@ json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned in
                 ++numTotal;
 
                 // Skip files not matching the query criteria if the one was requested.
-                json const jsonTask = util::ResultFileNameParser(filePath).toJson();
+                json const jsonTask = util::ResultFileName(filePath).toJson();
                 QueryId const queryId = jsonTask.at("query_id");
                 if (!queryIdsFilter.empty() && !queryIdsFilter.contains(queryId)) continue;
 
@@ -264,15 +263,12 @@ shared_ptr<FileChannelShared> FileChannelShared::create(shared_ptr<wbase::SendCh
 
 FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
                                      string const& workerId)
-        : _isUberJob(false),
-          _sendChannel(sendChannel),
+        : _sendChannel(sendChannel),
           _uberJobId(0),
           _czarId(czarId),
           _czarHostName(""),  ///< Name of the czar host.
           _czarPort(-1),
-          _workerId(workerId),
-          _protobufArena(make_unique<google::protobuf::Arena>()),
-          _scsId(scsSeqId++) {
+          _workerId(workerId) {
     LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created");
     if (_sendChannel == nullptr) {
         throw util::Bug(ERR_LOC, "FileChannelShared constructor given nullptr");
@@ -289,21 +285,18 @@ FileChannelShared::Ptr FileChannelShared::create(std::shared_ptr<wbase::UberJobD
 FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData,
                                      qmeta::CzarId czarId, string const& czarHostName, int czarPort,
                                      string const& workerId)
-        : _isUberJob(true),
-          _sendChannel(nullptr),
+        : _sendChannel(nullptr),
           _uberJobData(uberJobData),
           _uberJobId(uberJobData->getUberJobId()),
           _czarId(czarId),
           _czarHostName(czarHostName),
           _czarPort(czarPort),
-          _workerId(workerId),
-          _protobufArena(make_unique<google::protobuf::Arena>()),
-          _scsId(scsSeqId++) {
-    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared created scsId=" << _scsId << " ujId=" << _uberJobId);
+          _workerId(workerId) {
+    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared created ujId=" << _uberJobId);
 }
 
 FileChannelShared::~FileChannelShared() {
-    LOGS(_log, LOG_LVL_TRACE, "~FileChannelShared scsId=" << _scsId << " ujId=" << _uberJobId);
+    LOGS(_log, LOG_LVL_TRACE, "~FileChannelShared ujId=" << _uberJobId);
     // Normally, the channel should not be dead at this time. If it's already
     // dead it means there was a problem to process a query or send back a response
     // to Czar. In either case, the file would be useless and it has to be deleted
@@ -380,8 +373,8 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     transmitT.start();
 
     double bufferFillSecs = 0.0;
-    int64_t taskBytesWritten = 0;
-    int rowsTransmitted = 0;
+    uint64_t bytes = 0;
+    uint64_t rows = 0;
 
     // Keep reading rows and converting those into messages while any
     // are still left in the result set. The row processing method
@@ -389,9 +382,8 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     // will be sant back to Czar after processing the very last set of rows
     // of the last task of a request.
     bool erred = false;
-    bool hasMoreRows = true;
 
-    while (hasMoreRows && !cancelled) {
+    if (!cancelled) {
         // This lock is to protect the stream from having other Tasks mess with it
         // while data is loading.
         lock_guard<mutex> const tMtxLockA(_tMtx);
@@ -401,21 +393,15 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             return erred;
         }
 
+        // Extract the result set and write it into the file.
         util::Timer bufferFillT;
         bufferFillT.start();
 
-        // Transfer as many rows as it's allowed by limitations of
-        // the Google Protobuf into the output file.
-        int bytes = 0;
-        int rows = 0;
-        hasMoreRows = _writeToFile(tMtxLockA, task, mResult, bytes, rows, multiErr);
-        _bytesWritten += bytes;
-        taskBytesWritten += bytes;
-        rowsTransmitted += rows;
+        _writeToFile(tMtxLockA, task, mResult, bytes, rows, multiErr);
         _rowcount += rows;
         _transmitsize += bytes;
         LOGS(_log, LOG_LVL_TRACE,
-             __func__ << " " << task->getIdStr() << " bytesT=" << _bytesWritten << " _tsz=" << _transmitsize);
+             __func__ << " " << task->getIdStr() << " bytesT=" << bytes << " _tsz=" << _transmitsize);
 
         bufferFillT.stop();
         bufferFillSecs += bufferFillT.getElapsed();
@@ -438,7 +424,6 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         bool rowLimitComplete = false;
         if (ujRowLimit > 0 && _rowcount >= ujRowLimit) {
             // There are enough rows to satisfy the query, so stop reading
-            hasMoreRows = false;
             rowLimitComplete = true;
             LOGS(_log, LOG_LVL_DEBUG,
                  __func__ << " enough rows for query rows=" << _rowcount << " " << task->getIdStr());
@@ -448,7 +433,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         // if this is last task in a logical group of ones created for processing
         // the current request (note that certain classes of requests may require
         // more than one task for processing).
-        if (!hasMoreRows && transmitTaskLast(rowLimitComplete)) {
+        if (transmitTaskLast(rowLimitComplete)) {
             // Make sure the file is sync to disk before notifying Czar.
             _file.flush();
             _file.close();
@@ -459,9 +444,9 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             if (!_sendResponse(tMtxLockA, task, cancelled, multiErr, rowLimitComplete)) {
                 LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
-                break;
+            } else {
+                LOGS(_log, LOG_LVL_TRACE, __func__ << " " << task->getIdStr() << " sending done!!!");
             }
-            LOGS(_log, LOG_LVL_TRACE, "FileChannelShared " << task->cName(__func__) << " sending done!!!");
         }
     }
     transmitT.stop();
@@ -470,7 +455,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
     if (qStats == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "No statistics for " << task->getIdStr());
     } else {
-        qStats->addTaskTransmit(timeSeconds, taskBytesWritten, rowsTransmitted, bufferFillSecs);
+        qStats->addTaskTransmit(timeSeconds, bytes, rows, bufferFillSecs);
         LOGS(_log, LOG_LVL_TRACE,
              "TaskTransmit time=" << timeSeconds << " bufferFillSecs=" << bufferFillSecs);
     }
@@ -496,29 +481,9 @@ bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string c
     return oldVal;
 }
 
-bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
-                                     MYSQL_RES* mResult, int& bytes, int& rows, util::MultiError& multiErr) {
-    // Transfer rows from a result set into the response data object.
-    if (nullptr == _responseData) {
-        _responseData = google::protobuf::Arena::CreateMessage<proto::ResponseData>(_protobufArena.get());
-    } else {
-        _responseData->clear_row();
-    }
-    size_t tSize = 0;
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " _fillRows " << task->getIdStr() << " start");
-    bool const hasMoreRows = _fillRows(tMtxLock, mResult, rows, tSize);
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " _fillRows " << task->getIdStr() << " end");
-    _responseData->set_rowcount(rows);
-    _responseData->set_transmitsize(tSize);
-
-    // Serialize the content of the data buffer into the Protobuf data message
-    // that will be written into the output file.
-    std::string msg;
-    _responseData->SerializeToString(&msg);
-    bytes = msg.size();
-
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " file write " << task->getIdStr() << " start");
-    // Create the file if not open.
+void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
+                                     MYSQL_RES* mResult, uint64_t& bytes, uint64_t& rows,
+                                     util::MultiError& multiErr) {
     if (!_file.is_open()) {
         _fileName = task->getUberJobData()->resultFilePath();
         _file.open(_fileName, ios::out | ios::trunc | ios::binary);
@@ -527,53 +492,42 @@ bool FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
                                 " failed to create/truncate the file '" + _fileName + "'.");
         }
     }
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " file write " << task->getIdStr() << " end file=" << _fileName);
 
-    // Write 32-bit length of the subsequent message first before writing
-    // the message itself.
-    uint32_t const msgSizeBytes = msg.size();
-    _file.write(reinterpret_cast<char const*>(&msgSizeBytes), sizeof msgSizeBytes);
-    _file.write(msg.data(), msgSizeBytes);
+    // Transfer rows from a result set into the file. Count the number of bytes
+    // written into the file and the number of rows processed.
+    string const fieldEndsWith = "\t";
+    string const rowEndsWith = "\n";
+    string const mysqlNull("\\N");
 
-    if (!(_file.is_open() && _file.good())) {
-        throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
-                            to_string(msg.size()) + " bytes into the file '" + _fileName + "'.");
-    }
-    return hasMoreRows;
-}
-
-bool FileChannelShared::_fillRows(lock_guard<mutex> const& tMtxLock, MYSQL_RES* mResult, int& rows,
-                                  size_t& tSize) {
     int const numFields = mysql_num_fields(mResult);
-    unsigned int szLimit = min(proto::ProtoHeaderWrap::PROTOBUFFER_DESIRED_LIMIT,
-                               proto::ProtoHeaderWrap::PROTOBUFFER_HARD_LIMIT);
+    bytes = 0;
     rows = 0;
-    tSize = 0;
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(mResult))) {
         auto lengths = mysql_fetch_lengths(mResult);
-        proto::RowBundle* rawRow = _responseData->add_row();
         for (int i = 0; i < numFields; ++i) {
-            if (row[i]) {
-                rawRow->add_column(row[i], lengths[i]);
-                rawRow->add_isnull(false);
+            if (i != 0) {
+                bytes += _writeStringToFile(fieldEndsWith);
+            }
+            if (row[i] == nullptr) {
+                bytes += _writeStringToFile(mysqlNull);
             } else {
-                rawRow->add_column();
-                rawRow->add_isnull(true);
+                string escapedQuotedString;
+                mysql::escapeAppendString(escapedQuotedString, row[i], lengths[i]);
+                bytes += _writeStringToFile(escapedQuotedString);
             }
         }
-        tSize += rawRow->ByteSizeLong();
+        bytes += _writeStringToFile(rowEndsWith);
         ++rows;
-
-        // Each element needs to be mysql-sanitized
-        // Break the loop if the result is too big so this part can be transmitted.
-        if (tSize > szLimit) return true;
     }
-    return false;
+    if (!(_file.is_open() && _file.good())) {
+        throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
+                            to_string(bytes) + " bytes into the file '" + _fileName + "'.");
+    }
 }
 
 void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
-    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared::_removeFile " << _fileName << " scsId=" << _scsId);
+    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared::_removeFile " << _fileName);
     if (!_fileName.empty()) {
         if (_file.is_open()) {
             _file.close();
@@ -594,7 +548,7 @@ void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
 bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
                                       bool cancelled, util::MultiError const& multiErr, bool mustSend) {
     auto const queryId = task->getQueryId();
-    auto const jobId = task->getJobId();
+    auto const jobId = task->getJobId();  // TODO:UJ this should be UberJobId
     auto const idStr(makeIdStr(queryId, jobId));
 
     // This lock is required for making consistent modifications and usage of the metadata
@@ -602,21 +556,14 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     lock_guard<mutex> const streamMutexLock(_streamMutex);
 
     QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
-
-    // This will deallocate any memory managed by the Google Protobuf Arena
-    // to avoid unnecessary memory utilization by the application.
-    LOGS(_log, LOG_LVL_TRACE,
-         __func__ << ": Google Protobuf Arena, 1:SpaceUsed=" << _protobufArena->SpaceUsed());
-    _protobufArena->Reset();
-    LOGS(_log, LOG_LVL_TRACE,
-         __func__ << ": Google Protobuf Arena, 2:SpaceUsed=" << _protobufArena->SpaceUsed());
+    LOGS(_log, LOG_LVL_DEBUG, __func__);
 
     if (isDead() && !mustSend) {
         LOGS(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");
         return false;
     }
 
-    // Prepare the response object and serialize in into a message that will
+    // Prepare the response object and put into a message that will
     // be sent to the Czar.
     string httpFileUrl = task->getUberJobData()->resultFileHttpUrl();
     auto ujd = _uberJobData.lock();

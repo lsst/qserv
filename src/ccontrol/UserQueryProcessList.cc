@@ -35,12 +35,14 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "cconfig/CzarConfig.h"
 #include "qmeta/MessageStore.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMetaSelect.h"
 #include "query/FromList.h"
 #include "query/SelectStmt.h"
 #include "sql/SqlConnection.h"
+#include "sql/SqlConnectionFactory.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/SqlBulkInsert.h"
 #include "sql/statement.h"
@@ -61,12 +63,10 @@ namespace lsst::qserv::ccontrol {
 
 // Constructor
 UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
-                                           sql::SqlConnection* resultDbConn,
                                            std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
                                            qmeta::CzarId qMetaCzarId, std::string const& userQueryId,
                                            std::string const& resultDb)
-        : _resultDbConn(resultDbConn),
-          _qMetaSelect(qMetaSelect),
+        : _qMetaSelect(qMetaSelect),
           _qMetaCzarId(qMetaCzarId),
           _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
@@ -90,12 +90,10 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
     }
 }
 
-UserQueryProcessList::UserQueryProcessList(bool full, sql::SqlConnection* resultDbConn,
-                                           std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
+UserQueryProcessList::UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
                                            qmeta::CzarId qMetaCzarId, std::string const& userQueryId,
                                            std::string const& resultDb)
-        : _resultDbConn(resultDbConn),
-          _qMetaSelect(qMetaSelect),
+        : _qMetaSelect(qMetaSelect),
           _qMetaCzarId(qMetaCzarId),
           _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
@@ -156,8 +154,11 @@ void UserQueryProcessList::submit() {
         if (col.colType.sqlType == "TIMESTAMP") createTable += " NULL";
     }
     createTable += ')';
+
     LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
-    if (!_resultDbConn->runQuery(createTable, errObj)) {
+    auto const czarConfig = cconfig::CzarConfig::instance();
+    auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
+    if (!resultDbConn->runQuery(createTable, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "failed to create result table: " << errObj.errMsg());
         std::string message = "Internal failure, failed to create result table: " + errObj.errMsg();
         _messageStore->addMessage(-1, "PROCESSLIST", 1051, message, MessageSeverity::MSG_ERROR);
@@ -172,7 +173,7 @@ void UserQueryProcessList::submit() {
     }
 
     // copy stuff over to result table
-    sql::SqlBulkInsert bulkInsert(_resultDbConn, _resultTableName, resColumns);
+    sql::SqlBulkInsert bulkInsert(resultDbConn.get(), _resultTableName, resColumns);
     for (auto& row : *results) {
         std::vector<std::string> values;
         for (unsigned i = 0; i != row.size(); ++i) {
@@ -191,7 +192,7 @@ void UserQueryProcessList::submit() {
                 values.push_back(std::string(ptr, ptr + len));
             } else {
                 // everything else should be quoted
-                values.push_back("'" + _resultDbConn->escapeString(std::string(ptr, ptr + len)) + "'");
+                values.push_back("'" + resultDbConn->escapeString(std::string(ptr, ptr + len)) + "'");
             }
         }
 

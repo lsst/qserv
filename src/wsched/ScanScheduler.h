@@ -28,7 +28,6 @@
 #include <mutex>
 
 // Qserv headers
-#include "memman/MemMan.h"
 #include "wsched/ChunkTaskCollection.h"
 #include "wsched/SchedulerBase.h"
 
@@ -53,7 +52,7 @@ public:
     typedef std::shared_ptr<ScanScheduler> Ptr;
 
     ScanScheduler(std::string const& name, int maxThreads, int maxReserve, int priority, int maxActiveChunks,
-                  memman::MemMan::Ptr const& memman, int minRating, int maxRating, double maxTimeMinutes);
+                  int minRating, int maxRating, double maxTimeMinutes);
     virtual ~ScanScheduler() {}
 
     // util::CommandQueue overrides
@@ -75,17 +74,12 @@ public:
     bool ready() override;
     std::size_t getSize() const override;
 
-    void logMemManStats();
-
     double getMaxTimeMinutes() const { return _maxTimeMinutes; }
     bool removeTask(wbase::Task::Ptr const& task, bool removeRunning) override;
 
 private:
     bool _ready();
     std::shared_ptr<ChunkTaskCollection> _taskQueue;  ///< Constrains access to files.
-
-    memman::MemMan::Ptr _memMan;  ///< Limits queries when resources not available.
-    memman::MemMan::Handle _memManHandleToUnlock{memman::MemMan::HandleType::INVALID};
 
     /// Scans placed on this scheduler should have a rating between(inclusive) _minRating and _maxRating.
     const int _minRating;

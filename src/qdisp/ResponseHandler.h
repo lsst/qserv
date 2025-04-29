@@ -61,12 +61,16 @@ public:
     virtual ~ResponseHandler() {}
 
     /// Collect result data from the worker and merge it with the query result table.
+    /// If success, then everything is fine.
+    /// If not success, and not shouldCancel, the user query can be saved by abandoning
+    /// this UberJob. If shouldCancel is true, the result table is fouled and the user
+    /// query is ruined.
     /// @return success - true if the operation was successful
     /// @return shouldCancel - if success was false, this being true indicates there
     ///                   was an unrecoverable error in table writing and the query
     ///                   should be cancelled.
-    virtual std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
-                                             uint64_t& resultRows) = 0;
+    virtual std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t fileSize,
+                                             uint64_t expectedRows, uint64_t& resultRows) = 0;
 
     /// Add the error to the error output if it is the first error.
     virtual void flushHttpError(int errorCode, std::string const& errorMsg, int status) = 0;

@@ -39,10 +39,6 @@ namespace lsst::qserv::qmeta {
 class QMeta;
 }
 
-namespace lsst::qserv::sql {
-class SqlConnection;
-}
-
 namespace lsst::qserv::ccontrol {
 
 /// @addtogroup ccontrol
@@ -61,10 +57,9 @@ public:
      *  @param queryId:       Query ID for which to return result
      *  @param qMetaCzarId:   ID for current czar
      *  @param qMetaSelect:   QMetaSelect instance
-     *  @param resultDbConn:  Connection to results database
      */
     UserQueryAsyncResult(QueryId queryId, qmeta::CzarId qMetaCzarId,
-                         std::shared_ptr<qmeta::QMeta> const& qMeta, sql::SqlConnection* resultDbConn);
+                         std::shared_ptr<qmeta::QMeta> const& qMeta);
 
     // Destructor
     ~UserQueryAsyncResult();
@@ -111,7 +106,6 @@ private:
     QueryId _queryId;
     qmeta::CzarId _qMetaCzarId;
     std::shared_ptr<qmeta::QMeta> _qMeta;
-    sql::SqlConnection* _resultDbConn;
     qmeta::QInfo _qInfo;
     std::shared_ptr<qmeta::MessageStore> _messageStore;
     QueryState _qState = UNKNOWN;

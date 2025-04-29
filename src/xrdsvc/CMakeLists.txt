@@ -20,7 +20,6 @@ target_link_libraries(xrdsvc PUBLIC
     global
     http
     log
-    memman
     mysql
     protojson
     sql

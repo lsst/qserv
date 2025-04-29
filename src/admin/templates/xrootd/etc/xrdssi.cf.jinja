@@ -11,19 +11,6 @@ socket = {{ db_socket }}
 username = qsmaster
 password = CHANGEME2
 
-[memman]
-
-# MemMan class to use for managing memory for tables
-# can be "MemManReal", "MemManNone" or "MemManNoneRelaxed"
-# class = MemManReal
-
-# Memory available for locking tables, in MB
-# memory = 1000
-memory = 7900
-
-# Path to database tables
-location = /qserv/data/mysql
-
 [scheduler]
 
 # Thread pool size
@@ -78,13 +65,6 @@ maxsqlconn = 980
 # queries that require multiple sql connections, such as near-neighbor. 
 # This value must be less than maxsqlconn. 
 reservedinteractivesqlconn = 930
-
-[transmits]
-# Maximum number of concurrent transmits to a czar.
-maxtransmits = 50
-# If more than this number of large transmits is happening at once, wait to
-# start more transmits until some are done.
-maxalreadytransmitting = 10
 
 [results]
 

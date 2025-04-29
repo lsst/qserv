@@ -41,7 +41,6 @@
 // Qserv headers
 #include "global/DbTable.h"
 #include "global/intTypes.h"
-#include "memman/MemMan.h"
 #include "protojson/ScanTableInfo.h"
 #include "wbase/TaskState.h"
 #include "util/Histogram.h"
@@ -231,14 +230,6 @@ public:
     protojson::ScanInfo::Ptr getScanInfo() const;
     void setOnInteractive(bool val) { _onInteractive = val; }
     bool getOnInteractive() { return _onInteractive; }
-    bool hasMemHandle() const { return _memHandle != memman::MemMan::HandleType::INVALID; }
-    memman::MemMan::Handle getMemHandle() { return _memHandle; }
-    memman::MemMan::Status getMemHandleStatus();
-    void setMemHandle(memman::MemMan::Handle handle) { _memHandle = handle; }
-    void setMemMan(memman::MemMan::Ptr const& memMan) { _memMan = memMan; }
-    void waitForMemMan();
-    bool getSafeToMoveRunning() { return _safeToMoveRunning; }
-    void setSafeToMoveRunning(bool val) { _safeToMoveRunning = val; }  ///< For testing only.
 
     /// @return true if qId and jId match this task's query and job ids.
     bool idsMatch(QueryId qId, int jId, uint64_t tseq) const {
@@ -352,8 +343,7 @@ private:
     /// Stores information on the query's resource usage.
     std::weak_ptr<wpublish::QueryStatistics> const _queryStats;
 
-    std::atomic<memman::MemMan::Handle> _memHandle{memman::MemMan::HandleType::INVALID};
-    memman::MemMan::Ptr _memMan;
+    int64_t _maxTableSize = 0;
 
     mutable std::mutex _stateMtx;  ///< Mutex to protect state related members _state, _???Time.
     std::atomic<TaskState> _state{TaskState::CREATED};

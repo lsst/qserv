@@ -124,7 +124,6 @@ public:
     /// Getters for result aggregation options.
     int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
-    int getResultMaxConnections() const { return _resultMaxConnections->getVal(); }
 
     /// The size of the TCP connection pool witin the client API that is used
     /// by the merger to pool result files from workers via the HTTP protocol.
@@ -285,8 +284,6 @@ private:
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxtablesize_mb", notReq, 5001);
     CVTIntPtr _maxSqlConnectionAttempts =
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxsqlconnectionattempts", notReq, 10);
-    CVTIntPtr _resultMaxConnections =
-            util::ConfigValTInt::create(_configValMap, "resultdb", "maxconnections", notReq, 40);
     CVTIntPtr _resultMaxHttpConnections =
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxhttpconnections", notReq, 2000);
     CVTIntPtr _oldestResultKeptDays =

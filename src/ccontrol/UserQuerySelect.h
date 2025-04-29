@@ -74,10 +74,6 @@ class InfileMerger;
 class InfileMergerConfig;
 }  // namespace lsst::qserv::rproc
 
-namespace lsst::qserv::util {
-class SemaMgr;
-}
-
 namespace lsst::qserv::ccontrol {
 
 class TmpTableName;
@@ -92,8 +88,7 @@ public:
                     std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                    std::shared_ptr<qmeta::QStatus> const& queryStatsData,
-                    std::shared_ptr<util::SemaMgr> const& semaMgrConn, qmeta::CzarId czarId,
+                    std::shared_ptr<qmeta::QStatus> const& queryStatsData, qmeta::CzarId czarId,
                     std::string const& errorExtra, bool async, std::string const& resultDb,
                     int uberJobMaxChunks);
 
@@ -187,7 +182,6 @@ private:
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
     std::shared_ptr<qmeta::QStatus> _queryStatsData;
-    std::shared_ptr<util::SemaMgr> const& _semaMgrConn;
 
     qmeta::CzarId _qMetaCzarId;  ///< Czar ID in QMeta database
     QueryId _qMetaQueryId{0};    ///< Query ID in QMeta database

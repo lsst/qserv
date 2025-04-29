@@ -12,9 +12,7 @@ target_sources(ccontrol PRIVATE
     ParseRunner.cc
     QueryState.cc
     UserQueryAsyncResult.cc
-    UserQueryDrop.cc
     UserQueryFactory.cc
-    UserQueryFlushChunksCache.cc
     UserQueryProcessList.cc
     UserQueryQueries.cc
     UserQuerySelectCountStar.cc

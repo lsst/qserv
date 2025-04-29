@@ -52,7 +52,7 @@ void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
             iter = _chunkMap.find(chunkId);
             if (iter == _chunkMap.end()) {
                 // Correct ChunkTask wasn't found, make a new one.
-                std::pair<int, ChunkTasks::Ptr> ele(chunkId, std::make_shared<ChunkTasks>(chunkId, _memMan));
+                std::pair<int, ChunkTasks::Ptr> ele(chunkId, std::make_shared<ChunkTasks>(chunkId));
                 auto res = _chunkMap.insert(ele);  // insert should fail if the key already exists.
                 LOGS(_log, LOG_LVL_TRACE, " queueTask chunk=" << chunkId << " created=" << res.second);
                 iter = res.first;
@@ -134,14 +134,13 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
         newActive->second->setActive();
     }
 
-    // Advance through chunks until READY or NO_RESOURCES found, or until entire list scanned.
+    // Advance through chunks until READY found, or until entire list scanned.
     auto iter = _activeChunk;
     ChunkTasks::ReadyState chunkState = iter->second->ready(useFlexibleLock);
     LOGS(_log, LOG_LVL_TRACE,
          "_ready loopA state=" << ChunkTasks::toStr(chunkState) << " iter=" << iter->first << " "
                                << iter->second->cInfo());
-    while (chunkState != ChunkTasks::ReadyState::READY &&
-           chunkState != ChunkTasks::ReadyState::NO_RESOURCES) {
+    while (chunkState != ChunkTasks::ReadyState::READY) {
         ++iter;
         if (iter == _chunkMap.end()) {
             iter = _chunkMap.begin();
@@ -162,11 +161,6 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
     LOGS(_log, LOG_LVL_TRACE,
          "_ready loopB state=" << ChunkTasks::toStr(chunkState) << " iter=" << iter->first << " "
                                << iter->second->cInfo());
-    if (chunkState == ChunkTasks::ReadyState::NO_RESOURCES) {
-        // Advancing past a chunk where there aren't enough resources could cause many
-        // scheduling issues.
-        return false;
-    }
     _readyChunk = iter->second;
     return true;
 }
@@ -192,12 +186,6 @@ void ChunkTasksQueue::taskComplete(wbase::Task::Ptr const& task) {
     if (iter != _chunkMap.end()) {
         iter->second->taskComplete(task);
     }
-}
-
-bool ChunkTasksQueue::setResourceStarved(bool starved) {
-    bool ret = _resourceStarved;
-    _resourceStarved = starved;
-    return ret;
 }
 
 int ChunkTasksQueue::getActiveChunkId() {
@@ -249,8 +237,6 @@ std::string ChunkTasks::toStr(ReadyState state) {
             return "READY";
         case ReadyState::NOT_READY:
             return "NOT_READY";
-        case ReadyState::NO_RESOURCES:
-            return "NO_RESOURCES";
         default:
             return "UNKNOWN_ERR";
     }
@@ -371,19 +357,6 @@ bool ChunkTasks::readyToAdvance() {
 // If a Task is ready to be run, _readyTask will not be nullptr.
 ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
     LOGS(_log, LOG_LVL_TRACE, "ready start " << cInfo());
-    auto logMemManRes = [this, useFlexibleLock](bool starved, std::string const& msg, int handle, int chunkId,
-                                                std::vector<memman::TableInfo> const& tblVect) {
-        setResourceStarved(starved);
-        if (!starved) {
-            std::string str;
-            for (auto const& tblInfo : tblVect) {
-                str += tblInfo.tableName + " ";
-            }
-            LOGS(_log, LOG_LVL_TRACE,
-                 "ready memMan flex=" << useFlexibleLock << " handle=" << handle << " " << msg
-                                      << "chunk=" << chunkId << " - " << str);
-        }
-    };
 
     if (_readyTask != nullptr) {
         return ChunkTasks::ReadyState::READY;
@@ -391,57 +364,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
     if (_activeTasks.empty()) {
         return ChunkTasks::ReadyState::NOT_READY;
     }
-
-    // Calling this function doesn't get expensive until it gets here. Luckily,
-    // after this point it will return READY or NO_RESOURCES, and ChunkTasksQueue::_ready
-    // will not examine any further chunks upon seeing those results.
     auto task = _activeTasks.top();
-    LOGS(_log, LOG_LVL_TRACE, "ready checking task=" << task->getIdStr() << " " << cInfo());
-    int chunkId = -1;
-    if (!task->hasMemHandle()) {
-        memman::TableInfo::LockType lckOptTbl = memman::TableInfo::LockType::REQUIRED;
-        if (useFlexibleLock) lckOptTbl = memman::TableInfo::LockType::FLEXIBLE;
-        memman::TableInfo::LockType lckOptIdx = memman::TableInfo::LockType::NOLOCK;
-        auto scanInfo = task->getScanInfo();
-        chunkId = task->getChunkId();
-        if (chunkId != _chunkId) {
-            // This would slow things down badly, but the system would survive.
-            LOGS(_log, LOG_LVL_ERROR,
-                 "ChunkTasks " << _chunkId << " got task for chunk " << chunkId << " " << task->getIdStr());
-        }
-        std::vector<memman::TableInfo> tblVect;
-        for (auto const& tbl : scanInfo->infoTables) {
-            memman::TableInfo ti(tbl.db + "/" + tbl.table, lckOptTbl, lckOptIdx);
-            tblVect.push_back(ti);
-        }
-        // If tblVect is empty, we should get the empty handle
-        memman::MemMan::Handle handle = _memMan->prepare(tblVect, chunkId);
-        LOGS(_log, LOG_LVL_TRACE,
-             "memPrep " << _memMan->getStatistics().logString() << " "
-                        << _memMan->getStatus(handle).logString());
-        if (handle == 0) {
-            switch (errno) {
-                case ENOMEM:
-                    logMemManRes(true, "ENOMEM", handle, chunkId, tblVect);
-                    return ChunkTasks::ReadyState::NO_RESOURCES;
-                case ENOENT:
-                    LOGS(_log, LOG_LVL_ERROR,
-                         "_memMgr->lock errno=ENOENT chunk not found " << task->getIdStr());
-                    // Not sure if this is the best course of action, but it should just need one
-                    // logic path. The query should fail from the missing tables
-                    // and the czar must be able to handle that with appropriate retries.
-                    handle = memman::MemMan::HandleType::ISEMPTY;
-                    break;
-                default:
-                    LOGS(_log, LOG_LVL_ERROR, "_memMgr->lock file system error " << task->getIdStr());
-                    // Any error reading the file system is probably fatal for the worker.
-                    throw std::bad_exception();
-                    return ChunkTasks::ReadyState::NO_RESOURCES;
-            }
-        }
-        task->setMemHandle(handle);
-        logMemManRes(false, task->getIdStr() + " got handle", handle, chunkId, tblVect);
-    }
 
     // There is a Task to run at this point, pull it off the heap to avoid confusion.
     _activeTasks.pop();
@@ -451,13 +374,6 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
                         << ((_activeTasks.top() == nullptr) ? "NULL" : _activeTasks.top()->getIdStr()) << " "
                         << cInfo());
     return ChunkTasks::ReadyState::READY;
-}
-
-/// @return old value of _resourceStarved.
-bool ChunkTasks::setResourceStarved(bool starved) {
-    auto val = _resourceStarved;
-    _resourceStarved = starved;
-    return val;
 }
 
 /// @return a Task that is ready to run, if available. Otherwise return nullptr.
@@ -485,9 +401,8 @@ void ChunkTasks::taskComplete(wbase::Task::Ptr const& task) { _inFlightTasks.era
 
 std::string ChunkTasks::cInfo(bool listTasks) const {
     std::stringstream os;
-    os << " cInfo(chkId=" << _chunkId << " act=" << _active << " starv=" << _resourceStarved
-       << " readyTask=" << _readyTask << " inF=" << _inFlightTasks.size() << " (act=" << _activeTasks.size()
-       << " ";
+    os << " cInfo(chkId=" << _chunkId << " act=" << _active << " readyTask=" << _readyTask
+       << " inF=" << _inFlightTasks.size() << " (act=" << _activeTasks.size() << " ";
     if (listTasks) {
         for (auto const& tsk : _activeTasks._tasks) {
             os << tsk->getIdStr() << ", ";

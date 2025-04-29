@@ -72,6 +72,10 @@ using namespace lsst::qserv;
 using namespace nlohmann;
 using namespace std;
 
+// This macro is used to convert empty strings into "0" in order to avoid
+// problems with calling std::atoi() when the string is empty.
+#define ZERO_IF_EMPTY_STR(x) ((x.empty()) ? "0" : (x))
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
@@ -581,7 +585,12 @@ void Czar::removeOldResultTables() {
 SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     string const context = "Czar::" + string(__func__) + " ";
     auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlQmetaConfig());
-    string sql = "SELECT status,messageTable,resultQuery FROM QInfo WHERE queryId=" + to_string(queryId);
+    string sql =
+            "SELECT "
+            "status,UNIX_TIMESTAMP(submitted),UNIX_TIMESTAMP(completed),chunkCount,messageTable,resultQuery "
+            "FROM QInfo WHERE "
+            "queryId=" +
+            to_string(queryId);
     sql::SqlResults results;
     sql::SqlErrorObject err;
     if (!sqlConn->runQuery(sql, results, err)) {
@@ -591,9 +600,13 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
         throw runtime_error(msg);
     }
     vector<string> colStatus;
+    vector<string> colSubmitted;
+    vector<string> colCompleted;
+    vector<string> colChunkCount;
     vector<string> colMessageTable;
     vector<string> colResultQuery;
-    if (!results.extractFirst3Columns(colStatus, colMessageTable, colResultQuery, err)) {
+    if (!results.extractFirst6Columns(colStatus, colSubmitted, colCompleted, colChunkCount, colMessageTable,
+                                      colResultQuery, err)) {
         string const msg = context + "Failed to extract info for the user query, err=" + err.printErrMsg() +
                            ", sql=" + sql;
         throw runtime_error(msg);
@@ -639,14 +652,18 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     }
     switch (colTotalChunks.size()) {
         case 0:
-            // No stats means the query is over
+            // No stats means the query is over. Pull the final stats from the main table.
+            result.totalChunks = stoi(ZERO_IF_EMPTY_STR(colChunkCount[0]));
+            result.completedChunks = result.totalChunks;
+            result.queryBeginEpoch = stoi(ZERO_IF_EMPTY_STR(colSubmitted[0]));
+            result.lastUpdateEpoch = stoi(ZERO_IF_EMPTY_STR(colCompleted[0]));
             break;
         case 1:
             // The query might be still in progress
-            result.totalChunks = stoi(colTotalChunks[0]);
-            result.completedChunks = stoi(colCompletedChunks[0]);
-            result.queryBeginEpoch = stoi(colQueryBeginEpoch[0]);
-            result.lastUpdateEpoch = stoi(colLastUpdateEpoch[0]);
+            result.totalChunks = stoi(ZERO_IF_EMPTY_STR(colTotalChunks[0]));
+            result.completedChunks = stoi(ZERO_IF_EMPTY_STR(colCompletedChunks[0]));
+            result.queryBeginEpoch = stoi(ZERO_IF_EMPTY_STR(colQueryBeginEpoch[0]));
+            result.lastUpdateEpoch = stoi(ZERO_IF_EMPTY_STR(colLastUpdateEpoch[0]));
             break;
         default:
             // Should never be here.

@@ -21,8 +21,7 @@ target_sources(util PRIVATE
     MultiError.cc
     Mutex.cc
     QdispPool.cc
-    ResultFileNameParser.cc
-    SemaMgr.cc
+    ResultFileName.cc
     StringHash.cc
     String.cc
     Substitution.cc
@@ -61,7 +60,7 @@ util_tests(
     testCommon
     testConfigStore
     testEventThread
-    testFileNameParser
+    testResultFileName
     testIterableFormatter
     testHistogram
     testMultiError

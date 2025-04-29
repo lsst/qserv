@@ -53,6 +53,7 @@
 #include "util/common.h"
 #include "util/HoldTrack.h"
 #include "util/IterableFormatter.h"
+#include "util/ResultFileName.h"
 #include "util/TimeUtils.h"
 #include "wbase/Base.h"
 #include "wbase/FileChannelShared.h"
@@ -546,32 +547,6 @@ chrono::milliseconds Task::getRunTime() const {
         default:
             return chrono::milliseconds(0);
     }
-}
-
-/// Wait for MemMan to finish reserving resources. The mlock call can take several seconds
-/// and only one mlock call can be running at a time. Further, queries finish slightly faster
-/// if they are mlock'ed in the same order they were scheduled, hence the ulockEvents
-/// EventThread and CommandMlock class.
-void Task::waitForMemMan() {
-    if (_memMan != nullptr) {
-        if (_memMan->lock(_memHandle, true)) {
-            int errorCode = (errno == EAGAIN ? ENOMEM : errno);
-            LOGS(_log, LOG_LVL_WARN,
-                 "mlock err=" << errorCode << " " << _memMan->getStatistics().logString() << " "
-                              << _memMan->getStatus(_memHandle).logString());
-        }
-        LOGS(_log, LOG_LVL_TRACE,
-             "waitForMemMan " << _memMan->getStatistics().logString() << " "
-                              << _memMan->getStatus(_memHandle).logString());
-    }
-    setSafeToMoveRunning(true);
-}
-
-memman::MemMan::Status Task::getMemHandleStatus() {
-    if (_memMan == nullptr || !hasMemHandle()) {
-        return memman::MemMan::Status();
-    }
-    return _memMan->getStatus(_memHandle);
 }
 
 bool Task::setBooted() {
