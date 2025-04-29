@@ -41,7 +41,7 @@ QSERV_AREASPEC_POLY:                Q S E R V '_' A R E A S P E C '_' P O L Y;
 QSERV_AREASPEC_HULL:                Q S E R V '_' A R E A S P E C '_' H U L L;
 
 // Qserv CALL Built-in Procedure Names:
-QSERV_MANAGER: Q S E R V '_' M A N A G E R;
+QSERV_RESULT_DELETE: Q S E R V '_' R E S U L T '_' D E L E T E;
 
 // Keywords
 // Common Keywords

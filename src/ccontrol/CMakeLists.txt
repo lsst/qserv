@@ -17,7 +17,7 @@ target_sources(ccontrol PRIVATE
     UserQueryProcessList.cc
     UserQueryQueries.cc
     UserQuerySelectCountStar.cc
-    UserQueryQservManager.cc
+    UserQueryResultDelete.cc
     UserQueryResources.cc
     UserQuerySelect.cc
     UserQuerySet.cc

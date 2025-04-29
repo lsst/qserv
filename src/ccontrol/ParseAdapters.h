@@ -47,7 +47,7 @@
 #include "ccontrol/ParseAdaptersCBH.h"
 #include "ccontrol/ParseHelpers.h"
 #include "ccontrol/ParseListener.h"
-#include "ccontrol/UserQueryQservManager.h"
+#include "ccontrol/UserQueryResultDelete.h"
 #include "ccontrol/UserQuerySet.h"
 #include "parser/ParseException.h"
 #include "query/AndTerm.h"
@@ -1173,15 +1173,15 @@ public:
     void handleConstant(std::string const& val) override { _value = val; }
 
     void checkContext() const override {
-        assert_execution_condition(_ctx->QSERV_MANAGER() != nullptr, "Only CALL QSERV_MANAGER is supported.",
-                                   _ctx);
+        assert_execution_condition(_ctx->QSERV_RESULT_DELETE() != nullptr,
+                                   "Only CALL QSERV_RESULT_DELETE is supported.", _ctx);
     }
 
     void onExit() override {
         assert_execution_condition(getQueryResources() != nullptr,
-                                   "UserQueryQservManager requires a valid query config.", _ctx);
+                                   "UserQueryResultDelete requires a valid query config.", _ctx);
         lockedParent()->handleCallStatement(
-                std::make_shared<ccontrol::UserQueryQservManager>(getQueryResources(), _value));
+                std::make_shared<ccontrol::UserQueryResultDelete>(getQueryResources(), _value));
     }
 
     std::string name() const override { return getTypeName(this); }
