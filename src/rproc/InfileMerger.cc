@@ -57,7 +57,6 @@
 #include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
 #include "mysql/CsvBuffer.h"
-#include "proto/ProtoImporter.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/UberJob.h"
@@ -165,17 +164,12 @@ void InfileMerger::mergeCompleteFor(int jobId) {
     _totalResultSize += _perJobResultSize[jobId];  // TODO:UJ this can probably be simplified
 }
 
-
-bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::ResponseData const& responseData) {
+bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSize,
+                             std::shared_ptr<mysql::CsvStream> const& csvStream) {
     UberJobId const uJobId = uberJob->getUjId();
     std::string queryIdJobStr = uberJob->getIdStr();
     if (!_queryIdStrSet) {
         _setQueryIdStr(QueryIdHelper::makeIdStr(uberJob->getQueryId()));
-    }
-
-    // Nothing to do if size is zero.
-    if (responseData.row_size() == 0) {
-        return true;
     }
 
     // Do nothing if the query got cancelled for any reason.
@@ -200,13 +194,16 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
     virtFileT.start();
-    // UberJobs only get one attempt
-    ProtoRowBuffer::Ptr pRowBuffer = std::make_shared<ProtoRowBuffer>(responseData);
-    std::string const virtFile = _infileMgr.prepareSrc(pRowBuffer);
+    auto const csvBuffer = mysql::newCsvStreamBuffer(csvStream);
+    std::string const virtFile = _infileMgr.prepareSrc(csvBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
 
-    size_t const resultSize = responseData.transmitsize();
+    // &&& FOULED_RESULTS
+    // &&& At this point, it's probably possible to ask csvStream how many bytes were written.
+    // &&& If 0 bytes were written, the results should be ok and the query doesn't need to be cancelled.
+
+    size_t const resultSize = fileSize;
     size_t tResultSize;
     {
         std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
@@ -227,25 +224,17 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, proto::Response
     tct->setSuccess();
     tct.reset();  // stop transmit recieve timer before merging happens.
 
-    qdisp::CzarStats::get()->addTotalBytesRecv(resultSize);
-    qdisp::CzarStats::get()->addTotalRowsRecv(responseData.rowcount());
-
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.
     if (_config.debugNoMerge) {
         return true;
     }
 
-    auto start = CLOCK::now();
-
-    // Always using MyIsam
-    ret = _applyMysqlMyIsam(infileStatement, resultSize);
-    auto end = CLOCK::now();
+    auto start = std::chrono::system_clock::now();
+    ret = _applyMysqlMyIsam(infileStatement, fileSize);
+    auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_TRACE,
-         "mergeDur=" << mergeDur.count() << " sema(total=" << _semaMgrConn->getTotalCount()
-                     << " used=" << _semaMgrConn->getUsedCount() << ")");
-
+    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
     if (not ret) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
