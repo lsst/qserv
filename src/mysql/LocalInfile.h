@@ -125,7 +125,7 @@ public:
 
     std::string insertBuffer(std::shared_ptr<CsvBuffer> const& csvBuffer);
     void setBuffer(std::string const& s, std::shared_ptr<CsvBuffer> const& csvBuffer);
-    std::shared_ptr<CsvBuffer> get(std::string const& filename);
+    std::shared_ptr<CsvBuffer> getCsv(std::string const& filename);
 
 private:
     /// @return next filename
@@ -135,7 +135,7 @@ private:
     bool _set(std::string const& filename, std::shared_ptr<CsvBuffer> const& csvBuffer);
 
     typedef std::map<std::string, std::shared_ptr<CsvBuffer>> CsvBufferMap;
-    CsvBufferMap _map;
+    CsvBufferMap _mapCsv;
     std::mutex _mapMutex;
 };
 
