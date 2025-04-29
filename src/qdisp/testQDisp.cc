@@ -86,7 +86,8 @@ public:
     }
 
     // virtual function that won't be needed
-    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
+
+    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t fileSize, uint64_t expectedRows,
                                      uint64_t& resultRows) override {
         return {true, false};
     }

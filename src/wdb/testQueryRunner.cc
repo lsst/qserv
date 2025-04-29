@@ -181,6 +181,7 @@ BOOST_AUTO_TEST_CASE(Simple) {
     MsgInfo mInfo;
     auto msgJson = newTaskJson(mInfo);
     shared_ptr<SendChannel> sendC(SendChannel::newNopChannel());
+
     auto sChannel = FileChannelShared::create(sendC, mInfo.czarId);
     FakeBackend::Ptr backend = make_shared<FakeBackend>();
     shared_ptr<ChunkResourceMgr> crm = ChunkResourceMgr::newMgr(backend);

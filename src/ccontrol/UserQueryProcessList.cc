@@ -35,6 +35,7 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "cconfig/CzarConfig.h"
 #include "qmeta/MessageStore.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMetaSelect.h"
@@ -65,8 +66,7 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
                                            std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
                                            qmeta::CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
-        : _resultDbConn(resultDbConn),
-          _qMetaSelect(qMetaSelect),
+        : _qMetaSelect(qMetaSelect),
           _qMetaCzarId(qMetaCzarId),
           _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
@@ -93,8 +93,7 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
 UserQueryProcessList::UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
                                            qmeta::CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
-        : _resultDbConn(resultDbConn),
-          _qMetaSelect(qMetaSelect),
+        : _qMetaSelect(qMetaSelect),
           _qMetaCzarId(qMetaCzarId),
           _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
