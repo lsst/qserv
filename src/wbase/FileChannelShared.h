@@ -39,7 +39,6 @@
 #include "wbase/SendChannel.h"
 
 // Forward declarations
-
 namespace lsst::qserv::wbase {
 class Task;
 }  // namespace lsst::qserv::wbase
@@ -196,7 +195,7 @@ private:
      *   or write into the file.
      */
     void _writeToFile(std::lock_guard<std::mutex> const& tMtxLock, std::shared_ptr<Task> const& task,
-                      MYSQL_RES* mResult, std::uint64_t& bytes, std::uint32_t& rows,
+                      MYSQL_RES* mResult, std::uint64_t& bytes, std::uint64_t& rows,
                       util::MultiError& multiErr);
 
     /// Write a string into the currently open file.
