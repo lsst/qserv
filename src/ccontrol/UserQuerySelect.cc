@@ -582,11 +582,10 @@ QueryState UserQuerySelect::join() {
 
 /// Release resources held by the merger
 void UserQuerySelect::_discardMerger(std::lock_guard<std::mutex> const& lock) {
-    _infileMergerConfig.reset();
     if (_infileMerger && !_infileMerger->isFinished()) {
         throw UserQueryError(getQueryIdString() + " merger unfinished, cannot discard");
     }
-    _infileMerger.reset();
+    _infileMergerConfig.reset();
 }
 
 /// Release resources.
@@ -608,9 +607,8 @@ void UserQuerySelect::discard() {
         throw UserQueryError(getQueryIdString() + " Executive unfinished, cannot discard");
     }
 
+    // Deleting the executive may save some time if results were found early.
     _executive.reset();
-    _messageStore.reset();
-    _qSession.reset();
 
     try {
         _discardMerger(lock);

@@ -38,6 +38,7 @@
 #include "http/MetaModule.h"
 #include "proto/worker.pb.h"
 #include "protojson/UberJobMsg.h"
+#include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
 #include "qmeta/JobStatus.h"
 #include "qproc/ChunkQuerySpec.h"
@@ -301,7 +302,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
 
     // fileCollectFunc will be put on the queue to run later.
     string const idStr = _idStr;
-    auto fileCollectFunc = [ujThis, fileUrl, rowCount, idStr](util::CmdData*) {
+    auto fileCollectFunc = [ujThis, fileUrl, fileSize, rowCount, idStr](util::CmdData*) {
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
@@ -310,11 +311,14 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         }
         uint64_t resultRows = 0;
         auto [flushSuccess, mergeHappened] =
-                ujPtr->getRespHandler()->flushHttp(fileUrl, rowCount, resultRows);
+                ujPtr->getRespHandler()->flushHttp(fileUrl, fileSize, rowCount, resultRows);
         LOGS(_log, LOG_LVL_TRACE,
              ujPtr->cName(__func__) << "::fileCollectFunc success=" << flushSuccess
                                     << " mergeHappened=" << mergeHappened);
-        if (!flushSuccess) {
+        if (flushSuccess) {
+            qdisp::CzarStats::get()->addTotalRowsRecv(rowCount);
+            qdisp::CzarStats::get()->addTotalBytesRecv(fileSize);
+        } else {
             bool flushShouldCancel = false;
             if (mergeHappened) {
                 // This would probably indicate malformed file+rowCount or writing the result table failed.

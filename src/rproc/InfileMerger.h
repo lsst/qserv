@@ -43,8 +43,6 @@
 #include "util/Error.h"
 #include "util/EventThread.h"
 
-#include "util/InstanceCount.h"
-
 // Forward declarations
 namespace lsst::qserv {
 namespace mysql {
@@ -107,8 +105,14 @@ public:
     InfileMerger& operator=(InfileMerger const&) = delete;
     ~InfileMerger() = default;
 
+    /// Merge a worker response, which contains a single message
+    /// @return true if merge was successfully imported.
+    bool merge(proto::ResponseSummary const& responseSummary,
+               std::shared_ptr<mysql::CsvStream> const& csvStream);
+
     /// Merge the result data collected over Http.
-    bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, proto::ResponseData const& responseData);
+    bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, uint64_t fileSize,
+                   std::shared_ptr<mysql::CsvStream> const& csvStream);
 
     /// Indicate the merge for the job is complete.
     void mergeCompleteFor(int jobId);
