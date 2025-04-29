@@ -38,7 +38,8 @@
 #include "http/Method.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
-#include "protojson/JobReadyMsg.h"
+#include "protojson/UberJobErrorMsg.h"
+#include "protojson/UberJobReadyMsg.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
 #include "wconfig/WorkerConfig.h"
@@ -109,11 +110,13 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
-    auto repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
-    auto repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
-    auto jrMsg = protojson::JobReadyMsg::create(repliInstId, repliAuthKey, workerIdStr, _czarName, _czarId,
-                                                _queryId, _uberJobId, httpFileUrl, rowCount, fileSize);
-    json request = jrMsg->serializeJson();
+    auto const& repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
+    auto const& repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
+    unsigned int const version = http::MetaModule::version;
+    auto jrMsg = protojson::UberJobReadyMsg::create(repliInstId, repliAuthKey, version, workerIdStr,
+                                                    _czarName, _czarId, _queryId, _uberJobId, httpFileUrl,
+                                                    rowCount, fileSize);
+    json request = jrMsg->toJson();
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};
@@ -150,15 +153,14 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
         LOGS(_log, logLvl, errorMsg);
     }
 
-    json request = {{"version", http::MetaModule::version},
-                    {"workerid", _foreman->chunkInventory()->id()},
-                    {"auth_key", _authKey},
-                    {"czar", _czarName},
-                    {"czarid", _czarId},
-                    {"queryid", _queryId},
-                    {"uberjobid", _uberJobId},
-                    {"errorCode", errorCode},
-                    {"errorMsg", errorMsg}};
+    string const workerIdStr = _foreman->chunkInventory()->id();
+    auto repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
+    auto repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
+    unsigned int const version = http::MetaModule::version;
+    auto jrMsg =
+            protojson::UberJobErrorMsg::create(repliInstId, repliAuthKey, version, workerIdStr, _czarName,
+                                               _czarId, _queryId, _uberJobId, errorCode, errorMsg);
+    json request = jrMsg->toJson();
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};
@@ -190,7 +192,7 @@ void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string
     }
 }
 
-string UberJobData::_resultFileName() const {
+string UberJobData::_resultFileName() const {  // &&& this should use util::ResultFileName ???
     // UberJobs have multiple chunks which can each have different attempt numbers.
     // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
     return to_string(getCzarId()) + "-" + to_string(getQueryId()) + "-" + to_string(getUberJobId()) + "-0" +
@@ -203,8 +205,8 @@ string UberJobData::resultFilePath() const {
     return (fs::path(resultsDirname) / _resultFileName()).string();
 }
 
-std::string UberJobData::resultFileHttpUrl() const {
-    // TODO:UJ it seems like this should just be part of the FileChannelShared???
+std::string UberJobData::resultFileHttpUrl() const {  // &&& this should use util::ResultFileName ???
+    // TODO:UJ it seems like this should just be part of the FileChannelShared??? &&&
     return "http://" + _foreman->getFqdn() + ":" + to_string(_resultsHttpPort) + "/" + _resultFileName();
 }
 
