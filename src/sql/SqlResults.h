@@ -91,12 +91,16 @@ public:
     unsigned long long getAffectedRows() const { return _affectedRows; }
     bool extractFirstValue(std::string&, SqlErrorObject&);
     bool extractFirstColumn(std::vector<std::string>&, SqlErrorObject&);
+    // TODO:UJ these extractFirst things are not pretty &&&
     bool extractFirst2Columns(std::vector<std::string>&,  // FIXME: generalize
                               std::vector<std::string>&, SqlErrorObject&);
     bool extractFirst3Columns(std::vector<std::string>&,  // FIXME: generalize
                               std::vector<std::string>&, std::vector<std::string>&, SqlErrorObject&);
     bool extractFirst4Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
                               std::vector<std::string>&, SqlErrorObject&);
+    bool extractFirst6Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
+                              std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
+                              SqlErrorObject&);
 
     template <typename... Columns>
     bool extractFirstColumns(SqlErrorObject& err, Columns&... cols) {
@@ -104,12 +108,10 @@ public:
         return _extractFirstColumnsImpl(err, columns);
     }
 
-    /**
-     * Extract a result set into the 2D array.
-     * @param numColumns The number of columns in the array.
-     * @return a 2D array, where the first index of the array represents rows
-     *   and the second index represents columns.
-     */
+    /// Extract a result set into the 2D array.
+    /// @param numColumns The number of columns in the array.
+    /// @return a 2D array, where the first index of the array represents rows
+    ///  and the second index represents columns.
     std::vector<std::vector<std::string>> extractFirstNColumns(size_t numColumns);
 
     void freeResults();
