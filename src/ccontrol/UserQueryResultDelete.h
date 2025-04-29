@@ -21,8 +21,8 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_CCONTROL_USERQUERYQSERVMANAGER_H
-#define LSST_QSERV_CCONTROL_USERQUERYQSERVMANAGER_H
+#ifndef LSST_QSERV_CCONTROL_USERQUERYRESULTDELETE_H
+#define LSST_QSERV_CCONTROL_USERQUERYRESULTDELETE_H
 
 // System headers
 #include <memory>
@@ -44,17 +44,17 @@ class MessageStore;
 
 namespace lsst::qserv::ccontrol {
 
-// UserQueryQservManager is for handling queries with the form `CALL QSERV_MANAGER("...")`
-class UserQueryQservManager : public UserQuery {
+// UserQueryResultDelete is for handling queries with the form `CALL QSERV_RESULT_DELETE(queryId)`
+class UserQueryResultDelete : public UserQuery {
 public:
-    UserQueryQservManager(std::shared_ptr<UserQueryResources> const& queryResources,
+    UserQueryResultDelete(std::shared_ptr<UserQueryResources> const& queryResources,
                           std::string const& value);
 
-    ~UserQueryQservManager() override = default;
+    ~UserQueryResultDelete() override = default;
 
-    UserQueryQservManager(UserQueryQservManager const&) = delete;
+    UserQueryResultDelete(UserQueryResultDelete const&) = delete;
 
-    UserQueryQservManager& operator=(UserQueryQservManager const&) = delete;
+    UserQueryResultDelete& operator=(UserQueryResultDelete const&) = delete;
 
     /// @return a non-empty string describing the current error state
     /// Returns an empty string if no errors have been detected.
@@ -76,19 +76,13 @@ public:
     // Delegate objects
     std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
-    std::string getResultLocation() const override { return "table:" + _resultTableName; }
-
-    /// @return get the SELECT statement to be executed by proxy
-    std::string getResultQuery() const override;
-
 private:
     std::string const _value;
-    std::string _resultTableName;
+    std::shared_ptr<UserQueryResources> const _queryResources;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
     QueryState _qState{UNKNOWN};
-    std::string _resultDb;
 };
 
 }  // namespace lsst::qserv::ccontrol
 
-#endif  // LSST_QSERV_CCONTROL_USERQUERYQSERVMANAGER_H
+#endif  // LSST_QSERV_CCONTROL_USERQUERYRESULTDELETE_H
