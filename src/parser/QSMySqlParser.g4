@@ -4,13 +4,13 @@ import MySqlParser;
 
 options { tokenVocab=QSMySqlLexer; }
 
-// adds QSERV_MANAGER built-in procedure name:
+// adds QSERV_RESULT_DELETE built-in procedure name:
 callStatement
     : CALL fullId
       (
         '(' (constants | expressions)? ')'
       )?
-    | CALL QSERV_MANAGER
+    | CALL QSERV_RESULT_DELETE
       (
         '(' constant ')'
       )?
