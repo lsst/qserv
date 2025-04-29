@@ -118,7 +118,7 @@ void WCzarInfo::_sendMessage() {
     vector<string> const headers = {"Content-Type: application/json"};
     string const url =
             "http://" + czInfo->czHostName + ":" + to_string(czInfo->czPort) + "/workerczarcomissue";
-    auto jsReqPtr = _workerCzarComIssue->serializeJson();
+    auto jsReqPtr = _workerCzarComIssue->toJson();
     uniLock.unlock();  // Must unlock before communication
 
     auto requestStr = jsReqPtr->dump();

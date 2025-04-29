@@ -59,7 +59,7 @@ public:
     WorkerCzarComIssue() = delete;
     ~WorkerCzarComIssue() = default;
 
-    std::string cName(const char* funcN) { return std::string("WorkerCzarComIssue") + funcN; }
+    std::string cName(const char* funcN) const { return std::string("WorkerCzarComIssue") + funcN; }
 
     static Ptr create(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_) {
         return Ptr(new WorkerCzarComIssue(replicationInstanceId_, replicationAuthKey_));
@@ -100,11 +100,11 @@ public:
     }
 
     /// Return a json version of the contents of this class.
-    std::shared_ptr<nlohmann::json> serializeJson();
+    std::shared_ptr<nlohmann::json> toJson() const;
 
     /// Return a json object indicating the status of the message for the
     /// original requester.
-    nlohmann::json serializeResponseJson();
+    nlohmann::json responseToJson() const;
 
     std::string dump() const;
 
