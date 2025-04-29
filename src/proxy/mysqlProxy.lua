@@ -31,13 +31,10 @@ MSG_ERROR          = 2
 function errors ()
     local self = { __errNo__ = 0, __errMsg__ = "" }
 
-    ---------------------------------------------------------------------------
-
     local errNo = function()
         return self.__errNo__
     end
 
-    ---------------------------------------------------------------------------
     local set = function(errNo, errMsg)
         self.__errNo__  = errNo
         self.__errMsg__ = errMsg
@@ -48,8 +45,6 @@ function errors ()
         self.__errMsg__ = self.__errMsg__ .. errMsg
         return errNo
     end
-
-    ---------------------------------------------------------------------------
 
     local send = function()
         local e = -1 * self.__errNo__ -- mysql doesn't like negative errors
@@ -68,8 +63,6 @@ function errors ()
         return send()
     end
 
-    ---------------------------------------------------------------------------
-
     return {
         errNo = errNo,
         set = set,
@@ -78,7 +71,6 @@ function errors ()
         setAndSend = setAndSend
     }
 end
-
 
 err = errors()
 
@@ -97,38 +89,6 @@ function utilities()
         return s
     end
 
-    ---------------------------------------------------------------------------
-
-    -- tokenizes string with comma separated values,
-    -- returns a table
-    local csvToTable = function(s)
-        s = s .. ','        -- ending comma
-        local t = {}        -- table to collect fields
-        local fieldstart = 1
-        repeat
-            -- next field is quoted? (start with `"'?)
-            if string.find(s, '^"', fieldstart) then
-                local a, c
-                local i  = fieldstart
-                repeat
-                    -- find closing quote
-                    a, i, c = string.find(s, '"("?)', i+1)
-                until c ~= '"'    -- quote not followed by quote?
-                if not i then error('unmatched "') end
-                local f = string.sub(s, fieldstart+1, i-1)
-                table.insert(t, (string.gsub(f, '""', '"')))
-                fieldstart = string.find(s, ',', i) + 1
-            else                -- unquoted; find next comma
-                local nexti = string.find(s, ',', fieldstart)
-                table.insert(t, string.sub(s, fieldstart, nexti-1))
-                fieldstart = nexti + 1
-            end
-        until fieldstart > string.len(s)
-        return t
-    end
-
-    ---------------------------------------------------------------------------
-
     local removeLeadingComment = function (q)
         local qRet = q
         local x1 = string.find(q, '%/%*')
@@ -142,8 +102,6 @@ function utilities()
         end
         return qRet
     end
-
-    ---------------------------------------------------------------------------
 
     local removeExtraWhiteSpaces = function (q)
         -- convert new lines and tabs to a space
@@ -171,22 +129,14 @@ function utilities()
         return q
     end
 
-    local startsWith = function (String,Start)
-       return string.sub(String,1,string.len(Start))==Start
-    end
-
-    ---------------------------------------------------------------------------
     return {
         tableToString = tableToString,
-        csvToTable = csvToTable,
         removeLeadingComment = removeLeadingComment,
-        removeExtraWhiteSpaces = removeExtraWhiteSpaces,
-        startsWith = startsWith
+        removeExtraWhiteSpaces = removeExtraWhiteSpaces
     }
 end
 
 utils = utilities()
-
 
 -------------------------------------------------------------------------------
 ---- --                          Query type                                  --
@@ -289,8 +239,6 @@ function queryProcessing()
                    isSelectResultQuery = false,
                    initialized = false }
 
-    ---------------------------------------------------------------------------
-
     local initializeCzar = function()
 
         if (not self.initialized) then
@@ -352,14 +300,10 @@ function queryProcessing()
         return SUCCESS
      end
 
-    ---------------------------------------------------------------------------
-
     local processLocally = function(q)
         czarProxy.log("mysql-proxy", "INFO", "Processing locally: " .. q)
         return SUCCESS
     end
-
-    ---------------------------------------------------------------------------
 
     local processIgnored = function(q)
         proxy.response.type = proxy.MYSQLD_PACKET_OK
@@ -375,8 +319,6 @@ function queryProcessing()
         }
         return proxy.PROXY_SEND_RESULT
     end
-
-    ---------------------------------------------------------------------------
 
     local killQservQuery = function(q, qU)
         -- Idea: "KILL QUERY <server.thread_id>" is in the parameter, so we
@@ -403,8 +345,6 @@ function queryProcessing()
         return proxy.PROXY_SEND_RESULT
     end
 
-    ---------------------------------------------------------------------------
-
     local prepForFetchingMessages = function(proxy)
         if not self.resultTableName then
             return err.set(ERR_BAD_RES_TNAME, "Invalid result table name")
@@ -426,8 +366,6 @@ function queryProcessing()
         return SUCCESS
     end
 
-    ---------------------------------------------------------------------------
-
     local fetchResults = function(proxy)
 
         -- if no result table then do something that returns empty result set
@@ -439,8 +377,6 @@ function queryProcessing()
                              {resultset_is_needed = false})
 
     end
-
-    ---------------------------------------------------------------------------
 
     local dropResults = function(proxy)
         if self.isSelectResultQuery then
@@ -454,8 +390,6 @@ function queryProcessing()
         end
 
     end
-
-    ---------------------------------------------------------------------------
 
     return {
         initializeCzar = initializeCzar,
