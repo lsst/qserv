@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.WorkerCzarComIssue");
 
 namespace lsst::qserv::protojson {
 
-shared_ptr<json> WorkerCzarComIssue::serializeJson() {
+shared_ptr<json> WorkerCzarComIssue::toJson() const {
     shared_ptr<json> jsCzarReqPtr = make_shared<json>();
     json& jsCzarR = *jsCzarReqPtr;
     lock_guard _lgWciMtx(_wciMtx);
@@ -94,7 +94,7 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
     return nullptr;
 }
 
-json WorkerCzarComIssue::serializeResponseJson() {
+json WorkerCzarComIssue::responseToJson() const {
     json jsResp = {{"success", 1}, {"errortype", "none"}, {"note", ""}};
 
     // TODO:UJ add lists of uberjobs that are scheduled to have files collected because of this message.
