@@ -206,7 +206,6 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
             }
         }
 
-        tsk->setMemMan(_memMan);
         tasks.push_back(tsk);
         LOGS(_log, LOG_LVL_TRACE, getName() << " queCmd " << tsk->getIdStr());
     }

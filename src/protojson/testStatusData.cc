@@ -169,11 +169,11 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     wccIssueA->setThoughtCzarWasDead(true);
     BOOST_REQUIRE(wccIssueA->needToSend() == true);
 
-    auto jsIssueA = wccIssueA->serializeJson();
+    auto jsIssueA = wccIssueA->toJson();
 
     auto wccIssueA1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
             *jsIssueA, replicationInstanceId, replicationAuthKey);
-    auto jsIssueA1 = wccIssueA1->serializeJson();
+    auto jsIssueA1 = wccIssueA1->toJson();
     BOOST_REQUIRE(*jsIssueA == *jsIssueA1);
 
     // TODO:UJ Test with items in lists.
