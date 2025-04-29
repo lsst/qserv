@@ -207,7 +207,18 @@ function queryType()
         end
         return false
     end
-    ---------------------------------------------------------------------------
+
+    -- Detects if query is pulling a result set of an asynchronous query
+    -- from qserv. This is a special case of SELECT query. When processing this
+    -- query, we should not delete the result table. The later step will be handled
+    -- by a separate request to be explicitly made by the client.
+    local isSelectResult = function(qU)
+        if string.find(qU, "^SELECT .* FROM QSERV_RESULT") then
+            return true
+        end
+        return false
+    end
+
     local shouldPassToResultDb = function(qU)
         if string.find(qU, "^SELECT DATABASE()") then
             return true
@@ -215,7 +226,6 @@ function queryType()
             return false
         end
     end
-    ---------------------------------------------------------------------------
 
     local isDisallowed = function(qU)
         if string.find(qU, "^INSERT ") or
@@ -230,7 +240,6 @@ function queryType()
         end
         return false
     end
-    ---------------------------------------------------------------------------
 
     local isKill = function(qU)
         if string.find(qU, "^KILL ") or
@@ -239,13 +248,10 @@ function queryType()
         end
         return false
     end
-    ---------------------------------------------------------------------------
 
     local isIgnored = function(qU)
         return false
     end
-
-    ---------------------------------------------------------------------------
 
     local isNotSupported = function(qU)
         if string.find(qU, "^EXPLAIN ") or
@@ -258,10 +264,9 @@ function queryType()
         return false
     end
 
-    ---------------------------------------------------------------------------
-
     return {
         isLocal = isLocal,
+        isSelectResult = isSelectResult,
         shouldPassToResultDb = shouldPassToResultDb,
         isDisallowed = isDisallowed,
         isKill = isKill,
@@ -281,6 +286,7 @@ function queryProcessing()
     local self = { msgTableName = nil,
                    resultTableName = nil,
                    resultQuery = nil,
+                   isSelectResultQuery = false,
                    initialized = false }
 
     ---------------------------------------------------------------------------
@@ -336,10 +342,12 @@ function queryProcessing()
         self.resultTableName = res.resultTable
         self.msgTableName = res.messageTable
         self.resultQuery = res.resultQuery
+        self.isSelectResultQuery = qType.isSelectResult(qU)
 
         czarProxy.log("mysql-proxy", "INFO", "Czar response: [result: " .. self.resultTableName ..
                ", message: " .. self.msgTableName ..
-               ", resultQuery: \"" .. self.resultQuery .. "\"]")
+               ", resultQuery: \"" .. self.resultQuery ..
+               "\", isSelectResultQuery: " .. tostring(self.isSelectResultQuery) .. "]")
 
         return SUCCESS
      end
@@ -435,7 +443,10 @@ function queryProcessing()
     ---------------------------------------------------------------------------
 
     local dropResults = function(proxy)
-
+        if self.isSelectResultQuery then
+            czarProxy.log("mysql-proxy", "INFO", "Not dropping result table: " .. self.resultTableName)
+            return
+        end
         if self.resultTableName ~= "" then
             local q4 = "DROP TABLE " .. self.resultTableName
             proxy.queries:append(4, string.char(proxy.COM_QUERY) .. q4,
