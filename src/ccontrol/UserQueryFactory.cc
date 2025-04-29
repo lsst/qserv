@@ -135,7 +135,7 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
     LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
     try {
         return std::make_shared<UserQueryProcessList>(stmt, sharedResources->qMetaSelect,
-                                                      sharedResources->czarId, userQueryId, resultDb);
+                                                      sharedResources->qMetaCzarId, userQueryId, resultDb);
     } catch (std::exception const& exc) {
         return std::make_shared<UserQueryInvalid>(exc.what());
     }
