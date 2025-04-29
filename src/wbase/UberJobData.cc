@@ -38,6 +38,7 @@
 #include "http/Method.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
+#include "protojson/JobErrorMsg.h"
 #include "protojson/JobReadyMsg.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
@@ -150,15 +151,12 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
         LOGS(_log, logLvl, errorMsg);
     }
 
-    json request = {{"version", http::MetaModule::version},
-                    {"workerid", _foreman->chunkInventory()->id()},
-                    {"auth_key", _authKey},
-                    {"czar", _czarName},
-                    {"czarid", _czarId},
-                    {"queryid", _queryId},
-                    {"uberjobid", _uberJobId},
-                    {"errorCode", errorCode},
-                    {"errorMsg", errorMsg}};
+    string const workerIdStr = _foreman->chunkInventory()->id();
+    auto repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
+    auto repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
+    auto jrMsg = protojson::JobErrorMsg::create(repliInstId, repliAuthKey, workerIdStr, _czarName, _czarId,
+                                                _queryId, _uberJobId, errorCode, errorMsg);
+    json request = jrMsg->serializeJson();
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};

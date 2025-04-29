@@ -1,6 +1,7 @@
 add_library(protojson SHARED)
 
 target_sources(protojson PRIVATE
+    JobErrorMsg.cc
     JobReadyMsg.cc
 	ScanTableInfo.cc
     UberJobMsg.cc
@@ -37,6 +38,7 @@ function(PROTOJSON_TESTS)
 endfunction()
 
 protojson_tests(
+	testJobErrorMsg
     testJobReadyMsg
     testStatusData
     testUberJobMsg
