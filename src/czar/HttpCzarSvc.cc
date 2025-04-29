@@ -23,6 +23,7 @@
 #include "czar/HttpCzarSvc.h"
 
 // System headers
+#include <limits>
 #include <stdexcept>
 
 // Third-party headers
@@ -61,26 +62,20 @@ void throwIf(bool condition, string const& message) {
 
 namespace lsst::qserv::czar {
 
-shared_ptr<HttpCzarSvc> HttpCzarSvc::create(int port, unsigned int numThreads,
-                                            unsigned int numWorkerIngestThreads, string const& sslCertFile,
-                                            string const& sslPrivateKeyFile, string const& tmpDir,
-                                            unsigned int clientConnPoolSize) {
-    return shared_ptr<HttpCzarSvc>(new HttpCzarSvc(port, numThreads, numWorkerIngestThreads, sslCertFile,
-                                                   sslPrivateKeyFile, tmpDir, clientConnPoolSize));
+shared_ptr<HttpCzarSvc> HttpCzarSvc::create(HttpCzarConfig const& httpCzarConfig) {
+    return shared_ptr<HttpCzarSvc>(new HttpCzarSvc(httpCzarConfig));
 }
 
-HttpCzarSvc::HttpCzarSvc(int port, unsigned int numThreads, unsigned int numWorkerIngestThreads,
-                         string const& sslCertFile, string const& sslPrivateKeyFile, string const& tmpDir,
-                         unsigned int clientConnPoolSize)
-        : _port(port),
-          _numThreads(numThreads),
-          _numWorkerIngestThreads(numWorkerIngestThreads),
-          _sslCertFile(sslCertFile),
-          _sslPrivateKeyFile(sslPrivateKeyFile),
-          _tmpDir(tmpDir),
-          _clientConnPool(make_shared<http::ClientConnPool>(clientConnPoolSize)),
-          _workerIngestProcessor(ingest::Processor::create(
-                  numWorkerIngestThreads ? numWorkerIngestThreads : thread::hardware_concurrency())) {
+HttpCzarSvc::HttpCzarSvc(HttpCzarConfig const& httpCzarConfig) : _httpCzarConfig(httpCzarConfig) {
+    if (_httpCzarConfig.numThreads == 0) {
+        _httpCzarConfig.numThreads = thread::hardware_concurrency();
+    }
+    if (_httpCzarConfig.numWorkerIngestThreads == 0) {
+        _httpCzarConfig.numWorkerIngestThreads = thread::hardware_concurrency();
+    }
+    if (_httpCzarConfig.numBoostAsioThreads == 0) {
+        _httpCzarConfig.numBoostAsioThreads = thread::hardware_concurrency();
+    }
     _createAndConfigure();
 }
 
@@ -99,7 +94,7 @@ void HttpCzarSvc::startAndWait() {
 
     // Initialize the I/O context and start the service threads. At this point
     // the server will be ready to service incoming requests.
-    for (unsigned int i = 0; i < _numBoostAsioThreads; ++i) {
+    for (size_t i = 0; i < _httpCzarConfig.numBoostAsioThreads; ++i) {
         _threads.push_back(make_unique<thread>([self = shared_from_this()]() { self->_io_service.run(); }));
     }
     bool const started = _svr->listen_after_bind();
@@ -109,25 +104,34 @@ void HttpCzarSvc::startAndWait() {
 void HttpCzarSvc::_createAndConfigure() {
     string const context = "czar::HttpCzarSvc::" + string(__func__) + " ";
 
-    ::throwIf<invalid_argument>(_sslCertFile.empty(), context + "SSL certificate file is not valid");
-    ::throwIf<invalid_argument>(_sslPrivateKeyFile.empty(), context + "SSL private key file is not valid");
+    _clientConnPool = make_shared<http::ClientConnPool>(_httpCzarConfig.clientConnPoolSize);
+    _workerIngestProcessor = ingest::Processor::create(_httpCzarConfig.numWorkerIngestThreads);
 
-    _svr = make_unique<httplib::SSLServer>(_sslCertFile.data(), _sslPrivateKeyFile.data());
+    ::throwIf<invalid_argument>(_httpCzarConfig.sslCertFile.empty(),
+                                context + "SSL certificate file is not valid");
+    ::throwIf<invalid_argument>(_httpCzarConfig.sslPrivateKeyFile.empty(),
+                                context + "SSL private key file is not valid");
+
+    _svr = make_unique<httplib::SSLServer>(_httpCzarConfig.sslCertFile.data(),
+                                           _httpCzarConfig.sslPrivateKeyFile.data());
     ::throwIf<runtime_error>(!_svr->is_valid(), context + "Failed to create the server");
 
     _svr->new_task_queue = [&] {
-        return new httplib::ThreadPool(_numThreads ? _numThreads : thread::hardware_concurrency(),
-                                       _maxQueuedRequests);
+        return new httplib::ThreadPool(_httpCzarConfig.numThreads, _httpCzarConfig.maxQueuedRequests);
     };
-    if (_port == 0) {
-        _port = _svr->bind_to_any_port(_bindAddr, _port);
-        ::throwIf<runtime_error>(_port < 0, context + "Failed to bind the server to any port");
+    int const socket_flags = 0;
+    if (_httpCzarConfig.port == 0) {
+        int const port = _svr->bind_to_any_port(_bindAddr, socket_flags);
+        bool const portInRange =
+                (port > numeric_limits<uint16_t>::min() && port <= numeric_limits<uint16_t>::max());
+        ::throwIf<runtime_error>(!portInRange, context + "Failed to bind the server to any port");
+        _httpCzarConfig.port = static_cast<uint16_t>(port);
     } else {
-        bool const bound = _svr->bind_to_port(_bindAddr, _port);
-        ::throwIf<runtime_error>(!bound,
-                                 context + "Failed to bind the server to the port: " + to_string(_port));
+        bool const bound = _svr->bind_to_port(_bindAddr, _httpCzarConfig.port, socket_flags);
+        ::throwIf<runtime_error>(!bound, context + "Failed to bind the server to the port: " +
+                                                 to_string(_httpCzarConfig.port));
     }
-    LOGS(_log, LOG_LVL_INFO, context + "started on port " + to_string(_port));
+    LOGS(_log, LOG_LVL_INFO, context + "started on port " + to_string(_httpCzarConfig.port));
 }
 
 void HttpCzarSvc::_registerHandlers() {
@@ -158,8 +162,9 @@ void HttpCzarSvc::_registerHandlers() {
     });
     _svr->Post("/ingest/csv", [self](httplib::Request const& req, httplib::Response& resp,
                                      httplib::ContentReader const& contentReader) {
-        HttpCzarIngestCsvModule::process(self->_io_service, ::serviceName, self->_tmpDir, req, resp,
-                                         contentReader, self->_clientConnPool, self->_workerIngestProcessor);
+        HttpCzarIngestCsvModule::process(self->_io_service, ::serviceName, self->_httpCzarConfig.tmpDir, req,
+                                         resp, contentReader, self->_clientConnPool,
+                                         self->_workerIngestProcessor);
     });
     _svr->Post("/ingest/data", [self](httplib::Request const& req, httplib::Response& resp) {
         HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "INGEST-DATA");
