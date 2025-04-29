@@ -235,6 +235,21 @@ class ITestQuery:
             args.insert(1, "--skip-column-names")
         self._run(args, self.out_file_t.format(mode=query_mode_qserv_detached))
 
+        _log.debug("SQLCmd.execute deleting result tables of query ID = %s", query_id)
+        args = [
+            "mysql",
+            "--host",
+            f"{parsed.hostname}",
+            f"--port={parsed.port}",
+            f"--user={parsed.username}",
+            f"--password={parsed.password}",
+            "--batch",
+            "--binary-as-hex",
+            "-e",
+            f"CALL qserv_result_delete({query_id})",
+        ]
+        self._run(args)
+
     def run_attached(self, connection: str, qserv: bool, database: str) -> None:
         """Run the query on the db at the given connection
         attached/synchronously - do not SUBMIT and wait for result.
