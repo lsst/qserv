@@ -126,8 +126,7 @@ bool QueryRunner::_initConnection() {
 bool QueryRunner::runQuery() {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_TRACE,
-         "QueryRunner " << _task->cName(__func__) << " scsId=" << _task->getSendChannel()->getScsId());
+    LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__));
 
     // Start tracking the task.
     auto now = chrono::system_clock::now();
