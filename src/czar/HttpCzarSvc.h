@@ -51,46 +51,47 @@ class Foreman;
 namespace lsst::qserv::czar {
 
 /**
+ * Structure HttpCzarConfig encapculates configuration parameters
+ * of the service HttpCzarSvc;
+ */
+struct HttpCzarConfig {
+    std::uint16_t port = 4048;               ///< 0 to allocate the first available port
+    std::size_t numThreads = 0;              ///< 0 implies the number of hardware threads
+    std::size_t numWorkerIngestThreads = 0;  ///< 0 implies the number of hardware threads
+    std::string sslCertFile = "/config-etc/ssl/czar-cert.pem";
+    std::string sslPrivateKeyFile = "/config-etc/ssl/czar-key.pem";
+    std::string tmpDir = "/tmp";
+    std::size_t maxQueuedRequests = 0;    ///< 0 implies unlimited
+    std::size_t clientConnPoolSize = 0;   ///< 0 implies the default set by libcurl
+    std::size_t numBoostAsioThreads = 0;  ///< 0 implies the number of hardware threads
+};
+
+/**
  * Class HttpCzarSvc is the HTTP server for processing user requests.
  */
 class HttpCzarSvc : public std::enable_shared_from_this<HttpCzarSvc> {
 public:
-    static std::shared_ptr<HttpCzarSvc> create(int port, unsigned int numThreads,
-                                               unsigned int numWorkerIngestThreads,
-                                               std::string const& sslCertFile,
-                                               std::string const& sslPrivateKeyFile,
-                                               std::string const& tmpDir,
-                                               unsigned int clientConnPoolSize = 0);
-    int port() const { return _port; }
+    static std::shared_ptr<HttpCzarSvc> create(HttpCzarConfig const& httpCzarConfig);
+    int port() const { return _httpCzarConfig.port; }
     void startAndWait();
 
 private:
-    HttpCzarSvc(int port, unsigned int numThreads, unsigned int numWorkerIngestThreads,
-                std::string const& sslCertFile, std::string const& sslPrivateKeyFile,
-                std::string const& tmpDir, unsigned int clientConnPoolSize = 0);
+    HttpCzarSvc(HttpCzarConfig const& httpCzarConfig);
     void _createAndConfigure();
     void _registerHandlers();
 
-    int _port;
-    unsigned int const _numThreads;
-    unsigned int const _numWorkerIngestThreads;
-    std::string const _sslCertFile;
-    std::string const _sslPrivateKeyFile;
-    std::string const _tmpDir;
-    std::size_t const _maxQueuedRequests = 0;  // 0 means unlimited
+    HttpCzarConfig _httpCzarConfig;
     std::string const _bindAddr = "0.0.0.0";
     std::unique_ptr<httplib::SSLServer> _svr;
 
     /// The BOOST ASIO I/O services and a thread pool for async communication with
     /// the Replication Controller and workers.
-    unsigned int const _numBoostAsioThreads = std::thread::hardware_concurrency();
-
     std::unique_ptr<boost::asio::io_service::work> _work;
     boost::asio::io_service _io_service;
     std::vector<std::unique_ptr<std::thread>> _threads;
 
-    std::shared_ptr<http::ClientConnPool> const _clientConnPool;
-    std::shared_ptr<ingest::Processor> const _workerIngestProcessor;
+    std::shared_ptr<http::ClientConnPool> _clientConnPool;
+    std::shared_ptr<ingest::Processor> _workerIngestProcessor;
 };
 
 }  // namespace lsst::qserv::czar
