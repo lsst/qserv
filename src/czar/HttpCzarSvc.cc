@@ -160,6 +160,9 @@ void HttpCzarSvc::_registerHandlers() {
     _svr->Get("/query-async/result/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
         HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT");
     });
+    _svr->Delete("/query-async/result/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT-DELETE");
+    });
     _svr->Post("/ingest/csv", [self](httplib::Request const& req, httplib::Response& resp,
                                      httplib::ContentReader const& contentReader) {
         HttpCzarIngestCsvModule::process(self->_io_service, ::serviceName, self->_httpCzarConfig.tmpDir, req,
