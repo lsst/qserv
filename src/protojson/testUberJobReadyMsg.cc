@@ -32,14 +32,14 @@
 #include "global/clock_defs.h"
 #include "http/MetaModule.h"
 #include "lsst/log/Log.h"
-#include "protojson/JobErrorMsg.h"
+#include "protojson/UberJobReadyMsg.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE RequestQuery
 #include <boost/test/unit_test.hpp>
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.testJobErrorMsg");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.testUberJobReadyMsg");
 }
 
 using namespace std;
@@ -48,6 +48,7 @@ using namespace lsst::qserv::protojson;
 
 string const repliInstanceId = "repliInstId";
 string const repliAuthKey = "repliIAuthKey";
+unsigned int const version = lsst::qserv::http::MetaModule::version;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
@@ -58,15 +59,15 @@ bool parseSerializeReparseCheck(string const& jsStr, string const& note) {
     nlohmann::json js = nlohmann::json::parse(jsStr);
     LOGS(_log, LOG_LVL_INFO, fName << " parse 1");
 
-    JobErrorMsg::Ptr jrm = JobErrorMsg::createFromJson(js, repliInstanceId, repliAuthKey);
+    UberJobReadyMsg::Ptr jrm = UberJobReadyMsg::createFromJson(js);
     BOOST_REQUIRE(jrm != nullptr);
 
-    nlohmann::json jsJrm = jrm->serializeJson();
+    nlohmann::json jsJrm = jrm->toJson();
     LOGS(_log, LOG_LVL_INFO, fName << " serialized jsJrm=" << jsJrm);
 
-    JobErrorMsg::Ptr jrmCreated = JobErrorMsg::createFromJson(jsJrm, repliInstanceId, repliAuthKey);
+    UberJobReadyMsg::Ptr jrmCreated = UberJobReadyMsg::createFromJson(jsJrm);
     LOGS(_log, LOG_LVL_INFO, fName << " created");
-    nlohmann::json jsJrmCreated = jrmCreated->serializeJson();
+    nlohmann::json jsJrmCreated = jrmCreated->toJson();
     LOGS(_log, LOG_LVL_INFO, fName << " created->serialized");
 
     bool createdMatchesOriginal = jsJrm == jsJrmCreated;
@@ -89,13 +90,14 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     lsst::qserv::CzarIdType const czarId = 745;
     lsst::qserv::QueryId const queryId = 986532;
     lsst::qserv::UberJobId const uberJobId = 14578;
-    string const errorMsg("something went wrong");
-    int const errorCode = -3;
+    string const fileUrl("ht.qwrk/some/dir/fil.txt");
+    uint64_t const rowCount = 391;
+    uint64_t const fileSize = 5623;
 
-    auto jrm = JobErrorMsg::create(repliInstanceId, repliAuthKey, workerIdStr, czarName, czarId, queryId,
-                                   uberJobId, errorCode, errorMsg);
+    auto jrm = UberJobReadyMsg::create(repliInstanceId, repliAuthKey, version, workerIdStr, czarName, czarId,
+                                       queryId, uberJobId, fileUrl, rowCount, fileSize);
 
-    auto jsJrm = jrm->serializeJson();
+    auto jsJrm = jrm->toJson();
     string const strJrm = to_string(jsJrm);
     LOGS(_log, LOG_LVL_INFO, "stdJrm=" << strJrm);
 

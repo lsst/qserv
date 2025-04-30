@@ -29,8 +29,8 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
-#include "protojson/JobErrorMsg.h"
-#include "protojson/JobReadyMsg.h"
+#include "protojson/UberJobErrorMsg.h"
+#include "protojson/UberJobReadyMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
 #include "qdisp/Executive.h"
 #include "qdisp/UberJob.h"
@@ -108,10 +108,10 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
     // Parse and verify the json message and then kill the UberJob.
     json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
-        string const repliInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
-        string const repliAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
+        string const& repliInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
+        string const& repliAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
         auto const& jsReq = body().objJson;
-        auto jrMsg = protojson::JobErrorMsg::createFromJson(jsReq, repliInstanceId, repliAuthKey);
+        auto jrMsg = protojson::UberJobErrorMsg::createFromJson(jsReq, repliInstanceId, repliAuthKey);
 
         auto const queryId = jrMsg->getQueryId();
         auto const czarId = jrMsg->getCzarId();
@@ -148,10 +148,8 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     // Parse and verify the json message and then have the uberjob import the file.
     json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
-        string const repliInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
-        string const repliAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
         auto const& jsReq = body().objJson;
-        auto jrMsg = protojson::JobReadyMsg::createFromJson(jsReq, repliInstanceId, repliAuthKey);
+        auto jrMsg = protojson::UberJobReadyMsg::createFromJson(jsReq);
 
         // Find UberJob
         auto queryId = jrMsg->getQueryId();
@@ -212,7 +210,7 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
                 execPtr->killIncompleteUberJobsOnWorker(wId);
             }
         }
-        jsRet = wccIssue->serializeResponseJson();
+        jsRet = wccIssue->responseToJson();
         LOGS(_log, LOG_LVL_TRACE, "HttpCzarWorkerModule::_handleWorkerCzarComIssue jsRet=" << jsRet.dump());
 
     } catch (std::invalid_argument const& iaEx) {

@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_PROTOJSON_JOBERRORMSG_H
-#define LSST_QSERV_PROTOJSON_JOBERRORMSG_H
+#ifndef LSST_QSERV_PROTOJSON_UBERJOBERRORMSG_H
+#define LSST_QSERV_PROTOJSON_UBERJOBERRORMSG_H
 
 // System headers
 #include <chrono>
@@ -41,56 +41,58 @@ namespace lsst::qserv::protojson {
 
 /// This class handles the message used to inform the czar that there has
 /// been a problem with an UberJob.
-class JobErrorMsg {
+class UberJobErrorMsg {
 public:
-    using Ptr = std::shared_ptr<JobErrorMsg>;
+    using Ptr = std::shared_ptr<UberJobErrorMsg>;
 
-    JobErrorMsg() = delete;
-    JobErrorMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey)
-            : _replicationInstanceId(replicationInstanceId), _replicationAuthKey(replicationAuthKey) {}
-    JobErrorMsg(JobErrorMsg const&) = delete;
-    JobErrorMsg& operator=(JobErrorMsg const&) = delete;
+    UberJobErrorMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
+                    unsigned int version, std::string const& workerId, std::string const& czarName,
+                    CzarIdType czarId, QueryId queryId, UberJobId uberJobId, int errorCode,
+                    std::string const& errorMsg);
 
-    std::string cName(const char* fName) { return std::string("WorkerQueryStatusData::") + fName; }
+    UberJobErrorMsg() = delete;
+    UberJobErrorMsg(UberJobErrorMsg const&) = delete;
+    UberJobErrorMsg& operator=(UberJobErrorMsg const&) = delete;
 
     static Ptr create(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
-                      std::string const& workerIdStr, std::string const& czarName, CzarIdType czarId,
-                      QueryId queryId, UberJobId uberJobId, int errorCode, std::string const& errorMsg);
+                      unsigned int version, std::string const& workerIdStr, std::string const& czarName,
+                      CzarIdType czarId, QueryId queryId, UberJobId uberJobId, int errorCode,
+                      std::string const& errorMsg);
 
-    static Ptr create(std::string const& replicationInstanceId, std::string const& replicationAuthKey) {
-        return Ptr(new JobErrorMsg(replicationInstanceId, replicationAuthKey));
-    }
-
-    /// This function creates a JobErrorMsg object from the worker json `czarJson`, the
+    /// This function creates a UberJobErrorMsg object from the worker json `czarJson`, the
     /// other parameters are used to verify the json message.
     static Ptr createFromJson(nlohmann::json const& czarJson, std::string const& replicationInstanceId,
                               std::string const& replicationAuthKey);
 
-    ~JobErrorMsg() = default;
+    ~UberJobErrorMsg() = default;
 
     /// Return a json object with data allowing collection of UberJob result file.
-    nlohmann::json serializeJson();
+    nlohmann::json toJson() const;
 
-    std::string getWorkerId() const { return _workerId; }
-    std::string getCzarName() const { return _czarName; }
+    std::string const& getWorkerId() const { return _workerId; }
+    std::string const& getCzarName() const { return _czarName; }
     CzarIdType getCzarId() const { return _czarId; }
     QueryId getQueryId() const { return _queryId; }
     UberJobId getUberJobId() const { return _uberJobId; }
-    std::string getErrorMsg() const { return _errorMsg; }
+    std::string const& getErrorMsg() const { return _errorMsg; }
     uint getErrorCode() const { return _errorCode; }
 
 private:
+    /// class name for log, fName is expected to be __func__.
+    std::string _cName(const char* fName) const;
+
     std::string const _replicationInstanceId;
     std::string const _replicationAuthKey;
-    std::string _workerId;
-    std::string _czarName;
-    CzarIdType _czarId = 0;
-    QueryId _queryId = 0;
-    UberJobId _uberJobId = 0;
-    int _errorCode = 0;
-    std::string _errorMsg;
+    unsigned int const _version;
+    std::string const _workerId;
+    std::string const _czarName;
+    CzarIdType const _czarId;
+    QueryId const _queryId;
+    UberJobId const _uberJobId;
+    int const _errorCode;
+    std::string const _errorMsg;
 };
 
 }  // namespace lsst::qserv::protojson
 
-#endif  // LSST_QSERV_PROTOJSON_JOBERRORMSG_H
+#endif  // LSST_QSERV_PROTOJSON_UBERJOBERRORMSG_H
