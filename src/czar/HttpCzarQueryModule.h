@@ -95,6 +95,7 @@ private:
     SubmitResult _getRequestParamsAndSubmit(std::string const& func, bool async);
     SubmitResult _getQueryInfo() const;
     QueryId _getQueryId() const;
+    void _dumpQueryInfo(std::string const& func, SubmitResult const& submitResult) const;
     nlohmann::json _waitAndExtractResult(SubmitResult const& submitResult,
                                          http::BinaryEncodingMode binaryEncoding) const;
     void _dropTable(std::string const& tableName) const;
