@@ -96,6 +96,8 @@ json HttpCzarQueryModule::_submitAsync() {
     debug(__func__);
     checkApiVersion(__func__, 32);
     SubmitResult const submitResult = _getRequestParamsAndSubmit(__func__, true);
+    _dropTable(submitResult.messageTable);
+    _dropTable(submitResult.resultTable);
     return json::object({{"queryId", submitResult.queryId}});
 }
 
@@ -107,6 +109,7 @@ SubmitResult HttpCzarQueryModule::_getRequestParamsAndSubmit(string const& func,
     string const query = async ? "SUBMIT " + userQuery : userQuery;
     map<string, string> const hints{{"db", defaultDatabase}};
     SubmitResult const submitResult = Czar::getCzar()->submitQuery(query, hints);
+    _dumpQueryInfo(func, submitResult);
     if (!submitResult.errorMessage.empty()) {
         _dropTable(submitResult.messageTable);
         throw http::Error(context() + __func__, submitResult.errorMessage);
@@ -127,6 +130,7 @@ json HttpCzarQueryModule::_status() {
     debug(__func__);
     checkApiVersion(__func__, 30);
     SubmitResult const submitResult = _getQueryInfo();
+    _dumpQueryInfo(__func__, submitResult);
     json statusJson = json::object();
     statusJson["queryId"] = submitResult.queryId;
     statusJson["status"] = submitResult.status;
@@ -153,6 +157,7 @@ json HttpCzarQueryModule::_resultDelete() {
     SubmitResult submitResult;
     try {
         submitResult = Czar::getCzar()->getQueryInfo(queryId);
+        _dumpQueryInfo(__func__, submitResult);
     } catch (exception const& ex) {
         string const msg =
                 "failed to obtain info for queryId=" + to_string(queryId) + ", ex: " + string(ex.what());
@@ -194,6 +199,19 @@ SubmitResult HttpCzarQueryModule::_getQueryInfo() const {
         throw http::Error(context() + __func__, submitResult.errorMessage);
     }
     return submitResult;
+}
+
+void HttpCzarQueryModule::_dumpQueryInfo(string const& func, SubmitResult const& submitResult) const {
+    debug(func, "submitResult.queryId=" + to_string(submitResult.queryId));
+    debug(func, "submitResult.resultTable=" + submitResult.resultTable);
+    debug(func, "submitResult.messageTable=" + submitResult.messageTable);
+    debug(func, "submitResult.resultQuery=" + submitResult.resultQuery);
+    debug(func, "submitResult.status=" + submitResult.status);
+    debug(func, "submitResult.totalChunks=" + to_string(submitResult.totalChunks));
+    debug(func, "submitResult.completedChunks=" + to_string(submitResult.completedChunks));
+    debug(func, "submitResult.queryBeginEpoch=" + to_string(submitResult.queryBeginEpoch));
+    debug(func, "submitResult.lastUpdateEpoch=" + to_string(submitResult.lastUpdateEpoch));
+    debug(func, "submitResult.errorMessage=" + submitResult.errorMessage);
 }
 
 json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult,
@@ -275,7 +293,7 @@ json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult
 
 void HttpCzarQueryModule::_dropTable(string const& tableName) const {
     if (tableName.empty()) return;
-    string const query = "DROP TABLE " + tableName;
+    string const query = "DROP TABLE IF EXISTS " + tableName;
     debug(__func__, query);
     auto const conn =
             sql::SqlConnectionFactory::make(cconfig::CzarConfig::instance()->getMySqlResultConfig());
