@@ -21,6 +21,8 @@
 
 #include "UserQuerySelectCountStar.h"
 
+// Third-party headers
+#include "boost/algorithm/string/replace.hpp"
 #include "boost/lexical_cast.hpp"
 
 // LSST headers
@@ -30,6 +32,7 @@
 #include "cconfig/CzarConfig.h"
 #include "ccontrol/UserQueryError.h"
 #include "ccontrol/UserQueryType.h"
+#include "global/LogContext.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/QMetaSelect.h"
@@ -39,10 +42,6 @@
 #include "sql/SqlResults.h"
 
 namespace {
-
-std::string g_nextResultTableId(std::string const& userQueryId) {
-    return "qserv_result_countstar_" + userQueryId;
-}
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelectCountStar");
 
@@ -63,7 +62,6 @@ UserQuerySelectCountStar::UserQuerySelectCountStar(std::string query,
         : _qMetaSelect(qMetaSelect),
           _queryMetadata(queryMetadata),
           _messageStore(std::make_shared<qdisp::MessageStore>()),
-          _resultTableName(::g_nextResultTableId(userQueryId)),
           _userQueryId(userQueryId),
           _rowsTable(rowsTable),
           _resultDb(resultDb),
@@ -124,7 +122,7 @@ void UserQuerySelectCountStar::submit() {
     }
 
     // Create a result table, with one column (row_count) and one row (the total number of rows):
-    std::string createTable = "CREATE TABLE " + _resultTableName + "(row_count BIGINT UNSIGNED)";
+    std::string createTable = "CREATE TABLE " + _resultTable + "(row_count BIGINT UNSIGNED)";
     LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
     auto const czarConfig = cconfig::CzarConfig::instance();
     auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
@@ -137,7 +135,7 @@ void UserQuerySelectCountStar::submit() {
     }
 
     // Insert the total row count into the result table:
-    std::string insertRow = "INSERT INTO " + _resultTableName + " VALUES (";
+    std::string insertRow = "INSERT INTO " + _resultTable + " VALUES (";
     try {
         insertRow += lexical_cast<std::string>(row_count);
     } catch (bad_lexical_cast const& exc) {
@@ -171,13 +169,38 @@ void UserQuerySelectCountStar::qMetaRegister(std::string const& resultLocation,
                                              std::string const& msgTableName) {
     qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
     std::string user = "anonymous";  // we do not have access to that info yet
-    std::string qTemplate = "template";
-    std::string qMerge = "merge";
+    std::string qTemplate;
+    std::string qMerge;
+    if (_resultLoc.empty()) {
+        // Special token #QID# is replaced with query ID later.
+        _resultLoc = "table:result_#QID#";
+    }
     int chunkCount = 0;
-    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _query, qTemplate, qMerge, getResultLocation(),
-                       msgTableName, getResultQuery(), chunkCount);
+    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _query, qTemplate, qMerge, _resultLoc, msgTableName,
+                       getResultQuery(), chunkCount);
+    // register query, save its ID
     qmeta::QMeta::TableNames tableNames;
     _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
+    _queryIdStr = QueryIdHelper::makeIdStr(_qMetaQueryId);
+    // Add logging context with query ID
+    QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+
+    // update #QID# with actual query ID
+    boost::replace_all(_resultLoc, "#QID#", std::to_string(_qMetaQueryId));
+
+    // guess query result location
+    if (_resultLoc.compare(0, 6, "table:") == 0) {
+        _resultTable = _resultLoc.substr(6);
+    } else {
+        // we only support results going to tables for now, abort for anything else
+        std::string const msg = "Unexpected result location '" + _resultLoc + "'";
+        _messageStore->addMessage(-1, "SYSTEM", 1146, msg, MessageSeverity::MSG_ERROR);
+        throw UserQueryError(getQueryIdString());
+    }
+}
+
+void UserQuerySelectCountStar::saveResultQuery() {
+    _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery());
 }
 
 QueryState UserQuerySelectCountStar::join() {

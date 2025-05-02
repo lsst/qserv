@@ -84,18 +84,20 @@ public:
     /// in locations other than MySQL tables. We'll switch to getResultLocation()
     /// at that point.
     /// @return Name of the result table for this query, can be empty
-    std::string getResultTableName() const { return _resultTableName; }
+    std::string getResultTableName() const { return _resultTable; }
 
     /// Result location could be something like "table:table_name" or
     /// "file:/path/to/file.csv".
     /// @return Result location for this query, can be empty
-    std::string getResultLocation() const override { return "table:" + _resultTableName; }
+    std::string getResultLocation() const override { return _resultLoc; }
 
     /// @return True if query is async query
     bool isAsync() const override { return _async; }
 
     /// @return get the SELECT statement to be executed by proxy
     std::string getResultQuery() const override;
+
+    std::string getQueryIdString() const override { return _queryIdStr; }
 
     /// @return this query's QueryId.
     QueryId getQueryId() const override { return _qMetaQueryId; }
@@ -107,13 +109,17 @@ public:
      */
     void qMetaRegister(std::string const& resultLocation, std::string const& msgTableName);
 
+    /// save the result query in the query metadata
+    void saveResultQuery();
+
 private:
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus);
 
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
     std::shared_ptr<qmeta::QMeta> const& _queryMetadata;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
-    std::string _resultTableName;
+    std::string _resultTable;
+    std::string _resultLoc;  ///< Result location
     std::string _userQueryId;
     std::string _rowsTable;
     std::string _resultDb;
@@ -121,6 +127,8 @@ private:
     std::string _query;          // The original query text (without SUBMIT if async)
     qmeta::CzarId _qMetaCzarId;
     QueryId _qMetaQueryId;
+    /// QueryId in a standard string form, initially set to unknown.
+    std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _async;
     QueryState _qState{UNKNOWN};
 };

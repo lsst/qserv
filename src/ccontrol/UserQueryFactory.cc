@@ -325,6 +325,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                     userQueryId, rowsTable, resultDb, countSpelling, _userQuerySharedResources->qMetaCzarId,
                     async);
             uq->qMetaRegister(resultLocation, msgTableName);
+            uq->saveResultQuery();
             return uq;
         }
 
