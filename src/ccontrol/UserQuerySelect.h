@@ -152,7 +152,10 @@ private:
 
     void _expandSelectStarInMergeStatment(std::shared_ptr<query::SelectStmt> const& mergeStmt);
 
-    void _discardMerger();
+    /// Discard the merger if it exists.
+    /// @param lock a lock on the mutex _killMutex that prevents the race condition if the query
+    /// cancellation happens at the same time the query resources are being discarded.
+    void _discardMerger(std::lock_guard<std::mutex> const& lock);
 
     /// Update the qservMeta database with query statistics.
     /// @see QMeta::completeQuery
