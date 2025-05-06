@@ -156,27 +156,29 @@ std::string UserQuerySelect::getError() const {
 /// Attempt to kill in progress.
 void UserQuerySelect::kill() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect kill");
+    // The lock must be held for the entire query cancellation operation to prevent
+    // the race condition if the query join() or discard() happens at the same time.
     std::lock_guard<std::mutex> lock(_killMutex);
-    if (!_killed) {
-        _killed = true;
-        int64_t collectedRows = _executive->getTotalResultRows();
-        size_t collectedBytes = _infileMerger->getTotalResultSize();
-        try {
-            // make a copy of executive pointer to keep it alive and avoid race
-            // with pointer being reset in discard() method
-            std::shared_ptr<qdisp::Executive> exec = _executive;
-            if (exec != nullptr) {
-                exec->squash();
-            }
-        } catch (UserQueryError const& e) {
-            // Silence merger discarding errors, because this object is being
-            // released. Client no longer cares about merger errors.
-        }
-        // Since this is being aborted, collectedRows and collectedBytes are going to
-        // be off a bit as results were still coming in. A rough idea should be
-        // good enough.
-        _qMetaUpdateStatus(qmeta::QInfo::ABORTED, collectedRows, collectedBytes, 0);
+    if (_killed) return;
+
+    // If either pointer is nullptr then it's too late for killing the query. The query
+    // has already been finished or it's in a process of beging finished.
+    if (_executive == nullptr || _infileMerger == nullptr) {
+        LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect kill: the query is already finished");
+        return;
     }
+    try {
+        _executive->squash();
+    } catch (UserQueryError const& e) {
+        // Silence merger discarding errors, because this object is being
+        // released. Client no longer cares about merger errors.
+    }
+    // Since this is being aborted, collectedRows and collectedBytes are going to
+    // be off a bit as results were still coming in. A rough idea should be
+    // good enough.
+    _qMetaUpdateStatus(qmeta::QInfo::ABORTED, _executive->getTotalResultRows(),
+                       _infileMerger->getTotalResultSize(), 0);
+    _killed = true;
 }
 
 std::string UserQuerySelect::_getResultOrderBy() const { return _qSession->getResultOrderBy(); }
@@ -333,7 +335,9 @@ QueryState UserQuerySelect::join() {
     _executive->updateProxyMessages();
 
     try {
-        _discardMerger();
+        // The lock is required to prevent the race condition if the query cancellation
+        // happens at the same time as the merger is being discarded.
+        _discardMerger(std::lock_guard<std::mutex>(_killMutex));
     } catch (std::exception const& exc) {
         // exception here means error in qserv logic, we do not want to leak
         // it or expose it to user, just dump it to log
@@ -378,7 +382,7 @@ QueryState UserQuerySelect::join() {
 }
 
 /// Release resources held by the merger
-void UserQuerySelect::_discardMerger() {
+void UserQuerySelect::_discardMerger(std::lock_guard<std::mutex> const& lock) {
     _infileMergerConfig.reset();
     if (_infileMerger && !_infileMerger->isFinished()) {
         throw UserQueryError(getQueryIdString() + " merger unfinished, cannot discard");
@@ -388,12 +392,12 @@ void UserQuerySelect::_discardMerger() {
 
 /// Release resources.
 void UserQuerySelect::discard() {
-    {
-        std::lock_guard<std::mutex> lock(_killMutex);
-        if (_killed) {
-            return;
-        }
-    }
+    // The lock must be held for the entire discard operation to prevent
+    // the race condition if the query cancellation happens at the same time
+    // the query resources are being discarded.
+    std::lock_guard<std::mutex> lock(_killMutex);
+    if (_killed) return;
+
     // Make sure resources are released.
     if (_executive && _executive->getNumInflight() > 0) {
         throw UserQueryError(getQueryIdString() + " Executive unfinished, cannot discard");
@@ -402,7 +406,7 @@ void UserQuerySelect::discard() {
     _messageStore.reset();
     _qSession.reset();
     try {
-        _discardMerger();
+        _discardMerger(lock);
     } catch (UserQueryError const& e) {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
