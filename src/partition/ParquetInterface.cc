@@ -18,6 +18,11 @@
 // Class header
 #include "partition/ParquetInterface.h"
 
+// System headers
+#include <fstream>
+#include <map>
+#include <stdexcept>
+
 // Third party headers
 #include <arrow/csv/api.h>
 #include <arrow/csv/writer.h>
@@ -27,6 +32,7 @@
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.partitioner");
+char const* prefix = "Parquet : ";
 }  // namespace
 
 namespace lsst::partition {
@@ -37,14 +43,12 @@ std::map<std::shared_ptr<arrow::DataType>, int> typeBufSize{
         {arrow::boolean(), 1},  {arrow::float16(), 20}, {arrow::float32(), 20}, {arrow::float64(), 20},
         {arrow::float16(), 20}, {arrow::date32(), 20},  {arrow::date64(), 20}};
 
-ParquetFile::ParquetFile(std::string fileName, int maxMemAllocated)
-        : _path_to_file(fileName),
-          _maxMemory(maxMemAllocated),
-          _vmRSS_init(0),
-          _batchNumber(0),
-          _batchSize(0) {
-    LOGS(_log, LOG_LVL_DEBUG, "Partitioner parquet interface...");
+ParquetFile::ParquetFile(std::string fileName, int maxMemAllocatedMB)
+        : _path_to_file(fileName), _maxMemoryMB(maxMemAllocatedMB), _vmRSS_init(0), _batchSize(0) {
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Created");
 }
+
+ParquetFile::~ParquetFile() { LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Destroyed"); }
 
 int ParquetFile::_dumpProcessMemory(std::string idValue, bool bVerbose) const {
     int tSize = 0, resident = 0, share = 0;
@@ -59,10 +63,10 @@ int ParquetFile::_dumpProcessMemory(std::string idValue, bool bVerbose) const {
     double shared_mem = (share * page_size_kb) / 1024.0;
 
     if (bVerbose) {
-        LOGS(_log, LOG_LVL_DEBUG, "VmSize - " << vmSize << " MB  ");
-        LOGS(_log, LOG_LVL_DEBUG, "VmRSS - " << rss << " MB  ");
-        LOGS(_log, LOG_LVL_DEBUG, "Shared Memory - " << shared_mem << " MB  ");
-        LOGS(_log, LOG_LVL_DEBUG, "Private Memory - " << rss - shared_mem << "MB");
+        LOGS(_log, LOG_LVL_DEBUG, ::prefix << "VmSize [MB] : " << vmSize);
+        LOGS(_log, LOG_LVL_DEBUG, ::prefix << "VmRSS [MB] : " << rss);
+        LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Shared Memory [MB] : " << shared_mem);
+        LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Private Memory [MB] : " << rss - shared_mem);
     }
 
     if (!idValue.empty()) {
@@ -81,7 +85,7 @@ int ParquetFile::_getRecordSize(std::shared_ptr<arrow::Schema> schema, int strin
         if (fieldSize < 0) fieldSize = stringDefaultSize;
         recordSize += fieldSize;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Record size (Bytes) " << recordSize);
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Record size [Bytes] : " << recordSize);
     return recordSize;
 }
 
@@ -97,14 +101,15 @@ int ParquetFile::_getStringRecordSize(std::shared_ptr<arrow::Schema> schema, int
         recordSize += fieldSize;
         recordSize++;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Record size (approx. CSV string length)  " << recordSize);
+    LOGS(_log, LOG_LVL_DEBUG,
+         ::prefix << "Record size (approx. CSV string length) [Bytes] :  " << recordSize);
     return recordSize;
 }
 
-arrow::Status ParquetFile::setupBatchReader(int maxBufferSize) {
+void ParquetFile::setupBatchReader(int maxBufferSize) {
     _vmRSS_init = _dumpProcessMemory("VmRSS", true);
 
-    int fileRowNumber = _getTotalRowNumber(_path_to_file);
+    _getTotals();
 
     arrow::MemoryPool* pool = arrow::default_memory_pool();
 
@@ -119,12 +124,12 @@ arrow::Status ParquetFile::setupBatchReader(int maxBufferSize) {
     arrow_reader_props.set_batch_size(_batchSize);  // default 64 * 1024
 
     parquet::arrow::FileReaderBuilder reader_builder;
-    ARROW_RETURN_NOT_OK(reader_builder.OpenFile(_path_to_file, /*memory_map=*/false, reader_properties));
+    PARQUET_THROW_NOT_OK(reader_builder.OpenFile(_path_to_file, /*memory_map=*/false, reader_properties));
     reader_builder.memory_pool(pool);
     reader_builder.properties(arrow_reader_props);
 
-    ARROW_ASSIGN_OR_RAISE(_arrow_reader_gbl, reader_builder.Build());
-    ARROW_ASSIGN_OR_RAISE(_rb_reader_gbl, _arrow_reader_gbl->GetRecordBatchReader());
+    PARQUET_ASSIGN_OR_THROW(_arrow_reader_gbl, reader_builder.Build());
+    PARQUET_ASSIGN_OR_THROW(_rb_reader_gbl, _arrow_reader_gbl->GetRecordBatchReader());
 
     // Compute the nimber of lines read by each batch in function of the maximum memory
     //     allocated to the process
@@ -132,163 +137,165 @@ arrow::Status ParquetFile::setupBatchReader(int maxBufferSize) {
     arrow::Status st = _arrow_reader_gbl->GetSchema(&schema);
 
     _recordSize = _getRecordSize(schema);
-    double tmp = double(_maxMemory) * 1024 * 1024 * 0.85;
-    LOGS(_log, LOG_LVL_DEBUG, "Batch size mem " << tmp);
+    double tmp = double(_maxMemoryMB) * 1024 * 1024 * 0.85;
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Batch size mem [Bytes] : " << tmp);
     int64_t batchSize_mem = int64_t(tmp / _recordSize);  // .85 is a "a la louche" factor
-    LOGS(_log, LOG_LVL_DEBUG,
-         "Max RAM (MB): " << _maxMemory << "  //  record size : " << _recordSize
-                          << "   -> batch size : " << batchSize_mem);
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Max RAM [MB] : " << _maxMemoryMB);
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Record size [Bytes] : " << _recordSize);
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Batch size [Bytes] : " << batchSize_mem);
 
     int64_t batchSize_buf = -1;
     _maxBufferSize = maxBufferSize;
     if (maxBufferSize > 0) {
         _recordBufferSize = _getStringRecordSize(schema);
-        // batchSize_buf = int((maxBufferSize*1024*1024)/_recordBufferSize);
         batchSize_buf = int(maxBufferSize / _recordBufferSize);
-        LOGS(_log, LOG_LVL_DEBUG,
-             "\nMax buffer size : " << maxBufferSize << " vs " << _recordBufferSize
-                                    << "  -> batch size : " << batchSize_buf);
+        LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Max buffer size [Bytes] : " << maxBufferSize);
+        LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Record buffer size [Bytes] : " << _recordBufferSize);
+        LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Batch buffer size [Bytes] : " << batchSize_buf);
     }
 
     _batchSize = std::min(batchSize_mem, batchSize_buf);
     _arrow_reader_gbl->set_batch_size(_batchSize);
-    _totalBatchNumber = int(fileRowNumber / _batchSize);
-    if (_totalBatchNumber * _batchSize < fileRowNumber) _totalBatchNumber++;
+    _totalBatchNumber = int(_numRowsTotal / _batchSize);
+    if (_totalBatchNumber * _batchSize < _numRowsTotal) _totalBatchNumber++;
 
-    LOGS(_log, LOG_LVL_DEBUG, "Number of rows : " << fileRowNumber << "  batchSize " << _batchSize);
-    LOGS(_log, LOG_LVL_DEBUG, "RecordBatchReader : batch number " << _totalBatchNumber);
-    return arrow::Status::OK();
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "RecordBatchReader : batchSize [Bytes] : " << _batchSize);
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "RecordBatchReader : batch number : " << _totalBatchNumber);
 }
 
-int ParquetFile::_getTotalRowNumber(std::string fileName) const {
+void ParquetFile::_getTotals() {
     std::shared_ptr<arrow::io::ReadableFile> infile;
-    PARQUET_ASSIGN_OR_THROW(infile, arrow::io::ReadableFile::Open(fileName, arrow::default_memory_pool()));
+    PARQUET_ASSIGN_OR_THROW(infile,
+                            arrow::io::ReadableFile::Open(_path_to_file, arrow::default_memory_pool()));
+    _fileSize = infile->GetSize().ValueOrDie();
 
     std::unique_ptr<parquet::arrow::FileReader> reader;
     PARQUET_ASSIGN_OR_THROW(reader, parquet::arrow::OpenFile(infile, arrow::default_memory_pool()));
+    _numRowGroups = reader->num_row_groups();
 
     std::shared_ptr<parquet::FileMetaData> metadata = reader->parquet_reader()->metadata();
+    _numRowsTotal = metadata->num_rows();
 
-    return metadata->num_rows();
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Total file size [Bytes] : " << _fileSize);
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Number of row groups : " << _numRowGroups);
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Number of rows : " << _numRowsTotal);
 }
 
-arrow::Status ParquetFile::readNextBatch_Table2CSV(void* buf, int& buffSize,
-                                                   std::vector<std::string> const& params,
-                                                   std::string const& nullStr, std::string const& delimStr) {
+bool ParquetFile::readNextBatch_Table2CSV(void* buf, int& buffSize, std::vector<std::string> const& columns,
+                                          std::set<std::string> const& optionalColumns,
+                                          std::string const& nullStr, std::string const& delimStr,
+                                          bool quote) {
     std::shared_ptr<arrow::Table> table_loc;
 
-    _parameterNames = params;
-    // Get the next data batch, data are formated
-    arrow::Status batchStatus = _readNextBatchTable_Formatted(table_loc);
+    _columns = columns;
+    _optionalColumns = optionalColumns;
 
-    if (!batchStatus.ok()) return arrow::Status::ExecutionError("Error while reading and formating batch");
-
-    arrow::Status status = _table2CSVBuffer(table_loc, buffSize, buf, nullStr, delimStr);
-
-    if (status.ok()) return arrow::Status::OK();
-
-    return arrow::Status::ExecutionError("Error while writing table to CSV buffer");
+    // Get the next data batch (if any is still left), data are formated
+    if (_readNextBatchTable_Formatted(table_loc)) {
+        _table2CSVBuffer(table_loc, buffSize, buf, nullStr, delimStr, quote);
+        return true;
+    }
+    return false;
 }
 
-arrow::Status ParquetFile::_table2CSVBuffer(std::shared_ptr<arrow::Table> const& table, int& buffSize,
-                                            void* buf, std::string const& nullStr,
-                                            std::string const& delimStr) {
-    ARROW_ASSIGN_OR_RAISE(auto outstream, arrow::io::BufferOutputStream::Create(1 << 10));
+void ParquetFile::_table2CSVBuffer(std::shared_ptr<arrow::Table> const& table, int& buffSize, void* buf,
+                                   std::string const& nullStr, std::string const& delimStr, bool quote) {
+    PARQUET_ASSIGN_OR_THROW(auto outstream, arrow::io::BufferOutputStream::Create(1 << 10));
 
     // Options : null string, no header, no quotes around strings
     arrow::csv::WriteOptions writeOpt = arrow::csv::WriteOptions::Defaults();
     writeOpt.null_string = nullStr;
     writeOpt.delimiter = delimStr[0];
     writeOpt.include_header = false;
-    writeOpt.quoting_style = arrow::csv::QuotingStyle::None;
+    writeOpt.quoting_style = quote ? arrow::csv::QuotingStyle::AllValid : arrow::csv::QuotingStyle::None;
 
-    ARROW_RETURN_NOT_OK(arrow::csv::WriteCSV(*table, writeOpt, outstream.get()));
-    ARROW_ASSIGN_OR_RAISE(auto buffer, outstream->Finish());
+    arrow::Status status = arrow::csv::WriteCSV(*table, writeOpt, outstream.get());
+    if (!status.ok()) {
+        std::string const msg = "Error while writing table to CSV buffer";
+        LOGS(_log, LOG_LVL_ERROR, ::prefix << msg);
+        throw std::runtime_error(msg);
+    }
+    PARQUET_ASSIGN_OR_THROW(auto buffer, outstream->Finish());
 
-    // auto buffer_ptr = buffer.get()->data();
     buffSize = buffer->size();
-    LOGS(_log, LOG_LVL_DEBUG,
-         "ParquetFile::Table2CSVBuffer - buffer length : " << buffSize << " // " << _maxBufferSize);
+    LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Buffer size [Bytes] : " << buffSize << " of " << _maxBufferSize);
 
     memcpy(buf, (void*)buffer.get()->data(), buffer->size());
-    return arrow::Status::OK();
 }
 
-arrow::Status ParquetFile::_readNextBatchTable_Formatted(std::shared_ptr<arrow::Table>& outputTable) {
+bool ParquetFile::_readNextBatchTable_Formatted(std::shared_ptr<arrow::Table>& outputTable) {
     auto const maybe_batch = _rb_reader_gbl->Next();
+    if (maybe_batch == nullptr) {
+        LOGS(_log, LOG_LVL_DEBUG, ::prefix << "End of file reached");
+        return false;
+    }
+    PARQUET_ASSIGN_OR_THROW(auto batch, maybe_batch);
+    std::shared_ptr<arrow::Table> initTable;
+    PARQUET_ASSIGN_OR_THROW(initTable, arrow::Table::FromRecordBatches(batch->schema(), {batch}));
 
-    std::vector<std::string> paramNotFound;
     std::map<std::string, std::shared_ptr<arrow::Field>> fieldConfig;
-
-    if (maybe_batch != nullptr) {
-        ARROW_ASSIGN_OR_RAISE(auto batch, maybe_batch);
-        std::shared_ptr<arrow::Table> initTable;
-        ARROW_ASSIGN_OR_RAISE(initTable, arrow::Table::FromRecordBatches(batch->schema(), {batch}));
-
-        // Increment the batch number
-        _batchNumber++;
-
-        const arrow::FieldVector fields = initTable->schema()->fields();
-        for (auto fd : fields) {
-            fieldConfig[fd->name()] = fd;
-        }
-
-        arrow::FieldVector formatedTable_fields;
-        std::vector<std::shared_ptr<arrow::ChunkedArray>> formatedTable_columns;
-
-        // Loop over the column names as defined in the partition config file
-        for (std::string paramName : _parameterNames) {
-            std::shared_ptr<arrow::ChunkedArray> chunkedArray = initTable->GetColumnByName(paramName);
-
-            // Column not found in the arrow table...
-            if (chunkedArray == nullptr) {
-                paramNotFound.push_back(paramName);
-            } else {
-                // Column type is boolean -> switch to 0/1 representation
-                if (fieldConfig[paramName]->type() == arrow::boolean()) {
-                    auto newChunkedArray = _chunkArrayReformatBoolean(chunkedArray, true);
-                    if (newChunkedArray == nullptr) {
-                        return arrow::Status::ExecutionError("Error while formating boolean chunk array");
-                    }
-                    formatedTable_columns.push_back(newChunkedArray);
-
-                    std::shared_ptr<arrow::Field> newField =
-                            std::make_shared<arrow::Field>(fieldConfig[paramName]->name(), arrow::int8());
-                    formatedTable_fields.push_back(newField);
-                }
-                // Simply keep the chunk as it is defined in teh arrow table
-                else {
-                    formatedTable_columns.push_back(chunkedArray);
-                    formatedTable_fields.push_back(fieldConfig[paramName]);
-                }
-            }
-        }  // end of loop over parameters
-
-        // If a column is not found (i.e. a parameter defined in partition.json does not exist in parquet
-        // file), throw an error and stop
-        if (paramNotFound.size() > 0) {
-            for (auto name : paramNotFound)
-                LOGS(_log, LOG_LVL_DEBUG, "ERROR : param name " << name << " not found in table columns");
-            return arrow::Status::ExecutionError("Configuration file : missing parameter in table");
-        }
-
-        // Create the arrow::schema of the new table
-        std::shared_ptr<arrow::Schema> formatedSchema = std::make_shared<arrow::Schema>(
-                arrow::Schema(formatedTable_fields, initTable->schema()->endianness()));
-
-        // and finally create the arrow::Table that matches the partition config file
-        outputTable = arrow::Table::Make(formatedSchema, formatedTable_columns);
-        arrow::Status resTable = outputTable->ValidateFull();
-        if (!resTable.ok()) {
-            LOGS(_log, LOG_LVL_DEBUG, "ERROR : formated table full validation not OK");
-            return arrow::Status::ExecutionError("CSV output table not valid");
-        }
-
-        return arrow::Status::OK();
+    const arrow::FieldVector fields = initTable->schema()->fields();
+    for (auto fd : fields) {
+        fieldConfig[fd->name()] = fd;
     }
 
-    // The end of the parquet file has been reached
-    return arrow::Status::ExecutionError("End of RecorBatchReader iterator");
+    arrow::FieldVector formatedTable_fields;
+    std::vector<std::shared_ptr<arrow::ChunkedArray>> formatedTable_columns;
+    std::shared_ptr<arrow::ChunkedArray> null_array;
+
+    // Loop over the column names as defined in the partition config file
+    for (auto const& column : _columns) {
+        std::shared_ptr<arrow::ChunkedArray> chunkedArray = initTable->GetColumnByName(column);
+        if (chunkedArray == nullptr) {
+            LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Column name : " << column << " not found in the table");
+            // Column not found in the arrow table...
+            if (_optionalColumns.count(column) == 0) {
+                std::string const msg = "Column '" + column + "' not found in the input file";
+                LOGS(_log, LOG_LVL_ERROR, ::prefix << msg);
+                throw std::runtime_error(msg);
+            }
+            // Insert a column with all nulls
+            if (null_array == nullptr) {
+                null_array = std::make_shared<arrow::ChunkedArray>(
+                        std::make_shared<arrow::NullArray>(initTable->num_rows()));
+            }
+            formatedTable_columns.push_back(null_array);
+            formatedTable_fields.push_back(std::make_shared<arrow::Field>(column, arrow::null()));
+        } else {
+            LOGS(_log, LOG_LVL_DEBUG, ::prefix << "Column name : " << column);
+            if (fieldConfig[column]->type() == arrow::boolean()) {
+                // Column type is boolean -> switch to 0/1 representation
+                auto newChunkedArray = _chunkArrayReformatBoolean(chunkedArray, true);
+                if (newChunkedArray == nullptr) {
+                    std::string const msg = "Error while formating boolean chunk array";
+                    LOGS(_log, LOG_LVL_ERROR, ::prefix << msg);
+                    throw std::runtime_error(msg);
+                }
+                formatedTable_columns.push_back(newChunkedArray);
+                std::shared_ptr<arrow::Field> newField =
+                        std::make_shared<arrow::Field>(fieldConfig[column]->name(), arrow::int8());
+                formatedTable_fields.push_back(newField);
+            } else {
+                // Simply keep the chunk as it is defined in the arrow table
+                formatedTable_columns.push_back(chunkedArray);
+                formatedTable_fields.push_back(fieldConfig[column]);
+            }
+        }
+    }
+
+    // Create the arrow::schema of the new table
+    std::shared_ptr<arrow::Schema> formatedSchema = std::make_shared<arrow::Schema>(
+            arrow::Schema(formatedTable_fields, initTable->schema()->endianness()));
+
+    // and finally create the arrow::Table that matches the partition config file
+    outputTable = arrow::Table::Make(formatedSchema, formatedTable_columns);
+    arrow::Status resTable = outputTable->ValidateFull();
+    if (!resTable.ok()) {
+        std::string const msg = "Formated table not valid";
+        LOGS(_log, LOG_LVL_ERROR, ::prefix << msg);
+        throw std::runtime_error(msg);
+    }
+    return true;
 }
 
 std::shared_ptr<arrow::ChunkedArray> ParquetFile::_chunkArrayReformatBoolean(
@@ -313,9 +320,9 @@ std::shared_ptr<arrow::ChunkedArray> ParquetFile::_chunkArrayReformatBoolean(
         }
 
         if (!builder.Finish(&array).ok()) {
-            std::string errorMsg = "ERROR  while finalizing " + inputArray->ToString() + " new chunked array";
-            LOGS(_log, LOG_LVL_DEBUG, errorMsg);
-            return nullptr;
+            std::string const msg = "Failed to finalize '" + inputArray->ToString() + "' new chunked array";
+            LOGS(_log, LOG_LVL_ERROR, ::prefix << msg);
+            throw std::runtime_error(msg);
         }
 
         if (bCheck) {
@@ -338,11 +345,10 @@ std::shared_ptr<arrow::ChunkedArray> ParquetFile::_chunkArrayReformatBoolean(
     // arrow validation of the new chunkedArray
     auto status = newChunkedArray->ValidateFull();
     if (!status.ok()) {
-        std::string errorMsg = "Invalid new chunkArraay :  " + status.ToString();
-        LOGS(_log, LOG_LVL_DEBUG, errorMsg);
-        return nullptr;
+        std::string const msg = "Invalid new chunkArraay :  '" + status.ToString() + "'";
+        LOGS(_log, LOG_LVL_ERROR, ::prefix << msg);
+        throw std::runtime_error(msg);
     }
-
     return newChunkedArray;
 }
 

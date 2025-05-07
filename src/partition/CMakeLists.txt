@@ -35,8 +35,8 @@ FUNCTION(partition_apps)
             partition
             boost_filesystem
             sphgeom
-	    arrow
-	    parquet
+            arrow
+            parquet
         )
         install(TARGETS ${APP})
     ENDFOREACH()
@@ -48,6 +48,7 @@ partition_apps(
     sph-estimate-stats
     sph-htm-index
     sph-layout
+    sph-parq2csv
     sph-partition-matches
     sph-partition
 )

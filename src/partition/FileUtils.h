@@ -26,9 +26,15 @@
 #ifndef LSST_PARTITION_FILEUTILS_H
 #define LSST_PARTITION_FILEUTILS_H
 
+// System headers
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
 #include <sys/types.h>
 #include <stdint.h>
 
+// Third-party headers
 #include "boost/filesystem.hpp"
 #include "boost/static_assert.hpp"
 
@@ -37,22 +43,25 @@ namespace lsst::partition {
 class ParquetFile;
 
 struct ConfigParamArrow {
-    std::vector<std::string> const paramNames;
+    std::vector<std::string> const columns;
+    std::set<std::string> optionalColumns;
     std::string str_null;
     std::string str_delimiter;
     std::string str_escape;
+    bool quote = false;
 
-    ConfigParamArrow()
-            : paramNames(std::vector<std::string>()), str_null(""), str_delimiter(""), str_escape("") {}
-    ConfigParamArrow(std::vector<std::string> const &paramNames, std::string const &vnull,
-                     std::string const &vdelimiter, std::string const &vescape)
-            : paramNames(paramNames), str_null(vnull), str_delimiter(vdelimiter), str_escape(vescape) {}
+    ConfigParamArrow(std::vector<std::string> const &columns, std::set<std::string> const &optionalColumns,
+                     std::string const &vnull, std::string const &vdelimiter, std::string const &vescape,
+                     bool vquote)
+            : columns(columns),
+              optionalColumns(optionalColumns),
+              str_null(vnull),
+              str_delimiter(vdelimiter),
+              str_escape(vescape),
+              quote(vquote) {}
 
-    ConfigParamArrow(const ConfigParamArrow &v)
-            : paramNames(v.paramNames),
-              str_null(v.str_null),
-              str_delimiter(v.str_delimiter),
-              str_escape(v.str_escape) {}
+    ConfigParamArrow() = default;
+    ConfigParamArrow(const ConfigParamArrow &v) = default;
     ConfigParamArrow &operator=(const ConfigParamArrow &) = delete;
 };
 

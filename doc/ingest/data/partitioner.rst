@@ -169,3 +169,85 @@ on worker nodes. Examine the config files referenced above and run
 ``sph-partition --help`` or ```sph-partition-matches --help``` for more
 information on partitioning parameters.
 
+.. _ingest-data-partitioner-parquet:
+
+Partitioning Parquet files
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. note::
+
+        The information found in the current section is relevant to the description of the stand-alone
+        conversion tool for Parquet files. More information on the tool can be found in the
+        :ref:`ingest-data-conversion` section of the documentation.
+
+The partitioner can also be used to partition Parquet files. The partitioning process is similar
+to the CSV partitioning process, but the input files are in Parquet format. The partitioner
+uses the Apache Arrow library to read and write Parquet files. The following command line
+options are available for partitioning Parquet files:
+
+.. code-block:: bash
+
+    --in.is-parquet         If true, input files are assumed to be
+                            parquet files.
+    --in.parq2csv-quote     If true then put double quotes around
+                            valid fields when translating the
+                            parquet files to CSV. This option is
+                            only valid when --in.is-parquet is
+                            specified. Note this flag requires
+                            --out.csv.no-quote=false.
+
+Note that last comment regarding the ``--out.csv.no-quote`` flag. The flag is used to control whether
+or not double quotes are added around valid fields in the output CSV files. The flags are mutually exclusive.
+Specifying ``--in.parq2csv-quote`` will force the output CSV files to have double quotes around valid fields.
+Hence the flag ``--out.csv.no-quote=false`` will no longer required. The tool will check bioth flags and post
+an error if both are specified.
+
+Apart from these options, the configuration files which are needed for partitioning the Parquet files may also
+have the array ``optional`` with a collection of the optional column names. For example:
+
+..  code-block:: json
+
+    {
+        "dirTable":"Object",
+        "dirColName":"objectId",
+        "id":"objectId",
+        "pos":[
+            "coord_ra, coord_dec"
+        ],
+        "part":{
+            "pos":"coord_ra, coord_dec",
+            "num-stripes":85,
+            "num-sub-stripes":12,
+            "chunk":"chunkId",
+            "sub-chunk":"subChunkId",
+            "overlap":0.01667
+        },
+        "dirColName":"objectId",
+        "in":{
+            "csv":{
+                "null":"\\N",
+                "delimiter":"\t",
+                "escape":"\\",
+                "field":[
+                    "objectId",
+                    "coord_ra",
+                    "coord_dec",
+                    "missing"
+                ],
+                "optional":[
+                    "missing"
+                ]
+            }
+        },
+        "out":{
+            "csv":{
+                "null":"\\N",
+                "delimiter":"\t",
+                "escape":"\\",
+                "no-quote":true
+            }
+        }
+    }
+
+In this example, the column ``missing`` is optional. If no such column will be found in the input
+Parquet file, the partitioner will put the value ``\N`` in the output CSV file.

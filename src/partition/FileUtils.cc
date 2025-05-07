@@ -101,10 +101,7 @@ InputFileArrow::InputFileArrow(fs::path const &path, off_t blockSize)
     struct ::stat st;
 
     _batchReader = std::make_unique<lsst::partition::ParquetFile>(path.string());
-    arrow::Status status = _batchReader->setupBatchReader(blockSize);
-    if (!status.ok())
-        throw std::runtime_error("InputArrowFile::" + std::string(__func__) +
-                                 ": Could not setup Arrow recordbatchreader");
+    _batchReader->setupBatchReader(blockSize);
 
     int fd = ::open(path.string().c_str(), O_RDONLY);
 
@@ -138,10 +135,10 @@ void InputFileArrow::read(void *buf, off_t off, size_t sz, int &csvBufferSize,
                           ConfigParamArrow const &params) const {
     uint8_t *cur = static_cast<uint8_t *>(buf);
 
-    arrow::Status status = _batchReader->readNextBatch_Table2CSV(cur, csvBufferSize, params.paramNames,
-                                                                 params.str_null, params.str_delimiter);
-
-    if (status.ok()) {
+    auto const success =
+            _batchReader->readNextBatch_Table2CSV(cur, csvBufferSize, params.columns, params.optionalColumns,
+                                                  params.str_null, params.str_delimiter, params.quote);
+    if (success) {
         ssize_t n = csvBufferSize;
         if (n == 0) {
             throw std::runtime_error("InputFileArrow::" + std::string(__func__) + ": received EOF [" +
