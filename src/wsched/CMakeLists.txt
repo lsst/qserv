@@ -1,5 +1,4 @@
 add_library(wsched SHARED)
-add_dependencies(wsched proto)
 
 target_sources(wsched PRIVATE
     BlendScheduler.cc
