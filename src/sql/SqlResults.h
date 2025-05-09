@@ -89,17 +89,34 @@ public:
     // do not use it for SELECT
     unsigned long long getAffectedRows() const { return _affectedRows; }
     bool extractFirstValue(std::string&, SqlErrorObject&);
-    bool extractFirstColumn(std::vector<std::string>&, SqlErrorObject&);
-    // TODO:UJ these extractFirst things are not pretty &&&
-    bool extractFirst2Columns(std::vector<std::string>&,  // FIXME: generalize
-                              std::vector<std::string>&, SqlErrorObject&);
-    bool extractFirst3Columns(std::vector<std::string>&,  // FIXME: generalize
-                              std::vector<std::string>&, std::vector<std::string>&, SqlErrorObject&);
-    bool extractFirst4Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
-                              std::vector<std::string>&, SqlErrorObject&);
-    bool extractFirst6Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
-                              std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
-                              SqlErrorObject&);
+
+    /// Return the value of the first X columns of `_results`, where X is the size() of vectorRef.
+    /// It would be nice to use references instead of pointers, but curly bracket initialization
+    /// of the references was problematic.
+    /// @param vectorRef - A vector of pointers to vectors of strings. Each vector of strings
+    ///                    contains a column of the table (index 0 holds column1,
+    ///                    index 1 holds column2, etc.). The number of columns returned is
+    ///                    vectorRef.size(). NULL values are set to empty strings.
+    /// @param errObj - is never set and should be removed. (Only likely error is database disconnect,
+    ///                 which would be catastrophic)
+    /// @return - Returns false when fewer than expected columns are found.
+    // TODO:UJ for most of these functions, calling extractFirstXColumns
+    //       directly may make more sense than calling extractFirst6Columns.
+    //       Not changing this now as it will make rebasing difficult.
+    bool extractFirstXColumns(std::vector<std::vector<std::string>*> const& vectorRef,
+                              SqlErrorObject& sqlErr);
+    bool extractFirstColumn(std::vector<std::string>& col1, SqlErrorObject& errObj);
+    bool extractFirst2Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                              SqlErrorObject& errObj);
+    bool extractFirst3Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                              std::vector<std::string>& col3, SqlErrorObject& errObj);
+    bool extractFirst4Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                              std::vector<std::string>& col3, std::vector<std::string>& col4,
+                              SqlErrorObject& errObj);
+    bool extractFirst6Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                              std::vector<std::string>& col3, std::vector<std::string>& col4,
+                              std::vector<std::string>& col5, std::vector<std::string>& col6,
+                              SqlErrorObject& errObj);
 
     /// Extract a result set into the 2D array.
     /// @param numColumns The number of columns in the array.
