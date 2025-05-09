@@ -1,5 +1,4 @@
 add_library(wbase SHARED)
-add_dependencies(wbase proto)
 
 target_sources(wbase PRIVATE
     Base.cc

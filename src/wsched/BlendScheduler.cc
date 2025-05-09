@@ -44,7 +44,6 @@
 
 // Qserv headers
 #include "global/LogContext.h"
-#include "proto/worker.pb.h"
 #include "util/Bug.h"
 #include "util/EventThread.h"
 #include "util/Timer.h"
