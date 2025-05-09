@@ -36,7 +36,6 @@
 #include "global/LogContext.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
-#include "proto/worker.pb.h"
 #include "protojson/UberJobMsg.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"

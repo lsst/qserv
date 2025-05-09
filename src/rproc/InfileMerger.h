@@ -52,10 +52,6 @@ namespace mysql {
 class CsvStream;
 class MysqlConfig;
 }  // namespace mysql
-namespace proto {
-class ResponseData;
-class ResponseSummary;
-}  // namespace proto
 namespace qdisp {
 class MessageStore;
 class UberJob;
@@ -108,11 +104,6 @@ public:
     InfileMerger(InfileMerger const&) = delete;
     InfileMerger& operator=(InfileMerger const&) = delete;
     ~InfileMerger() = default;
-
-    /// Merge a worker response, which contains a single message
-    /// @return true if merge was successfully imported.
-    bool merge(proto::ResponseSummary const& responseSummary,
-               std::shared_ptr<mysql::CsvStream> const& csvStream);
 
     /// Merge the result data collected over Http.
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, uint64_t fileSize,

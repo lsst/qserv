@@ -1,5 +1,4 @@
 add_library(wconfig SHARED)
-add_dependencies(wconfig proto)
 
 target_sources(wconfig PRIVATE
     WorkerConfig.cc
@@ -7,7 +6,6 @@ target_sources(wconfig PRIVATE
 
 target_link_libraries(wconfig PUBLIC
     log
-    proto
 )
 
 install(

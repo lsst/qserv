@@ -82,9 +82,9 @@ public:
 
     // virtual function that won't be needed
 
-    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t fileSize, uint64_t expectedRows,
-                                     uint64_t& resultRows) override {
-        return {true, false};
+    MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize, uint64_t expectedRows,
+                             uint64_t& resultRows) override {
+        return MergeEndStatus(true);
     }
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override {}
     void errorFlush(std::string const& msg, int code) override {};

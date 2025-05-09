@@ -57,7 +57,6 @@
 #include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
 #include "mysql/CsvBuffer.h"
-#include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/UberJob.h"
 #include "qproc/DatabaseModels.h"
@@ -181,6 +180,25 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
         return true;
     }
 
+    // Check if the final result size is too large. It should be safe to do this
+    // here as the only expected errors at this point are failures in transmission.
+    // Even if there is a failure in transmission, the retry would be expected
+    // to put the result size over the limit again.
+    {
+        lock_guard<mutex> resultSzLock(_mtxResultSizeMtx);
+        _perJobResultSize[uJobId] += fileSize;
+        size_t tResultSize = _totalResultSize + _perJobResultSize[uJobId];
+        if (tResultSize > _maxResultTableSizeBytes) {
+            ostringstream os;
+            os << queryIdJobStr << " cancelling the query, queryResult table " << _mergeTable
+               << " is too large at " << tResultSize << " bytes, max allowed size is "
+               << _maxResultTableSizeBytes << " bytes";
+            LOGS(_log, LOG_LVL_ERROR, os.str());
+            _error = util::Error(-1, os.str(), -1);
+            return false;
+        }
+    }
+
     TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
                                                     bool success) {
         if (!success) return;
@@ -199,28 +217,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
 
-    // &&& FOULED_RESULTS
-    // &&& At this point, it's probably possible to ask csvStream how many bytes were written.
-    // &&& If 0 bytes were written, the results should be ok and the query doesn't need to be cancelled.
-
-    size_t const resultSize = fileSize;
-    size_t tResultSize;
-    {
-        std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-        _perJobResultSize[uJobId] += resultSize;
-        tResultSize = _totalResultSize + _perJobResultSize[uJobId];
-    }
-    if (tResultSize > _maxResultTableSizeBytes) {
-        std::ostringstream os;
-        os << queryIdJobStr << " cancelling the query, queryResult table " << _mergeTable
-           << " is too large at " << tResultSize << " bytes, max allowed size is " << _maxResultTableSizeBytes
-           << " bytes";
-        LOGS(_log, LOG_LVL_ERROR, os.str());
-        _error = util::Error(-1, os.str(), -1);
-        return false;
-    }
-
-    tct->addToValue(resultSize);
+    tct->addToValue(fileSize);
     tct->setSuccess();
     tct.reset();  // stop transmit recieve timer before merging happens.
 
