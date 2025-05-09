@@ -1,5 +1,4 @@
 add_library(ccontrol SHARED)
-add_dependencies(ccontrol proto)
 
 target_include_directories(ccontrol PRIVATE
     ${ANTLR4_INCLUDE_DIR}
@@ -29,7 +28,6 @@ target_link_libraries(ccontrol PUBLIC
     css
     log
     parser
-	proto
     sphgeom
 )
 

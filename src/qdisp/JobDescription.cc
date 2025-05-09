@@ -33,7 +33,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "proto/worker.pb.h"
 #include "util/Bug.h"
 #include "qdisp/Executive.h"
 #include "qdisp/ResponseHandler.h"

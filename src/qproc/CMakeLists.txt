@@ -1,5 +1,4 @@
 add_library(qproc SHARED)
-add_dependencies(qproc proto)
 
 target_sources(qproc PRIVATE
     ChunkQuerySpec.cc

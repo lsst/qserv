@@ -43,6 +43,8 @@ namespace lsst::qserv::mysql {
  */
 class CsvBuffer {
 public:
+    virtual ~CsvBuffer() = default;
+
     /// Fetch a number of bytes into a buffer. Return the number of bytes
     /// fetched. Returning less than bufLen does NOT indicate EOF.
     virtual unsigned fetch(char* buffer, unsigned bufLen) = 0;
@@ -111,6 +113,9 @@ public:
      */
     bool empty() const;
 
+    void increaseBytesWrittenBy(size_t bytesToCopy) { _bytesWritten += bytesToCopy; }
+    size_t getBytesWritten() const { return _bytesWritten; }
+
 private:
     CsvStream(std::size_t maxRecords);
 
@@ -118,6 +123,7 @@ private:
     std::condition_variable _cv;
     std::size_t const _maxRecords;
     std::list<std::shared_ptr<std::string>> _records;
+    std::atomic<size_t> _bytesWritten;
 };
 
 /**
