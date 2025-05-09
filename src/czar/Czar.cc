@@ -54,7 +54,6 @@
 #include "http/ClientConnPool.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
-#include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qproc/DatabaseModels.h"
@@ -599,6 +598,7 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
                            ", sql=" + sql;
         throw runtime_error(msg);
     }
+
     vector<string> colStatus;
     vector<string> colSubmitted;
     vector<string> colCompleted;
@@ -611,6 +611,7 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
                            ", sql=" + sql;
         throw runtime_error(msg);
     }
+
     if (colStatus.size() != 1) {
         string const msg = context + "Unknown user query, err=" + err.printErrMsg() + ", sql=" + sql;
         throw runtime_error(msg);

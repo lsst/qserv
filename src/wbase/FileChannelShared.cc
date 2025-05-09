@@ -35,8 +35,6 @@
 // Qserv headers
 #include "global/LogContext.h"
 #include "mysql/MySqlUtils.h"
-#include "proto/ProtoHeaderWrap.h"
-#include "proto/worker.pb.h"
 #include "wbase/Task.h"
 #include "wbase/UberJobData.h"
 #include "wconfig/WorkerConfig.h"

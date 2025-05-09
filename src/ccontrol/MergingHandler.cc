@@ -46,8 +46,6 @@
 #include "http/ClientConnPool.h"
 #include "http/Method.h"
 #include "mysql/CsvBuffer.h"
-#include "proto/ProtoHeaderWrap.h"
-#include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
@@ -56,9 +54,6 @@
 #include "util/Bug.h"
 #include "util/common.h"
 
-using lsst::qserv::proto::ProtoHeaderWrap;
-using lsst::qserv::proto::ResponseData;
-using lsst::qserv::proto::ResponseSummary;
 namespace http = lsst::qserv::http;
 
 using namespace std;
@@ -192,16 +187,20 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(flushed=" << (_flushed ? "true)" : "false)");
 }
 
-bool MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const& fileUrl,
-                                uint64_t fileSize) {
+qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const& fileUrl,
+                                                 uint64_t fileSize) {
     if (_flushed) {
         throw util::Bug(ERR_LOC, "already flushed");
     }
 
-    if (fileSize == 0) return true;
+    if (fileSize == 0) {
+        return qdisp::MergeEndStatus(true);
+    }
 
     // After this final test the job's result processing can't be interrupted.
-    if (uberJob->isQueryCancelled()) return true;
+    if (uberJob->isQueryCancelled()) {
+        return qdisp::MergeEndStatus(true);
+    }
 
     // Read from the http stream and push records into the CSV stream in a separate thread.
     // Note the fixed capacity of the stream which allows up to 2 records to be buffered
@@ -228,7 +227,7 @@ bool MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const
                 },
                 MergingHandler::_getHttpConnPool());
         // Push the stream terminator to indicate the end of the stream.
-        // It may be neeeded to unblock the table merger which may be still attempting to read
+        // It may be needed to unblock the table merger which may be still attempting to read
         // from the CSV stream.
         if (!fileReadErrorMsg.empty()) {
             csvStream->push(nullptr, 0);
@@ -249,7 +248,16 @@ bool MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const
         _setError(ccontrol::MSG_HTTP_RESULT, fileReadErrorMsg, util::ErrorCode::RESULT_IMPORT);
     }
     _flushed = true;
-    return fileMergeSuccess && fileReadErrorMsg.empty();
+
+    qdisp::MergeEndStatus mergeEStatus(fileMergeSuccess && fileReadErrorMsg.empty());
+    if (!mergeEStatus.success) {
+        // This error check needs to come after the csvThread.join() to avoid race conditions.
+        if (csvStream->getBytesWritten() > 0) {
+            // There was a failure and bytes were written, result table is ruined.
+            mergeEStatus.contaminated = true;
+        }
+    }
+    return mergeEStatus;
 }
 
 void MergingHandler::_setError(int code, std::string const& msg, int errorState) {
@@ -259,36 +267,23 @@ void MergingHandler::_setError(int code, std::string const& msg, int errorState)
     exec->addMultiError(code, msg, errorState);
 }
 
-tuple<bool, bool> MergingHandler::flushHttp(string const& fileUrl, uint64_t fileSize, uint64_t expectedRows,
-                                            uint64_t& resultRows) {
-    bool success = false;
-    bool shouldCancel = false;
-
+qdisp::MergeEndStatus MergingHandler::flushHttp(string const& fileUrl, uint64_t fileSize) {
     // This is needed to ensure the job query would be staying alive for the duration
     // of the operation to prevent inconsistency within the application.
     auto const uberJob = getUberJob().lock();
     if (uberJob == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, uberJob was NULL");
-        return {success, shouldCancel};  // both should still be false
+        return qdisp::MergeEndStatus(false);
     }
 
     LOGS(_log, LOG_LVL_TRACE,
          "MergingHandler::" << __func__ << " uberJob=" << uberJob->getIdStr() << " fileUrl=" << fileUrl);
 
-    success = _mergeHttp(uberJob, fileUrl, fileSize);
-    // &&& FOULED_RESULTS   need to do something about shouldCancel.
-    // &&& until there is some way to know if csvStream has merged any bytes, just assume it has fouled the
-    // results.
-    if (!success) shouldCancel = true;
-
-    if (!success || shouldCancel) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " success=" << success << " shouldCancel=" << shouldCancel);
-    }
-
-    if (success) {
+    qdisp::MergeEndStatus mergeStatus = _mergeHttp(uberJob, fileUrl, fileSize);
+    if (mergeStatus.success) {
         _infileMerger->mergeCompleteFor(uberJob->getUjId());
     }
-    return {success, shouldCancel};
+    return mergeStatus;
 }
 
 void MergingHandler::flushHttpError(int errorCode, std::string const& errorMsg, int errState) {

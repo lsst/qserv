@@ -38,7 +38,6 @@
 #include <thread>
 
 // Third-party headers
-#include <google/protobuf/arena.h>
 #include <mysql/mysql.h>
 
 // Class header
@@ -52,8 +51,6 @@
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
 #include "mysql/SchemaFactory.h"
-#include "proto/ProtoHeaderWrap.h"
-#include "proto/worker.pb.h"
 #include "sql/Schema.h"
 #include "sql/SqlErrorObject.h"
 #include "util/Bug.h"

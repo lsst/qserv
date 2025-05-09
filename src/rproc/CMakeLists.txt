@@ -1,5 +1,4 @@
 add_library(rproc SHARED)
-add_dependencies(rproc proto)
 
 target_sources(rproc PRIVATE
     InfileMerger.cc
