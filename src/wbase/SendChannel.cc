@@ -37,7 +37,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "proto/ProtoHeaderWrap.h"
 #include "global/LogContext.h"
 #include "util/common.h"
 #include "util/Timer.h"

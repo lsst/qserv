@@ -1,5 +1,4 @@
 add_library(mysql SHARED)
-add_dependencies(mysql proto)
 
 target_sources(mysql PRIVATE
     CsvBuffer.cc
