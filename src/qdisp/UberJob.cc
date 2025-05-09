@@ -36,7 +36,6 @@
 #include "global/LogContext.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
-#include "proto/worker.pb.h"
 #include "protojson/UberJobMsg.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
@@ -309,35 +308,31 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
                  "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrl);
             return;
         }
-        uint64_t resultRows = 0;
-        auto [flushSuccess, mergeHappened] =
-                ujPtr->getRespHandler()->flushHttp(fileUrl, fileSize, rowCount, resultRows);
+        MergeEndStatus flushStatus = ujPtr->getRespHandler()->flushHttp(fileUrl, fileSize);
         LOGS(_log, LOG_LVL_TRACE,
-             ujPtr->cName(__func__) << "::fileCollectFunc success=" << flushSuccess
-                                    << " mergeHappened=" << mergeHappened);
-        if (flushSuccess) {
+             ujPtr->cName(__func__) << "::fileCollectFunc success=" << flushStatus.success
+                                    << " contaminated=" << flushStatus.contaminated);
+        if (flushStatus.success) {
             qdisp::CzarStats::get()->addTotalRowsRecv(rowCount);
             qdisp::CzarStats::get()->addTotalBytesRecv(fileSize);
         } else {
-            bool flushShouldCancel = false;
-            if (mergeHappened) {
+            if (flushStatus.contaminated) {
                 // This would probably indicate malformed file+rowCount or writing the result table failed.
                 // If any merging happened, the result table is ruined.
                 LOGS(_log, LOG_LVL_ERROR,
                      ujPtr->cName(__func__)
                              << "::fileCollectFunc flushHttp failed after merging, results ruined.");
-                flushShouldCancel = true;
             } else {
                 // Perhaps something went wrong with file collection, so it is worth trying the jobs again
                 // by abandoning this UberJob.
                 LOGS(_log, LOG_LVL_ERROR,
                      ujPtr->cName(__func__) << "::fileCollectFunc flushHttp failed, retrying Jobs.");
             }
-            ujPtr->_importResultError(flushShouldCancel, "mergeError", "merging failed");
+            ujPtr->_importResultError(flushStatus.contaminated, "mergeError", "merging failed");
         }
 
         // At this point all data for this job have been read.
-        ujPtr->_importResultFinish(resultRows);
+        ujPtr->_importResultFinish(rowCount);
     };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(fileCollectFunc));
