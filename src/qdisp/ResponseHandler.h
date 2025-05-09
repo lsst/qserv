@@ -32,18 +32,24 @@
 // Qserv headers
 #include "util/Error.h"
 
-// Forward declarations
-
-namespace lsst::qserv::proto {
-class ResponseSummary;
-}  // namespace lsst::qserv::proto
-
-// This header declaration
-
 namespace lsst::qserv::qdisp {
 
 class JobQuery;
 class UberJob;
+
+/// Status of the merge at the end of merging.
+/// contaminated can be true only if success is false.
+class MergeEndStatus {
+public:
+    MergeEndStatus() = default;
+    explicit MergeEndStatus(bool success_) : success(success_) {}
+
+    /// True indicates the results were successfully merged
+    bool success = false;
+
+    /// True indicates merge results are ruined and this query should be abandoned.
+    bool contaminated = false;
+};
 
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
@@ -66,16 +72,12 @@ public:
     virtual bool flush(proto::ResponseSummary const& responseSummary) = 0;
 
     /// Collect result data from the worker and merge it with the query result table.
-    /// If success, then everything is fine.
-    /// If not success, and not shouldCancel, the user query can be saved by abandoning
-    /// this UberJob. If shouldCancel is true, the result table is fouled and the user
+    /// If MergeEndStatus.success == true, then everything is fine.
+    /// If not .success, and not .contaminated, the user query can be saved by abandoning
+    /// this UberJob. If .contaminated is true, the result table is fouled and the user
     /// query is ruined.
-    /// @return success - true if the operation was successful
-    /// @return shouldCancel - if success was false, this being true indicates there
-    ///                   was an unrecoverable error in table writing and the query
-    ///                   should be cancelled.
-    virtual std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t fileSize,
-                                             uint64_t expectedRows, uint64_t& resultRows) = 0;
+    /// @return - @see MergeEndStatus
+    virtual MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) = 0;
 
     /// Add the error to the error output if it is the first error.
     virtual void flushHttpError(int errorCode, std::string const& errorMsg, int status) = 0;

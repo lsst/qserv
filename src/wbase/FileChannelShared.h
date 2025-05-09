@@ -50,7 +50,7 @@ class MultiError;
 namespace lsst::qserv::wbase {
 class UberJobData;
 
-/// The class is responsible for writing mysql result rows as Protobuf
+/// The class is responsible for writing mysql result rows as Csv
 /// serialized messages into an output file. Once a task (or all sub-chunk
 /// tasks) finished writing data a short reply message is sent back to Czar using
 /// SSI request's SendChannel that was provided to the factory method
@@ -181,9 +181,9 @@ private:
      * Transfer rows of the result set into into the output file.
      * @note The file will be created at the first call to the method.
      * @note The method may not extract all rows if the amount of data found
-     *   in the result set exceeded the maximum size allowed by the Google Protobuf
-     *   implementation. Also, the iterative approach to the data extraction allows
-     *   the driving code to be interrupted should the correponding query be cancelled
+     *   in the result set exceeded the maximum size allowed. Also, the iterative
+     *   approach to the data extraction allows the driving code to be
+     *   interrupted should the corresponding query be cancelled
      *   during the lengthy data processing phase.
      * @param tMtxLock - a lock on the mutex tMtx
      * @param task - a task that produced the result set
