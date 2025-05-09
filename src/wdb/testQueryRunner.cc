@@ -30,7 +30,6 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "protojson/ScanTableInfo.h"
-#include "proto/worker.pb.h"
 #include "wbase/FileChannelShared.h"
 #include "wbase/Task.h"
 #include "wbase/UberJobData.h"
@@ -48,7 +47,6 @@
 using namespace std;
 
 namespace test = boost::test_tools;
-namespace gio = google::protobuf::io;
 namespace util = lsst::qserv::util;
 
 using lsst::qserv::mysql::MySqlConfig;

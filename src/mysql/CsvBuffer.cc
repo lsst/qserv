@@ -303,6 +303,8 @@ class CsvStreamBuffer : public CsvBuffer {
 public:
     explicit CsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) : _csvStream(csvStream) {}
 
+    ~CsvStreamBuffer() override = default;
+
     unsigned fetch(char* buffer, unsigned bufLen) override {
         if (bufLen == 0) {
             throw LocalInfileError("CsvStreamBuffer::fetch Can't fetch non-positive bytes");
@@ -320,6 +322,7 @@ public:
         unsigned const bytesToCopy = std::min(bufLen, static_cast<unsigned>(_str->size() - _offset));
         ::memcpy(buffer, _str->data() + _offset, bytesToCopy);
         _offset += bytesToCopy;
+        _csvStream->increaseBytesWrittenBy(bytesToCopy);
         return bytesToCopy;
     }
 
