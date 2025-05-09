@@ -84,7 +84,6 @@
 #include "czar/CzarRegistry.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
-#include "proto/worker.pb.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
 #include "qmeta/MessageStore.h"

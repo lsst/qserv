@@ -47,7 +47,6 @@
 #include "global/UnsupportedError.h"
 #include "http/RequestBodyJSON.h"
 #include "mysql/MySqlConfig.h"
-#include "proto/worker.pb.h"
 #include "protojson/UberJobMsg.h"
 #include "util/Bug.h"
 #include "util/common.h"
