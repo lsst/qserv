@@ -86,7 +86,7 @@ public:
 private:
     /// Call InfileMerger to do the work of merging this data to the result.
     qdisp::MergeEndStatus _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
-                                     std::string const& fileUrl, std::uint64_t fileSize);
+                                     std::string const& fileUrl, uint64_t fileSize);
 
     /// Set error code and string.
     void _setError(int code, std::string const& msg, int errorState);

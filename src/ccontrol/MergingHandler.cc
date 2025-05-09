@@ -312,8 +312,7 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         // is finished. If any bytes were written, the result table is ruined.
         mergeEStatus.contaminated = csvStream->getBytesWritten() > 0;
     }
-    // TODO:UJ Make it impossible to contaminate the result table for all errors
-    //      short of czar or mariadb crash.
+
     return mergeEStatus;
 }
 
