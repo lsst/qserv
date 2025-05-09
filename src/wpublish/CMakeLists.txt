@@ -1,5 +1,4 @@
 add_library(wpublish SHARED)
-add_dependencies(wpublish proto)
 
 target_sources(wpublish PRIVATE
     ChunkInventory.cc
@@ -13,7 +12,6 @@ install(
 
 target_link_libraries(wpublish PUBLIC
     log
-    proto
     protobuf
 )
 

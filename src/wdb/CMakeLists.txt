@@ -1,5 +1,4 @@
 add_library(wdb SHARED)
-add_dependencies(wdb proto)
 
 target_sources(wdb PRIVATE
     ChunkResource.cc

@@ -32,7 +32,6 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
-#include "proto/worker.pb.h"
 #include "protojson/ScanTableInfo.h"
 #include "util/Command.h"
 #include "util/EventThread.h"
@@ -60,7 +59,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.testSchedulers");
 
 using namespace std;
 using lsst::qserv::mysql::MySqlConfig;
-using lsst::qserv::proto::TaskMsg;
 using lsst::qserv::wbase::FileChannelShared;
 using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::Task;
@@ -96,8 +94,6 @@ Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm, shared_ptr<QueriesAndChunks> con
 */
 
 struct SchedulerFixture {
-    typedef std::shared_ptr<TaskMsg> TaskMsgPtr;
-
     SchedulerFixture(void) { counter = 20; }
     ~SchedulerFixture(void) {}
 
