@@ -1,5 +1,4 @@
 add_library(qana SHARED)
-add_dependencies(qana proto)
 
 target_sources(qana PRIVATE
     AggregatePlugin.cc
