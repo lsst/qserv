@@ -42,7 +42,6 @@
 
 // Qserv headers
 #include "global/LogContext.h"
-#include "proto/worker.pb.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wsched.GroupScheduler");

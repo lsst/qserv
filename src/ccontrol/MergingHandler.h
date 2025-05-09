@@ -32,15 +32,14 @@
 #include "qdisp/ResponseHandler.h"
 
 // Forward declarations
-
-namespace lsst::qserv::proto {
-class ResponseData;
-class ResponseSummary;
-}  // namespace lsst::qserv::proto
+namespace lsst::qserv::http {
+class ClientConnPool;
+}  // namespace lsst::qserv::http
 
 namespace lsst::qserv::qdisp {
 class Executive;
 class JobQuery;
+class MergeEndStatus;
 class UberJob;
 }  // namespace lsst::qserv::qdisp
 
@@ -70,12 +69,8 @@ public:
 
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
-    std::tuple<bool, bool> flushHttp(
-            std::string const& fileUrl, uint64_t fileSize, uint64_t expectedRows,
-            /* &&&
-                std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
-            >>>>>>> a27525c04017db9a30061fa0bb4b5228c0c5d1b2 */
-            uint64_t& resultRows) override;
+    /// @see qdisp::MergeEndStatus
+    qdisp::MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) override;
 
     /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
@@ -88,9 +83,8 @@ public:
 
 private:
     /// Call InfileMerger to do the work of merging this data to the result.
-
-    bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, std::string const& fileUrl,
-                    uint64_t fileSize);
+    qdisp::MergeEndStatus _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
+                                     std::string const& fileUrl, uint64_t fileSize);
 
     /// Set error code and string.
     void _setError(int code, std::string const& msg, int errorState);
