@@ -70,12 +70,8 @@ public:
 
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
-    std::tuple<bool, bool> flushHttp(
-            std::string const& fileUrl, uint64_t fileSize, uint64_t expectedRows,
-            /* &&&
-                std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t expectedRows,
-            >>>>>>> a27525c04017db9a30061fa0bb4b5228c0c5d1b2 */
-            uint64_t& resultRows) override;
+    std::tuple<bool, bool> flushHttp(std::string const& fileUrl, uint64_t fileSize, uint64_t expectedRows,
+                                     uint64_t& resultRows) override;
 
     /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
