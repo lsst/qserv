@@ -1,5 +1,4 @@
 add_library(czar SHARED)
-add_dependencies(czar proto)
 
 target_sources(czar PRIVATE
     ActiveWorker.cc

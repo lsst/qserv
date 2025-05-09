@@ -28,7 +28,6 @@ add_executable(testQMeta testQMeta.cc)
 
 target_link_libraries(testQMeta
     cconfig
-    proto
     qmeta
     sql
     Boost::unit_test_framework

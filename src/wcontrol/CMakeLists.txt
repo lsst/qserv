@@ -1,5 +1,4 @@
 add_library(wcontrol SHARED)
-add_dependencies(wcontrol proto)
 
 target_sources(wcontrol PRIVATE
     Foreman.cc
