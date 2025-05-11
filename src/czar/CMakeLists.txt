@@ -3,6 +3,7 @@ add_library(czar SHARED)
 target_sources(czar PRIVATE
     ChttpModule.cc
     Czar.cc
+    CzarThreads.cc
     HttpCzarIngestCsvModule.cc
     HttpCzarIngestModuleBase.cc
     HttpCzarIngestModule.cc
