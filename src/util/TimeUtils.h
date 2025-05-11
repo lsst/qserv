@@ -41,6 +41,9 @@ struct TimeUtils {
     /// @return the current time in milliseconds since Epoch
     static std::uint64_t now();
 
+    /// @return the current time in seconds since Epoch
+    static std::uint64_t nowSec();
+
     /// @return a human-readable timestamp in a format 'YYYY-MM-DD HH:MM:SS.mmm'
     static std::string toDateTimeString(std::chrono::milliseconds const& millisecondsSinceEpoch);
 

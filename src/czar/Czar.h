@@ -30,7 +30,6 @@
 #include <mutex>
 #include <string>
 #include <thread>
-#include <vector>
 
 // Third-party headers
 
@@ -114,9 +113,6 @@ public:
     /// Return a pointer to QdispSharedResources
     qdisp::SharedResources::Ptr getQdispSharedResources() { return _qdispSharedResources; }
 
-    /// Remove all old tables in the qservResult database.
-    void removeOldResultTables();
-
     /// @return true if trivial queries should be treated as
     ///         interactive queries to stress test the czar.
     bool getQueryDistributionTestVer() { return _queryDistributionTestVer; }
@@ -164,13 +160,6 @@ private:
     /// the PsuedoFifo to prevent czar from calling most recent requests,
     /// and any other resources for use by query executives.
     qdisp::SharedResources::Ptr _qdispSharedResources;
-
-    util::Timer _lastRemovedTimer;  ///< Timer to limit table deletions.
-    std::mutex _lastRemovedMtx;     ///< protects _lastRemovedTimer
-
-    /// Prevents multiple concurrent calls to _removeOldTables().
-    std::atomic<bool> _removingOldTables{false};
-    std::thread _oldTableRemovalThread;  ///< thread needs to remain valid while running.
 
     bool _queryDistributionTestVer;  ///< True if config says this is distribution test version.
 

@@ -172,6 +172,7 @@ public:
     std::string getQdispVectMinRunningSizes() const { return _qdispVectMinRunningSizes->getVal(); }
 
     int getOldestResultKeptDays() const { return _oldestResultKeptDays->getVal(); }
+    int getOldestAsyncResultKeptSeconds() const { return _oldestAsyncResultKeptSeconds->getVal(); }
 
     /// @return 'true' to allow broadcasting query completion/cancellation events
     /// to all workers so that they would do proper garbage collection and resource recycling.
@@ -290,6 +291,8 @@ private:
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxhttpconnections", notReq, 8192);
     CVTIntPtr _oldestResultKeptDays =
             util::ConfigValTInt::create(_configValMap, "resultdb", "oldestResultKeptDays", notReq, 30);
+    CVTIntPtr _oldestAsyncResultKeptSeconds = util::ConfigValTInt::create(
+            _configValMap, "resultdb", "oldestAsyncResultKeptSeconds", notReq, 3600);
 
     /// Get all the elements in the css section.
     CVTStrPtr _cssTechnology =
