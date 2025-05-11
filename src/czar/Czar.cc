@@ -24,15 +24,13 @@
 #include "czar/Czar.h"
 
 // System headers
-#include <chrono>
 #include <stdexcept>
 #include <sys/time.h>
 #include <thread>
+#include <vector>
 
 // Third-party headers
 #include "boost/format.hpp"
-#include "boost/lexical_cast.hpp"
-#include <nlohmann/json.hpp>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -44,12 +42,10 @@
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "czar/CzarErrors.h"
+#include "czar/CzarThreads.h"
 #include "czar/HttpSvc.h"
 #include "czar/MessageTable.h"
 #include "global/LogContext.h"
-#include "http/Client.h"
-#include "http/MetaModule.h"
-#include "http/Method.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/QdispPool.h"
@@ -66,8 +62,6 @@
 #include "xrdreq/QueryManagementAction.h"
 #include "XrdSsi/XrdSsiProvider.hh"
 
-using namespace lsst::qserv;
-using namespace nlohmann;
 using namespace std;
 
 extern XrdSsiProvider* XrdSsiProviderClient;
@@ -87,46 +81,6 @@ string const createAsyncResultTmpl(
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
-/**
- * This function will keep periodically updating Czar's info in the Replication
- * System's Registry.
- * @param name The unique identifier of the Czar to be registered.
- * @param czarConfig A pointer to the Czar configuration service.
- * @note The thread will terminate the process if the registraton request to the Registry
- * was explicitly denied by the service. This means the application may be misconfigured.
- * Transient communication errors when attempting to connect or send requests to
- * the Registry will be posted into the log stream and ignored.
- */
-void registryUpdateLoop(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
-    auto const method = http::Method::POST;
-    string const url = "http://" + czarConfig->replicationRegistryHost() + ":" +
-                       to_string(czarConfig->replicationRegistryPort()) + "/czar";
-    vector<string> const headers = {"Content-Type: application/json"};
-    json const request = json::object({{"version", http::MetaModule::version},
-                                       {"instance_id", czarConfig->replicationInstanceId()},
-                                       {"auth_key", czarConfig->replicationAuthKey()},
-                                       {"czar",
-                                        {{"name", czarConfig->name()},
-                                         {"id", czarConfig->id()},
-                                         {"management-port", czarConfig->replicationHttpPort()},
-                                         {"management-host-name", util::get_current_host_fqdn()}}}});
-    string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
-    http::Client client(method, url, request.dump(), headers);
-    while (true) {
-        try {
-            json const response = client.readAsJson();
-            if (0 == response.at("success").get<int>()) {
-                string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
-                abort();
-            }
-        } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
-        }
-        this_thread::sleep_for(chrono::seconds(max(1U, czarConfig->replicationRegistryHearbeatIvalSec())));
-    }
-}
-
 }  // anonymous namespace
 
 namespace lsst::qserv::czar {
@@ -140,12 +94,7 @@ Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName)
 
 // Constructors
 Czar::Czar(string const& configFilePath, string const& czarName)
-        : _czarName(czarName),
-          _czarConfig(cconfig::CzarConfig::create(configFilePath, czarName)),
-          _idCounter(),
-          _uqFactory(),
-          _clientToQuery(),
-          _mutex() {
+        : _czarName(czarName), _czarConfig(cconfig::CzarConfig::create(configFilePath, czarName)) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -228,17 +177,14 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     auto const port = _controlHttpSvc->start();
     _czarConfig->setReplicationHttpPort(port);
 
-    // Begin periodically updating worker's status in the Replication System's registry
-    // in the detached thread. This will continue before the application gets terminated.
-    thread registryUpdateThread(::registryUpdateLoop, _czarConfig);
-    registryUpdateThread.detach();
+    // Start special threads.
+    startRegistryUpdate(_czarConfig);
+    startGarbageCollection(_czarConfig);
+    startGarbageCollectionAsync(_czarConfig);
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
     LOGS(_log, LOG_LVL_DEBUG, "New query: " << query << ", hints: " << util::printable(hints));
-
-    // Most of the time, this should do nothing.
-    removeOldResultTables();
 
     util::ConfigStore hintsConfigStore(hints);
 
@@ -357,7 +303,6 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
          "returning result to proxy: resultTable=" << result.resultTable
                                                    << " messageTable=" << result.messageTable
                                                    << " resultQuery=" << result.resultQuery);
-
     return result;
 }
 
@@ -486,67 +431,6 @@ void Czar::_makeAsyncResult(string const& asyncResultTable, QueryId queryId, str
         LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
-}
-
-void Czar::removeOldResultTables() {
-    // This only needs to run occasionally.
-    lock_guard<mutex> lockOldTblDel(_lastRemovedMtx);
-    _lastRemovedTimer.stop();
-    double oneDaySec = 60.0 * 60.0 * 24.0;  // seconds in one hour
-    if (_lastRemovedTimer.getElapsed() < oneDaySec || _removingOldTables) {
-        return;
-    }
-    _lastRemovedTimer.start();
-    _removingOldTables = true;
-    // Run in a separate thread in the off chance this takes a while.
-    thread t([this]() {
-        LOGS(_log, LOG_LVL_INFO, "Removing old result database tables.");
-        auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlResultConfig());
-        string dbName = _czarConfig->getMySqlResultConfig().dbName;
-        string dStr = to_string(_czarConfig->getOldestResultKeptDays());
-
-        // Find result related tables that haven't been updated in a long time.
-        string sql =
-                "SELECT table_name FROM information_schema.tables "
-                "WHERE table_schema = '" +
-                dbName +
-                "' AND engine IS NOT NULL  "
-                "AND ((update_time < (now() - INTERVAL " +
-                dStr +
-                " DAY)) "
-                "OR (update_time IS NULL "
-                "AND create_time < (now() - INTERVAL " +
-                dStr + " DAY)))";
-        sql::SqlResults results;
-        sql::SqlErrorObject err;
-        if (!sqlConn->runQuery(sql, results, err)) {
-            LOGS(_log, LOG_LVL_ERROR,
-                 "Query to find old result tables failed err=" << err.printErrMsg() << " sql=" << sql);
-        }
-        vector<string> oldTables;
-        results.extractFirstColumn(oldTables, err);
-        for (auto iter = oldTables.begin(), end = oldTables.end(); iter != end;) {  // iter increment in loop
-            // Delete in blocks of 30 to save time.
-            string dropTbl = "";
-            int count = 0;
-            while (iter != end && count < 30) {
-                string tbl = *iter;
-                ++iter;
-                dropTbl += "DROP TABLE " + dbName + "." + tbl + ";";
-                ++count;
-            }
-            if (count > 0) {
-                LOGS(_log, LOG_LVL_DEBUG, "trying:" << dropTbl);
-                if (!sqlConn->runQuery(dropTbl, err)) {
-                    LOGS(_log, LOG_LVL_ERROR,
-                         "Could not delete old tables err=" << err.printErrMsg() << " sql=" << dropTbl);
-                }
-            }
-        }
-        _removingOldTables = false;
-    });
-    t.detach();
-    _oldTableRemovalThread = std::move(t);
 }
 
 SubmitResult Czar::getQueryInfo(QueryId queryId) const {
