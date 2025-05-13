@@ -48,6 +48,8 @@ char const* const context = "[CZAR-HTTP-FRONTEND]";
 }  // namespace
 
 int main(int argc, char* argv[]) {
+    czar::HttpCzarConfig httpCzarConfig;
+
     po::options_description desc("", 120);
     desc.add_options()("help,h", "Print this help message and exit.");
     desc.add_options()("verbose,v", "Produce verbose output.");
@@ -55,29 +57,43 @@ int main(int argc, char* argv[]) {
                        "The name of this Czar frontend. Assign a unique name to each Czar.");
     desc.add_options()("config", po::value<string>()->default_value("/config-etc/qserv-czar.cnf"),
                        "The configuration file.");
-    desc.add_options()("port", po::value<uint16_t>()->default_value(4048),
-                       "HTTP/HTTPS port of the REST API.");
-    desc.add_options()("threads", po::value<unsigned int>()->default_value(thread::hardware_concurrency()),
+    desc.add_options()("port", po::value<uint16_t>()->default_value(httpCzarConfig.port),
+                       "HTTP/HTTPS port of the REST API. Assigning 0 would result in allocating"
+                       " the first available port.");
+    desc.add_options()("threads", po::value<size_t>()->default_value(httpCzarConfig.numThreads),
                        "The number of the request processing threads in the REST service."
-                       " The default value is the number of hardware threads. Zero value is not allowed.");
+                       " A value of 0 implies the number of hardware threads.");
     desc.add_options()("worker-ingest-threads",
-                       po::value<unsigned int>()->default_value(thread::hardware_concurrency()),
+                       po::value<size_t>()->default_value(httpCzarConfig.numWorkerIngestThreads),
                        "A size of a thread pool for pushing table contributions to workers over"
-                       " the synchronous HTTP/HTTPS protocol. The default value is the number of"
-                       " hardware threads.  Zero value is not allowed.");
-    desc.add_options()("ssl-cert-file", po::value<string>()->default_value("/config-etc/ssl/czar-cert.pem"),
+                       " the synchronous HTTP/HTTPS protocol. A value of 0 implies the number"
+                       " of hardware threads");
+    desc.add_options()("ssl-cert-file", po::value<string>()->default_value(httpCzarConfig.sslCertFile),
                        "The SSL/TSL certificate file.");
     desc.add_options()("ssl-private-key-file",
-                       po::value<string>()->default_value("/config-etc/ssl/czar-key.pem"),
+                       po::value<string>()->default_value(httpCzarConfig.sslPrivateKeyFile),
                        "The SSL/TSL private key file.");
-    desc.add_options()("tmp-dir", po::value<string>()->default_value("/tmp"),
+    desc.add_options()("tmp-dir", po::value<string>()->default_value(httpCzarConfig.tmpDir),
                        "The temporary directory for the service.");
-    desc.add_options()("conn-pool-size", po::value<unsigned int>()->default_value(0),
+    desc.add_options()("max-queued-requests",
+                       po::value<size_t>()->default_value(httpCzarConfig.maxQueuedRequests),
+                       "The limit for the maximum number of pending requests, i.e. requests accept()ed"
+                       " by the listener but still waiting to be serviced by worker threads."
+                       " A value of 0 implies that there are no limit.");
+    desc.add_options()("conn-pool-size",
+                       po::value<size_t>()->default_value(httpCzarConfig.clientConnPoolSize),
                        "A size of a connection pool for synchronous communications over the HTTP"
-                       " protocol with the Qserv Worker Ingest servbers. The default value is 0,"
-                       " which assumes that the pool size is determined by an implementation of"
+                       " protocol with the Qserv Worker Ingest servers. A value of 0 implies"
+                       " that the pool size is determined by an implementation of"
                        " the underlying library 'libcurl'. The number of connectons in a production"
-                       " Qserv deployment should be at least the number of workers in the deployment.");
+                       " Qserv deployment should be at least the number of workers in the deployment."
+                       " Ideally the number should be equal to the number of workers multiplied by"
+                       " the number of threads in the worker's thread pool.");
+    desc.add_options()("boost-asio-threads",
+                       po::value<size_t>()->default_value(httpCzarConfig.numBoostAsioThreads),
+                       "The number of the BOOST ASIO threads for ASYNC communicatons with "
+                       " the Replication Controller and workers. A value of 0 implies the number"
+                       " of hardware threads.");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, const_cast<char**>(argv), desc), vm);
@@ -85,25 +101,16 @@ int main(int argc, char* argv[]) {
 
     string const czarName = vm["czar-name"].as<string>();
     string const configFilePath = vm["config"].as<string>();
-    uint16_t const port = vm["port"].as<uint16_t>();
 
-    unsigned int const numThreads = vm["threads"].as<unsigned int>();
-    if (numThreads == 0) {
-        throw invalid_argument(
-                "The number of threads in command line option '--threads'"
-                " must be greater than zero");
-    }
-
-    unsigned int const numWorkerIngestThreads = vm["worker-ingest-threads"].as<unsigned int>();
-    if (numWorkerIngestThreads == 0) {
-        throw invalid_argument(
-                "The number of threads in command line option '--worker-ingest-threads'"
-                " must be greater than zero");
-    }
-    string const sslCertFile = vm["ssl-cert-file"].as<string>();
-    string const sslPrivateKeyFile = vm["ssl-private-key-file"].as<string>();
-    string const tmpDir = vm["tmp-dir"].as<string>();
-    unsigned int connPoolSize = vm["conn-pool-size"].as<unsigned int>();
+    httpCzarConfig.port = vm["port"].as<uint16_t>();
+    httpCzarConfig.numThreads = vm["threads"].as<size_t>();
+    httpCzarConfig.numWorkerIngestThreads = vm["worker-ingest-threads"].as<size_t>();
+    httpCzarConfig.sslCertFile = vm["ssl-cert-file"].as<string>();
+    httpCzarConfig.sslPrivateKeyFile = vm["ssl-private-key-file"].as<string>();
+    httpCzarConfig.tmpDir = vm["tmp-dir"].as<string>();
+    httpCzarConfig.maxQueuedRequests = vm["max-queued-requests"].as<size_t>();
+    httpCzarConfig.clientConnPoolSize = vm["conn-pool-size"].as<size_t>();
+    httpCzarConfig.numBoostAsioThreads = vm["boost-asio-threads"].as<size_t>();
 
     if (vm.count("help")) {
         cout << argv[0] << " [options]\n\n" << ::help << "\n\n" << desc << endl;
@@ -113,18 +120,20 @@ int main(int argc, char* argv[]) {
     if (verbose) {
         cout << ::context << " Czar name: " << czarName << "\n"
              << ::context << " Configuration file: " << configFilePath << "\n"
-             << ::context << " Port: " << port << "\n"
-             << ::context << " Number of threads: " << numThreads << "\n"
-             << ::context << " Number of worker ingest threads: " << numWorkerIngestThreads << "\n"
-             << ::context << " SSL certificate file: " << sslCertFile << "\n"
-             << ::context << " SSL private key file: " << sslPrivateKeyFile << "\n"
-             << ::context << " Temporary directory: " << tmpDir << "\n"
-             << ::context << " Connection pool size: " << connPoolSize << endl;
+             << ::context << " Port: " << httpCzarConfig.port << "\n"
+             << ::context << " Number of threads: " << httpCzarConfig.numThreads << "\n"
+             << ::context << " Number of worker ingest threads: " << httpCzarConfig.numWorkerIngestThreads
+             << "\n"
+             << ::context << " SSL certificate file: " << httpCzarConfig.sslCertFile << "\n"
+             << ::context << " SSL private key file: " << httpCzarConfig.sslPrivateKeyFile << "\n"
+             << ::context << " Temporary directory: " << httpCzarConfig.tmpDir << "\n"
+             << ::context << " Max.number of queued requests: " << httpCzarConfig.maxQueuedRequests << "\n"
+             << ::context << " Connection pool size (libcurl): " << httpCzarConfig.clientConnPoolSize << "\n"
+             << ::context << " Number of BOOST ASIO threads: " << httpCzarConfig.numBoostAsioThreads << endl;
     }
     try {
         auto const czar = czar::Czar::createCzar(configFilePath, czarName);
-        auto const svc = czar::HttpCzarSvc::create(port, numThreads, numWorkerIngestThreads, sslCertFile,
-                                                   sslPrivateKeyFile, tmpDir, connPoolSize);
+        auto const svc = czar::HttpCzarSvc::create(httpCzarConfig);
         if (verbose) {
             cout << ::context << " The query processing service of Czar bound to port: " << svc->port()
                  << endl;
