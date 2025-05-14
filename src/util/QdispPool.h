@@ -140,11 +140,9 @@ private:
 };
 
 /// This class is used to provide a pool of threads for handling out going
-/// and incoming messages from xrootd as well as a system for prioritizing
+/// and incoming messages as well as a system for prioritizing
 /// the messages.
-/// This has not worked entirely as intended. Reducing the number of threads
-/// had negative impacts on xrootd, but other changes have been made such that
-/// reducing the size of the thread pools can be tried again.
+/// This has not worked entirely as intended.
 /// What it does do is prioritize outgoing messages (typically jobs going to
 /// workers), allow interactive queries to be handled quickly, even under
 /// substantial loads, and it gives a good idea of how busy the czar really

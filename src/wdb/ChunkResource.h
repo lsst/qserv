@@ -50,9 +50,9 @@
 #include "wdb/SQLBackend.h"
 
 // Forward declarations
-namespace lsst::qserv { namespace wdb {
+namespace lsst::qserv::wdb {
 class Task;
-}}  // namespace lsst::qserv::wdb
+}  // namespace lsst::qserv::wdb
 
 namespace lsst::qserv::wdb {
 

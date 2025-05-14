@@ -162,9 +162,6 @@ public:
     /// @return the name of a folder where query results will be stored
     std::string const resultsDirname() const { return _resultsDirname->getVal(); }
 
-    /// @return the port number of the worker XROOTD service for serving result files
-    uint16_t resultsXrootdPort() const { return _resultsXrootdPort->getVal(); }
-
     /// The size
     int getQPoolSize() const { return _qPoolSize->getVal(); }
 
@@ -334,8 +331,6 @@ private:
             _configValMap, "sqlconnections", "reservedinteractivesqlconn", notReq, 50);
     CVTStrPtr _resultsDirname =
             util::ConfigValTStr::create(_configValMap, "results", "dirname", notReq, "/qserv/data/results");
-    CVTUIntPtr _resultsXrootdPort =
-            util::ConfigValTUInt::create(_configValMap, "results", "xrootd_port", notReq, 1094);
     CVTUIntPtr _resultsNumHttpThreads =
             util::ConfigValTUInt::create(_configValMap, "results", "num_http_threads", notReq, 1);
     CVTBoolPtr _resultsCleanUpOnStart =

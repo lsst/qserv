@@ -171,15 +171,6 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
         _setQueryIdStr(QueryIdHelper::makeIdStr(uberJob->getQueryId()));
     }
 
-    // Do nothing if the query got cancelled for any reason.
-    if (uberJob->isQueryCancelled()) {
-        return true;
-    }
-    auto executive = uberJob->getExecutive();
-    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete()) {
-        return true;
-    }
-
     // Check if the final result size is too large. It should be safe to do this
     // here as the only expected errors at this point are failures in transmission.
     // Even if there is a failure in transmission, the retry would be expected
@@ -189,12 +180,11 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
         _perJobResultSize[uJobId] += fileSize;
         size_t tResultSize = _totalResultSize + _perJobResultSize[uJobId];
         if (tResultSize > _maxResultTableSizeBytes) {
-            ostringstream os;
-            os << queryIdJobStr << " cancelling the query, queryResult table " << _mergeTable
-               << " is too large at " << tResultSize << " bytes, max allowed size is "
-               << _maxResultTableSizeBytes << " bytes";
-            LOGS(_log, LOG_LVL_ERROR, os.str());
-            _error = util::Error(-1, os.str(), -1);
+            string str = queryIdJobStr + " cancelling the query, queryResult table " + _mergeTable +
+                         " is too large at " + to_string(tResultSize) + " bytes, max allowed size is " +
+                         to_string(_maxResultTableSizeBytes) + " bytes";
+            LOGS(_log, LOG_LVL_ERROR, str);
+            _error = util::Error(-1, str, -1);
             return false;
         }
     }
@@ -203,7 +193,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
                                                     bool success) {
         if (!success) return;
         if (std::chrono::duration<double> const seconds = end - start; seconds.count() > 0) {
-            qdisp::CzarStats::get()->addXRootDSSIRecvRate(bytes / seconds.count());
+            qdisp::CzarStats::get()->addDataRecvRate(bytes / seconds.count());
         }
     };
     auto tct = make_shared<TimeCountTracker<double>>(cbf);
@@ -224,6 +214,13 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.
     if (_config.debugNoMerge) {
+        return true;
+    }
+
+    // Don't merge if the query got cancelled.
+    auto executive = uberJob->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete()) {
+        csvStream->cancel();  // After this point, the file has to be read
         return true;
     }
 
