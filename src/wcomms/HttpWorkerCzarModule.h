@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_XRDSVC_HTTPWORKERCZARMODULE_H
-#define LSST_QSERV_XRDSVC_HTTPWORKERCZARMODULE_H
+#ifndef LSST_QSERV_WCOMMS_HTTPWORKERCZARMODULE_H
+#define LSST_QSERV_WCOMMS_HTTPWORKERCZARMODULE_H
 
 // System headers
 #include <functional>
@@ -32,7 +32,7 @@
 
 // Qserv headers
 #include "qmeta/types.h"
-#include "xrdsvc/HttpModule.h"
+#include "wcomms/HttpModule.h"
 
 namespace lsst::qserv::protojson {
 class CzarContactInfo;
@@ -53,15 +53,11 @@ namespace lsst::qserv::wcontrol {
 class Foreman;
 }  // namespace lsst::qserv::wcontrol
 
-namespace lsst::qserv::xrdsvc {
-class SsiProviderServer;
-}  // namespace lsst::qserv::xrdsvc
-
 // This header declarations
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 /// This class handles Http message from the czar to the worker.
-class HttpWorkerCzarModule : public xrdsvc::HttpModule {
+class HttpWorkerCzarModule : public wcomms::HttpModule {
 public:
     /// @note supported values for parameter 'subModuleName' are:
     ///  'QUERYJOB'     - Convert an UberJob message into Tasks and a send channel.
@@ -109,6 +105,6 @@ private:
     nlohmann::json _handleQueryStatus(std::string const& func);
 };
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
 
-#endif  // LSST_QSERV_XRDSVC_HTTPWORKERCZARMODULE_H
+#endif  // LSST_QSERV_WCOMMS_HTTPWORKERCZARMODULE_H

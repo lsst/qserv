@@ -142,7 +142,8 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
 }
 
 json HttpCzarWorkerModule::_handleJobReady(string const& func) {
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobReady start");
+    string const fName = "HttpCzarWorkerModule::_handleJobReady";
+    LOGS(_log, LOG_LVL_DEBUG, fName << " start");
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then have the uberjob import the file.
@@ -157,12 +158,16 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
         auto uberJobId = jrMsg->getUberJobId();
         qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
         if (exec == nullptr) {
+            LOGS(_log, LOG_LVL_WARN,
+                 fName << " null exec QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
                                    to_string(queryId) + " czar=" + to_string(czarId));
         }
 
         qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
         if (uj == nullptr) {
+            LOGS(_log, LOG_LVL_WARN,
+                 fName << " null uj QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
             throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
                                    to_string(queryId) + " ujId=" + to_string(uberJobId) +
                                    " czar=" + to_string(czarId));
