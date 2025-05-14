@@ -96,6 +96,46 @@ std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(string const& worke
     return inventory;
 }
 
+/**
+ * This function will keep periodically updating worker's info in the Replication
+ * System's Registry.
+ * @param id The unique identifier of a worker to be registered.
+ * @note The thread will terminate the process if the registraton request to the Registry
+ * was explicitly denied by the service. This means the application may be misconfigured.
+ * Transient communication errors when attempting to connect or send requests to
+ * the Registry will be posted into the log stream and ignored.
+ */
+void registryUpdateLoop(string const& id) {
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    auto const method = http::Method::POST;
+    string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
+                       to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
+    vector<string> const headers = {"Content-Type: application/json"};
+    json const request = json::object({{"version", http::MetaModule::version},
+                                       {"instance_id", workerConfig->replicationInstanceId()},
+                                       {"auth_key", workerConfig->replicationAuthKey()},
+                                       {"worker",
+                                        {{"name", id},
+                                         {"management-port", workerConfig->replicationHttpPort()},
+                                         {"management-host-name", util::get_current_host_fqdn()}}}});
+    string const requestContext =
+            "WorkerMain: '" + http::method2string(method) + "' request to '" + url + "'";
+    http::Client client(method, url, request.dump(), headers);
+    while (true) {
+        try {
+            json const response = client.readAsJson();
+            if (0 == response.at("success").get<int>()) {
+                string const error = response.at("error").get<string>();
+                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                abort();
+            }
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        }
+        this_thread::sleep_for(chrono::seconds(max(1U, workerConfig->replicationRegistryHearbeatIvalSec())));
+    }
+}
+
 }  // namespace
 
 namespace lsst::qserv::wmain {
