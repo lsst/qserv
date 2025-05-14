@@ -110,7 +110,7 @@ public:
         // with each invocation of report().
         State state;                          ///< Actual state
         TimeType stateTime;                   ///< Last modified timestamp
-        int stateCode;                        ///< Code associated with state (e.g. xrd or mysql error code)
+        int stateCode;                        ///< Code associated with state (e.g. mysql error code)
         std::string stateDesc;                ///< Textual description
         std::string source = "";              ///< Source of the current state.
         MessageSeverity severity = MSG_INFO;  ///< Severity of the message.

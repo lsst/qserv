@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_XRDSVC_HTTPSVC_H
-#define LSST_QSERV_XRDSVC_HTTPSVC_H
+#ifndef LSST_QSERV_WCOMMS_HTTPSVC_H
+#define LSST_QSERV_WCOMMS_HTTPSVC_H
 
 // System headers
 #include <memory>
@@ -40,7 +40,7 @@ class Foreman;
 }  // namespace lsst::qserv::wcontrol
 
 // This header declarations
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 /**
  * Class HttpSvc is the HTTP server for processing worker management requests.
@@ -54,7 +54,7 @@ namespace lsst::qserv::xrdsvc {
  *   // Create the server. Note, it won't run yet until explicitly started.
  *   uint16_t const port = 0;           // The port will be dynamically allocated at start
  *   unsigned int const numThreads = 2; // The number of BOOST ASIO threads
- *   auto const svc = xrdsvc::HttpSvc::create(port, numThreads);
+ *   auto const svc = wcomms::HttpSvc::create(port, numThreads);
  *
  *   // Start the server and get the actual port number.
  *   uint16_t const actualPort = svc->start();
@@ -135,6 +135,6 @@ private:
     std::vector<std::unique_ptr<std::thread>> _threads;
 };
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
 
-#endif  // LSST_QSERV_XRDSVC_HTTPSVC_H
+#endif  // LSST_QSERV_WCOMMS_HTTPSVC_H

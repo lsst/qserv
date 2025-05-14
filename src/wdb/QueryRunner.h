@@ -27,8 +27,7 @@
  * @file
  *
  * @brief QueryAction instances perform single-shot query execution with the
- * result reflected in the db state or returned via a SendChannel. Works with
- * new XrdSsi API.
+ * result reflected in the db state or returned via a SendChannel.
  *
  * @author Daniel L. Wang, SLAC
  */
