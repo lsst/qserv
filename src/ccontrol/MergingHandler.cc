@@ -193,14 +193,10 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         throw util::Bug(ERR_LOC, "already flushed");
     }
 
-    if (fileSize == 0) {
-        return qdisp::MergeEndStatus(true);
-    }
+    if (fileSize == 0) return qdisp::MergeEndStatus(true);
 
     // After this final test the job's result processing can't be interrupted.
-    if (uberJob->isQueryCancelled()) {
-        return qdisp::MergeEndStatus(true);
-    }
+    if (uberJob->isQueryCancelled()) return qdisp::MergeEndStatus(true);
 
     // Read from the http stream and push records into the CSV stream in a separate thread.
     // Note the fixed capacity of the stream which allows up to 2 records to be buffered
@@ -251,11 +247,9 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
 
     qdisp::MergeEndStatus mergeEStatus(fileMergeSuccess && fileReadErrorMsg.empty());
     if (!mergeEStatus.success) {
-        // This error check needs to come after the csvThread.join() to avoid race conditions.
-        if (csvStream->getBytesWritten() > 0) {
-            // There was a failure and bytes were written, result table is ruined.
-            mergeEStatus.contaminated = true;
-        }
+        // This error check needs to come after the csvThread.join() to ensure writing
+        // is finished. If any bytes were written, the result table is ruined.
+        mergeEStatus.contaminated = csvStream->getBytesWritten() > 0;
     }
     return mergeEStatus;
 }
