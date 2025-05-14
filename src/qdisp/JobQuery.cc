@@ -63,7 +63,7 @@ bool JobQuery::cancel(bool superfluous) {
         VMUTEX_NOT_HELD(_jqMtx);
         lock_guard lock(_jqMtx);
 
-        string const context = _idStr + " cancel";
+        string const context = _idStr + " job cancel";
         LOGS(_log, LOG_LVL_DEBUG, context);
         auto exec = _executive.lock();
         if (exec == nullptr) {
@@ -71,7 +71,7 @@ bool JobQuery::cancel(bool superfluous) {
             return false;
         }
         if (!superfluous) {
-            exec->addMultiError(-1, context, util::ErrorCode::RESULT_IMPORT);
+            exec->addMultiError(-1, context, util::ErrorCode::JOB_CANCEL);
         }
         exec->markCompleted(getJobId(), false);
         return true;

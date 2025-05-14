@@ -171,7 +171,7 @@ Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int pool
 
 Foreman::~Foreman() {
     LOGS(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
-    // It will take significant effort to have xrootd shutdown cleanly and this will never get called
+    // It will take significant effort to have qserv shutdown cleanly and this will never get called
     // until that happens.
     _pool->shutdownPool();
     _httpServer->stop();
