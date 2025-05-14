@@ -24,7 +24,18 @@ FUNCTION(wdb_tests)
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
             crypto
-            xrdsvc
+            global
+            http
+            mysql
+            protojson
+            sql
+            util
+            wbase
+            wconfig
+            wcontrol
+            wdb
+            wpublish
+            wsched
             Boost::unit_test_framework
             Threads::Threads
         )
