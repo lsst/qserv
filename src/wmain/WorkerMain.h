@@ -89,7 +89,11 @@ private:
     std::shared_ptr<wcomms::HttpSvc> _controlHttpSvc;
 
     /// Set to true when the program should terminate.
+<<<<<<< HEAD
     std::atomic<bool> _terminate{false};
+=======
+    bool _terminate = false;
+>>>>>>> a56686283 (Added worker executable.)
     std::mutex _terminateMtx;
     std::condition_variable _terminateCv;
 };
