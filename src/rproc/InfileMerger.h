@@ -49,7 +49,6 @@ namespace mysql {
 class CsvStream;
 class MysqlConfig;
 }  // namespace mysql
-
 namespace qdisp {
 class MessageStore;
 class UberJob;

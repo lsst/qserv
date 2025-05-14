@@ -30,9 +30,9 @@
 
 namespace lsst::qserv { namespace wbase {
 
-/// SendChannel objects abstract an byte-output mechanism. Provides a layer of
-/// abstraction to reduce coupling to the XrdSsi API. SendChannel generally
-/// accepts only one call to send bytes, unless the sendStream call is used.
+/// SendChannel is used to send information about results
+/// and errors back to the czar so that the czar can collect
+/// the results or cancel the related data.
 class SendChannel {
 public:
     using Ptr = std::shared_ptr<SendChannel>;

@@ -194,8 +194,7 @@ void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string
 }
 
 string UberJobData::_resultFileName() const {
-    util::ResultFileName rfn(_czarId, _queryId, _uberJobId);
-    return rfn.fileName();
+    return util::ResultFileName(_czarId, _queryId, _uberJobId).fileName();
 }
 
 string UberJobData::resultFilePath() const {

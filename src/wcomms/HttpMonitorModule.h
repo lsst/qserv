@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_XRDSVC_HTTPMONITORMODULE_H
-#define LSST_QSERV_XRDSVC_HTTPMONITORMODULE_H
+#ifndef LSST_QSERV_WCOMMS_HTTPMONITORMODULE_H
+#define LSST_QSERV_WCOMMS_HTTPMONITORMODULE_H
 
 // System headers
 #include <memory>
@@ -29,7 +29,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "xrdsvc/HttpModule.h"
+#include "wcomms/HttpModule.h"
 
 namespace lsst::qserv::qhttp {
 class Request;
@@ -41,13 +41,13 @@ class Foreman;
 }  // namespace lsst::qserv::wcontrol
 
 // This header declarations
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 /**
  * Class HttpMonitorModule implements a handler for reporting various run-time
  * monitoring metrics and statistics collected at the Qserv worker.
  */
-class HttpMonitorModule : public xrdsvc::HttpModule {
+class HttpMonitorModule : public wcomms::HttpModule {
 public:
     /**
      * @note supported values for parameter 'subModuleName' are:
@@ -94,6 +94,6 @@ private:
     nlohmann::json _echo();
 };
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
 
-#endif  // LSST_QSERV_XRDSVC_HTTPMONITORMODULE_H
+#endif  // LSST_QSERV_WCOMMS_HTTPMONITORMODULE_H
