@@ -149,7 +149,6 @@ public:
     //  - hasSubchunks seems redundant.
     //  Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
     //  Candidates: maxTableSizeMb, FileChannelShared, resultsHttpPort.
-    //  Unfortunately, this will be much easier if it is done after xrootd method is removed.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,

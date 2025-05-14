@@ -85,7 +85,7 @@ public:
     using Ptr = std::shared_ptr<CzarChunkMap>;
     using SizeT = uint64_t;
 
-    std::string cName(const char* func) { return std::string("CzarChunkMap::") + func; }
+    std::string cName(const char* func) const { return std::string("CzarChunkMap::") + func; }
 
     CzarChunkMap(CzarChunkMap const&) = delete;
     CzarChunkMap& operator=(CzarChunkMap const&) = delete;
@@ -103,7 +103,7 @@ public:
         using Ptr = std::shared_ptr<ChunkData>;
         ChunkData(int chunkId_) : _chunkId(chunkId_) {}
 
-        std::string cName(const char* func) {
+        std::string cName(const char* func) const {
             return std::string("ChunkData::") + func + " " + std::to_string(_chunkId);
         }
         int64_t getChunkId() const { return _chunkId; }
@@ -203,7 +203,7 @@ public:
     /// Verify that all chunks belong to at least one worker and that all chunks are represented in shared
     /// scans.
     /// @throws ChunkMapException
-    void verify();
+    void verify(std::string const& familyName) const;
 
     static std::string dumpChunkMap(ChunkMap const& chunkMap);
 

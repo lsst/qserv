@@ -37,6 +37,8 @@
 // Qserv headers
 #include "global/constants.h"
 
+using namespace std;
+
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.MessageStore");
 }
@@ -47,19 +49,25 @@ namespace lsst::qserv::qmeta {
 // public
 ////////////////////////////////////////////////////////////////////////
 
+string QueryMessage::dump() const {
+    stringstream os;
+    os << "QueryMessage(chId=" << chunkId << " src=" << msgSource << " code=" << code
+       << " desc=" << description << " severity=" << severity << ")";
+    return os.str();
+}
+
 void MessageStore::addMessage(int chunkId, std::string const& msgSource, int code,
                               std::string const& description, MessageSeverity severity,
                               qmeta::JobStatus::TimeType timestamp) {
     if (timestamp == qmeta::JobStatus::TimeType()) {
         timestamp = qmeta::JobStatus::getNow();
     }
+    QueryMessage qMsg(chunkId, msgSource, code, description, timestamp, severity);
     auto level = code < 0 ? LOG_LVL_ERROR : LOG_LVL_DEBUG;
-    LOGS(_log, level, "Add msg: " << chunkId << " " << msgSource << " " << code << " " << description);
-    {
-        std::lock_guard<std::mutex> lock(_storeMutex);
-        _queryMessages.insert(_queryMessages.end(),
-                              QueryMessage(chunkId, msgSource, code, description, timestamp, severity));
-    }
+    LOGS(_log, level, "Add msg: " << qMsg.dump());
+
+    std::lock_guard<std::mutex> lock(_storeMutex);
+    _queryMessages.push_back(qMsg);
 }
 
 void MessageStore::addErrorMessage(std::string const& msgSource, std::string const& description) {
