@@ -237,11 +237,13 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
 
     // Attempt the actual merge.
     bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvMemDisk);
+
     if (!fileMergeSuccess) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg(), util::ErrorCode::RESULT_IMPORT);
     }
+
     if (csvMemDisk->getContaminated()) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
         fileMergeSuccess = false;
