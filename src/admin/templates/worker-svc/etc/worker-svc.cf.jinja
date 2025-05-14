@@ -1,4 +1,4 @@
-# Qserv xrdssi plugin configuration file
+# Qserv worker configuration file
 # Default values for parameters are commented
 
 [mysql]
@@ -70,10 +70,6 @@ reservedinteractivesqlconn = 930
 
 # The name of a folder where query results will be stored.
 dirname = {{ results_dirname }}
-
-# The port number of the worker XROOTD service for serving files.
-# NOTE: the hardcoded value may need to be replaced with a template
-xrootd_port = 1094
 
 # The number of the BOOST ASIO threads for HTTP requests
 num_http_threads = 4

@@ -279,137 +279,16 @@ def smig_worker(connection: str, update: bool) -> None:
     _do_smig(worker_smig_dir, "worker", connection, update)
 
 
-def enter_manager_cmsd(
-    targs: Targs,
-    cmsd_manager_cfg_file: str,
-    cmsd_manager_cfg_path: str,
-    cmd: str,
-) -> None:
-    """Start a cmsd manager qserv node.
-
-    Parameters
-    ----------
-    targs : `Targs`
-        The arguments for template expansion.
-    cmsd_manager_cfg_file : str
-        Path to the cmsd manager config file.
-    cmsd_manager_cfg_path : str
-        Location to render cmsd_manager_cfg_template.
-    cmd : str
-        The jinja2 template for the command for this function to execute.
-    """
-    apply_template_cfg_file(cmsd_manager_cfg_file, cmsd_manager_cfg_path, targs)
-
-    env = dict(
-        os.environ,
-        LD_PRELOAD=ld_preload,
-    )
-
-    sys.exit(_run(args=None, env=env, cmd=cmd))
-
-
-def enter_xrootd_manager(
-    targs: Targs,
-    xrootd_manager_cfg_file: str,
-    xrootd_manager_cfg_path: str,
-    cmd: str,
-) -> None:
-    """Start an xrootd manager qserv node.
-
-    Parameters
-    ----------
-    targs : Targs
-        The arguments for template expansion.
-    xrootd_manager_cfg_file : str
-        Path to the cmsd manager config file.
-    xrootd_manager_cfg_path : str
-        Location to render cmsd_manager_cfg_template.
-    cmd : str
-        The jinja2 template for the command for this function to execute.
-    """
-    apply_template_cfg_file(xrootd_manager_cfg_file, xrootd_manager_cfg_path, targs)
-
-    env = dict(
-        os.environ,
-        LD_PRELOAD=ld_preload,
-    )
-
-    sys.exit(_run(args=None, env=env, cmd=cmd))
-
-
-def enter_worker_cmsd(
-    targs: Targs,
-    db_uri: str,
-    cmsd_worker_cfg_file: str,
-    cmsd_worker_cfg_path: str,
-    xrdssi_cfg_file: str,
-    xrdssi_cfg_path: str,
-    log_cfg_file: str,
-    cmd: str,
-) -> None:
-    """Start a worker cmsd node.
-
-    Parameters
-    ----------
-    vnid_config : str
-        The config parameters used by the qserv cmsd to get the vnid
-        from the specified source (static string, a file or worker database).
-    targs : Targs
-        The arguments for template expansion.
-    db_uri : str
-        The non-admin URI to the worker's database.
-    cmsd_worker_cfg_file : str
-        The path to the worker cmsd config file.
-    cmsd_worker_cfg_path : str
-        The location to render the worker cmsd config file.
-    xrdssi_cfg_file : str
-        The path to the xrdssi config file.
-    xrdssi_cfg_path : str
-        The location to render the the xrdssi config file.
-    log_cfg_file : `str`
-        Location of the log4cxx config file.
-    cmd : str
-        The jinja2 template for the command for this function to execute.
-    """
-    url = _process_uri(
-        uri=db_uri,
-        query_keys=("socket",),
-        option=options.option_db_uri.args[0],
-        block=True,
-    )
-    targs["db_host"] = url.host
-    targs["db_port"] = url.port or ""
-    targs["db_socket"] = url.query.get("socket", "")
-
-    apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path, targs)
-    apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path, targs)
-
-    _do_smig_block(admin_smig_dir, "admin", db_uri)
-    # wait before worker database will be fully initialized as needed
-    # for the vnid plugin to function correctly
-    _do_smig_block(worker_smig_dir, "worker", db_uri)
-
-    env = dict(
-        os.environ,
-        LD_PRELOAD=ld_preload,
-        LSST_LOG_CONFIG=log_cfg_file,
-    )
-
-    sys.exit(_run(args=None, env=env, cmd=cmd))
-
-
-def enter_worker_xrootd(
+def enter_worker_svc(
     targs: Targs,
     db_uri: str,
     db_admin_uri: str,
-    cmsd_worker_cfg_file: str,
-    cmsd_worker_cfg_path: str,
-    xrdssi_cfg_file: str,
-    xrdssi_cfg_path: str,
+    worker_svc_cfg_file: str,
+    worker_svc_cfg_path: str,
     log_cfg_file: str,
     cmd: str,
 ) -> None:
-    """Start a worker xrootd node.
+    """Start a worker wkr node.
 
     Parameters
     ----------
@@ -419,14 +298,10 @@ def enter_worker_xrootd(
         The non-admin URI to the proxy's database.
     db_admin_uri : str
         The admin URI to the proxy's database.
-    cmsd_worker_cfg_file : str
-        The path to the worker cmsd config file.
-    cmsd_worker_cfg_path : str
-        The location to render to the worker cmsd config file.
-    xrdssi_cfg_file : str
-        The path to the xrdssi config file.
-    xrdssi_cfg_path : str
-        The location to render to the xrdssi config file.
+    worker_svc_cfg_file : str
+        The path to the worker config file.
+    worker_svc_cfg_path : str
+        The location to render to the worker config file.
     log_cfg_file : `str`
         Location of the log4cxx config file.
     cmd : `str`
@@ -468,11 +343,7 @@ def enter_worker_xrootd(
 
     smig_worker(db_admin_uri, update=False)
 
-    # TODO worker (and manager) xrootd+cmsd pair should "share" the cfg file
-    # it's in different containers but should be same source & processing.
-    # Rename these files to be more agnostic.
-    apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path)
-    apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path)
+    apply_template_cfg_file(worker_svc_cfg_file, worker_svc_cfg_path)
 
     env = dict(
         os.environ,

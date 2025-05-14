@@ -21,18 +21,16 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-#ifndef LSST_QSERV_XRDSVC_SSISERVICE_H
-#define LSST_QSERV_XRDSVC_SSISERVICE_H
+#ifndef LSST_QSERV_WMAIN_WORKERMAIN_H
+#define LSST_QSERV_WMAIN_WORKERMAIN_H
 
 // System headers
+#include <atomic>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 
 // Third-party headers
-#include "XrdSsi/XrdSsiResource.hh"
-#include "XrdSsi/XrdSsiService.hh"
-
-// Forward declarations
-class XrdSsiLogger;
 
 namespace lsst::qserv::util {
 class FileMonitor;
@@ -42,27 +40,41 @@ namespace lsst::qserv::wcontrol {
 class Foreman;
 }  // namespace lsst::qserv::wcontrol
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 class HttpSvc;
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wmain {
 
-/// SsiService is an XrdSsiService implementation that implements a Qserv query
-/// worker services
-class SsiService : public XrdSsiService {
+class WorkerMain {
 public:
-    /** Build a SsiService object
-     * @param log xrdssi logger
-     * @note take ownership of logger for now
-     */
-    SsiService(XrdSsiLogger* log);
-    virtual ~SsiService();
+    using Ptr = std::shared_ptr<WorkerMain>;
 
-    /// Called by SSI framework to handle new requests
-    void ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) override;
+    /// Returns a pointer to the global instance.
+    /// @throw std::runtime_error if global pointer is null.
+    static std::shared_ptr<WorkerMain> get();
+    static Ptr setup();
+
+    ~WorkerMain();
+
+    std::string getName() const { return _name; }
+
+    void terminate();
+    void waitForTerminate();
 
 private:
+    WorkerMain();
+
+    /// Weak pointer to allow global access without complicating lifetime issues.
+    static std::weak_ptr<WorkerMain> _globalWorkerMain;
+
+    /// There should only be one WorkerMain, this prevents more than
+    /// one from being created.
+    static std::atomic<bool> _setup;
+
+    /// Worker name, used in some database lookups.
+    std::string _name{"worker"};
+
     // The Foreman contains essential structures for adding and running tasks.
     std::shared_ptr<wcontrol::Foreman> _foreman;
 
@@ -70,9 +82,13 @@ private:
     std::shared_ptr<util::FileMonitor> _logFileMonitor;
 
     /// The HTTP server processing worker management requests.
-    std::shared_ptr<HttpSvc> _controlHttpSvc;
+    std::shared_ptr<wcomms::HttpSvc> _controlHttpSvc;
+
+    /// Set to true when the program should terminate.
+    bool _terminate = false;
+    std::mutex _terminateMtx;
+    std::condition_variable _terminateCv;
 };
 
-}  // namespace lsst::qserv::xrdsvc
-
-#endif  // LSST_QSERV_XRDSVC_SSISERVICE_H
+}  // namespace lsst::qserv::wmain
+#endif  // LSST_QSERV_WMAIN_WORKERMAIN_H
