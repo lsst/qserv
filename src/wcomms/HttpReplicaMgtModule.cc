@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "xrdsvc/HttpReplicaMgtModule.h"
+#include "wcomms/HttpReplicaMgtModule.h"
 
 // System headers
 #include <sstream>
@@ -29,7 +29,6 @@
 
 // Third party headers
 #include "lsst/log/Log.h"
-#include "XrdSsi/XrdSsiCluster.hh"
 
 // Qserv headers
 #include "http/Exceptions.h"
@@ -40,17 +39,14 @@
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/ResourceMonitor.h"
+#include "wmain/WorkerMain.h"
 #include "wpublish/ChunkInventory.h"
-#include "xrdsvc/SsiProvider.h"
-#include "xrdsvc/XrdName.h"
-
-extern XrdSsiProvider* XrdSsiProviderLookup;
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.HttpReplicaMgt");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wcomms.HttpReplicaMgt");
 }
 
 namespace {
@@ -64,7 +60,7 @@ string makeResource(string const& database, int chunk) { return "/chk/" + databa
 
 }  // namespace
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 void HttpReplicaMgtModule::process(string const& context, shared_ptr<wcontrol::Foreman> const& foreman,
                                    shared_ptr<qhttp::Request> const& req,
@@ -186,8 +182,7 @@ json HttpReplicaMgtModule::_rebuildInventory() {
         // Load the persistent inventory data into the transient one.
         wpublish::ChunkInventory newChunkInventory;
         try {
-            xrdsvc::XrdName x;
-            newChunkInventory.init(x.getName(), foreman()->mySqlConfig());
+            newChunkInventory.init(wmain::WorkerMain::get()->getName(), foreman()->mySqlConfig());
         } catch (exception const& ex) {
             throw http::Error(__func__, "persistent inventory read failed, ex: " + string(ex.what()));
         }
@@ -216,8 +211,7 @@ json HttpReplicaMgtModule::_rebuildInventory() {
 void HttpReplicaMgtModule::_rebuildPersistentInventory() const {
     wpublish::ChunkInventory newChunkInventory;
     try {
-        xrdsvc::XrdName x;
-        newChunkInventory.rebuild(x.getName(), foreman()->mySqlConfig());
+        newChunkInventory.rebuild(wmain::WorkerMain::get()->getName(), foreman()->mySqlConfig());
     } catch (exception const& ex) {
         throw http::Error(__func__, "inventory rebuild stage failed, ex: " + string(ex.what()));
     }
@@ -256,7 +250,7 @@ void HttpReplicaMgtModule::_updateInventory(string const& func,
         }
     }
 
-    // Update the current map and notify XRootD accordingly.
+    // Update the current map.
     for (auto&& [database, chunks] : toBeRemovedExistMap) {
         if (databaseFilter.contains(database)) {
             for (int const chunk : chunks) {
@@ -327,6 +321,7 @@ void HttpReplicaMgtModule::_modifyChunk(string const& func, int chunk, string co
     string const resource = ::makeResource(database, chunk);
     debug(func, operation + " resource: " + resource + ", DataContext: " + to_string(_dataContext));
     try {
+        // Modify both (persistent and transient) inventories.
         if (Direction::ADD == direction) {
             try {
                 // The first operation to add the chunk to the persistent inventory
@@ -355,4 +350,4 @@ void HttpReplicaMgtModule::_modifyChunk(string const& func, int chunk, string co
     }
 }
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
