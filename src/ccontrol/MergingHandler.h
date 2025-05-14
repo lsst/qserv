@@ -71,7 +71,7 @@ public:
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
     /// @see qdisp::MergeEndStatus
-    qdisp::MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) override;
+    qdisp::MergeEndStatus flushHttp(std::string const& fileUrl, std::uint64_t fileSize) override;
 
     /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
@@ -85,7 +85,7 @@ public:
 private:
     /// Call InfileMerger to do the work of merging this data to the result.
     qdisp::MergeEndStatus _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
-                                     std::string const& fileUrl, uint64_t fileSize);
+                                     std::string const& fileUrl, std::uint64_t fileSize);
 
     /// Set error code and string.
     void _setError(int code, std::string const& msg, int errorState);
