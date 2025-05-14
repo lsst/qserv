@@ -33,6 +33,9 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "mysql/SchemaFactory.h"
 
