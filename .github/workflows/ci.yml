@@ -305,37 +305,21 @@ jobs:
         if: always()
         run: docker logs ${USER}-czar-http-1
 
-      - name: Czar CMSD Log
-        if: always()
-        run: docker logs ${USER}-czar-cmsd-1
-
-      - name: Czar XROOTD Log
-        if: always()
-        run: docker logs ${USER}-czar-xrootd-1
-
       - name: Czar MariaDB Log
         if: always()
         run: docker logs ${USER}-czar-mariadb-1
 
-      - name: Qzerv Worker 0 CMSD Log
+      - name: Qzerv Worker 0 worker-svc Log
         if: always()
-        run: docker logs ${USER}-worker-cmsd-0-1
-
-      - name: Qzerv Worker 0 XROOTD Log
-        if: always()
-        run: docker logs ${USER}-worker-xrootd-0-1
+        run: docker logs ${USER}-worker-svc-0-1
 
       - name: Qzerv Worker 0 MariaDB Log
         if: always()
         run: docker logs ${USER}-worker-mariadb-0-1
 
-      - name: Qzerv Worker 1 CMSD Log
+      - name: Qzerv Worker 1 worker-svc Log
         if: always()
-        run: docker logs ${USER}-worker-cmsd-1-1
-
-      - name: Qzerv Worker 1 XROOTD Log
-        if: always()
-        run: docker logs ${USER}-worker-xrootd-1-1
+        run: docker logs ${USER}-worker-svc-1-1
 
       - name: Qzerv Worker 1 MariaDB Log
         if: always()
