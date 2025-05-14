@@ -76,7 +76,7 @@ public:
     static Ptr get();
 
     /// Add a bytes per second entry for query result transmits received over XRootD/SSI
-    void addXRootDSSIRecvRate(double bytesPerSec);
+    void addDataRecvRate(double bytesPerSec);
 
     /// Add a bytes per second entry for result merges
     void addMergeRate(double bytesPerSec);
@@ -161,7 +161,7 @@ private:
     uint64_t const _startTimeMs = 0;
 
     /// Histogram for tracking XROOTD/SSI receive rate in bytes per second.
-    util::HistogramRolling::Ptr _histXRootDSSIRecvRate;
+    util::HistogramRolling::Ptr _histDataRecvRate;
 
     /// Histogram for tracking merge rate in bytes per second.
     util::HistogramRolling::Ptr _histMergeRate;

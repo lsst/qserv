@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "xrdsvc/HttpModule.h"
+#include "wcomms/HttpModule.h"
 
 // System headers
 #include <stdexcept>
@@ -38,7 +38,7 @@
 
 using namespace std;
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 HttpModule::HttpModule(string const& context, shared_ptr<wcontrol::Foreman> const& foreman,
                        shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp)
@@ -94,4 +94,4 @@ wbase::TaskSelector HttpModule::translateTaskSelector(string const& func) const 
     return selector;
 }
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms

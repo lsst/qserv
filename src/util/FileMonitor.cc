@@ -69,9 +69,8 @@ void FileMonitor::_checkLoop() {
         char buffer[EVENT_BUF_LEN];
 
         /// There's a lock situation here. If the file is never modified, it's never getting past
-        /// this line. xrootd doesn't exit gracefully anyway, so this is unlikely to cause a problem.
-        /// This thread could be cancelled or the file could be touched, but that's unlikely to make
-        /// program termination much prettier.
+        /// this line. qserv doesn't exit gracefully anyway, so this is unlikely to cause a problem.
+        /// This thread could be cancelled or the file could be touched.
         int length = read(_fD, buffer, EVENT_BUF_LEN);
         LOGS(_log, LOG_LVL_WARN, "FileMonitor::checkLoop() " << _fileName << " read length=" << length);
         if (length < 0) {
