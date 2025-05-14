@@ -198,12 +198,11 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
         _perJobResultSize[uJobId] += fileSize;
         size_t tResultSize = _totalResultSize + _perJobResultSize[uJobId];
         if (tResultSize > _maxResultTableSizeBytes) {
-            ostringstream os;
-            os << queryIdJobStr << " cancelling the query, queryResult table " << _mergeTable
-               << " is too large at " << tResultSize << " bytes, max allowed size is "
-               << _maxResultTableSizeBytes << " bytes";
-            LOGS(_log, LOG_LVL_ERROR, os.str());
-            _error = util::Error(-1, os.str(), -1);
+            string str = queryIdJobStr + " cancelling the query, queryResult table " + _mergeTable +
+                         " is too large at " + to_string(tResultSize) + " bytes, max allowed size is " +
+                         to_string(_maxResultTableSizeBytes) + " bytes";
+            LOGS(_log, LOG_LVL_ERROR, str);
+            _error = util::Error(-1, str, -1);
             return false;
         }
     }
