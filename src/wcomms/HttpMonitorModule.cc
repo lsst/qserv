@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "xrdsvc/HttpMonitorModule.h"
+#include "wcomms/HttpMonitorModule.h"
 
 // System headers
 #include <set>
@@ -41,7 +41,7 @@
 using namespace std;
 using json = nlohmann::json;
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 void HttpMonitorModule::process(string const& context, shared_ptr<wcontrol::Foreman> const& foreman,
                                 shared_ptr<qhttp::Request> const& req,
@@ -133,4 +133,4 @@ json HttpMonitorModule::_echo() {
     return json::object({{"data", body().required<string>("data")}});
 }
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
