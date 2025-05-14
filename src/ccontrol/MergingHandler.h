@@ -36,6 +36,10 @@ namespace lsst::qserv::http {
 class ClientConnPool;
 }  // namespace lsst::qserv::http
 
+namespace lsst::qserv::mysql {
+class CsvStream;
+}  // namespace lsst::qserv::mysql
+
 namespace lsst::qserv::qdisp {
 class Executive;
 class JobQuery;
@@ -50,14 +54,9 @@ class InfileMerger;
 namespace lsst::qserv::ccontrol {
 
 /// MergingHandler is an implementation of a ResponseHandler that implements
-/// czar-side knowledge of the worker's response protocol. It leverages XrdSsi's
-/// API by pulling the exact number of bytes needed for the next logical
-/// fragment instead of performing buffer size and offset
-/// management. Fully-constructed protocol messages are then passed towards an
-/// InfileMerger.
-/// Do to the way the code works, MerginHandler is effectively single threaded.
-/// The worker can only send the data for this job back over a single channel
-/// and it can only send one transmit on that channel at a time.
+/// czar-side knowledge of the worker's response protocol.
+/// The czar collects a result file from the worker and merges that into
+/// the query result table.
 class MergingHandler : public qdisp::ResponseHandler {
 public:
     typedef std::shared_ptr<MergingHandler> Ptr;
@@ -70,7 +69,7 @@ public:
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
     /// @see qdisp::MergeEndStatus
-    qdisp::MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) override;
+    qdisp::MergeEndStatus flushHttp(std::string const& fileUrl, std::uint64_t fileSize) override;
 
     /// @see ResponseHandler::flushHttpError
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
@@ -78,13 +77,16 @@ public:
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
 
+    /// Stop an ongoing file merge, if possible.
+    void cancelFileMerge() override;
+
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override;
 
 private:
     /// Call InfileMerger to do the work of merging this data to the result.
     qdisp::MergeEndStatus _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
-                                     std::string const& fileUrl, uint64_t fileSize);
+                                     std::string const& fileUrl, std::uint64_t fileSize);
 
     /// Set error code and string.
     void _setError(int code, std::string const& msg, int errorState);
@@ -102,6 +104,7 @@ private:
     std::string _wName{"~"};                             ///< worker name
 
     std::weak_ptr<qdisp::Executive> _executive;  ///< Weak pointer to the executive for errors.
+    std::weak_ptr<mysql::CsvStream> _csvStream;  ///< Weak pointer to cancel infile merge.
 };
 
 }  // namespace lsst::qserv::ccontrol

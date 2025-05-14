@@ -50,7 +50,7 @@ using namespace std;
 namespace lsst::qserv::wbase {
 
 /// NopChannel is a NOP implementation of SendChannel for development and
-/// debugging code without an XrdSsi channel.
+/// debugging code without an actual channel.
 class NopChannel : public SendChannel {
 public:
     NopChannel() {}
