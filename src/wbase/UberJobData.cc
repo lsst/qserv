@@ -42,6 +42,7 @@
 #include "protojson/UberJobReadyMsg.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
+#include "util/ResultFileName.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wpublish/ChunkInventory.h"
@@ -192,11 +193,8 @@ void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string
     }
 }
 
-string UberJobData::_resultFileName() const {  // &&& this should use util::ResultFileName ???
-    // UberJobs have multiple chunks which can each have different attempt numbers.
-    // However, each CzarID + UberJobId should be unique as UberJobs are not retried.
-    return to_string(getCzarId()) + "-" + to_string(getQueryId()) + "-" + to_string(getUberJobId()) + "-0" +
-           ".proto";
+string UberJobData::_resultFileName() const {
+    return util::ResultFileName(_czarId, _queryId, _uberJobId).fileName();
 }
 
 string UberJobData::resultFilePath() const {
@@ -205,8 +203,7 @@ string UberJobData::resultFilePath() const {
     return (fs::path(resultsDirname) / _resultFileName()).string();
 }
 
-std::string UberJobData::resultFileHttpUrl() const {  // &&& this should use util::ResultFileName ???
-    // TODO:UJ it seems like this should just be part of the FileChannelShared??? &&&
+std::string UberJobData::resultFileHttpUrl() const {
     return "http://" + _foreman->getFqdn() + ":" + to_string(_resultsHttpPort) + "/" + _resultFileName();
 }
 

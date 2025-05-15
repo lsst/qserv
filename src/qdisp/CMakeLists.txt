@@ -1,5 +1,4 @@
 add_library(qdisp SHARED)
-add_dependencies(qdisp proto)
 
 target_sources(qdisp PRIVATE
     ChunkMeta.cc
