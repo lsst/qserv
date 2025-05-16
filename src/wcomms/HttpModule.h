@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_XRDSVC_HTTPMODULE_H
-#define LSST_QSERV_XRDSVC_HTTPMODULE_H
+#ifndef LSST_QSERV_WCOMMS_HTTPMODULE_H
+#define LSST_QSERV_WCOMMS_HTTPMODULE_H
 
 // System headers
 #include <memory>
@@ -43,7 +43,7 @@ class Foreman;
 }  // namespace lsst::qserv::wcontrol
 
 // This header declarations
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 /**
  * Class HttpModule is an intermediate base class of the Qserv worker modules.
@@ -85,6 +85,6 @@ private:
     std::shared_ptr<wcontrol::Foreman> const _foreman;
 };
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
 
-#endif  // LSST_QSERV_XRDSVC_HTTPMODULE_H
+#endif  // LSST_QSERV_WCOMMS_HTTPMODULE_H

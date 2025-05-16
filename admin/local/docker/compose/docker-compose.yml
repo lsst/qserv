@@ -28,6 +28,14 @@ x-worker-xrootd:
         - "1094"
         - "2131"
         - "3306" # for the worker db, which shares this container's network stack.
+x-worker-wkr:
+    &worker-wkr
+    image: "${QSERV_IMAGE:?err}"
+    init: true
+    expose:
+        - "1094"
+        - "2131"
+        - "3306" # for the worker db, which shares this container's network stack.
 x-repl-worker:
     &repl-worker
     image: "${QSERV_IMAGE:?err}"
@@ -98,6 +106,37 @@ services:
               source: volume_worker_0_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
         network_mode: "service:worker-xrootd-0"
+    worker-wkr-0:
+        << : *worker-wkr
+        command: >
+          entrypoint worker-wkr
+          --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306
+          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
+          --vnid-config "@/usr/local/lib64/libreplica.so {{db_uri}}/qservw_worker 0 0"
+          --repl-instance-id qserv_proj
+          --repl-auth-key replauthkey
+          --repl-admin-auth-key=repladminauthkey
+          --repl-registry-host repl-registry
+          --repl-registry-port 25082
+          --results-dirname /qserv/data/results
+          --mysql-monitor-password CHANGEME_MONITOR
+          --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
+        volumes:
+            - type: volume
+              source: volume_worker_0_results
+              target: /qserv/data/results
+            - type: volume
+              source: volume_worker_0_home
+              target: /home/qserv
+            - type: volume
+              source: volume_worker_0_mariadb_run
+              target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
+            - << : *log-volume
+        networks:
+            default:
+                aliases:
+                    - worker-cmsd-0
+                    - worker-mariadb-0
     worker-xrootd-0:
         << : *worker-xrootd
         command: >
@@ -203,6 +242,41 @@ services:
               source: volume_worker_1_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
         network_mode: "service:worker-xrootd-1"
+    worker-wkr-1:
+        << : *worker-wkr
+        command: >
+          entrypoint --log-level DEBUG worker-wkr
+          --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306?socket={{db_socket}}
+          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
+          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster:CHANGEME2@127.0.0.1:3306/qservw_worker 0 0"
+          --repl-instance-id qserv_proj
+          --repl-auth-key replauthkey
+          --repl-admin-auth-key=repladminauthkey
+          --repl-registry-host repl-registry
+          --repl-registry-port 25082
+          --results-dirname /qserv/data/results
+          --mysql-monitor-password CHANGEME_MONITOR
+          --targs db_socket=/qserv/mariadb/run/mysqld.sock
+          --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
+        volumes:
+            - type: volume
+              source: volume_worker_1_results
+              target: /qserv/data/results
+            - type: volume
+              source: volume_worker_1_xrootd
+              target: /var/run/xrootd
+            - type: volume
+              source: volume_worker_1_home
+              target: /home/qserv
+            - type: volume
+              source: volume_worker_1_mariadb_run
+              target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
+            - << : *log-volume
+        networks:
+            default:
+                aliases:
+                    - worker-cmsd-1
+                    - worker-mariadb-1
     worker-xrootd-1:
         << : *worker-xrootd
         command: >

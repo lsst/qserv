@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "xrdsvc/HttpWorkerCzarModule.h"
+#include "wcomms/HttpWorkerCzarModule.h"
 
 // System headers
 #include <sstream>
@@ -57,14 +57,14 @@
 #include "wpublish/QueriesAndChunks.h"
 #include "wpublish/QueryStatistics.h"
 #include "wsched/BlendScheduler.h"
-#include "xrdsvc/SsiProvider.h"
-#include "xrdsvc/XrdName.h"
+//&&&#include "xrdsvc/SsiProvider.h"
+#include "wcomms/XrdName.h"
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.HttpReplicaMgt");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wcomms.HttpReplicaMgt");
 }
 
 namespace {
@@ -77,7 +77,7 @@ json const extErrorReplicaInUse = json::object({{"in_use", 1}});
 
 }  // namespace
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 void HttpWorkerCzarModule::process(string const& context, shared_ptr<wcontrol::Foreman> const& foreman,
                                    shared_ptr<qhttp::Request> const& req,
@@ -333,4 +333,4 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     return jsRet;
 }
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
