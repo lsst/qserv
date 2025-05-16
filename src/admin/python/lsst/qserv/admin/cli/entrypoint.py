@@ -151,6 +151,9 @@ commands = OrderedDict((
     ("worker-svc", CommandInfo(
         "qserv-worker-http -v -c {{worker_svc_cfg_path}} -n worker",
     )),
+    ("worker-wkr", CommandInfo(
+        "qserv-worker-http -c {{worker_wkr_cfg_path}} -n worker",
+    )),
     ("replication-controller", CommandInfo(
         "qserv-replica-master-http "
         "--config={{db_uri}} "
@@ -188,6 +191,15 @@ option_worker_svc_cfg_path = partial(
     "--worker-svc-cfg-path",
     help="Location to render worker-svc-cfg-file.",
     default=worker_svc_cfg_path,
+    show_default=True,
+)
+
+
+option_worker_wkr_cfg_path = partial(
+    click.option,
+    "--worker-wkr-cfg-path",
+    help="Location to render worker-wkr-cfg-file.",
+    default=worker_wkr_cfg_path,
     show_default=True,
 )
 

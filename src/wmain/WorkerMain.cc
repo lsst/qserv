@@ -66,6 +66,8 @@
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
+#include "wcomms/HttpSvc.h"
+#include "wcomms/XrdName.h"
 
 using namespace lsst::qserv;
 using namespace nlohmann;
@@ -259,7 +261,6 @@ WorkerMain::WorkerMain() {
     // in case if the server is run on the dynamically allocated port.
     _controlHttpSvc = wcomms::HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
                                               workerConfig->getCzarComNumHttpThreads());
-
     auto const port = _controlHttpSvc->start();
     workerConfig->setReplicationHttpPort(port);
 
@@ -271,7 +272,7 @@ WorkerMain::WorkerMain() {
 
 void WorkerMain::waitForTerminate() {
     unique_lock uniq(_terminateMtx);
-    _terminateCv.wait(uniq, [this]() { return _terminate; });
+    _terminateCv.wait(uniq, [this](){ return _terminate; });
 }
 
 void WorkerMain::terminate() {
