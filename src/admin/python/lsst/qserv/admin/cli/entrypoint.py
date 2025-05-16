@@ -94,6 +94,7 @@ czar_http_cfg_path = "/config-etc/qserv-czar.cnf"
 cmsd_manager_cfg_path = "/config-etc/cmsd-manager.cnf"
 cmsd_worker_cfg_path = "/config-etc/cmsd-worker.cf"
 xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
+worker_wkr_cfg_path = "/config-etc/worker-wkr.cf"
 xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
 
 socket_option_help = f"""Accepts query key {click.style('socket',
@@ -167,6 +168,9 @@ commands = OrderedDict((
     ("worker-xrootd", CommandInfo(
         "xrootd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}",
     )),
+    ("worker-wkr", CommandInfo(
+        "qserv-worker-http -c {{worker_wkr_cfg_path}} -n worker",
+    )),
     ("replication-controller", CommandInfo(
         "qserv-replica-master-http "
         "--config={{db_uri}} "
@@ -222,6 +226,15 @@ option_xrdssi_cfg_path = partial(
     "--xrdssi-cfg-path",
     help="Location to render xrdssi-cfg-file.",
     default=xrdssi_cfg_path,
+    show_default=True,
+)
+
+
+option_worker_wkr_cfg_path = partial(
+    click.option,
+    "--worker-wkr-cfg-path",
+    help="Location to render worker-wkr-cfg-file.",
+    default=worker_wkr_cfg_path,
     show_default=True,
 )
 
@@ -786,6 +799,7 @@ def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
 @option_cmsd_worker_cfg_path()
 @option_xrdssi_cfg_file()
 @option_xrdssi_cfg_path()
+@option_worker_wkr_cfg_path()
 @option_log_cfg_file()
 @options_targs()
 @options_cms()
