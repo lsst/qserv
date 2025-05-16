@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "xrdsvc/HttpReplicaMgtModule.h"
+#include "wcomms/HttpReplicaMgtModule.h"
 
 // System headers
 #include <sstream>
@@ -29,7 +29,7 @@
 
 // Third party headers
 #include "lsst/log/Log.h"
-#include "XrdSsi/XrdSsiCluster.hh"
+//&&&#include "XrdSsi/XrdSsiCluster.hh"
 
 // Qserv headers
 #include "http/Exceptions.h"
@@ -41,16 +41,16 @@
 #include "wcontrol/Foreman.h"
 #include "wcontrol/ResourceMonitor.h"
 #include "wpublish/ChunkInventory.h"
-#include "xrdsvc/SsiProvider.h"
-#include "xrdsvc/XrdName.h"
+//&&& #include "wcomms/SsiProvider.h"
+#include "wcomms/XrdName.h"
 
-extern XrdSsiProvider* XrdSsiProviderLookup;
+//&&&extern XrdSsiProvider* XrdSsiProviderLookup;
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.HttpReplicaMgt");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wcomms.HttpReplicaMgt");
 }
 
 namespace {
@@ -64,7 +64,7 @@ string makeResource(string const& database, int chunk) { return "/chk/" + databa
 
 }  // namespace
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 void HttpReplicaMgtModule::process(string const& context, shared_ptr<wcontrol::Foreman> const& foreman,
                                    shared_ptr<qhttp::Request> const& req,
@@ -344,4 +344,4 @@ void HttpReplicaMgtModule::_modifyChunk(string const& func, int chunk, string co
     }
 }
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms

@@ -43,7 +43,7 @@
 #include "global/ResourceUnit.h"
 #include "wconfig/WorkerConfig.h"
 #include "wpublish/ChunkInventory.h"
-#include "xrdsvc/XrdName.h"
+#include "wcomms/XrdName.h"
 
 /******************************************************************************/
 /*                               G l o b a l s                                */
