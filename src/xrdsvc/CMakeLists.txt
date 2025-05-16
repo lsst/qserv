@@ -1,11 +1,11 @@
 add_library(xrdsvc SHARED)
 
 target_sources(xrdsvc PRIVATE
-    HttpModule.cc
-    HttpMonitorModule.cc
-    HttpReplicaMgtModule.cc
-    HttpSvc.cc
-    HttpWorkerCzarModule.cc
+#&&&    HttpModule.cc
+#&&&    HttpMonitorModule.cc
+#&&&    HttpReplicaMgtModule.cc
+#&&&    HttpSvc.cc
+#&&&    HttpWorkerCzarModule.cc
     SsiProvider.cc
     SsiService.cc
 )
@@ -24,6 +24,7 @@ target_link_libraries(xrdsvc PUBLIC
     protojson
     sql
     wbase
+    wcomms
     wconfig
     wcontrol
     wdb
