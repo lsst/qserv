@@ -144,6 +144,7 @@ ChunkInventory::ChunkInventory(ChunkInventory::ExistMap const& existMap, string 
 
 void ChunkInventory::init(string const& name, mysql::MySqlConfig const& mySqlConfig) {
     _name = name;
+    LOGS(_log, LOG_LVL_ERROR, "&&& ChunkInventory::init _name=" << _name);
     auto sc = SqlConnectionFactory::make(mySqlConfig);
     _init(*sc);
 }
