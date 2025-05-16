@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "xrdsvc/HttpSvc.h"
+#include "wcomms/HttpSvc.h"
 
 // System headers
 #include <stdexcept>
@@ -31,9 +31,9 @@
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wpublish/ChunkInventory.h"
-#include "xrdsvc/HttpMonitorModule.h"
-#include "xrdsvc/HttpReplicaMgtModule.h"
-#include "xrdsvc/HttpWorkerCzarModule.h"
+#include "wcomms/HttpMonitorModule.h"
+#include "wcomms/HttpReplicaMgtModule.h"
+#include "wcomms/HttpWorkerCzarModule.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -43,13 +43,13 @@ using namespace std;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.HttpSvc");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wcomms.HttpSvc");
 
 string const serviceName = "WORKER-MANAGEMENT ";
 
 }  // namespace
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 shared_ptr<HttpSvc> HttpSvc::create(shared_ptr<wcontrol::Foreman> const& foreman, uint16_t port,
                                     unsigned int numThreads) {
@@ -60,7 +60,7 @@ HttpSvc::HttpSvc(shared_ptr<wcontrol::Foreman> const& foreman, uint16_t port, un
         : _foreman(foreman), _port(port), _numThreads(numThreads) {}
 
 uint16_t HttpSvc::start() {
-    string const context = "xrdsvc::HttpSvc::" + string(__func__) + " ";
+    string const context = "wcomms::HttpSvc::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
     if (_httpServerPtr != nullptr) {
         throw logic_error(context + "the service is already running.");
@@ -167,7 +167,7 @@ uint16_t HttpSvc::start() {
 }
 
 void HttpSvc::stop() {
-    string const context = "xrdsvc::HttpSvc::" + string(__func__) + " ";
+    string const context = "wcomms::HttpSvc::" + string(__func__) + " ";
     lock_guard<mutex> const lock(_mtx);
     if (_httpServerPtr == nullptr) {
         throw logic_error(context + "the service is not running.");
@@ -185,4 +185,4 @@ void HttpSvc::stop() {
     LOGS(_log, LOG_LVL_INFO, context + "stopped");
 }
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
