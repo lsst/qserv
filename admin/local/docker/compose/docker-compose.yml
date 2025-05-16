@@ -21,6 +21,14 @@ x-worker-svc:
     init: true
     expose:
         - "3306" # for the worker db, which shares this container's network stack.
+x-worker-wkr:
+    &worker-wkr
+    image: "${QSERV_IMAGE:?err}"
+    init: true
+    expose:
+        - "1094"
+        - "2131"
+        - "3306" # for the worker db, which shares this container's network stack.
 x-repl-worker:
     &repl-worker
     image: "${QSERV_IMAGE:?err}"

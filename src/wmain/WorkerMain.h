@@ -44,15 +44,14 @@ namespace lsst::qserv::wcomms {
 class HttpSvc;
 }  // namespace lsst::qserv::wcomms
 
+
 namespace lsst::qserv::wmain {
 
 class WorkerMain {
 public:
     using Ptr = std::shared_ptr<WorkerMain>;
 
-    /// Returns a pointer to the global instance.
-    /// @throw std::runtime_error if global pointer is null.
-    static std::shared_ptr<WorkerMain> get();
+    static std::weak_ptr<WorkerMain> get() { return _globalWorkerMain; }
     static Ptr setup();
 
     ~WorkerMain();
