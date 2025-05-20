@@ -194,6 +194,14 @@ option_worker_svc_cfg_path = partial(
     show_default=True,
 )
 
+option_worker_wkr_cfg_file = partial(
+    click.option,
+    "--worker-wkr-cfg-file",
+    help="Path to the worker-wkr config file.",
+    default=worker_wkr_cfg_template,
+    show_default=True,
+)
+
 
 option_worker_wkr_cfg_path = partial(
     click.option,
