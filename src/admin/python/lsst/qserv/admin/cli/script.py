@@ -403,6 +403,85 @@ def enter_worker_cmsd(
     sys.exit(_run(args=None, env=env, cmd=cmd))
 
 
+def enter_worker_wkr(
+    targs: Targs,
+    db_uri: str,
+    db_admin_uri: str,
+    worker_wkr_cfg_file: str,
+    worker_wkr_cfg_path: str,
+    log_cfg_file: str,
+    cmd: str,
+) -> None:
+    """Start a worker wkr node.
+
+    Parameters
+    ----------
+    targs : Targs
+        The arguments for template expansion.
+    db_uri : str
+        The non-admin URI to the proxy's database.
+    db_admin_uri : str
+        The admin URI to the proxy's database.
+    worker_wkr_cfg_file : str
+        The path to the xrdssi config file.
+    worker_wkr_cfg_path : str
+        The location to render to the xrdssi config file.
+    log_cfg_file : `str`
+        Location of the log4cxx config file.
+    cmd : `str`
+        The jinja2 template for the command for this function to execute.
+    """
+
+    # TODO This sets the amount of data that can be locked into memory to
+    # almost the entire amount of memory on the machine. I think in a dev-env
+    # (docker-only on a single machine) we don't want to grab quite so much
+    # memory? TBD WTD here - do/don't set this? set it to how much? needs a way
+    # to set env (dev/prod/etc)
+    # # Increase limit for locked-in-memory size
+    # MLOCK_AMOUNT=$(grep MemTotal /proc/meminfo | awk '{printf("%.0f\n", $2 - 1000000)}')
+    # ulimit -l "$MLOCK_AMOUNT"
+
+    if not os.path.exists(targs["results_dirname"]):
+        os.makedirs(targs["results_dirname"])
+
+    url = _process_uri(
+        uri=db_uri,
+        query_keys=("socket",),
+        option=options.option_db_uri.args[0],
+        block=True,
+    )
+    _ = _process_uri(
+        uri=db_admin_uri,
+        query_keys=("socket",),
+        option=options.option_db_admin_uri.args[0],
+        block=False,
+    )
+
+    targs["db_host"] = url.host
+    targs["db_port"] = url.port or ""
+    targs["db_socket"] = url.query.get("socket", "")
+
+    save_template_cfg(targs)
+    save_template_cfg({"mysqld_user_qserv": mysqld_user_qserv})
+    save_template_cfg({"mysqld_user_qserv_password": mysqld_user_qserv_password})
+
+
+    smig_worker(db_admin_uri, update=False)
+
+    # TODO worker (and manager) xrootd+cmsd pair should "share" the cfg file
+    # it's in different containers but should be same source & processing.
+    # Rename these files to be more agnostic.
+    apply_template_cfg_file(worker_wkr_cfg_file, worker_wkr_cfg_path)
+
+    env = dict(
+        os.environ,
+        LD_PRELOAD=ld_preload,
+        LSST_LOG_CONFIG=log_cfg_file,
+    )
+
+    sys.exit(_run(args=None, env=env, cmd=cmd))
+
+
 def enter_worker_xrootd(
     targs: Targs,
     db_uri: str,
