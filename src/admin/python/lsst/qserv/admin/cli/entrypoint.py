@@ -86,6 +86,7 @@ czar_http_cfg_template = os.path.join(template_dir, "http/etc/qserv-czar.cnf.jin
 cmsd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-manager.cf.jinja")
 cmsd_worker_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-worker.cf.jinja")
 xrdssi_cfg_template = os.path.join(template_dir, "xrootd/etc/xrdssi.cf.jinja")
+worker_wkr_cfg_template = os.path.join(template_dir, "worker-wkr/etc/worker-wkr.cf.jinja")
 xrootd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/xrootd-manager.cf.jinja")
 
 mysql_proxy_cfg_path = "/config-etc/my-proxy.cnf"
@@ -224,6 +225,14 @@ option_xrdssi_cfg_path = partial(
     "--xrdssi-cfg-path",
     help="Location to render xrdssi-cfg-file.",
     default=xrdssi_cfg_path,
+    show_default=True,
+)
+
+option_worker_wkr_cfg_file = partial(
+    click.option,
+    "--worker-wkr-cfg-file",
+    help="Path to the worker-wkr config file.",
+    default=worker_wkr_cfg_template,
     show_default=True,
 )
 
@@ -785,6 +794,7 @@ def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
 @option_cmsd_worker_cfg_path()
 @option_xrdssi_cfg_file()
 @option_xrdssi_cfg_path()
+@option_worker_wkr_cfg_file()
 @option_worker_wkr_cfg_path()
 @option_log_cfg_file()
 @options_targs()
@@ -800,6 +810,41 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
         cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
         xrdssi_cfg_file=targs["xrdssi_cfg_file"],
         xrdssi_cfg_path=targs["xrdssi_cfg_path"],
+        log_cfg_file=targs["log_cfg_file"],
+        cmd=targs["cmd"],
+    )
+
+
+@entrypoint.command(help=f"Start as a worker wkr node.\n\n{socket_option_description}")
+@pass_context
+@option_debug()
+@option_db_uri(help=worker_db_help)
+@option_db_admin_uri(help=admin_worker_db_help)
+@option_vnid_config(required=True)
+@option_repl_instance_id(required=True)
+@option_repl_auth_key(required=True)
+@option_repl_admin_auth_key(required=True)
+@option_repl_registry_host(required=True)
+@option_repl_registry_port(required=True)
+@option_repl_http_port(required=True)
+@option_results_dirname()
+@option_mysql_monitor_password()
+@option_db_qserv_user()
+@option_worker_wkr_cfg_file()
+@option_worker_wkr_cfg_path()
+@option_log_cfg_file()
+@options_targs()
+@options_cms()
+@option_options_file()
+def worker_wkr(ctx: click.Context, **kwargs: Any) -> None:
+    targs = utils.targs(ctx)
+    targs = render_targs(targs)
+    script.enter_worker_wkr(
+        targs=targs,
+        db_uri=targs["db_uri"],
+        db_admin_uri=targs["db_admin_uri"],
+        worker_wkr_cfg_file=targs["worker_wkr_cfg_file"],
+        worker_wkr_cfg_path=targs["worker_wkr_cfg_path"],
         log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
     )
