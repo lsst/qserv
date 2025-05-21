@@ -1,6 +1,5 @@
 [frontend]
 
-xrootd={{ xrootd_manager }}:1094
 
 #[mgmtdb]
 #db=qservMeta
@@ -57,9 +56,9 @@ port = {{ czar_db_port }}
 [tuning]
 #largeResultConcurrentMerges = 3
 largeResultConcurrentMerges = 6
-# xrootdCBThreadsInit must be less than xrootdCBThreadsMax
-xrootdCBThreadsMax = 500
-xrootdCBThreadsInit = 50
+# &&& xrootdCBThreadsInit must be less than xrootdCBThreadsMax
+# &&& xrootdCBThreadsMax = 500
+# &&& xrootdCBThreadsInit = 50
 
 # INSTRUCTIONS:
 #
@@ -76,7 +75,7 @@ xrootdCBThreadsInit = 50
 #
 #   The value set below has been tested to work for 80 simultaneous "shared scan" queries
 #   of 150,000 chunks each.
-xrootdSpread = 0
+# &&& xrootdSpread = 0
 
 # Seconds between updates the czar sends to qmeta for completed chunks.
 # This is per user query and important milestones ignore this limit.

@@ -19,6 +19,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#if 0  // &&& probably delete this file
 // System headers
 #include <iostream>
 #include <string>
@@ -108,3 +109,5 @@ extern "C" string XrdCmsgetVnId(XrdCmsgetVnIdArgs) {
 }
 
 XrdVERSIONINFO(XrdCmsgetVnId, vnid_mysql_0);
+
+#endif  //&&&

@@ -74,7 +74,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuf
     boost::system::error_code ec;
     boost::asio::read(socket, boost::asio::buffer(ptr->data(), bytes), boost::asio::transfer_at_least(bytes),
                       ec);
-    return not ::isErrorCode(ec, __func__);
+    return not::isErrorCode(ec, __func__);
 }
 
 template <class T>
@@ -154,7 +154,7 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
     // Now read the body of the request
 
     ProtocolFileRequest request;
-    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
+    if (not::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
     LOGS(_log, LOG_LVL_INFO,
          context << __func__ << "  <OPEN> database: " << request.database() << ", file: " << request.file());
