@@ -272,7 +272,7 @@ WorkerMain::WorkerMain() {
 
 void WorkerMain::waitForTerminate() {
     unique_lock uniq(_terminateMtx);
-    _terminateCv.wait(uniq, [this](){ return _terminate; });
+    _terminateCv.wait(uniq, [this]() { return _terminate; });
 }
 
 void WorkerMain::terminate() {
