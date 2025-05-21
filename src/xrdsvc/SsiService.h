@@ -44,7 +44,7 @@ class Foreman;
 
 namespace lsst::qserv::wcomms {
 class HttpSvc;
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
 
 namespace lsst::qserv::xrdsvc {
 

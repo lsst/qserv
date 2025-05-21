@@ -247,7 +247,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     // by the Replication System. Update the port number in the configuration
     // in case if the server is run on the dynamically allocated port.
     _controlHttpSvc = wcomms::HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
-                                      workerConfig->getCzarComNumHttpThreads());
+                                              workerConfig->getCzarComNumHttpThreads());
 
     auto const port = _controlHttpSvc->start();
     workerConfig->setReplicationHttpPort(port);

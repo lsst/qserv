@@ -72,7 +72,6 @@ using namespace nlohmann;
 using namespace std;
 using namespace std::literals;
 
-
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wmain.WorkerMain");
 
@@ -136,7 +135,6 @@ void registryUpdateLoop(string const& id) {
     }
 }
 
-
 }  // namespace
 
 namespace lsst::qserv::wmain {
@@ -145,12 +143,12 @@ std::weak_ptr<WorkerMain> WorkerMain::_globalWorkerMain;
 std::atomic<bool> WorkerMain::_setup{false};
 
 WorkerMain::Ptr WorkerMain::setup() {
-     if (_setup.exchange(true)) {
-         throw util::Bug(ERR_LOC, "WorkerMain already setup when setup called again");
-     }
-     auto ptr = Ptr(new WorkerMain());
-     _globalWorkerMain = ptr;
-     return ptr;
+    if (_setup.exchange(true)) {
+        throw util::Bug(ERR_LOC, "WorkerMain already setup when setup called again");
+    }
+    auto ptr = Ptr(new WorkerMain());
+    _globalWorkerMain = ptr;
+    return ptr;
 }
 
 WorkerMain::WorkerMain() {
@@ -163,7 +161,7 @@ WorkerMain::WorkerMain() {
 
     // Set thread pool size.
     unsigned int poolSize = ranges::max({wsched::BlendScheduler::getMinPoolSize(),
-        workerConfig->getThreadPoolSize(), thread::hardware_concurrency()});
+                                         workerConfig->getThreadPoolSize(), thread::hardware_concurrency()});
 
     unsigned int maxPoolThreads = max(workerConfig->getMaxPoolThreads(), poolSize);
 
@@ -171,8 +169,8 @@ WorkerMain::WorkerMain() {
     unsigned int maxThread = poolSize;
     int maxReserve = 2;
     auto group = make_shared<wsched::GroupScheduler>("SchedGroup", maxThread, maxReserve,
-            workerConfig->getMaxGroupSize(),
-            wsched::SchedulerBase::getMaxPriority());
+                                                     workerConfig->getMaxGroupSize(),
+                                                     wsched::SchedulerBase::getMaxPriority());
 
     int const fastest = lsst::qserv::protojson::ScanInfo::Rating::FASTEST;
     int const fast = lsst::qserv::protojson::ScanInfo::Rating::FAST;
@@ -186,17 +184,17 @@ WorkerMain::WorkerMain() {
     int maxTasksBootedPerUserQuery = workerConfig->getMaxTasksBootedPerUserQuery();
     int maxConcurrentBootedTasks = workerConfig->getMaxConcurrentBootedTasks();
     vector<wsched::ScanScheduler::Ptr> scanSchedulers{
-        make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, workerConfig->getMaxReserveSlow(),
-                workerConfig->getPrioritySlow(),
-                workerConfig->getMaxActiveChunksSlow(), medium + 1, slow,
-                slowScanMaxMinutes),
-                        make_shared<wsched::ScanScheduler>("SchedFast", maxThread, workerConfig->getMaxReserveFast(),
-                                workerConfig->getPriorityFast(),
-                                workerConfig->getMaxActiveChunksFast(), fastest, fast,
-                                fastScanMaxMinutes),
-                                make_shared<wsched::ScanScheduler>(
-                                        "SchedMed", maxThread, workerConfig->getMaxReserveMed(), workerConfig->getPriorityMed(),
-                                        workerConfig->getMaxActiveChunksMed(), fast + 1, medium, medScanMaxMinutes),
+            make_shared<wsched::ScanScheduler>("SchedSlow", maxThread, workerConfig->getMaxReserveSlow(),
+                                               workerConfig->getPrioritySlow(),
+                                               workerConfig->getMaxActiveChunksSlow(), medium + 1, slow,
+                                               slowScanMaxMinutes),
+            make_shared<wsched::ScanScheduler>("SchedFast", maxThread, workerConfig->getMaxReserveFast(),
+                                               workerConfig->getPriorityFast(),
+                                               workerConfig->getMaxActiveChunksFast(), fastest, fast,
+                                               fastScanMaxMinutes),
+            make_shared<wsched::ScanScheduler>(
+                    "SchedMed", maxThread, workerConfig->getMaxReserveMed(), workerConfig->getPriorityMed(),
+                    workerConfig->getMaxActiveChunksMed(), fast + 1, medium, medScanMaxMinutes),
     };
 
     auto snail = make_shared<wsched::ScanScheduler>(
@@ -226,8 +224,8 @@ WorkerMain::WorkerMain() {
     string vectMinRunningSizesStr = workerConfig->getQPoolMinRunningSizes();
 
     _foreman = wcontrol::Foreman::create(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries,
-            ::makeChunkInventory(_workerName, mySqlConfig), sqlConnMgr, qPoolSize,
-            maxPriority, vectRunSizesStr, vectMinRunningSizesStr);
+                                         ::makeChunkInventory(_workerName, mySqlConfig), sqlConnMgr,
+                                         qPoolSize, maxPriority, vectRunSizesStr, vectMinRunningSizesStr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
@@ -235,7 +233,7 @@ WorkerMain::WorkerMain() {
     string logConfigFile = std::getenv("LSST_LOG_CONFIG");
     if (logConfigFile == "") {
         LOGS(_log, LOG_LVL_ERROR,
-                "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
+             "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
     } else {
         LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
@@ -252,7 +250,7 @@ WorkerMain::WorkerMain() {
     // by the Replication System. Update the port number in the configuration
     // in case if the server is run on the dynamically allocated port.
     _controlHttpSvc = wcomms::HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
-            workerConfig->getCzarComNumHttpThreads());
+                                              workerConfig->getCzarComNumHttpThreads());
 
     auto const port = _controlHttpSvc->start();
     workerConfig->setReplicationHttpPort(port);
@@ -265,7 +263,7 @@ WorkerMain::WorkerMain() {
 
 void WorkerMain::waitForTerminate() {
     unique_lock uniq(_terminateMtx);
-    _terminateCv.wait(uniq, [this](){ return _terminate; });
+    _terminateCv.wait(uniq, [this]() { return _terminate; });
 }
 
 void WorkerMain::terminate() {

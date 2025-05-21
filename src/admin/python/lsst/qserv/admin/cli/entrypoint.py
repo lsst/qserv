@@ -37,7 +37,6 @@ from click.decorators import pass_context
 from .options import (
     option_case,
     option_cmd,
-    option_cmsd_manager_name,
     option_compare_results,
     option_czar_connection,
     option_db_uri,
@@ -68,7 +67,6 @@ from .options import (
     option_unload,
     option_vnid_config,
     option_worker_connection,
-    option_xrootd_manager,
 )
 from . import utils
 from .render_targs import render_targs
@@ -83,20 +81,12 @@ template_dir = "/usr/local/qserv/templates/"
 mysql_proxy_cfg_template = os.path.join(template_dir, "proxy/etc/my-proxy.cnf.jinja")
 czar_cfg_template = os.path.join(template_dir, "proxy/etc/qserv-czar.cnf.jinja")
 czar_http_cfg_template = os.path.join(template_dir, "http/etc/qserv-czar.cnf.jinja")
-cmsd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-manager.cf.jinja")
-cmsd_worker_cfg_template = os.path.join(template_dir, "xrootd/etc/cmsd-worker.cf.jinja")
-xrdssi_cfg_template = os.path.join(template_dir, "xrootd/etc/xrdssi.cf.jinja")
 worker_wkr_cfg_template = os.path.join(template_dir, "worker-wkr/etc/worker-wkr.cf.jinja")
-xrootd_manager_cfg_template = os.path.join(template_dir, "xrootd/etc/xrootd-manager.cf.jinja")
 
 mysql_proxy_cfg_path = "/config-etc/my-proxy.cnf"
 czar_cfg_path = "/config-etc/qserv-czar.cnf"
 czar_http_cfg_path = "/config-etc/qserv-czar.cnf"
-cmsd_manager_cfg_path = "/config-etc/cmsd-manager.cnf"
-cmsd_worker_cfg_path = "/config-etc/cmsd-worker.cf"
-xrdssi_cfg_path = "/config-etc/xrdssi-worker.cf"
 worker_wkr_cfg_path = "/config-etc/worker-wkr.cf"
-xrootd_manager_cfg_path = "/config-etc/xrootd-manager.cf"
 
 socket_option_help = f"""Accepts query key {click.style('socket',
 bold=True)}: The path to a socket file used to connect to the database.
@@ -119,7 +109,7 @@ extended_args_description = """Options and arguments may be passed directly to
 
 
 worker_db_help = f"""Non-admin URI to the worker database. {socket_option_help}
- Populates 'hostname', 'port', and 'socket' under '[mysql]' in the xrdssi config
+ Populates 'hostname', 'port', and 'socket' under '[mysql]' in the worker config
 file. Also used to wait for schema to be at the correct version in this
 database.
 """
@@ -152,23 +142,13 @@ commands = OrderedDict((
         "--conn-pool-size {{http_conn_pool_size}} "
         "--verbose",
     )),
-    ("cmsd-manager", CommandInfo(
-        "cmsd -c {{cmsd_manager_cfg_path}} -n manager -I v4",
-    )),
-    ("xrootd-manager", CommandInfo("xrootd -c {{xrootd_manager_cfg_path}} -n manager -I v4")),
-    ("worker-cmsd", CommandInfo(
-        "cmsd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}",
-    )),
     ("worker-repl", CommandInfo(
         "qserv-replica-worker "
         "--qserv-worker-db={{db_admin_uri}} "
         "--config={{config}} {% for arg in extended_args %}{{arg}}  {% endfor %}"
     )),
-    ("worker-xrootd", CommandInfo(
-        "xrootd -c {{cmsd_worker_cfg_path}} -n worker -I v4 -l @libXrdSsiLog.so -+xrdssi {{xrdssi_cfg_path}}",
-    )),
     ("worker-wkr", CommandInfo(
-        "qserv-worker-http -c {{worker_wkr_cfg_path}} -n worker",
+        "qserv-worker-http -v -c {{worker_wkr_cfg_path}} -n worker",
     )),
     ("replication-controller", CommandInfo(
         "qserv-replica-master-http "
@@ -192,41 +172,6 @@ commands = OrderedDict((
     ("spawned-app-help", CommandInfo()),
 ))
 
-
-option_cmsd_worker_cfg_file = partial(
-    click.option,
-    "--cmsd-worker-cfg-file",
-    help="Path to the cmsd worker config file.",
-    default=cmsd_worker_cfg_template,
-    show_default=True,
-)
-
-
-option_cmsd_worker_cfg_path = partial(
-    click.option,
-    "--cmsd-worker-cfg-path",
-    help="Location to render cmsd_worker_cfg_file.",
-    default=cmsd_worker_cfg_path,
-    show_default=True,
-)
-
-
-option_xrdssi_cfg_file = partial(
-    click.option,
-    "--xrdssi-cfg-file",
-    help="Path to the xrdssi config file.",
-    default=xrdssi_cfg_template,
-    show_default=True,
-)
-
-
-option_xrdssi_cfg_path = partial(
-    click.option,
-    "--xrdssi-cfg-path",
-    help="Location to render xrdssi-cfg-file.",
-    default=xrdssi_cfg_path,
-    show_default=True,
-)
 
 option_worker_wkr_cfg_file = partial(
     click.option,
@@ -547,7 +492,6 @@ def delete_database(
     required=True,
 )
 @option_mysql_monitor_password()
-@option_xrootd_manager(required=True)
 @click.option(
     "--proxy-backend-address",
     default="127.0.0.1:3306",
@@ -616,7 +560,6 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
     required=True,
 )
 @option_mysql_monitor_password()
-@option_xrootd_manager(required=True)
 @click.option(
     "--http-port",
     default="4048",
@@ -711,111 +654,7 @@ def czar_http(ctx: click.Context, **kwargs: Any) -> None:
     )
 
 
-@entrypoint.command()
-@pass_context
-@click.option(
-    "--cms-delay-servers",
-    help="Populates 'cms.delay servers' in the cmsd manager config file.",
-)
-@click.option(
-    "--cmsd_manager_cfg_file",
-    help="Path to the cmsd manager config file.",
-    default=cmsd_manager_cfg_template,
-    show_default=True,
-)
-@click.option(
-    "--cmsd-manager-cfg-path",
-    help="Location to render cmsd_manager_cfg_file",
-    default=cmsd_manager_cfg_path,
-    show_default=True,
-)
-@options_targs()
-@options_cms()
-@option_options_file()
-def cmsd_manager(ctx: click.Context, **kwargs: Any) -> None:
-    """Start as a cmsd manager node.
-    """
-    targs = utils.targs(ctx)
-    targs = render_targs(targs)
-    script.enter_manager_cmsd(
-        targs=targs,
-        cmsd_manager_cfg_file=targs["cmsd_manager_cfg_file"],
-        cmsd_manager_cfg_path=targs["cmsd_manager_cfg_path"],
-        cmd=targs["cmd"],
-    )
-
-
-@entrypoint.command()
-@pass_context
-@option_cmsd_manager_name()
-@click.option(
-    "--xrootd_manager-cfg-file",
-    help="Path to the xrootd manager config file.",
-    default=xrootd_manager_cfg_template,
-    show_default=True,
-)
-@click.option(
-    "--xrootd-manager-cfg-path",
-    help="Location to render xrootd_manager_cfg_file.",
-    default=xrootd_manager_cfg_path,
-    show_default=True,
-)
-@options_targs()
-@options_cms()
-@option_options_file()
-def xrootd_manager(ctx: click.Context, **kwargs: Any) -> None:
-    """Start as an xrootd manager node.
-    """
-    targs = utils.targs(ctx)
-    targs = render_targs(targs)
-    script.enter_xrootd_manager(
-        targs=targs,
-        xrootd_manager_cfg_file=targs["xrootd_manager_cfg_file"],
-        xrootd_manager_cfg_path=targs["xrootd_manager_cfg_path"],
-        cmd=targs["cmd"],
-    )
-
-
-@entrypoint.command(help=f"Start as a worker cmsd node.\n\n{socket_option_description}")
-@pass_context
-@option_db_uri(help=worker_db_help)
-@option_vnid_config(required=True)
-@option_vnid_config(required=True)
-@option_repl_instance_id(required=True)
-@option_repl_auth_key(required=True)
-@option_repl_admin_auth_key(required=True)
-@option_repl_registry_host(required=True)
-@option_repl_registry_port(required=True)
-@option_repl_http_port(required=True)
-@option_results_dirname()
-@option_cmsd_manager_name()
-@option_debug()
-@option_cmsd_worker_cfg_file()
-@option_cmsd_worker_cfg_path()
-@option_xrdssi_cfg_file()
-@option_xrdssi_cfg_path()
-@option_worker_wkr_cfg_file()
-@option_worker_wkr_cfg_path()
-@option_log_cfg_file()
-@options_targs()
-@options_cms()
-@option_options_file()
-def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
-    targs = utils.targs(ctx)
-    targs = render_targs(targs)
-    script.enter_worker_cmsd(
-        targs=targs,
-        db_uri=targs["db_uri"],
-        cmsd_worker_cfg_file=targs["cmsd_worker_cfg_file"],
-        cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
-        xrdssi_cfg_file=targs["xrdssi_cfg_file"],
-        xrdssi_cfg_path=targs["xrdssi_cfg_path"],
-        log_cfg_file=targs["log_cfg_file"],
-        cmd=targs["cmd"],
-    )
-
-
-@entrypoint.command(help=f"Start as a worker wkr node.\n\n{socket_option_description}")
+@entrypoint.command(help=f"Start as a worker-wkr node.\n\n{socket_option_description}")
 @pass_context
 @option_debug()
 @option_db_uri(help=worker_db_help)
@@ -845,46 +684,6 @@ def worker_wkr(ctx: click.Context, **kwargs: Any) -> None:
         db_admin_uri=targs["db_admin_uri"],
         worker_wkr_cfg_file=targs["worker_wkr_cfg_file"],
         worker_wkr_cfg_path=targs["worker_wkr_cfg_path"],
-        log_cfg_file=targs["log_cfg_file"],
-        cmd=targs["cmd"],
-    )
-
-
-@entrypoint.command(help=f"Start as a worker xrootd node.\n\n{socket_option_description}")
-@pass_context
-@option_debug()
-@option_db_uri(help=worker_db_help)
-@option_db_admin_uri(help=admin_worker_db_help)
-@option_vnid_config(required=True)
-@option_repl_instance_id(required=True)
-@option_repl_auth_key(required=True)
-@option_repl_admin_auth_key(required=True)
-@option_repl_registry_host(required=True)
-@option_repl_registry_port(required=True)
-@option_repl_http_port(required=True)
-@option_results_dirname()
-@option_cmsd_manager_name()
-@option_mysql_monitor_password()
-@option_db_qserv_user()
-@option_cmsd_worker_cfg_file()
-@option_cmsd_worker_cfg_path()
-@option_xrdssi_cfg_file()
-@option_xrdssi_cfg_path()
-@option_log_cfg_file()
-@options_targs()
-@options_cms()
-@option_options_file()
-def worker_xrootd(ctx: click.Context, **kwargs: Any) -> None:
-    targs = utils.targs(ctx)
-    targs = render_targs(targs)
-    script.enter_worker_xrootd(
-        targs=targs,
-        db_uri=targs["db_uri"],
-        db_admin_uri=targs["db_admin_uri"],
-        cmsd_worker_cfg_file=targs["cmsd_worker_cfg_file"],
-        cmsd_worker_cfg_path=targs["cmsd_worker_cfg_path"],
-        xrdssi_cfg_file=targs["xrdssi_cfg_file"],
-        xrdssi_cfg_path=targs["xrdssi_cfg_path"],
         log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
     )

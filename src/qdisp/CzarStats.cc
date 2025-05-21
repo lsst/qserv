@@ -61,7 +61,7 @@ CzarStats::CzarStats(util::QdispPool::Ptr const& qdispPool)
     auto bucketValsRates = {128'000.0,       512'000.0,       1'024'000.0,     16'000'000.0,
                             128'000'000.0,   256'000'000.0,   512'000'000.0,   768'000'000.0,
                             1'000'000'000.0, 2'000'000'000.0, 4'000'000'000.0, 8'000'000'000.0};
-    _histXRootDSSIRecvRate = util::HistogramRolling::Ptr(
+    _histXRootDSSIRecvRate = util::HistogramRolling::Ptr(  // &&& rename
             new util::HistogramRolling("XRootDSSIRecvRateBytesPerSec", bucketValsRates, 1h, 10000));
     _histMergeRate = util::HistogramRolling::Ptr(
             new util::HistogramRolling("MergeRateBytesPerSec", bucketValsRates, 1h, 10000));
@@ -102,7 +102,7 @@ void CzarStats::endQueryRespConcurrentProcessing(TIMEPOINT start, TIMEPOINT end)
     _histRespProcessing->addEntry(end, secs.count());
 }
 
-void CzarStats::addXRootDSSIRecvRate(double bytesPerSec) {
+void CzarStats::addXRootDSSIRecvRate(double bytesPerSec) {  // &&& rename
     _histXRootDSSIRecvRate->addEntry(bytesPerSec);
     LOGS(_log, LOG_LVL_TRACE,
          "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histXRootDSSIRecvRate->getString(""));
