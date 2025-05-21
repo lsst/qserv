@@ -42,7 +42,7 @@ class Foreman;
 
 namespace lsst::qserv::wcomms {
 class HttpSvc;
-}  // namespace lsst::qserv::wcontrol
+}  // namespace lsst::qserv::wcomms
 
 namespace lsst::qserv::wmain {
 
@@ -57,6 +57,7 @@ public:
 
     void terminate();
     void waitForTerminate();
+
 private:
     WorkerMain();
 
@@ -68,7 +69,7 @@ private:
     static std::atomic<bool> _setup;
 
     /// &&& originally from xrdsvc::XrdName x; getName() from std::getenv("XRDNAME");
-    std::string _workerName{"worker"}; // &&& set on command line, config file ???
+    std::string _workerName{"worker"};  // &&& set on command line, config file ???
 
     // The Foreman contains essential structures for adding and running tasks.
     std::shared_ptr<wcontrol::Foreman> _foreman;

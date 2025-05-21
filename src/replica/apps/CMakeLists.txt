@@ -36,7 +36,7 @@ target_sources(replica_apps PRIVATE
     QhttpTestApp.cc
     QservWorkerApp.cc
     QservWorkerPingApp.cc
-    QservXrootdSsiApp.cc
+#&&&    QservXrootdSsiApp.cc
     RebalanceApp.cc
     RegistryHttpApp.cc
     ReplicateApp.cc
@@ -48,5 +48,5 @@ target_sources(replica_apps PRIVATE
 )
 target_link_libraries(replica_apps PUBLIC
     log
-    XrdSsiLib
+# &&&    XrdSsiLib
 )

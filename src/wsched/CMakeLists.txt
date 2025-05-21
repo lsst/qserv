@@ -23,8 +23,19 @@ install(
 add_executable(testSchedulers testSchedulers.cc)
 
 target_link_libraries(testSchedulers PUBLIC
+    global
+    http
+    mysql
+    protojson
+    sql
+    util
+    wbase
+    wconfig
+    wcontrol
+    wdb
+    wpublish
     wsched
-    xrdsvc
+# &&&    xrdsvc
     Boost::unit_test_framework
     Threads::Threads
 )
