@@ -44,7 +44,6 @@ namespace lsst::qserv::wcomms {
 class HttpSvc;
 }  // namespace lsst::qserv::wcomms
 
-
 namespace lsst::qserv::wmain {
 
 class WorkerMain {

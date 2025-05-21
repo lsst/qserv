@@ -192,7 +192,6 @@ option_run = partial(
     "been run.",
 )
 
-
 option_tests_yaml = partial(
     click.option,
     "--tests-yaml",
