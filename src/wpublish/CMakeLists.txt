@@ -18,7 +18,19 @@ target_link_libraries(wpublish PUBLIC
 add_executable(testChunkInventory testChunkInventory.cc)
 
 target_link_libraries(testChunkInventory PUBLIC
-    xrdsvc
+# &&&    xrdsvc
+    global
+    http
+    mysql
+    protojson
+    sql
+    util
+    wbase
+    wconfig
+    wcontrol
+    wdb
+    wpublish
+    wsched
     Boost::unit_test_framework
     Threads::Threads
 )

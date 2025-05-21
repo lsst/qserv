@@ -36,7 +36,6 @@
 // Qserv headers
 #include "wmain/WorkerMain.cc"
 
-
 using namespace std;
 namespace po = boost::program_options;
 namespace qserv = lsst::qserv;
@@ -49,8 +48,9 @@ int main(int argc, char* argv[]) {
     po::options_description desc("", 120);
     desc.add_options()("help,h", "Print this help message and exit.");
     desc.add_options()("verbose,v", "Produce verbose output.");
-    desc.add_options()("config", po::value<string>()->default_value("/config-etc/qserv-worker.cnf"),
+    desc.add_options()("config,c", po::value<string>()->default_value("/config-etc/qserv-worker.cnf"),
                        "The configuration file.");
+    desc.add_options()("name,n", po::value<string>()->default_value("worker"), "Worker name.");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, const_cast<char**>(argv), desc), vm);
@@ -63,13 +63,14 @@ int main(int argc, char* argv[]) {
         cout << ::context << " Configuration file: " << configFilePath << "\n" << endl;
     }
     try {
-
         cout << ::context << " Starting worker\n"
-                << " Configuration file: " << configFilePath << "\n" << endl;
+             << " Configuration file: " << configFilePath << "\n"
+             << endl;
+
+        auto const workerConfig = wconfig::WorkerConfig::create(configFilePath);
 
         // Lifetime of WorkerMain is controlled by wwMn.
         auto wwMn = wmain::WorkerMain::setup();
-
 
         wwMn->waitForTerminate();
         cout << ::context << " stopping worker" << endl;

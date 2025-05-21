@@ -201,13 +201,6 @@ option_vnid_config = partial(
 )
 
 
-option_xrootd_manager = partial(
-    click.option,
-    "--xrootd-manager",
-    help="The host name of the xrootd manager.",
-)
-
-
 option_tests_yaml = partial(
     click.option,
     "--tests-yaml",
