@@ -18,7 +18,6 @@ target_link_libraries(wpublish PUBLIC
 add_executable(testChunkInventory testChunkInventory.cc)
 
 target_link_libraries(testChunkInventory PUBLIC
-# &&&    xrdsvc
     global
     http
     mysql

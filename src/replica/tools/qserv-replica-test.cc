@@ -34,7 +34,6 @@
 #include "replica/apps/QhttpTestApp.h"
 #include "replica/apps/TransactionsApp.h"
 #include "replica/apps/QservWorkerPingApp.h"
-// &&& #include "replica/apps/QservXrootdSsiApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
@@ -52,7 +51,6 @@ ApplicationColl getAppColl() {
     coll.add<QhttpTestApp>("QHTTP");
     coll.add<TransactionsApp>("TRANSACTIONS");
     coll.add<QservWorkerPingApp>("WORKER-PING");
-    // &&& coll.add<QservXrootdSsiApp>("XROOTD-SSI");
     return coll;
 }
 }  // namespace

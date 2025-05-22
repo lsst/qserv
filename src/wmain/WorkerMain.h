@@ -50,10 +50,14 @@ class WorkerMain {
 public:
     using Ptr = std::shared_ptr<WorkerMain>;
 
-    static std::weak_ptr<WorkerMain> get() { return _globalWorkerMain; }
+    /// Returns a pointer to the global instance.
+    /// @throw std::runtime_error if global pointer is null.
+    static std::shared_ptr<WorkerMain> get();
     static Ptr setup();
 
     ~WorkerMain();
+
+    std::string getName() const { return _name; }
 
     void terminate();
     void waitForTerminate();
@@ -68,8 +72,8 @@ private:
     /// one from being created.
     static std::atomic<bool> _setup;
 
-    /// &&& originally from xrdsvc::XrdName x; getName() from std::getenv("XRDNAME");
-    std::string _workerName{"worker"};  // &&& set on command line, config file ???
+    /// Worker name, used in some database lookups.
+    std::string _name{"worker"};
 
     // The Foreman contains essential structures for adding and running tasks.
     std::shared_ptr<wcontrol::Foreman> _foreman;
