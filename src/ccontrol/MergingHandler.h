@@ -50,14 +50,9 @@ class InfileMerger;
 namespace lsst::qserv::ccontrol {
 
 /// MergingHandler is an implementation of a ResponseHandler that implements
-/// czar-side knowledge of the worker's response protocol. It leverages XrdSsi's
-/// API by pulling the exact number of bytes needed for the next logical
-/// fragment instead of performing buffer size and offset
-/// management. Fully-constructed protocol messages are then passed towards an
-/// InfileMerger.
-/// Do to the way the code works, MerginHandler is effectively single threaded.
-/// The worker can only send the data for this job back over a single channel
-/// and it can only send one transmit on that channel at a time.
+/// czar-side knowledge of the worker's response protocol.
+/// The czar collects a result file from the worker and merges that into
+/// the query result table.
 class MergingHandler : public qdisp::ResponseHandler {
 public:
     typedef std::shared_ptr<MergingHandler> Ptr;

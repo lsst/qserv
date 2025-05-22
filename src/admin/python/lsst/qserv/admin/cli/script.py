@@ -284,12 +284,12 @@ def smig_worker(connection: str, update: bool) -> None:
     _do_smig(worker_smig_dir, "worker", connection, update)
 
 
-def enter_worker_wkr(
+def enter_worker_svc(
     targs: Targs,
     db_uri: str,
     db_admin_uri: str,
-    worker_wkr_cfg_file: str,
-    worker_wkr_cfg_path: str,
+    worker_svc_cfg_file: str,
+    worker_svc_cfg_path: str,
     log_cfg_file: str,
     cmd: str,
 ) -> None:
@@ -303,10 +303,10 @@ def enter_worker_wkr(
         The non-admin URI to the proxy's database.
     db_admin_uri : str
         The admin URI to the proxy's database.
-    worker_wkr_cfg_file : str
-        The path to the xrdssi config file.
-    worker_wkr_cfg_path : str
-        The location to render to the xrdssi config file.
+    worker_svc_cfg_file : str
+        The path to the worker config file.
+    worker_svc_cfg_path : str
+        The location to render to the worker config file.
     log_cfg_file : `str`
         Location of the log4cxx config file.
     cmd : `str`
@@ -349,7 +349,7 @@ def enter_worker_wkr(
 
     smig_worker(db_admin_uri, update=False)
 
-    apply_template_cfg_file(worker_wkr_cfg_file, worker_wkr_cfg_path)
+    apply_template_cfg_file(worker_svc_cfg_file, worker_svc_cfg_path)
 
     env = dict(
         os.environ,

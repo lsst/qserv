@@ -188,6 +188,7 @@ private:
 
     /// A a counter of the XROOTD/SSI resources which are in use at any given moment
     /// of time by the worker.
+    /// TODO:UJ is this still tracking anything? Does removing it cause dashboard issues?
     std::shared_ptr<ResourceMonitor> const _resourceMonitor;
 
     /// BOOST ASIO services needed to run the HTTP server

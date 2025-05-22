@@ -53,10 +53,6 @@ namespace lsst::qserv::wcontrol {
 class Foreman;
 }  // namespace lsst::qserv::wcontrol
 
-namespace lsst::qserv::xrdsvc {
-class SsiProviderServer;
-}  // namespace lsst::qserv::xrdsvc
-
 // This header declarations
 namespace lsst::qserv::wcomms {
 

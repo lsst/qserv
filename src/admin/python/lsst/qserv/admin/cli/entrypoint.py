@@ -65,7 +65,6 @@ from .options import (
     options_targs,
     option_tests_yaml,
     option_unload,
-    option_vnid_config,
     option_worker_connection,
 )
 from . import utils
@@ -81,12 +80,12 @@ template_dir = "/usr/local/qserv/templates/"
 mysql_proxy_cfg_template = os.path.join(template_dir, "proxy/etc/my-proxy.cnf.jinja")
 czar_cfg_template = os.path.join(template_dir, "proxy/etc/qserv-czar.cnf.jinja")
 czar_http_cfg_template = os.path.join(template_dir, "http/etc/qserv-czar.cnf.jinja")
-worker_wkr_cfg_template = os.path.join(template_dir, "worker-wkr/etc/worker-wkr.cf.jinja")
+worker_svc_cfg_template = os.path.join(template_dir, "worker-svc/etc/worker-svc.cf.jinja")
 
 mysql_proxy_cfg_path = "/config-etc/my-proxy.cnf"
 czar_cfg_path = "/config-etc/qserv-czar.cnf"
 czar_http_cfg_path = "/config-etc/qserv-czar.cnf"
-worker_wkr_cfg_path = "/config-etc/worker-wkr.cf"
+worker_svc_cfg_path = "/config-etc/worker-svc.cf"
 
 socket_option_help = f"""Accepts query key {click.style('socket',
 bold=True)}: The path to a socket file used to connect to the database.
@@ -149,8 +148,8 @@ commands = OrderedDict((
         "--qserv-worker-db={{db_admin_uri}} "
         "--config={{config}} {% for arg in extended_args %}{{arg}}  {% endfor %}"
     )),
-    ("worker-wkr", CommandInfo(
-        "qserv-worker-http -v -c {{worker_wkr_cfg_path}} -n worker",
+    ("worker-svc", CommandInfo(
+        "qserv-worker-http -v -c {{worker_svc_cfg_path}} -n worker",
     )),
     ("replication-controller", CommandInfo(
         "qserv-replica-master-http "
@@ -175,20 +174,20 @@ commands = OrderedDict((
 ))
 
 
-option_worker_wkr_cfg_file = partial(
+option_worker_svc_cfg_file = partial(
     click.option,
-    "--worker-wkr-cfg-file",
-    help="Path to the worker-wkr config file.",
-    default=worker_wkr_cfg_template,
+    "--worker-svc-cfg-file",
+    help="Path to the worker-svc config file.",
+    default=worker_svc_cfg_template,
     show_default=True,
 )
 
 
-option_worker_wkr_cfg_path = partial(
+option_worker_svc_cfg_path = partial(
     click.option,
-    "--worker-wkr-cfg-path",
-    help="Location to render worker-wkr-cfg-file.",
-    default=worker_wkr_cfg_path,
+    "--worker-svc-cfg-path",
+    help="Location to render worker-svc-cfg-file.",
+    default=worker_svc_cfg_path,
     show_default=True,
 )
 
@@ -668,12 +667,11 @@ def czar_http(ctx: click.Context, **kwargs: Any) -> None:
     )
 
 
-@entrypoint.command(help=f"Start as a worker-wkr node.\n\n{socket_option_description}")
+@entrypoint.command(help=f"Start as a worker-svc node.\n\n{socket_option_description}")
 @pass_context
 @option_debug()
 @option_db_uri(help=worker_db_help)
 @option_db_admin_uri(help=admin_worker_db_help)
-@option_vnid_config(required=True)
 @option_repl_instance_id(required=True)
 @option_repl_auth_key(required=True)
 @option_repl_admin_auth_key(required=True)
@@ -683,21 +681,21 @@ def czar_http(ctx: click.Context, **kwargs: Any) -> None:
 @option_results_dirname()
 @option_mysql_monitor_password()
 @option_db_qserv_user()
-@option_worker_wkr_cfg_file()
-@option_worker_wkr_cfg_path()
+@option_worker_svc_cfg_file()
+@option_worker_svc_cfg_path()
 @option_log_cfg_file()
 @options_targs()
 @options_cms()
 @option_options_file()
-def worker_wkr(ctx: click.Context, **kwargs: Any) -> None:
+def worker_svc(ctx: click.Context, **kwargs: Any) -> None:
     targs = utils.targs(ctx)
     targs = render_targs(targs)
-    script.enter_worker_wkr(
+    script.enter_worker_svc(
         targs=targs,
         db_uri=targs["db_uri"],
         db_admin_uri=targs["db_admin_uri"],
-        worker_wkr_cfg_file=targs["worker_wkr_cfg_file"],
-        worker_wkr_cfg_path=targs["worker_wkr_cfg_path"],
+        worker_svc_cfg_file=targs["worker_svc_cfg_file"],
+        worker_svc_cfg_path=targs["worker_svc_cfg_path"],
         log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
     )
@@ -751,10 +749,6 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
 @option_db_admin_uri(
     help="The admin URI to the replication controller's database, used for schema initialization. " + socket_option_help,
     required=True,
-)
-@click.option(
-    "--xrootd-manager",
-    help="The host name of the xrootd manager node.",
 )
 @option_log_cfg_file()
 @options_cms()

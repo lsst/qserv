@@ -24,7 +24,6 @@ FUNCTION(wdb_tests)
         add_executable(${TEST} ${TEST}.cc)
         target_link_libraries(${TEST} PUBLIC
             crypto
-# &&&            xrdsvc
             global
             http
             mysql
