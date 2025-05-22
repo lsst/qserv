@@ -202,7 +202,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
                                                     bool success) {
         if (!success) return;
         if (std::chrono::duration<double> const seconds = end - start; seconds.count() > 0) {
-            qdisp::CzarStats::get()->addXRootDSSIRecvRate(bytes / seconds.count());
+            qdisp::CzarStats::get()->addDataRecvRate(bytes / seconds.count());
         }
     };
     auto tct = make_shared<TimeCountTracker<double>>(cbf);

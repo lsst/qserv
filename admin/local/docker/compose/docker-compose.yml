@@ -15,14 +15,12 @@ x-log-volume:
     - type: bind
       source: ./log/
       target: /config-etc/log/
-x-worker-wkr:
-    &worker-wkr
+x-worker-svc:
+    &worker-svc
     image: "${QSERV_IMAGE:?err}"
     init: true
     expose:
         - "3306" # for the worker db, which shares this container's network stack.
-        # &&& - "1094"
-        # &&& - "2131" 
 x-repl-worker:
     &repl-worker
     image: "${QSERV_IMAGE:?err}"
@@ -90,15 +88,14 @@ services:
             - type: volume
               source: volume_worker_0_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
-        network_mode: "service:worker-wkr-0"
+        network_mode: "service:worker-svc-0"
         
-    worker-wkr-0:
-        << : *worker-wkr
+    worker-svc-0:
+        << : *worker-svc
         command: >
-          entrypoint worker-wkr
+          entrypoint worker-svc
           --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
-          --vnid-config "@/usr/local/lib64/libreplica.so {{db_uri}}/qservw_worker 0 0"
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -106,7 +103,7 @@ services:
           --repl-registry-port 25082
           --results-dirname /qserv/data/results
           --mysql-monitor-password CHANGEME_MONITOR
-          --log-cfg-file=/config-etc/log/log-worker-wkr.cnf
+          --log-cfg-file=/config-etc/log/log-worker-svc.cnf
         volumes:
             - type: volume
               source: volume_worker_0_results
@@ -165,15 +162,14 @@ services:
             - type: volume
               source: volume_worker_1_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
-        network_mode: "service:worker-wkr-1"
+        network_mode: "service:worker-svc-1"
 
-    worker-wkr-1:
-        << : *worker-wkr
+    worker-svc-1:
+        << : *worker-svc
         command: >
-          entrypoint --log-level DEBUG worker-wkr
+          entrypoint --log-level DEBUG worker-svc
           --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
-          --vnid-config "@/usr/local/lib64/libreplica.so mysql://qsmaster:CHANGEME2@127.0.0.1:3306/qservw_worker 0 0"
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -182,7 +178,7 @@ services:
           --results-dirname /qserv/data/results
           --mysql-monitor-password CHANGEME_MONITOR
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
-          --log-cfg-file=/config-etc/log/log-worker-wkr.cnf
+          --log-cfg-file=/config-etc/log/log-worker-svc.cnf
         volumes:
             - type: volume
               source: volume_worker_1_results

@@ -294,9 +294,7 @@ private:
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
-    // TODO:UJ see what it takes to make this a normal mutex, before
-    //  xrootd resulted in things being called in difficult to predict
-    //  ways. That shouldn't be an issue any more.
+    // TODO:UJ see what it takes to make this a normal mutex.
     mutable std::recursive_mutex _jobMapMtx;
 
     QueryId _id = 0;  ///< Unique identifier for this query.

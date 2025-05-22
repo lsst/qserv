@@ -247,8 +247,8 @@ private:
     ///           problems in a way that would wedge the pool. This can
     ///           probably be done fairly easily by having pools
     ///           attached to ActiveWorker in _activeWorkerMap.
-    ///           This was not possible in xrootd as the czar had
-    ///           no reasonable way to know where Jobs were going.
+    ///           Previously, the czar had no reasonable way to
+    ///           know where Jobs were going.
     std::shared_ptr<util::QdispPool> _qdispPool;
 
     /// Pool of http client connections for sending commands (UberJobs

@@ -1,13 +1,6 @@
 add_library(workerm SHARED)
 
 target_sources(workerm PRIVATE
-#&&&    HttpModule.cc
-#&&&    HttpMonitorModule.cc
-#&&&    HttpReplicaMgtModule.cc
-#&&&    HttpSvc.cc
-#&&&    HttpWorkerCzarModule.cc
-#&&&    SsiProvider.cc
-#&&&    SsiService.cc
     WorkerMain.cc
 )
 
@@ -28,7 +21,6 @@ target_link_libraries(workerm PUBLIC
      wdb
      wpublish
      wsched
-#&&&    XrdSsiLib
     boost_program_options
  )
 
@@ -42,8 +34,6 @@ function(WORKERM_UTILS)
         target_sources(${UTIL} PRIVATE ${UTIL}.cc)
         target_link_libraries(${UTIL} PRIVATE
             global
-#&&&            mysql
-#&&&            sql
             workerm
         )
         install(TARGETS ${UTIL})
