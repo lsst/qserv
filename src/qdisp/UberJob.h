@@ -155,7 +155,6 @@ private:
     qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};  // TODO:UJ Maybe the JobStatus class should be
                                                                // changed to better represent UberJobs
 
-    std::string _payload;  ///< XrdSsi message to be sent to the _workerResource. TODO:UJ remove when possible
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
     QueryId const _queryId;

@@ -35,7 +35,6 @@ target_link_libraries(testSchedulers PUBLIC
     wdb
     wpublish
     wsched
-# &&&    xrdsvc
     Boost::unit_test_framework
     Threads::Threads
 )

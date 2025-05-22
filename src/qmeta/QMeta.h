@@ -201,9 +201,9 @@ public:
      *
      *  @param queryId:   Query ID, non-negative number.
      *  @param chunk:     Chunk number.
-     *  @param xrdEndpoint:  Worker xrootd communication endpoint ("host:port").
+     *  @param wEndpoint:  Worker communication endpoint ("host:port").
      */
-    virtual void assignChunk(QueryId queryId, int chunk, std::string const& xrdEndpoint) = 0;
+    virtual void assignChunk(QueryId queryId, int chunk, std::string const& wEndpoint) = 0;
 
     /**
      *  @brief Mark chunk as completed.

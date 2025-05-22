@@ -361,7 +361,7 @@ void QMetaMysql::addChunks(QueryId queryId, vector<int> const& chunks) {
 }
 
 // Assign or re-assign chunk to a worker.
-void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& xrdEndpoint) {
+void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& wEndpoint) {
     lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
@@ -369,7 +369,7 @@ void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& xrdEndpoi
     // find and update chunk info
     sql::SqlErrorObject errObj;
     string query = "UPDATE QWorker SET wxrd = '";
-    query += _conn->escapeString(xrdEndpoint);
+    query += _conn->escapeString(wEndpoint);
     query += "', submitted = NOW() WHERE queryId = ";
     query += to_string(queryId);
     query += " AND chunk = ";

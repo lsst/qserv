@@ -151,6 +151,14 @@ WorkerMain::Ptr WorkerMain::setup() {
     return ptr;
 }
 
+std::shared_ptr<WorkerMain> WorkerMain::get() {
+    auto ptr = _globalWorkerMain.lock();
+    if (ptr == nullptr) {
+        throw std::runtime_error("_globalWorkerMain is null");
+    }
+    return ptr;
+}
+
 WorkerMain::WorkerMain() {
     auto const mySqlConfig = wconfig::WorkerConfig::instance()->getMySqlConfig();
     if (not mysql::MySqlConnection::checkConnection(mySqlConfig)) {
@@ -224,8 +232,8 @@ WorkerMain::WorkerMain() {
     string vectMinRunningSizesStr = workerConfig->getQPoolMinRunningSizes();
 
     _foreman = wcontrol::Foreman::create(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries,
-                                         ::makeChunkInventory(_workerName, mySqlConfig), sqlConnMgr,
-                                         qPoolSize, maxPriority, vectRunSizesStr, vectMinRunningSizesStr);
+                                         ::makeChunkInventory(_name, mySqlConfig), sqlConnMgr, qPoolSize,
+                                         maxPriority, vectRunSizesStr, vectMinRunningSizesStr);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log

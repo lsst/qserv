@@ -56,26 +56,6 @@ port = {{ czar_db_port }}
 [tuning]
 #largeResultConcurrentMerges = 3
 largeResultConcurrentMerges = 6
-# &&& xrootdCBThreadsInit must be less than xrootdCBThreadsMax
-# &&& xrootdCBThreadsMax = 500
-# &&& xrootdCBThreadsInit = 50
-
-# INSTRUCTIONS:
-#
-#   Allowed range: 1 - 1024. Any number above 1024 will be truncated to 1024.
-#   The deafault value of the parameter in xrootd is 4. Set it higher in
-#   Qserv deployments with the large number of chunks per catalog, or/and
-#   for use cases where many queries are processed by Qserv simultaneously,
-#   even for a modest number of chunks per catalog.
-#
-#   Set the parameter to 0 to enable auto-tuning.
-#
-#   The general formula for auto-tuning implies incrementing a value of the parameter
-#   by 1 for every 65,000 "in-flight" requests.
-#
-#   The value set below has been tested to work for 80 simultaneous "shared scan" queries
-#   of 150,000 chunks each.
-# &&& xrootdSpread = 0
 
 # Seconds between updates the czar sends to qmeta for completed chunks.
 # This is per user query and important milestones ignore this limit.
