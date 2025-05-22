@@ -41,7 +41,6 @@
 #include "wcontrol/ResourceMonitor.h"
 #include "wmain/WorkerMain.h"
 #include "wpublish/ChunkInventory.h"
-#include "wcomms/XrdName.h"
 
 using namespace std;
 using json = nlohmann::json;

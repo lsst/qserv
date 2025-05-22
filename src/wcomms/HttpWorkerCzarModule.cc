@@ -57,7 +57,6 @@
 #include "wpublish/QueriesAndChunks.h"
 #include "wpublish/QueryStatistics.h"
 #include "wsched/BlendScheduler.h"
-#include "wcomms/XrdName.h"
 
 using namespace std;
 using json = nlohmann::json;

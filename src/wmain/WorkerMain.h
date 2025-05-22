@@ -50,7 +50,9 @@ class WorkerMain {
 public:
     using Ptr = std::shared_ptr<WorkerMain>;
 
-    static std::weak_ptr<WorkerMain> get() { return _globalWorkerMain; }
+    /// Returns a pointer to the global instance.
+    /// @throw std::runtime_error if global pointer is null.
+    static std::shared_ptr<WorkerMain> get();
     static Ptr setup();
 
     ~WorkerMain();
