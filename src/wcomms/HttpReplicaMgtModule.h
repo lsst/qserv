@@ -34,8 +34,6 @@
 #include "wcomms/HttpModule.h"
 
 // Forward declarations
-class XrdSsiCluster;
-
 namespace lsst::qserv::qhttp {
 class Request;
 class Response;
@@ -48,10 +46,6 @@ class Foreman;
 namespace lsst::qserv::wpublish {
 class ChunkInventory;
 }  // namespace lsst::qserv::wpublish
-
-namespace lsst::qserv::xrdsvc {
-class SsiProviderServer;
-}  // namespace lsst::qserv::xrdsvc
 
 // This header declarations
 namespace lsst::qserv::wcomms {
