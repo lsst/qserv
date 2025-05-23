@@ -26,8 +26,6 @@ target_link_libraries(replica PUBLIC
     replica_worker
     css
     global
-    XrdCl
-    XrdSsiLib
     http
     qhttp
     sphgeom

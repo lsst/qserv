@@ -60,8 +60,6 @@ void fetchDbs(string const& instanceName, SqlConnection& sc, C& dbs) {
 
     shared_ptr<SqlResultIter> resultP;
     // TODO we probably want a more elegant backoff mechanism than this.
-    // However, normally xrootd will fail & exit here if it can't connect so
-    // this is maybe just a little bit better than that.
     while (true) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
         resultP = sc.getQueryIter(query);

@@ -79,7 +79,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuf
     boost::system::error_code ec;
     boost::asio::read(socket, boost::asio::buffer(ptr->data(), bytes), boost::asio::transfer_at_least(bytes),
                       ec);
-    return not ::isErrorCode(ec, __func__);
+    return not::isErrorCode(ec, __func__);
 }
 
 template <class T>
@@ -135,7 +135,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
     // Now read the body of the request
 
     ProtocolIngestHandshakeRequest request;
-    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
+    if (not::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
     // Check if the client is authorized for the operation
     if (request.auth_key() != serviceProvider()->authKey()) {
@@ -288,7 +288,7 @@ void IngestSvcConn::_dataReceived(boost::system::error_code const& ec, size_t by
     }
 
     ProtocolIngestData request;
-    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) {
+    if (not::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) {
         _contrib.error =
                 context + string(__func__) + " failed to parse the data packet received from the client";
         _contrib.systemError = errno;
