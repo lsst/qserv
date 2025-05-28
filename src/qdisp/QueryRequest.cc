@@ -206,15 +206,16 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
     }
     _totalRows += responseSummary.rowcount();
 
+    // If the query meets the limit row complete complete criteria, it will start
+    // squashing superfluous results so the answer can be returned quickly.
+    // This needs to be done before marking the current job as complete.
+    executive->addResultRows(_totalRows);
+    executive->checkLimitRowComplete();
+
     // At this point all data for this job have been read, there's no point in
     // having XrdSsi wait for anything.
     jq->getStatus()->updateInfo(_jobIdStr, JobStatus::COMPLETE, "COMPLETE");
     _finish();
-
-    // If the query meets the limit row complete complete criteria, it will start
-    // squashing superfluous results so the answer can be returned quickly.
-    executive->addResultRows(_totalRows);
-    executive->checkLimitRowComplete();
 
     return true;
 }
