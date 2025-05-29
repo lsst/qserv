@@ -65,6 +65,7 @@ public:
      *   'CANCEL'          - cancel the previously submited async query
      *   'STATUS'          - return a status of the previously submited async query
      *   'RESULT'          - return data of the previously submited async query
+     *   'RESULT-DELETE'   - delete a result set of an async query
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -89,10 +90,12 @@ private:
     nlohmann::json _cancel();
     nlohmann::json _status();
     nlohmann::json _result();
+    nlohmann::json _resultDelete();
 
     SubmitResult _getRequestParamsAndSubmit(std::string const& func, bool async);
     SubmitResult _getQueryInfo() const;
     QueryId _getQueryId() const;
+    void _dumpQueryInfo(std::string const& func, SubmitResult const& submitResult) const;
     nlohmann::json _waitAndExtractResult(SubmitResult const& submitResult,
                                          http::BinaryEncodingMode binaryEncoding) const;
     void _dropTable(std::string const& tableName) const;

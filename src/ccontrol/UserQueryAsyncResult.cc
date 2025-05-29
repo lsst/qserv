@@ -163,7 +163,7 @@ void UserQueryAsyncResult::submit() {
         ++count;
     }
     LOGS(_log, LOG_LVL_DEBUG, "Copied " << count << " messages from " << _qInfo.msgTableName());
-
+#if 0
     // Original message table is not useful any more because the result table
     // will be deleted by proxy anyways. Until we have better lifetime management
     // of results I'm going to drop this table now, meaning result can be only
@@ -175,7 +175,7 @@ void UserQueryAsyncResult::submit() {
     } else {
         LOGS(_log, LOG_LVL_DEBUG, "Deleted message table " << _qInfo.msgTableName());
     }
-
+#endif
     // done
     _qState = SUCCESS;
 }
