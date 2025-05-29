@@ -203,7 +203,7 @@ public:
     /// Verify that all chunks belong to at least one worker and that all chunks are represented in shared
     /// scans.
     /// @throws ChunkMapException
-    void verify();
+    void verify(std::string const& familyName);
 
     static std::string dumpChunkMap(ChunkMap const& chunkMap);
 
