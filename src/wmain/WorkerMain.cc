@@ -22,7 +22,7 @@
  */
 
 // Class header
-#include "xrdsvc/SsiService.h"
+#include "wmain/WorkerMain.h"
 
 // System headers
 #include <algorithm>
@@ -39,7 +39,6 @@
 
 // Third-party headers
 #include <nlohmann/json.hpp>
-#include "XrdSsi/XrdSsiLogger.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -55,44 +54,40 @@
 #include "sql/SqlConnectionFactory.h"
 #include "util/common.h"
 #include "util/FileMonitor.h"
-#include "util/HoldTrack.h"
 #include "wbase/Base.h"
 #include "wbase/FileChannelShared.h"
 #include "wconfig/WorkerConfig.h"
 #include "wconfig/WorkerConfigError.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/SqlConnMgr.h"
+#include "wcomms/HttpSvc.h"
 #include "wpublish/ChunkInventory.h"
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
-#include "xrdsvc/HttpSvc.h"
-#include "xrdsvc/XrdName.h"
 
 using namespace lsst::qserv;
 using namespace nlohmann;
 using namespace std;
 using namespace std::literals;
 
-class XrdPosixCallBack;  // Forward.
-
 namespace {
-LOG_LOGGER _log = LOG_GET("lsst.qserv.xrdsvc.SsiService");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.wmain.WorkerMain");
 
 // add LWP to MDC in log messages
 void initMDC() { LOG_MDC("LWP", to_string(lsst::log::lwpID())); }
 int dummyInitMDC = LOG_MDC_INIT(initMDC);
 
-std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(mysql::MySqlConfig const& mySqlConfig) {
-    xrdsvc::XrdName x;
+std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(string const& workerName,
+                                                             mysql::MySqlConfig const& mySqlConfig) {
     if (!mySqlConfig.dbName.empty()) {
         LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
         throw runtime_error("dbName must be empty to prevent accidental context");
     }
     auto conn = sql::SqlConnectionFactory::make(mySqlConfig);
     assert(conn);
-    auto inventory = make_shared<wpublish::ChunkInventory>(x.getName(), conn);
+    auto inventory = make_shared<wpublish::ChunkInventory>(workerName, conn);
     ostringstream os;
     os << "Paths exported: ";
     inventory->dbgPrint(os);
@@ -123,7 +118,7 @@ void registryUpdateLoop(string const& id) {
                                          {"management-port", workerConfig->replicationHttpPort()},
                                          {"management-host-name", util::get_current_host_fqdn()}}}});
     string const requestContext =
-            "SsiService: '" + http::method2string(method) + "' request to '" + url + "'";
+            "WorkerMain: '" + http::method2string(method) + "' request to '" + url + "'";
     http::Client client(method, url, request.dump(), headers);
     while (true) {
         try {
@@ -142,13 +137,29 @@ void registryUpdateLoop(string const& id) {
 
 }  // namespace
 
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wmain {
 
-SsiService::SsiService(XrdSsiLogger* log) {
-    LOGS(_log, LOG_LVL_DEBUG, "SsiService starting...");
+std::weak_ptr<WorkerMain> WorkerMain::_globalWorkerMain;
+std::atomic<bool> WorkerMain::_setup{false};
 
-    util::HoldTrack::setup(10min);
+WorkerMain::Ptr WorkerMain::setup() {
+    if (_setup.exchange(true)) {
+        throw util::Bug(ERR_LOC, "WorkerMain already setup when setup called again");
+    }
+    auto ptr = Ptr(new WorkerMain());
+    _globalWorkerMain = ptr;
+    return ptr;
+}
 
+std::shared_ptr<WorkerMain> WorkerMain::get() {
+    auto ptr = _globalWorkerMain.lock();
+    if (ptr == nullptr) {
+        throw std::runtime_error("_globalWorkerMain is null");
+    }
+    return ptr;
+}
+
+WorkerMain::WorkerMain() {
     auto const mySqlConfig = wconfig::WorkerConfig::instance()->getMySqlConfig();
     if (not mysql::MySqlConnection::checkConnection(mySqlConfig)) {
         LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << mySqlConfig);
@@ -221,7 +232,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
     string vectMinRunningSizesStr = workerConfig->getQPoolMinRunningSizes();
 
     _foreman = wcontrol::Foreman::create(blendSched, poolSize, maxPoolThreads, mySqlConfig, queries,
-                                         ::makeChunkInventory(mySqlConfig), sqlConnMgr, qPoolSize,
+                                         ::makeChunkInventory(_name, mySqlConfig), sqlConnMgr, qPoolSize,
                                          maxPriority, vectRunSizesStr, vectMinRunningSizesStr);
 
     // Watch to see if the log configuration is changed.
@@ -246,8 +257,8 @@ SsiService::SsiService(XrdSsiLogger* log) {
     // Start the control server for processing worker management requests sent
     // by the Replication System. Update the port number in the configuration
     // in case if the server is run on the dynamically allocated port.
-    _controlHttpSvc = HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
-                                      workerConfig->getCzarComNumHttpThreads());
+    _controlHttpSvc = wcomms::HttpSvc::create(_foreman, workerConfig->replicationHttpPort(),
+                                              workerConfig->getCzarComNumHttpThreads());
 
     auto const port = _controlHttpSvc->start();
     workerConfig->setReplicationHttpPort(port);
@@ -258,13 +269,20 @@ SsiService::SsiService(XrdSsiLogger* log) {
     registryUpdateThread.detach();
 }
 
-SsiService::~SsiService() {
-    LOGS(_log, LOG_LVL_DEBUG, "SsiService dying.");
+void WorkerMain::waitForTerminate() {
+    unique_lock uniq(_terminateMtx);
+    _terminateCv.wait(uniq, [this]() { return _terminate; });
+}
+
+void WorkerMain::terminate() {
+    lock_guard lck(_terminateMtx);
+    _terminate = true;
+    _terminateCv.notify_all();
+}
+
+WorkerMain::~WorkerMain() {
+    LOGS(_log, LOG_LVL_INFO, "WorkerMain shutdown.");
     _controlHttpSvc->stop();
 }
 
-void SsiService::ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) {
-    LOGS(_log, LOG_LVL_ERROR, "SsiService::ProcessRequest got called");
-}
-
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wmain

@@ -60,6 +60,8 @@ struct QueryMessage {
     std::string description;
     qmeta::JobStatus::TimeType timestamp;
     MessageSeverity severity;
+
+    std::string dump() const;
 };
 
 /** Store messages issued by Qserv workers and czar
