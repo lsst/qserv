@@ -1048,6 +1048,7 @@ def run_http_ingest(
     database = "user_testdb"
     table_json = "json"
     table_csv = "csv"
+    timeout = 30
 
     _log.debug("Testing user database: %s", database)
 
@@ -1075,7 +1076,7 @@ def run_http_ingest(
 
     # Create the table and ingest data using the CSV option. Then query the table.
     try:
-        _http_ingest_data_csv(http_frontend_uri, database, table_csv, schema, indexes, rows)
+        _http_ingest_data_csv(http_frontend_uri, database, table_csv, schema, indexes, rows, timeout)
     except Exception as e:
         _log.error("Failed to ingest data into table: %s of user database: %s, error: %s", table_csv, database, e)
         return False
@@ -1201,6 +1202,7 @@ def _http_ingest_data_csv(
     schema: List[Dict[str, str]],
     indexes: List[Dict[str, Sequence[Collection[str]]]],
     rows: List[List[Any]],
+    timeout: int
 ) -> None:
     """Create the table and ingest the data into the table.
 
@@ -1216,6 +1218,7 @@ def _http_ingest_data_csv(
         The schema of the table to be created.
     indexes : `list` [`dict` [`str`, `list` [`list` [`str`]]]]
         The indexes of the table to be created.
+    timeout : `int`
     """
     _log.debug("Ingesting CSV data into table: %s of user database: %s", table, database)
     base_dir = "/tmp"
@@ -1241,6 +1244,7 @@ def _http_ingest_data_csv(
             "database" : (None, database),
             "table": (None, table),
             "fields_terminated_by": (None, ","),
+            "timeout": (None, str(timeout)),
             "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
             "indexes": (indexes_file, open(indexes_file_path, "rb"), "application/json"),
             "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),

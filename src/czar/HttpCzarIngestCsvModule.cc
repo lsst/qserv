@@ -32,6 +32,7 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "czar/WorkerIngestProcessor.h"
+#include "global/stringUtil.h"
 #include "http/AsyncReq.h"
 #include "http/Client.h"
 #include "http/Exceptions.h"
@@ -163,7 +164,16 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
     _fieldsEscapedBy = body().optional<string>("fields_escaped_by", R"(\\)");
     _linesTerminatedBy = body().optional<string>("lines_terminated_by", R"(\n)");
 
-    setTimeoutSec(max(1U, body().optional<unsigned int>("timeout", timeoutSec())));
+    string const timeoutSecStr = body().optional<string>("timeout", string());
+    if (timeoutSecStr.empty()) {
+        setTimeoutSec(max(1U, timeoutSec()));
+    } else {
+        try {
+            setTimeoutSec(max(1U, qserv::stoui(timeoutSecStr)));
+        } catch (exception const& ex) {
+            throw http::Error(__func__, "failed to parse the timeout value: " + string(ex.what()));
+        }
+    }
 
     debug(__func__, "database: '" + _databaseName + "'");
     debug(__func__, "table: '" + _tableName + "'");
