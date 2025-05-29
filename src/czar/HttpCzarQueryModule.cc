@@ -75,6 +75,8 @@ json HttpCzarQueryModule::executeImpl(string const& subModuleName) {
         return _status();
     else if (subModuleName == "RESULT")
         return _result();
+    else if (subModuleName == "RESULT-DELETE")
+        return _resultDelete();
     throw invalid_argument(context() + func + " unsupported sub-module");
 }
 
@@ -94,6 +96,8 @@ json HttpCzarQueryModule::_submitAsync() {
     debug(__func__);
     checkApiVersion(__func__, 32);
     SubmitResult const submitResult = _getRequestParamsAndSubmit(__func__, true);
+    _dropTable(submitResult.messageTable);
+    _dropTable(submitResult.resultTable);
     return json::object({{"queryId", submitResult.queryId}});
 }
 
@@ -105,6 +109,7 @@ SubmitResult HttpCzarQueryModule::_getRequestParamsAndSubmit(string const& func,
     string const query = async ? "SUBMIT " + userQuery : userQuery;
     map<string, string> const hints{{"db", defaultDatabase}};
     SubmitResult const submitResult = Czar::getCzar()->submitQuery(query, hints);
+    _dumpQueryInfo(func, submitResult);
     if (!submitResult.errorMessage.empty()) {
         _dropTable(submitResult.messageTable);
         throw http::Error(context() + __func__, submitResult.errorMessage);
@@ -125,6 +130,7 @@ json HttpCzarQueryModule::_status() {
     debug(__func__);
     checkApiVersion(__func__, 30);
     SubmitResult const submitResult = _getQueryInfo();
+    _dumpQueryInfo(__func__, submitResult);
     json statusJson = json::object();
     statusJson["queryId"] = submitResult.queryId;
     statusJson["status"] = submitResult.status;
@@ -142,6 +148,32 @@ json HttpCzarQueryModule::_result() {
     http::BinaryEncodingMode const binaryEncoding = http::parseBinaryEncoding(binaryEncodingStr);
     debug(__func__, "binary_encoding=" + http::binaryEncoding2string(binaryEncoding));
     return _waitAndExtractResult(_getQueryInfo(), binaryEncoding);
+}
+
+json HttpCzarQueryModule::_resultDelete() {
+    debug(__func__);
+    checkApiVersion(__func__, 40);
+    QueryId const queryId = _getQueryId();
+    SubmitResult submitResult;
+    try {
+        submitResult = Czar::getCzar()->getQueryInfo(queryId);
+        _dumpQueryInfo(__func__, submitResult);
+    } catch (exception const& ex) {
+        string const msg =
+                "failed to obtain info for queryId=" + to_string(queryId) + ", ex: " + string(ex.what());
+        error(__func__, msg);
+        throw http::Error(context() + __func__, msg);
+    }
+    if (submitResult.status != "COMPLETED") {
+        // The query is still executing. The user should wait until the query
+        // is finished before deleting the result set.
+        string const msg = "queryId=" + to_string(queryId) + " is still executing";
+        error(__func__, msg);
+        throw http::Error(context() + __func__, msg);
+    }
+    _dropTable(submitResult.messageTable);
+    _dropTable(submitResult.resultTable);
+    return json();
 }
 
 QueryId HttpCzarQueryModule::_getQueryId() const {
@@ -167,6 +199,19 @@ SubmitResult HttpCzarQueryModule::_getQueryInfo() const {
         throw http::Error(context() + __func__, submitResult.errorMessage);
     }
     return submitResult;
+}
+
+void HttpCzarQueryModule::_dumpQueryInfo(string const& func, SubmitResult const& submitResult) const {
+    debug(func, "submitResult.queryId=" + to_string(submitResult.queryId));
+    debug(func, "submitResult.resultTable=" + submitResult.resultTable);
+    debug(func, "submitResult.messageTable=" + submitResult.messageTable);
+    debug(func, "submitResult.resultQuery=" + submitResult.resultQuery);
+    debug(func, "submitResult.status=" + submitResult.status);
+    debug(func, "submitResult.totalChunks=" + to_string(submitResult.totalChunks));
+    debug(func, "submitResult.completedChunks=" + to_string(submitResult.completedChunks));
+    debug(func, "submitResult.queryBeginEpoch=" + to_string(submitResult.queryBeginEpoch));
+    debug(func, "submitResult.lastUpdateEpoch=" + to_string(submitResult.lastUpdateEpoch));
+    debug(func, "submitResult.errorMessage=" + submitResult.errorMessage);
 }
 
 json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult,
@@ -248,7 +293,7 @@ json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult
 
 void HttpCzarQueryModule::_dropTable(string const& tableName) const {
     if (tableName.empty()) return;
-    string const query = "DROP TABLE " + tableName;
+    string const query = "DROP TABLE IF EXISTS " + tableName;
     debug(__func__, query);
     auto const conn =
             sql::SqlConnectionFactory::make(cconfig::CzarConfig::instance()->getMySqlResultConfig());
@@ -306,7 +351,8 @@ json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results, json const& sche
                             break;
                         case http::BinaryEncodingMode::ARRAY:
                             // Notes on the std::u8string type and constructor:
-                            // 1. This string type is required for encoding binary data which is only possible
+                            // 1. This string type is required for encoding binary data which is only
+                            // possible
                             //    with the 8-bit encoding and not possible with the 7-bit ASCII
                             //    representation.
                             // 2. This from of string construction allows the line termination symbols \0
@@ -315,10 +361,11 @@ json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results, json const& sche
                             // ATTENTION: formally this way of type casting is wrong as it breaks strict
                             // aliasing.
                             //   However, for all practical purposes, char8_t is basically a unsigned char
-                            //   which makes such operation possible. The problem could be addressed either by
-                            //   redesigning Qserv's SQL library to report data as char8_t, or by explicitly
-                            //   copying and translating each byte from char to char8_t representation (which
-                            //   would not be terribly efficient for the large result sets).
+                            //   which makes such operation possible. The problem could be addressed
+                            //   either by redesigning Qserv's SQL library to report data as char8_t, or
+                            //   by explicitly copying and translating each byte from char to char8_t
+                            //   representation (which would not be terribly efficient for the large
+                            //   result sets).
                             rowJson.push_back(
                                     u8string(reinterpret_cast<char8_t const*>(row[i].first), row[i].second));
                             break;
