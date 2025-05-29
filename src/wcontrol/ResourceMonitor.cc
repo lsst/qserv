@@ -40,7 +40,7 @@ void ResourceMonitor::increment(string const& resource) {
 void ResourceMonitor::decrement(string const& resource) {
     lock_guard<mutex> lock(_mtx);
     if (not _resourceCounter.count(resource)) return;
-    if (not --(_resourceCounter[resource])) _resourceCounter.erase(resource);
+    if (!--(_resourceCounter[resource])) _resourceCounter.erase(resource);
 }
 
 unsigned int ResourceMonitor::count(string const& resource) const {
