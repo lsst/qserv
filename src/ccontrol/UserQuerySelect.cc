@@ -490,10 +490,15 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     if (!missingChunks.empty()) {
         string errStr = funcN + " a worker could not be found for these chunks ";
+        int maxList = 0;
         for (auto const& chk : missingChunks) {
             errStr += to_string(chk) + ",";
+            if (++maxList > 50) {
+                errStr += " too many to show all.";
+                break;
+            }
         }
-        errStr += " they will be retried later.";
+        errStr += " All will be retried later. Total missing=" + to_string(missingChunks.size());
         LOGS(_log, LOG_LVL_ERROR, errStr);
     }
 

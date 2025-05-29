@@ -834,7 +834,9 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> cons
 
     for (auto const& elem : msgCountMap) {
         if (elem.second.count > _maxMsgSourceStore) {
+            // QMessages source column is VARCHAR(63)
             string source = string("MANY_") + elem.first;
+            source = source.substr(0, 62);
             string desc = string("{\"msgSource\":") + elem.first +
                           ", \"count\":" + to_string(elem.second.count) + "}";
             qmeta::QueryMessage qm(-1, source, 0, desc, qmeta::JobStatus::getNow(), elem.second.severity);
@@ -859,7 +861,8 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
             (prevUpdateTime == chrono::time_point<chrono::system_clock>()) || (prevUpdateTime < updateTime);
     if (!force) {
         trans->commit();
-        return QMetaChunkMap();
+        chunkMap.updateTime = prevUpdateTime;
+        return chunkMap;
     }
 
     // Read the map itself
