@@ -71,7 +71,7 @@ void CzarChunkMap::sortChunks(std::vector<ChunkData::Ptr>& chunksSortedBySize) {
     std::sort(chunksSortedBySize.begin(), chunksSortedBySize.end(), sortBySizeDesc);
 }
 
-void CzarChunkMap::verify() {
+void CzarChunkMap::verify(string const& familyName) {
     auto&& wcMap = *_workerChunkMap;
     auto&& chunkMap = *_chunkMap;
     // Use a set to prevent duplicate ids caused by replication levels > 1.
@@ -85,20 +85,22 @@ void CzarChunkMap::verify() {
 
     for (auto const& [chunkId, chunkDataPtr] : chunkMap) {
         if (chunkDataPtr == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " chunkId=" << chunkId << " had nullptr");
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << " family=" << familyName << " chunkId=" << chunkId << " had nullptr");
             ++errorCount;
             continue;
         }
         auto primeScanWkr = chunkDataPtr->_primaryScanWorker.lock();
         if (primeScanWkr == nullptr) {
             LOGS(_log, LOG_LVL_ERROR,
-                 cName(__func__) << " chunkId=" << chunkId << " missing primaryScanWorker");
+                 cName(__func__) << " family=" << familyName << " chunkId=" << chunkId
+                                 << " missing primaryScanWorker");
             ++errorCount;
             continue;
         }
         if (primeScanWkr->_sharedScanChunkMap.find(chunkId) == primeScanWkr->_sharedScanChunkMap.end()) {
             LOGS(_log, LOG_LVL_ERROR,
-                 cName(__func__) << " chunkId=" << chunkId
+                 cName(__func__) << " family=" << familyName << " chunkId=" << chunkId
                                  << " should have been (and was not) in the sharedScanChunkMap for "
                                  << primeScanWkr->_workerId);
             ++errorCount;
@@ -109,7 +111,8 @@ void CzarChunkMap::verify() {
             allChunkIds.erase(iter);
         } else {
             LOGS(_log, LOG_LVL_ERROR,
-                 cName(__func__) << " chunkId=" << chunkId << " chunkId was not in allChunks list");
+                 cName(__func__) << " family=" << familyName << " chunkId=" << chunkId
+                                 << " chunkId was not in allChunks list");
             ++errorCount;
             continue;
         }
@@ -130,8 +133,10 @@ void CzarChunkMap::verify() {
     if (errorCount > 0) {
         // Original creation of the family map will keep re-reading until there are no problems.
         // _monitor will log this and keep using the old maps.
-        throw ChunkMapException(ERR_LOC, "verification failed with " + to_string(errorCount) + " errors");
+        throw ChunkMapException(ERR_LOC, "verification failed with " + to_string(errorCount) + " errors " +
+                                                 " family=" + familyName);
     }
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " family=" << familyName << " verified");
 }
 
 string CzarChunkMap::dumpChunkMap(ChunkMap const& chunkMap) {
@@ -261,7 +266,7 @@ bool CzarChunkMap::WorkerChunksData::isDead() {
         }
         _activeWorker = awMap->getActiveWorker(_workerId);
         if (_activeWorker == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " activeWorker not found.");
+            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " activeWorker not found.");
             return true;
         }
     }
@@ -335,10 +340,11 @@ bool CzarFamilyMap::_read() {
     std::lock_guard gLock(_familyMapMtx);
     qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap(_lastUpdateTime);
     if (_lastUpdateTime == qChunkMap.updateTime) {
-        LOGS(_log, LOG_LVL_DEBUG,
-             cName(__func__) << " no need to read "
+        // If "_lastUpdateTime == qChunkMap.updateTime", qChunkMap is empty.
+        LOGS(_log, LOG_LVL_INFO,
+             cName(__func__) << " no need to read last="
                              << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime)
-                             << " db=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
+                             << " map=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
         return false;
     }
 
@@ -352,6 +358,10 @@ bool CzarFamilyMap::_read() {
     _familyMap = familyMapPtr;
 
     _lastUpdateTime = qChunkMap.updateTime;
+
+    LOGS(_log, LOG_LVL_INFO,
+         cName(__func__) << " read and verified "
+                         << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime));
 
     LOGS(_log, LOG_LVL_TRACE, "CzarChunkMap::_read() end");
     return true;
@@ -489,7 +499,7 @@ void CzarFamilyMap::insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFami
 
 void CzarFamilyMap::verify(std::shared_ptr<FamilyMapType> const& familyMap) {
     for (auto&& [familyName, czarChunkMapPtr] : *familyMap) {
-        czarChunkMapPtr->verify();
+        czarChunkMapPtr->verify(familyName);
     }
 }
 
