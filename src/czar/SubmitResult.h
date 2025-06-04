@@ -23,10 +23,12 @@
 #define LSST_QSERV_CZAR_SUBMITRESULT_H
 
 // System headers
+#include <cstdint>
 #include <string>
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "qmeta/types.h"
 
 namespace lsst::qserv::czar {
 
@@ -43,11 +45,16 @@ struct SubmitResult {
     QueryId queryId = 0;       ///< The unique identifier of the user query
 
     // Populated by Czar::getQueryInfo only for queries which are still in flight
-    std::string status;       ///< 'EXECUTING','COMPLETED','FAILED','ABORTED'
-    int totalChunks = 0;      ///< The total number of chunks required by the query
-    int completedChunks = 0;  ///< The number of chubnks that have been processed so far
-    int queryBeginEpoch = 0;  ///< Seconds since UNIX Epoch
-    int lastUpdateEpoch = 0;  ///< Seconds since UNIX Epoch
+    std::string status;                ///< 'EXECUTING','COMPLETED','FAILED','ABORTED'
+    qmeta::CzarId czarId = 0;          ///< The identifier of the czar which is processing the query
+    std::string czarType;              ///< The type of the czar which is processing the query
+    int totalChunks = 0;               ///< The total number of chunks required by the query
+    int completedChunks = 0;           ///< The number of chunks that have been processed so far
+    std::uint64_t collectedBytes = 0;  ///< The number of bytes collected so far
+    std::uint64_t collectedRows = 0;   ///< The number of rows collected so far
+    std::uint64_t finalRows = 0;       ///< The total number of rows returned to the client
+    int queryBeginEpoch = 0;           ///< Seconds since UNIX Epoch
+    int lastUpdateEpoch = 0;           ///< Seconds since UNIX Epoch
 };
 
 }  // namespace lsst::qserv::czar

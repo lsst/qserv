@@ -128,14 +128,19 @@ json HttpCzarQueryModule::_cancel() {
 
 json HttpCzarQueryModule::_status() {
     debug(__func__);
-    checkApiVersion(__func__, 30);
+    checkApiVersion(__func__, 41);
     SubmitResult const submitResult = _getQueryInfo();
     _dumpQueryInfo(__func__, submitResult);
     json statusJson = json::object();
     statusJson["queryId"] = submitResult.queryId;
     statusJson["status"] = submitResult.status;
+    statusJson["czarId"] = submitResult.czarId;
+    statusJson["czarType"] = submitResult.czarType;
     statusJson["totalChunks"] = submitResult.totalChunks;
     statusJson["completedChunks"] = submitResult.completedChunks;
+    statusJson["collectedBytes"] = submitResult.collectedBytes;
+    statusJson["collectedRows"] = submitResult.collectedRows;
+    statusJson["finalRows"] = submitResult.finalRows;
     statusJson["queryBeginEpoch"] = submitResult.queryBeginEpoch;
     statusJson["lastUpdateEpoch"] = submitResult.lastUpdateEpoch;
     return json::object({{"status", statusJson}});
@@ -207,8 +212,13 @@ void HttpCzarQueryModule::_dumpQueryInfo(string const& func, SubmitResult const&
     debug(func, "submitResult.messageTable=" + submitResult.messageTable);
     debug(func, "submitResult.resultQuery=" + submitResult.resultQuery);
     debug(func, "submitResult.status=" + submitResult.status);
+    debug(func, "submitResult.czarId=" + to_string(submitResult.czarId));
+    debug(func, "submitResult.czarType=" + submitResult.czarType);
     debug(func, "submitResult.totalChunks=" + to_string(submitResult.totalChunks));
     debug(func, "submitResult.completedChunks=" + to_string(submitResult.completedChunks));
+    debug(func, "submitResult.collectedBytes=" + to_string(submitResult.collectedBytes));
+    debug(func, "submitResult.collectedRows=" + to_string(submitResult.collectedRows));
+    debug(func, "submitResult.finalRows=" + to_string(submitResult.finalRows));
     debug(func, "submitResult.queryBeginEpoch=" + to_string(submitResult.queryBeginEpoch));
     debug(func, "submitResult.lastUpdateEpoch=" + to_string(submitResult.lastUpdateEpoch));
     debug(func, "submitResult.errorMessage=" + submitResult.errorMessage);
