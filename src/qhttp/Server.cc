@@ -244,7 +244,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
                 } else if (ec) {
                     // "End of file" happens very frequently and shouldn't be logged as an error.
                     auto logLvl = LOG_LVL_ERROR;
-                    if (ec.message() == "End of file") logLvl = LOG_LVL_INFO;
+                    if (ec == asio::error::eof) logLvl = LOG_LVL_INFO;
                     LOGS(_log, logLvl,
                          logger(self) << logger(socket) << "header read failed: " << ec.message());
                 }
