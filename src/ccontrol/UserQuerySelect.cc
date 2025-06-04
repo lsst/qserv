@@ -337,12 +337,13 @@ void UserQuerySelect::buildAndSendUberJobs() {
         return;
     }
 
-    if (exec->getCancelled() || exec->getSuperfluous()) {
-        LOGS(_log, LOG_LVL_INFO, funcN << " executive cancelled.");
-    }
-
     if (exec->getSuperfluous()) {
         LOGS(_log, LOG_LVL_INFO, funcN << " executive superfluous, result already found.");
+        return;
+    }
+    if (exec->getCancelled()) {
+        LOGS(_log, LOG_LVL_INFO, funcN << " executive cancelled.");
+        return;
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.

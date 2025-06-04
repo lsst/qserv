@@ -62,8 +62,10 @@ struct ErrorCode {
         MYSQLEXEC,
         INTERNAL,
         CZAR_RESULT_TOO_LARGE,
+        JOB_CANCEL,
         // Worker errors:
-        WORKER_RESULT_TOO_LARGE
+        WORKER_RESULT_TOO_LARGE,
+        WORKER_ERROR
     };
 };
 

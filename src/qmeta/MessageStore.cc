@@ -65,10 +65,9 @@ void MessageStore::addMessage(int chunkId, std::string const& msgSource, int cod
     QueryMessage qMsg(chunkId, msgSource, code, description, timestamp, severity);
     auto level = code < 0 ? LOG_LVL_ERROR : LOG_LVL_DEBUG;
     LOGS(_log, level, "Add msg: " << qMsg.dump());
-    {
-        std::lock_guard<std::mutex> lock(_storeMutex);
-        _queryMessages.insert(_queryMessages.end(), qMsg);
-    }
+
+    std::lock_guard<std::mutex> lock(_storeMutex);
+    _queryMessages.push_back(qMsg);
 }
 
 void MessageStore::addErrorMessage(std::string const& msgSource, std::string const& description) {

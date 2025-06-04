@@ -71,7 +71,7 @@ void CzarChunkMap::sortChunks(std::vector<ChunkData::Ptr>& chunksSortedBySize) {
     std::sort(chunksSortedBySize.begin(), chunksSortedBySize.end(), sortBySizeDesc);
 }
 
-void CzarChunkMap::verify(string const& familyName) {
+void CzarChunkMap::verify(string const& familyName) const {
     auto&& wcMap = *_workerChunkMap;
     auto&& chunkMap = *_chunkMap;
     // Use a set to prevent duplicate ids caused by replication levels > 1.
