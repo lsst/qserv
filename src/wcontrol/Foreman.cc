@@ -112,10 +112,11 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
     // Read-only access to the result files via the HTTP protocol's method "GET"
     auto const workerConfig = wconfig::WorkerConfig::instance();
     _httpServer->addStaticContent("/*", workerConfig->resultsDirname());
-    _httpServer->addHandler("DELETE", "/:file",
-                            [](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
-                                resp->sendStatus(::removeResultFile(req->path));
-                            });
+    _httpServer->addHandler(
+            "DELETE", "/:file",
+            [workerConfig](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                resp->sendStatus(::removeResultFile(workerConfig->resultsDirname() + req->path));
+            });
 
     // The HTTP server should be started before launching the threads to prevent
     // the thread from exiting prematurely due to a lack of work. The threads
