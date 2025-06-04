@@ -31,13 +31,10 @@ MSG_ERROR          = 2
 function errors ()
     local self = { __errNo__ = 0, __errMsg__ = "" }
 
-    ---------------------------------------------------------------------------
-
     local errNo = function()
         return self.__errNo__
     end
 
-    ---------------------------------------------------------------------------
     local set = function(errNo, errMsg)
         self.__errNo__  = errNo
         self.__errMsg__ = errMsg
@@ -48,8 +45,6 @@ function errors ()
         self.__errMsg__ = self.__errMsg__ .. errMsg
         return errNo
     end
-
-    ---------------------------------------------------------------------------
 
     local send = function()
         local e = -1 * self.__errNo__ -- mysql doesn't like negative errors
@@ -68,8 +63,6 @@ function errors ()
         return send()
     end
 
-    ---------------------------------------------------------------------------
-
     return {
         errNo = errNo,
         set = set,
@@ -78,7 +71,6 @@ function errors ()
         setAndSend = setAndSend
     }
 end
-
 
 err = errors()
 
@@ -97,38 +89,6 @@ function utilities()
         return s
     end
 
-    ---------------------------------------------------------------------------
-
-    -- tokenizes string with comma separated values,
-    -- returns a table
-    local csvToTable = function(s)
-        s = s .. ','        -- ending comma
-        local t = {}        -- table to collect fields
-        local fieldstart = 1
-        repeat
-            -- next field is quoted? (start with `"'?)
-            if string.find(s, '^"', fieldstart) then
-                local a, c
-                local i  = fieldstart
-                repeat
-                    -- find closing quote
-                    a, i, c = string.find(s, '"("?)', i+1)
-                until c ~= '"'    -- quote not followed by quote?
-                if not i then error('unmatched "') end
-                local f = string.sub(s, fieldstart+1, i-1)
-                table.insert(t, (string.gsub(f, '""', '"')))
-                fieldstart = string.find(s, ',', i) + 1
-            else                -- unquoted; find next comma
-                local nexti = string.find(s, ',', fieldstart)
-                table.insert(t, string.sub(s, fieldstart, nexti-1))
-                fieldstart = nexti + 1
-            end
-        until fieldstart > string.len(s)
-        return t
-    end
-
-    ---------------------------------------------------------------------------
-
     local removeLeadingComment = function (q)
         local qRet = q
         local x1 = string.find(q, '%/%*')
@@ -142,8 +102,6 @@ function utilities()
         end
         return qRet
     end
-
-    ---------------------------------------------------------------------------
 
     local removeExtraWhiteSpaces = function (q)
         -- convert new lines and tabs to a space
@@ -171,22 +129,14 @@ function utilities()
         return q
     end
 
-    local startsWith = function (String,Start)
-       return string.sub(String,1,string.len(Start))==Start
-    end
-
-    ---------------------------------------------------------------------------
     return {
         tableToString = tableToString,
-        csvToTable = csvToTable,
         removeLeadingComment = removeLeadingComment,
-        removeExtraWhiteSpaces = removeExtraWhiteSpaces,
-        startsWith = startsWith
+        removeExtraWhiteSpaces = removeExtraWhiteSpaces
     }
 end
 
 utils = utilities()
-
 
 -------------------------------------------------------------------------------
 ---- --                          Query type                                  --
@@ -207,7 +157,18 @@ function queryType()
         end
         return false
     end
-    ---------------------------------------------------------------------------
+
+    -- Detects if query is pulling a result set of an asynchronous query
+    -- from qserv. This is a special case of SELECT query. When processing this
+    -- query, we should not delete the result table. The later step will be handled
+    -- by a separate request to be explicitly made by the client.
+    local isSelectResult = function(qU)
+        if string.find(qU, "^SELECT .* FROM QSERV_RESULT") then
+            return true
+        end
+        return false
+    end
+
     local shouldPassToResultDb = function(qU)
         if string.find(qU, "^SELECT DATABASE()") then
             return true
@@ -215,7 +176,6 @@ function queryType()
             return false
         end
     end
-    ---------------------------------------------------------------------------
 
     local isDisallowed = function(qU)
         if string.find(qU, "^INSERT ") or
@@ -230,7 +190,6 @@ function queryType()
         end
         return false
     end
-    ---------------------------------------------------------------------------
 
     local isKill = function(qU)
         if string.find(qU, "^KILL ") or
@@ -239,13 +198,10 @@ function queryType()
         end
         return false
     end
-    ---------------------------------------------------------------------------
 
     local isIgnored = function(qU)
         return false
     end
-
-    ---------------------------------------------------------------------------
 
     local isNotSupported = function(qU)
         if string.find(qU, "^EXPLAIN ") or
@@ -258,10 +214,9 @@ function queryType()
         return false
     end
 
-    ---------------------------------------------------------------------------
-
     return {
         isLocal = isLocal,
+        isSelectResult = isSelectResult,
         shouldPassToResultDb = shouldPassToResultDb,
         isDisallowed = isDisallowed,
         isKill = isKill,
@@ -281,9 +236,8 @@ function queryProcessing()
     local self = { msgTableName = nil,
                    resultTableName = nil,
                    resultQuery = nil,
+                   isSelectResultQuery = false,
                    initialized = false }
-
-    ---------------------------------------------------------------------------
 
     local initializeCzar = function()
 
@@ -336,22 +290,20 @@ function queryProcessing()
         self.resultTableName = res.resultTable
         self.msgTableName = res.messageTable
         self.resultQuery = res.resultQuery
+        self.isSelectResultQuery = qType.isSelectResult(qU)
 
         czarProxy.log("mysql-proxy", "INFO", "Czar response: [result: " .. self.resultTableName ..
                ", message: " .. self.msgTableName ..
-               ", resultQuery: \"" .. self.resultQuery .. "\"]")
+               ", resultQuery: \"" .. self.resultQuery ..
+               "\", isSelectResultQuery: " .. tostring(self.isSelectResultQuery) .. "]")
 
         return SUCCESS
      end
-
-    ---------------------------------------------------------------------------
 
     local processLocally = function(q)
         czarProxy.log("mysql-proxy", "INFO", "Processing locally: " .. q)
         return SUCCESS
     end
-
-    ---------------------------------------------------------------------------
 
     local processIgnored = function(q)
         proxy.response.type = proxy.MYSQLD_PACKET_OK
@@ -367,8 +319,6 @@ function queryProcessing()
         }
         return proxy.PROXY_SEND_RESULT
     end
-
-    ---------------------------------------------------------------------------
 
     local killQservQuery = function(q, qU)
         -- Idea: "KILL QUERY <server.thread_id>" is in the parameter, so we
@@ -395,8 +345,6 @@ function queryProcessing()
         return proxy.PROXY_SEND_RESULT
     end
 
-    ---------------------------------------------------------------------------
-
     local prepForFetchingMessages = function(proxy)
         if not self.resultTableName then
             return err.set(ERR_BAD_RES_TNAME, "Invalid result table name")
@@ -418,8 +366,6 @@ function queryProcessing()
         return SUCCESS
     end
 
-    ---------------------------------------------------------------------------
-
     local fetchResults = function(proxy)
 
         -- if no result table then do something that returns empty result set
@@ -432,10 +378,11 @@ function queryProcessing()
 
     end
 
-    ---------------------------------------------------------------------------
-
     local dropResults = function(proxy)
-
+        if self.isSelectResultQuery then
+            czarProxy.log("mysql-proxy", "INFO", "Not dropping result table: " .. self.resultTableName)
+            return
+        end
         if self.resultTableName ~= "" then
             local q4 = "DROP TABLE " .. self.resultTableName
             proxy.queries:append(4, string.char(proxy.COM_QUERY) .. q4,
@@ -443,8 +390,6 @@ function queryProcessing()
         end
 
     end
-
-    ---------------------------------------------------------------------------
 
     return {
         initializeCzar = initializeCzar,

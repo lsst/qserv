@@ -1,7 +1,7 @@
 
 .. note::
 
-  - This guide corresponds to version **39** of the Qserv REST API. Note that each API implementation has a specific version.
+  - This guide corresponds to version **40** of the Qserv REST API. Note that each API implementation has a specific version.
     The version number will change if any modifications to the implementation or API that might affect users are made.
     This document will be updated to reflect the latest API version.
   - All communications with the service are over SSL/TLS encrypted connections.

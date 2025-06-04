@@ -34,9 +34,9 @@ using namespace lsst::qserv;
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(testCallQueryType) {
-    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isCall("CALL QSERV_MANAGER foo"), true);
-    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isCall("call qserv_manager foo"), true);
-    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isCall("submit call qserv_manager foo"), false);
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isCall("CALL QSERV_RESULT_DELETE(1)"), true);
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isCall("call QSERV_RESULT_DELETE(1,2,3)"), true);
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isCall("submit call QSERV_RESULT_DELETE foo"), false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

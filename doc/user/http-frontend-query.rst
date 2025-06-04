@@ -56,6 +56,18 @@ If the request is successfully completed, the service will return a result set i
 Asynchronous interface
 ^^^^^^^^^^^^^^^^^^^^^^
 
+.. note:: 
+
+   As of the version **40** of the Qserv API, it's a responsibility of the client to explicitly
+   delete results of the asynchronous queries. The result of a completed query will not be deleted automatically
+   after the client's attempt to pull the result. This allows the client application to manage the lifecycle of
+   the query results more effectively and address possible issues on the client side should any problem arise
+   (such as network failures or timeouts). The client should use a technique described in the
+   :ref:`http-frontend-async-delete-resultset` section to delete the results.
+
+   Unclaimed results of the completed asynchronous queries will be deleted by Qserv automatically after a certain
+   period of time as defined in a configuration of Qserv Czar. The default value of this parameter is set to 3600 seconds.
+
 The following REST service implements the asynchronous interface:
 
 ..  list-table::
@@ -375,6 +387,27 @@ The query could return:
     "error" :     "",
     "error_ext" : {}
   }
+
+.. _http-frontend-async-delete-resultset:
+
+Deleting result sets
+^^^^^^^^^^^^^^^^^^^^
+
+Result sets of the finished queries are deleted using the following service:
+
+..  list-table::
+    :widths: 10 90
+    :header-rows: 0
+
+    * - ``DELETE``
+      - ``/query-async/result/:queryId``
+
+Where:
+
+``queryId`` : *number*
+  The required unique identifier of the completed query.
+
+If the query identifier is not valid, the service will report an error in the response object.
 
 Canceling queries
 -----------------

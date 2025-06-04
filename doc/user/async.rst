@@ -17,6 +17,18 @@
 Asynchronous Query API
 ######################
 
+.. note:: 
+
+   As of the version **40** of the Qserv API, it's a responsibility of the client to explicitly
+   delete results of the asynchronous queries. The result of a completed query will not be deleted automatically
+   after the client's attempt to pull the result. This allows the client application to manage the lifecycle of
+   the query results more effectively and address possible issues on the client side should any problem arise
+   (such as network failures or timeouts). The client should use a technique described in the
+   :ref:`async-delete-resultset` section to delete the results.
+
+   Unclaimed results of the completed asynchronous queries will be deleted by Qserv automatically after a certain
+   period of time as defined in a configuration of Qserv Czar. The default value of this parameter is set to 3600 seconds.
+
 This is a summary of Qserv's asynchronous query API, as developed in:
 
 - https://rubinobs.atlassian.net/browse/DM-4451
@@ -170,6 +182,21 @@ Any subsequent attempts to retrieve the results will return an error message:
 
     SELECT * FROM qserv_result(313689)
     ERROR 1146 (42S02) at line 1: Table 'qservResult.result_313689' doesn't exist
+
+
+
+.. _async-delete-resultset:
+
+Deleting Results
+----------------
+
+To delete the results of a query, use the following syntax:
+
+.. code-block:: sql
+
+    CALL qserv_result_delete(<query-id>)
+
+This will delete the result table corresponding to the provided identifier of the query.
 
 Cancellation
 ============

@@ -36,6 +36,10 @@ uint64_t TimeUtils::now() {
             .count();
 }
 
+uint64_t TimeUtils::nowSec() {
+    return chrono::duration_cast<chrono::seconds>(chrono::system_clock::now().time_since_epoch()).count();
+}
+
 string TimeUtils::toDateTimeString(chrono::milliseconds const& millisecondsSinceEpoch) {
     chrono::time_point<chrono::system_clock> const point(millisecondsSinceEpoch);
     auto const timer = chrono::system_clock::to_time_t(point);

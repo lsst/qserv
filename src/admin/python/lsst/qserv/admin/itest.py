@@ -235,6 +235,21 @@ class ITestQuery:
             args.insert(1, "--skip-column-names")
         self._run(args, self.out_file_t.format(mode=query_mode_qserv_detached))
 
+        _log.debug("SQLCmd.execute deleting result tables of query ID = %s", query_id)
+        args = [
+            "mysql",
+            "--host",
+            f"{parsed.hostname}",
+            f"--port={parsed.port}",
+            f"--user={parsed.username}",
+            f"--password={parsed.password}",
+            "--batch",
+            "--binary-as-hex",
+            "-e",
+            f"CALL qserv_result_delete({query_id})",
+        ]
+        self._run(args)
+
     def run_attached(self, connection: str, qserv: bool, database: str) -> None:
         """Run the query on the db at the given connection
         attached/synchronously - do not SUBMIT and wait for result.
@@ -570,6 +585,7 @@ class ITestQueryHttp:
             raise RuntimeError(f"Timeout while waiting for detached query {query_id}")
 
         # Make another request to pull the result set
+        _log.debug("SQLCmd.execute pulling result set of query ID = %s", query_id)
         svc = str(urljoin(connection, f"/query-async/result/{query_id}?binary_encoding=hex"))
         req = requests.get(svc, verify=False)
         req.raise_for_status()
@@ -577,6 +593,14 @@ class ITestQueryHttp:
         if res['success'] == 0:
             raise RuntimeError(f"Failed to retrieve a result set of the detached query: {query_id}, server serror: {res['error']}")
         self._write_result(self.out_file_t.format(mode=query_mode_qserv_detached), res)
+
+        _log.debug("SQLCmd.execute deleting result tables of query ID = %s", query_id)
+        svc = str(urljoin(connection, f"/query-async/result/{query_id}"))
+        req = requests.delete(svc, verify=False)
+        req.raise_for_status()
+        res = req.json()
+        if res['success'] == 0:
+            raise RuntimeError(f"Failed to delete the result set of the detached query: {query_id}, server serror: {res['error']}")
 
     def _write_result(self, outfile: str, res: Any) -> None:
         _log.debug("_write_result out_file:%s", outfile)
