@@ -836,7 +836,7 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> cons
         if (elem.second.count > _maxMsgSourceStore) {
             // QMessages source column is VARCHAR(63)
             string source = string("MANY_") + elem.first;
-            source = source.substr(0, 62);
+            source = QueryMessage::limitSrc(source);
             string desc = string("{\"msgSource\":") + elem.first +
                           ", \"count\":" + to_string(elem.second.count) + "}";
             qmeta::QueryMessage qm(-1, source, 0, desc, qmeta::JobStatus::getNow(), elem.second.severity);
@@ -984,11 +984,12 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qM
     // build query
     std::string severity = (qMsg.severity == MSG_INFO ? "INFO" : "ERROR");
 
+    string source = QueryMessage::limitSrc(qMsg.msgSource);
     string query =
             "INSERT INTO QMessages (queryId, msgSource, chunkId, code, severity, message, timestamp) VALUES "
             "(";
     query += to_string(queryId);
-    query += ", \"" + _conn->escapeString(qMsg.msgSource) + "\"";
+    query += ", \"" + _conn->escapeString(source) + "\"";
     query += ", " + to_string(qMsg.chunkId);
     query += ", " + to_string(qMsg.code);
     query += ", \"" + _conn->escapeString(severity) + "\"";

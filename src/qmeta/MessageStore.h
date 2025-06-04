@@ -61,6 +61,9 @@ struct QueryMessage {
     qmeta::JobStatus::TimeType timestamp;
     MessageSeverity severity;
 
+    /// Return string below the length to fit in source in database, which is varchar(63).
+    static std::string limitSrc(std::string const& src) { return src.substr(0, 62); }
+
     std::string dump() const;
 };
 
