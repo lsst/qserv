@@ -350,7 +350,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
     bool const keepData = !deleteData;
     auto exec = _executive.lock();
     if (exec == nullptr || isQueryCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled");
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled " << errorMsg);
         return _workerErrorFinish(deleteData, "cancelled");
     }
 
@@ -363,6 +363,9 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
         }
         return _workerErrorFinish(keepData, "none", "rowLimitComplete");
     }
+
+    string const eMsg = "host:" + _wContactInfo->getWHost() + " " + errorMsg;
+    exec->addMultiError(errorCode, eMsg, util::ErrorCode::WORKER_ERROR);
 
     // Currently there are no detectable recoverable errors from workers. The only
     // error that a worker could send back that may possibly be recoverable would

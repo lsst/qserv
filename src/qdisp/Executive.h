@@ -350,6 +350,7 @@ private:
     protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
 
     std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
+    std::atomic<uint64_t> _jobCancelCount{0};       ///< Total number of JOB_CANCEL messages received.
 };
 
 }  // namespace lsst::qserv::qdisp

@@ -333,6 +333,15 @@ void Executive::assignJobsToUberJobs() {
 
 void Executive::addMultiError(int errorCode, std::string const& errorMsg, int errorState) {
     util::Error err(errorCode, errorMsg, errorState);
+
+    // Thousands of JOB_CANCEL errors are received and only the first one is of any value.
+    if (errorState == util::ErrorCode::JOB_CANCEL) {
+        if (++_jobCancelCount > 1) {
+            LOGS(_log, LOG_LVL_INFO,
+                 " ignoring JOB_CANCEL already " << _jobCancelCount << " received " << errorMsg);
+            return;
+        }
+    }
     {
         lock_guard<mutex> lock(_errorsMutex);
         _multiError.push_back(err);
