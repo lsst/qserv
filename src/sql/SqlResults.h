@@ -30,6 +30,7 @@
 #define LSST_QSERV_SQL_SQLRESULTS_H
 
 // System headers
+#include <functional>
 #include <iterator>
 #include <string>
 #include <vector>
@@ -51,8 +52,8 @@ namespace detail {
  *  is the sequence of strings (pointers) and their lengths. Pointer may be NULL
  *  if the column value is NONE.
  */
-class SqlResults_Iterator : public std::iterator<std::input_iterator_tag,
-                                                 std::vector<std::pair<char const*, unsigned long> > > {
+class SqlResults_Iterator
+        : public std::iterator<std::input_iterator_tag, std::vector<std::pair<char const*, unsigned long>>> {
 public:
     SqlResults_Iterator();
     SqlResults_Iterator(std::vector<MYSQL_RES*> const& results);
@@ -96,9 +97,12 @@ public:
                               std::vector<std::string>&, std::vector<std::string>&, SqlErrorObject&);
     bool extractFirst4Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
                               std::vector<std::string>&, SqlErrorObject&);
-    bool extractFirst6Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
-                              std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
-                              SqlErrorObject&);
+    template <typename... Columns>
+    bool extractFirstColumns(SqlErrorObject& err, Columns&... cols) {
+        std::vector<std::reference_wrapper<std::vector<std::string>>> columns = {std::ref(cols)...};
+        return _extractFirstColumnsImpl(err, columns);
+    }
+
     void freeResults();
 
     /// Return row iterator
@@ -110,6 +114,8 @@ public:
     sql::Schema makeSchema(SqlErrorObject& errObj);
 
 private:
+    bool _extractFirstColumnsImpl(SqlErrorObject& err,
+                                  std::vector<std::reference_wrapper<std::vector<std::string>>>& columns);
     std::vector<MYSQL_RES*> _results;
     bool _discardImmediately;
     unsigned long long _affectedRows;

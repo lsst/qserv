@@ -28,6 +28,7 @@
 // System headers
 #include <cstddef>
 #include <sstream>
+#include <stdexcept>
 
 // Qserv headers
 #include "mysql/SchemaFactory.h"
@@ -178,27 +179,6 @@ bool SqlResults::extractFirst4Columns(std::vector<std::string>& col1, std::vecto
     return true;
 }
 
-bool SqlResults::extractFirst6Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
-                                      std::vector<std::string>& col3, std::vector<std::string>& col4,
-                                      std::vector<std::string>& col5, std::vector<std::string>& col6,
-                                      SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i = 0; i < s; ++i) {
-        MYSQL_ROW row;
-        while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            col1.push_back(EMPTY_STR_IF_NULL(row[0]));
-            col2.push_back(EMPTY_STR_IF_NULL(row[1]));
-            col3.push_back(EMPTY_STR_IF_NULL(row[2]));
-            col4.push_back(EMPTY_STR_IF_NULL(row[3]));
-            col5.push_back(EMPTY_STR_IF_NULL(row[4]));
-            col6.push_back(EMPTY_STR_IF_NULL(row[5]));
-        }
-        mysql_free_result(_results[i]);
-    }
-    _results.clear();
-    return true;
-}
-
 bool SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {
     if (_results.size() != 1) {
         std::stringstream ss;
@@ -228,6 +208,26 @@ sql::Schema SqlResults::makeSchema(SqlErrorObject& errObj) {
 
     schema = mysql::SchemaFactory::newFromResult(_results[0]);
     return schema;
+}
+
+bool SqlResults::_extractFirstColumnsImpl(
+        SqlErrorObject& err, std::vector<std::reference_wrapper<std::vector<std::string>>>& columns) {
+    for (int resultIdx = 0, numResults = _results.size(); resultIdx < numResults; ++resultIdx) {
+        unsigned int const numFields = mysql_num_fields(_results[resultIdx]);
+        if (numFields < static_cast<unsigned int>(columns.size())) {
+            throw std::invalid_argument("Expecting " + std::to_string(columns.size()) + " columns, found " +
+                                        std::to_string(numFields) + " columns in result set");
+        }
+        MYSQL_ROW row;
+        while ((row = mysql_fetch_row(_results[resultIdx])) != nullptr) {
+            for (size_t colIdx = 0; colIdx < columns.size(); ++colIdx) {
+                columns[colIdx].get().push_back(EMPTY_STR_IF_NULL(row[colIdx]));
+            }
+        }
+        mysql_free_result(_results[resultIdx]);
+    }
+    _results.clear();
+    return true;
 }
 
 }  // namespace lsst::qserv::sql
