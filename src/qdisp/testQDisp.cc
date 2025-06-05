@@ -87,6 +87,7 @@ public:
     }
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override {}
     void errorFlush(std::string const& msg, int code) override {};
+    void cancelFileMerge() override {};
 
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override {

@@ -98,6 +98,17 @@ public:
     void push(char const* data, std::size_t size);
 
     /**
+     *  Call to break push operations if the results are no longer needed.
+     *  This is only meant to be used to break lingering push() calls.
+     *  TODO:UJ The interleaving of result file reading and table
+     *       merging makes it impossible to guarantee the result
+     *       table is valid in the event that communication
+     *       to a worker is lost during file transfer.
+     *       @see UberJob::killUberJob()
+     */
+    void cancel();
+
+    /**
      * Pop a record from the stream. The method will block if the stream is empty
      * until a record is pushed.
      * @return A shared pointer to the popped record or an empty string for the end of the stream
@@ -116,6 +127,12 @@ public:
     void increaseBytesWrittenBy(size_t bytesToCopy) { _bytesWritten += bytesToCopy; }
     size_t getBytesWritten() const { return _bytesWritten; }
 
+    /**
+     * If this returns true, the result table has been contaminated by bad characters
+     * in an effort to keep the system from hanging, and the UserQuery is done.
+     */
+    bool getContaminated() const { return _contaminated; }
+
 private:
     CsvStream(std::size_t maxRecords);
 
@@ -124,6 +141,8 @@ private:
     std::size_t const _maxRecords;
     std::list<std::shared_ptr<std::string>> _records;
     std::atomic<size_t> _bytesWritten;
+    bool _cancelled = false;
+    std::atomic<bool> _contaminated = false;
 };
 
 /**

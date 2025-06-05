@@ -81,6 +81,12 @@ UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandle
     LOGS(_log, LOG_LVL_TRACE, _idStr << " created");
 }
 
+UberJob::~UberJob() {
+    // UberJobs are not deleted until the executive has been deleted, which means
+    // the query is done before this is called.
+    getRespHandler()->cancelFileMerge();
+}
+
 void UberJob::_setup() {
     UberJob::Ptr ujPtr = shared_from_this();
     _respHandler->setUberJob(ujPtr);
@@ -205,15 +211,6 @@ void UberJob::_unassignJobs() {
     _jobs.clear();
 }
 
-bool UberJob::isQueryCancelled() {
-    auto exec = _executive.lock();
-    if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " _executive == nullptr");
-        return true;  // Safer to assume the worst.
-    }
-    return exec->getCancelled();
-}
-
 bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg) {
     // must be locked _jobsMtx
     auto currentState = _jobStatus->getState();
@@ -269,15 +266,15 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     LOGS(_log, LOG_LVL_DEBUG,
          cName(__func__) << " fileUrl=" << fileUrl << " rowCount=" << rowCount << " fileSize=" << fileSize);
 
-    if (isQueryCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " import job was cancelled.");
-        return _importResultError(true, "cancelled", "Query cancelled");
+    auto exec = _executive.lock();
+    if (exec == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) + " no executive");
+        return _importResultError(true, "cancelled", "Query cancelled - no executive");
     }
 
-    auto exec = _executive.lock();
-    if (exec == nullptr || exec->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) + " no executive or cancelled");
-        return _importResultError(true, "cancelled", "Query cancelled - no executive");
+    if (exec->getCancelled()) {
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " import job was cancelled.");
+        return _importResultError(true, "cancelled", "Query cancelled");
     }
 
     if (exec->isRowLimitComplete()) {
@@ -349,7 +346,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
     bool const deleteData = true;
     bool const keepData = !deleteData;
     auto exec = _executive.lock();
-    if (exec == nullptr || isQueryCancelled()) {
+    if (exec == nullptr || exec->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled " << errorMsg);
         return _workerErrorFinish(deleteData, "cancelled");
     }
@@ -468,10 +465,11 @@ nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& e
 }
 
 void UberJob::killUberJob() {
+    // Usually called when a worker has effectively died.
     LOGS(_log, LOG_LVL_WARN, cName(__func__) << " stopping this UberJob and re-assigning jobs.");
 
     auto exec = _executive.lock();
-    if (exec == nullptr || isQueryCancelled()) {
+    if (exec == nullptr || exec->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled");
         return;
     }
@@ -494,6 +492,27 @@ void UberJob::killUberJob() {
     _unassignJobs();
     // Let Czar::_monitor reassign jobs - other UberJobs are probably being killed
     // so waiting probably gets a better distribution.
+
+    // If there are any ongoing file merges, they won't finish as the worker is dead.
+    // TODO:UJ - There is a chance this will ruin the result file, but it's either
+    //           that or eventually hang the czar. The way worker result files are read
+    //           and merged must be changed so the result file cannot be contaminated.
+    //           Options are read everything in the file before merging
+    //           - storing on disk, possibly slow
+    //           - storing in memory limiting the number of concurrent transfers to
+    //             avoid running out of memory
+    //           - writing to partitions, the max number of partitions is a tiny
+    //             fraction of the possible number of UberJobs, which will probably
+    //             make failure recovery very complicated and slow. At minimum, all
+    //             UberJobs writing to a partition should be running on the same
+    //             worker. If a worker fails, all the jobs for that worker need
+    //             to be sent to other workers. Making more partitions could break
+    //             the limit on the number of partions. Attaching them to existing
+    //             partitions runs the risk of another failure ruining a nearly
+    //             complete partition (cascading failures).
+    //
+    getRespHandler()->cancelFileMerge();
+
     return;
 }
 
