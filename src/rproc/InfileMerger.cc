@@ -189,24 +189,6 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
         }
     }
 
-    // Check if the final result size is too large. It should be safe to do this
-    // here as the only expected errors at this point are failures in transmission.
-    // Even if there is a failure in transmission, the retry would be expected
-    // to put the result size over the limit again.
-    {
-        lock_guard<mutex> resultSzLock(_mtxResultSizeMtx);
-        _perJobResultSize[uJobId] += fileSize;
-        size_t tResultSize = _totalResultSize + _perJobResultSize[uJobId];
-        if (tResultSize > _maxResultTableSizeBytes) {
-            string str = queryIdJobStr + " cancelling the query, queryResult table " + _mergeTable +
-                         " is too large at " + to_string(tResultSize) + " bytes, max allowed size is " +
-                         to_string(_maxResultTableSizeBytes) + " bytes";
-            LOGS(_log, LOG_LVL_ERROR, str);
-            _error = util::Error(-1, str, -1);
-            return false;
-        }
-    }
-
     TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
                                                     bool success) {
         if (!success) return;
