@@ -132,6 +132,7 @@ string readHttpFileAndMerge(lsst::qserv::qdisp::UberJob::Ptr const& uberJob, str
             // Restart the tracker to measure the reading performance of the next chunk of data.
             transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
         });
+
         if (offset != fileSize) {
             throw runtime_error(context + "short read");
         }
@@ -195,14 +196,20 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
 
     if (fileSize == 0) return qdisp::MergeEndStatus(true);
 
-    // After this final test the job's result processing can't be interrupted.
-    if (uberJob->isQueryCancelled()) return qdisp::MergeEndStatus(true);
-
     // Read from the http stream and push records into the CSV stream in a separate thread.
     // Note the fixed capacity of the stream which allows up to 2 records to be buffered
     // in the stream. This is enough to hide the latency of the HTTP connection and
     // the time needed to read the file.
     auto csvStream = mysql::CsvStream::create(2);
+    _csvStream = csvStream;
+
+    // This must be after setting _csvStream to avoid cancelFileMerge()
+    // race issues, and it needs to be before the thread starts.
+    auto exec = uberJob->getExecutive();
+    if (exec == nullptr || exec->getCancelled() || exec->isRowLimitComplete()) {
+        return qdisp::MergeEndStatus(true);
+    }
+
     string fileReadErrorMsg;
     thread csvThread([uberJob, csvStream, fileUrl, fileSize, &fileReadErrorMsg]() {
         size_t bytesRead = 0;
@@ -231,11 +238,16 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     });
 
     // Attempt the actual merge.
-    bool const fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvStream);
+    bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvStream);
     if (!fileMergeSuccess) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg(), util::ErrorCode::RESULT_IMPORT);
+    }
+    if (csvStream->getContaminated()) {
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
+        fileMergeSuccess = false;
+        _setError(ccontrol::MSG_RESULT_ERROR, "merge stream contaminated", util::ErrorCode::RESULT_IMPORT);
     }
 
     csvThread.join();
@@ -251,7 +263,16 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         // is finished. If any bytes were written, the result table is ruined.
         mergeEStatus.contaminated = csvStream->getBytesWritten() > 0;
     }
+    // TODO:UJ Make it impossible to contaminate the result table for all errors
+    //      short of czar or mariadb crash.
     return mergeEStatus;
+}
+
+void MergingHandler::cancelFileMerge() {
+    auto csvStrm = _csvStream.lock();
+    if (csvStrm != nullptr) {
+        csvStrm->cancel();
+    }
 }
 
 void MergingHandler::_setError(int code, std::string const& msg, int errorState) {
