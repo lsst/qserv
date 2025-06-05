@@ -373,6 +373,7 @@ bool Executive::join() {
          cName(__func__) << " "
                          << "Flag set to _empty=" << _empty << ", sCount=" << sCount
                          << ", requestCount=" << _requestCount);
+
     return _empty || isRowLimitComplete();
 }
 

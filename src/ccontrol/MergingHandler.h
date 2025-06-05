@@ -37,6 +37,10 @@ namespace lsst::qserv::http {
 class ClientConnPool;
 }  // namespace lsst::qserv::http
 
+namespace lsst::qserv::mysql {
+class CsvStream;
+}  // namespace lsst::qserv::mysql
+
 namespace lsst::qserv::qdisp {
 class Executive;
 class JobQuery;
@@ -74,6 +78,9 @@ public:
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
 
+    /// Stop an ongoing file merge, if possible.
+    void cancelFileMerge() override;
+
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override;
 
@@ -99,6 +106,7 @@ private:
     std::string _wName{"~"};                             ///< worker name
 
     std::weak_ptr<qdisp::Executive> _executive;  ///< Weak pointer to the executive for errors.
+    std::weak_ptr<mysql::CsvStream> _csvStream;  ///< Weak pointer to cancel infile merge.
 };
 
 }  // namespace lsst::qserv::ccontrol

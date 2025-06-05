@@ -260,11 +260,17 @@ CsvStream::CsvStream(std::size_t maxRecords) : _maxRecords(maxRecords) {
     }
 }
 
+void CsvStream::cancel() {
+    std::unique_lock<std::mutex> lock(_mtx);
+    _cancelled = true;
+    _cv.notify_all();
+}
+
 void CsvStream::push(char const* data, std::size_t size) {
     std::unique_lock<std::mutex> lock(_mtx);
-    while (_records.size() >= _maxRecords) {
-        _cv.wait(lock);
-    }
+    _cv.wait(lock, [this]() { return (_records.size() < _maxRecords) || _cancelled; });
+
+    if (_cancelled) return;
     if (data != nullptr && size != 0) {
         _records.emplace_back(std::make_shared<std::string>(data, size));
     } else {
@@ -276,8 +282,19 @@ void CsvStream::push(char const* data, std::size_t size) {
 
 std::shared_ptr<std::string> CsvStream::pop() {
     std::unique_lock<std::mutex> lock(_mtx);
-    while (_records.empty()) {
-        _cv.wait(lock);
+    _cv.wait(lock, [this]() { return (!_records.empty() || _cancelled); });
+
+    if (_records.empty()) {
+        // _cancelled must be true.
+        // The hope is that this never happens, but to keep the system
+        // from locking up, send out illegal characters to force fail
+        // the merge. Need to keep sending characters until the
+        // database stops asking for them.
+        // See CsvStream::cancel()
+        _contaminated = true;
+        auto pstr = std::make_shared<std::string>("$");
+        _cv.notify_one();
+        return pstr;
     }
     std::shared_ptr<std::string> front = _records.front();
     _records.pop_front();

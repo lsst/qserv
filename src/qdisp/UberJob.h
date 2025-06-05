@@ -58,7 +58,7 @@ public:
     UberJob(UberJob const&) = delete;
     UberJob& operator=(UberJob const&) = delete;
 
-    virtual ~UberJob() {};
+    virtual ~UberJob();
 
     std::string cName(const char* funcN) const { return std::string("UberJob::") + funcN + " " + getIdStr(); }
 
@@ -75,7 +75,7 @@ public:
     std::string const& getIdStr() const { return _idStr; }
     std::shared_ptr<ResponseHandler> getRespHandler() { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() { return _jobStatus; }
-    bool isQueryCancelled();
+
     void callMarkCompleteFunc(bool success);  ///< call markComplete for all jobs in this UberJob.
     std::shared_ptr<Executive> getExecutive() { return _executive.lock(); }
 
