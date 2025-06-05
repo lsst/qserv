@@ -438,10 +438,11 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlQmetaConfig());
     string sql =
             "SELECT "
-            "status,UNIX_TIMESTAMP(submitted),UNIX_TIMESTAMP(completed),chunkCount,messageTable,resultQuery "
-            "FROM QInfo WHERE "
+            "status,qc.czarId,qc.czar,UNIX_TIMESTAMP(submitted),UNIX_TIMESTAMP(completed),chunkCount,"
+            "collectedBytes,collectedRows,finalRows,messageTable,resultQuery "
+            "FROM QInfo, QCzar qc WHERE "
             "queryId=" +
-            to_string(queryId);
+            to_string(queryId) + " AND qc.czarId=QInfo.czarId";
     sql::SqlResults results;
     sql::SqlErrorObject err;
     if (!sqlConn->runQuery(sql, results, err)) {
@@ -451,13 +452,19 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
         throw runtime_error(msg);
     }
     vector<string> colStatus;
+    vector<string> colCzarId;
+    vector<string> colCzarType;
     vector<string> colSubmitted;
     vector<string> colCompleted;
     vector<string> colChunkCount;
+    vector<string> colCollectedBytes;
+    vector<string> colCollectedRows;
+    vector<string> colFinalRows;
     vector<string> colMessageTable;
     vector<string> colResultQuery;
-    if (!results.extractFirst6Columns(colStatus, colSubmitted, colCompleted, colChunkCount, colMessageTable,
-                                      colResultQuery, err)) {
+    if (!results.extractFirstColumns(err, colStatus, colCzarId, colCzarType, colSubmitted, colCompleted,
+                                     colChunkCount, colCollectedBytes, colCollectedRows, colFinalRows,
+                                     colMessageTable, colResultQuery)) {
         string const msg = context + "Failed to extract info for the user query, err=" + err.printErrMsg() +
                            ", sql=" + sql;
         throw runtime_error(msg);
@@ -478,6 +485,11 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     result.resultQuery = colResultQuery[0];
     result.queryId = queryId;
     result.status = colStatus[0];
+    result.czarId = stoul(colCzarId[0]);
+    result.czarType = colCzarType[0];
+    result.collectedBytes = stoull(ZERO_IF_EMPTY_STR(colCollectedBytes[0]));
+    result.collectedRows = stoull(ZERO_IF_EMPTY_STR(colCollectedRows[0]));
+    result.finalRows = stoull(ZERO_IF_EMPTY_STR(colFinalRows[0]));
 
     // Pull ongoing query processing stats if this information is still available.
     // This is a transient information located in the temporary table.

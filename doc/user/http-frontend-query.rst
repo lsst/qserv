@@ -163,8 +163,13 @@ If the query identifier is valid then the following object will be returned:
         "status" : {
             "queryId" :         <number>,
             "status" :          <string>,
+            "czarId" :          <number>,
+            "czarType" :        <string>,
             "totalChunks" :     <number>,
             "completedChunks" : <number>,
+            "collectedBytes" :  <number>,
+            "collectedRows" :   <number>,
+            "finalRows" :       <number>,
             "queryBeginEpoch" : <number>,
             "lastUpdateEpoch" : <number>
         }
@@ -189,6 +194,13 @@ Where the ``status`` is an object that has following attributes:
     - or, implicitly when the query processing service was restarted due to some failure or by
       Qserv administrators.
 
+``czarId`` : *number*
+    The unique identifier of the Czar node that is responsible for processing the query.
+
+``czarType`` : *string*
+  The type of the Czar node that is responsible for processing the query. In the current version of Qserv, the
+  value of this attribute will be either ``proxy`` or ``http`` depending on the type of the Czar frontend.
+
 ``totalChunks`` : *number*
   The total number of so-called "chunks" (spatial shards used for splitting the large tables in Qserv
   into smaller sub-tables to be distributed across worker nodes of Qserv).
@@ -196,6 +208,21 @@ Where the ``status`` is an object that has following attributes:
 ``completedChunks`` : *number*
   The number of chunks that have been processed by Qserv so far. The value of this parameter varies
   from ``0`` to the maximum number reported in the attribute ``totalChunks``.
+
+``collectedBytes`` : *number*
+  The total number of bytes collected so far by Qserv from all worker nodes in response to the query.
+  This value is reported only if the query has been successfully processed so far.
+
+  **HINT**: This value may be used to estimate the size of the result set of the query using
+  the following formula: ``finalBytes = collectedBytes * (1.0 * finalRows / collectedRows)``
+
+``collectedRows`` : *number*
+  The total number of rows collected so far by Qserv from all worker nodes in response to the query.
+  This value is reported only if the query has been successfully processed so far.
+
+``finalRows`` : *number*
+  The total number of rows in the final result set of the query. This value is reported only if
+  the query has been successfully processed so far.
 
 ``queryBeginEpoch`` : *number*
   The 32-bit number representing the start time of the query expressed in seconds since the UNIX *Epoch*.
@@ -208,7 +235,7 @@ Where the ``status`` is an object that has following attributes:
   - the query processing didn't start
   - the requst wasn't inspected by the monitoring system
 
-Here is an example of the status inquiry request that succeeded:
+Below is an example response for a query that is currently being processed:
 
 .. code-block::
 
@@ -216,8 +243,13 @@ Here is an example of the status inquiry request that succeeded:
         "status" : {
             "queryId" :         310554,
             "status" :          "EXECUTING",
+            "czarId" :          7,
+            "czarType" :        "http",
             "totalChunks" :     1477,
             "completedChunks" : 112,
+            "collectedBytes" :  0,
+            "collectedRows" :   0,
+            "finalRows" :       0,
             "queryBeginEpoch" : 1708141345,
             "lastUpdateEpoch" : 1708141359
         }
