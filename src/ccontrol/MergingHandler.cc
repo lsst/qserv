@@ -29,6 +29,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstring>
+#include <stdexcept>
 #include <vector>
 
 // Third-party headers
@@ -87,6 +88,17 @@ lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
             }
         };
 
+/**
+ * This exception is used by the merging handler to signal the file reader
+ * that the query has been ended before the file has been completely read.
+ * The exception is meant to tell the reader to stop reading the file
+ * and return control to the caller.
+ */
+class QueryEnded : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
+
 string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
                             function<void(char const*, uint32_t)> const& messageIsReady,
                             shared_ptr<http::ClientConnPool> const& httpConnPool) {
@@ -136,6 +148,9 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
         if (offset != fileSize) {
             throw runtime_error(context + "short read");
         }
+    } catch (QueryEnded const& ex) {
+        // This is a normal condition which should be handled gracefully by the algorithm.
+        LOGS(_log, LOG_LVL_DEBUG, context << ex.what() << ", httpUrl=" << httpUrl);
     } catch (exception const& ex) {
         string const errMsg = "failed to open/read: " + httpUrl + ", fileSize: " + to_string(fileSize) +
                               ", offset: " + to_string(offset) + ", ex: " + string(ex.what());
@@ -238,10 +253,10 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(" << _tableName << ", flushed=" << (_flushed ? "true)" : "false)");
 }
 
-void MergingHandler::_initState() { _setError(0, ""); }
+void MergingHandler::_initState() { _setError(util::ErrorCode::NONE, string()); }
 
-bool queryIsNoLongerActive(shared_ptr<qdisp::JobQuery> const& jobQuery) {
-    // Do nothing if the query got cancelled for any reason.
+bool MergingHandler::_queryIsNoLongerActive(shared_ptr<qdisp::JobQuery> const& jobQuery) const {
+    // Check if the query got cancelled for any reason.
     if (jobQuery->isQueryCancelled()) return true;
 
     // Check for other indicators that the query may have cancelled or finished.
@@ -249,7 +264,11 @@ bool queryIsNoLongerActive(shared_ptr<qdisp::JobQuery> const& jobQuery) {
     if (executive == nullptr || executive->getCancelled() || executive->isLimitRowComplete()) {
         return true;
     }
-    return false;
+
+    // The final test is to see if any errors have been reported in a context
+    // of the merger. A presence of errors means that further attempting of merging
+    // makes no sense.
+    return !getError().isNone();
 }
 
 bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
@@ -258,7 +277,7 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
     if (responseSummary.transmitsize() == 0) return true;
 
     // After this final test the job's result processing can't be interrupted.
-    if (queryIsNoLongerActive(jobQuery)) return true;
+    if (_queryIsNoLongerActive(jobQuery)) return true;
 
     // Read from the http stream and push records into the CSV stream in a separate thread.
     // Note the fixed capacity of the stream which allows up to 2 records to be buffered
@@ -266,13 +285,14 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
     // the time needed to read the file.
     auto csvStream = mysql::CsvStream::create(2);
     string fileReadErrorMsg;
-    thread csvThread([jobQuery, csvStream, responseSummary, &fileReadErrorMsg]() {
+    thread csvThread([&]() {
         size_t bytesRead = 0;
         fileReadErrorMsg = ::readHttpFileAndMerge(
                 responseSummary.fileresource_http(), responseSummary.transmitsize(),
-                [jobQuery, csvStream, responseSummary, &bytesRead](char const* buf, uint32_t size) {
+                [&](char const* buf, uint32_t size) {
+                    bool const queryEnded = _queryIsNoLongerActive(jobQuery);
                     bool last = false;
-                    if (buf == nullptr || size == 0) {
+                    if (buf == nullptr || size == 0 || queryEnded) {
                         last = true;
                     } else {
                         csvStream->push(buf, size);
@@ -281,6 +301,12 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
                     }
                     if (last) {
                         csvStream->push(nullptr, 0);
+                        if (queryEnded) {
+                            throw ::QueryEnded(
+                                    "query " + jobQuery->getIdStr() +
+                                    " ended while reading the file, bytesRead=" + to_string(bytesRead) +
+                                    ", transmitsize=" + to_string(responseSummary.transmitsize()));
+                        }
                     }
                 },
                 MergingHandler::_getHttpConnPool());
