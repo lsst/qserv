@@ -101,6 +101,13 @@ private:
     /// Set error code and string.
     void _setError(int code, std::string const& msg);
 
+    /// Check if the query is no longer active.
+    /// This is used to prevent the query from being processed after it has been cancelled
+    /// or finished for any reason.
+    /// @param jobQuery the query to check
+    /// @return true if the query is no longer active
+    bool _queryIsNoLongerActive(std::shared_ptr<qdisp::JobQuery> const& jobQuery) const;
+
     // All instances of the HTTP client class are members of the same pool. This allows
     // connection reuse and a significant reduction of the kernel memory pressure.
     // Note that the pool gets instantiated at the very first call to method _getHttpConnPool()
