@@ -336,12 +336,13 @@ void UserQuerySelect::buildAndSendUberJobs() {
         return;
     }
 
-    if (exec->getCancelled() || exec->getSuperfluous()) {
-        LOGS(_log, LOG_LVL_INFO, funcN << " executive cancelled.");
-    }
-
     if (exec->getSuperfluous()) {
         LOGS(_log, LOG_LVL_INFO, funcN << " executive superfluous, result already found.");
+        return;
+    }
+    if (exec->getCancelled()) {
+        LOGS(_log, LOG_LVL_INFO, funcN << " executive cancelled.");
+        return;
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
@@ -490,10 +491,15 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     if (!missingChunks.empty()) {
         string errStr = funcN + " a worker could not be found for these chunks ";
+        int maxList = 0;
         for (auto const& chk : missingChunks) {
             errStr += to_string(chk) + ",";
+            if (++maxList > 50) {
+                errStr += " too many to show all.";
+                break;
+            }
         }
-        errStr += " they will be retried later.";
+        errStr += " All will be retried later. Total missing=" + to_string(missingChunks.size());
         LOGS(_log, LOG_LVL_ERROR, errStr);
     }
 

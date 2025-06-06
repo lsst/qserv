@@ -91,8 +91,6 @@ public:
     typedef std::map<ChunkIdType, std::shared_ptr<JobQuery>> ChunkIdJobMapType;
 
     /// Construct an Executive.
-    /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
-    /// instead of a real XrdSsiService
     static Executive::Ptr create(int secsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
                                  std::shared_ptr<util::QdispPool> const& qdispPool,
                                  std::shared_ptr<qmeta::QStatus> const& qMeta,
@@ -291,9 +289,7 @@ private:
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
-    // TODO:UJ see what it takes to make this a normal mutex, before
-    //  xrootd resulted in things being called in difficult to predict
-    //  ways. That shouldn't be an issue any more.
+    // TODO:UJ see what it takes to make this a normal mutex.
     mutable std::recursive_mutex _jobMapMtx;
 
     QueryId _id = 0;  ///< Unique identifier for this query.
@@ -347,6 +343,7 @@ private:
     protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
 
     std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
+    std::atomic<uint64_t> _jobCancelCount{0};       ///< Total number of JOB_CANCEL messages received.
 };
 
 }  // namespace qdisp

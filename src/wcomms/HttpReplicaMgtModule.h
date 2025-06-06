@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_XRDSVC_HTTPREPLICAMGTMODULE_H
-#define LSST_QSERV_XRDSVC_HTTPREPLICAMGTMODULE_H
+#ifndef LSST_QSERV_WCOMMS_HTTPREPLICAMGTMODULE_H
+#define LSST_QSERV_WCOMMS_HTTPREPLICAMGTMODULE_H
 
 // System headers
 #include <functional>
@@ -31,11 +31,9 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "xrdsvc/HttpModule.h"
+#include "wcomms/HttpModule.h"
 
 // Forward declarations
-class XrdSsiCluster;
-
 namespace lsst::qserv::qhttp {
 class Request;
 class Response;
@@ -49,12 +47,8 @@ namespace lsst::qserv::wpublish {
 class ChunkInventory;
 }  // namespace lsst::qserv::wpublish
 
-namespace lsst::qserv::xrdsvc {
-class SsiProviderServer;
-}  // namespace lsst::qserv::xrdsvc
-
 // This header declarations
-namespace lsst::qserv::xrdsvc {
+namespace lsst::qserv::wcomms {
 
 /**
  * Class HttpReplicaMgtModule implements a handler for managing chunk replicas
@@ -62,7 +56,7 @@ namespace lsst::qserv::xrdsvc {
  * databases that were partitioned based on the same partitioning configuration)
  * or all known databases.
  */
-class HttpReplicaMgtModule : public xrdsvc::HttpModule {
+class HttpReplicaMgtModule : public wcomms::HttpModule {
 public:
     /**
      * @note supported values for parameter 'subModuleName' are:
@@ -187,6 +181,6 @@ private:
     bool _dataContext = false;
 };
 
-}  // namespace lsst::qserv::xrdsvc
+}  // namespace lsst::qserv::wcomms
 
-#endif  // LSST_QSERV_XRDSVC_HTTPREPLICAMGTMODULE_H
+#endif  // LSST_QSERV_WCOMMS_HTTPREPLICAMGTMODULE_H

@@ -78,7 +78,7 @@ bool readIntoBuffer(boost::asio::ip::tcp::socket& socket, shared_ptr<ProtocolBuf
     boost::system::error_code ec;
     boost::asio::read(socket, boost::asio::buffer(ptr->data(), bytes), boost::asio::transfer_at_least(bytes),
                       ec);
-    return not ::isErrorCode(ec, __func__);
+    return not::isErrorCode(ec, __func__);
 }
 
 template <class T>
@@ -144,7 +144,7 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
 
     // Now read the body of the request
     ProtocolExportHandshakeRequest request;
-    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
+    if (not::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
     _database = request.database();
     _table = request.table();
@@ -310,7 +310,7 @@ void ExportServerConnection::_dataRequestReceived(boost::system::error_code cons
     }
 
     ProtocolExportRequest request;
-    if (not ::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) {
+    if (not::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) {
         _closeFile();
         return;
     }

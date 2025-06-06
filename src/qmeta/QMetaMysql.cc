@@ -361,7 +361,7 @@ void QMetaMysql::addChunks(QueryId queryId, vector<int> const& chunks) {
 }
 
 // Assign or re-assign chunk to a worker.
-void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& xrdEndpoint) {
+void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& wEndpoint) {
     lock_guard<mutex> sync(_dbMutex);
 
     auto trans = QMetaTransaction::create(*_conn);
@@ -369,7 +369,7 @@ void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& xrdEndpoi
     // find and update chunk info
     sql::SqlErrorObject errObj;
     string query = "UPDATE QWorker SET wxrd = '";
-    query += _conn->escapeString(xrdEndpoint);
+    query += _conn->escapeString(wEndpoint);
     query += "', submitted = NOW() WHERE queryId = ";
     query += to_string(queryId);
     query += " AND chunk = ";
@@ -834,7 +834,9 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> cons
 
     for (auto const& elem : msgCountMap) {
         if (elem.second.count > _maxMsgSourceStore) {
+            // QMessages source column is VARCHAR(63)
             string source = string("MANY_") + elem.first;
+            source = QueryMessage::limitSrc(source);
             string desc = string("{\"msgSource\":") + elem.first +
                           ", \"count\":" + to_string(elem.second.count) + "}";
             qmeta::QueryMessage qm(-1, source, 0, desc, qmeta::JobStatus::getNow(), elem.second.severity);
@@ -859,7 +861,8 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
             (prevUpdateTime == chrono::time_point<chrono::system_clock>()) || (prevUpdateTime < updateTime);
     if (!force) {
         trans->commit();
-        return QMetaChunkMap();
+        chunkMap.updateTime = prevUpdateTime;
+        return chunkMap;
     }
 
     // Read the map itself
@@ -981,11 +984,12 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qM
     // build query
     std::string severity = (qMsg.severity == MSG_INFO ? "INFO" : "ERROR");
 
+    string source = QueryMessage::limitSrc(qMsg.msgSource);
     string query =
             "INSERT INTO QMessages (queryId, msgSource, chunkId, code, severity, message, timestamp) VALUES "
             "(";
     query += to_string(queryId);
-    query += ", \"" + _conn->escapeString(qMsg.msgSource) + "\"";
+    query += ", \"" + _conn->escapeString(source) + "\"";
     query += ", " + to_string(qMsg.chunkId);
     query += ", " + to_string(qMsg.code);
     query += ", \"" + _conn->escapeString(severity) + "\"";

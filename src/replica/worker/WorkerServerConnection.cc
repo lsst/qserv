@@ -62,7 +62,7 @@ bool readIntoBuffer(string const& context, boost::asio::ip::tcp::socket& socket,
     boost::system::error_code ec;
     boost::asio::read(socket, boost::asio::buffer(ptr->data(), bytes), boost::asio::transfer_at_least(bytes),
                       ec);
-    return not ::isErrorCode(context, ec, __func__);
+    return not::isErrorCode(context, ec, __func__);
 }
 
 template <class T>
@@ -151,7 +151,7 @@ void WorkerServerConnection::_received(boost::system::error_code const& ec, size
 
     // Now read the request header
     ProtocolRequestHeader hdr;
-    if (not ::readMessage(context(), _socket, _bufferPtr, _bufferPtr->parseLength(), hdr)) return;
+    if (not::readMessage(context(), _socket, _bufferPtr, _bufferPtr->parseLength(), hdr)) return;
 
     // Analyze the header of the request. Note that the header message categorizes
     // requests in two layers:
@@ -181,13 +181,13 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
 
     // Read the request length
     uint32_t bytes;
-    if (not ::readLength(context(), _socket, _bufferPtr, bytes)) return;
+    if (not::readLength(context(), _socket, _bufferPtr, bytes)) return;
 
     switch (hdr.queued_type()) {
         case ProtocolQueuedRequestType::REPLICA_CREATE: {
             // Read the request body
             ProtocolRequestReplicate request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseReplicate response;
             if (_verifyInstance(hdr, response)) {
@@ -199,7 +199,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
         case ProtocolQueuedRequestType::REPLICA_DELETE: {
             // Read the request body
             ProtocolRequestDelete request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseDelete response;
             if (_verifyInstance(hdr, response)) {
@@ -211,7 +211,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
         case ProtocolQueuedRequestType::REPLICA_FIND: {
             // Read the request body
             ProtocolRequestFind request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseFind response;
             if (_verifyInstance(hdr, response)) {
@@ -223,7 +223,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
         case ProtocolQueuedRequestType::REPLICA_FIND_ALL: {
             // Read the request body
             ProtocolRequestFindAll request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseFindAll response;
             if (_verifyInstance(hdr, response)) {
@@ -235,7 +235,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
         case ProtocolQueuedRequestType::TEST_ECHO: {
             // Read the request body
             ProtocolRequestEcho request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseEcho response;
             if (_verifyInstance(hdr, response)) {
@@ -247,7 +247,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
         case ProtocolQueuedRequestType::INDEX: {
             // Read the request body
             ProtocolRequestDirectorIndex request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseDirectorIndex response;
             if (_verifyInstance(hdr, response)) {
@@ -260,7 +260,7 @@ void WorkerServerConnection::_processQueuedRequest(ProtocolRequestHeader const& 
         case ProtocolQueuedRequestType::SQL: {
             // Read the request body
             ProtocolRequestSql request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
 
             ProtocolResponseSql response;
             if (_verifyInstance(hdr, response)) {
@@ -282,14 +282,14 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
 
     // Read the request length
     uint32_t bytes;
-    if (not ::readLength(context(), _socket, _bufferPtr, bytes)) {
+    if (not::readLength(context(), _socket, _bufferPtr, bytes)) {
         return;
     }
     switch (hdr.management_type()) {
         case ProtocolManagementRequestType::REQUEST_STATUS: {
             // Read the request body
             ProtocolRequestStatus request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
             ProtocolResponseStatus response;
             WorkerPerformance performance;
             performance.setUpdateStart();
@@ -302,7 +302,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
         case ProtocolManagementRequestType::REQUEST_STOP: {
             // Read the request body
             ProtocolRequestStop request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
             ProtocolResponseStop response;
             WorkerPerformance performance;
             performance.setUpdateStart();
@@ -315,7 +315,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
         case ProtocolManagementRequestType::REQUEST_TRACK: {
             // Read the request body
             ProtocolRequestTrack request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
             switch (request.queued_type()) {
                 case ProtocolQueuedRequestType::REPLICA_CREATE: {
                     ProtocolResponseReplicate response;
@@ -369,7 +369,7 @@ void WorkerServerConnection::_processManagementRequest(ProtocolRequestHeader con
         case ProtocolManagementRequestType::REQUEST_DISPOSE: {
             // Read the request body
             ProtocolRequestDispose request;
-            if (not ::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
+            if (not::readMessage(context(), _socket, _bufferPtr, bytes, request)) return;
             ProtocolResponseDispose response;
             if (_verifyInstance(hdr, response)) {
                 for (int i = 0; i < request.ids_size(); ++i) {
