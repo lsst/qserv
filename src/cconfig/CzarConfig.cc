@@ -141,6 +141,18 @@ void CzarConfig::setReplicationHttpPort(uint16_t port) {
             _replicationHttpPort->getValStr();
 }
 
+void CzarConfig::setHttpUser(std::string const& user) {
+    _httpUser->setVal(user);
+    // Update the relevant section of the JSON-ified configuration.
+    _jsonConfig["actual"][_httpUser->getSection()][_httpUser->getName()] = _httpUser->getValStr();
+}
+
+void CzarConfig::setHttpPassword(std::string const& password) {
+    _httpPassword->setVal(password);
+    // Update the relevant section of the JSON-ified configuration.
+    _jsonConfig["actual"][_httpPassword->getSection()][_httpPassword->getName()] = _httpPassword->getValStr();
+}
+
 void CzarConfig::setId(qmeta::CzarId id) {
     _czarId = id;
     // Update the relevant section of the JSON-ified configuration.
