@@ -51,8 +51,7 @@ string packWarnings(list<string> const& warnings) {
 
 namespace lsst::qserv::http {
 
-BaseModule::BaseModule(string const& authKey, string const& adminAuthKey)
-        : _authKey(authKey), _adminAuthKey(adminAuthKey) {}
+BaseModule::BaseModule(AuthContext const& authContext) : _authContext(authContext) {}
 
 void BaseModule::checkApiVersion(string const& func, unsigned int minVersion, string const& warning) const {
     unsigned int const maxVersion = MetaModule::version;
@@ -132,7 +131,7 @@ void BaseModule::enforceAuthorization(http::AuthType const authType) {
     if (authType != http::AuthType::REQUIRED) return;
     if (body().has("admin_auth_key")) {
         auto const adminAuthKey = body().required<string>("admin_auth_key");
-        if (adminAuthKey != _adminAuthKey) {
+        if (adminAuthKey != _authContext.adminAuthKey) {
             throw AuthError(context() +
                             "administrator's authorization key 'admin_auth_key' in the request"
                             " doesn't match the one in server configuration");
@@ -142,7 +141,7 @@ void BaseModule::enforceAuthorization(http::AuthType const authType) {
     }
     if (body().has("auth_key")) {
         auto const authKey = body().required<string>("auth_key");
-        if (authKey != _authKey) {
+        if (authKey != _authContext.authKey) {
             throw AuthError(context() +
                             "authorization key 'auth_key' in the request doesn't match"
                             " the one in server configuration");

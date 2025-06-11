@@ -33,6 +33,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/AuthContext.h"
 #include "http/RequestBodyJSON.h"
 
 // Forward declarations
@@ -93,10 +94,11 @@ public:
 
 protected:
     /**
-     * @param authKey  An authorization key for operations which require extra security.
-     * @param adminAuthKey  An administrator-level authorization key.
+     * @param authContext An object that contains the authorization keys and login credentials
+     * for the module. The object is used only if the execute() method is called with
+     * http::AuthType::REQUIRED.
      */
-    BaseModule(std::string const& authKey, std::string const& adminAuthKey);
+    BaseModule(http::AuthContext const& authContext);
 
     /// @return Authorization level of the request.
     bool isAdmin() const { return _isAdmin; }
@@ -227,8 +229,7 @@ protected:
 
 private:
     // Input parameters
-    std::string const _authKey;
-    std::string const _adminAuthKey;
+    AuthContext const _authContext;
 
     /// The flag indicating if a request has been granted the "administrator"-level privileges.
     bool _isAdmin = false;

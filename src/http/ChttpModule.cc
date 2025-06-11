@@ -35,9 +35,9 @@ using namespace std;
 
 namespace lsst::qserv::http {
 
-ChttpModule::ChttpModule(string const& authKey, string const& adminAuthKey, httplib::Request const& req,
+ChttpModule::ChttpModule(http::AuthContext const& authContext, httplib::Request const& req,
                          httplib::Response& resp)
-        : Module(authKey, adminAuthKey), _req(req), _resp(resp) {}
+        : Module(authContext), _req(req), _resp(resp) {}
 
 string ChttpModule::method() const { return _req.method; }
 

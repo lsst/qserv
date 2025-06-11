@@ -47,16 +47,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceProvider");
 namespace lsst::qserv::replica {
 
 ServiceProvider::Ptr ServiceProvider::create(string const& configUrl, string const& instanceId,
-                                             string const& authKey, string const& adminAuthKey) {
-    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId, authKey, adminAuthKey));
+                                             http::AuthContext const& httpAuthContext) {
+    return ServiceProvider::Ptr(new ServiceProvider(configUrl, instanceId, httpAuthContext));
 }
 
-ServiceProvider::ServiceProvider(string const& configUrl, string const& instanceId, string const& authKey,
-                                 string const& adminAuthKey)
+ServiceProvider::ServiceProvider(string const& configUrl, string const& instanceId,
+                                 http::AuthContext const& httpAuthContext)
         : _configuration(Configuration::load(configUrl)),
           _instanceId(instanceId),
-          _authKey(authKey),
-          _adminAuthKey(adminAuthKey) {}
+          _httpAuthContext(httpAuthContext) {}
 
 DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
     replica::Lock lock(_mtx, _context() + __func__);

@@ -90,12 +90,11 @@ public:
 
 protected:
     /**
-     * @param authKey  An authorization key for operations which require extra security.
-     * @param adminAuthKey  An administrator-level authorization key.
+     * @param authContext  An authorization context for operations which require extra security.
      * @param req  The HTTP request.
      * @param resp  The HTTP response channel.
      */
-    FileUploadModule(std::string const& authKey, std::string const& adminAuthKey, httplib::Request const& req,
+    FileUploadModule(http::AuthContext const& authContext, httplib::Request const& req,
                      httplib::Response& resp, httplib::ContentReader const& contentReader);
 
     httplib::Request const& req() { return _req; }

@@ -60,10 +60,9 @@ public:
 
 protected:
     /**
-     * @param authKey  An authorization key for operations which require extra security.
-     * @param adminAuthKey  An administrator-level authorization key.
+     * @param authContext  An authorization context for operations which require extra security.
      */
-    Module(std::string const& authKey, std::string const& adminAuthKey);
+    Module(AuthContext const& authContext);
 
     /**
      * Get the raw body of a request if it's available and if the content type
