@@ -105,6 +105,11 @@ RequestQuery FileUploadModule::query() const {
     return RequestQuery(queryParams);
 }
 
+string FileUploadModule::headerEntry(string const& key) const {
+    auto it = _req.headers.find(key);
+    return (it != _req.headers.end()) ? it->second : "";
+}
+
 void FileUploadModule::sendResponse(string const& content, string const& contentType) {
     _resp.set_content(content, contentType);
 }

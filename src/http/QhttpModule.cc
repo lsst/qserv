@@ -44,6 +44,11 @@ unordered_map<string, string> QhttpModule::params() const { return _req->params;
 
 RequestQuery QhttpModule::query() const { return RequestQuery(_req->query); }
 
+string QhttpModule::headerEntry(string const& key) const {
+    auto it = _req->header.find(key);
+    return (it != _req->header.end()) ? it->second : "";
+}
+
 void QhttpModule::getRequestBody(string& content, string const& requiredContentType) {
     if (_req->header["Content-Type"] == requiredContentType) {
         content.clear();

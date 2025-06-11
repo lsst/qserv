@@ -110,6 +110,10 @@ protected:
     /// @return Parameters of the request's query captured from the request's URL.
     virtual RequestQuery query() const = 0;
 
+    /// @return Check if the request header has the specified key. Return its value if found.
+    /// Return an empty string otherwise.
+    virtual std::string headerEntry(std::string const& key) const = 0;
+
     /// @return Optional parameters of a request extracted from the request's body (if any).
     RequestBodyJSON const& body() const { return _body; }
 

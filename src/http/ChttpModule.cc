@@ -55,6 +55,11 @@ RequestQuery ChttpModule::query() const {
     return RequestQuery(queryParams);
 }
 
+string ChttpModule::headerEntry(string const& key) const {
+    auto it = _req.headers.find(key);
+    return (it != _req.headers.end()) ? it->second : "";
+}
+
 void ChttpModule::getRequestBody(string& content, string const& requiredContentType) {
     auto itr = _req.headers.find("Content-Type");
     if (itr != _req.headers.end() && itr->second == requiredContentType) {
