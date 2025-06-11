@@ -34,9 +34,9 @@ using namespace std;
 
 namespace lsst::qserv::http {
 
-QhttpModule::QhttpModule(string const& authKey, string const& adminAuthKey,
-                         shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp)
-        : Module(authKey, adminAuthKey), _req(req), _resp(resp) {}
+QhttpModule::QhttpModule(http::AuthContext const& authContext, shared_ptr<qhttp::Request> const& req,
+                         shared_ptr<qhttp::Response> const& resp)
+        : Module(authContext), _req(req), _resp(resp) {}
 
 string QhttpModule::method() const { return _req->method; }
 

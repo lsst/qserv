@@ -74,14 +74,22 @@ int Application::run() {
                     " This mechanism also prevents 'cross-talks' between two (or many) Replication"
                     " System's setups in case of an accidental mis-configuration.",
                     _instanceId)
+            .option("http-user", "The login name of a user for connecting to the Replication service.",
+                    _httpAuthContext.user)
+            .option("http-password",
+                    "The login password of a user for connecting to the Replication service. The value of "
+                    "the password"
+                    " will be ignored if the user is not specified. The password will be used for"
+                    " authenticating the user. The password can't be empty if the user is specified.",
+                    _httpAuthContext.password)
             .option("auth-key",
                     "An authorization key for operations affecting the state of Qserv or"
                     " the Replication/Ingest system.",
-                    _authKey)
+                    _httpAuthContext.authKey)
             .option("admin-auth-key",
                     "An administrator-level authorization key for critical operations affecting"
                     " the state of Qserv of the Replication/Ingest system.",
-                    _adminAuthKey)
+                    _httpAuthContext.adminAuthKey)
             .flag("debug",
                   "Change the minimum logging level from ERROR to DEBUG. Note that the Logger"
                   " is configured via a configuration file (if any) presented to the application via"
@@ -169,7 +177,7 @@ int Application::run() {
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
     }
     if (_enableServiceProvider) {
-        _serviceProvider = ServiceProvider::create(_config, _instanceId, _authKey, _adminAuthKey);
+        _serviceProvider = ServiceProvider::create(_config, _instanceId, _httpAuthContext);
 
         // Update general configuration parameters.
         // Note that options specified by a user will have non-empty values.

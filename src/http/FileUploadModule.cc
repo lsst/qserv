@@ -37,10 +37,9 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::http {
 
-FileUploadModule::FileUploadModule(string const& authKey, string const& adminAuthKey,
-                                   httplib::Request const& req, httplib::Response& resp,
-                                   httplib::ContentReader const& contentReader)
-        : BaseModule(authKey, adminAuthKey), _req(req), _resp(resp), _contentReader(contentReader) {}
+FileUploadModule::FileUploadModule(http::AuthContext const& authContext, httplib::Request const& req,
+                                   httplib::Response& resp, httplib::ContentReader const& contentReader)
+        : BaseModule(authContext), _req(req), _resp(resp), _contentReader(contentReader) {}
 
 void FileUploadModule::execute(string const& subModuleName, http::AuthType const authType) {
     _subModuleName = subModuleName;

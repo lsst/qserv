@@ -26,6 +26,7 @@
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
 #include "http/RequestQuery.h"
+#include "util/String.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -51,8 +52,7 @@ string packWarnings(list<string> const& warnings) {
 
 namespace lsst::qserv::http {
 
-BaseModule::BaseModule(string const& authKey, string const& adminAuthKey)
-        : _authKey(authKey), _adminAuthKey(adminAuthKey) {}
+BaseModule::BaseModule(AuthContext const& authContext) : _authContext(authContext) {}
 
 void BaseModule::checkApiVersion(string const& func, unsigned int minVersion, string const& warning) const {
     unsigned int const maxVersion = MetaModule::version;
@@ -129,10 +129,25 @@ void BaseModule::sendData(json& result) {
 }
 
 void BaseModule::enforceAuthorization(http::AuthType const authType) {
-    if (authType != http::AuthType::REQUIRED) return;
+    switch (authType) {
+        case http::AuthType::NONE:
+            return;
+        case http::AuthType::REQUIRED:
+            _enforceKeyAuthorization();
+            return;
+        case http::AuthType::BASIC:
+            _enforceBasicAuthorization();
+            return;
+        default:
+            throw std::invalid_argument(
+                    context() + "unknown authorization type: " + std::to_string(static_cast<int>(authType)));
+    }
+}
+
+void BaseModule::_enforceKeyAuthorization() {
     if (body().has("admin_auth_key")) {
         auto const adminAuthKey = body().required<string>("admin_auth_key");
-        if (adminAuthKey != _adminAuthKey) {
+        if (adminAuthKey != _authContext.adminAuthKey) {
             throw AuthError(context() +
                             "administrator's authorization key 'admin_auth_key' in the request"
                             " doesn't match the one in server configuration");
@@ -142,7 +157,7 @@ void BaseModule::enforceAuthorization(http::AuthType const authType) {
     }
     if (body().has("auth_key")) {
         auto const authKey = body().required<string>("auth_key");
-        if (authKey != _authKey) {
+        if (authKey != _authContext.authKey) {
             throw AuthError(context() +
                             "authorization key 'auth_key' in the request doesn't match"
                             " the one in server configuration");
@@ -152,6 +167,30 @@ void BaseModule::enforceAuthorization(http::AuthType const authType) {
     throw AuthError(context() +
                     "none of the authorization keys 'auth_key' or 'admin_auth_key' was found"
                     " in the request. Please, provide one.");
+}
+
+void BaseModule::_enforceBasicAuthorization() const {
+    // Get and analyze a value of the "Authorization" header in the request.
+    // The header is expected to have the "Basic" prefix followed by a base64-encoded
+    // string with the user name and password separated by a colon.
+    string const authHeader = headerEntry("Authorization");
+    if (authHeader.empty()) {
+        throw AuthError(context() + "missing 'Authorization' header in the request");
+    }
+    bool const skipEmpty = true;
+    auto const schemeAndCredentials = util::String::split(authHeader, " ", skipEmpty);
+    if (schemeAndCredentials.size() != 2) {
+        throw AuthError(context() + "invalid 'Authorization' header in the request: " + authHeader);
+    }
+    auto const& scheme = schemeAndCredentials[0];
+    auto const& token = schemeAndCredentials[1];
+    if (scheme != "Basic") {
+        throw AuthError(context() + "unsupported 'Authorization' scheme: " + scheme);
+    }
+    string const expectedToken = util::String::toBase64(_authContext.user + ":" + _authContext.password);
+    if (token != expectedToken) {
+        throw AuthError(context() + "invalid 'Authorization' credentials in the request");
+    }
 }
 
 }  // namespace lsst::qserv::http

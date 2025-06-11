@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "http/Auth.h"
 #include "http/Exceptions.h"
 #include "http/Url.h"
 #include "replica/config/Configuration.h"
@@ -138,7 +139,7 @@ void IngestSvcConn::_handshakeReceived(boost::system::error_code const& ec, size
     if (!::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
     // Check if the client is authorized for the operation
-    if (request.auth_key() != serviceProvider()->authKey()) {
+    if (request.auth_key() != serviceProvider()->httpAuthContext().authKey) {
         _failed("not authorized");
         return;
     }

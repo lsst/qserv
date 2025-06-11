@@ -59,13 +59,12 @@ public:
 
 protected:
     /**
-     * @param authKey  An authorization key for operations which require extra security.
-     * @param adminAuthKey  An administrator-level authorization key.
+     * @param authContext  An authorization context for operations which require extra security.
      * @param req  The HTTP request.
      * @param resp  The HTTP response channel.
      */
-    QhttpModule(std::string const& authKey, std::string const& adminAuthKey,
-                std::shared_ptr<qhttp::Request> const& req, std::shared_ptr<qhttp::Response> const& resp);
+    QhttpModule(http::AuthContext const& authContext, std::shared_ptr<qhttp::Request> const& req,
+                std::shared_ptr<qhttp::Response> const& resp);
 
     std::shared_ptr<qhttp::Request> const& req() const { return _req; }
     std::shared_ptr<qhttp::Response> const& resp() const { return _resp; }

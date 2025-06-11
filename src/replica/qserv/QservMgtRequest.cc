@@ -27,6 +27,7 @@
 #include <unordered_map>
 
 // Qserv headers
+#include "http/Auth.h"
 #include "http/MetaModule.h"
 #include "replica/config/Configuration.h"
 #include "replica/util/Common.h"
@@ -207,8 +208,8 @@ void QservMgtRequest::createHttpReq(replica::Lock const& lock, http::Method meth
     data["id"] = _id;
     data["instance_id"] = _serviceProvider->instanceId();
     data[_remoteServiceKey] = _remoteServiceId;
-    data["auth_key"] = _serviceProvider->authKey();
-    data["admin_auth_key"] = _serviceProvider->adminAuthKey();
+    data["auth_key"] = _serviceProvider->httpAuthContext().authKey;
+    data["admin_auth_key"] = _serviceProvider->httpAuthContext().adminAuthKey;
     data["version"] = http::MetaModule::version;
     unordered_map<string, string> const headers = {{"Content-Type", "application/json"}};
     _httpRequest = http::AsyncReq::create(

@@ -26,6 +26,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Auth.h"
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
@@ -41,8 +42,7 @@ namespace lsst::qserv::xrdsvc {
 
 HttpModule::HttpModule(string const& context, shared_ptr<wcontrol::Foreman> const& foreman,
                        shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp)
-        : http::QhttpModule(wconfig::WorkerConfig::instance()->replicationAuthKey(),
-                            wconfig::WorkerConfig::instance()->replicationAdminAuthKey(), req, resp),
+        : http::QhttpModule(wconfig::WorkerConfig::instance()->httpAuthContext(), req, resp),
           _context(context),
           _foreman(foreman) {}
 

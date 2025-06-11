@@ -34,6 +34,7 @@
 #include "czar/WorkerIngestProcessor.h"
 #include "global/stringUtil.h"
 #include "http/AsyncReq.h"
+#include "http/Auth.h"
 #include "http/Client.h"
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
@@ -66,8 +67,7 @@ HttpCzarIngestCsvModule::HttpCzarIngestCsvModule(asio::io_service& io_service, s
                                                  httplib::ContentReader const& contentReader,
                                                  shared_ptr<http::ClientConnPool> const& clientConnPool,
                                                  shared_ptr<ingest::Processor> const& workerIngestProcessor)
-        : http::FileUploadModule(cconfig::CzarConfig::instance()->replicationAuthKey(),
-                                 cconfig::CzarConfig::instance()->replicationAdminAuthKey(), req, resp,
+        : http::FileUploadModule(cconfig::CzarConfig::instance()->httpAuthContext(), req, resp,
                                  contentReader),
           HttpCzarIngestModuleBase(io_service),
           _context(context),

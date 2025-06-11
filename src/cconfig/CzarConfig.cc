@@ -34,6 +34,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "http/Auth.h"
 #include "mysql/MySqlConfig.h"
 #include "util/ConfigStore.h"
 #include "util/IterableFormatter.h"
@@ -151,6 +152,11 @@ void CzarConfig::setHttpPassword(std::string const& password) {
     _httpPassword->setVal(password);
     // Update the relevant section of the JSON-ified configuration.
     _jsonConfig["actual"][_httpPassword->getSection()][_httpPassword->getName()] = _httpPassword->getValStr();
+}
+
+http::AuthContext CzarConfig::httpAuthContext() const {
+    return http::AuthContext(_httpUser->getVal(), _httpPassword->getVal(), _replicationAuthKey->getVal(),
+                             _replicationAdminAuthKey->getVal());
 }
 
 void CzarConfig::setId(qmeta::CzarId id) {

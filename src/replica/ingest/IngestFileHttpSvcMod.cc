@@ -23,6 +23,7 @@
 #include "replica/ingest/IngestFileHttpSvcMod.h"
 
 // Qserv header
+#include "http/Auth.h"
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/Url.h"
@@ -58,8 +59,7 @@ IngestFileHttpSvcMod::IngestFileHttpSvcMod(shared_ptr<ServiceProvider> const& se
                                            string const& workerName, httplib::Request const& req,
                                            httplib::Response& resp,
                                            httplib::ContentReader const& contentReader)
-        : http::FileUploadModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp,
-                                 contentReader),
+        : http::FileUploadModule(serviceProvider->httpAuthContext(), req, resp, contentReader),
           IngestFileSvc(serviceProvider, workerName) {}
 
 string IngestFileHttpSvcMod::context() const { return "INGEST-FILE-HTTP-SVC "; }

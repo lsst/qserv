@@ -32,6 +32,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
+#include "http/Auth.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
@@ -352,7 +353,7 @@ void MasterControllerHttpApp::_registryUpdateLoop() {
     vector<string> const headers = {"Content-Type: application/json"};
     json const request = json::object({{"version", http::MetaModule::version},
                                        {"instance_id", serviceProvider->instanceId()},
-                                       {"auth_key", serviceProvider->authKey()},
+                                       {"auth_key", serviceProvider->httpAuthContext().authKey},
                                        {"controller",
                                         {{"name", _name},
                                          {"id", _controller->identity().id},

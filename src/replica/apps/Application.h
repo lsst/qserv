@@ -28,6 +28,7 @@
 #include <string>
 
 // Qserv headers
+#include "http/Auth.h"
 #include "replica/apps/ApplicationTypes.h"
 #include "replica/services/ServiceProvider.h"
 
@@ -114,11 +115,8 @@ protected:
     /// @return The unique identifier of a Qserv instance served by the Replication System.
     std::string const& instanceId() const { return _instanceId; }
 
-    /// @return The authorization key.
-    std::string const& authKey() const { return _authKey; }
-
-    /// @return The authorization key for administrative operations.
-    std::string const& adminAuthKey() const { return _adminAuthKey; }
+    /// @return The authorization context.
+    http::AuthContext const& httpAuthContext() const { return _httpAuthContext; }
 
     /**
      * This method is required to be implements by subclasses to run
@@ -159,10 +157,9 @@ private:
     /// A unique identifier of a Qserv instance served by the Replication System
     std::string _instanceId;
 
-    // Authorization keys for operations that may change a state of Qserv or
+    // Authorization context for operations that may change a state of Qserv or
     // the Replication/Ingest system.
-    std::string _authKey;
-    std::string _adminAuthKey;
+    http::AuthContext _httpAuthContext;
 
     // Database connector options (if enabled)
 

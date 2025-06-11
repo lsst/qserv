@@ -39,6 +39,12 @@
 #include "util/ConfigStore.h"
 #include "util/ConfigValMap.h"
 
+// Forward declarations
+namespace lsst::qserv::http {
+class AuthContext;
+}  // namespace lsst::qserv::http
+
+// This header declarations
 namespace lsst::qserv::cconfig {
 
 /**
@@ -213,6 +219,7 @@ public:
     void setHttpUser(std::string const& user);
     std::string const& httpPassword() const { return _httpPassword->getVal(); }
     void setHttpPassword(std::string const& password);
+    http::AuthContext httpAuthContext() const;
 
     /// The actual port number is set at run time after starting the service on
     /// the dynamically allocated port (in case when the port number was set
@@ -388,9 +395,9 @@ private:
             util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
 
     // User and password for the HTTP frontend
-    CVTStrPtr _httpUser = util::ConfigValTStr::create(_configValMap, "frontend", "http_user", notReq, "");
+    CVTStrPtr _httpUser = util::ConfigValTStr::create(_configValMap, "http", "user", notReq, "");
     CVTStrPtr _httpPassword =
-            util::ConfigValTStr::create(_configValMap, "frontend", "http_password", notReq, "", hidden);
+            util::ConfigValTStr::create(_configValMap, "http", "password", notReq, "", hidden);
 };
 
 }  // namespace lsst::qserv::cconfig

@@ -32,6 +32,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "http/Auth.h"
 #include "replica/export/ExportClient.h"
 #include "util/File.h"
 #include "util/TimeUtils.h"
@@ -220,9 +221,9 @@ void FileExportApp::_export(FileExportSpec const& file) const {
                                _columnSeparatorStr + "'");
     }
     uint64_t const startedMs = util::TimeUtils::now();
-    auto const ptr =
-            ExportClient::connect(file.workerHost, file.workerPort, file.databaseName, file.tableName,
-                                  file.chunk, file.overlap, file.outFileName, columnSeparator, authKey());
+    auto const ptr = ExportClient::connect(file.workerHost, file.workerPort, file.databaseName,
+                                           file.tableName, file.chunk, file.overlap, file.outFileName,
+                                           columnSeparator, httpAuthContext().authKey);
     ptr->receive();
     uint64_t const finishedMs = util::TimeUtils::now();
 
