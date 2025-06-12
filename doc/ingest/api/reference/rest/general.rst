@@ -104,9 +104,10 @@ to be specified in the following attribute:
 Protocol Versioning
 -------------------
 
-The API adheres to the optional version control mechanism introduced in:
+The API adheres to the optional version control mechanism introduced and amended in:
 
-- https://rubinobs.atlassian.net/browse/DM-35456 
+- https://rubinobs.atlassian.net/browse/DM-35456
+- https://rubinobs.atlassian.net/browse/DM-51357
 
 Workflow developers are encouraged to use the mechanism to reinforce the integrity of the applications.
 
@@ -196,16 +197,21 @@ Example:
 Push mode
 ^^^^^^^^^
 
-In the case of the second scenario, an application will pass the desired version number as
-a request parameter. The number would be a part of the request's query for the method. For example,
-the following request for checking the status of the ongoing query might look like this:
+.. note::
+
+    The preferred way to pass the version number is through the query string of a request.
+    If the version number is found both in the query string and in the body of a request
+    (where the body is allowed by the HTTP method and is present in the request), the number
+    found in the body will take precedence over the one found in the query string.
+
+These are examples of how to pass the version number in the query string of a request:
 
 .. code-block:: bash
 
    curl 'http://localhost:25004/trans/contrib/1234?version=35' -X GET
+   curl 'http://localhost:25004/replica/config/database/dp02_dc2_catalogs?version=35' -X DELETE
 
-For other HTTP methods used by the API, the number is required to be provided within the body
-of a request as shown below:
+For other HTTP methods used by the API, the version could also be included in the body of the request:
 
 .. code-block:: bash
 
