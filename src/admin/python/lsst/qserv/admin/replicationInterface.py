@@ -278,8 +278,8 @@ class ReplicationInterface:
         """
         _log.debug("start_transaction database: %s", database)
         res = _post(
-            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/trans",
-            data=json.dumps(dict(database=database, auth_key=self.auth_key, version=repl_api_version,)),
+            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/trans?version={repl_api_version}",
+            data=json.dumps(dict(database=database, auth_key=self.auth_key,)),
         )
         return int(res["databases"][database]["transactions"][0]["id"])
 
@@ -293,8 +293,8 @@ class ReplicationInterface:
         """
         _log.debug("commit_transaction transaction_id: %s", transaction_id)
         res = _put(
-            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/trans/{transaction_id}?abort=0",
-            data=json.dumps(dict(auth_key=self.auth_key, version=repl_api_version,)),
+            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/trans/{transaction_id}?version={repl_api_version}&abort=0",
+            data=json.dumps(dict(auth_key=self.auth_key,)),
         )
 
     def ingest_chunk_config(self, transaction_id: int, chunk_id: str) -> ChunkLocation:
@@ -314,9 +314,8 @@ class ReplicationInterface:
             second name is the port
         """
         res = _post(
-            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/chunk",
-            data=json.dumps(dict(transaction_id=transaction_id, chunk=chunk_id, auth_key=self.auth_key,
-                                 version=repl_api_version,)),
+            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/chunk?version={repl_api_version}",
+            data=json.dumps(dict(transaction_id=transaction_id, chunk=chunk_id, auth_key=self.auth_key,)),
         )
         return ChunkLocation(chunk_id, res["location"]["host"], str(res["location"]["port"]),
                              res["location"]["http_host"], str(res["location"]["http_port"]))
@@ -337,9 +336,8 @@ class ReplicationInterface:
             `chunk_id`, `host`, `port`.
         """
         res = _post(
-            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/chunks",
-            data=json.dumps(dict(transaction_id=transaction_id, chunks=chunk_ids, auth_key=self.auth_key,
-                                 version=repl_api_version,)),
+            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/chunks?version={repl_api_version}",
+            data=json.dumps(dict(transaction_id=transaction_id, chunks=chunk_ids, auth_key=self.auth_key,)),
         )
         return [ChunkLocation(l["chunk"], l["host"], str(l["port"]),
                               l["http_host"], str(l["http_port"])) for l in res["location"]]
@@ -470,7 +468,7 @@ class ReplicationInterface:
         for table in tables:
             _log.debug("build table stats for %s.%s", database, table)
             _post(
-                url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/table-stats",
+                url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/table-stats?version={repl_api_version}",
                 data=json.dumps(
                     dict(
                         database=database,
@@ -481,7 +479,6 @@ class ReplicationInterface:
                         auth_key=self.auth_key,
                         admin_auth_key=self.admin_auth_key,
                         instance_id=instance_id,
-                        version=repl_api_version,
                     ),
                 ),
             )
@@ -496,8 +493,8 @@ class ReplicationInterface:
         """
         _log.debug("publish_database database: %s", database)
         _put(
-            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/database/{database}",
-            data=json.dumps(dict(auth_key=self.auth_key, version=repl_api_version,)),
+            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/database/{database}?version={repl_api_version}",
+            data=json.dumps(dict(auth_key=self.auth_key,)),
         )
 
     def ingest_chunks_data(
@@ -640,8 +637,8 @@ class ReplicationInterface:
         admin : `bool`
             True if the admin auth key should be used.
         """
-        if admin: data = dict(admin_auth_key=self.admin_auth_key, version=repl_api_version,)
-        else: data = dict(auth_key=self.auth_key, version=repl_api_version,)
+        if admin: data = dict(admin_auth_key=self.admin_auth_key,)
+        else: data = dict(auth_key=self.auth_key,)
         _log.debug("delete_database database:%s, data:%s", database, data)
 
         def warn_if_not_exist(res: Dict[Any, Any], url: str) -> None:
@@ -652,8 +649,8 @@ class ReplicationInterface:
             _check(res, url)
 
         _delete(
-            url="http://{hostname}:{port}/ingest/database/{database}?delete_secondary_index=1".format(
-                hostname=self.repl_ctrl.hostname, port=self.repl_ctrl.port, database=database
+            url="http://{hostname}:{port}/ingest/database/{database}?version={version}&delete_secondary_index=1".format(
+                hostname=self.repl_ctrl.hostname, port=self.repl_ctrl.port, version=repl_api_version, database=database,
             ),
             data=json.dumps(data),
             check=warn_if_not_exist,

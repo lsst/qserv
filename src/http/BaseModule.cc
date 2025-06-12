@@ -66,22 +66,19 @@ void BaseModule::checkApiVersion(string const& func, unsigned int minVersion, st
     //
     // Note that requests sent w/o explicitly specified API version will still be
     // processed. In this case a warning will be sent in the response object.
+    //
+    // Note that the version attribute may be present in either the query string
+    // or the body of a request. The method will check both locations. The number found
+    // in the body will take precedence over the one found in the query string.
     try {
-        if (method() == "GET") {
-            if (!query().has(versionAttrName)) {
-                warn("No version number was provided in the request's query.");
-                return;
-            }
-            version = query().requiredUInt(versionAttrName);
-        } else {
-            if (!body().has(versionAttrName)) {
-                warn("No version number was provided in the request's body.");
-                return;
-            }
-            version = body().requiredUInt(versionAttrName);
+        if (query().has(versionAttrName)) version = query().requiredUInt(versionAttrName);
+        if (body().has(versionAttrName)) version = body().requiredUInt(versionAttrName);
+        if (version == 0) {
+            warn("No version number was provided in the request.");
+            return;
         }
     } catch (...) {
-        throw http::Error(func, "The required parameter " + versionAttrName + " is not a number.", errorEx);
+        throw http::Error(func, "The optional parameter " + versionAttrName + " is not a number.", errorEx);
     }
     if (!(minVersion <= version && version <= maxVersion)) {
         if (!warning.empty()) warn(warning);

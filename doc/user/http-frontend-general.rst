@@ -51,9 +51,10 @@ Other HTTP codes (``3xx``, ``404``, ``5xx``, etc.) could also be returned by the
 Protocol Versioning
 -------------------
 
-The API adheres to the optional version control mechanism introduced in:
+The API adheres to the optional version control mechanism introduced and amended in:
 
-- https://rubinobs.atlassian.net/browse/DM-35456 
+- https://rubinobs.atlassian.net/browse/DM-35456
+- https://rubinobs.atlassian.net/browse/DM-51357
 
 Application developers are encouraged to use the mechanism to reinforce the 
 integrity of the applications.
@@ -131,15 +132,21 @@ Example:
 Push mode
 ^^^^^^^^^
 
-In the case of the second scenario, an application will pass the desired version number as
-a request parameter. The number would be a part of the request's query for the method. For example,
-the following request for checking the status of an ongoing query might look like this:
+.. note::
+
+    The preferred way to pass the version number is through the query string of a request.
+    If the version number is found both in the query string and in the body of a request
+    (where the body is allowed by the HTTP method and is present in the request), the number
+    found in the body will take precedence over the one found in the query string.
+
+These are examples of how to pass the version number in the query string of a request:
 
 .. code-block:: bash
 
    curl -k 'https://localhost:4041/query-async/status/1234?version=39' -X GET
+   curl -k 'https://localhost:4041/query-async/result/1234?version=39' -X DELETE
 
-For other HTTP methods used by the API, the version number must be included in the body of the request as shown below:
+For other HTTP methods used by the API, the version could also be included in the body of the request:
 
 .. code-block:: bash
 

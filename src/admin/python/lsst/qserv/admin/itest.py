@@ -534,7 +534,7 @@ class ITestQueryHttp:
         _log.debug("run_attached_http qserv:%s", qserv)
 
         # Submit the query, check and analyze the completion status
-        svc = str(urljoin(connection, '/query'))
+        svc = str(urljoin(connection, f"/query?version={repl_api_version}"))
         req = requests.post(svc, json={'query': query, 'database': database, 'binary_encoding': 'hex'}, verify=False)
         req.raise_for_status()
         res = req.json()
@@ -558,7 +558,7 @@ class ITestQueryHttp:
         _log.debug("run_detached_http qserv:%s", qserv)
 
         # Submit the query via the async service, check and analyze the completion status
-        svc = str(urljoin(connection, '/query-async'))
+        svc = str(urljoin(connection, f"/query-async?version={repl_api_version}"))
         req = requests.post(svc, json={'query': query, 'database': database}, verify=False)
         req.raise_for_status()
         res = req.json()
@@ -571,7 +571,7 @@ class ITestQueryHttp:
         end_time = time.time() + self.async_timeout
         while time.time() < end_time:
             # Submit a request to check a status of the query
-            svc = str(urljoin(connection, f"/query-async/status/{query_id}"))
+            svc = str(urljoin(connection, f"/query-async/status/{query_id}?version={repl_api_version}"))
             req = requests.get(svc, verify=False)
             req.raise_for_status()
             res = req.json()
@@ -586,7 +586,7 @@ class ITestQueryHttp:
 
         # Make another request to pull the result set
         _log.debug("SQLCmd.execute pulling result set of query ID = %s", query_id)
-        svc = str(urljoin(connection, f"/query-async/result/{query_id}?binary_encoding=hex"))
+        svc = str(urljoin(connection, f"/query-async/result/{query_id}?version={repl_api_version}&binary_encoding=hex"))
         req = requests.get(svc, verify=False)
         req.raise_for_status()
         res = req.json()
@@ -595,7 +595,7 @@ class ITestQueryHttp:
         self._write_result(self.out_file_t.format(mode=query_mode_qserv_detached), res)
 
         _log.debug("SQLCmd.execute deleting result tables of query ID = %s", query_id)
-        svc = str(urljoin(connection, f"/query-async/result/{query_id}"))
+        svc = str(urljoin(connection, f"/query-async/result/{query_id}?version={repl_api_version}"))
         req = requests.delete(svc, verify=False)
         req.raise_for_status()
         res = req.json()
@@ -1140,11 +1140,8 @@ def _http_delete_database(
         The name of the database to delete.
     """
     _log.debug("Deleting user database: %s", database)
-    data = {
-        "version": repl_api_version,
-    }
-    url = str(urljoin(http_frontend_uri, f"/ingest/database/{database}"))
-    req = requests.delete(url, json=data, verify=False)
+    url = str(urljoin(http_frontend_uri, f"/ingest/database/{database}?version={repl_api_version}"))
+    req = requests.delete(url, verify=False)
     req.raise_for_status()
     res = req.json()
     if res["success"] == 0:
@@ -1168,11 +1165,8 @@ def _http_delete_table(
         The name of the table to delete.
     """
     _log.debug("Deleting table: %s from user database: %s", table, database)
-    data = {
-        "version": repl_api_version,
-    }
-    url = str(urljoin(http_frontend_uri, f"/ingest/table/{database}/{table}"))
-    req = requests.delete(url, json=data, verify=False)
+    url = str(urljoin(http_frontend_uri, f"/ingest/table/{database}/{table}?version={repl_api_version}"))
+    req = requests.delete(url, verify=False)
     req.raise_for_status()
     res = req.json()
     if res["success"] == 0:
@@ -1204,14 +1198,13 @@ def _http_ingest_data_json(
     """
     _log.debug("Ingesting JSON data into table: %s of user database: %s", table, database)
     data = {
-        "version": repl_api_version,
         "database" : database,
         "table": table,
         "schema": schema,
         "indexes": indexes,
         "rows": rows,
     }
-    url = str(urljoin(http_frontend_uri, "/ingest/data"))
+    url = str(urljoin(http_frontend_uri, f"/ingest/data?version={repl_api_version}"))
     req = requests.post(url, json=data, verify=False)
     req.raise_for_status()
     res = req.json()
@@ -1264,7 +1257,6 @@ def _http_ingest_data_csv(
 
     encoder = MultipartEncoder(
         fields = {
-            "version": (None, str(repl_api_version)),
             "database" : (None, database),
             "table": (None, table),
             "fields_terminated_by": (None, ","),
@@ -1274,7 +1266,7 @@ def _http_ingest_data_csv(
             "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),
         }
     )
-    url = str(urljoin(http_frontend_uri, "/ingest/csv"))
+    url = str(urljoin(http_frontend_uri, f"/ingest/csv?version={repl_api_version}"))
     req = requests.post(url, data=encoder, headers={'Content-Type': encoder.content_type}, verify=False)
     req.raise_for_status()
     res = req.json()
@@ -1303,11 +1295,10 @@ def _http_query_table(
     """
     _log.debug("Querying table: %s of user database: %s", table, database)
     data = {
-        "version": repl_api_version,
         "database" : database,
         "query": f"SELECT `id`,`val`,`active` FROM `{table}` ORDER BY id ASC",
     }
-    url = str(urljoin(http_frontend_uri, "/query"))
+    url = str(urljoin(http_frontend_uri, f"/query?version={repl_api_version}"))
     req = requests.post(url, json=data, verify=False)
     req.raise_for_status()
     res = req.json()

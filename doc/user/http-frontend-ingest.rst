@@ -383,10 +383,10 @@ Here is the complete Python code that does the same:
 
     database = "user_gapon"
     table = "employee"
-    url = "https://localhost:4041/ingest/csv"
+    url = "https://localhost:4041/ingest/csv?verion=39"
     encoder = MultipartEncoder(
         fields = {
-            "version": (None, "39"),
+            "version": (None, "41"),
             "database" : (None, database),
             "table": (None, table),
             "fields_terminated_by": (None, ","),
@@ -410,6 +410,9 @@ Here is the complete Python code that does the same:
 - The parameter ``verify=False`` is used to ignore SSL certificate verification. Note using ``urllib3`` to suppress
   the certificate-related warning. Do not use this in production code.
 - The class ``MultipartEncoder`` is required for streaming large files w/o loading them into memory.
+- The preferred method for passing the version number to the frontend is to include it in the query string of the request. 
+  In case the version number is found both in the query string and the body of a request, the number found in the body
+  will take precedence.
 
 .. _http-frontend-ingest-schema-spec:
 
