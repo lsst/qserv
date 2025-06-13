@@ -27,6 +27,7 @@
 // System headers
 #include <algorithm>
 #include <cassert>
+#include <cctype>
 #include <stdexcept>
 #include <string.h>
 
@@ -39,8 +40,11 @@
 // Qserv headers
 #include "mysql/LocalInfileError.h"
 #include "mysql/MySqlUtils.h"
+#include "util/Bug.h"
 
 namespace {
+
+LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.CsvBuffer");
 
 std::string const mysqlNull("\\N");
 int const largeRowThreshold = 500 * 1024;  // should be less than 0.5 * infileBufferSize
@@ -307,6 +311,13 @@ bool CsvStream::empty() const {
     return _records.empty();
 }
 
+void CsvStream::waitReadyToRead() {
+    // No need to wait for this class
+    std::thread thrd(_csvLambda);
+    _thrd = std::move(thrd);
+    _thrdStarted = true;
+}
+
 /**
  * CsvStreamBuffer is a CsvBuffer that reads from a CsvStream. It is used to read
  * data from a CsvStream in a buffered manner.
@@ -353,6 +364,92 @@ private:
 
 std::shared_ptr<CsvBuffer> newCsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) {
     return std::make_shared<CsvStreamBuffer>(csvStream);
+}
+
+MemoryTracker::Ptr MemoryTracker::_globalMt;
+
+void MemoryTracker::setup(std::string const& transferMethodStr, size_t max) {
+    if (_globalMt != nullptr) {
+        throw util::Bug(ERR_LOC, "MemoryTracker::setup called when MemoryTracker already setup!");
+    }
+    TransferMethod tm = transferMethodFromString(transferMethodStr);
+    _globalMt = MemoryTracker::Ptr(new MemoryTracker(tm, max));
+}
+
+MemoryTracker::TransferMethod MemoryTracker::transferMethodFromString(std::string const& strType) {
+    std::string str;
+    for (unsigned char c : strType) {
+        str += std::tolower(c);
+    }
+    TransferMethod tMethod;
+    if (str == "memory") {
+        tMethod = MEMORY;
+        LOGS(_log, LOG_LVL_INFO, "Result TransferMethod set to memory");
+    } else if (str == "stream") {
+        tMethod = STREAM;
+        LOGS(_log, LOG_LVL_INFO, "Result TransferMethod set to stream");
+    } else {
+        tMethod = MEMORY;
+        LOGS(_log, LOG_LVL_ERROR,
+             "Result TransferMethod set to memory due to invalid string '" << strType << "'");
+    }
+    return tMethod;
+}
+
+MemoryTracker::MemoryRaii::Ptr MemoryTracker::createRaii(size_t fileSize) {
+    if (fileSize > _max) {
+        throw util::Bug(ERR_LOC, "MemoryTracker::createRaii file too large " + std::to_string(fileSize) +
+                                         " max=" + std::to_string(_max));
+    }
+    std::unique_lock ulck(_mtx);
+    _cv.wait(ulck, [this, fileSize]() { return (fileSize + _total) < _max; });
+    MemoryRaii::Ptr pRaii(new MemoryRaii(fileSize));
+    return pRaii;
+}
+
+void MemoryTracker::_incrTotal(size_t sz) {
+    // _mtx must already be locked.
+    _total += sz;
+    _cv.notify_one();  // Many items may be waiting on a large file, so there may be room for more
+}
+
+void MemoryTracker::_decrTotal(size_t sz) {
+    std::lock_guard ulck(_mtx);
+    if (sz > _total) {
+        throw util::Bug(ERR_LOC, "MemoryTracker::_decrTotal sz=" + std::to_string(sz) +
+                                         " > total=" + std::to_string(_total));
+    }
+    _total -= sz;
+    _cv.notify_one();
+}
+
+void CsvStrMem::waitReadyToRead() {
+    auto memTrack = MemoryTracker::get();
+    if (memTrack == nullptr) {
+        throw util::Bug(ERR_LOC, "CsvStrMem::waitReadyToRead MemoryTracker is NULL");
+    }
+    _memRaii = memTrack->createRaii(_expectedBytes);
+
+    // Read directly without starting a separate thread.
+    _csvLambda();
+}
+
+void CsvStrMem::push(char const* data, std::size_t size) {
+    _bytesRead += size;
+    // Push is always ok, no need to wait.
+    if (_cancelled) return;
+    if (data != nullptr && size != 0) {
+        _records.emplace_back(std::make_shared<std::string>(data, size));
+    } else {
+        // Empty string is meant to indicate the end of the stream.
+        _records.emplace_back(std::make_shared<std::string>());
+    }
+}
+
+std::shared_ptr<std::string> CsvStrMem::pop() {
+    std::shared_ptr<std::string> front = _records.front();
+    _records.pop_front();
+    return front;
 }
 
 }  // namespace lsst::qserv::mysql

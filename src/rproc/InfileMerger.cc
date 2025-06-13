@@ -198,6 +198,9 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     };
     auto tct = make_shared<TimeCountTracker<double>>(cbf);
 
+    // Start downloading.
+    csvStream->waitReadyToRead();
+
     bool ret = false;
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
