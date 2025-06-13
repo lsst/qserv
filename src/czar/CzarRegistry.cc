@@ -80,14 +80,13 @@ void CzarRegistry::_registryUpdateLoop() {
     string const url = "http://" + _czarConfig->replicationRegistryHost() + ":" +
                        to_string(_czarConfig->replicationRegistryPort()) + "/czar";
     vector<string> const headers = {"Content-Type: application/json"};
-    string const fqdn = util::getCurrentHostFqdnBlocking();
     json const request = json::object({{"instance_id", _czarConfig->replicationInstanceId()},
                                        {"auth_key", _czarConfig->replicationAuthKey()},
                                        {"czar",
                                         {{"name", _czarConfig->name()},
                                          {"id", _czarConfig->id()},
                                          {"management-port", _czarConfig->replicationHttpPort()},
-                                         {"management-host-name", fqdn}}}});
+                                         {"management-host-name", util::getCurrentHostFqdnBlocking()}}}});
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
     LOGS(_log, LOG_LVL_TRACE,
          __func__ << " czarPost url=" << url << " request=" << request.dump() << " headers=" << headers[0]);

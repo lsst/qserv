@@ -205,7 +205,7 @@ public:
     /// @throws ChunkMapException
     void verify(std::string const& familyName) const;
 
-    static std::string dumpChunkMap(ChunkMap const& chunkMap);
+    std::string dumpChunkMap() const;
 
     static std::string dumpWorkerChunkMap(WorkerChunkMap const& wcMap);
 

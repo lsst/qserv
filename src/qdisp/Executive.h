@@ -233,6 +233,12 @@ public:
     /// cancel this user query.
     void checkResultFileSize(uint64_t fileSize = 0);
 
+    /// Returns a pointer to a lock on _mtxLimitSquash.
+    std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();
+
+    void collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& fileUrl, uint64_t fileSize,
+                     uint64_t rowCount, std::string const& idStr);
+
 protected:
     Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,
@@ -273,8 +279,9 @@ private:
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
-    std::shared_ptr<util::QdispPool>
-            _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
+
+    /// Shared thread pool for handling commands to and from workers.
+    std::shared_ptr<util::QdispPool> _qdispPool;
 
     std::deque<std::shared_ptr<util::PriorityCommand>> _jobStartCmdList;  ///< list of jobs to start.
 
@@ -351,6 +358,12 @@ private:
 
     std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
     std::atomic<uint64_t> _jobCancelCount{0};       ///< Total number of JOB_CANCEL messages received.
+
+    /// This mutex is used to limit collecting result files to one at a time
+    /// but only when the executive will squash the query when the limit is reached.
+    /// This keeps data transfers (and temporary storage requirements) from
+    /// getting out of hand.
+    std::mutex _mtxLimitSquash;
 };
 
 }  // namespace lsst::qserv::qdisp

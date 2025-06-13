@@ -37,7 +37,7 @@ class ClientConnPool;
 }  // namespace lsst::qserv::http
 
 namespace lsst::qserv::mysql {
-class CsvStream;
+class CsvMemDisk;
 }  // namespace lsst::qserv::mysql
 
 namespace lsst::qserv::qdisp {
@@ -103,8 +103,8 @@ private:
     bool _flushed{false};                                ///< flushed to InfileMerger?
     std::string _wName{"~"};                             ///< worker name
 
-    std::weak_ptr<qdisp::Executive> _executive;  ///< Weak pointer to the executive for errors.
-    std::weak_ptr<mysql::CsvStream> _csvStream;  ///< Weak pointer to cancel infile merge.
+    std::weak_ptr<qdisp::Executive> _executive;    ///< Weak pointer to the executive for errors.
+    std::weak_ptr<mysql::CsvMemDisk> _csvMemDisk;  ///< Weak pointer to cancel infile merge.
 };
 
 }  // namespace lsst::qserv::ccontrol
