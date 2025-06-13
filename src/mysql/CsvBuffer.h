@@ -26,10 +26,12 @@
 // System headers
 #include <condition_variable>
 #include <cstddef>
+#include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 
 // Third-party headers
 #include <mysql/mysql.h>
@@ -71,6 +73,8 @@ std::shared_ptr<CsvBuffer> newResCsvBuffer(MYSQL_RES* result);
  */
 class CsvStream {
 public:
+    using Ptr = std::shared_ptr<CsvStream>;
+
     /**
      * Factory function to create a new CsvStream object.
      * @param maxRecords The maximum number of records in the stream
@@ -84,7 +88,7 @@ public:
     CsvStream() = delete;
     CsvStream(CsvStream const&) = delete;
     CsvStream& operator=(CsvStream const&) = delete;
-    ~CsvStream() = default;
+    virtual ~CsvStream() = default;
 
     /**
      * Push a new record to the stream. The record is a string of bytes.
@@ -95,7 +99,7 @@ public:
      * @param data The record to be pushed to the stream
      * @param size The size of the record
      */
-    void push(char const* data, std::size_t size);
+    virtual void push(char const* data, std::size_t size);
 
     /**
      *  Call to break push operations if the results are no longer needed.
@@ -106,14 +110,14 @@ public:
      *       to a worker is lost during file transfer.
      *       @see UberJob::killUberJob()
      */
-    void cancel();
+    virtual void cancel();
 
     /**
      * Pop a record from the stream. The method will block if the stream is empty
      * until a record is pushed.
      * @return A shared pointer to the popped record or an empty string for the end of the stream
      */
-    std::shared_ptr<std::string> pop();
+    virtual std::shared_ptr<std::string> pop();
 
     /**
      * Check if the stream is empty.
@@ -133,16 +137,33 @@ public:
      */
     bool getContaminated() const { return _contaminated; }
 
-private:
+    /// The function to run to read/push the data from the worker.
+    void setLambda(std::function<void()> csvLambda) { _csvLambda = csvLambda; }
+
+    /// In this class, no waiting, just start the read/push thread.
+    virtual void waitReadyToRead();
+
+    /// Join the thread, must be called from the same thread that called waitReadyToRead
+    virtual void join() {
+        if (_thrdStarted) _thrd.join();
+    }
+
+protected:
     CsvStream(std::size_t maxRecords);
 
+    std::function<void()> _csvLambda;
+    bool _cancelled = false;
+    std::atomic<size_t> _bytesWritten;
+    std::list<std::shared_ptr<std::string>> _records;
+
+private:
     mutable std::mutex _mtx;
     std::condition_variable _cv;
     std::size_t const _maxRecords;
-    std::list<std::shared_ptr<std::string>> _records;
-    std::atomic<size_t> _bytesWritten;
-    bool _cancelled = false;
+
     std::atomic<bool> _contaminated = false;
+    std::thread _thrd;
+    bool _thrdStarted = false;
 };
 
 /**
@@ -152,6 +173,116 @@ private:
  * @return A shared pointer to the newly created object
  */
 std::shared_ptr<CsvBuffer> newCsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream);
+
+/// Track how much space is needed to store the current UberJob results while
+/// transferring them from the workers and merging them to the result table.
+/// How this effects the process depends on the TransferMethod. RAII methods
+/// are used to ensure all allocations are freed.
+/// STREAM is unaffected by the amount of memory used, but may contaminate
+///      the final result table on worker failure, forcing the user query
+///      to be cancelled. Not much of an issue with small numbers of workers.
+/// MEMORY UberJob results are stored in memory until all data is retrieved
+///      from the worker and then merged to the result table. This isolates
+///      worker failures from contaminating the result table. The down side
+///      is that The result transfer won't be started until the `_total`
+///      including the new data is less than the `_max`. It is terribly
+///      important that `_max` is greater than the maximum result size
+///      (currently 5GB). This should be checked when calling
+///      MemoryTracker::setup.
+/// MEMORYDISK TODO:UJ - Instead new transfers waiting for memory to be
+///      freed, most of the data will be written to disk when `_max` is
+///      reached. The current plan is, per UberJob, to write create a
+///      few CsvBuffers as is done now, and then write everything to
+///      disk, and have pop read off disk when it runs out of existing
+///      CsvBuffers. UberJobs with reasonable result sizes should be
+///      unaffected.
+/// DISK TODO:UJ - Write everything to disk, have pop read the file
+///      and use it to create CsvBuffers. (Maybe MEMORYDISK with
+///      a _max of zero would be enough).
+/// TODO:UJ - Test the different options and reorganize code.
+class MemoryTracker {
+public:
+    using Ptr = std::shared_ptr<MemoryTracker>;
+
+    MemoryTracker() = delete;
+
+    enum TransferMethod { STREAM, MEMORY };
+    static TransferMethod transferMethodFromString(std::string const& str);
+
+    /// Return the TransferMethod.
+    /// @see MemoryTracker
+    TransferMethod getTransferMethod() const { return _transferMethod; }
+
+    /// This class makes certain that any memory added to MemoryTracker
+    /// is removed from MemoryTracker.
+    class MemoryRaii {
+    public:
+        using Ptr = std::shared_ptr<MemoryRaii>;
+        MemoryRaii() = delete;
+        ~MemoryRaii() { _globalMt->_decrTotal(memSize); }
+
+        size_t const memSize;
+        friend class MemoryTracker;
+
+    private:
+        /// Only to be called by createRaii(), which locks the mutex.
+        explicit MemoryRaii(size_t memSize_) : memSize(memSize_) { _globalMt->_incrTotal(memSize); }
+    };
+    friend class MemoryRaii;
+
+    static void setup(std::string const& transferMethod, size_t max);
+    static Ptr get() { return _globalMt; }
+
+    MemoryRaii::Ptr createRaii(size_t fileSize);
+
+private:
+    explicit MemoryTracker(TransferMethod transferMethod, size_t max)
+            : _transferMethod(transferMethod), _max(max) {}
+
+    /// This function only to be called via createRaii.
+    void _incrTotal(size_t sz);
+
+    /// This function only to be called by ~MemoryRaii()
+    void _decrTotal(size_t sz);
+
+    static Ptr _globalMt;
+
+    mutable std::mutex _mtx;
+    std::condition_variable _cv;
+    size_t _total = 0;
+    TransferMethod const _transferMethod;
+    size_t const _max;
+};
+
+class CsvStrMem : public CsvStream {
+public:
+    static std::shared_ptr<CsvStrMem> create(std::size_t expectedBytes) {
+        return std::shared_ptr<CsvStrMem>(new CsvStrMem(expectedBytes));
+    }
+
+    CsvStrMem() = delete;
+    CsvStrMem(CsvStrMem const&) = delete;
+    CsvStream& operator=(CsvStream const&) = delete;
+    ~CsvStrMem() override = default;
+
+    void push(char const* data, std::size_t size) override;
+
+    std::shared_ptr<std::string> pop() override;
+
+    /// Wait if there isn't enough memory available.
+    void waitReadyToRead() override;
+
+    /// No thread to join.
+    void join() override {};
+
+private:
+    CsvStrMem(std::size_t expectedBytes) : CsvStream(expectedBytes + 1), _expectedBytes(expectedBytes) {};
+
+    std::atomic<size_t> _bytesRead{0};
+    size_t const _expectedBytes;
+
+    MemoryTracker::MemoryRaii::Ptr _memRaii;
+};
 
 }  // namespace lsst::qserv::mysql
 #endif  // LSST_QSERV_MYSQL_CSVBUFFER_H
