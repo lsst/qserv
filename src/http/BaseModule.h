@@ -46,7 +46,7 @@ namespace lsst::qserv::http {
 
 /// The enumeration type which is used for configuring/enforcing
 /// module's authorization requirements.
-enum class AuthType { REQUIRED, NONE };
+enum class AuthType { REQUIRED, BASIC, NONE };
 
 /// Class AuthError represent exceptions thrown when the authorization
 /// requirements aren't met.
@@ -201,11 +201,11 @@ protected:
      * In the absence of the message body, or in the absence of the key in the body, or
      * in case of any mismatch between the keys would result in an exception thrown.
      *
-     * @param authType  Authorization requirements of the module. If 'http::AuthType::REQUIRED' is
-     *   requested then the method will enforce the authorization. A lack of required
-     *   authorization key in a request, or an incorrect value of such key would result
-     *   in a error sent back to a client.
-     * @throw AuthError This exception is thrown if the authorization requirements weren't met.
+     * @param authType  Authorization requirements of the module. If 'http::AuthType::NONE' is
+     *   not requested then the method will enforce the authorization. A lack of required
+     *   authorization credentials in a request, or incorrect values of such credentials would
+     *   result in an error sent back to a client.
+     * @throw http::AuthError if the credentials are not present or doesn't match the expected values.
      */
     void enforceAuthorization(http::AuthType const authType = http::AuthType::NONE);
 
@@ -228,6 +228,19 @@ protected:
     void sendData(nlohmann::json& result);
 
 private:
+    /**
+     * Check the authorization keys provided in the request's body against the expected values.
+     * @throw http::AuthError if the keys are not present or doesn't match the expected values.
+     */
+    void _enforceKeyAuthorization();
+
+    /**
+     * Check the basic authorization credentials provided in the request's header against
+     * the expected values.
+     * @throw http::AuthError if the credentials are not present or doesn't match the expected values.
+     */
+    void _enforceBasicAuthorization() const;
+
     // Input parameters
     AuthContext const _authContext;
 

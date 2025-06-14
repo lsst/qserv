@@ -26,6 +26,7 @@
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
 #include "http/RequestQuery.h"
+#include "util/String.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -128,7 +129,22 @@ void BaseModule::sendData(json& result) {
 }
 
 void BaseModule::enforceAuthorization(http::AuthType const authType) {
-    if (authType != http::AuthType::REQUIRED) return;
+    switch (authType) {
+        case http::AuthType::NONE:
+            return;
+        case http::AuthType::REQUIRED:
+            _enforceKeyAuthorization();
+            return;
+        case http::AuthType::BASIC:
+            _enforceBasicAuthorization();
+            return;
+        default:
+            throw std::invalid_argument(
+                    context() + "unknown authorization type: " + std::to_string(static_cast<int>(authType)));
+    }
+}
+
+void BaseModule::_enforceKeyAuthorization() {
     if (body().has("admin_auth_key")) {
         auto const adminAuthKey = body().required<string>("admin_auth_key");
         if (adminAuthKey != _authContext.adminAuthKey) {
@@ -151,6 +167,30 @@ void BaseModule::enforceAuthorization(http::AuthType const authType) {
     throw AuthError(context() +
                     "none of the authorization keys 'auth_key' or 'admin_auth_key' was found"
                     " in the request. Please, provide one.");
+}
+
+void BaseModule::_enforceBasicAuthorization() const {
+    // Get and analyze a value of the "Authorization" header in the request.
+    // The header is expected to have the "Basic" prefix followed by a base64-encoded
+    // string with the user name and password separated by a colon.
+    string const authHeader = headerEntry("Authorization");
+    if (authHeader.empty()) {
+        throw AuthError(context() + "missing 'Authorization' header in the request");
+    }
+    bool const skipEmpty = true;
+    auto const schemeAndCredentials = util::String::split(authHeader, " ", skipEmpty);
+    if (schemeAndCredentials.size() != 2) {
+        throw AuthError(context() + "invalid 'Authorization' header in the request: " + authHeader);
+    }
+    auto const& scheme = schemeAndCredentials[0];
+    auto const& token = schemeAndCredentials[1];
+    if (scheme != "Basic") {
+        throw AuthError(context() + "unsupported 'Authorization' scheme: " + scheme);
+    }
+    string const expectedToken = util::String::toBase64(_authContext.user + ":" + _authContext.password);
+    if (token != expectedToken) {
+        throw AuthError(context() + "invalid 'Authorization' credentials in the request");
+    }
 }
 
 }  // namespace lsst::qserv::http
