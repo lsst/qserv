@@ -30,7 +30,7 @@ The actual completion status of the request is indicated in the JSON object:
 The following attributes are related to the completion status:
 
 ``success`` : *number*
- The flag indicating if the request succeeded:
+  The flag indicating if the request succeeded:
 
   - ``0`` if a request failed (then see attributes ``warning``, ``error``, and ``error_ext``)
   - any other number if a request succeeded (also inspect the attribute ``warning`` for non-critical notifications)
@@ -47,6 +47,34 @@ The following attributes are related to the completion status:
   completed or failed requests.
 
 Other HTTP codes (``3xx``, ``404``, ``5xx``, etc.) could also be returned by the frontend's HTTP server or intermediate proxy servers.
+
+Authentication
+--------------
+
+The frontend may be configured to require authentication. Authentication is performed using HTTP Basic Authentication.
+If it's enabled then all but the ``GET /meta/version`` service will require authentication.
+The client must provide a valid username and password in the request headers. The following illustrates how to do this using ``curl``:
+
+.. code-block:: bash
+
+   curl -k 'https://localhost:4041/query-async/status/1234' -X GET \
+        -u 'username:password'
+
+   curl -k 'https://localhost:4041/query-async/result/1234' -X DELETE \
+        -H 'Authentication: Basic <base64-encoded-credentials>'
+
+The second form requires the user to encode their credentials in Base64 format and include them in the ``Authentication`` header.
+
+Python applications can use the ``requests`` library to handle authentication automatically:
+
+.. code-block:: python
+
+    import requests
+    response = requests.get(
+        'https://localhost:4041/query-async/status/1234',
+        auth=(requests.auth.HTTPBasicAuth('username', 'password'))
+    )
+
 
 Protocol Versioning
 -------------------
