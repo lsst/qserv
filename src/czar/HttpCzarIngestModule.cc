@@ -31,6 +31,7 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "http/AsyncReq.h"
+#include "http/Auth.h"
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
@@ -53,8 +54,7 @@ void HttpCzarIngestModule::process(asio::io_service& io_service, string const& c
 
 HttpCzarIngestModule::HttpCzarIngestModule(asio::io_service& io_service, string const& context,
                                            httplib::Request const& req, httplib::Response& resp)
-        : http::ChttpModule(cconfig::CzarConfig::instance()->replicationAuthKey(),
-                            cconfig::CzarConfig::instance()->replicationAdminAuthKey(), req, resp),
+        : http::ChttpModule(cconfig::CzarConfig::instance()->httpAuthContext(), req, resp),
           HttpCzarIngestModuleBase(io_service),
           _context(context) {}
 

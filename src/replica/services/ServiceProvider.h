@@ -31,6 +31,7 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
+#include "http/Auth.h"
 #include "replica/services/ChunkLocker.h"
 #include "replica/util/Mutex.h"
 #include "replica/util/NamedMutexRegistry.h"
@@ -69,14 +70,11 @@ public:
      *  to the same instance. This mechanism also prevents 'cross-talks' between
      *  two (or many) Replication System's setups in case of an accidental
      *  mis-configuration.
-     * @param authKey  An authorization key for operations affecting the state of
+     * @param httpAuthContext  An authorization context for operations affecting the state of
      *  Qserv or the Replication/Ingest system.
-     * @param adminAuthKey  An administrator-level authorization key for critical
-     *  operations affecting the state of Qserv or the Replication/Ingest system.
-     * @return A pointer to the created object.
      */
     static ServiceProvider::Ptr create(std::string const& configUrl, std::string const& instanceId,
-                                       std::string const& authKey, std::string const& adminAuthKey);
+                                       http::AuthContext const& httpAuthContext);
 
     ~ServiceProvider() = default;
 
@@ -107,11 +105,8 @@ public:
     /// @return A unique identifier of a Qserv instance served by the Replication System
     std::string const& instanceId() const { return _instanceId; }
 
-    /// @return The authorization key
-    std::string const& authKey() const { return _authKey; }
-
-    /// @return The authorization key for administrative operations.
-    std::string const& adminAuthKey() const { return _adminAuthKey; }
+    /// @return the authorization context for operations affecting the state of Qserv or
+    http::AuthContext httpAuthContext() const { return _httpAuthContext; }
 
     /// @return a reference to the local (process) chunk locking services
     ChunkLocker& chunkLocker() { return _chunkLocker; }
@@ -168,7 +163,7 @@ public:
 private:
     /// @see ServiceProvider::create()
     explicit ServiceProvider(std::string const& configUrl, std::string const& instanceId,
-                             std::string const& authKey, std::string const& adminAuthKey);
+                             http::AuthContext const& httpAuthContext);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
@@ -186,11 +181,8 @@ private:
     /// A unique identifier of a Qserv instance served by the Replication System
     std::string const _instanceId;
 
-    /// Authorization key
-    std::string _authKey;
-
-    /// Admin-level authorization key
-    std::string _adminAuthKey;
+    /// Authorization context
+    http::AuthContext const _httpAuthContext;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.

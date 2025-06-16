@@ -40,6 +40,12 @@
 #include "util/ConfigValMap.h"
 #include "util/Issue.h"
 
+// Forward declarations
+namespace lsst::qserv::http {
+class AuthContext;
+}  // namespace lsst::qserv::http
+
+// This header declarations
 namespace lsst::qserv::wconfig {
 
 /// Provide all configuration parameters for a Qserv worker instance.
@@ -182,6 +188,12 @@ public:
     /// @param port The actual port number.
     void setReplicationHttpPort(uint16_t port);
 
+    std::string const& httpUser() const { return _httpUser->getVal(); }
+    void setHttpUser(std::string const& user);
+    std::string const& httpPassword() const { return _httpPassword->getVal(); }
+    void setHttpPassword(std::string const& password);
+    http::AuthContext httpAuthContext() const;
+
     /// @return the JSON representation of the configuration parameters.
     /// @note The object has two collections of the parameters: 'input' - for
     /// parameters that were proided to the construction of the class, and
@@ -319,6 +331,11 @@ private:
     CVTStrPtr _mysqlHostname =
             util::ConfigValTStr::create(_configValMap, "mysql", "hostname", required, "none");
     CVTStrPtr _mysqlDb = util::ConfigValTStr::create(_configValMap, "mysql", "db", notReq, "");
+
+    // User and password for the HTTP frontend
+    CVTStrPtr _httpUser = util::ConfigValTStr::create(_configValMap, "http", "user", notReq, "");
+    CVTStrPtr _httpPassword =
+            util::ConfigValTStr::create(_configValMap, "http", "password", notReq, "", hidden);
 };
 
 }  // namespace lsst::qserv::wconfig

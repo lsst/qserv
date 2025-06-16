@@ -34,15 +34,20 @@ using namespace std;
 
 namespace lsst::qserv::http {
 
-QhttpModule::QhttpModule(string const& authKey, string const& adminAuthKey,
-                         shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp)
-        : Module(authKey, adminAuthKey), _req(req), _resp(resp) {}
+QhttpModule::QhttpModule(http::AuthContext const& authContext, shared_ptr<qhttp::Request> const& req,
+                         shared_ptr<qhttp::Response> const& resp)
+        : Module(authContext), _req(req), _resp(resp) {}
 
 string QhttpModule::method() const { return _req->method; }
 
 unordered_map<string, string> QhttpModule::params() const { return _req->params; }
 
 RequestQuery QhttpModule::query() const { return RequestQuery(_req->query); }
+
+string QhttpModule::headerEntry(string const& key) const {
+    auto it = _req->header.find(key);
+    return (it != _req->header.end()) ? it->second : "";
+}
 
 void QhttpModule::getRequestBody(string& content, string const& requiredContentType) {
     if (_req->header["Content-Type"] == requiredContentType) {

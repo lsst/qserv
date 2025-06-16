@@ -335,6 +335,8 @@ def run_integration_tests_http(
             output=testdata_output,
             mysql=tests_data["reference-db-uri"],
             http=tests_data["qserv-http-uri"],
+            user=tests_data["qserv-http-user"],
+            password=tests_data["qserv-http-password"],
             run_cases=cases,
             test_cases_data=tests_data["test_cases"],
         )
@@ -383,6 +385,8 @@ def run_integration_tests_http_ingest(
         wait_for_replication_system(tests_data["replication-controller-uri"])
         return itest.run_http_ingest(
             http_frontend_uri=tests_data["qserv-http-uri"],
+            user=tests_data["qserv-http-user"],
+            password=tests_data["qserv-http-password"],
             keep_results=keep_results,
         )
     return True

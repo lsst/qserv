@@ -27,6 +27,7 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
+#include "http/Auth.h"
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
@@ -38,8 +39,7 @@ namespace lsst::qserv::czar {
 
 QhttpModule::QhttpModule(string const& context, shared_ptr<qhttp::Request> const& req,
                          shared_ptr<qhttp::Response> const& resp)
-        : http::QhttpModule(cconfig::CzarConfig::instance()->replicationAuthKey(),
-                            cconfig::CzarConfig::instance()->replicationAdminAuthKey(), req, resp),
+        : http::QhttpModule(cconfig::CzarConfig::instance()->httpAuthContext(), req, resp),
           _context(context) {}
 
 string QhttpModule::context() const { return _context; }

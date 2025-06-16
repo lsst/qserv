@@ -58,13 +58,11 @@ public:
 
 protected:
     /**
-     * @param authKey  An authorization key for operations which require extra security.
-     * @param adminAuthKey  An administrator-level authorization key.
+     * @param authContext  An authorization context for operations which require extra security.
      * @param req  The HTTP request.
      * @param resp  The HTTP response channel.
      */
-    ChttpModule(std::string const& authKey, std::string const& adminAuthKey, httplib::Request const& req,
-                httplib::Response& resp);
+    ChttpModule(http::AuthContext const& authContext, httplib::Request const& req, httplib::Response& resp);
 
     httplib::Request const& req() { return _req; }
     httplib::Response& resp() { return _resp; }
@@ -72,6 +70,7 @@ protected:
     virtual std::string method() const;
     virtual std::unordered_map<std::string, std::string> params() const;
     virtual RequestQuery query() const;
+    virtual std::string headerEntry(std::string const& key) const;
     virtual void getRequestBody(std::string& content, std::string const& requiredContentType);
     virtual void sendResponse(std::string const& content, std::string const& contentType);
 

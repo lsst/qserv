@@ -37,6 +37,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
+#include "http/Auth.h"
 #include "util/File.h"
 #include "util/TimeUtils.h"
 
@@ -383,10 +384,10 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     // set via an optional parameter to the application.
 
     uint64_t const startedMs = util::TimeUtils::now();
-    auto const ptr =
-            IngestClient::connect(file.workerHost, file.workerPort, file.transactionId, file.tableName,
-                                  chunkContribution.chunk, chunkContribution.isOverlap, file.inFileName,
-                                  authKey(), _dialectInput, _charsetName, _maxNumWarnings, _recordSizeBytes);
+    auto const ptr = IngestClient::connect(
+            file.workerHost, file.workerPort, file.transactionId, file.tableName, chunkContribution.chunk,
+            chunkContribution.isOverlap, file.inFileName, httpAuthContext().authKey, _dialectInput,
+            _charsetName, _maxNumWarnings, _recordSizeBytes);
     ptr->send();
     uint64_t const finishedMs = util::TimeUtils::now();
 

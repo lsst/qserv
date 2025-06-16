@@ -35,9 +35,9 @@ using namespace std;
 
 namespace lsst::qserv::http {
 
-ChttpModule::ChttpModule(string const& authKey, string const& adminAuthKey, httplib::Request const& req,
+ChttpModule::ChttpModule(http::AuthContext const& authContext, httplib::Request const& req,
                          httplib::Response& resp)
-        : Module(authKey, adminAuthKey), _req(req), _resp(resp) {}
+        : Module(authContext), _req(req), _resp(resp) {}
 
 string ChttpModule::method() const { return _req.method; }
 
@@ -53,6 +53,11 @@ RequestQuery ChttpModule::query() const {
     unordered_map<string, string> queryParams;
     for (auto const& [key, value] : _req.params) queryParams[key] = value;
     return RequestQuery(queryParams);
+}
+
+string ChttpModule::headerEntry(string const& key) const {
+    auto it = _req.headers.find(key);
+    return (it != _req.headers.end()) ? it->second : "";
 }
 
 void ChttpModule::getRequestBody(string& content, string const& requiredContentType) {

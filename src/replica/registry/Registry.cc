@@ -23,6 +23,7 @@
 #include "replica/registry/Registry.h"
 
 // Qserv headers
+#include "http/Auth.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "qmeta/types.h"
@@ -113,7 +114,7 @@ void Registry::addWorker(string const& name) const {
     json const request =
             json::object({{"version", http::MetaModule::version},
                           {"instance_id", _serviceProvider->instanceId()},
-                          {"auth_key", _serviceProvider->authKey()},
+                          {"auth_key", _serviceProvider->httpAuthContext().authKey},
                           {"worker",
                            {{"name", name},
                             {"svc-host-name", hostName},
@@ -134,8 +135,8 @@ void Registry::addWorker(string const& name) const {
 }
 
 void Registry::removeWorker(string const& name) const {
-    json const request = json::object(
-            {{"instance_id", _serviceProvider->instanceId()}, {"auth_key", _serviceProvider->authKey()}});
+    json const request = json::object({{"instance_id", _serviceProvider->instanceId()},
+                                       {"auth_key", _serviceProvider->httpAuthContext().authKey}});
     _request(http::Method::DELETE, "/worker/" + name, request);
 }
 

@@ -148,6 +148,8 @@ commands = OrderedDict((
         "--ssl-private-key-file {{http_ssl_private_key_file}} "
         "--tmp-dir {{http_tmp_dir}} "
         "--conn-pool-size {{http_conn_pool_size}} "
+        "--user {{user}} "
+        "--password {{password}} "
         "--verbose",
     )),
     ("cmsd-manager", CommandInfo(
@@ -644,6 +646,18 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
     "--http-tmp-dir",
     help="The temporary directory for the HTTP server of the frontend.",
     default="/tmp",
+    show_default=True,
+)
+@click.option(
+    "--user",
+    help="The user for the HTTP server of the frontend.",
+    default="qsmaster",
+    show_default=True,
+)
+@click.option(
+    "--password",
+    help="The password for the HTTP server of the frontend.",
+    default="CHANGEME2",
     show_default=True,
 )
 @click.option(

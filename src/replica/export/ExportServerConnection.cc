@@ -36,6 +36,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "http/Auth.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -160,7 +161,7 @@ void ExportServerConnection::_handshakeReceived(boost::system::error_code const&
 
     // Check if the client is authorized for the operation
 
-    if (request.auth_key() != _serviceProvider->authKey()) {
+    if (request.auth_key() != _serviceProvider->httpAuthContext().authKey) {
         _failed("not authorized");
         return;
     }

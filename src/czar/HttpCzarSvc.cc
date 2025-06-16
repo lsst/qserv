@@ -38,6 +38,7 @@
 #include "czar/HttpCzarIngestModule.h"
 #include "czar/HttpCzarQueryModule.h"
 #include "czar/WorkerIngestProcessor.h"
+#include "http/Auth.h"
 #include "http/ClientConnPool.h"
 #include "http/ChttpMetaModule.h"
 
@@ -137,6 +138,11 @@ void HttpCzarSvc::_createAndConfigure() {
 void HttpCzarSvc::_registerHandlers() {
     ::throwIf<logic_error>(_svr == nullptr,
                            "czar::HttpCzarSvc::" + string(__func__) + " the server is not initialized");
+
+    // Basic authentication is required for all requests if the user is specified in the configuration.
+    http::AuthContext const authContext = cconfig::CzarConfig::instance()->httpAuthContext();
+    http::AuthType const authType = authContext.user.empty() ? http::AuthType::NONE : http::AuthType::BASIC;
+
     auto const self = shared_from_this();
     _svr->Get("/meta/version", [self](httplib::Request const& req, httplib::Response& resp) {
         json const info =
@@ -145,40 +151,45 @@ void HttpCzarSvc::_registerHandlers() {
                               {"instance_id", cconfig::CzarConfig::instance()->replicationInstanceId()}});
         http::ChttpMetaModule::process(::serviceName, info, req, resp, "VERSION");
     });
-    _svr->Post("/query", [self](httplib::Request const& req, httplib::Response& resp) {
-        HttpCzarQueryModule::process(::serviceName, req, resp, "SUBMIT");
+    _svr->Post("/query", [self, authType](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "SUBMIT", authType);
     });
-    _svr->Post("/query-async", [self](httplib::Request const& req, httplib::Response& resp) {
-        HttpCzarQueryModule::process(::serviceName, req, resp, "SUBMIT-ASYNC");
+    _svr->Post("/query-async", [self, authType](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "SUBMIT-ASYNC", authType);
     });
-    _svr->Delete("/query-async/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
-        HttpCzarQueryModule::process(::serviceName, req, resp, "CANCEL");
+    _svr->Delete("/query-async/:qid", [self, authType](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarQueryModule::process(::serviceName, req, resp, "CANCEL", authType);
     });
-    _svr->Get("/query-async/status/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
-        HttpCzarQueryModule::process(::serviceName, req, resp, "STATUS");
-    });
-    _svr->Get("/query-async/result/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
-        HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT");
-    });
-    _svr->Delete("/query-async/result/:qid", [self](httplib::Request const& req, httplib::Response& resp) {
-        HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT-DELETE");
-    });
-    _svr->Post("/ingest/csv", [self](httplib::Request const& req, httplib::Response& resp,
-                                     httplib::ContentReader const& contentReader) {
+    _svr->Get("/query-async/status/:qid",
+              [self, authType](httplib::Request const& req, httplib::Response& resp) {
+                  HttpCzarQueryModule::process(::serviceName, req, resp, "STATUS", authType);
+              });
+    _svr->Get("/query-async/result/:qid",
+              [self, authType](httplib::Request const& req, httplib::Response& resp) {
+                  HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT", authType);
+              });
+    _svr->Delete("/query-async/result/:qid",
+                 [self, authType](httplib::Request const& req, httplib::Response& resp) {
+                     HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT-DELETE", authType);
+                 });
+    _svr->Post("/ingest/csv", [self, authType](httplib::Request const& req, httplib::Response& resp,
+                                               httplib::ContentReader const& contentReader) {
         HttpCzarIngestCsvModule::process(self->_io_service, ::serviceName, self->_httpCzarConfig.tmpDir, req,
                                          resp, contentReader, self->_clientConnPool,
-                                         self->_workerIngestProcessor);
+                                         self->_workerIngestProcessor, authType);
     });
-    _svr->Post("/ingest/data", [self](httplib::Request const& req, httplib::Response& resp) {
-        HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "INGEST-DATA");
+    _svr->Post("/ingest/data", [self, authType](httplib::Request const& req, httplib::Response& resp) {
+        HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "INGEST-DATA", authType);
     });
-    _svr->Delete("/ingest/database/:database", [self](httplib::Request const& req, httplib::Response& resp) {
-        HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "DELETE-DATABASE");
+    _svr->Delete("/ingest/database/:database",
+                 [self, authType](httplib::Request const& req, httplib::Response& resp) {
+                     HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp,
+                                                   "DELETE-DATABASE", authType);
+                 });
+    _svr->Delete("/ingest/table/:database/:table", [self, authType](httplib::Request const& req,
+                                                                    httplib::Response& resp) {
+        HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "DELETE-TABLE", authType);
     });
-    _svr->Delete(
-            "/ingest/table/:database/:table", [self](httplib::Request const& req, httplib::Response& resp) {
-                HttpCzarIngestModule::process(self->_io_service, ::serviceName, req, resp, "DELETE-TABLE");
-            });
 }
 
 }  // namespace lsst::qserv::czar

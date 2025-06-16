@@ -24,6 +24,7 @@
 
 // Qserv header
 #include "global/stringUtil.h"
+#include "http/Auth.h"
 #include "qhttp/Request.h"
 #include "replica/registry/RegistryServices.h"
 #include "util/TimeUtils.h"
@@ -56,7 +57,6 @@ bool isSecurityContextKey(string const& key) {
     vector<string> const securityContextKeys = {"authKey", "adminAuthKey", "instance_id", "name"};
     return securityContextKeys.end() != find(securityContextKeys.begin(), securityContextKeys.end(), key);
 }
-
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -72,7 +72,7 @@ void RegistryHttpSvcMod::process(ServiceProvider::Ptr const& serviceProvider, Re
 RegistryHttpSvcMod::RegistryHttpSvcMod(ServiceProvider::Ptr const& serviceProvider,
                                        RegistryServices& services, shared_ptr<qhttp::Request> const& req,
                                        shared_ptr<qhttp::Response> const& resp)
-        : http::QhttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+        : http::QhttpModule(serviceProvider->httpAuthContext(), req, resp),
           _serviceProvider(serviceProvider),
           _services(services) {}
 

@@ -23,6 +23,7 @@
 #include "replica/ingest/IngestHttpSvcMod.h"
 
 // Qserv header
+#include "http/Auth.h"
 #include "http/Method.h"
 #include "replica/ingest/IngestRequest.h"
 #include "replica/ingest/IngestRequestMgr.h"
@@ -51,7 +52,7 @@ IngestHttpSvcMod::IngestHttpSvcMod(shared_ptr<ServiceProvider> const& servicePro
                                    shared_ptr<IngestRequestMgr> const& ingestRequestMgr,
                                    string const& workerName, httplib::Request const& req,
                                    httplib::Response& resp)
-        : http::ChttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+        : http::ChttpModule(serviceProvider->httpAuthContext(), req, resp),
           _serviceProvider(serviceProvider),
           _ingestRequestMgr(ingestRequestMgr),
           _workerName(workerName) {}

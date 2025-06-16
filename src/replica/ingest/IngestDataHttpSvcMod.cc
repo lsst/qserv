@@ -23,6 +23,7 @@
 #include "replica/ingest/IngestDataHttpSvcMod.h"
 
 // Qserv header
+#include "http/Auth.h"
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/Method.h"
@@ -60,7 +61,6 @@ bool isBinaryColumnType(string const& type) {
     }
     return false;
 }
-
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -76,7 +76,7 @@ void IngestDataHttpSvcMod::process(shared_ptr<ServiceProvider> const& servicePro
 IngestDataHttpSvcMod::IngestDataHttpSvcMod(shared_ptr<ServiceProvider> const& serviceProvider,
                                            string const& workerName, httplib::Request const& req,
                                            httplib::Response& resp)
-        : http::ChttpModule(serviceProvider->authKey(), serviceProvider->adminAuthKey(), req, resp),
+        : http::ChttpModule(serviceProvider->httpAuthContext(), req, resp),
           IngestFileSvc(serviceProvider, workerName) {}
 
 string IngestDataHttpSvcMod::context() const { return "INGEST-DATA-HTTP-SVC "; }

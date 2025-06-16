@@ -31,13 +31,13 @@ using json = nlohmann::json;
 namespace {
 // Authorization context is not required by this module
 lsst::qserv::http::AuthType const authType = lsst::qserv::http::AuthType::NONE;
-string const authKey;
-string const adminAuthKey;
+lsst::qserv::http::AuthContext const authContext;
+
 }  // namespace
 
 namespace lsst::qserv::http {
 
-unsigned int const ChttpMetaModule::version = 42;
+unsigned int const ChttpMetaModule::version = 43;
 
 void ChttpMetaModule::process(string const& context, nlohmann::json const& info, httplib::Request const& req,
                               httplib::Response& resp, string const& subModuleName) {
@@ -47,7 +47,7 @@ void ChttpMetaModule::process(string const& context, nlohmann::json const& info,
 
 ChttpMetaModule::ChttpMetaModule(string const& context, nlohmann::json const& info,
                                  httplib::Request const& req, httplib::Response& resp)
-        : http::ChttpModule(::authKey, ::adminAuthKey, req, resp), _context(context), _info(info) {
+        : http::ChttpModule(::authContext, req, resp), _context(context), _info(info) {
     if (!_info.is_object()) {
         throw invalid_argument("ChttpMetaModule::" + string(__func__) + " parameter info must be an object.");
     }

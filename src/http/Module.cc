@@ -33,7 +33,7 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::http {
 
-Module::Module(string const& authKey, string const& adminAuthKey) : BaseModule(authKey, adminAuthKey) {}
+Module::Module(http::AuthContext const& authContext) : BaseModule(authContext) {}
 
 void Module::execute(string const& subModuleName, http::AuthType const authType) {
     try {

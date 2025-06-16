@@ -34,11 +34,13 @@
 #include "boost/program_options.hpp"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
 #include "czar/HttpCzarSvc.h"
 
 using namespace std;
 namespace po = boost::program_options;
+namespace cconfig = lsst::qserv::cconfig;
 namespace czar = lsst::qserv::czar;
 namespace qserv = lsst::qserv;
 
@@ -57,6 +59,13 @@ int main(int argc, char* argv[]) {
                        "The name of this Czar frontend. Assign a unique name to each Czar.");
     desc.add_options()("config", po::value<string>()->default_value("/config-etc/qserv-czar.cnf"),
                        "The configuration file.");
+    desc.add_options()("user", po::value<string>()->default_value(""),
+                       "The login name of a user for connecting to the frontend.");
+    desc.add_options()(
+            "password", po::value<string>()->default_value(""),
+            "The login password of a user for connecting to the frontend. The value of the password"
+            " will be ignored if the user is not specified. The password will be used for"
+            " authenticating the user. The password can't be empty if the user is specified.");
     desc.add_options()("port", po::value<uint16_t>()->default_value(httpCzarConfig.port),
                        "HTTP/HTTPS port of the REST API. Assigning 0 would result in allocating"
                        " the first available port.");
@@ -101,6 +110,11 @@ int main(int argc, char* argv[]) {
 
     string const czarName = vm["czar-name"].as<string>();
     string const configFilePath = vm["config"].as<string>();
+    string const httpUser = vm["user"].as<string>();
+    string const httpPassword = vm["password"].as<string>();
+    if (!httpUser.empty() && httpPassword.empty()) {
+        throw invalid_argument("The user name can't be specified without the password.");
+    }
 
     httpCzarConfig.port = vm["port"].as<uint16_t>();
     httpCzarConfig.numThreads = vm["threads"].as<size_t>();
@@ -129,10 +143,18 @@ int main(int argc, char* argv[]) {
              << ::context << " Temporary directory: " << httpCzarConfig.tmpDir << "\n"
              << ::context << " Max.number of queued requests: " << httpCzarConfig.maxQueuedRequests << "\n"
              << ::context << " Connection pool size (libcurl): " << httpCzarConfig.clientConnPoolSize << "\n"
-             << ::context << " Number of BOOST ASIO threads: " << httpCzarConfig.numBoostAsioThreads << endl;
+             << ::context << " Number of BOOST ASIO threads: " << httpCzarConfig.numBoostAsioThreads << "\n"
+             << ::context << " HTTP user: " << httpUser << "\n"
+             << ::context << " HTTP password: ******" << endl;
     }
     try {
         auto const czar = czar::Czar::createCzar(configFilePath, czarName);
+        // Set the user and password for the HTTP service.
+        // IMPORTANT: The configuration is expected to be initialized after the Czar is created
+        // and before the service is started. The user and password are expected to be set
+        // before the service is instantiated.
+        cconfig::CzarConfig::instance()->setHttpUser(httpUser);
+        cconfig::CzarConfig::instance()->setHttpPassword(httpPassword);
         auto const svc = czar::HttpCzarSvc::create(httpCzarConfig);
         if (verbose) {
             cout << ::context << " The query processing service of Czar bound to port: " << svc->port()

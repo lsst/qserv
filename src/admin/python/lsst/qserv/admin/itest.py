@@ -518,7 +518,7 @@ class ITestQueryHttp:
             self.out_file_t.format(mode=query_mode_qserv_attached if qserv else query_mode_mysql),
         )
 
-    def run_attached_http(self, connection: str, database: str) -> None:
+    def run_attached_http(self, connection: str, user: str, password: str, database: str) -> None:
         """Run the query via the HTTP frontend at the given connection
         attached/synchronously - do not SUBMIT and wait for result.
 
@@ -526,6 +526,10 @@ class ITestQueryHttp:
         ----------
         connection : `str`
             URI to the HTTP frontend to run the query on.
+        user : `str`
+            The user to use to connect to the HTTP frontend.
+        password : `str`
+            The password to use to connect to the HTTP frontend.
         database : `str`
             The name of the database to run in.
         """
@@ -535,14 +539,15 @@ class ITestQueryHttp:
 
         # Submit the query, check and analyze the completion status
         svc = str(urljoin(connection, f"/query?version={repl_api_version}"))
-        req = requests.post(svc, json={'query': query, 'database': database, 'binary_encoding': 'hex'}, verify=False)
+        req = requests.post(svc, json={'query': query, 'database': database, 'binary_encoding': 'hex'},
+                            verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
         req.raise_for_status()
         res = req.json()
         if res['success'] == 0:
             raise RuntimeError(f"Failed to execute the attached query: {query}, server serror: {res['error']}")
         self._write_result(self.out_file_t.format(mode=query_mode_qserv_attached), res)
 
-    def run_detached_http(self, connection: str, database: str) -> None:
+    def run_detached_http(self, connection: str, user: str, password: str, database: str) -> None:
         """Run the query via the HTTP frontend at connection using SUBMIT, and then fetch
         results when they are available.
 
@@ -550,6 +555,10 @@ class ITestQueryHttp:
         ----------
         connection : `str`
             URI to the HTTP frontend to run the query on.
+        user : `str`
+            The user to use to connect to the HTTP frontend.
+        password : `str`
+            The password to use to connect to the HTTP frontend.
         database : `str`
             The name of the database to run in.
         """
@@ -559,7 +568,8 @@ class ITestQueryHttp:
 
         # Submit the query via the async service, check and analyze the completion status
         svc = str(urljoin(connection, f"/query-async?version={repl_api_version}"))
-        req = requests.post(svc, json={'query': query, 'database': database}, verify=False)
+        req = requests.post(svc, json={'query': query, 'database': database}, verify=False,
+                            auth=(requests.auth.HTTPBasicAuth(user, password)))
         req.raise_for_status()
         res = req.json()
         if res['success'] == 0:
@@ -572,7 +582,7 @@ class ITestQueryHttp:
         while time.time() < end_time:
             # Submit a request to check a status of the query
             svc = str(urljoin(connection, f"/query-async/status/{query_id}?version={repl_api_version}"))
-            req = requests.get(svc, verify=False)
+            req = requests.get(svc, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
             req.raise_for_status()
             res = req.json()
             if res['success'] == 0:
@@ -587,7 +597,7 @@ class ITestQueryHttp:
         # Make another request to pull the result set
         _log.debug("SQLCmd.execute pulling result set of query ID = %s", query_id)
         svc = str(urljoin(connection, f"/query-async/result/{query_id}?version={repl_api_version}&binary_encoding=hex"))
-        req = requests.get(svc, verify=False)
+        req = requests.get(svc, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
         req.raise_for_status()
         res = req.json()
         if res['success'] == 0:
@@ -596,7 +606,7 @@ class ITestQueryHttp:
 
         _log.debug("SQLCmd.execute deleting result tables of query ID = %s", query_id)
         svc = str(urljoin(connection, f"/query-async/result/{query_id}?version={repl_api_version}"))
-        req = requests.delete(svc, verify=False)
+        req = requests.delete(svc, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
         req.raise_for_status()
         res = req.json()
         if res['success'] == 0:
@@ -761,6 +771,8 @@ class ITestCaseHttp:
         outdir: str,
         mysql_connection: str,
         http_connection: str,
+        user: str,
+        password: str,
         skip_numbers: Optional[List[str]],
     ):
         self.case_id = case_id
@@ -768,6 +780,8 @@ class ITestCaseHttp:
         self.outdir = outdir
         self.mysql_connection = mysql_connection
         self.http_connection = http_connection
+        self.user = user
+        self.password = password
         self.skip_numbers = skip_numbers or []
         with open(os.path.join(sourcedir, "data/ingest/database.json")) as f:
             self.db_name = json.load(f)["database"]
@@ -802,8 +816,8 @@ class ITestCaseHttp:
             _log.info("Running query %s", os.path.basename(query_file))
             query = ITestQueryHttp(os.path.join(self.queries_dir, query_file), self.outdir)
             query.run_attached(self.mysql_connection, database=self.db_name)
-            query.run_attached_http(self.http_connection, database=self.db_name)
-            query.run_detached_http(self.http_connection, database=self.db_name)
+            query.run_attached_http(self.http_connection, self.user, self.password, database=self.db_name)
+            query.run_detached_http(self.http_connection, self.user, self.password, database=self.db_name)
 
 
 class ITestCaseResult:
@@ -934,6 +948,8 @@ def run_queries_http(
     output: str,
     mysql: str,
     http: str,
+    user: str,
+    password: str,
     run_cases: Optional[List[str]],
     test_cases_data: List[Dict[str, Any]],
 ) -> None:
@@ -952,6 +968,10 @@ def run_queries_http(
         The uri to use to connect to the mysql reference database.
     http : `str`
         The uri to use to connect to the HTPP frontend.
+    user : `str`
+        The user to use to connect to the HTTP frontend.
+    password : `str`
+        The password to use to connect to the HTTP frontend.
     run_cases : `list` [`str`] or `None`
         The test cases to run, or `None` if all cases should be run.
     test_cases_data : `dict`
@@ -973,6 +993,8 @@ def run_queries_http(
                     os.path.join(output, case_data["id"]),
                     mysql,
                     http,
+                    user,
+                    password,
                     case_data.get("skip_numbers", None),
                 )
 
@@ -1032,6 +1054,8 @@ def compareQueryResults(run_cases: List[str], outputs_dir: str) -> List[ITestCas
 
 def run_http_ingest(
     http_frontend_uri: str,
+    user: str,
+    password: str,
     keep_results: bool,
 ) -> bool:
     """Test ingesting user tables into Qserv and querying the tables.
@@ -1040,6 +1064,10 @@ def run_http_ingest(
     ----------
     http_frontend_uri : `str`
         The uri to use to connect to the HTPP frontend.
+    user : `str`
+        The user to use to connect to the HTTP frontend.
+    password : `str`
+        The password to use to connect to the HTTP frontend.
     keep_results : `bool`
         If `True` then keep the results of the test, otherwise delete them.
     """
@@ -1082,30 +1110,30 @@ def run_http_ingest(
     # Run the cleanup step to ensure no such database (and tables in it) exists after
     # prior attempts to run the test.
     try:
-        _http_delete_database(http_frontend_uri, database)
+        _http_delete_database(http_frontend_uri, user, password, database)
     except Exception as e:
         _log.warning("Failed to delete user database: %s, error: %s", database, e)
 
     # Create the table and ingest data using the JSON option. Then query the table.
     try:
-        _http_ingest_data_json(http_frontend_uri, database, table_json, schema, indexes, rows)
+        _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows)
     except Exception as e:
         _log.error("Failed to ingest data into table: %s of user database: %s, error: %s", table_json, database, e)
         return False
     try:
-        _http_query_table(http_frontend_uri, database, table_json, rows)
+        _http_query_table(http_frontend_uri, user, password, database, table_json, rows)
     except Exception as e:
         _log.error("Failed to query table: %s of user database: %s, error: ", table_json, database, e)
         return False
 
     # Create the table and ingest data using the CSV option. Then query the table.
     try:
-        _http_ingest_data_csv(http_frontend_uri, database, table_csv, schema, indexes, rows, timeout)
+        _http_ingest_data_csv(http_frontend_uri, user, password, database, table_csv, schema, indexes, rows, timeout)
     except Exception as e:
         _log.error("Failed to ingest data into table: %s of user database: %s, error: %s", table_csv, database, e)
         return False
     try:
-        _http_query_table(http_frontend_uri, database, table_csv, rows)
+        _http_query_table(http_frontend_uri, user, password, database, table_csv, rows)
     except Exception as e:
         _log.error("Failed to query table: %s of user database: %s, error: ", table_csv, database, e)
 
@@ -1114,12 +1142,12 @@ def run_http_ingest(
     if not keep_results:
         for table in [table_json, table_csv]:
             try:
-                _http_delete_table(http_frontend_uri, database, table)
+                _http_delete_table(http_frontend_uri, user, password, database, table)
             except Exception as e:
                 _log.error("Failed to delete table: %s from user database: %s, error: %s", table, database, e)
                 return False
         try:
-            _http_delete_database(http_frontend_uri, database)
+            _http_delete_database(http_frontend_uri, user, password, database)
         except Exception as e:
             _log.error("Failed to delete user database: %s, error: %s", database, e)
             return False
@@ -1128,20 +1156,26 @@ def run_http_ingest(
 
 def _http_delete_database(
     http_frontend_uri: str,
+    user: str,
+    password: str,
     database: str,
 ) -> None:
     """Delete an existing user database.
 
     Parameters
     ----------
-    http : `str`
+    http_frontend_uri : `str`
         The uri to use to connect to the HTPP frontend.
+    user : `str`
+        The user to use to connect to the HTTP frontend.
+    password : `str`
+        The password to use to connect to the HTTP frontend.
     database : `str`
         The name of the database to delete.
     """
     _log.debug("Deleting user database: %s", database)
     url = str(urljoin(http_frontend_uri, f"/ingest/database/{database}?version={repl_api_version}"))
-    req = requests.delete(url, verify=False)
+    req = requests.delete(url, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
     req.raise_for_status()
     res = req.json()
     if res["success"] == 0:
@@ -1150,6 +1184,8 @@ def _http_delete_database(
 
 def _http_delete_table(
     http_frontend_uri: str,
+    user: str,
+    password: str,
     database: str,
     table: str,
 ) -> None:
@@ -1159,6 +1195,10 @@ def _http_delete_table(
     ----------
     http_frontend_uri : `str`
         The uri to use to connect to the HTPP frontend.
+    user : `str`
+        The user to use to connect to the HTTP frontend.
+    password : `str`
+        The password to use to connect to the HTTP frontend.
     database : `str`
         The name of the database where the table is located.
     table : `str`
@@ -1166,7 +1206,7 @@ def _http_delete_table(
     """
     _log.debug("Deleting table: %s from user database: %s", table, database)
     url = str(urljoin(http_frontend_uri, f"/ingest/table/{database}/{table}?version={repl_api_version}"))
-    req = requests.delete(url, verify=False)
+    req = requests.delete(url, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
     req.raise_for_status()
     res = req.json()
     if res["success"] == 0:
@@ -1175,6 +1215,8 @@ def _http_delete_table(
 
 def _http_ingest_data_json(
     http_frontend_uri: str,
+    user: str,
+    password: str,
     database: str,
     table: str,
     schema: List[Dict[str, str]],
@@ -1187,6 +1229,10 @@ def _http_ingest_data_json(
     ----------
     http_frontend_uri : `str`
         The uri to use to connect to the HTPP frontend.
+    user : `str`
+        The user to use to connect to the HTTP frontend.
+    password : `str`
+        The password to use to connect to the HTTP frontend.
     database : `str`
         The name of the database where the table is located.
     table : `str`
@@ -1205,7 +1251,7 @@ def _http_ingest_data_json(
         "rows": rows,
     }
     url = str(urljoin(http_frontend_uri, f"/ingest/data?version={repl_api_version}"))
-    req = requests.post(url, json=data, verify=False)
+    req = requests.post(url, json=data, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
     req.raise_for_status()
     res = req.json()
     if res["success"] == 0:
@@ -1214,6 +1260,8 @@ def _http_ingest_data_json(
 
 def _http_ingest_data_csv(
     http_frontend_uri: str,
+    user: str,
+    password: str,
     database: str,
     table: str,
     schema: List[Dict[str, str]],
@@ -1227,6 +1275,10 @@ def _http_ingest_data_csv(
     ----------
     http_frontend_uri : `str`
         The uri to use to connect to the HTPP frontend.
+    user : `str`
+        The user to use to connect to the HTTP frontend.
+    password : `str`
+        The password to use to connect to the HTTP frontend.
     database : `str`
         The name of the database where the table is located.
     table : `str`
@@ -1267,7 +1319,8 @@ def _http_ingest_data_csv(
         }
     )
     url = str(urljoin(http_frontend_uri, f"/ingest/csv?version={repl_api_version}"))
-    req = requests.post(url, data=encoder, headers={'Content-Type': encoder.content_type}, verify=False)
+    req = requests.post(url, data=encoder, headers={'Content-Type': encoder.content_type}, verify=False,
+                        auth=(requests.auth.HTTPBasicAuth(user, password)))
     req.raise_for_status()
     res = req.json()
     if res["success"] == 0:
@@ -1276,6 +1329,8 @@ def _http_ingest_data_csv(
 
 def _http_query_table(
     http_frontend_uri: str,
+    user: str,
+    password: str,
     database: str,
     table: str,
     expected_rows: List[List[Any]],
@@ -1286,6 +1341,10 @@ def _http_query_table(
     ----------
     http_frontend_uri : `str`
         The uri to use to connect to the HTPP frontend.
+    user : `str`
+        The user to use to connect to the HTTP frontend.
+    password : `str`
+        The password to use to connect to the HTTP frontend.
     database : `str`
         The name of the database where the table is located.
     table : `str`
@@ -1299,7 +1358,7 @@ def _http_query_table(
         "query": f"SELECT `id`,`val`,`active` FROM `{table}` ORDER BY id ASC",
     }
     url = str(urljoin(http_frontend_uri, f"/query?version={repl_api_version}"))
-    req = requests.post(url, json=data, verify=False)
+    req = requests.post(url, json=data, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
     req.raise_for_status()
     res = req.json()
     if res["success"] == 0:
