@@ -125,6 +125,7 @@ public:
     int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
     unsigned int getMaxTransferMemMB() const { return _resultMaxTransferMemMB->getVal(); }
+    /// May be "stream", "memory", or "memdisk"
     std::string getTransferMethod() const { return _resultTransferMethod->getVal(); }
 
     /// The size of the TCP connection pool within the client API that is used
@@ -294,7 +295,7 @@ private:
     CVTUIntPtr _resultMaxTransferMemMB =
             util::ConfigValTUInt::create(_configValMap, "resultdb", "maxTransferMemMB", notReq, 10000);
     CVTStrPtr _resultTransferMethod =
-            util::ConfigValTStr::create(_configValMap, "resultdb", "transferMethod", notReq, "memory");
+            util::ConfigValTStr::create(_configValMap, "resultdb", "transferMethod", notReq, "memdisk");
     /// Get all the elements in the css section.
     CVTStrPtr _cssTechnology =
             util::ConfigValTStr::create(_configValMap, "css", "technology", notReq, "mysql");

@@ -24,8 +24,10 @@
 #define LSST_QSERV_MYSQL_CSVBUFFER_H
 
 // System headers
+#include <atomic>
 #include <condition_variable>
 #include <cstddef>
+#include <fstream>
 #include <functional>
 #include <list>
 #include <memory>
@@ -35,6 +37,9 @@
 
 // Third-party headers
 #include <mysql/mysql.h>
+
+// qserv headers
+#include "global/intTypes.h"
 
 namespace lsst::qserv::mysql {
 
@@ -112,6 +117,11 @@ public:
      */
     virtual void cancel();
 
+    /*
+     * Return true if this instance has been cancelled.
+     */
+    bool isCancelled() const { return _cancelled; }
+
     /**
      * Pop a record from the stream. The method will block if the stream is empty
      * until a record is pushed.
@@ -150,6 +160,8 @@ public:
 
 protected:
     CsvStream(std::size_t maxRecords);
+
+    void setContaminated() { _contaminated = true; }
 
     std::function<void()> _csvLambda;
     bool _cancelled = false;
@@ -196,9 +208,6 @@ std::shared_ptr<CsvBuffer> newCsvStreamBuffer(std::shared_ptr<CsvStream> const& 
 ///      disk, and have pop read off disk when it runs out of existing
 ///      CsvBuffers. UberJobs with reasonable result sizes should be
 ///      unaffected.
-/// DISK TODO:UJ - Write everything to disk, have pop read the file
-///      and use it to create CsvBuffers. (Maybe MEMORYDISK with
-///      a _max of zero would be enough).
 /// TODO:UJ - Test the different options and reorganize code.
 class MemoryTracker {
 public:
@@ -206,8 +215,10 @@ public:
 
     MemoryTracker() = delete;
 
-    enum TransferMethod { STREAM, MEMORY };
+    enum TransferMethod { STREAM, MEMORY, MEMDISK };
     static TransferMethod transferMethodFromString(std::string const& str);
+    static bool verifyDir(std::string const& dirName);
+    static std::string getBaseFileName() { return std::string("qservtransfer"); }
 
     /// Return the TransferMethod.
     /// @see MemoryTracker
@@ -230,14 +241,24 @@ public:
     };
     friend class MemoryRaii;
 
-    static void setup(std::string const& transferMethod, size_t max);
+    static void setup(std::string const& transferMethod, size_t max, std::string const& directory);
     static Ptr get() { return _globalMt; }
 
-    MemoryRaii::Ptr createRaii(size_t fileSize);
+    /// Create a MemoryRaii instance to track `fileSize` bytes, and wait for free memory if `wait` is true.
+    MemoryRaii::Ptr createRaii(size_t fileSize, bool wait);
+
+    size_t getTotal() const {
+        std::lock_guard lg(_mtx);
+        return _total;
+    }
+
+    size_t getMax() const { return _max; }
+
+    std::string getDirectory() const { return _directory; }
 
 private:
-    explicit MemoryTracker(TransferMethod transferMethod, size_t max)
-            : _transferMethod(transferMethod), _max(max) {}
+    explicit MemoryTracker(TransferMethod transferMethod, size_t max, std::string const& directory)
+            : _transferMethod(transferMethod), _max(max), _directory(directory) {}
 
     /// This function only to be called via createRaii.
     void _incrTotal(size_t sz);
@@ -252,6 +273,7 @@ private:
     size_t _total = 0;
     TransferMethod const _transferMethod;
     size_t const _max;
+    std::string const _directory;
 };
 
 class CsvStrMem : public CsvStream {
@@ -275,13 +297,70 @@ public:
     /// No thread to join.
     void join() override {};
 
-private:
+protected:
     CsvStrMem(std::size_t expectedBytes) : CsvStream(expectedBytes + 1), _expectedBytes(expectedBytes) {};
 
     std::atomic<size_t> _bytesRead{0};
     size_t const _expectedBytes;
 
     MemoryTracker::MemoryRaii::Ptr _memRaii;
+};
+
+/// Store transfer data in memory until too much memory is being used.
+/// By setting the maximum acceptable amount of memory to 0, this
+/// effectively becomes writing results to disk.
+/// Collecting data from the worker, writing it to disk, reading
+/// it back, and merging is expected to be linear, run within a
+/// single thread.
+class CsvStrMemDisk : public CsvStrMem {
+public:
+    enum FileState { INIT, OPEN_W, CLOSE_W, OPEN_R, CLOSED };
+
+    static std::shared_ptr<CsvStrMemDisk> create(std::size_t expectedBytes, QueryId qId, UberJobId ujId) {
+        return std::shared_ptr<CsvStrMemDisk>(new CsvStrMemDisk(expectedBytes, qId, ujId));
+    }
+
+    CsvStrMemDisk() = delete;
+    CsvStrMemDisk(CsvStrMemDisk const&) = delete;
+    CsvStrMemDisk& operator=(CsvStrMemDisk const&) = delete;
+    ~CsvStrMemDisk() override = default;
+
+    void push(char const* data, std::size_t size) override;
+
+    std::shared_ptr<std::string> pop() override;
+
+    /// This version never waits.
+    void waitReadyToRead() override;
+
+    /// True if a file error happened before results would be contaminated.
+    bool isFileError() const { return _fileError; }
+
+private:
+    CsvStrMemDisk(std::size_t expectedBytes, QueryId qId, UberJobId ujId);
+
+    void _writeTofile(char const* data, std::size_t size);
+
+    /// Read from the file, which should only happen after all writing has finished.
+    std::shared_ptr<std::string> _readFromFile();
+
+    bool _mustWriteToFile();
+
+    /// Have at least on record ready to be pushed
+    unsigned int const _minRecordsSize = 1;
+    size_t const _minBytesInMem = 10'000'000;  // &&& config
+
+    bool _writingToFile = false;
+    std::string const _directory;
+    std::string const _baseName;
+    QueryId const _qId;
+    UberJobId const _ujId;
+
+    std::atomic<FileState> _fState = INIT;
+    std::string _filePath;  ///< file path, constant once set.
+    std::fstream _file;
+
+    std::atomic<bool> _fileError = false;
+    size_t _bytesLeft = 0;
 };
 
 }  // namespace lsst::qserv::mysql

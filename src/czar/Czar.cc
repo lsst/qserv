@@ -183,7 +183,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
                                          to_string(_czarConfig->getMaxTableSizeMB()));
     }
     string const transferMethod = _czarConfig->getTransferMethod();
-    mysql::MemoryTracker::setup(transferMethod, maxMemToUse);
+    string const transferDirectory = "/tmp";  //&&& use config
+    mysql::MemoryTracker::setup(transferMethod, maxMemToUse, transferDirectory);
 
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());
