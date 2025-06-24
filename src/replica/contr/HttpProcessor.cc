@@ -308,6 +308,12 @@ void HttpProcessor::registerServices() {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp, "CSS");
                              });
+    httpServer()->addHandler("PUT", "/replication/qserv/css/shared-scan/:database/:table",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "CSS-UPDATE", http::AuthType::REQUIRED);
+                             });
     httpServer()->addHandler("GET", "/replication/sql/table/schema/:database/:table",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpSqlSchemaModule::process(self->controller(), self->name(),

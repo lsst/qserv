@@ -33,6 +33,7 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "css/ScanTableParams.h"
 #include "global/intTypes.h"
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
@@ -186,6 +187,8 @@ json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
         return _userQuery();
     else if (subModuleName == "CSS")
         return _css();
+    else if (subModuleName == "CSS-UPDATE")
+        return _cssUpdate();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
@@ -759,12 +762,45 @@ json HttpQservMonitorModule::_getQueries(json const& workerInfo) const {
 
 json HttpQservMonitorModule::_css() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 45);
+    bool const readOnly = true;
+    auto const cssAccess = qservCssAccess(readOnly);
+    return _cssSharedScanParams(controller()->serviceProvider()->config(), cssAccess);
+}
 
-    // Results are packed into the dictionary: family->database->table-sharedScan
-    json resultSharedScan;
+json HttpQservMonitorModule::_cssUpdate() {
+    debug(__func__);
+    checkApiVersion(__func__, 45);
+
+    auto const databaseName = params().at("database");
+    auto const tableName = params().at("table");
+
+    css::ScanTableParams params;
+    params.scanRating = body().required<int>("scanRating");
+
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
+    debug(__func__, "scanRating=" + to_string(params.scanRating));
+
     auto const config = controller()->serviceProvider()->config();
+
+    // These methods will throw exceptions if the database or the table are not found.
+    auto const database = config->databaseInfo(databaseName);
+    auto const table = database.findTable(tableName);
+    if (!(table.isPartitioned && !table.isRefMatch())) {
+        throw invalid_argument(context() + "::" + string(__func__) +
+                               "  the table must be partitioned and not a reference match: " + databaseName +
+                               "." + tableName);
+    }
+
     auto const cssAccess = qservCssAccess();
+    cssAccess->setScanTableParams(databaseName, tableName, params);
+    return _cssSharedScanParams(config, cssAccess);
+}
+
+json HttpQservMonitorModule::_cssSharedScanParams(shared_ptr<Configuration> const& config,
+                                                  shared_ptr<css::CssAccess> const& cssAccess) const {
+    json resultSharedScan;
     for (string const& familyName : config->databaseFamilies()) {
         bool const allDatabases = true;
         for (string const& databaseName : config->databases(familyName, allDatabases)) {
@@ -788,8 +824,7 @@ json HttpQservMonitorModule::_css() {
                             css::ScanTableParams const params =
                                     cssAccess->getScanTableParams(database.name, tableName);
                             resultSharedScan[familyName][database.name][tableName] =
-                                    json::object({{"lockInMem", params.lockInMem ? 1 : 0},
-                                                  {"scanRating", params.scanRating}});
+                                    json::object({{"scanRating", params.scanRating}});
                         } catch (css::NoSuchTable const&) {
                             // CSS key for the shared scans may not exist yet even if the table
                             // is known to CSS.

@@ -75,7 +75,6 @@ function(CSSLoader,
           <th class="sticky">FAMILY</th>
           <th class="sticky">DATABASE</th>
           <th class="sticky">TABLE</th>
-          <th class="sticky">lockInMem</th>
           <th class="sticky">scanRating</th>
         </tr>
       </thead>
@@ -146,12 +145,10 @@ function(CSSLoader,
                         databaseRowSpan++;
                         familyRowSpan++;
                         const tableSchemaSupportCSS = `class="database_table" database="${database}" table="${table}"`;
-                        const lockInMem = _.has(sharedScan, 'lockInMem') ? (sharedScan.lockInMem ? '<b>yes</b>' : 'no') : '&nbsp;';
                         const scanRating = _.has(sharedScan, 'scanRating') ? sharedScan.scanRating : '&nbsp;';
                         databaseHtml += `
 <tr ` + (tableIdx++ === tables.length - 1 ? ' style="border-bottom: solid 1px #dee2e6"' : '') + `>
   <td scope="row"><pre ${tableSchemaSupportCSS}>${table}</pre></td>
-  <td><pre>${lockInMem}</pre></td>
   <td><pre>${scanRating}</pre></td>
 </tr>`;
                     }
