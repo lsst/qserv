@@ -823,6 +823,13 @@ private:
      */
     DatabaseInfo& _publishDatabase(replica::Lock const& lock, std::string const& databaseName, bool publish);
 
+    /**
+     * @param lock The lock on '_mtx' to be acquired prior to calling the method.
+     * @return 'true' if the database back-end is available and it has to be updated as well,
+     * 'false' otherwise.
+     */
+    bool _updatePersistentState(replica::Lock const& lock) const { return _connectionPtr != nullptr; }
+
     // Static parameters of the database connectors (read-write).
 
     static bool _databaseAllowReconnect;
