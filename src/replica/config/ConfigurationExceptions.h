@@ -62,6 +62,17 @@ class ConfigTypeMismatch : public ConfigError {
 public:
     using ConfigError::ConfigError;
 };
+
+/**
+ * The class ConfigNotEmpty represents exceptions thrown when an operation
+ * is attempted on a configuration object that is not empty, but it was expected
+ * to be empty.
+ */
+class ConfigNotEmpty : public ConfigError {
+public:
+    using ConfigError::ConfigError;
+};
+
 }  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H

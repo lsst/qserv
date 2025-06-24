@@ -440,10 +440,14 @@ public:
      *   also delete all dependent databases from both the transient and (if configured)
      *   from the persistent store as well.
      * @param familyName The name of the family affected by the operation.
+     * @param force The optional flag which if set to 'true' will allow deleting
+     *   a family even if it has dependent databases. Otherwise the operation will
+     *   fail if there are any databases associated with the family.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
      *   if the specified entry was not found in the configuration.
+     * @throws ConfigNotEmpty if the family has dependent databases and the 'force' flag is not set.
      */
-    void deleteDatabaseFamily(std::string const& familyName);
+    void deleteDatabaseFamily(std::string const& familyName, bool force = false);
 
     /**
      * @param familyName The name of a database family.

@@ -444,9 +444,20 @@ DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& fa
     return family;
 }
 
-void Configuration::deleteDatabaseFamily(string const& familyName) {
+void Configuration::deleteDatabaseFamily(string const& familyName, bool force) {
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
+    vector<string> databasesToBeRemoved;
+    for (auto&& [name, database] : _databases) {
+        if (database.family == family.name) {
+            databasesToBeRemoved.push_back(name);
+        }
+    }
+    if (!force && !databasesToBeRemoved.empty()) {
+        throw ConfigNotEmpty(_context(__func__) + " the family '" + family.name + "' has " +
+                             to_string(databasesToBeRemoved.size()) +
+                             " member databases. Use 'force' flag to delete the family anyway.");
+    }
     if (_updatePersistentState(lock)) {
         string const query = _g.delete_("config_database_family") + _g.where(_g.eq("name", family.name));
         _connectionPtr->executeInOwnTransaction(
@@ -457,12 +468,6 @@ void Configuration::deleteDatabaseFamily(string const& familyName) {
     // NOTE: if using MySQL-based persistent backend the removal of the dependent
     //       tables from MySQL happens automatically since it's enforced by the PK/FK
     //       relationship between the corresponding tables.
-    vector<string> databasesToBeRemoved;
-    for (auto&& [name, database] : _databases) {
-        if (database.family == family.name) {
-            databasesToBeRemoved.push_back(name);
-        }
-    }
     for (string const& databaseName : databasesToBeRemoved) {
         _databases.erase(databaseName);
     }

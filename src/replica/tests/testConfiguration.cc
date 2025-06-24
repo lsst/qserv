@@ -1424,8 +1424,15 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingDatabases) {
 BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingFamilies) {
     LOGS_INFO("Testing deleting families");
 
-    // Test if deleting a family would also eliminate the dependent databases
-    BOOST_REQUIRE_NO_THROW(config->deleteDatabaseFamily("production"));
+    // Test if deleting a family would also eliminate the dependent databases if
+    // the 'force' option is used.
+    BOOST_CHECK_THROW(config->deleteDatabaseFamily("production"), ConfigNotEmpty);
+    BOOST_CHECK(config->isKnownDatabaseFamily("production"));
+    BOOST_CHECK(config->isKnownDatabase("db1"));
+    BOOST_CHECK(config->isKnownDatabase("db2"));
+    BOOST_CHECK(config->isKnownDatabase("db3"));
+    bool const force = true;
+    BOOST_REQUIRE_NO_THROW(config->deleteDatabaseFamily("production", force));
     BOOST_CHECK(!config->isKnownDatabaseFamily("production"));
     BOOST_CHECK(!config->isKnownDatabase("db1"));
     BOOST_CHECK(!config->isKnownDatabase("db2"));
