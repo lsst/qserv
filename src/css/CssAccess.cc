@@ -479,6 +479,18 @@ ScanTableParams CssAccess::getScanTableParams(std::string const& dbName, std::st
     return params;
 }
 
+void CssAccess::setScanTableParams(std::string const& dbName, std::string const& tableName,
+                                   ScanTableParams const& scanParams) {
+    LOGS(_log, LOG_LVL_DEBUG, "setScanTableParams(dbName:" << dbName << ", tableName:" << tableName << ")");
+    _checkVersion();
+    std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
+    if (!_kvI->exists(tableKey)) throw NoSuchTable(ERR_LOC, dbName, tableName);
+    std::map<std::string, std::string> scanMap;
+    scanMap.insert(std::make_pair("lockInMem", scanParams.lockInMem ? "1" : "0"));
+    scanMap.insert(std::make_pair("scanRating", std::to_string(scanParams.scanRating)));
+    _storePacked(tableKey + "/sharedScan", scanMap);
+}
+
 TableParams CssAccess::getTableParams(std::string const& dbName, std::string const& tableName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getTableParams(" << dbName << ", " << tableName << ")");
     _checkVersion();

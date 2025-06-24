@@ -315,6 +315,19 @@ public:
     ScanTableParams getScanTableParams(std::string const& dbName, std::string const& tableName) const;
 
     /**
+     * @brief Set shared scan parameters for a table.
+     *
+     * @param dbName: database name
+     * @param tableName: table name
+     * @param scanParams: shared scan parameters
+     * @throws NoSuchTable: if table (or database) does not exist
+     * @throws ReadonlyCss: if CSS is using read-only storage
+     * @throws CssError: for all other errors
+     */
+    void setScanTableParams(std::string const& dbName, std::string const& tableName,
+                            ScanTableParams const& scanParams);
+
+    /**
      * @brief Returns complete table metadata.
      *
      * @param dbName: database name
@@ -334,7 +347,7 @@ public:
      * @param schema: table schema
      * @param partParams: table partitioning parameters, if this is
      *        default-constructed object then table is not partitioned.
-     * @param scanParams: table shared can parameters.
+     * @param scanParams: table shared scan parameters.
      * @throws TableExists: if CSS already has this table
      * @throws ReadonlyCss: if CSS is using read-only storage
      * @throws CssError: for all other errors

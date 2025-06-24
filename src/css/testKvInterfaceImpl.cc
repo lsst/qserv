@@ -87,6 +87,13 @@ struct KvInterfaceFixture {
         kvI->deleteKey(k2);
         kvI->deleteKey(prefix);
 
+        // Test setting a key that already exists
+        kvI->create(k1, v1);
+        BOOST_CHECK(kvI->get(k1) == v1);
+        BOOST_CHECK(kvI->exists(k1));
+        kvI->set(k1, v2);
+        BOOST_CHECK(kvI->get(k1) == v2);
+
         // test unique
         std::string key;
         BOOST_CHECK_NO_THROW(key = kvI->create(k4, "uniqueValue", true));
