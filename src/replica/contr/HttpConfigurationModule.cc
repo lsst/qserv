@@ -191,10 +191,15 @@ json HttpConfigurationModule::_addWorker() {
 
 json HttpConfigurationModule::_deleteFamily() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 44);
 
     auto const familyName = params().at("family");
-    controller()->serviceProvider()->config()->deleteDatabaseFamily(familyName);
+    bool const force = query().optionalInt("force", 0) != 0;
+
+    debug(__func__, "family=" + familyName);
+    debug(__func__, "force=" + to_string(force ? 1 : 0));
+
+    controller()->serviceProvider()->config()->deleteDatabaseFamily(familyName, force);
     return json::object();
 }
 

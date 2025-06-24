@@ -557,3 +557,29 @@ name can be reused for further ingests if needed.
 
 - :ref:`ingest-general-error-reporting`
 
+.. _ingest-db-table-management-delete-family:
+
+Deleting database families
+--------------------------
+
+.. warning::
+
+    Be advised that deleting families that have member databases may result in unpredicted behavior of
+    the Replication/Ingest System. It's recommended to delete families only when they are empty.
+
+Families can be deleted by calling the following REST service:
+
+..  list-table::
+    :widths: 10 90
+    :header-rows: 0
+
+    * - ``DELETE``
+      - ``/replication/config/family/:family[?force={0|1}]``
+
+The name of the family is provided in a parameter ``family`` of the resource. The optional query attribute ``force=1``
+can be used to proceed with the request even if the family has member databases. The default value of the attribute is ``0``.
+The only mandatory parameter to be sent in the JSON body of the request is:
+
+``admin_auth_key`` : *string*
+  The administrator-level authentication key that is required to delete the family.
+  The key is used to prevent unauthorized access to the service.

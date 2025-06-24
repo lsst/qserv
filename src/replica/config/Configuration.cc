@@ -434,7 +434,7 @@ DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& fa
     if (family.numSubStripes == 0) errors += " numSubStripes(0)";
     if (family.overlap <= 0) errors += " overlap(<=0)";
     if (!errors.empty()) throw invalid_argument(_context(__func__) + errors);
-    if (_connectionPtr != nullptr) {
+    if (_updatePersistentState(lock)) {
         string const query = _g.insert("config_database_family", family.name, family.replicationLevel,
                                        family.numStripes, family.numSubStripes, family.overlap);
         _connectionPtr->executeInOwnTransaction(
@@ -444,10 +444,21 @@ DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& fa
     return family;
 }
 
-void Configuration::deleteDatabaseFamily(string const& familyName) {
+void Configuration::deleteDatabaseFamily(string const& familyName, bool force) {
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
-    if (_connectionPtr != nullptr) {
+    vector<string> databasesToBeRemoved;
+    for (auto&& [name, database] : _databases) {
+        if (database.family == family.name) {
+            databasesToBeRemoved.push_back(name);
+        }
+    }
+    if (!force && !databasesToBeRemoved.empty()) {
+        throw ConfigNotEmpty(_context(__func__) + " the family '" + family.name + "' has " +
+                             to_string(databasesToBeRemoved.size()) +
+                             " member databases. Use 'force' flag to delete the family anyway.");
+    }
+    if (_updatePersistentState(lock)) {
         string const query = _g.delete_("config_database_family") + _g.where(_g.eq("name", family.name));
         _connectionPtr->executeInOwnTransaction(
                 [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
@@ -457,12 +468,6 @@ void Configuration::deleteDatabaseFamily(string const& familyName) {
     // NOTE: if using MySQL-based persistent backend the removal of the dependent
     //       tables from MySQL happens automatically since it's enforced by the PK/FK
     //       relationship between the corresponding tables.
-    vector<string> databasesToBeRemoved;
-    for (auto&& [name, database] : _databases) {
-        if (database.family == family.name) {
-            databasesToBeRemoved.push_back(name);
-        }
-    }
     for (string const& databaseName : databasesToBeRemoved) {
         _databases.erase(databaseName);
     }
@@ -493,7 +498,7 @@ void Configuration::setReplicationLevel(string const& familyName, size_t newRepl
     if (newReplicationLevel == 0) {
         throw invalid_argument(_context(__func__) + " replication level must be greater than 0.");
     }
-    if (_connectionPtr != nullptr) {
+    if (_updatePersistentState(lock)) {
         string const query =
                 _g.update("config_database_family", make_pair("min_replication_level", newReplicationLevel)) +
                 _g.where(_g.eq("name", family.name));
@@ -554,7 +559,7 @@ DatabaseInfo Configuration::addDatabase(string const& databaseName, std::string 
 
     // Create a new empty database.
     DatabaseInfo const database = DatabaseInfo::create(databaseName, familyName);
-    if (_connectionPtr != nullptr) {
+    if (_updatePersistentState(lock)) {
         string const query =
                 _g.insert("config_database", database.name, database.family, database.isPublished ? 1 : 0,
                           database.createTime, database.publishTime);
@@ -580,7 +585,7 @@ DatabaseInfo Configuration::unPublishDatabase(string const& databaseName) {
 void Configuration::deleteDatabase(string const& databaseName) {
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& database = _databaseInfo(lock, databaseName);
-    if (_connectionPtr != nullptr) {
+    if (_updatePersistentState(lock)) {
         string const query = _g.delete_("config_database") + _g.where(_g.eq("database", database.name));
         _connectionPtr->executeInOwnTransaction(
                 [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
@@ -600,7 +605,7 @@ DatabaseInfo Configuration::addTable(TableInfo const& table_) {
     // registered in the transient state.
     bool const sanitize = true;
     TableInfo const table = database.validate(_databases, table_, sanitize);
-    if (_connectionPtr != nullptr) {
+    if (_updatePersistentState(lock)) {
         vector<string> queries;
         string const query = _g.insert(
                 "config_database_table", table.database, table.name, table.isPartitioned,
@@ -630,7 +635,7 @@ DatabaseInfo Configuration::deleteTable(string const& databaseName, string const
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& database = _databaseInfo(lock, databaseName);
     database.removeTable(tableName);
-    if (_connectionPtr != nullptr) {
+    if (_updatePersistentState(lock)) {
         string const query = _g.delete_("config_database_table") +
                              _g.where(_g.eq("database", database.name), _g.eq("table", tableName));
         _connectionPtr->executeInOwnTransaction(
@@ -677,7 +682,7 @@ void Configuration::deleteWorker(string const& workerName) {
     if (itr == _workers.end()) {
         throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
     }
-    if (_connectionPtr != nullptr) {
+    if (_updatePersistentState(lock)) {
         string const query = _g.delete_("config_worker") + _g.where(_g.eq("name", workerName));
         _connectionPtr->executeInOwnTransaction(
                 [&query](decltype(_connectionPtr) conn) { conn->execute(query); });
@@ -693,7 +698,7 @@ ConfigWorker Configuration::disableWorker(string const& workerName) {
     }
     ConfigWorker& worker = itr->second;
     if (worker.isEnabled) {
-        if (_connectionPtr != nullptr) {
+        if (_updatePersistentState(lock)) {
             string const query = _g.update("config_worker", make_pair("is_enabled", 0)) +
                                  _g.where(_g.eq("name", worker.name));
             _connectionPtr->executeInOwnTransaction(
@@ -826,7 +831,7 @@ ConfigWorker Configuration::_updateWorker(replica::Lock const& lock, ConfigWorke
 
     // Update a subset of parameters in the persistent state.
     bool const update = _workers.count(worker.name) != 0;
-    if (_connectionPtr != nullptr) {
+    if (_updatePersistentState(lock)) {
         string query;
         if (update) {
             query = _g.update("config_worker", make_pair("is_enabled", worker.isEnabled),
@@ -873,7 +878,7 @@ DatabaseInfo& Configuration::_publishDatabase(replica::Lock const& lock, string 
         for (auto const& tableName : database.tables()) {
             TableInfo& table = database.findTable(tableName);
             if (!table.isPublished) {
-                if (_connectionPtr != nullptr) {
+                if (_updatePersistentState(lock)) {
                     string const query =
                             _g.update("config_database_table", make_pair("is_published", 1),
                                       make_pair("publish_time", publishTime)) +
@@ -886,7 +891,7 @@ DatabaseInfo& Configuration::_publishDatabase(replica::Lock const& lock, string 
             }
         }
         // Then publish the database.
-        if (_connectionPtr != nullptr) {
+        if (_updatePersistentState(lock)) {
             string const query = _g.update("config_database", make_pair("is_published", 1),
                                            make_pair("publish_time", publishTime)) +
                                  _g.where(_g.eq("database", database.name));
@@ -898,7 +903,7 @@ DatabaseInfo& Configuration::_publishDatabase(replica::Lock const& lock, string 
     } else {
         // Do not unpublish individual tables. The operation only affects
         // the general status of the database to allow adding more tables.
-        if (_connectionPtr != nullptr) {
+        if (_updatePersistentState(lock)) {
             string const query = _g.update("config_database", make_pair("is_published", 0)) +
                                  _g.where(_g.eq("database", database.name));
             _connectionPtr->executeInOwnTransaction(

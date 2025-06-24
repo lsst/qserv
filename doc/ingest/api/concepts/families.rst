@@ -32,6 +32,14 @@ Existing databases and families can be found using the following service:
 
 - :ref:`ingest-db-table-management-config` (REST)
 
+The API allows users to delete existing database families from the Configuration of the Replication/Ingest system, but this
+should only be done for the empty families. The deletion of a family will also delete all databases and tables within
+the family. The operation will not affect Qserv from functioning. However, the Replication/Ingest system will exclude
+the deleted databases and tables from the replica management and monitoring operations. Further details on this service
+can be found in the following documents:
+
+- :ref:`ingest-db-table-management-delete-family` (REST)
+
 For instructions on partitioning the tables with the desired set of parameters, refer to the following document:
 
 - :ref:`ingest-data` (DATA)
