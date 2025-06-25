@@ -201,19 +201,19 @@ std::shared_ptr<CsvBuffer> newCsvStreamBuffer(std::shared_ptr<CsvStream> const& 
 ///      important that `_max` is greater than the maximum result size
 ///      (currently 5GB). This should be checked when calling
 ///      MemoryTracker::setup.
-/// MEMORYDISK TODO:UJ - Instead new transfers waiting for memory to be
+/// MEMORYDISK - Instead new transfers waiting for memory to be
 ///      freed, most of the data will be written to disk when `_max` is
 ///      reached. The current plan is, per UberJob, to write create a
 ///      few CsvBuffers as is done now, and then write everything to
 ///      disk, and have pop read off disk when it runs out of existing
 ///      CsvBuffers. UberJobs with reasonable result sizes should be
 ///      unaffected.
-/// TODO:UJ - Test the different options and reorganize code.
-class MemoryTracker {
+/// @see CsvStrMemDisk
+class TransferTracker {
 public:
-    using Ptr = std::shared_ptr<MemoryTracker>;
+    using Ptr = std::shared_ptr<TransferTracker>;
 
-    MemoryTracker() = delete;
+    TransferTracker() = delete;
 
     enum TransferMethod { STREAM, MEMORY, MEMDISK };
     static TransferMethod transferMethodFromString(std::string const& str);
@@ -233,7 +233,7 @@ public:
         ~MemoryRaii() { _globalMt->_decrTotal(memSize); }
 
         size_t const memSize;
-        friend class MemoryTracker;
+        friend class TransferTracker;
 
     private:
         /// Only to be called by createRaii(), which locks the mutex.
@@ -241,7 +241,8 @@ public:
     };
     friend class MemoryRaii;
 
-    static void setup(std::string const& transferMethod, size_t max, std::string const& directory);
+    static void setup(std::string const& transferMethod, std::size_t max, std::string const& directory,
+                      std::size_t minBytesInMem, std::size_t maxResultTableSizeBytes);
     static Ptr get() { return _globalMt; }
 
     /// Create a MemoryRaii instance to track `fileSize` bytes, and wait for free memory if `wait` is true.
@@ -252,13 +253,17 @@ public:
         return _total;
     }
 
-    size_t getMax() const { return _max; }
-
+    std::size_t getMax() const { return _max; }
     std::string getDirectory() const { return _directory; }
+    std::size_t getMinBytesInMem() const { return _minBytesInMem; }
 
 private:
-    explicit MemoryTracker(TransferMethod transferMethod, size_t max, std::string const& directory)
-            : _transferMethod(transferMethod), _max(max), _directory(directory) {}
+    explicit TransferTracker(TransferMethod transferMethod, std::size_t max, std::string const& directory,
+                             std::size_t minBytesInMem)
+            : _transferMethod(transferMethod),
+              _max(max),
+              _directory(directory),
+              _minBytesInMem(minBytesInMem) {}
 
     /// This function only to be called via createRaii.
     void _incrTotal(size_t sz);
@@ -270,10 +275,11 @@ private:
 
     mutable std::mutex _mtx;
     std::condition_variable _cv;
-    size_t _total = 0;
+    std::size_t _total = 0;
     TransferMethod const _transferMethod;
-    size_t const _max;
+    std::size_t const _max;
     std::string const _directory;
+    std::size_t const _minBytesInMem;
 };
 
 class CsvStrMem : public CsvStream {
@@ -303,7 +309,7 @@ protected:
     std::atomic<size_t> _bytesRead{0};
     size_t const _expectedBytes;
 
-    MemoryTracker::MemoryRaii::Ptr _memRaii;
+    TransferTracker::MemoryRaii::Ptr _memRaii;
 };
 
 /// Store transfer data in memory until too much memory is being used.
@@ -312,6 +318,11 @@ protected:
 /// Collecting data from the worker, writing it to disk, reading
 /// it back, and merging is expected to be linear, run within a
 /// single thread.
+/// The intention is that most reasonable size requests can be handled
+/// within memory, which is highly likely to be the fastest method.
+/// If a lot of memory (more than TransferTraker::_max) is being used by
+/// all current transfers, then transfers greater than _minBytesInMem
+/// will be written to disk until memory is free.
 class CsvStrMemDisk : public CsvStrMem {
 public:
     enum FileState { INIT, OPEN_W, CLOSE_W, OPEN_R, CLOSED };
@@ -323,7 +334,7 @@ public:
     CsvStrMemDisk() = delete;
     CsvStrMemDisk(CsvStrMemDisk const&) = delete;
     CsvStrMemDisk& operator=(CsvStrMemDisk const&) = delete;
-    ~CsvStrMemDisk() override = default;
+    ~CsvStrMemDisk() override;
 
     void push(char const* data, std::size_t size) override;
 
@@ -338,16 +349,16 @@ public:
 private:
     CsvStrMemDisk(std::size_t expectedBytes, QueryId qId, UberJobId ujId);
 
-    void _writeTofile(char const* data, std::size_t size);
+    void _writeToTmpfile(char const* data, std::size_t size);
 
     /// Read from the file, which should only happen after all writing has finished.
-    std::shared_ptr<std::string> _readFromFile();
+    std::shared_ptr<std::string> _readFromTmpFile();
 
-    bool _mustWriteToFile();
+    bool _mustWriteToTmpFile();
 
     /// Have at least on record ready to be pushed
     unsigned int const _minRecordsSize = 1;
-    size_t const _minBytesInMem = 10'000'000;  // &&& config
+    std::size_t _minBytesInMem;
 
     bool _writingToFile = false;
     std::string const _directory;
@@ -360,7 +371,8 @@ private:
     std::fstream _file;
 
     std::atomic<bool> _fileError = false;
-    size_t _bytesLeft = 0;
+    std::size_t _bytesWrittenToTmp = 0;
+    std::size_t _bytesLeft = 0;
 };
 
 }  // namespace lsst::qserv::mysql

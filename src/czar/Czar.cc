@@ -176,15 +176,11 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
 
     size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;
-    if (maxMemToUse < maxResultTableSizeBytes) {
-        throw util::Bug(ERR_LOC, "Configuration error resultdb maxTransferMemMB=" +
-                                         to_string(_czarConfig->getMaxTransferMemMB()) +
-                                         " must be larger than maxtablesize_mb= " +
-                                         to_string(_czarConfig->getMaxTableSizeMB()));
-    }
     string const transferMethod = _czarConfig->getTransferMethod();
-    string const transferDirectory = "/tmp";  //&&& use config
-    mysql::MemoryTracker::setup(transferMethod, maxMemToUse, transferDirectory);
+    string const transferDirectory = _czarConfig->getTransferDir();
+    std::size_t const transferMinBytesInMem = _czarConfig->getTransferMinMBInMem() * MB_SIZE_BYTES;
+    mysql::TransferTracker::setup(transferMethod, maxMemToUse, transferDirectory, transferMinBytesInMem,
+                                  maxResultTableSizeBytes);
 
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());
