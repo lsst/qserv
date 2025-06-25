@@ -200,21 +200,28 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     // Note the fixed capacity of the stream which allows up to 2 records to be buffered
     // in the stream. This is enough to hide the latency of the HTTP connection and
     // the time needed to read the file.
-    auto transferMethod = mysql::MemoryTracker::get()->getTransferMethod();
+    auto transferMethod = mysql::TransferTracker::get()->getTransferMethod();
     mysql::CsvStream::Ptr csvStream;
     switch (transferMethod) {
-        case mysql::MemoryTracker::MEMORY:
+        case mysql::TransferTracker::MEMORY:
             // This version should keep the result table valid even if there's
-            // a worker failure mid data transmission.
+            // a worker failure mid data transmission, but may block
+            // starting transfers when too much memory is in use.
             csvStream = mysql::CsvStrMem::create(fileSize);
             break;
-        case mysql::MemoryTracker::STREAM:
+        case mysql::TransferTracker::MEMDISK:
+            // This version should keep the result table valid even if there's
+            // a worker failure mid data transmission, but may start writing
+            // transfer data to disk when memory is low.
+            csvStream = mysql::CsvStrMemDisk::create(fileSize, uberJob->getQueryId(), uberJob->getUjId());
+            break;
+        case mysql::TransferTracker::STREAM:
             // This may contaminate the result table if a worker fails.
             csvStream = mysql::CsvStream::create(2);
             break;
         default:
-            throw util::Bug(ERR_LOC,
-                            "MergingHandler::_mergeHttp UNKNOWN merge method " + to_string(transferMethod));
+            throw util::Bug(ERR_LOC, "MergingHandler::_mergeHttp UNKNOWN  transferMethod " +
+                                             to_string(transferMethod));
     }
     _csvStream = csvStream;
 
