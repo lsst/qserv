@@ -19,4 +19,5 @@ Administrator's Guide
    row-counters
    data-table-indexes
    director-index
+   query-scan-params
    admin-upgrade
