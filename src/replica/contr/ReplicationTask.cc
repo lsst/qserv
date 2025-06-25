@@ -93,9 +93,48 @@ ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
           _disableQservSync(disableQservSync),
           _forceQservSync(forceQservSync),
           _qservChunkMapUpdate(qservChunkMapUpdate),
-          _purge(purge) {}
+          _purge(purge),
+          _chunkMap(make_shared<ChunkMap>()) {}
+
+bool ReplicationTask::_getChunkMap() {
+    // Get info on known chunk replicas from the persistent store of the Replication system
+    // and package those into the new chunk disposition map.
+    bool const allDatabases = true;
+    string const emptyDatabaseFilter;
+    bool const isPublished = true;
+    bool const includeFileInfo = true;  // need this to access tables sizes
+    shared_ptr<ChunkMap> newChunkMap = make_shared<ChunkMap>();
+    for (auto const& workerName : serviceProvider()->config()->workers()) {
+        vector<ReplicaInfo> replicas;
+        serviceProvider()->databaseServices()->findWorkerReplicas(replicas, workerName, emptyDatabaseFilter,
+                                                                  allDatabases, isPublished, includeFileInfo);
+        for (auto const& replica : replicas) {
+            // Incomplete replicas should not be used by Czar for query processing.
+            if (replica.status() != ReplicaInfo::Status::COMPLETE) continue;
+            for (auto const& fileInfo : replica.fileInfo()) {
+                if (fileInfo.isData() && !fileInfo.isOverlap()) {
+                    (*newChunkMap)[workerName][replica.database()][fileInfo.baseTable()][replica.chunk()] =
+                            fileInfo.size;
+                }
+            }
+        }
+    }
+
+    // Update the current map if the new one is different from the current one.
+    if (*_chunkMap != *newChunkMap) {
+        _chunkMap = newChunkMap;
+        return true;
+    }
+    return false;
+}
 
 void ReplicationTask::_updateChunkMap() {
+    if (!_getChunkMap() || _chunkMap->empty()) {
+        // No changes in the chunk map, or the map is still empty so there's
+        // nothing to do.
+        return;
+    }
+
     // Open MySQL connection using the RAII-style handler that would automatically
     // abort the transaction should any problem occured when loading data into the table.
     ConnectionHandler h;
@@ -107,29 +146,16 @@ void ReplicationTask::_updateChunkMap() {
     }
     QueryGenerator const g(h.conn);
 
-    // Get info on known chunk replicas from the persistent store of the Replication system
-    // and package those into ready-to-ingest data.
-    bool const allDatabases = true;
-    string const emptyDatabaseFilter;
-    bool const isPublished = true;
-    bool const includeFileInfo = true;  // need this to access tables sizes
+    // Pack the map into ready-to-ingest data.
     vector<string> rows;
-    for (auto const& workerName : serviceProvider()->config()->workers()) {
-        vector<ReplicaInfo> replicas;
-        serviceProvider()->databaseServices()->findWorkerReplicas(replicas, workerName, emptyDatabaseFilter,
-                                                                  allDatabases, isPublished, includeFileInfo);
-        for (auto const& replica : replicas) {
-            for (auto const& fileInfo : replica.fileInfo()) {
-                if (fileInfo.isData() && !fileInfo.isOverlap()) {
-                    rows.push_back(g.packVals(workerName, replica.database(), fileInfo.baseTable(),
-                                              replica.chunk(), fileInfo.size));
+    for (auto const& [workerName, databases] : *_chunkMap) {
+        for (auto const& [databaseName, tables] : databases) {
+            for (auto const& [tableName, chunks] : tables) {
+                for (auto const [chunkId, size] : chunks) {
+                    rows.push_back(g.packVals(workerName, databaseName, tableName, chunkId, size));
                 }
             }
         }
-    }
-    if (rows.empty()) {
-        warn("no replicas found in the persistent state of the Replication system");
-        return;
     }
 
     // Get the limit for the length of the bulk insert queries. The limit is needed
@@ -163,6 +189,7 @@ void ReplicationTask::_updateChunkMap() {
         error("failed to update chunk map in the Czar database, ex: " + string(ex.what()));
         return;
     }
+    info("chunk map has been updated in the Czar database");
 }
 
 }  // namespace lsst::qserv::replica
