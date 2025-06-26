@@ -228,10 +228,14 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
         return true;
     }
 
-    auto csvStrMemDisk = std::dynamic_pointer_cast<mysql::CsvStrMemDisk>(csvStream);
-    if (csvStrMemDisk != nullptr && csvStrMemDisk->isFileError()) {
-        csvStrMemDisk->cancel();
-        return false;
+    {
+        auto csvStrMemDisk = std::dynamic_pointer_cast<mysql::CsvStrMemDisk>(csvStream);
+        if (csvStrMemDisk != nullptr && csvStrMemDisk->isFileError()) {
+            // The file couldn't be opened for writing, so giving up
+            // now should keep the result table from getting contaminated.
+            csvStrMemDisk->cancel();
+            return false;
+        }
     }
 
     auto start = std::chrono::system_clock::now();
