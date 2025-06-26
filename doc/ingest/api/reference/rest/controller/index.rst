@@ -12,3 +12,4 @@ Master Replication Controller
    info
    director-index
    row-counters
+   shared-scan

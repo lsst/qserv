@@ -36,11 +36,16 @@
 #include "replica/mysql/DatabaseMySQL.h"
 
 // Forward declarations
+namespace lsst::qserv::css {
+class CssAccess;
+}  // namespace lsst::qserv::css
+
 namespace lsst::qserv::wbase {
 struct TaskSelector;
 }  // namespace lsst::qserv::wbase
 
 namespace lsst::qserv::replica {
+class Configuration;
 class QservMgtRequest;
 }  // namespace lsst::qserv::replica
 
@@ -71,6 +76,7 @@ public:
      *   QUERIES-PAST             - search and display info on the past queries
      *   QUERY                    - get user query info for a specific query
      *   CSS                      - get CSS configurations (the shared scan settings, etc.)
+     *   CSS-UPDATE               - update CSS configurations (the shared scan settings, etc.)
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -231,6 +237,21 @@ private:
     /// @return The CSS info (shared scan parameters of all partitioned tables, etc.)
     nlohmann::json _css();
 
+    /**
+     * Update shared scan parameters in CSS for a given table.
+     * @return nlohmann::json A collection of shared scan parameters for all partitioned tables.
+     */
+    nlohmann::json _cssUpdate();
+
+    /**
+     * @brief Extract shared scan parameters from CSS.
+     * @param config The configuration object.
+     * @param cssAccess The CSS access object.
+     * @return nlohmann::json A collection of shared scan parameters for all partitioned tables
+     *   packed into the dictionary: family->database->table-sharedScanParams.
+     */
+    nlohmann::json _cssSharedScanParams(std::shared_ptr<Configuration> const& config,
+                                        std::shared_ptr<css::CssAccess> const& cssAccess) const;
     /**
      * @param chunks  collection of chunks numbers to be expanded
      * @return descriptors of chunks (including their spatial geometry)
