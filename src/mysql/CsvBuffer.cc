@@ -339,27 +339,29 @@ public:
         if (bufLen == 0) {
             throw LocalInfileError("CsvStreamBuffer::fetch Can't fetch non-positive bytes");
         }
+        auto csvStrm = _csvStream.lock();
+        if (csvStrm == nullptr) return 0;
         if (_str == nullptr) {
-            _str = _csvStream->pop();
+            _str = csvStrm->pop();
             _offset = 0;
         }
         if (_str->empty()) return 0;
         if (_offset >= _str->size()) {
-            _str = _csvStream->pop();
+            _str = csvStrm->pop();
             _offset = 0;
             if (_str->empty()) return 0;
         }
         unsigned const bytesToCopy = min(bufLen, static_cast<unsigned>(_str->size() - _offset));
         ::memcpy(buffer, _str->data() + _offset, bytesToCopy);
         _offset += bytesToCopy;
-        _csvStream->increaseBytesWrittenBy(bytesToCopy);
+        csvStrm->increaseBytesWrittenBy(bytesToCopy);
         return bytesToCopy;
     }
 
     string dump() const override { return "CsvStreamBuffer"; }
 
 private:
-    shared_ptr<CsvStream> _csvStream;
+    weak_ptr<CsvStream> _csvStream;
     shared_ptr<string> _str;
     size_t _offset = 0;
 };
@@ -528,11 +530,11 @@ void CsvStrMemDisk::push(char const* data, size_t size) {
     // Push is always ok, no need to wait.
     if (_cancelled) return;
     _bytesRead += size;
+    if (_mustWriteToTmpFile()) {
+        _writeToTmpfile(data, size);
+        return;
+    }
     if (data != nullptr && size != 0) {
-        if (_mustWriteToTmpFile()) {
-            _writeToTmpfile(data, size);
-            return;
-        }
         _records.emplace_back(make_shared<string>(data, size));
     } else {
         // Empty string is meant to indicate the end of the stream.
@@ -541,7 +543,6 @@ void CsvStrMemDisk::push(char const* data, size_t size) {
 }
 
 shared_ptr<string> CsvStrMemDisk::pop() {
-    LOGS(_log, LOG_LVL_WARN, "&&& pop " << _records.size());
     if (_records.size() > 0) {
         shared_ptr<string> front = _records.front();
         _records.pop_front();
@@ -551,11 +552,9 @@ shared_ptr<string> CsvStrMemDisk::pop() {
 }
 
 void CsvStrMemDisk::_writeToTmpfile(char const* data, std::size_t size) {
-    LOGS(_log, LOG_LVL_WARN, "&&& _writeToTmpFile() _fState=" << _fState);
     // Open the file if needed
     auto oldState = _fState.exchange(OPEN_W);
     if (oldState == INIT) {
-        LOGS(_log, LOG_LVL_WARN, "&&& _writeToTmpFile() open out _fState=" << _fState);
         _file.open(_filePath, fstream::out);
     }
     if (!_file.is_open() || _fState != OPEN_W) {
@@ -567,20 +566,15 @@ void CsvStrMemDisk::_writeToTmpfile(char const* data, std::size_t size) {
 
     _file.write(data, size);
     _bytesWrittenToTmp += size;
-    LOGS(_log, LOG_LVL_WARN,
-         "&&& _writeToTmpFile() _bytesWrittenToTmp=" << _bytesWrittenToTmp << " sz=" << size);
 }
 
 std::shared_ptr<std::string> CsvStrMemDisk::_readFromTmpFile() {
-    LOGS(_log, LOG_LVL_WARN, "&&& _readFromTmpFile() _fState=" << _fState);
     if (_fState == OPEN_W) {
-        LOGS(_log, LOG_LVL_WARN, "&&& _readFromTmpFile() OPEN_W _fState=" << _fState);
         _fState = CLOSE_W;
         _file.close();
     }
     auto oldState = _fState.exchange(OPEN_R);
     if (oldState == CLOSE_W) {
-        LOGS(_log, LOG_LVL_WARN, "&&& _readFromTmpFile() CLOSE_W _fState=" << _fState);
         _file.open(_filePath, fstream::in);
         _bytesLeft = _bytesWrittenToTmp;
     }
@@ -594,20 +588,16 @@ std::shared_ptr<std::string> CsvStrMemDisk::_readFromTmpFile() {
     }
 
     std::size_t buffSz = std::min(10'000'000ul, _bytesLeft);
-    LOGS(_log, LOG_LVL_WARN,
-         "&&& _readFromTmpFile() _bytesLeft=" << _bytesLeft << " buffSz=" << buffSz
-                                              << " _fState=" << _fState);
     auto strPtr = make_shared<string>();
     strPtr->resize(buffSz);
     _file.read(strPtr->data(), buffSz);
     _bytesLeft -= buffSz;
-    LOGS(_log, LOG_LVL_WARN, "&&& _readFromFile() _bytesLeft=" << _bytesLeft);
     return strPtr;
 }
 
 CsvStrMemDisk::~CsvStrMemDisk() {
     if (_fState != INIT) {
-        LOGS(_log, LOG_LVL_WARN, "&&& ~CsvStrMemDisk() remove");
+        LOGS(_log, LOG_LVL_INFO, "~CsvStrMemDisk() remove " << _filePath);
         _file.close();
         std::remove(_filePath.c_str());
     }

@@ -297,17 +297,15 @@ private:
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxhttpconnections", notReq, 2000);
     CVTIntPtr _oldestResultKeptDays =
             util::ConfigValTInt::create(_configValMap, "resultdb", "oldestResultKeptDays", notReq, 30);
-    // This must be larger than _maxTableSizeMB
+    // This must be larger than _maxTableSizeMB when using the "memory" TransferMethod
     CVTUIntPtr _resultMaxTransferMemMB =
-            //&&&util::ConfigValTUInt::create(_configValMap, "resultdb", "maxTransferMemMB", notReq, 10000);
-            util::ConfigValTUInt::create(_configValMap, "resultdb", "maxTransferMemMB", notReq, 0);
+            util::ConfigValTUInt::create(_configValMap, "resultdb", "maxTransferMemMB", notReq, 10000);
     CVTStrPtr _resultTransferMethod =
             util::ConfigValTStr::create(_configValMap, "resultdb", "transferMethod", notReq, "memdisk");
     CVTStrPtr _resultTransferDir =
             util::ConfigValTStr::create(_configValMap, "resultdb", "transferDir", notReq, "/tmp");
     CVTUIntPtr _resultTransferMinMBInMem =
-            util::ConfigValTUInt::create(_configValMap, "resultdb", "transferMinMBInMem", notReq, 0);
-    //&&&util::ConfigValTUInt::create(_configValMap, "resultdb", "transferMinMBInMem", notReq, 10);
+            util::ConfigValTUInt::create(_configValMap, "resultdb", "transferMinMBInMem", notReq, 10);
 
     /// Get all the elements in the css section.
     CVTStrPtr _cssTechnology =

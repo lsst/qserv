@@ -224,6 +224,7 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
                                              to_string(transferMethod));
     }
     _csvStream = csvStream;
+    auto weakCsvStream = _csvStream;
 
     // This must be after setting _csvStream to avoid cancelFileMerge()
     // race issues, and it needs to be before the thread starts.
@@ -233,21 +234,23 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     }
 
     string fileReadErrorMsg;
-    auto csvLambda = [uberJob, csvStream, fileUrl, fileSize, &fileReadErrorMsg]() {
+    auto csvLambda = [uberJob, weakCsvStream, fileUrl, fileSize, &fileReadErrorMsg]() {
         size_t bytesRead = 0;
         fileReadErrorMsg = ::readHttpFileAndMerge(
                 uberJob, fileUrl, fileSize,
-                [uberJob, csvStream, fileSize, &bytesRead](char const* buf, uint32_t size) {
+                [uberJob, weakCsvStream, fileSize, &bytesRead](char const* buf, uint32_t size) {
+                    auto csvStrm = weakCsvStream.lock();
+                    if (csvStrm == nullptr) return;
                     bool last = false;
                     if (buf == nullptr || size == 0) {
                         last = true;
                     } else {
-                        csvStream->push(buf, size);
+                        csvStrm->push(buf, size);
                         bytesRead += size;
                         last = bytesRead >= fileSize;
                     }
                     if (last) {
-                        csvStream->push(nullptr, 0);
+                        csvStrm->push(nullptr, 0);
                     }
                 },
                 MergingHandler::_getHttpConnPool());
@@ -255,7 +258,9 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         // It may be needed to unblock the table merger which may be still attempting to read
         // from the CSV stream.
         if (!fileReadErrorMsg.empty()) {
-            csvStream->push(nullptr, 0);
+            auto csvStrm = weakCsvStream.lock();
+            if (csvStrm == nullptr) return;
+            csvStrm->push(nullptr, 0);
         }
     };
     csvStream->setLambda(csvLambda);
