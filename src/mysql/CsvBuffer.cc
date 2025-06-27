@@ -27,6 +27,8 @@
 // System headers
 #include <algorithm>
 #include <cassert>
+#include <cctype>
+#include <cstdio>
 #include <stdexcept>
 #include <string.h>
 
@@ -39,10 +41,16 @@
 // Qserv headers
 #include "mysql/LocalInfileError.h"
 #include "mysql/MySqlUtils.h"
+#include "util/Bug.h"
+
+using namespace std;
+namespace sfs = std::filesystem;
 
 namespace {
 
-std::string const mysqlNull("\\N");
+LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.CsvBuffer");
+
+string const mysqlNull("\\N");
 int const largeRowThreshold = 500 * 1024;  // should be less than 0.5 * infileBufferSize
 
 }  // namespace
@@ -76,13 +84,13 @@ inline unsigned updateEstRowSize(unsigned lastRowSize, Row const& r) {
     return lastRowSize < rowSize ? rowSize : lastRowSize;
 }
 
-inline int addString(char* cursor, std::string const& s) {
+inline int addString(char* cursor, string const& s) {
     int const sSize = s.size();
     memcpy(cursor, s.data(), sSize);
     return sSize;
 }
 
-inline int maxColFootprint(int columnLength, std::string const& sep) {
+inline int maxColFootprint(int columnLength, string const& sep) {
     const int overhead = 2 + sep.size();  // NULL decl + sep size
     return overhead + (2 * columnLength);
 }
@@ -108,7 +116,7 @@ public:
     bool _fetchRow(Row& r);
     unsigned _fetchFromLargeRow(char* buffer, int bufLen);
     void _initializeLargeRow(Row const& largeRow);
-    std::string dump() const override;
+    string dump() const override;
 
 private:
     MYSQL_RES* _result;
@@ -119,8 +127,8 @@ private:
     Row _largeRow;
     int _fieldOffset;
 
-    std::string _sep;
-    std::string _rowSep;
+    string _sep;
+    string _rowSep;
 };
 
 ResCsvBuffer::ResCsvBuffer(MYSQL_RES* result)
@@ -131,8 +139,8 @@ ResCsvBuffer::ResCsvBuffer(MYSQL_RES* result)
     // cout << _numFields << " fields per row\n";
 }
 
-std::string ResCsvBuffer::dump() const {
-    std::string str = std::string("ResCsvBuffer _numFields=") + std::to_string(_numFields);
+string ResCsvBuffer::dump() const {
+    string str = string("ResCsvBuffer _numFields=") + to_string(_numFields);
     return str;
 }
 
@@ -250,38 +258,36 @@ void ResCsvBuffer::_initializeLargeRow(Row const& largeRow) {
     _fieldOffset = 0;
 }
 
-std::shared_ptr<CsvBuffer> newResCsvBuffer(MYSQL_RES* result) {
-    return std::make_shared<ResCsvBuffer>(result);
-}
+shared_ptr<CsvBuffer> newResCsvBuffer(MYSQL_RES* result) { return make_shared<ResCsvBuffer>(result); }
 
-CsvStream::CsvStream(std::size_t maxRecords) : _maxRecords(maxRecords) {
+CsvStream::CsvStream(size_t maxRecords) : _maxRecords(maxRecords) {
     if (maxRecords == 0) {
-        throw std::invalid_argument("CsvStream::CsvStream: maxRecords must be greater than 0");
+        throw invalid_argument("CsvStream::CsvStream: maxRecords must be greater than 0");
     }
 }
 
 void CsvStream::cancel() {
-    std::unique_lock<std::mutex> lock(_mtx);
+    unique_lock<mutex> lock(_mtx);
     _cancelled = true;
     _cv.notify_all();
 }
 
-void CsvStream::push(char const* data, std::size_t size) {
-    std::unique_lock<std::mutex> lock(_mtx);
+void CsvStream::push(char const* data, size_t size) {
+    unique_lock<mutex> lock(_mtx);
     _cv.wait(lock, [this]() { return (_records.size() < _maxRecords) || _cancelled; });
 
     if (_cancelled) return;
     if (data != nullptr && size != 0) {
-        _records.emplace_back(std::make_shared<std::string>(data, size));
+        _records.emplace_back(make_shared<string>(data, size));
     } else {
         // Empty string is meant to indicate the end of the stream.
-        _records.emplace_back(std::make_shared<std::string>());
+        _records.emplace_back(make_shared<string>());
     }
     _cv.notify_one();
 }
 
-std::shared_ptr<std::string> CsvStream::pop() {
-    std::unique_lock<std::mutex> lock(_mtx);
+shared_ptr<string> CsvStream::pop() {
+    unique_lock<mutex> lock(_mtx);
     _cv.wait(lock, [this]() { return (!_records.empty() || _cancelled); });
 
     if (_records.empty()) {
@@ -292,19 +298,26 @@ std::shared_ptr<std::string> CsvStream::pop() {
         // database stops asking for them.
         // See CsvStream::cancel()
         _contaminated = true;
-        auto pstr = std::make_shared<std::string>("$");
+        auto pstr = make_shared<string>("$");
         _cv.notify_one();
         return pstr;
     }
-    std::shared_ptr<std::string> front = _records.front();
+    shared_ptr<string> front = _records.front();
     _records.pop_front();
     _cv.notify_one();
     return front;
 }
 
 bool CsvStream::empty() const {
-    std::unique_lock<std::mutex> lock(_mtx);
+    unique_lock<mutex> lock(_mtx);
     return _records.empty();
+}
+
+void CsvStream::waitReadyToRead() {
+    // No need to wait for this class
+    thread thrd(_csvLambda);
+    _thrd = move(thrd);
+    _thrdStarted = true;
 }
 
 /**
@@ -318,7 +331,7 @@ bool CsvStream::empty() const {
  */
 class CsvStreamBuffer : public CsvBuffer {
 public:
-    explicit CsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) : _csvStream(csvStream) {}
+    explicit CsvStreamBuffer(shared_ptr<CsvStream> const& csvStream) : _csvStream(csvStream) {}
 
     ~CsvStreamBuffer() override = default;
 
@@ -326,33 +339,268 @@ public:
         if (bufLen == 0) {
             throw LocalInfileError("CsvStreamBuffer::fetch Can't fetch non-positive bytes");
         }
+        auto csvStrm = _csvStream.lock();
+        if (csvStrm == nullptr) return 0;
         if (_str == nullptr) {
-            _str = _csvStream->pop();
+            _str = csvStrm->pop();
             _offset = 0;
         }
         if (_str->empty()) return 0;
         if (_offset >= _str->size()) {
-            _str = _csvStream->pop();
+            _str = csvStrm->pop();
             _offset = 0;
             if (_str->empty()) return 0;
         }
-        unsigned const bytesToCopy = std::min(bufLen, static_cast<unsigned>(_str->size() - _offset));
+        unsigned const bytesToCopy = min(bufLen, static_cast<unsigned>(_str->size() - _offset));
         ::memcpy(buffer, _str->data() + _offset, bytesToCopy);
         _offset += bytesToCopy;
-        _csvStream->increaseBytesWrittenBy(bytesToCopy);
+        csvStrm->increaseBytesWrittenBy(bytesToCopy);
         return bytesToCopy;
     }
 
-    std::string dump() const override { return "CsvStreamBuffer"; }
+    string dump() const override { return "CsvStreamBuffer"; }
 
 private:
-    std::shared_ptr<CsvStream> _csvStream;
-    std::shared_ptr<std::string> _str;
-    std::size_t _offset = 0;
+    weak_ptr<CsvStream> _csvStream;
+    shared_ptr<string> _str;
+    size_t _offset = 0;
 };
 
-std::shared_ptr<CsvBuffer> newCsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) {
-    return std::make_shared<CsvStreamBuffer>(csvStream);
+shared_ptr<CsvBuffer> newCsvStreamBuffer(shared_ptr<CsvStream> const& csvStream) {
+    return make_shared<CsvStreamBuffer>(csvStream);
+}
+
+TransferTracker::Ptr TransferTracker::_globalMt;
+
+void TransferTracker::setup(string const& transferMethodStr, std::size_t max, string const& directory,
+                            std::size_t minMBInMem, std::size_t maxResultTableSizeBytes) {
+    if (_globalMt != nullptr) {
+        throw util::Bug(ERR_LOC, "MemoryTracker::setup called when MemoryTracker already setup!");
+    }
+    TransferMethod tm = transferMethodFromString(transferMethodStr);
+    if (tm == MEMDISK) {
+        if (!verifyDir(directory)) {
+            throw util::Bug(ERR_LOC, "MemoryTracker::setup called with bad directory! " + directory);
+        }
+    }
+    size_t const MB_SIZE_BYTES = 1024 * 1024;
+    if (tm == MEMORY && max < maxResultTableSizeBytes) {
+        throw util::Bug(ERR_LOC,
+                        "Configuration error resultdb maxTransferMemMB=" + to_string(max / MB_SIZE_BYTES) +
+                                " must be larger than maxtablesize_mb= " +
+                                to_string(maxResultTableSizeBytes / MB_SIZE_BYTES));
+    }
+    _globalMt = TransferTracker::Ptr(new TransferTracker(tm, max, directory, minMBInMem));
+}
+
+bool TransferTracker::verifyDir(string const& dirName) {
+    sfs::path dir = dirName;
+    if (!(sfs::exists(dir) && sfs::is_directory(dir))) {
+        LOGS(_log, LOG_LVL_ERROR, "verifyDir, " + dirName + " is not a valid directory");
+        return false;
+    }
+    return true;
+}
+
+TransferTracker::TransferMethod TransferTracker::transferMethodFromString(string const& strType) {
+    string str;
+    for (unsigned char c : strType) {
+        str += tolower(c);
+    }
+    TransferMethod tMethod;
+    if (str == "memory") {
+        tMethod = MEMORY;
+        LOGS(_log, LOG_LVL_INFO, "Result TransferMethod set to memory");
+    } else if (str == "stream") {
+        tMethod = STREAM;
+        LOGS(_log, LOG_LVL_INFO, "Result TransferMethod set to stream");
+    } else if (str == "memdisk") {
+        tMethod = MEMDISK;
+        LOGS(_log, LOG_LVL_INFO, "Result TransferMethod set to memdisk");
+    } else {
+        tMethod = MEMORY;
+        LOGS(_log, LOG_LVL_ERROR,
+             "Result TransferMethod set to memory due to invalid string '"
+                     << strType << "'"
+                     << " valid entries are 'memory', 'stream', 'memdisk'");
+    }
+    return tMethod;
+}
+
+TransferTracker::MemoryRaii::Ptr TransferTracker::createRaii(size_t fileSize, bool wait) {
+    unique_lock ulck(_mtx);
+    if (wait) {
+        if (fileSize > _max) {
+            throw util::Bug(ERR_LOC, "MemoryTracker::createRaii file too large " + to_string(fileSize) +
+                                             " max=" + to_string(_max));
+        }
+        _cv.wait(ulck, [this, fileSize]() { return (fileSize + _total) < _max; });
+    }
+    MemoryRaii::Ptr pRaii(new MemoryRaii(fileSize));
+    return pRaii;
+}
+
+void TransferTracker::_incrTotal(size_t sz) {
+    // _mtx must already be locked.
+    _total += sz;
+    _cv.notify_one();  // Many items may be waiting on a large file, so there may be room for more
+}
+
+void TransferTracker::_decrTotal(size_t sz) {
+    lock_guard ulck(_mtx);
+    if (sz > _total) {
+        throw util::Bug(ERR_LOC,
+                        "MemoryTracker::_decrTotal sz=" + to_string(sz) + " > total=" + to_string(_total));
+    }
+    _total -= sz;
+    _cv.notify_one();
+}
+
+void CsvStrMem::waitReadyToRead() {
+    auto memTrack = TransferTracker::get();
+    if (memTrack == nullptr) {
+        throw util::Bug(ERR_LOC, "CsvStrMem::waitReadyToRead MemoryTracker is NULL");
+    }
+    bool const wait = true;
+    _memRaii = memTrack->createRaii(_expectedBytes, wait);
+
+    // Read directly without starting a separate thread.
+    _csvLambda();
+}
+
+void CsvStrMem::push(char const* data, size_t size) {
+    // Push is always ok, no need to wait.
+    if (_cancelled) return;
+    _bytesRead += size;
+    if (data != nullptr && size != 0) {
+        _records.emplace_back(make_shared<string>(data, size));
+    } else {
+        // Empty string is meant to indicate the end of the stream.
+        _records.emplace_back(make_shared<string>());
+    }
+}
+
+shared_ptr<string> CsvStrMem::pop() {
+    shared_ptr<string> front = _records.front();
+    _records.pop_front();
+    return front;
+}
+
+CsvStrMemDisk::CsvStrMemDisk(std::size_t expectedBytes, QueryId qId, UberJobId ujId)
+        : CsvStrMem(expectedBytes), _qId(qId), _ujId(ujId) {
+    auto memTrack = TransferTracker::get();
+    if (memTrack == nullptr) {
+        throw util::Bug(ERR_LOC, "CsvStrMemDisk constructor MemoryTracker is NULL");
+    }
+    sfs::path fPath = memTrack->getDirectory();
+    string fileName = memTrack->getBaseFileName() + "_" + to_string(_qId) + "_" + to_string(ujId);
+    fPath /= fileName;
+    _filePath = fPath;
+
+    _minBytesInMem = memTrack->getMinBytesInMem();
+}
+
+void CsvStrMemDisk::waitReadyToRead() {
+    auto memTrack = TransferTracker::get();
+    if (memTrack == nullptr) {
+        throw util::Bug(ERR_LOC, "CsvStrMemDisk::waitReadyToRead MemoryTracker is NULL");
+    }
+    bool const nowait = false;
+    _memRaii = memTrack->createRaii(_expectedBytes, nowait);
+
+    // Read directly without starting a separate thread.
+    _csvLambda();
+}
+
+bool CsvStrMemDisk::_mustWriteToTmpFile() {
+    // Once writing to file, this instance must keep writing to file.
+    if (_writingToFile) return true;
+
+    auto memTrack = TransferTracker::get();
+    // If too much memory is being used for transfers, star writing large transfers to files.
+    if (memTrack->getTotal() > memTrack->getMax()) {
+        if (_records.size() > _minRecordsSize && _bytesRead > _minBytesInMem) {
+            _writingToFile = true;
+        }
+    }
+    return _writingToFile;
+}
+
+void CsvStrMemDisk::push(char const* data, size_t size) {
+    // Push is always ok, no need to wait.
+    if (_cancelled) return;
+    _bytesRead += size;
+    if (_mustWriteToTmpFile()) {
+        _writeToTmpfile(data, size);
+        return;
+    }
+    if (data != nullptr && size != 0) {
+        _records.emplace_back(make_shared<string>(data, size));
+    } else {
+        // Empty string is meant to indicate the end of the stream.
+        _records.emplace_back(make_shared<string>());
+    }
+}
+
+shared_ptr<string> CsvStrMemDisk::pop() {
+    if (_records.size() > 0) {
+        shared_ptr<string> front = _records.front();
+        _records.pop_front();
+        return front;
+    }
+    return _readFromTmpFile();
+}
+
+void CsvStrMemDisk::_writeToTmpfile(char const* data, std::size_t size) {
+    // Open the file if needed
+    auto oldState = _fState.exchange(OPEN_W);
+    if (oldState == INIT) {
+        _file.open(_filePath, fstream::out);
+    }
+    if (!_file.is_open() || _fState != OPEN_W) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "CsvStrMemDisk::_writeTofile file isn't open " << _filePath << " or bad state=" << _fState);
+        _fileError = true;
+        return;
+    }
+
+    _file.write(data, size);
+    _bytesWrittenToTmp += size;
+}
+
+std::shared_ptr<std::string> CsvStrMemDisk::_readFromTmpFile() {
+    if (_fState == OPEN_W) {
+        _fState = CLOSE_W;
+        _file.close();
+    }
+    auto oldState = _fState.exchange(OPEN_R);
+    if (oldState == CLOSE_W) {
+        _file.open(_filePath, fstream::in);
+        _bytesLeft = _bytesWrittenToTmp;
+    }
+    if (!_file.is_open() || _fState != OPEN_R) {
+        // This is extremely unlikely
+        if (!getContaminated())
+            LOGS(_log, LOG_LVL_ERROR,
+                 "CsvStrMemDisk::_readFromfile file isn't open " << _filePath << " or bad state=" << _fState);
+        setContaminated();
+        return make_shared<string>("$");
+    }
+
+    std::size_t buffSz = std::min(10'000'000ul, _bytesLeft);
+    auto strPtr = make_shared<string>();
+    strPtr->resize(buffSz);
+    _file.read(strPtr->data(), buffSz);
+    _bytesLeft -= buffSz;
+    return strPtr;
+}
+
+CsvStrMemDisk::~CsvStrMemDisk() {
+    if (_fState != INIT) {
+        LOGS(_log, LOG_LVL_INFO, "~CsvStrMemDisk() remove " << _filePath);
+        _file.close();
+        std::remove(_filePath.c_str());
+    }
 }
 
 }  // namespace lsst::qserv::mysql

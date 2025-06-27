@@ -198,6 +198,9 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     };
     auto tct = make_shared<TimeCountTracker<double>>(cbf);
 
+    // Start downloading.
+    csvStream->waitReadyToRead();
+
     bool ret = false;
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
@@ -219,12 +222,24 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
 
     // Don't merge if the query got cancelled.
     auto executive = uberJob->getExecutive();
-    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete()) {
-        csvStream->cancel();  // After this point, the file has to be read
+    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete() ||
+        csvStream->isCancelled()) {
+        csvStream->cancel();
         return true;
     }
 
+    {
+        auto csvStrMemDisk = std::dynamic_pointer_cast<mysql::CsvStrMemDisk>(csvStream);
+        if (csvStrMemDisk != nullptr && csvStrMemDisk->isFileError()) {
+            // The file couldn't be opened for writing, so giving up
+            // now should keep the result table from getting contaminated.
+            csvStrMemDisk->cancel();
+            return false;
+        }
+    }
+
     auto start = std::chrono::system_clock::now();
+    // The following will call some version of CsvStream::pop() at least once.
     ret = _applyMysqlMyIsam(infileStatement, fileSize);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

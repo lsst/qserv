@@ -139,10 +139,10 @@ void CzarChunkMap::verify(string const& familyName) const {
     LOGS(_log, LOG_LVL_WARN, cName(__func__) << " family=" << familyName << " verified");
 }
 
-string CzarChunkMap::dumpChunkMap(ChunkMap const& chunkMap) {
+string CzarChunkMap::dumpChunkMap() const {
     stringstream os;
     os << "ChunkMap{";
-    for (auto const& [cId, cDataPtr] : chunkMap) {
+    for (auto const& [cId, cDataPtr] : *_chunkMap) {
         os << "(cId=" << cId << ":";
         os << ((cDataPtr == nullptr) ? "null" : cDataPtr->dump()) << ")";
     }
@@ -354,6 +354,10 @@ bool CzarFamilyMap::_read() {
     shared_ptr<CzarFamilyMap::FamilyMapType> familyMapPtr = makeNewMaps(qChunkMap, usingChunkSize);
 
     verify(familyMapPtr);
+
+    for (auto const& [fam, ccMap] : *familyMapPtr) {
+        LOGS(_log, LOG_LVL_INFO, "{family=" << fam << "{" << ccMap->dumpChunkMap() << "}}");
+    }
 
     _familyMap = familyMapPtr;
 

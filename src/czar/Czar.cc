@@ -54,6 +54,7 @@
 #include "http/ClientConnPool.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
+#include "mysql/CsvBuffer.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qproc/DatabaseModels.h"
@@ -169,6 +170,16 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     gettimeofday(&tv, nullptr);
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
+
+    size_t const MB_SIZE_BYTES = 1024 * 1024;
+    size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
+
+    size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;
+    string const transferMethod = _czarConfig->getTransferMethod();
+    string const transferDirectory = _czarConfig->getTransferDir();
+    std::size_t const transferMinBytesInMem = _czarConfig->getTransferMinMBInMem() * MB_SIZE_BYTES;
+    mysql::TransferTracker::setup(transferMethod, maxMemToUse, transferDirectory, transferMinBytesInMem,
+                                  maxResultTableSizeBytes);
 
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());
