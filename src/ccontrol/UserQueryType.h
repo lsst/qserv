@@ -107,7 +107,10 @@ public:
      * @param spelling if not nullptr will set the string to the spelling of
      *                 count (may be lower case, mixed case, or upper case)
      *
-     * Returns true if the select statement is SELECT COUNT(*) FROM <database>
+     * Returns true if the select statement is:
+     * @code
+     * SELECT COUNT(*) FROM [<database>.]<table> [LIMIT <N>]
+     * @endcode
      */
     static bool isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& stmt, std::string& spelling);
 

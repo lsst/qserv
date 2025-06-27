@@ -139,17 +139,19 @@ BOOST_AUTO_TEST_CASE(testSimpleCountStar) {
     selectStmt = querySession.parseQuery("select cOuNt(*) from mydb.mytable");
     BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == true);
     BOOST_REQUIRE_EQUAL(spelling, "cOuNt");
+    // LIMIT should be allowed, as it does not change the meaning of the query.
+    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable LIMIT 5");
+    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == true);
+    BOOST_REQUIRE_EQUAL(spelling, "COUNT");
 
-    // any WHERE, LIMIT, ORDER BY, GROUP BY, OR HAVING disqalifies the statement from being a simple COUNT(*)
+    // any WHERE, ORDER BY, GROUP BY, OR HAVING disqalifies the statement from being a simple COUNT(*)
     selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable WHERE foo = bar");
     BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
-    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable LIMIT 5");
+    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable ORDER BY foo");
     BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
     selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable GROUP BY foo");
     BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
     selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable HAVING foo > 42");
-    BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
-    selectStmt = querySession.parseQuery("SELECT COUNT(*) FROM mydb.mytable LIMIT 42");
     BOOST_TEST(UserQueryType::isSimpleCountStar(selectStmt, spelling) == false);
     // without COUNT(*) disqualifies
     selectStmt = querySession.parseQuery("SELECT foo FROM mydb.mytable");
