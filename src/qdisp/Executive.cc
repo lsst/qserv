@@ -759,15 +759,17 @@ void Executive::checkLimitRowComplete() {
 }
 
 void Executive::checkResultFileSize(uint64_t fileSize) {
+    if (_cancelled || isRowLimitComplete()) return;
     _totalResultFileSize += fileSize;
-    if (_cancelled) return;
 
     size_t const MB_SIZE_BYTES = 1024 * 1024;
     uint64_t maxResultTableSizeBytes = cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES;
     LOGS(_log, LOG_LVL_TRACE,
          cName(__func__) << " sz=" << fileSize << " total=" << _totalResultFileSize
                          << " max=" << maxResultTableSizeBytes);
-    if (_totalResultFileSize > maxResultTableSizeBytes) {
+
+    if ((fileSize > maxResultTableSizeBytes) ||
+        (!_limitSquashApplies && _totalResultFileSize > maxResultTableSizeBytes)) {
         LOGS(_log, LOG_LVL_WARN,
              cName(__func__) << " total=" << _totalResultFileSize << " max=" << maxResultTableSizeBytes);
         // _totalResultFileSize may include non zero values from dead UberJobs,

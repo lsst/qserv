@@ -158,35 +158,11 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
     _queryIdStrSet = true;
 }
 
-void InfileMerger::mergeCompleteFor(int jobId) {
-    std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-    _totalResultSize += _perJobResultSize[jobId];  // TODO:UJ this can probably be simplified
-}
-
 bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSize,
                              std::shared_ptr<mysql::CsvStream> const& csvStream) {
-    UberJobId const uJobId = uberJob->getUjId();
     std::string queryIdJobStr = uberJob->getIdStr();
     if (!_queryIdStrSet) {
         _setQueryIdStr(QueryIdHelper::makeIdStr(uberJob->getQueryId()));
-    }
-
-    // Check if the final result size is too large. It should be safe to do this
-    // here as the only expected errors at this point are failures in transmission.
-    // Even if there is a failure in transmission, the retry would be expected
-    // to put the result size over the limit again.
-    {
-        lock_guard<mutex> resultSzLock(_mtxResultSizeMtx);
-        _perJobResultSize[uJobId] += fileSize;
-        size_t tResultSize = _totalResultSize + _perJobResultSize[uJobId];
-        if (tResultSize > _maxResultTableSizeBytes) {
-            string str = queryIdJobStr + " cancelling the query, queryResult table " + _mergeTable +
-                         " is too large at " + to_string(tResultSize) + " bytes, max allowed size is " +
-                         to_string(_maxResultTableSizeBytes) + " bytes";
-            LOGS(_log, LOG_LVL_ERROR, str);
-            _error = util::Error(-1, str, -1);
-            return false;
-        }
     }
 
     TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
@@ -220,6 +196,8 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
         return true;
     }
 
+    // Need to block here to make sure the result able needs these rows or not.
+    lock_guard lgFinal(_finalMergeMtx);
     // Don't merge if the query got cancelled.
     auto executive = uberJob->getExecutive();
     if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete() ||
@@ -244,7 +222,21 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
-    if (not ret) {
+    if (ret) {
+        lock_guard<mutex> resultSzLock(_mtxResultSizeMtx);
+        _totalResultSize += fileSize;
+        size_t tResultSize = _totalResultSize;
+        /// Check file size here to see if it has gotten too large, this will probably only trip in LIMIT
+        /// queries.
+        if (tResultSize > _maxResultTableSizeBytes) {
+            string str = queryIdJobStr + " cancelling the query, queryResult table " + _mergeTable +
+                         " is too large at " + to_string(tResultSize) + " bytes, max allowed size is " +
+                         to_string(_maxResultTableSizeBytes) + " bytes";
+            LOGS(_log, LOG_LVL_ERROR, str);
+            _error = util::Error(-1, str, -1);
+            return false;
+        }
+    } else {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
     LOGS(_log, LOG_LVL_TRACE, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
@@ -292,6 +284,7 @@ size_t InfileMerger::getTotalResultSize() const { return _totalResultSize; }
 bool InfileMerger::finalize(size_t& collectedBytes, int64_t& rowCount) {
     bool finalizeOk = true;
     collectedBytes = _totalResultSize;
+    lock_guard lgFinal(_finalMergeMtx);  // block on other merges
     // TODO: Should check for error condition before continuing.
     if (_isFinished) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");

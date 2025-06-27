@@ -469,7 +469,6 @@ void CsvStrMem::waitReadyToRead() {
 }
 
 void CsvStrMem::push(char const* data, size_t size) {
-    // Push is always ok, no need to wait.
     if (_cancelled) return;
     _bytesRead += size;
     if (data != nullptr && size != 0) {
@@ -587,7 +586,7 @@ std::shared_ptr<std::string> CsvStrMemDisk::_readFromTmpFile() {
         return make_shared<string>("$");
     }
 
-    std::size_t buffSz = std::min(10'000'000ul, _bytesLeft);
+    std::size_t buffSz = std::min(100'000ul, _bytesLeft);
     auto strPtr = make_shared<string>();
     strPtr->resize(buffSz);
     _file.read(strPtr->data(), buffSz);
