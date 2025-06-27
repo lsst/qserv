@@ -47,7 +47,8 @@ class SelectStmt;
 
 namespace lsst::qserv::ccontrol {
 
-/// UserQuerySelectCountStar : for handling queries in the form `SELECT COUNT(*) FROM db.tbl;
+/// UserQuerySelectCountStar : for handling queries in the form:
+/// `SELECT COUNT(*) FROM [<database>.]<table> [LIMIT <N>]`
 class UserQuerySelectCountStar : public UserQuery {
 public:
     typedef std::shared_ptr<UserQuerySelectCountStar> Ptr;

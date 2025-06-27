@@ -181,8 +181,7 @@ bool UserQueryType::isCall(std::string const& query) {
 }
 
 bool UserQueryType::isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& stmt, std::string& spelling) {
-    if (stmt->hasWhereClause() || stmt->hasLimit() || stmt->hasOrderBy() || stmt->hasGroupBy() ||
-        stmt->hasHaving()) {
+    if (stmt->hasWhereClause() || stmt->hasOrderBy() || stmt->hasGroupBy() || stmt->hasHaving()) {
         return false;
     }
     auto& selectList = stmt->getSelectList();
