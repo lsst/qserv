@@ -10,11 +10,13 @@ Row counters optimization
 Introduction
 ------------
 
-Soon after the initial public deployment of Qserv, it was noticed that numerous users were executing the following query:
+Soon after the initial public deployment of Qserv, it was noticed that numerous users were executing the following queries
+to determine the number of rows in a table:
 
 .. code-block:: sql
 
     SELECT COUNT(*) FROM <database>.<table>
+    SELECT COUNT(*) FROM <database>.<table> LIMIT <N>
 
 Typically, Qserv handles this query by distributing it to all workers, which then count the rows in each chunk table and aggregate the results
 at the Czar. This process is akin to the one used for *shared scan* (or simply *scan*) queries. The performance of these *scan* queries can
