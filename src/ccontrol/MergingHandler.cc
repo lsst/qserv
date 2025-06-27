@@ -234,23 +234,22 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     }
 
     string fileReadErrorMsg;
-    auto csvLambda = [uberJob, weakCsvStream, fileUrl, fileSize, &fileReadErrorMsg]() {
+    auto csvLambda = [&]() {
         size_t bytesRead = 0;
         fileReadErrorMsg = ::readHttpFileAndMerge(
                 uberJob, fileUrl, fileSize,
-                [uberJob, weakCsvStream, fileSize, &bytesRead](char const* buf, uint32_t size) {
-                    auto csvStrm = weakCsvStream.lock();
-                    if (csvStrm == nullptr) return;
+                [&](char const* buf, uint32_t size) {
+                    if (csvStream == nullptr) return;
                     bool last = false;
                     if (buf == nullptr || size == 0) {
                         last = true;
                     } else {
-                        csvStrm->push(buf, size);
+                        csvStream->push(buf, size);
                         bytesRead += size;
                         last = bytesRead >= fileSize;
                     }
                     if (last) {
-                        csvStrm->push(nullptr, 0);
+                        csvStream->push(nullptr, 0);
                     }
                 },
                 MergingHandler::_getHttpConnPool());
@@ -258,9 +257,8 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         // It may be needed to unblock the table merger which may be still attempting to read
         // from the CSV stream.
         if (!fileReadErrorMsg.empty()) {
-            auto csvStrm = weakCsvStream.lock();
-            if (csvStrm == nullptr) return;
-            csvStrm->push(nullptr, 0);
+            if (csvStream == nullptr) return;
+            csvStream->push(nullptr, 0);
         }
     };
     csvStream->setLambda(csvLambda);
@@ -322,9 +320,6 @@ qdisp::MergeEndStatus MergingHandler::flushHttp(string const& fileUrl, uint64_t 
          "MergingHandler::" << __func__ << " uberJob=" << uberJob->getIdStr() << " fileUrl=" << fileUrl);
 
     qdisp::MergeEndStatus mergeStatus = _mergeHttp(uberJob, fileUrl, fileSize);
-    if (mergeStatus.success) {
-        _infileMerger->mergeCompleteFor(uberJob->getUjId());
-    }
     return mergeStatus;
 }
 

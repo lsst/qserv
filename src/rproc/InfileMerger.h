@@ -109,9 +109,6 @@ public:
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, uint64_t fileSize,
                    std::shared_ptr<mysql::CsvStream> const& csvStream);
 
-    /// Indicate the merge for the job is complete.
-    void mergeCompleteFor(int jobId);
-
     /// @return error details if finalize() returns false
     util::Error const& getError() const { return _error; }
     /// @return final target table name  storing results after post processing
@@ -189,10 +186,10 @@ private:
             10;  ///< maximum number of times to retry connecting to the SQL database.
 
     /// Variable to track result size. Each
-    size_t const _maxResultTableSizeBytes;    ///< Max result table size in bytes.
-    size_t _totalResultSize = 0;              ///< Size of result so far in bytes.
-    std::map<int, size_t> _perJobResultSize;  ///< Result size for each job
-    std::mutex _mtxResultSizeMtx;             ///< Protects _perJobResultSize and _totalResultSize.
+    size_t const _maxResultTableSizeBytes;  ///< Max result table size in bytes.
+    size_t _totalResultSize = 0;            ///< Size of result so far in bytes.
+    std::mutex _mtxResultSizeMtx;           ///< Protects _perJobResultSize and _totalResultSize.
+    std::mutex _finalMergeMtx;              ///< Protects mysql result tables
 };
 
 }  // namespace lsst::qserv::rproc
