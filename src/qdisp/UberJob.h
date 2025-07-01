@@ -160,10 +160,16 @@ private:
     QueryId const _queryId;
     UberJobId const _uberJobId;
     qmeta::CzarId const _czarId;
-    int const _rowLimit;
+    int const _rowLimit;  ///< Number of rows in the query LIMIT clause.
     uint64_t _resultFileSize = 0;
 
     std::string const _idStr;
+
+    /// This mutex is used to limit collecting result files to one at a time
+    /// but only when the executive will squash the query when the limit is reached.
+    /// This keeps data transfers (and temporary storage requirements) from
+    /// getting out of hand.
+    std::mutex _mtxLimitSquash;
 
     // Map of workerData
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed

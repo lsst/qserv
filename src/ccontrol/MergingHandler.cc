@@ -224,7 +224,6 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
                                              to_string(transferMethod));
     }
     _csvStream = csvStream;
-    auto weakCsvStream = _csvStream;
 
     // This must be after setting _csvStream to avoid cancelFileMerge()
     // race issues, and it needs to be before the thread starts.
