@@ -27,7 +27,6 @@
 #include <stdexcept>
 
 // Third-party headers
-#include <google/protobuf/arena.h>
 #include "nlohmann/json.hpp"
 
 // Qserv headers
@@ -295,15 +294,22 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     }
 
     weak_ptr<UberJob> ujThis = weak_from_this();
+    bool const limitSquash = exec->getLimitSquashApplies();
 
     // fileCollectFunc will be put on the queue to run later.
     string const idStr = _idStr;
-    auto fileCollectFunc = [ujThis, fileUrl, fileSize, rowCount, idStr](util::CmdData*) {
+    auto fileCollectFunc = [ujThis, fileUrl, fileSize, rowCount, idStr, limitSquash](util::CmdData*) {
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
                  "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrl);
             return;
+        }
+
+        // Limit collecting LIMIT queries to one at a time, but only those.
+        shared_ptr<lock_guard<mutex>> limitSquashL;
+        if (limitSquash) {
+            limitSquashL.reset(new lock_guard<mutex>(ujPtr->_mtxLimitSquash));
         }
         MergeEndStatus flushStatus = ujPtr->getRespHandler()->flushHttp(fileUrl, fileSize);
         LOGS(_log, LOG_LVL_TRACE,

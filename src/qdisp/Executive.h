@@ -176,6 +176,8 @@ public:
     ///   a value <= 0 there's no limit that can be applied at the worker.
     int getUjRowLimit() const;
 
+    bool getLimitSquashApplies() const { return _limitSquashApplies; }
+
     /// @return _rowLimitComplete, which can only be meaningful if the
     ///         user query has not been cancelled.
     bool isRowLimitComplete() { return _rowLimitComplete && !_cancelled; }
@@ -268,8 +270,9 @@ private:
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
-    std::shared_ptr<util::QdispPool>
-            _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
+
+    /// Shared thread pool for handling commands to and from workers.
+    std::shared_ptr<util::QdispPool> _qdispPool;
 
     std::deque<std::shared_ptr<util::PriorityCommand>> _jobStartCmdList;  ///< list of jobs to start.
 

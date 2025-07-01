@@ -301,7 +301,7 @@ private:
     CVTUIntPtr _resultMaxTransferMemMB =
             util::ConfigValTUInt::create(_configValMap, "resultdb", "maxTransferMemMB", notReq, 10000);
     CVTStrPtr _resultTransferMethod =
-            util::ConfigValTStr::create(_configValMap, "resultdb", "transferMethod", notReq, "memdisk");
+            util::ConfigValTStr::create(_configValMap, "resultdb", "transferMethod", notReq, "memory");
     CVTStrPtr _resultTransferDir =
             util::ConfigValTStr::create(_configValMap, "resultdb", "transferDir", notReq, "/tmp");
     CVTUIntPtr _resultTransferMinMBInMem =
