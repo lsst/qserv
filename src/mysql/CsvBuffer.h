@@ -24,22 +24,15 @@
 #define LSST_QSERV_MYSQL_CSVBUFFER_H
 
 // System headers
-#include <atomic>
 #include <condition_variable>
 #include <cstddef>
-#include <fstream>
-#include <functional>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <string>
-#include <thread>
 
 // Third-party headers
 #include <mysql/mysql.h>
-
-// qserv headers
-#include "global/intTypes.h"
 
 namespace lsst::qserv::mysql {
 
@@ -78,8 +71,6 @@ std::shared_ptr<CsvBuffer> newResCsvBuffer(MYSQL_RES* result);
  */
 class CsvStream {
 public:
-    using Ptr = std::shared_ptr<CsvStream>;
-
     /**
      * Factory function to create a new CsvStream object.
      * @param maxRecords The maximum number of records in the stream
@@ -93,7 +84,7 @@ public:
     CsvStream() = delete;
     CsvStream(CsvStream const&) = delete;
     CsvStream& operator=(CsvStream const&) = delete;
-    virtual ~CsvStream() = default;
+    ~CsvStream() = default;
 
     /**
      * Push a new record to the stream. The record is a string of bytes.
@@ -104,26 +95,25 @@ public:
      * @param data The record to be pushed to the stream
      * @param size The size of the record
      */
-    virtual void push(char const* data, std::size_t size);
+    void push(char const* data, std::size_t size);
 
     /**
      *  Call to break push operations if the results are no longer needed.
      *  This is only meant to be used to break lingering push() calls.
+     *  TODO:UJ The interleaving of result file reading and table
+     *       merging makes it impossible to guarantee the result
+     *       table is valid in the event that communication
+     *       to a worker is lost during file transfer.
      *       @see UberJob::killUberJob()
      */
-    virtual void cancel();
-
-    /*
-     * Return true if this instance has been cancelled.
-     */
-    bool isCancelled() const { return _cancelled; }
+    void cancel();
 
     /**
      * Pop a record from the stream. The method will block if the stream is empty
      * until a record is pushed.
      * @return A shared pointer to the popped record or an empty string for the end of the stream
      */
-    virtual std::shared_ptr<std::string> pop();
+    std::shared_ptr<std::string> pop();
 
     /**
      * Check if the stream is empty.
@@ -143,35 +133,16 @@ public:
      */
     bool getContaminated() const { return _contaminated; }
 
-    /// The function to run to read/push the data from the worker.
-    void setLambda(std::function<void()> csvLambda) { _csvLambda = csvLambda; }
-
-    /// In this class, no waiting, just start the read/push thread.
-    virtual void waitReadyToRead();
-
-    /// Join the thread, must be called from the same thread that called waitReadyToRead
-    virtual void join() {
-        if (_thrdStarted) _thrd.join();
-    }
-
-protected:
+private:
     CsvStream(std::size_t maxRecords);
 
-    void setContaminated() { _contaminated = true; }
-
-    std::function<void()> _csvLambda;
-    bool _cancelled = false;
-    std::atomic<size_t> _bytesWritten;
-    std::list<std::shared_ptr<std::string>> _records;
-
-private:
     mutable std::mutex _mtx;
     std::condition_variable _cv;
     std::size_t const _maxRecords;
-
+    std::list<std::shared_ptr<std::string>> _records;
+    std::atomic<size_t> _bytesWritten;
+    bool _cancelled = false;
     std::atomic<bool> _contaminated = false;
-    std::thread _thrd;
-    bool _thrdStarted = false;
 };
 
 /**

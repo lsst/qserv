@@ -188,7 +188,7 @@ std::shared_ptr<std::string> CsvMemDisk::_readFromTmpFile() {
         return make_shared<string>("$");
     }
 
-    std::size_t buffSz = std::min(100'000ul, _bytesLeft);
+    std::size_t buffSz = std::min(1'000'000ul, _bytesLeft);
     auto strPtr = make_shared<string>();
     strPtr->resize(buffSz);
     _file.read(strPtr->data(), buffSz);
@@ -214,22 +214,22 @@ public:
         if (bufLen == 0) {
             throw LocalInfileError("CsvStreamBuffer::fetch Can't fetch non-positive bytes");
         }
-        auto csvStrm = _csvMemDisk.lock();
-        if (csvStrm == nullptr) return 0;
+        auto csvMd = _csvMemDisk.lock();
+        if (csvMd == nullptr) return 0;
         if (_str == nullptr) {
-            _str = csvStrm->pop();
+            _str = csvMd->pop();
             _offset = 0;
         }
         if (_str->empty()) return 0;
         if (_offset >= _str->size()) {
-            _str = csvStrm->pop();
+            _str = csvMd->pop();
             _offset = 0;
             if (_str->empty()) return 0;
         }
         unsigned const bytesToCopy = min(bufLen, static_cast<unsigned>(_str->size() - _offset));
         ::memcpy(buffer, _str->data() + _offset, bytesToCopy);
         _offset += bytesToCopy;
-        csvStrm->increaseBytesFetched(bytesToCopy);
+        csvMd->increaseBytesFetched(bytesToCopy);
         return bytesToCopy;
     }
 

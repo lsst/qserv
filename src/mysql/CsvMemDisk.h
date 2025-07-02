@@ -39,6 +39,7 @@
 #include <mysql/mysql.h>
 
 // qserv headers
+#include "global/intTypes.h"
 #include "mysql/CsvBuffer.h"
 
 namespace lsst::qserv::mysql {

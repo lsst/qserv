@@ -211,7 +211,6 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         fileReadErrorMsg = ::readHttpFileAndMerge(
                 uberJob, fileUrl, fileSize,
                 [&](char const* buf, uint32_t size) {
-                    if (csvMemDisk == nullptr) return;
                     bool last = false;
                     if (buf == nullptr || size == 0) {
                         last = true;
@@ -229,7 +228,6 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         // It may be needed to unblock the table merger which may be still attempting to read
         // from the CSV stream.
         if (!fileReadErrorMsg.empty()) {
-            if (csvMemDisk == nullptr) return;
             csvMemDisk->push(nullptr, 0);
         }
     };
