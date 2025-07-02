@@ -54,7 +54,7 @@
 #include "http/ClientConnPool.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
-#include "mysql/CsvBuffer.h"
+#include "mysql/CsvMemDisk.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qproc/DatabaseModels.h"
@@ -176,10 +176,9 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
 
     size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;
-    string const transferMethod = _czarConfig->getTransferMethod();
     string const transferDirectory = _czarConfig->getTransferDir();
     std::size_t const transferMinBytesInMem = _czarConfig->getTransferMinMBInMem() * MB_SIZE_BYTES;
-    mysql::TransferTracker::setup(transferMethod, maxMemToUse, transferDirectory, transferMinBytesInMem,
+    mysql::TransferTracker::setup(maxMemToUse, transferDirectory, transferMinBytesInMem,
                                   maxResultTableSizeBytes);
 
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),

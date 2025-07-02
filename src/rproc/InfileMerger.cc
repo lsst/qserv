@@ -56,7 +56,7 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
-#include "mysql/CsvBuffer.h"
+#include "mysql/CsvMemDisk.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/UberJob.h"
 #include "qproc/DatabaseModels.h"
@@ -159,7 +159,7 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
 }
 
 bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSize,
-                             std::shared_ptr<mysql::CsvStream> const& csvStream) {
+                             std::shared_ptr<mysql::CsvMemDisk> const& csvMemDisk) {
     std::string queryIdJobStr = uberJob->getIdStr();
     if (!_queryIdStrSet) {
         _setQueryIdStr(QueryIdHelper::makeIdStr(uberJob->getQueryId()));
@@ -174,14 +174,11 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     };
     auto tct = make_shared<TimeCountTracker<double>>(cbf);
 
-    // Start downloading.
-    csvStream->waitReadyToRead();
-
     bool ret = false;
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
     virtFileT.start();
-    auto const csvBuffer = mysql::newCsvStreamBuffer(csvStream);
+    auto const csvBuffer = mysql::newCsvMemDiskBuffer(csvMemDisk);
     std::string const virtFile = _infileMgr.prepareSrc(csvBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
@@ -200,20 +197,14 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     lock_guard lgFinal(_finalMergeMtx);
     // Don't merge if the query got cancelled.
     auto executive = uberJob->getExecutive();
-    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete() ||
-        csvStream->isCancelled()) {
-        csvStream->cancel();
+    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete()) {
         return true;
     }
 
-    {
-        auto csvStrMemDisk = std::dynamic_pointer_cast<mysql::CsvStrMemDisk>(csvStream);
-        if (csvStrMemDisk != nullptr && csvStrMemDisk->isFileError()) {
-            // The file couldn't be opened for writing, so giving up
-            // now should keep the result table from getting contaminated.
-            csvStrMemDisk->cancel();
-            return false;
-        }
+    if (csvMemDisk->isFileError()) {
+        // The file couldn't be opened for writing, so giving up
+        // now should keep the result table from getting contaminated.
+        return false;
     }
 
     auto start = std::chrono::system_clock::now();

@@ -125,8 +125,6 @@ public:
     int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
     unsigned int getMaxTransferMemMB() const { return _resultMaxTransferMemMB->getVal(); }
-    /// May be "stream", "memory", or "memdisk"
-    std::string getTransferMethod() const { return _resultTransferMethod->getVal(); }
     /// Return the transfer directory, which defaults to /tmp, which is bad for performance.
     std::string getTransferDir() const { return _resultTransferDir->getVal(); }
 
@@ -300,8 +298,6 @@ private:
     // This must be larger than _maxTableSizeMB when using the "memory" TransferMethod
     CVTUIntPtr _resultMaxTransferMemMB =
             util::ConfigValTUInt::create(_configValMap, "resultdb", "maxTransferMemMB", notReq, 10000);
-    CVTStrPtr _resultTransferMethod =
-            util::ConfigValTStr::create(_configValMap, "resultdb", "transferMethod", notReq, "memory");
     CVTStrPtr _resultTransferDir =
             util::ConfigValTStr::create(_configValMap, "resultdb", "transferDir", notReq, "/tmp");
     CVTUIntPtr _resultTransferMinMBInMem =
