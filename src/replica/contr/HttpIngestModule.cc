@@ -234,8 +234,7 @@ json HttpIngestModule::_addDatabase() {
     string family;
     for (auto&& candidateFamily : config->databaseFamilies()) {
         auto const familyInfo = config->databaseFamilyInfo(candidateFamily);
-        if ((familyInfo.numStripes == numStripes) and (familyInfo.numSubStripes == numSubStripes) and
-            (abs(familyInfo.overlap - overlap) <= numeric_limits<double>::epsilon())) {
+        if ((familyInfo.numStripes == numStripes) and (familyInfo.numSubStripes == numSubStripes)) {
             family = candidateFamily;
         }
     }
