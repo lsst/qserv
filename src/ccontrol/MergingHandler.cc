@@ -45,7 +45,7 @@
 #include "http/Client.h"
 #include "http/ClientConnPool.h"
 #include "http/Method.h"
-#include "mysql/CsvBuffer.h"
+#include "mysql/CsvMemDisk.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
@@ -195,35 +195,8 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     }
 
     if (fileSize == 0) return qdisp::MergeEndStatus(true);
-
-    // Read from the http stream and push records into the CSV stream in a separate thread.
-    // Note the fixed capacity of the stream which allows up to 2 records to be buffered
-    // in the stream. This is enough to hide the latency of the HTTP connection and
-    // the time needed to read the file.
-    auto transferMethod = mysql::TransferTracker::get()->getTransferMethod();
-    mysql::CsvStream::Ptr csvStream;
-    switch (transferMethod) {
-        case mysql::TransferTracker::MEMORY:
-            // This version should keep the result table valid even if there's
-            // a worker failure mid data transmission, but may block
-            // starting transfers when too much memory is in use.
-            csvStream = mysql::CsvStrMem::create(fileSize);
-            break;
-        case mysql::TransferTracker::MEMDISK:
-            // This version should keep the result table valid even if there's
-            // a worker failure mid data transmission, but may start writing
-            // transfer data to disk when memory is low.
-            csvStream = mysql::CsvStrMemDisk::create(fileSize, uberJob->getQueryId(), uberJob->getUjId());
-            break;
-        case mysql::TransferTracker::STREAM:
-            // This may contaminate the result table if a worker fails.
-            csvStream = mysql::CsvStream::create(2);
-            break;
-        default:
-            throw util::Bug(ERR_LOC, "MergingHandler::_mergeHttp UNKNOWN  transferMethod " +
-                                             to_string(transferMethod));
-    }
-    _csvStream = csvStream;
+    auto csvMemDisk = mysql::CsvMemDisk::create(fileSize, uberJob->getQueryId(), uberJob->getUjId());
+    _csvMemDisk = csvMemDisk;
 
     // This must be after setting _csvStream to avoid cancelFileMerge()
     // race issues, and it needs to be before the thread starts.
@@ -233,22 +206,22 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     }
 
     string fileReadErrorMsg;
-    auto csvLambda = [&]() {
+    auto transferFunc = [&]() {
         size_t bytesRead = 0;
         fileReadErrorMsg = ::readHttpFileAndMerge(
                 uberJob, fileUrl, fileSize,
                 [&](char const* buf, uint32_t size) {
-                    if (csvStream == nullptr) return;
+                    if (csvMemDisk == nullptr) return;
                     bool last = false;
                     if (buf == nullptr || size == 0) {
                         last = true;
                     } else {
-                        csvStream->push(buf, size);
+                        csvMemDisk->push(buf, size);
                         bytesRead += size;
                         last = bytesRead >= fileSize;
                     }
                     if (last) {
-                        csvStream->push(nullptr, 0);
+                        csvMemDisk->push(nullptr, 0);
                     }
                 },
                 MergingHandler::_getHttpConnPool());
@@ -256,26 +229,25 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         // It may be needed to unblock the table merger which may be still attempting to read
         // from the CSV stream.
         if (!fileReadErrorMsg.empty()) {
-            if (csvStream == nullptr) return;
-            csvStream->push(nullptr, 0);
+            if (csvMemDisk == nullptr) return;
+            csvMemDisk->push(nullptr, 0);
         }
     };
-    csvStream->setLambda(csvLambda);
+    csvMemDisk->transferDataFromWorker(transferFunc);
 
     // Attempt the actual merge.
-    bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvStream);
+    bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvMemDisk);
     if (!fileMergeSuccess) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg(), util::ErrorCode::RESULT_IMPORT);
     }
-    if (csvStream->getContaminated()) {
+    if (csvMemDisk->getContaminated()) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
         fileMergeSuccess = false;
         _setError(ccontrol::MSG_RESULT_ERROR, "merge stream contaminated", util::ErrorCode::RESULT_IMPORT);
     }
 
-    csvStream->join();
     if (!fileReadErrorMsg.empty()) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " result file read failed");
         _setError(ccontrol::MSG_HTTP_RESULT, fileReadErrorMsg, util::ErrorCode::RESULT_IMPORT);
@@ -286,14 +258,14 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     if (!mergeEStatus.success) {
         // This error check needs to come after the csvThread.join() to ensure writing
         // is finished. If any bytes were written, the result table is ruined.
-        mergeEStatus.contaminated = csvStream->getBytesWritten() > 0;
+        mergeEStatus.contaminated = csvMemDisk->getBytesFetched() > 0;
     }
 
     return mergeEStatus;
 }
 
 void MergingHandler::cancelFileMerge() {
-    auto csvStrm = _csvStream.lock();
+    auto csvStrm = _csvMemDisk.lock();
     if (csvStrm != nullptr) {
         csvStrm->cancel();
     }

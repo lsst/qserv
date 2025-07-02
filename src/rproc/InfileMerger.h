@@ -49,7 +49,7 @@
 // Forward declarations
 namespace lsst::qserv {
 namespace mysql {
-class CsvStream;
+class CsvMemDisk;
 class MysqlConfig;
 }  // namespace mysql
 namespace qdisp {
@@ -107,7 +107,7 @@ public:
 
     /// Merge the result data collected over Http.
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, uint64_t fileSize,
-                   std::shared_ptr<mysql::CsvStream> const& csvStream);
+                   std::shared_ptr<mysql::CsvMemDisk> const& csvMemDisk);
 
     /// @return error details if finalize() returns false
     util::Error const& getError() const { return _error; }

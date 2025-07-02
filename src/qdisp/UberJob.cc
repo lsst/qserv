@@ -306,7 +306,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
             return;
         }
 
-        // Limit collecting LIMIT queries to one at a time, but only those.
+        // Limit collecting LIMIT queries to one(per UJ) at a time, but only those.
         shared_ptr<lock_guard<mutex>> limitSquashL;
         if (limitSquash) {
             limitSquashL.reset(new lock_guard<mutex>(ujPtr->_mtxLimitSquash));
