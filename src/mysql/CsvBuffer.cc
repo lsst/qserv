@@ -27,8 +27,6 @@
 // System headers
 #include <algorithm>
 #include <cassert>
-#include <cctype>
-#include <cstdio>
 #include <stdexcept>
 #include <string.h>
 
@@ -41,16 +39,10 @@
 // Qserv headers
 #include "mysql/LocalInfileError.h"
 #include "mysql/MySqlUtils.h"
-#include "util/Bug.h"
-
-using namespace std;
-namespace sfs = std::filesystem;
 
 namespace {
 
-LOG_LOGGER _log = LOG_GET("lsst.qserv.mysql.CsvBuffer");
-
-string const mysqlNull("\\N");
+std::string const mysqlNull("\\N");
 int const largeRowThreshold = 500 * 1024;  // should be less than 0.5 * infileBufferSize
 
 }  // namespace
@@ -84,13 +76,13 @@ inline unsigned updateEstRowSize(unsigned lastRowSize, Row const& r) {
     return lastRowSize < rowSize ? rowSize : lastRowSize;
 }
 
-inline int addString(char* cursor, string const& s) {
+inline int addString(char* cursor, std::string const& s) {
     int const sSize = s.size();
     memcpy(cursor, s.data(), sSize);
     return sSize;
 }
 
-inline int maxColFootprint(int columnLength, string const& sep) {
+inline int maxColFootprint(int columnLength, std::string const& sep) {
     const int overhead = 2 + sep.size();  // NULL decl + sep size
     return overhead + (2 * columnLength);
 }
@@ -116,7 +108,7 @@ public:
     bool _fetchRow(Row& r);
     unsigned _fetchFromLargeRow(char* buffer, int bufLen);
     void _initializeLargeRow(Row const& largeRow);
-    string dump() const override;
+    std::string dump() const override;
 
 private:
     MYSQL_RES* _result;
@@ -127,8 +119,8 @@ private:
     Row _largeRow;
     int _fieldOffset;
 
-    string _sep;
-    string _rowSep;
+    std::string _sep;
+    std::string _rowSep;
 };
 
 ResCsvBuffer::ResCsvBuffer(MYSQL_RES* result)
@@ -139,8 +131,8 @@ ResCsvBuffer::ResCsvBuffer(MYSQL_RES* result)
     // cout << _numFields << " fields per row\n";
 }
 
-string ResCsvBuffer::dump() const {
-    string str = string("ResCsvBuffer _numFields=") + to_string(_numFields);
+std::string ResCsvBuffer::dump() const {
+    std::string str = std::string("ResCsvBuffer _numFields=") + std::to_string(_numFields);
     return str;
 }
 
@@ -258,36 +250,38 @@ void ResCsvBuffer::_initializeLargeRow(Row const& largeRow) {
     _fieldOffset = 0;
 }
 
-shared_ptr<CsvBuffer> newResCsvBuffer(MYSQL_RES* result) { return make_shared<ResCsvBuffer>(result); }
+std::shared_ptr<CsvBuffer> newResCsvBuffer(MYSQL_RES* result) {
+    return std::make_shared<ResCsvBuffer>(result);
+}
 
-CsvStream::CsvStream(size_t maxRecords) : _maxRecords(maxRecords) {
+CsvStream::CsvStream(std::size_t maxRecords) : _maxRecords(maxRecords) {
     if (maxRecords == 0) {
-        throw invalid_argument("CsvStream::CsvStream: maxRecords must be greater than 0");
+        throw std::invalid_argument("CsvStream::CsvStream: maxRecords must be greater than 0");
     }
 }
 
 void CsvStream::cancel() {
-    unique_lock<mutex> lock(_mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     _cancelled = true;
     _cv.notify_all();
 }
 
-void CsvStream::push(char const* data, size_t size) {
-    unique_lock<mutex> lock(_mtx);
+void CsvStream::push(char const* data, std::size_t size) {
+    std::unique_lock<std::mutex> lock(_mtx);
     _cv.wait(lock, [this]() { return (_records.size() < _maxRecords) || _cancelled; });
 
     if (_cancelled) return;
     if (data != nullptr && size != 0) {
-        _records.emplace_back(make_shared<string>(data, size));
+        _records.emplace_back(std::make_shared<std::string>(data, size));
     } else {
         // Empty string is meant to indicate the end of the stream.
-        _records.emplace_back(make_shared<string>());
+        _records.emplace_back(std::make_shared<std::string>());
     }
     _cv.notify_one();
 }
 
-shared_ptr<string> CsvStream::pop() {
-    unique_lock<mutex> lock(_mtx);
+std::shared_ptr<std::string> CsvStream::pop() {
+    std::unique_lock<std::mutex> lock(_mtx);
     _cv.wait(lock, [this]() { return (!_records.empty() || _cancelled); });
 
     if (_records.empty()) {
@@ -298,26 +292,19 @@ shared_ptr<string> CsvStream::pop() {
         // database stops asking for them.
         // See CsvStream::cancel()
         _contaminated = true;
-        auto pstr = make_shared<string>("$");
+        auto pstr = std::make_shared<std::string>("$");
         _cv.notify_one();
         return pstr;
     }
-    shared_ptr<string> front = _records.front();
+    std::shared_ptr<std::string> front = _records.front();
     _records.pop_front();
     _cv.notify_one();
     return front;
 }
 
 bool CsvStream::empty() const {
-    unique_lock<mutex> lock(_mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     return _records.empty();
-}
-
-void CsvStream::waitReadyToRead() {
-    // No need to wait for this class
-    thread thrd(_csvLambda);
-    _thrd = move(thrd);
-    _thrdStarted = true;
 }
 
 /**
@@ -331,7 +318,7 @@ void CsvStream::waitReadyToRead() {
  */
 class CsvStreamBuffer : public CsvBuffer {
 public:
-    explicit CsvStreamBuffer(shared_ptr<CsvStream> const& csvStream) : _csvStream(csvStream) {}
+    explicit CsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) : _csvStream(csvStream) {}
 
     ~CsvStreamBuffer() override = default;
 
@@ -339,35 +326,33 @@ public:
         if (bufLen == 0) {
             throw LocalInfileError("CsvStreamBuffer::fetch Can't fetch non-positive bytes");
         }
-        auto csvStrm = _csvStream.lock();
-        if (csvStrm == nullptr) return 0;
         if (_str == nullptr) {
-            _str = csvStrm->pop();
+            _str = _csvStream->pop();
             _offset = 0;
         }
         if (_str->empty()) return 0;
         if (_offset >= _str->size()) {
-            _str = csvStrm->pop();
+            _str = _csvStream->pop();
             _offset = 0;
             if (_str->empty()) return 0;
         }
-        unsigned const bytesToCopy = min(bufLen, static_cast<unsigned>(_str->size() - _offset));
+        unsigned const bytesToCopy = std::min(bufLen, static_cast<unsigned>(_str->size() - _offset));
         ::memcpy(buffer, _str->data() + _offset, bytesToCopy);
         _offset += bytesToCopy;
-        csvStrm->increaseBytesWrittenBy(bytesToCopy);
+        _csvStream->increaseBytesWrittenBy(bytesToCopy);
         return bytesToCopy;
     }
 
-    string dump() const override { return "CsvStreamBuffer"; }
+    std::string dump() const override { return "CsvStreamBuffer"; }
 
 private:
-    weak_ptr<CsvStream> _csvStream;
-    shared_ptr<string> _str;
-    size_t _offset = 0;
+    std::shared_ptr<CsvStream> _csvStream;
+    std::shared_ptr<std::string> _str;
+    std::size_t _offset = 0;
 };
 
-shared_ptr<CsvBuffer> newCsvStreamBuffer(shared_ptr<CsvStream> const& csvStream) {
-    return make_shared<CsvStreamBuffer>(csvStream);
+std::shared_ptr<CsvBuffer> newCsvStreamBuffer(std::shared_ptr<CsvStream> const& csvStream) {
+    return std::make_shared<CsvStreamBuffer>(csvStream);
 }
 
 }  // namespace lsst::qserv::mysql
