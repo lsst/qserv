@@ -83,7 +83,7 @@ public:
     friend class MemoryRaii;
 
     static void setup(std::size_t max, std::string const& directory, std::size_t minBytesInMem,
-                      std::size_t maxResultTableSizeBytes);
+                      std::size_t maxResultTableSizeBytes, CzarIdType czarId);
     static Ptr get() { return _globalMt; }
 
     /// Create a MemoryRaii instance to track `fileSize` bytes, and wait for free memory if `wait` is true.
@@ -97,10 +97,12 @@ public:
     std::size_t getMax() const { return _max; }
     std::string getDirectory() const { return _directory; }
     std::size_t getMinBytesInMem() const { return _minBytesInMem; }
+    CzarIdType getCzarId() const { return _czarId; }
 
 private:
-    TransferTracker(std::size_t max, std::string const& directory, std::size_t minBytesInMem)
-            : _max(max), _directory(directory), _minBytesInMem(minBytesInMem) {}
+    TransferTracker(std::size_t max, std::string const& directory, std::size_t minBytesInMem,
+                    CzarIdType czarId)
+            : _max(max), _directory(directory), _minBytesInMem(minBytesInMem), _czarId(czarId) {}
 
     /// This function only to be called via createRaii.
     void _incrTotal(size_t sz);
@@ -115,6 +117,7 @@ private:
     std::size_t const _max;
     std::string const _directory;
     std::size_t const _minBytesInMem;
+    CzarIdType const _czarId;
 };
 
 /// Store transfer data in memory until too much memory is being used.

@@ -172,15 +172,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
 
-    size_t const MB_SIZE_BYTES = 1024 * 1024;
-    size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
-
-    size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;
-    string const transferDirectory = _czarConfig->getTransferDir();
-    std::size_t const transferMinBytesInMem = _czarConfig->getTransferMinMBInMem() * MB_SIZE_BYTES;
-    mysql::TransferTracker::setup(maxMemToUse, transferDirectory, transferMinBytesInMem,
-                                  maxResultTableSizeBytes);
-
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());
 
@@ -190,6 +181,15 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // NOTE: This steps should be done after constructing the query factory where
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
+
+    CzarIdType czarId = _czarConfig->id();
+    size_t const MB_SIZE_BYTES = 1024 * 1024;
+    size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
+    size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;
+    string const transferDirectory = _czarConfig->getTransferDir();
+    std::size_t const transferMinBytesInMem = _czarConfig->getTransferMinMBInMem() * MB_SIZE_BYTES;
+    mysql::TransferTracker::setup(maxMemToUse, transferDirectory, transferMinBytesInMem,
+                                  maxResultTableSizeBytes, czarId);
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar databases before the restart.

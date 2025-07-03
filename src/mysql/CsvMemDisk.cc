@@ -55,11 +55,11 @@ namespace lsst::qserv::mysql {
 TransferTracker::Ptr TransferTracker::_globalMt;
 
 void TransferTracker::setup(std::size_t max, string const& directory, std::size_t minMBInMem,
-                            std::size_t maxResultTableSizeBytes) {
+                            std::size_t maxResultTableSizeBytes, CzarIdType czarId) {
     if (_globalMt != nullptr) {
         throw util::Bug(ERR_LOC, "MemoryTracker::setup called when MemoryTracker already setup!");
     }
-    _globalMt = TransferTracker::Ptr(new TransferTracker(max, directory, minMBInMem));
+    _globalMt = TransferTracker::Ptr(new TransferTracker(max, directory, minMBInMem, czarId));
 }
 
 bool TransferTracker::verifyDir(string const& dirName) {
@@ -97,7 +97,8 @@ CsvMemDisk::CsvMemDisk(std::size_t expectedBytes, QueryId qId, UberJobId ujId)
         throw util::Bug(ERR_LOC, "CsvStrMemDisk constructor MemoryTracker is NULL");
     }
     sfs::path fPath = memTrack->getDirectory();
-    string fileName = memTrack->getBaseFileName() + "_" + to_string(_qId) + "_" + to_string(ujId);
+    string fileName = memTrack->getBaseFileName() + "_" + to_string(memTrack->getCzarId()) + "_" +
+                      to_string(_qId) + "_" + to_string(ujId);
     fPath /= fileName;
     _filePath = fPath;
     _minBytesInMem = memTrack->getMinBytesInMem();
