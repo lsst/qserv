@@ -176,8 +176,6 @@ public:
     ///   a value <= 0 there's no limit that can be applied at the worker.
     int getUjRowLimit() const;
 
-    bool getLimitSquashApplies() const { return _limitSquashApplies; }
-
     /// @return _rowLimitComplete, which can only be meaningful if the
     ///         user query has not been cancelled.
     bool isRowLimitComplete() { return _rowLimitComplete && !_cancelled; }
@@ -230,6 +228,12 @@ public:
     /// If the sum of all UberJob result files size is too large,
     /// cancel this user query.
     void checkResultFileSize(uint64_t fileSize = 0);
+
+    /// Returns a pointer to a lock on _mtxLimitSquash.
+    std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();
+
+    void collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& fileUrl, uint64_t fileSize,
+                     uint64_t rowCount, std::string const& idStr);
 
 protected:
     Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
@@ -347,6 +351,12 @@ private:
 
     std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
     std::atomic<uint64_t> _jobCancelCount{0};       ///< Total number of JOB_CANCEL messages received.
+
+    /// This mutex is used to limit collecting result files to one at a time
+    /// but only when the executive will squash the query when the limit is reached.
+    /// This keeps data transfers (and temporary storage requirements) from
+    /// getting out of hand.
+    std::mutex _mtxLimitSquash;
 };
 
 }  // namespace qdisp
