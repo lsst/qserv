@@ -116,6 +116,14 @@ public:
     void setResultFileSize(uint64_t fileSize) { _resultFileSize = fileSize; }
     uint64_t getResultFileSize() { return _resultFileSize; }
 
+    /// Update UberJob status, return true if successful.
+    bool importResultFinish();
+
+    /// Import and error from trying to collect results.
+    /// TODO:UJ The strings for errorType should have a centralized location in the code - global or util
+    nlohmann::json importResultError(bool shouldCancel, std::string const& errorType,
+                                     std::string const& note);
+
     std::ostream& dumpOS(std::ostream& os) const;
     std::string dump() const;
     friend std::ostream& operator<<(std::ostream& os, UberJob const& uj);
@@ -137,14 +145,6 @@ private:
     /// reassignment. The list of _jobs is cleared, so multiple calls of this should be harmless.
     void _unassignJobs();
 
-    /// Import and error from trying to collect results.
-    /// TODO:UJ The strings for errorType should have a centralized location in the code - global or util
-    nlohmann::json _importResultError(bool shouldCancel, std::string const& errorType,
-                                      std::string const& note);
-
-    /// Let the executive know that all Jobs in UberJob are complete.
-    void _importResultFinish(uint64_t resultRows);
-
     /// Let the Executive know about errors while handling results.
     nlohmann::json _workerErrorFinish(bool successful, std::string const& errorType = std::string(),
                                       std::string const& note = std::string());
@@ -162,14 +162,7 @@ private:
     qmeta::CzarId const _czarId;
     int const _rowLimit;  ///< Number of rows in the query LIMIT clause.
     uint64_t _resultFileSize = 0;
-
     std::string const _idStr;
-
-    /// This mutex is used to limit collecting result files to one at a time
-    /// but only when the executive will squash the query when the limit is reached.
-    /// This keeps data transfers (and temporary storage requirements) from
-    /// getting out of hand.
-    std::mutex _mtxLimitSquash;
 
     // Map of workerData
     czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed

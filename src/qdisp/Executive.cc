@@ -794,6 +794,55 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
     }
 }
 
+shared_ptr<lock_guard<mutex>> Executive::getLimitSquashLock() {
+    shared_ptr<lock_guard<mutex>> ptr(new lock_guard<mutex>(_mtxLimitSquash));
+    return ptr;
+}
+
+void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& fileUrl, uint64_t fileSize,
+                            uint64_t rowCount, std::string const& idStr) {
+    // Limit collecting LIMIT queries to one at a time, but only those.
+    shared_ptr<lock_guard<mutex>> limitSquashL;
+    if (_limitSquashApplies) {
+        limitSquashL.reset(new lock_guard<mutex>(_mtxLimitSquash));
+    }
+    MergeEndStatus flushStatus = ujPtr->getRespHandler()->flushHttp(fileUrl, fileSize);
+    LOGS(_log, LOG_LVL_TRACE,
+         cName(__func__) << "ujId=" << ujPtr->getUjId() << " success=" << flushStatus.success
+                         << " contaminated=" << flushStatus.contaminated);
+    if (flushStatus.success) {
+        CzarStats::get()->addTotalRowsRecv(rowCount);
+        CzarStats::get()->addTotalBytesRecv(fileSize);
+    } else {
+        if (flushStatus.contaminated) {
+            // This would probably indicate malformed file+rowCount or writing the result table failed.
+            // If any merging happened, the result table is ruined.
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << "ujId=" << ujPtr->getUjId()
+                                 << " flushHttp failed after merging, results ruined.");
+        } else {
+            // Perhaps something went wrong with file collection, so it is worth trying the jobs again
+            // by abandoning this UberJob.
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << "ujId=" << ujPtr->getUjId() << " flushHttp failed, retrying Jobs.");
+        }
+        ujPtr->importResultError(flushStatus.contaminated, "mergeError", "merging failed");
+    }
+
+    // At this point all data for this job have been read and merged
+    bool const statusSet = ujPtr->importResultFinish();
+    if (!statusSet) {
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << "ujId=" << ujPtr->getUjId() << " failed to set status, squashing "
+                             << getIdStr());
+        // Something has gone very wrong
+        squash(cName(__func__) + " couldn't set UberJob status");
+        return;
+    }
+    addResultRows(rowCount);
+    checkLimitRowComplete();
+}
+
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {
     auto const& status = v.second->getStatus();
     os << v.first << ": " << *status;
