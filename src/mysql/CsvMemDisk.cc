@@ -118,7 +118,7 @@ bool CsvMemDisk::_mustWriteToTmpFile() {
     if (_writingToTmpFile) return true;
 
     auto memTrack = TransferTracker::get();
-    // If too much memory is being used for transfers, star writing large transfers to files.
+    // If too much memory is being used for transfers, start writing large transfers to files.
     if (memTrack->getTotal() > memTrack->getMax()) {
         if (_records.size() > _minRecordsSize && _bytesRead > _minBytesInMem) {
             _writingToTmpFile = true;

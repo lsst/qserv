@@ -125,7 +125,8 @@ public:
     int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
     unsigned int getMaxTransferMemMB() const { return _resultMaxTransferMemMB->getVal(); }
-    /// Return the transfer directory, which defaults to /tmp, which is bad for performance.
+    /// Return the transfer directory. This is customizable to allow for a
+    /// high performance volume.
     std::string getTransferDir() const { return _resultTransferDir->getVal(); }
 
     /// Return the minimum amount of memory per UberJob to keep in memory. This much transfer

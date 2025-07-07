@@ -36,7 +36,7 @@ volumes:
     volume_czar_xrootd:
     volume_czar_home:
     volume_czar_cfg:
-    volume_czar_tmp:
+    volume_czar_transfer:
 
     volume_czar_mariadb_data:
     volume_czar_mariadb_cfg:
@@ -274,7 +274,7 @@ services:
               source: volume_czar_mariadb_run
               target: /qserv/mariadb/run
             - type: volume
-              source: volume_czar_tmp
+              source: volume_czar_transfer
               target: /tmp
               
             - << : *log-volume
@@ -312,7 +312,7 @@ services:
               source: volume_czar_cfg
               target: /config-etc
             - type: volume
-              source: volume_czar_tmp
+              source: volume_czar_transfer
               target: /tmp
             - type: volume
               source: volume_czar_home
