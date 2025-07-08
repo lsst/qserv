@@ -65,8 +65,8 @@
 #include "wsched/BlendScheduler.h"
 #include "wsched/FifoScheduler.h"
 #include "wsched/GroupScheduler.h"
-#include "wsched/ScanScheduler.h"
 #include "wcomms/HttpSvc.h"
+#include "wsched/ScanSchedFifo.h"
 
 using namespace lsst::qserv;
 using namespace nlohmann;
@@ -146,6 +146,7 @@ WorkerMain::WorkerMain() {
     int const medium = lsst::qserv::protojson::ScanInfo::Rating::MEDIUM;
     int const slow = lsst::qserv::protojson::ScanInfo::Rating::SLOW;
     int const slowest = lsst::qserv::protojson::ScanInfo::Rating::SLOWEST;
+#if 0  // &&& use ScanSchedulers
     double fastScanMaxMinutes = (double)workerConfig->getScanMaxMinutesFast();
     double medScanMaxMinutes = (double)workerConfig->getScanMaxMinutesMed();
     double slowScanMaxMinutes = (double)workerConfig->getScanMaxMinutesSlow();
@@ -169,6 +170,31 @@ WorkerMain::WorkerMain() {
     auto snail = make_shared<wsched::ScanScheduler>(
             "SchedSnail", maxThread, workerConfig->getMaxReserveSnail(), workerConfig->getPrioritySnail(),
             workerConfig->getMaxActiveChunksSnail(), slow + 1, slowest, snailScanMaxMinutes);
+#else  //&&& use ScanSchedFifo which are just FIFO
+    double fastScanMaxMinutes = (double)workerConfig->getScanMaxMinutesFast();
+    double medScanMaxMinutes = (double)workerConfig->getScanMaxMinutesMed();
+    double slowScanMaxMinutes = (double)workerConfig->getScanMaxMinutesSlow();
+    double snailScanMaxMinutes = (double)workerConfig->getScanMaxMinutesSnail();
+    int maxTasksBootedPerUserQuery = workerConfig->getMaxTasksBootedPerUserQuery();
+    int maxConcurrentBootedTasks = workerConfig->getMaxConcurrentBootedTasks();
+    vector<wsched::ScanSchedFifo::Ptr> scanSchedulers{
+            make_shared<wsched::ScanSchedFifo>("SchedSlow", maxThread, workerConfig->getMaxReserveSlow(),
+                                               workerConfig->getPrioritySlow(),
+                                               workerConfig->getMaxActiveChunksSlow(), medium + 1, slow,
+                                               slowScanMaxMinutes),
+            make_shared<wsched::ScanSchedFifo>("SchedFast", maxThread, workerConfig->getMaxReserveFast(),
+                                               workerConfig->getPriorityFast(),
+                                               workerConfig->getMaxActiveChunksFast(), fastest, fast,
+                                               fastScanMaxMinutes),
+            make_shared<wsched::ScanSchedFifo>(
+                    "SchedMed", maxThread, workerConfig->getMaxReserveMed(), workerConfig->getPriorityMed(),
+                    workerConfig->getMaxActiveChunksMed(), fast + 1, medium, medScanMaxMinutes),
+    };
+
+    auto snail = make_shared<wsched::ScanSchedFifo>(
+            "SchedSnail", maxThread, workerConfig->getMaxReserveSnail(), workerConfig->getPrioritySnail(),
+            workerConfig->getMaxActiveChunksSnail(), slow + 1, slowest, snailScanMaxMinutes);
+#endif  // &&&
 
     wpublish::QueriesAndChunks::Ptr queries = wpublish::QueriesAndChunks::setupGlobal(
             chrono::minutes(5), chrono::minutes(2), maxTasksBootedPerUserQuery, maxConcurrentBootedTasks,
