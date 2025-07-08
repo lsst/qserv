@@ -4,8 +4,9 @@ target_sources(wsched PRIVATE
     BlendScheduler.cc
     ChunkTasksQueue.cc
     GroupScheduler.cc
-    ScanScheduler.cc
     SchedulerBase.cc
+    ScanScheduler.cc
+    ScanSchedFifo.cc
 )
 
 install(
