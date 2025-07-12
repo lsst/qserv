@@ -53,8 +53,8 @@ public:
     static std::string getEmptyChunksTableName(std::string const& dbName) { return dbName + "_EmptyChunks"; }
 
     static std::string getEmptyChunksSchema(std::string const& dbName) {
-        return "CREATE TABLE " + getEmptyChunksTableName(dbName) +
-               " (chunkId INT NOT NULL PRIMARY KEY) ENGINE = INNODB";
+        return "CREATE TABLE `" + getEmptyChunksTableName(dbName) +
+               "` (`chunkId` INT NOT NULL PRIMARY KEY) ENGINE = INNODB";
     }
 
     /// @return a set of empty chunks for database 'dbName'

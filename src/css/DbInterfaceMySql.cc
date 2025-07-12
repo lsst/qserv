@@ -84,12 +84,10 @@ set<int> DbInterfaceMySql::getEmptyChunks(string const& dbName) {
 
     auto trans = sql::SqlTransactionScope::create<DbITransaction>(*_conn);
 
-    string const emptyChunkTbl = getEmptyChunksTableName(dbName);
-
     // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    string const query = "SELECT chunkId FROM " + emptyChunkTbl;
+    string const query = "SELECT chunkId FROM `" + getEmptyChunksTableName(dbName) + "`";
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, funcName << " SQL query failed: " << query);
