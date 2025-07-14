@@ -47,8 +47,8 @@ namespace lsst::qserv::protojson {
 /// will set "_thoughtCzarWasDead" and delete all incomplete work associated
 /// with that czar. Result files will remain until garbage cleanup or the czar
 /// calls for their removal.
-/// TODO:UJ  UberJob complete messages that failed to be sent to the czar
-/// TODO:UJ  will be added to this message. (uberjob file response)
+/// TODO:DM-53242  UberJob complete messages that failed to be sent to the czar
+///                will be added to this message. (uberjob file response)
 /// Upon successful completion, the worker will clear all values set by the
 /// the czar.
 /// Currently, this message is expected to only be needed rarely.
@@ -78,7 +78,7 @@ public:
     /// Return true if there is a reason this WorkerCzarComIssue should be sent to this czar.
     bool needToSend() const {
         std::lock_guard lg(_wciMtx);
-        // TODO:UJ or list of failed transmits not empty.
+        // TODO:DM-53242 if list of failed transmits not empty.
         return _thoughtCzarWasDead;
     }
 

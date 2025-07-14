@@ -142,6 +142,7 @@ public:
 
     /// Return a json version of the contents of this class.
     nlohmann::json toJson() const;
+
     std::vector<int> const& getJobSubQueryTempIndexes() const { return _jobSubQueryTempIndexes; }
     std::vector<int> const& getJobDbTablesIndexes() const { return _jobDbTablesIndexes; }
     std::vector<int> const& getSubchunkIds() const { return _subchunkIds; }
@@ -194,7 +195,6 @@ public:
     int getAttemptCount() const { return _attemptCount; }
     std::string getChunkQuerySpecDb() const { return _chunkQuerySpecDb; }
     int getChunkId() const { return _chunkId; }
-    std::vector<int> const& getChunkScanTableIndexes() const { return _chunkScanTableIndexes; }
 
     JobFragment::VectPtr getJobFragments() const { return _jobFragments; }
 
@@ -208,14 +208,12 @@ private:
     JobId _jobId;
     int _attemptCount;
     std::string _chunkQuerySpecDb;
+
     int _chunkId;
     JobFragment::VectPtr _jobFragments{new JobFragment::Vect()};
 
     JobSubQueryTempMap::Ptr _jobSubQueryTempMap;  ///< Map of all query templates related to this UberJob.
     JobDbTableMap::Ptr _jobDbTablesMap;           ///< Map of all db.tables related to this UberJob.
-
-    // TODO:UJ remove, use value for UJ
-    std::vector<int> _chunkScanTableIndexes;  ///< list of indexes into _jobDbTablesMap.
 };
 
 /// This class stores an UberJob, a collection of Jobs meant for a

@@ -102,7 +102,7 @@ public:
     /// and shortly after czar startup: it tells all workers to delete all
     /// query information for queries with czarId `czId` and queryId less than
     /// or equal to `lastQId`.
-    void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId) {
+    void setCzarCancelAfterRestart(CzarId czId, QueryId lastQId) {
         if (_cancelAfterCzarResetSent.exchange(true) == false) {
             _wqsData->setCzarCancelAfterRestart(czId, lastQId);
         }
@@ -212,7 +212,7 @@ public:
     /// If this is to be called, it must be called before Czar::_monitor is started:
     /// It tells the workers all queries from `czId` with QueryIds less than `lastQId`
     /// should be cancelled.
-    void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId);
+    void setCzarCancelAfterRestart(CzarId czId, QueryId lastQId);
 
     /// Return a pointer to the `ActiveWorker` associated with `workerId`.
     ActiveWorker::Ptr getActiveWorker(std::string const& workerId) const;
@@ -247,7 +247,7 @@ private:
     double _maxLifetime = 60.0 * 60.0;
 
     bool _czarCancelAfterRestart = false;
-    CzarIdType _czarCancelAfterRestartCzId = 0;
+    CzarId _czarCancelAfterRestartCzId = 0;
     QueryId _czarCancelAfterRestartQId = 0;
 };
 

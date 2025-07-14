@@ -54,11 +54,6 @@ namespace lsst::qserv::wbase {
 class NopChannel : public SendChannel {
 public:
     NopChannel() {}
-
-    bool send(char const* buf, int bufLen) override {
-        cout << "NopChannel send(" << (void*)buf << ", " << bufLen << ");\n";
-        return !isDead();
-    }
 };
 
 SendChannel::Ptr SendChannel::newNopChannel() { return std::shared_ptr<NopChannel>(new NopChannel()); }
@@ -68,12 +63,6 @@ SendChannel::Ptr SendChannel::newNopChannel() { return std::shared_ptr<NopChanne
 class StringChannel : public SendChannel {
 public:
     StringChannel(string& dest) : _dest(dest) {}
-
-    bool send(char const* buf, int bufLen) override {
-        if (isDead()) return false;
-        _dest.append(buf, bufLen);
-        return true;
-    }
 
 private:
     string& _dest;
