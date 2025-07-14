@@ -67,7 +67,7 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
                                            qmeta::CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
-          _qMetaCzarId(qMetaCzarId),
+          _czarId(czarId),
           _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {
@@ -94,7 +94,7 @@ UserQueryProcessList::UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMe
                                            qmeta::CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
-          _qMetaCzarId(qMetaCzarId),
+          _czarId(czarId),
           _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {

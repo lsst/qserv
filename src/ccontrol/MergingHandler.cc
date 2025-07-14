@@ -39,17 +39,17 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/msgCode.h"
 #include "global/clock_defs.h"
 #include "global/debugUtil.h"
 #include "http/Client.h"
 #include "http/ClientConnPool.h"
 #include "http/Method.h"
-#include "mysql/CsvBuffer.h"
+#include "mysql/CsvMemDisk.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
-#include "qdisp/QueryRequest.h"
 #include "qdisp/UberJob.h"
 #include "rproc/InfileMerger.h"
 #include "util/Bug.h"
@@ -83,7 +83,6 @@ lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
                 lsst::qserv::qdisp::CzarStats::get()->addFileReadRate(bytes / seconds.count());
             }
         };
-
 
 string readHttpFileAndMerge(lsst::qserv::qdisp::UberJob::Ptr const& uberJob, string const& httpUrl,
                             size_t fileSize, function<void(char const*, uint32_t)> const& messageIsReady,
@@ -180,51 +179,6 @@ MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> const& merge
 
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__); }
 
-
-bool MergingHandler::flush(proto::ResponseSummary const& resp) {
-    _wName = resp.wname();
-
-    // This is needed to ensure the job query would be staying alive for the duration
-    // of the operation to prevent inconsistency within the application.
-    auto const jobQuery = getJobQuery().lock();
-    if (jobQuery == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobQuery was NULL");
-        return false;
-    }
-    auto const jobQuery = std::dynamic_pointer_cast<qdisp::JobQuery>(jobBase);
-
-    LOGS(_log, LOG_LVL_TRACE,
-         "MergingHandler::" << __func__ << " jobid=" << resp.jobid() << " transmitsize="
-                            << resp.transmitsize() << " rowcount=" << resp.rowcount() << " rowSize="
-                            << " attemptcount=" << resp.attemptcount() << " errorcode=" << resp.errorcode()
-                            << " errormsg=" << resp.errormsg());
-
-    if (resp.errorcode() != 0 || !resp.errormsg().empty()) {
-        _error = util::Error(resp.errorcode(), resp.errormsg(), util::ErrorCode::MYSQLEXEC);
-        _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());
-        LOGS(_log, LOG_LVL_ERROR,
-             "MergingHandler::" << __func__ << " error from worker:" << resp.wname() << " error: " << _error);
-        // This way we can track if the worker has reported this error. The current implementation
-        // requires the large result size to be reported as an error via the InfileMerger regardless
-        // of an origin of the error (Czar or the worker). Note that large results can be produced
-        // by the Czar itself, e.g., when the aggregate result of multiple worker queries is too large
-        // or by the worker when the result set of a single query is too large.
-        // The error will be reported to the Czar as a part of the response summary.
-        if (resp.errorcode() == util::ErrorCode::WORKER_RESULT_TOO_LARGE) {
-            _infileMerger->setResultSizeLimitExceeded();
-        }
-        return false;
-    }
-
-    bool const success = _merge(resp, jobQuery);
-    if (success) {
-        _infileMerger->mergeCompleteFor(resp.jobid());
-        qdisp::CzarStats::get()->addTotalRowsRecv(resp.rowcount());
-        qdisp::CzarStats::get()->addTotalBytesRecv(resp.transmitsize());
-    }
-    return success;
-}
-
 void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, msg, util::ErrorCode::RESULT_IMPORT);
     // Might want more info from result service.
@@ -243,13 +197,8 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     }
 
     if (fileSize == 0) return qdisp::MergeEndStatus(true);
-
-    // Read from the http stream and push records into the CSV stream in a separate thread.
-    // Note the fixed capacity of the stream which allows up to 2 records to be buffered
-    // in the stream. This is enough to hide the latency of the HTTP connection and
-    // the time needed to read the file.
-    auto csvStream = mysql::CsvStream::create(2);
-    _csvStream = csvStream;
+    auto csvMemDisk = mysql::CsvMemDisk::create(fileSize, uberJob->getQueryId(), uberJob->getUjId());
+    _csvMemDisk = csvMemDisk;
 
     // This must be after setting _csvStream to avoid cancelFileMerge()
     // race issues, and it needs to be before the thread starts.
@@ -259,21 +208,21 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     }
 
     string fileReadErrorMsg;
-    thread csvThread([uberJob, csvStream, fileUrl, fileSize, &fileReadErrorMsg]() {
+    auto transferFunc = [&]() {
         size_t bytesRead = 0;
         fileReadErrorMsg = ::readHttpFileAndMerge(
                 uberJob, fileUrl, fileSize,
-                [uberJob, csvStream, fileSize, &bytesRead](char const* buf, uint32_t size) {
+                [&](char const* buf, uint32_t size) {
                     bool last = false;
                     if (buf == nullptr || size == 0) {
                         last = true;
                     } else {
-                        csvStream->push(buf, size);
+                        csvMemDisk->push(buf, size);
                         bytesRead += size;
                         last = bytesRead >= fileSize;
                     }
                     if (last) {
-                        csvStream->push(nullptr, 0);
+                        csvMemDisk->push(nullptr, 0);
                     }
                 },
                 MergingHandler::_getHttpConnPool());
@@ -281,24 +230,24 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         // It may be needed to unblock the table merger which may be still attempting to read
         // from the CSV stream.
         if (!fileReadErrorMsg.empty()) {
-            csvStream->push(nullptr, 0);
+            csvMemDisk->push(nullptr, 0);
         }
-    });
+    };
+    csvMemDisk->transferDataFromWorker(transferFunc);
 
     // Attempt the actual merge.
-    bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvStream);
+    bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvMemDisk);
     if (!fileMergeSuccess) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg(), util::ErrorCode::RESULT_IMPORT);
     }
-    if (csvStream->getContaminated()) {
+    if (csvMemDisk->getContaminated()) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
         fileMergeSuccess = false;
         _setError(ccontrol::MSG_RESULT_ERROR, "merge stream contaminated", util::ErrorCode::RESULT_IMPORT);
     }
 
-    csvThread.join();
     if (!fileReadErrorMsg.empty()) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " result file read failed");
         _setError(ccontrol::MSG_HTTP_RESULT, fileReadErrorMsg, util::ErrorCode::RESULT_IMPORT);
@@ -309,14 +258,14 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     if (!mergeEStatus.success) {
         // This error check needs to come after the csvThread.join() to ensure writing
         // is finished. If any bytes were written, the result table is ruined.
-        mergeEStatus.contaminated = csvStream->getBytesWritten() > 0;
+        mergeEStatus.contaminated = csvMemDisk->getBytesFetched() > 0;
     }
 
     return mergeEStatus;
 }
 
 void MergingHandler::cancelFileMerge() {
-    auto csvStrm = _csvStream.lock();
+    auto csvStrm = _csvMemDisk.lock();
     if (csvStrm != nullptr) {
         csvStrm->cancel();
     }
@@ -342,9 +291,6 @@ qdisp::MergeEndStatus MergingHandler::flushHttp(string const& fileUrl, uint64_t 
          "MergingHandler::" << __func__ << " uberJob=" << uberJob->getIdStr() << " fileUrl=" << fileUrl);
 
     qdisp::MergeEndStatus mergeStatus = _mergeHttp(uberJob, fileUrl, fileSize);
-    if (mergeStatus.success) {
-        _infileMerger->mergeCompleteFor(uberJob->getUjId());
-    }
     return mergeStatus;
 }
 

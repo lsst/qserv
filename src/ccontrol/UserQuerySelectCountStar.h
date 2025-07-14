@@ -119,7 +119,6 @@ private:
     std::shared_ptr<qmeta::MessageStore> _messageStore;
     std::string _resultTable;
     std::string _resultLoc;  ///< Result location
-    std::string _resultTableName;
     std::string _userQueryId;
     std::string _rowsTable;
     std::string _resultDb;
