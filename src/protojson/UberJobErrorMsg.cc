@@ -50,9 +50,9 @@ string UberJobErrorMsg::_cName(const char* fName) const {
 
 UberJobErrorMsg::Ptr UberJobErrorMsg::create(string const& replicationInstanceId,
                                              string const& replicationAuthKey, unsigned int version,
-                                             string const& workerIdStr, string const& czarName,
-                                             CzarIdType czarId, QueryId queryId, UberJobId uberJobId,
-                                             int errorCode, string const& errorMsg) {
+                                             string const& workerIdStr, string const& czarName, CzarId czarId,
+                                             QueryId queryId, UberJobId uberJobId, int errorCode,
+                                             string const& errorMsg) {
     Ptr jrMsg = Ptr(new UberJobErrorMsg(replicationInstanceId, replicationAuthKey, version, workerIdStr,
                                         czarName, czarId, queryId, uberJobId, errorCode, errorMsg));
     return jrMsg;
@@ -69,7 +69,7 @@ UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWRe
                                             http::RequestBodyJSON::required<unsigned int>(jsWReq, "version"),
                                             http::RequestBodyJSON::required<string>(jsWReq, "workerid"),
                                             http::RequestBodyJSON::required<string>(jsWReq, "czar"),
-                                            http::RequestBodyJSON::required<CzarIdType>(jsWReq, "czarid"),
+                                            http::RequestBodyJSON::required<CzarId>(jsWReq, "czarid"),
                                             http::RequestBodyJSON::required<QueryId>(jsWReq, "queryid"),
                                             http::RequestBodyJSON::required<UberJobId>(jsWReq, "uberjobid"),
                                             http::RequestBodyJSON::required<int>(jsWReq, "errorCode"),
@@ -83,7 +83,7 @@ UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWRe
 
 UberJobErrorMsg::UberJobErrorMsg(string const& replicationInstanceId, string const& replicationAuthKey,
                                  unsigned int version, string const& workerId, string const& czarName,
-                                 CzarIdType czarId, QueryId queryId, UberJobId uberJobId, int errorCode,
+                                 CzarId czarId, QueryId queryId, UberJobId uberJobId, int errorCode,
                                  string const& errorMsg)
         : _replicationInstanceId(replicationInstanceId),
           _replicationAuthKey(replicationAuthKey),

@@ -27,7 +27,6 @@
 #include <string>
 
 // Qserv headers
-#include "qmeta/types.h"
 
 namespace lsst::qserv::qmeta {
 

@@ -25,7 +25,7 @@
 #include <memory>
 
 // Qserv headers
-#include "qmeta/types.h"
+#include "global/intTypes.h"
 
 // Forward declarations
 
@@ -101,7 +101,7 @@ void startGarbageCollectAsync(std::shared_ptr<cconfig::CzarConfig> czarConfig);
  * @param czarId The identifier of the Czar instance.
  * @param queryMetadata A pointer to the QMeta service.
  */
-void startGarbageCollectInProgress(std::shared_ptr<cconfig::CzarConfig> czarConfig, qmeta::CzarId czarId,
+void startGarbageCollectInProgress(std::shared_ptr<cconfig::CzarConfig> czarConfig, CzarId czarId,
                                    std::shared_ptr<qmeta::QMeta> queryMetadata);
 
 }  // namespace lsst::qserv::czar

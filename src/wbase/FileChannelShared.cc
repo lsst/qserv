@@ -253,43 +253,13 @@ json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned in
     return json::object({{"files", files}, {"num_selected", numSelected}, {"num_total", numTotal}});
 }
 
-shared_ptr<FileChannelShared> FileChannelShared::create(shared_ptr<wbase::SendChannel> const& sendChannel,
-                                                        qmeta::CzarId czarId, string const& workerId) {
+FileChannelShared::Ptr FileChannelShared::create(std::shared_ptr<wbase::UberJobData> const& uberJob) {
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
-    return shared_ptr<FileChannelShared>(new FileChannelShared(sendChannel, czarId, workerId));
+    return Ptr(new FileChannelShared(uberJob));
 }
 
-FileChannelShared::FileChannelShared(shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
-                                     string const& workerId)
-        : _sendChannel(sendChannel),
-          _uberJobId(0),
-          _czarId(czarId),
-          _czarHostName(""),  ///< Name of the czar host.
-          _czarPort(-1),
-          _workerId(workerId) {
-    LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared created");
-    if (_sendChannel == nullptr) {
-        throw util::Bug(ERR_LOC, "FileChannelShared constructor given nullptr");
-    }
-}
-
-FileChannelShared::Ptr FileChannelShared::create(std::shared_ptr<wbase::UberJobData> const& uberJob,
-                                                 qmeta::CzarId czarId, string const& czarHostName,
-                                                 int czarPort, string const& workerId) {
-    lock_guard<mutex> const lock(_resultsDirCleanupMtx);
-    return Ptr(new FileChannelShared(uberJob, czarId, czarHostName, czarPort, workerId));
-}
-
-FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData,
-                                     qmeta::CzarId czarId, string const& czarHostName, int czarPort,
-                                     string const& workerId)
-        : _sendChannel(nullptr),
-          _uberJobData(uberJobData),
-          _uberJobId(uberJobData->getUberJobId()),
-          _czarId(czarId),
-          _czarHostName(czarHostName),
-          _czarPort(czarPort),
-          _workerId(workerId) {
+FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData)
+        : _sendChannel(nullptr), _uberJobData(uberJobData), _uberJobId(uberJobData->getUberJobId()) {
     LOGS(_log, LOG_LVL_TRACE, "FileChannelShared created ujId=" << _uberJobId);
 }
 
@@ -548,14 +518,14 @@ void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
 bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_ptr<Task> const& task,
                                       bool cancelled, util::MultiError const& multiErr, bool mustSend) {
     auto const queryId = task->getQueryId();
-    auto const jobId = task->getJobId();  // TODO:UJ this should be UberJobId
-    auto const idStr(makeIdStr(queryId, jobId));
+    auto const jId = task->getJobId();
+    auto const idStr(makeIdStr(queryId, jId));
 
     // This lock is required for making consistent modifications and usage of the metadata
     // and response buffers.
     lock_guard<mutex> const streamMutexLock(_streamMutex);
 
-    QSERV_LOGCONTEXT_QUERY_JOB(queryId, jobId);
+    QSERV_LOGCONTEXT_QUERY_JOB(queryId, jId);
 
     if (isDead() && !mustSend) {
         LOGS(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");

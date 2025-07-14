@@ -57,7 +57,7 @@ public:
     using Ptr = std::shared_ptr<QueryStatistics>;
 
     /// Force shared_ptr creation for data integrity.
-    static Ptr create(QueryId queryId_, CzarIdType czarId_) {
+    static Ptr create(QueryId queryId_, CzarId czarId_) {
         return std::shared_ptr<QueryStatistics>(new QueryStatistics(queryId_, czarId_));
     }
 
@@ -170,10 +170,9 @@ public:
     friend std::ostream& operator<<(std::ostream& os, QueryStatistics const& q);
 
 private:
-    explicit QueryStatistics(QueryId queryId, CzarIdType czarId);
+    explicit QueryStatistics(QueryId queryId, CzarId czarId);
     bool _isMostlyDead() const;
 
-    util::InstanceCount const _icqs{"QueryStatistics"};
     mutable std::mutex _qStatsMtx;
 
     std::chrono::system_clock::time_point _touched = std::chrono::system_clock::now();

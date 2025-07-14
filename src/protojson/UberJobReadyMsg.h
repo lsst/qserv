@@ -47,7 +47,7 @@ public:
 
     UberJobReadyMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
                     unsigned int version, std::string const& workerId, std::string const& czarName,
-                    CzarIdType czarId, QueryId queryId, UberJobId uberJobId, std::string const& fileUrl,
+                    CzarId czarId, QueryId queryId, UberJobId uberJobId, std::string const& fileUrl,
                     uint64_t rowCount, uint64_t fileSize);
 
     UberJobReadyMsg() = delete;
@@ -56,7 +56,7 @@ public:
 
     static Ptr create(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
                       unsigned int version, std::string const& workerIdStr, std::string const& czarName,
-                      CzarIdType czarId, QueryId queryId, UberJobId uberJobId, std::string const& fileUrl,
+                      CzarId czarId, QueryId queryId, UberJobId uberJobId, std::string const& fileUrl,
                       uint64_t rowCount, uint64_t fileSize);
 
     /// This function creates a UberJobReadyMsg object from the worker json `czarJson`, the
@@ -70,7 +70,7 @@ public:
 
     std::string const& getWorkerId() const { return _workerId; }
     std::string const& getCzarName() const { return _czarName; }
-    CzarIdType getCzarId() const { return _czarId; }
+    CzarId getCzarId() const { return _czarId; }
     QueryId getQueryId() const { return _queryId; }
     UberJobId getUberJobId() const { return _uberJobId; }
     std::string const& getFileUrl() const { return _fileUrl; }
@@ -86,7 +86,7 @@ private:
     unsigned int const _version;
     std::string const _workerId;
     std::string const _czarName;
-    CzarIdType const _czarId;
+    CzarId const _czarId;
     QueryId const _queryId;
     UberJobId const _uberJobId;
     std::string const _fileUrl;

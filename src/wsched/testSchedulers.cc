@@ -176,7 +176,6 @@ Task::Ptr makeTask(UberJobData::Ptr const& ujData, int jobId, int chunkId, int f
                                                fragSubchunkIds, sc, queryStats));
     return task;
 }
-*/
 
 struct SchedulerFixture {
     SchedulerFixture(void) { counter = 20; }
@@ -212,7 +211,6 @@ struct SchedulerFixture {
         gs.queCmd(t);
         return t;
     }
-    */
 
     int counter;
 };
@@ -280,9 +278,6 @@ void logCmd(lsst::qserv::util::Command::Ptr const& cmd, std::string const& note)
 
 // TODO: DM-33302 replace this test case
 BOOST_AUTO_TEST_CASE(Grouping) {
-#if 0   // &&& fix and re-enable
-    SchedFixture f(60.0, 1);  // Values to keep QueriesAndChunk from triggering.
-
     LOGS(_log, LOG_LVL_DEBUG, "Test_case grouping");
 
     int const deadAfter = 1;
@@ -394,11 +389,9 @@ BOOST_AUTO_TEST_CASE(Grouping) {
     BOOST_CHECK(gs.getInFlight() == 10);
     BOOST_CHECK(gs.ready() == false);
     BOOST_CHECK(gs.empty() == true);
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_CASE(GroupMaxThread) {
-#if 0   // &&& fix and re-enable
     // Test that maxThreads is meaningful.
     LOGS(_log, LOG_LVL_WARN, "Test_case GroupMaxThread");
     auto scanInfo = makeScanInfoFastest();
@@ -441,11 +434,9 @@ BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     auto aa4 = gs.getCmd(false);
     BOOST_CHECK(a4.get() == aa4.get());
     BOOST_CHECK(gs.ready() == false);
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
-#if 0   // &&& fix and re-enable
     LOGS(_log, LOG_LVL_DEBUG, "Test_case ScanScheduleTest");
 
     auto queries = setupQueries(maxBootedC, maxDarkTasksC, resetForTestingC, 1, 300);
@@ -509,11 +500,9 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     sched.commandFinish(tsk1);
     BOOST_CHECK(sched.getInFlight() == 0);
     BOOST_CHECK(sched.ready() == false);
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
-#if 0   // &&& fix and re-enable
     LOGS(_log, LOG_LVL_DEBUG, "Test_case BlendScheduleTest");
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
     // TODO: This needs to be evaluated and removed.
@@ -728,11 +717,9 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
     BOOST_CHECK(fixt.blend->calcAvailableTheads() == 5);
     BOOST_CHECK(fixt.blend->getInFlight() == 0);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 done");
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
-#if 0   // &&& fix and re-enable
     LOGS(_log, LOG_LVL_DEBUG, "Test_case BlendScheduleThreadLimitingTest");
     int const deadAfter = 1;
     int const examineAfter = 1;
@@ -814,11 +801,9 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
     BOOST_CHECK(fixt.blend->getInFlight() == 0);
     BOOST_CHECK(fixt.blend->ready() == false);
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-2 done");
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
-#if 0   // &&& fix and re-enable
     // Test that space is appropriately reserved for each scheduler as Tasks are started and finished.
     // In this case, memMan->lock(..) always returns true (really HandleType::ISEMPTY).
     // ChunkIds matter as they control the order Tasks come off individual schedulers.
@@ -893,7 +878,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
 }
 
 BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
-#if 0   // &&& fix and re-enable
     // Test if a task is removed if it takes takes too long.
     // Give the user query 0.1 seconds to run and run it for a second, it should get removed.
     double tenthOfSecInMinutes = 1.0 / 600.0;  // task
@@ -986,7 +970,6 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     LOGS(_log, LOG_LVL_INFO, "BlendScheduleQueryBootTaskTest waiting for pool to finish.");
     pool->shutdownPool();
     LOGS(_log, LOG_LVL_INFO, "BlendScheduleQueryBootTaskTest done");
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
@@ -1057,14 +1040,17 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     BOOST_CHECK(hPop.get() == a4.get());
     BOOST_CHECK(heap.empty() == true);
     LOGS(_log, LOG_LVL_DEBUG, "SlowTableHeapTest done");
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
-#if 0   // &&& fix and re-enable
-    LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksTest start");
-    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
-                                                 maxDarkTasksC, resetForTestingC);
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksTest start, see ScanInfo::compareTables");
+    int const deadAfter = 1;
+    int const examineAfter = 1;
+    auto qac = setupQueries(maxBootedC, maxDarkTasksC, resetForTestingC, deadAfter, examineAfter);
+    SchedFixture fixt(60.0, qac);
+    shared_ptr<FileChannelShared> sc = nullptr;
+    bool const scanInteractiveF = false;
+
     int chunkId = 7;
     wsched::ChunkTasks chunkTasks{chunkId};
     lsst::qserv::QueryId qIdInc = 1;
@@ -1138,14 +1124,18 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     chunkTasks.taskComplete(a4);
     BOOST_CHECK(chunkTasks.readyToAdvance() == true);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksTest done");
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
-#if 0   // &&& fix and re-enable
-    LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksQueueTest start");
-    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
-                                                 maxDarkTasksC, resetForTestingC);
+    LOGS(_log, LOG_LVL_DEBUG, "Test_case ChunkTasksQueueTest start, see ScanInfo::compareTables");
+
+    int const deadAfter = 1;
+    int const examineAfter = 1;
+    auto qac = setupQueries(maxBootedC, maxDarkTasksC, resetForTestingC, deadAfter, examineAfter);
+    SchedFixture fixt(60.0, qac);
+    shared_ptr<FileChannelShared> sc = nullptr;
+    bool const scanInteractiveF = false;
+
     int firstChunkId = 100;
     int secondChunkId = 150;
     int chunkId = firstChunkId;
@@ -1276,7 +1266,6 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.ready(true) == false);
     BOOST_CHECK(ctl.getActiveChunkId() == -1);
     LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueueTest done");
-#endif  // &&& fix and re-enable
 }
 
 BOOST_AUTO_TEST_SUITE_END()

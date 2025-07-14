@@ -61,7 +61,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.UberJobData");
 
 namespace lsst::qserv::wbase {
 
-UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
+UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, CzarId czarId,
                          std::string czarHost, int czarPort, uint64_t queryId, int rowLimit,
                          uint64_t maxTableSizeBytes, protojson::ScanInfo::Ptr const& scanInfo,
                          bool scanInteractive, std::string const& workerId,
@@ -255,18 +255,26 @@ void UJTransmitCmd::action(util::CmdData* data) {
     bool transmitSuccess = false;
     try {
         json const response = client.readAsJson();
-        if (0 != response.at("success").get<int>()) {
+        auto respMsg = protojson::ResponseMsg::createFromJson(response);
+        if (respMsg->success) {
             transmitSuccess = true;
+            string note = response.at("note");
+            if (note != "") {
+                LOGS(_log, LOG_LVL_INFO, response);
+            }
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");
+            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0 " << response);
+            respMsg->failedUpdateUberJobData(ujPtr);
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
+            return;
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + _requestContext + " failed, ex: " + ex.what());
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " " << _requestContext << " failed, ex: " << ex.what());
     }
 
     if (!transmitSuccess) {
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " resending!");
         auto sPtr = _selfPtr;
         if (_foreman != nullptr && sPtr != nullptr) {
             // Do not reset _selfPtr as re-queuing may be needed several times.
@@ -275,7 +283,7 @@ void UJTransmitCmd::action(util::CmdData* data) {
             auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
             // This will check if the czar is believed to be alive and try the queue the query to be tried
             // again at a lower priority. It it thinks the czar is dead, it will throw it away.
-            // TODO:UJ I have my doubts about this as a reconnected czar may go down in flames
+            // TODO:DM-53242 I have my doubts about this as a reconnected czar may go down in flames
             //         as it is hit with thousands of these. The priority queue in the wPool should
             //         help limit these to sane amounts, but the alternate plan below is probably safer.
             //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
