@@ -160,7 +160,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _uqFactory(),
           _clientToQuery(),
           _monitorSleepTime(_czarConfig->getMonitorSleepTimeMilliSec()),
-          _activeWorkerMap(new ActiveWorkerMap(_czarConfig)) {
+          _activeWorkerMap(new ActiveWorkerMap(_czarConfig)),
+          _fqdn(util::getCurrentHostFqdnBlocking()) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);

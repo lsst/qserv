@@ -127,7 +127,7 @@ void UberJob::runUberJob() {
     uint64_t maxTableSizeMB = czarConfig->getMaxTableSizeMB();
     auto czInfo = protojson::CzarContactInfo::create(
             czarConfig->name(), czarConfig->id(), czarConfig->replicationHttpPort(),
-            util::get_current_host_fqdn(), czar::Czar::czarStartupTime);
+            czar::Czar::getCzar()->getFqdn(), czar::Czar::czarStartupTime);
     auto scanInfoPtr = exec->getScanInfo();
     bool scanInteractive = exec->getScanInteractive();
 
