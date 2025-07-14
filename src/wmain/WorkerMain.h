@@ -59,11 +59,15 @@ public:
 
     std::string getName() const { return _name; }
 
+    /// End WorkerMain, calling this multiple times is harmless.
     void terminate();
     void waitForTerminate();
 
 private:
     WorkerMain();
+
+    void _registryUpdateLoop();
+    std::thread _registryUpdateThread;
 
     /// Weak pointer to allow global access without complicating lifetime issues.
     static std::weak_ptr<WorkerMain> _globalWorkerMain;
@@ -85,7 +89,7 @@ private:
     std::shared_ptr<wcomms::HttpSvc> _controlHttpSvc;
 
     /// Set to true when the program should terminate.
-    bool _terminate = false;
+    std::atomic<bool> _terminate{false};
     std::mutex _terminateMtx;
     std::condition_variable _terminateCv;
 };

@@ -86,7 +86,7 @@ void CzarRegistry::_registryUpdateLoop() {
                                         {{"name", _czarConfig->name()},
                                          {"id", _czarConfig->id()},
                                          {"management-port", _czarConfig->replicationHttpPort()},
-                                         {"management-host-name", util::get_current_host_fqdn()}}}});
+                                         {"host-name", util::get_current_host_fqdn()}}}});
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
     LOGS(_log, LOG_LVL_TRACE,
          __func__ << " czarPost url=" << url << " request=" << request.dump() << " headers=" << headers[0]);
@@ -113,6 +113,7 @@ void CzarRegistry::_registryWorkerInfoLoop() {
     string const replicationInstanceId = _czarConfig->replicationInstanceId();
     string const replicationAuthKey = _czarConfig->replicationAuthKey();
     uint64_t const czarStartTime = Czar::czarStartupTime;
+    string const fqdn = util::get_current_host_fqdn();
 
     vector<string> const headers;
     auto const method = http::Method::GET;
@@ -133,9 +134,9 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                 protojson::WorkerContactInfo::WCMapPtr wMap = _buildMapFromJson(response);
                 // Update the values in the map
                 {
-                    auto czInfo = protojson::CzarContactInfo::create(
-                            _czarConfig->name(), _czarConfig->id(), _czarConfig->replicationHttpPort(),
-                            util::get_current_host_fqdn(), czarStartTime);
+                    auto czInfo = protojson::CzarContactInfo::create(_czarConfig->name(), _czarConfig->id(),
+                                                                     _czarConfig->replicationHttpPort(), fqdn,
+                                                                     czarStartTime);
                     lock_guard lck(_cmapMtx);
                     if (wMap != nullptr) {
                         _contactMap = wMap;
