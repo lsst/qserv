@@ -50,40 +50,31 @@
 #include "util/threadSafe.h"
 #include "util/ThreadPool.h"
 
+namespace lsst::qserv::ccontrol {
+class UserQuerySelect;
+}
+
 namespace lsst::qserv::qmeta {
+class MessageStore;
 class QProgress;
 class QProgressHistory;
 }  // namespace lsst::qserv::qmeta
 
-
-namespace lsst::qserv {
-
-namespace ccontrol {
-class UserQuerySelect;
-}
-
-namespace qmeta {
-class MessageStore;
-}  // namespace qmeta
-
-namespace qproc {
+namespace lsst::qserv::qproc {
 class QuerySession;
 }  // namespace lsst::qserv::qproc
 
-namespace qdisp {
-class JobQuery;
-class UberJob;
-}  // namespace qdisp
-
-
-namespace util {
+namespace lsst::qserv::util {
 class AsyncTimer;
 class PriorityCommand;
 class QdispPool;
-}  // namespace util
+}  // namespace lsst::qserv::util
 
 // This header declarations
 namespace lsst::qserv::qdisp {
+
+class JobQuery;
+class UberJob;
 
 /// class Executive manages the execution of jobs for a UserQuery.
 class Executive : public std::enable_shared_from_this<Executive> {
@@ -233,6 +224,15 @@ public:
     /// cancel this user query.
     void checkResultFileSize(uint64_t fileSize = 0);
 
+    /// Returns a pointer to a lock on _mtxLimitSquash.
+    std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();
+
+    void collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& fileUrl, uint64_t fileSize,
+                     uint64_t rowCount, std::string const& idStr);
+
+    /// Return true if the result size limit has been exceeded.
+    bool resultSizeLimitExceeded() const { return _resultFileSizeExceeded; }
+
 protected:
     Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,
@@ -273,8 +273,9 @@ private:
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
-    std::shared_ptr<util::QdispPool>
-            _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
+
+    /// Shared thread pool for handling commands to and from workers.
+    std::shared_ptr<util::QdispPool> _qdispPool;
 
     std::deque<std::shared_ptr<util::PriorityCommand>> _jobStartCmdList;  ///< list of jobs to start.
 
@@ -351,6 +352,15 @@ private:
 
     std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
     std::atomic<uint64_t> _jobCancelCount{0};       ///< Total number of JOB_CANCEL messages received.
+
+    /// This mutex is used to limit collecting result files to one at a time
+    /// but only when the executive will squash the query when the limit is reached.
+    /// This keeps data transfers (and temporary storage requirements) from
+    /// getting out of hand.
+    std::mutex _mtxLimitSquash;
+
+    /// Set to true if the result file is too large.
+    std::atomic<bool> _resultFileSizeExceeded{false};
 };
 
 }  // namespace lsst::qserv::qdisp

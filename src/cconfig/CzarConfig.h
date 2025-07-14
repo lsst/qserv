@@ -130,8 +130,16 @@ public:
     /// Getters for result aggregation options.
     int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
+    unsigned int getMaxTransferMemMB() const { return _resultMaxTransferMemMB->getVal(); }
+    /// Return the transfer directory. This is customizable to allow for a
+    /// high performance volume.
+    std::string getTransferDir() const { return _resultTransferDir->getVal(); }
 
-    /// The size of the TCP connection pool witin the client API that is used
+    /// Return the minimum amount of memory per UberJob to keep in memory. This much transfer
+    /// data will be stored in memory regardless of other conditions.
+    unsigned int getTransferMinMBInMem() const { return _resultTransferMinMBInMem->getVal(); }
+
+    /// The size of the TCP connection pool within the client API that is used
     /// by the merger to pool result files from workers via the HTTP protocol.
     int getResultMaxHttpConnections() const { return _resultMaxHttpConnections->getVal(); }
 
@@ -168,13 +176,6 @@ public:
     /// based on tracking state changes in various entities. If 0 is returned by
     /// the method then the monitoring will be disabled.
     unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec->getVal(); }
-
-    /// @return The maximum retain period for keeping in memory the relevant metrics
-    /// captured by the Czar monitoring system. If 0 is returned by the method then
-    /// query history archiving will be disabled.
-    /// @note Setting the limit too high may be potentially result in runing onto
-    /// the OOM situation.
-    unsigned int czarStatsRetainPeriodSec() const { return _czarStatsRetainPeriodSec->getVal(); }
 
     /// A worker is considered fully ALIVE if the last update from the worker has been
     /// heard in less than _activeWorkerTimeoutAliveSecs seconds.
@@ -305,6 +306,14 @@ private:
             util::ConfigValTInt::create(_configValMap, "resultdb", "oldestResultKeptDays", notReq, 30);
     CVTIntPtr _oldestAsyncResultKeptSeconds = util::ConfigValTInt::create(
             _configValMap, "resultdb", "oldestAsyncResultKeptSeconds", notReq, 3600);
+
+    // This must be larger than _maxTableSizeMB when using the "memory" TransferMethod
+    CVTUIntPtr _resultMaxTransferMemMB =
+            util::ConfigValTUInt::create(_configValMap, "resultdb", "maxTransferMemMB", notReq, 10000);
+    CVTStrPtr _resultTransferDir =
+            util::ConfigValTStr::create(_configValMap, "resultdb", "transferDir", notReq, "/tmp");
+    CVTUIntPtr _resultTransferMinMBInMem =
+            util::ConfigValTUInt::create(_configValMap, "resultdb", "transferMinMBInMem", notReq, 10);
 
     /// Get all the elements in the css section.
     CVTStrPtr _cssTechnology =
