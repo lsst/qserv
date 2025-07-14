@@ -123,7 +123,6 @@ public:
      */
     static Ptr getCzar() { return _czar; }
 
-
     /// Remove all old tables in the qservResult database.
     void removeOldResultTables();
 
@@ -160,6 +159,8 @@ public:
     std::shared_ptr<util::QdispPool> getQdispPool() const { return _qdispPool; }
 
     std::shared_ptr<http::ClientConnPool> getCommandHttpPool() const { return _commandHttpPool; }
+
+    std::string const& getFqdn() const { return _fqdn; }
 
     /// Startup time of czar, sent to workers so they can detect that the czar was
     /// was restarted when this value changes.
@@ -254,6 +255,9 @@ private:
     /// Pool of http client connections for sending commands (UberJobs
     /// and worker status requests).
     std::shared_ptr<http::ClientConnPool> _commandHttpPool;
+
+    /// FQDN for this czar.
+    std::string const _fqdn;
 };
 
 }  // namespace lsst::qserv::czar

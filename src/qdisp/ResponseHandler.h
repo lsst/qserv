@@ -66,11 +66,6 @@ public:
     void setUberJob(std::weak_ptr<UberJob> const& ujPtr) { _uberJob = ujPtr; }
     virtual ~ResponseHandler() {}
 
-    /// Process a request for pulling and merging a job result into the result table
-    /// @param responseSummary - worker response to be analyzed and processed
-    /// @return true if successful (no error)
-    virtual bool flush(proto::ResponseSummary const& responseSummary) = 0;
-
     /// Collect result data from the worker and merge it with the query result table.
     /// If MergeEndStatus.success == true, then everything is fine.
     /// If not .success, and not .contaminated, the user query can be saved by abandoning
