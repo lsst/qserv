@@ -154,11 +154,7 @@ std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<CsvBuffer> const& csvBu
 int LocalInfile::Mgr::local_infile_init(void** ptr, const char* filename, void* userdata) {
     assert(userdata);
     LocalInfile::Mgr* m = static_cast<LocalInfile::Mgr*>(userdata);
-<<<<<<< HEAD
-    auto csvBuffer = m->get(std::string(filename));
-=======
     auto csvBuffer = m->getCsv(std::string(filename));
->>>>>>> 24f5d37ea (Added JobErrorMsg.)
     assert(csvBuffer);
     LocalInfile* lf = new LocalInfile(filename, csvBuffer);
     *ptr = lf;
@@ -192,17 +188,10 @@ void LocalInfile::Mgr::setBuffer(std::string const& filename, std::shared_ptr<Cs
     }
 }
 
-<<<<<<< HEAD
-std::shared_ptr<CsvBuffer> LocalInfile::Mgr::get(std::string const& filename) {
-    std::lock_guard<std::mutex> lock(_mapMutex);
-    CsvBufferMap::iterator i = _map.find(filename);
-    if (i == _map.end()) {
-=======
 std::shared_ptr<CsvBuffer> LocalInfile::Mgr::getCsv(std::string const& filename) {
     std::lock_guard<std::mutex> lock(_mapMutex);
     auto i = _mapCsv.find(filename);
     if (i == _mapCsv.end()) {
->>>>>>> 24f5d37ea (Added JobErrorMsg.)
         return std::shared_ptr<CsvBuffer>();
     }
     return i->second;
@@ -218,11 +207,7 @@ std::string LocalInfile::Mgr::_nextFilename() {
 
 bool LocalInfile::Mgr::_set(std::string const& filename, std::shared_ptr<CsvBuffer> const& csvBuffer) {
     std::lock_guard<std::mutex> lock(_mapMutex);
-<<<<<<< HEAD
-    auto res = _map.insert(std::pair<std::string, std::shared_ptr<CsvBuffer>>(filename, csvBuffer));
-=======
     auto res = _mapCsv.insert(std::pair<std::string, std::shared_ptr<CsvBuffer>>(filename, csvBuffer));
->>>>>>> 24f5d37ea (Added JobErrorMsg.)
     return res.second;
 }
 

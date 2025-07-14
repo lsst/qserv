@@ -2,6 +2,7 @@ add_library(mysql SHARED)
 
 target_sources(mysql PRIVATE
     CsvBuffer.cc
+    CsvMemDisk.cc
     LocalInfile.cc
     MySqlConfig.cc
     MySqlConnection.cc
