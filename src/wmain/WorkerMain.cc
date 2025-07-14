@@ -97,46 +97,6 @@ std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(string const& worke
     return inventory;
 }
 
-/**
- * This function will keep periodically updating worker's info in the Replication
- * System's Registry.
- * @param id The unique identifier of a worker to be registered.
- * @note The thread will terminate the process if the registraton request to the Registry
- * was explicitly denied by the service. This means the application may be misconfigured.
- * Transient communication errors when attempting to connect or send requests to
- * the Registry will be posted into the log stream and ignored.
- */
-void registryUpdateLoop(string const& id) {
-    auto const workerConfig = wconfig::WorkerConfig::instance();
-    auto const method = http::Method::POST;
-    string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
-                       to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
-    vector<string> const headers = {"Content-Type: application/json"};
-    json const request = json::object({{"version", http::MetaModule::version},
-                                       {"instance_id", workerConfig->replicationInstanceId()},
-                                       {"auth_key", workerConfig->replicationAuthKey()},
-                                       {"worker",
-                                        {{"name", id},
-                                         {"management-port", workerConfig->replicationHttpPort()},
-                                         {"management-host-name", util::get_current_host_fqdn()}}}});
-    string const requestContext =
-            "WorkerMain: '" + http::method2string(method) + "' request to '" + url + "'";
-    http::Client client(method, url, request.dump(), headers);
-    while (true) {
-        try {
-            json const response = client.readAsJson();
-            if (0 == response.at("success").get<int>()) {
-                string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
-                abort();
-            }
-        } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
-        }
-        this_thread::sleep_for(chrono::seconds(max(1U, workerConfig->replicationRegistryHearbeatIvalSec())));
-    }
-}
-
 }  // namespace
 
 namespace lsst::qserv::wmain {
@@ -266,24 +226,70 @@ WorkerMain::WorkerMain() {
 
     // Begin periodically updating worker's status in the Replication System's registry
     // in the detached thread. This will continue before the application gets terminated.
-    thread registryUpdateThread(::registryUpdateLoop, _foreman->chunkInventory()->id());
-    registryUpdateThread.detach();
+    thread registryUpdateThread(&WorkerMain::_registryUpdateLoop, this);
+    _registryUpdateThread = move(registryUpdateThread);
 }
 
 void WorkerMain::waitForTerminate() {
     unique_lock uniq(_terminateMtx);
-    _terminateCv.wait(uniq, [this]() { return _terminate; });
+    _terminateCv.wait(uniq, [this]() -> bool { return _terminate; });
 }
 
 void WorkerMain::terminate() {
-    lock_guard lck(_terminateMtx);
-    _terminate = true;
+    {
+        lock_guard lck(_terminateMtx);
+        if (_terminate.exchange(true)) return;
+        ;
+    }
     _terminateCv.notify_all();
+    _controlHttpSvc->stop();
 }
 
 WorkerMain::~WorkerMain() {
     LOGS(_log, LOG_LVL_INFO, "WorkerMain shutdown.");
-    _controlHttpSvc->stop();
+    terminate();
+    _registryUpdateThread.join();
+}
+
+/**
+ * This function will keep periodically updating worker's info in the Replication
+ * System's Registry.
+ * @param id The unique identifier of a worker to be registered.
+ * @note The thread will terminate the process if the registraton request to the Registry
+ * was explicitly denied by the service. This means the application may be misconfigured.
+ * Transient communication errors when attempting to connect or send requests to
+ * the Registry will be posted into the log stream and ignored.
+ */
+void WorkerMain::_registryUpdateLoop() {
+    string const id = _foreman->chunkInventory()->id();
+    auto const workerConfig = wconfig::WorkerConfig::instance();
+    auto const method = http::Method::POST;
+    string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
+                       to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
+    vector<string> const headers = {"Content-Type: application/json"};
+    json const request = json::object({{"version", http::MetaModule::version},
+                                       {"instance_id", workerConfig->replicationInstanceId()},
+                                       {"auth_key", workerConfig->replicationAuthKey()},
+                                       {"worker",
+                                        {{"name", id},
+                                         {"management-port", workerConfig->replicationHttpPort()},
+                                         {"management-host-name", _foreman->getFqdn()}}}});
+    string const requestContext =
+            "WorkerMain: '" + http::method2string(method) + "' request to '" + url + "'";
+    http::Client client(method, url, request.dump(), headers);
+    while (!_terminate) {
+        try {
+            json const response = client.readAsJson();
+            if (0 == response.at("success").get<int>()) {
+                string const error = response.at("error").get<string>();
+                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                abort();
+            }
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+        }
+        this_thread::sleep_for(chrono::seconds(max(1U, workerConfig->replicationRegistryHearbeatIvalSec())));
+    }
 }
 
 }  // namespace lsst::qserv::wmain

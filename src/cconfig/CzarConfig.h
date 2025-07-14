@@ -131,7 +131,7 @@ public:
     int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
 
-    /// The size of the TCP connection pool witin the client API that is used
+    /// The size of the TCP connection pool within the client API that is used
     /// by the merger to pool result files from workers via the HTTP protocol.
     int getResultMaxHttpConnections() const { return _resultMaxHttpConnections->getVal(); }
 
