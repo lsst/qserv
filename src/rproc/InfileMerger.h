@@ -46,7 +46,7 @@
 // Forward declarations
 namespace lsst::qserv {
 namespace mysql {
-class CsvStream;
+class CsvMemDisk;
 class MysqlConfig;
 }  // namespace mysql
 namespace qdisp {
@@ -104,10 +104,7 @@ public:
 
     /// Merge the result data collected over Http.
     bool mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, uint64_t fileSize,
-                   std::shared_ptr<mysql::CsvStream> const& csvStream);
-
-    /// Indicate the merge for the job is complete.
-    void mergeCompleteFor(int jobId);
+                   std::shared_ptr<mysql::CsvMemDisk> const& csvMemDisk);
 
     /// @return error details if finalize() returns false
     util::Error const& getError() const { return _error; }
@@ -125,12 +122,6 @@ public:
 
     /// Check if the object has completed all processing.
     bool isFinished() const;
-
-    /// Check if the result size limit has been exceeded.
-    bool resultSizeLimitExceeded() const { return _resultSizeLimitExceeded.load(); }
-
-    /// Check if the result size limit has been exceeded.
-    void setResultSizeLimitExceeded() { _resultSizeLimitExceeded.store(true); }
 
     void setMergeStmtFromList(std::shared_ptr<query::SelectStmt> const& mergeStmt) const;
 
@@ -171,19 +162,18 @@ private:
     bool _applySqlLocal(std::string const& sql, sql::SqlResults& results, sql::SqlErrorObject& errObj);
     bool _sqlConnect(sql::SqlErrorObject& errObj);
 
-    util::InstanceCount const _icIm{"InfileMerger"};
     std::string _getQueryIdStr();
     void _setQueryIdStr(std::string const& qIdStr);
     void _fixupTargetName();
     bool _setupConnectionMyIsam();
 
-    InfileMergerConfig _config;                         ///< Configuration
-    std::shared_ptr<sql::SqlConnection> _sqlConn;       ///< SQL connection
-    std::string _mergeTable;                            ///< Table for result loading
-    util::Error _error;                                 ///< Error state
-    bool _isFinished = false;                           ///< Completed?
-    std::atomic<bool> _resultSizeLimitExceeded{false};  ///< Large result query?
-    std::mutex _sqlMutex;                               ///< Protection for SQL connection
+    InfileMergerConfig _config;                    ///< Configuration
+    std::shared_ptr<sql::SqlConnection> _sqlConn;  ///< SQL connection
+    std::string _mergeTable;                       ///< Table for result loading
+    util::Error _error;                            ///< Error state
+    bool _isFinished = false;                      ///< Completed?
+    std::mutex _sqlMutex;                          ///< Protection for SQL connection
+
     mysql::MySqlConnection _mysqlConn;
     std::mutex _mysqlMutex;
     mysql::LocalInfile::Mgr _infileMgr;
@@ -195,10 +185,10 @@ private:
             10;  ///< maximum number of times to retry connecting to the SQL database.
 
     /// Variable to track result size. Each
-    size_t const _maxResultTableSizeBytes;    ///< Max result table size in bytes.
-    size_t _totalResultSize = 0;              ///< Size of result so far in bytes.
-    std::map<int, size_t> _perJobResultSize;  ///< Result size for each job
-    std::mutex _mtxResultSizeMtx;             ///< Protects _perJobResultSize and _totalResultSize.
+    size_t const _maxResultTableSizeBytes;  ///< Max result table size in bytes.
+    size_t _totalResultSize = 0;            ///< Size of result so far in bytes.
+    std::mutex _mtxResultSizeMtx;           ///< Protects _totalResultSize.
+    std::mutex _finalMergeMtx;              ///< Protects mysql result tables
 };
 
 }  // namespace lsst::qserv::rproc
