@@ -242,7 +242,7 @@ void SQLBackend::_memLockRelease() {
 /// Exit the program immediately to reduce minimize possible problems.
 void SQLBackend::_exitDueToConflict(const std::string& msg) {
     // This will likely not be a clean exit.
-    // TODO:UJ try for a clean exit by calling WorkerMain::terminate().
+    // TODO:Maybe try for a clean exit by calling WorkerMain::terminate().
     _lockConflict = true;
     LOGS(_log, LOG_LVL_ERROR, msg);
     exit(EXIT_FAILURE);

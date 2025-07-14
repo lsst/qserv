@@ -234,16 +234,25 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
         }
     };
     csvMemDisk->transferDataFromWorker(transferFunc);
+    if (csvMemDisk->isCancelled()) {
+        // Since csvMemDisk was cancelled, avoid merging to avoid risks of contamination.
+        LOGS(_log, LOG_LVL_DEBUG, __func__ << " csvMemDisk cancelled");
+        return qdisp::MergeEndStatus(false);
+    }
+
+    bool mergeOk = _startMerge();
+    if (!mergeOk) {
+        LOGS(_log, LOG_LVL_DEBUG, __func__ << " merge cancelled");
+        return qdisp::MergeEndStatus(false);
+    }
 
     // Attempt the actual merge.
     bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvMemDisk);
-
     if (!fileMergeSuccess) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg(), util::ErrorCode::RESULT_IMPORT);
     }
-
     if (csvMemDisk->getContaminated()) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
         fileMergeSuccess = false;
@@ -266,11 +275,31 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     return mergeEStatus;
 }
 
-void MergingHandler::cancelFileMerge() {
-    auto csvStrm = _csvMemDisk.lock();
-    if (csvStrm != nullptr) {
-        csvStrm->cancel();
+bool MergingHandler::cancelFileMerge() {
+    lock_guard mergeStateLock(_mergeStateMtx);
+    if (_mergeState == PREMERGE || _mergeState == CANCELLED) {
+        _mergeState = CANCELLED;
+        auto csvStrm = _csvMemDisk.lock();
+        if (csvStrm != nullptr) {
+            csvStrm->cancel();
+        }
+        // Merging to the result table hasn't been started, so
+        // this can be cancelled.
+        return true;
     }
+    // Cancelling at this point would probably corrupt the result table.
+    return false;
+}
+
+bool MergingHandler::_startMerge() {
+    lock_guard mergeStateLock(_mergeStateMtx);
+    if (_mergeState == PREMERGE) {
+        _mergeState = MERGING;
+        // Merging hasn't been cancelled, so it's ok to start.
+        return true;
+    }
+    // Merge was cancelled.
+    return false;
 }
 
 void MergingHandler::_setError(int code, std::string const& msg, int errorState) {
