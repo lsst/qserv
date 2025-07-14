@@ -144,9 +144,6 @@ public:
 
     std::string cName(const char* func) const { return std::string("Task::") + func + " " + _idStr; }
 
-    // TODO:UJ too many parameters.
-    //  - fragmentNumber seems pointless
-    //  - hasSubchunks seems redundant.
     //  Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
     //  Candidates: maxTableSizeMb, FileChannelShared, resultsHttpPort.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
