@@ -50,9 +50,9 @@ string UberJobReadyMsg::_cName(const char* fName) const {
 
 UberJobReadyMsg::Ptr UberJobReadyMsg::create(string const& replicationInstanceId,
                                              string const& replicationAuthKey, unsigned int version,
-                                             string const& workerIdStr, string const& czarName,
-                                             CzarIdType czarId, QueryId queryId, UberJobId uberJobId,
-                                             string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
+                                             string const& workerIdStr, string const& czarName, CzarId czarId,
+                                             QueryId queryId, UberJobId uberJobId, string const& fileUrl,
+                                             uint64_t rowCount, uint64_t fileSize) {
     Ptr jrMsg = Ptr(new UberJobReadyMsg(replicationInstanceId, replicationAuthKey, version, workerIdStr,
                                         czarName, czarId, queryId, uberJobId, fileUrl, rowCount, fileSize));
     return jrMsg;
@@ -68,7 +68,7 @@ UberJobReadyMsg::Ptr UberJobReadyMsg::createFromJson(json const& jsWReq) {
                                             http::RequestBodyJSON::required<unsigned int>(jsWReq, "version"),
                                             http::RequestBodyJSON::required<string>(jsWReq, "workerid"),
                                             http::RequestBodyJSON::required<string>(jsWReq, "czar"),
-                                            http::RequestBodyJSON::required<CzarIdType>(jsWReq, "czarid"),
+                                            http::RequestBodyJSON::required<CzarId>(jsWReq, "czarid"),
                                             http::RequestBodyJSON::required<QueryId>(jsWReq, "queryid"),
                                             http::RequestBodyJSON::required<UberJobId>(jsWReq, "uberjobid"),
                                             http::RequestBodyJSON::required<string>(jsWReq, "fileUrl"),
@@ -83,8 +83,8 @@ UberJobReadyMsg::Ptr UberJobReadyMsg::createFromJson(json const& jsWReq) {
 
 UberJobReadyMsg::UberJobReadyMsg(string const& replicationInstanceId, string const& replicationAuthKey,
                                  unsigned int version, string const& workerId, string const& czarName,
-                                 CzarIdType czarId, QueryId queryId, UberJobId uberJobId,
-                                 string const& fileUrl, uint64_t rowCount, uint64_t fileSize)
+                                 CzarId czarId, QueryId queryId, UberJobId uberJobId, string const& fileUrl,
+                                 uint64_t rowCount, uint64_t fileSize)
         : _replicationInstanceId(replicationInstanceId),
           _replicationAuthKey(replicationAuthKey),
           _version(version),

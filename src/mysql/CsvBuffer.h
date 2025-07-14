@@ -100,11 +100,6 @@ public:
     /**
      *  Call to break push operations if the results are no longer needed.
      *  This is only meant to be used to break lingering push() calls.
-     *  TODO:UJ The interleaving of result file reading and table
-     *       merging makes it impossible to guarantee the result
-     *       table is valid in the event that communication
-     *       to a worker is lost during file transfer.
-     *       @see UberJob::killUberJob()
      */
     void cancel();
 

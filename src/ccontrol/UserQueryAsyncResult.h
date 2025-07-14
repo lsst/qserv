@@ -29,7 +29,6 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "qmeta/QInfo.h"
-#include "qmeta/types.h"
 
 namespace lsst::qserv::qmeta {
 class MessageStore;
@@ -58,7 +57,7 @@ public:
      *  @param czarId ID for current czar
      *  @param qMeta QMeta instance
      */
-    UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId, std::shared_ptr<qmeta::QMeta> const& qMeta);
+    UserQueryAsyncResult(QueryId queryId, CzarId czarId, std::shared_ptr<qmeta::QMeta> const& qMeta);
 
     // Destructor
     ~UserQueryAsyncResult();
@@ -103,7 +102,7 @@ public:
 protected:
 private:
     QueryId _queryId;
-    qmeta::CzarId _czarId;
+    CzarId _czarId;
     std::shared_ptr<qmeta::QMeta> _qMeta;
     qmeta::QInfo _qInfo;
     std::shared_ptr<qmeta::MessageStore> _messageStore;

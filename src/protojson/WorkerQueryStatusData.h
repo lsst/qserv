@@ -34,6 +34,7 @@
 // qserv headers
 #include "global/clock_defs.h"
 #include "global/intTypes.h"
+#include "protojson/ResponseMsg.h"
 #include "util/Mutex.h"
 
 // This header declarations
@@ -55,15 +56,15 @@ public:
                 czHostName == other.czHostName);
     }
 
-    static Ptr create(std::string const& czName_, CzarIdType czId_, int czPort_,
-                      std::string const& czHostName_, uint64_t czStartupTime_) {
+    static Ptr create(std::string const& czName_, CzarId czId_, int czPort_, std::string const& czHostName_,
+                      uint64_t czStartupTime_) {
         return Ptr(new CzarContactInfo(czName_, czId_, czPort_, czHostName_, czStartupTime_));
     }
 
     static Ptr createFromJson(nlohmann::json const& czarJson);
 
     std::string const czName;      ///< czar "name"
-    CzarIdType const czId;         ///< czar "id"
+    CzarId const czId;             ///< czar "id"
     int const czPort;              ///< czar "management-port"
     std::string const czHostName;  ///< czar "management-host-name"
     uint64_t const czStartupTime;  ///< czar startup time
@@ -74,7 +75,7 @@ public:
     std::string dump() const;
 
 private:
-    CzarContactInfo(std::string const& czName_, CzarIdType czId_, int czPort_, std::string const& czHostName_,
+    CzarContactInfo(std::string const& czName_, CzarId czId_, int czPort_, std::string const& czHostName_,
                     uint64_t czStartupTime_)
             : czName(czName_),
               czId(czId_),
@@ -223,7 +224,7 @@ private:
     mutable MUTEX _rMtx;  ///< protects _regUpdate
 };
 
-/// This classes purpose is to be a structure to store and transfer information
+/// This class's purpose is to be a structure to store and transfer information
 /// about which queries have been completed or cancelled on the worker. This
 /// class contains the functions that encode and decode the data they contain
 /// to and from a json format.
@@ -279,7 +280,7 @@ public:
     /// `addToDoneDeleteFiles`
     void removeDeadUberJobsFor(QueryId qId);
 
-    void setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId) {
+    void setCzarCancelAfterRestart(CzarId czId, QueryId lastQId) {
         std::lock_guard mapLg(mapMtx);
         czarCancelAfterRestart = true;
         czarCancelAfterRestartCzId = czId;
@@ -287,7 +288,7 @@ public:
     }
 
     bool isCzarRestart() const { return czarCancelAfterRestart; }
-    CzarIdType getCzarRestartCzarId() const { return czarCancelAfterRestartCzId; }
+    CzarId getCzarRestartCzarId() const { return czarCancelAfterRestartCzId; }
     QueryId getCzarRestartQueryId() const { return czarCancelAfterRestartQId; }
 
     /// Create a json object held by a shared pointer to use as a message.
@@ -348,7 +349,7 @@ public:
     /// the worker should stop all previous work associated with this
     /// CzarId.
     std::atomic<bool> czarCancelAfterRestart = false;
-    CzarIdType czarCancelAfterRestartCzId = 0;
+    CzarId czarCancelAfterRestartCzId = 0;
     QueryId czarCancelAfterRestartQId = 0;
 
     /// Protects _qIdDoneKeepFiles, _qIdDoneDeleteFiles, _qIdDeadUberJobs,
