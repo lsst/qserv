@@ -241,7 +241,7 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
     assert(_infileMerger);
 
-    _ttn = std::make_shared<TmpTableName>(_qMetaQueryId, _qSession->getOriginal());
+    _ttn = std::make_shared<TmpTableName>(_queryId, _qSession->getOriginal());
     std::vector<int> chunks;
     std::mutex chunksMtx;
     JobId sequence = 0;
@@ -269,10 +269,7 @@ void UserQuerySelect::submit() {
          ++i) {
         auto& chunkSpec = *i;
 
-        std::function<void(util::CmdData*)> funcBuildJob = [this, sequence,  // sequence must be a copy
-                                                            &chunkSpec, &queryTemplates, &ttn,
-                                                            &taskMsgFactory](util::CmdData*) {
-            QSERV_LOGCONTEXT_QUERY(_queryId);
+        QSERV_LOGCONTEXT_QUERY(_queryId);
 
         // TODO:UJ The template(s) is generated here and later it is compared to other
         //         templates. It would be better to create the list of query templates here
@@ -299,7 +296,7 @@ void UserQuerySelect::submit() {
         ResourceUnit ru;
         ru.setAsDbChunk(cs->db, cs->chunkId);
         qdisp::JobDescription::Ptr jobDesc =
-                qdisp::JobDescription::create(_qMetaCzarId, exec->getId(), sequence, ru, cs);
+                qdisp::JobDescription::create(_czarId, exec->getId(), sequence, ru, cs);
         auto job = exec->add(jobDesc);
         ++sequence;
     }
@@ -312,17 +309,11 @@ void UserQuerySelect::submit() {
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     // TODO:UJ Waiting for all jobs to start may not be needed anymore?
     exec->waitForAllJobsToStart();
-
-    // we only care about per-chunk info for ASYNC queries
-    if (_async) {
-        std::lock_guard<std::mutex> lock(chunksMtx);
-        _qMetaAddChunks(chunks);
-    }
 }
 
 void UserQuerySelect::buildAndSendUberJobs() {
     // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
-    string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_qMetaQueryId));
+    string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_queryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
@@ -473,8 +464,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
             string uberResultName = _ttn->make(ujId);
             auto respHandler =
                     ccontrol::MergingHandler::Ptr(new ccontrol::MergingHandler(_infileMerger, exec));
-            auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _qMetaCzarId,
-                                               targetWorker);
+            auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _czarId, targetWorker);
             uJob->setWorkerContactInfo(wInfUJ->wInf);
             wInfUJ->uberJobPtr = uJob;
         };
@@ -534,7 +524,7 @@ QueryState UserQuerySelect::join() {
     // Since all data are in, run final SQL commands like GROUP BY.
     size_t collectedBytes = 0;
     int64_t finalRows = 0;
-    bool const resultSizeLimitExceeded = _infileMerger->resultSizeLimitExceeded();
+    bool const resultSizeLimitExceeded = exec->resultSizeLimitExceeded();
     if (!_infileMerger->finalize(collectedBytes, finalRows)) {
         successful = false;
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
@@ -574,7 +564,6 @@ QueryState UserQuerySelect::join() {
         auto const status = resultSizeLimitExceeded ? qmeta::QInfo::FAILED_LR : qmeta::QInfo::FAILED;
         _qMetaUpdateStatus(status, collectedRows, collectedBytes, finalRows);
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!) QID=" << getQueryId());
-        operation = proto::QueryManagement::CANCEL;
         state = ERROR;
     }
     auto const czarConfig = cconfig::CzarConfig::instance();
@@ -807,7 +796,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 
     auto exec = _executive;
     if (exec != nullptr) {
-        exec->setQueryId(_qMetaQueryId);
+        exec->setQueryId(_queryId);
     } else {
         LOGS(_log, LOG_LVL_WARN, "No Executive, assuming invalid query");
     }

@@ -53,6 +53,7 @@
 #include "http/ClientConnPool.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
+#include "mysql/CsvMemDisk.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qproc/DatabaseModels.h"
@@ -160,7 +161,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _uqFactory(),
           _clientToQuery(),
           _monitorSleepTime(_czarConfig->getMonitorSleepTimeMilliSec()),
-          _activeWorkerMap(new ActiveWorkerMap(_czarConfig)) {
+          _activeWorkerMap(new ActiveWorkerMap(_czarConfig)),
+          _fqdn(util::get_current_host_fqdn()) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -176,6 +178,15 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // NOTE: This steps should be done after constructing the query factory where
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->czarId);
+
+    CzarIdType czarId = _czarConfig->id();
+    size_t const MB_SIZE_BYTES = 1024 * 1024;
+    size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
+    size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;
+    string const transferDirectory = _czarConfig->getTransferDir();
+    std::size_t const transferMinBytesInMem = _czarConfig->getTransferMinMBInMem() * MB_SIZE_BYTES;
+    mysql::TransferTracker::setup(maxMemToUse, transferDirectory, transferMinBytesInMem,
+                                  maxResultTableSizeBytes, czarId);
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar databases before the restart.
@@ -300,11 +311,8 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
 
     // make new UserQuery
     // this is atomic
-    ccontrol::UserQuery::Ptr uq;
-    {
-        lock_guard<mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName, resultDb);
-    }
+    ccontrol::UserQuery::Ptr uq =
+            _uqFactory->newUserQuery(query, defaultDb, getQdispPool(), userQueryId, msgTableName, resultDb);
 
     // Add logging context with query ID
     QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
