@@ -53,7 +53,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.WCzarInfoMap");
 
 namespace lsst::qserv::wcontrol {
 
-WCzarInfo::WCzarInfo(CzarIdType czarId_)
+WCzarInfo::WCzarInfo(CzarId czarId_)
         : czarId(czarId_),
           _workerCzarComIssue(protojson::WorkerCzarComIssue::create(
                   wconfig::WorkerConfig::instance()->replicationInstanceId(),
@@ -128,18 +128,17 @@ void WCzarInfo::_sendMessage() {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read start");
         nlohmann::json const response = client.readAsJson();
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
+        auto respMsg = protojson::ResponseMsg::createFromJson(response);
         uniLock.lock();
-        if (0 != response.at("success").get<int>()) {
+        if (respMsg->success) {
             transmitSuccess = true;
             if (needToClearThoughtCzarWasDead) {
                 _workerCzarComIssue->setThoughtCzarWasDead(false);
             }
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0");
+            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit " << *respMsg);
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
-            // TODO:UJ Maybe add this czId+ujId to a list of failed uberjobs that can be put
-            // TODO:UJ status return?
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + requestStr + " failed, ex: " + ex.what());
@@ -173,7 +172,7 @@ bool WCzarInfo::checkAlive(TIMEPOINT tmMark) {
     return _alive;
 }
 
-WCzarInfo::Ptr WCzarInfoMap::getWCzarInfo(CzarIdType czId) {
+WCzarInfo::Ptr WCzarInfoMap::getWCzarInfo(CzarId czId) {
     std::lock_guard lg(_wczMapMtx);
     auto iter = _wczMap.find(czId);
     if (iter == _wczMap.end()) {
