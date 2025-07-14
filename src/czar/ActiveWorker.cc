@@ -288,7 +288,8 @@ void ActiveWorkerMap::updateMap(protojson::WorkerContactInfo::WCMap const& wcMap
         auto iter = _awMap.find(wcKey);
         if (iter == _awMap.end()) {
             auto newAW = ActiveWorker::create(wcVal, czInfo, replicationInstanceId, replicationAuthKey);
-            LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ActiveWorker created for " << wcKey);
+            LOGS(_log, LOG_LVL_INFO,
+                 cName(__func__) << " ActiveWorker created for " << wcKey << " " << newAW->dump());
             _awMap[wcKey] = newAW;
             if (_czarCancelAfterRestart) {
                 newAW->setCzarCancelAfterRestart(_czarCancelAfterRestartCzId, _czarCancelAfterRestartQId);
