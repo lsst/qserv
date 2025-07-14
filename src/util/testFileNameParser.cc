@@ -30,7 +30,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "qmeta/types.h"
 #include "util/ResultFileNameParser.h"
 
 // Boost unit test header
