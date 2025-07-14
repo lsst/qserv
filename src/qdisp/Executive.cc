@@ -123,7 +123,6 @@ Executive::~Executive() {
             }
         }
     }
-    qdisp::CzarStats::get()->untrackQueryProgress(_id);
 }
 
 Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
