@@ -54,8 +54,8 @@ public:
     UserQuerySelectCountStar(std::string query, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                              std::string const& userQueryId, std::string const& rowsTable,
-                             std::string const& resultDb, std::string const& countSpelling,
-                             qmeta::CzarId czarId, bool async);
+                             std::string const& resultDb, std::string const& countSpelling, CzarId czarId,
+                             bool async);
 
     virtual ~UserQuerySelectCountStar() {}
 
@@ -124,7 +124,7 @@ private:
     std::string _resultDb;
     std::string _countSpelling;  // keeps track of how "COUNT" is spelled, for the result query.
     std::string _query;          // The original query text (without SUBMIT if async)
-    qmeta::CzarId _czarId;
+    CzarId _czarId;
     QueryId _queryId;
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
