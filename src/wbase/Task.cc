@@ -38,6 +38,7 @@
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
 
+#include "../http/RequestBodyJSON.h"
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -45,7 +46,6 @@
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
-#include "http/RequestBodyJSON.h"
 #include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "protojson/UberJobMsg.h"
@@ -182,7 +182,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
     QueryId qId = ujData->getQueryId();
     UberJobId ujId = ujData->getUberJobId();
-    CzarIdType czId = ujData->getCzarId();
+    CzarId czId = ujData->getCzarId();
 
     vector<Task::Ptr> vect;  // List of created tasks to be returned.
     wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
@@ -204,7 +204,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
 
     std::string workerId = ujMsg->getWorkerId();
     auto jobSubQueryTempMap = ujMsg->getJobSubQueryTempMap();
-    auto jobDbTablesMap = ujMsg->getJobDbTablesMap();
+    auto jobDbTablesMap = ujMsg->getJobDbTableMap();
     auto jobMsgVect = ujMsg->getJobMsgVect();
     int maxTableSizeMb = ujMsg->getMaxTableSizeMb();
     auto scanInfo = ujMsg->getScanInfo();
@@ -216,7 +216,6 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         bool scanInteractive = jobMsg->getScanInteractive();
         int chunkId = jobMsg->getChunkId();
 
-        std::vector<int> chunkScanTableIndexes = jobMsg->getChunkScanTableIndexes();
         auto jobFragments = jobMsg->getJobFragments();
         int fragmentNumber = 0;
         for (auto const& fMsg : *jobFragments) {
@@ -277,107 +276,12 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
 
 std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
-        std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-        protojson::ScanInfo::Ptr const& scanInfo, bool scanInteractive, int maxTableSizeMb,
-        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr) {
-    QueryId qId = ujData->getQueryId();
-    UberJobId ujId = ujData->getUberJobId();
-    CzarIdType czId = ujData->getCzarId();
-    string funcN(__func__);
-    funcN += " QID=" + to_string(qId) + " ";
-
-    vector<Task::Ptr> vect;
-    for (auto const& job : jsJobs) {
-        json const& jsJobDesc = job["jobdesc"];
-        http::RequestBodyJSON rbJobDesc(jsJobDesc);
-        // See qproc::TaskMsgFactory::makeMsgJson for message construction.
-        auto const jdCzarId = rbJobDesc.required<qmeta::CzarId>("czarId");
-        auto const jdQueryId = rbJobDesc.required<QueryId>("queryId");
-        if (jdQueryId != qId) {
-            throw TaskException(ERR_LOC, string("ujId=") + to_string(ujId) + " qId=" + to_string(qId) +
-                                                 " QueryId mismatch Job qId=" + to_string(jdQueryId));
-        }
-        auto const jdJobId = rbJobDesc.required<int>("jobId");
-        auto const jdAttemptCount = rbJobDesc.required<int>("attemptCount");
-        auto const jdQuerySpecDb = rbJobDesc.required<string>("querySpecDb");
-        auto const jdScanPriority = rbJobDesc.required<int>("scanPriority");
-        auto const jdScanInteractive = rbJobDesc.required<bool>("scanInteractive");
-        auto const jdMaxTableSizeMb = rbJobDesc.required<int>("maxTableSize");
-        auto const jdChunkId = rbJobDesc.required<int>("chunkId");
-        LOGS(_log, LOG_LVL_TRACE,
-             funcN << " jd cid=" << jdCzarId << " jdQId=" << jdQueryId << " jdJobId=" << jdJobId
-                   << " jdAtt=" << jdAttemptCount << " jdQDb=" << jdQuerySpecDb
-                   << " jdScanPri=" << jdScanPriority << " interactive=" << jdScanInteractive
-                   << " maxTblSz=" << jdMaxTableSizeMb << " chunkId=" << jdChunkId);
-
-        auto const jdQueryFragments = rbJobDesc.required<json>("queryFragments");
-        int fragmentNumber = 0;
-        for (auto const& frag : jdQueryFragments) {
-            vector<string> fragSubQueries;
-            vector<int> fragSubchunkIds;
-            vector<TaskDbTbl> fragSubTables;
-            LOGS(_log, LOG_LVL_DEBUG, funcN << " frag=" << frag);
-            http::RequestBodyJSON rbFrag(frag);
-            auto const& jsQueries = rbFrag.required<json>("queries");
-            // TODO:UJ move to uberjob???, these should be the same for all jobs
-            for (auto const& subQ : jsQueries) {
-                http::RequestBodyJSON rbSubQ(subQ);
-                auto const subQuery = rbSubQ.required<string>("subQuery");
-                LOGS(_log, LOG_LVL_DEBUG, funcN << " subQuery=" << subQuery);
-                fragSubQueries.push_back(subQuery);
-            }
-            auto const& resultTable = rbFrag.required<string>("resultTable");
-            auto const& jsSubIds = rbFrag.required<json>("subchunkIds");
-            for (auto const& scId : jsSubIds) {
-                fragSubchunkIds.push_back(scId);
-            }
-            auto const& jsSubTables = rbFrag.required<json>("subchunkTables");
-
-            for (auto const& scDbTable : jsSubTables) {  // TODO:UJ are these the same for all jobs?
-                http::RequestBodyJSON rbScDbTable(scDbTable);
-                string scDb = rbScDbTable.required<string>("scDb");
-                string scTable = rbScDbTable.required<string>("scTable");
-                TaskDbTbl scDbTbl(scDb, scTable);
-                fragSubTables.push_back(scDbTbl);
-            }
-
-            for (string const& fragSubQ : fragSubQueries) {
-                if (fragSubchunkIds.empty()) {
-                    bool const noSubchunks = false;
-                    int const subchunkId = -1;
-                    auto task = Task::Ptr(new Task(ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber,
-                                                   0, noSubchunks, subchunkId, jdQuerySpecDb, scanInfo,
-                                                   scanInteractive, maxTableSizeMb, fragSubTables,
-                                                   fragSubchunkIds, sendChannel, nullptr, 0));
-
-                    vect.push_back(task);
-                } else {
-                    for (auto subchunkId : fragSubchunkIds) {
-                        bool const hasSubchunks = true;
-                        auto task = Task::Ptr(new Task(
-                                ujData, jdJobId, jdAttemptCount, jdChunkId, fragmentNumber, 0, hasSubchunks,
-                                subchunkId, jdQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
-                                fragSubTables, fragSubchunkIds, sendChannel, nullptr, 0));
-
-                        vect.push_back(task);
-                    }
-                }
-            }
-            ++fragmentNumber;
-        }
-    }
-
-    return vect;
-}
-
-std::vector<Task::Ptr> Task::createTasksForUnitTest(
-        std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
         std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
     vector<Task::Ptr> vect;
     QueryId qId = ujData->getQueryId();
-    CzarIdType czId = ujData->getCzarId();
+    CzarId czId = ujData->getCzarId();
     string funcN(__func__);
     funcN += " QID=" + to_string(qId) + " czId=" + to_string(czId);
     protojson::JobSubQueryTempMap::Ptr jobSubQueryTempMap{protojson::JobSubQueryTempMap::create()};
@@ -398,7 +302,6 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::string chunkQuerySpecDb = jobMsg->getChunkQuerySpecDb();
         int chunkId = jobMsg->getChunkId();
 
-        std::vector<int> chunkScanTableIndexes = jobMsg->getChunkScanTableIndexes();
         auto jobFragments = jobMsg->getJobFragments();
         int fragmentNumber = 0;
 

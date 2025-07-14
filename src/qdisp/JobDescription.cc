@@ -46,7 +46,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.JobDescription");
 
 namespace lsst::qserv::qdisp {
 
-JobDescription::JobDescription(qmeta::CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
+JobDescription::JobDescription(CzarId czarId, QueryId qId, JobId jobId, ResourceUnit const& resource,
                                shared_ptr<qproc::ChunkQuerySpec> const& chunkQuerySpec, bool mock)
         : _czarId(czarId),
           _queryId(qId),

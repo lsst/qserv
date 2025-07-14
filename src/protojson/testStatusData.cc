@@ -29,6 +29,7 @@
 // Qserv headers
 #include "global/clock_defs.h"
 #include "lsst/log/Log.h"
+#include "protojson/ResponseMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
 #include "protojson/WorkerQueryStatusData.h"
 
@@ -40,6 +41,10 @@ using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::protojson;
 
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.testStatusData");
+}
+
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
@@ -50,7 +55,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     uint64_t wkrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 10s);
 
     string const czrName("czar_name");
-    lsst::qserv::CzarIdType const czrId = 32;
+    lsst::qserv::CzarId const czrId = 32;
     int czrPort = 2022;
     string const czrHost("cz_host");
 
@@ -149,7 +154,7 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     uint64_t cxrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 5s);
 
     string const czrName("czar_name");
-    lsst::qserv::CzarIdType const czrId = 32;
+    lsst::qserv::CzarId const czrId = 32;
     int czrPort = 2022;
     string const czrHost("cz_host");
 
@@ -176,7 +181,24 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto jsIssueA1 = wccIssueA1->toJson();
     BOOST_REQUIRE(*jsIssueA == *jsIssueA1);
 
-    // TODO:UJ Test with items in lists.
+    // TODO:DM-53242 list of failed messages.
+}
+
+BOOST_AUTO_TEST_CASE(ResponseMsg) {
+    auto respMsgA = lsst::qserv::protojson::ResponseMsg::create(true);
+    auto jsA = respMsgA->toJson();
+    auto respMsgAOut = lsst::qserv::protojson::ResponseMsg::createFromJson(jsA);
+    BOOST_REQUIRE(respMsgA->equal(*respMsgAOut));
+
+    auto respMsgB = lsst::qserv::protojson::ResponseMsg::create(false, "asdrewjgfay523yuq@", "junk msg");
+    auto respMsgC = lsst::qserv::protojson::ResponseMsg::create(false, "asd", "junk msg");
+    auto respMsgD = lsst::qserv::protojson::ResponseMsg::create(false, "asdrewjgfay523yuq@", "junkmsg");
+    auto jsB = respMsgB->toJson();
+    auto respMsgBOut = lsst::qserv::protojson::ResponseMsg::createFromJson(jsB);
+    BOOST_REQUIRE(respMsgB->equal(*respMsgBOut));
+    BOOST_REQUIRE(!respMsgA->equal(*respMsgBOut));
+    BOOST_REQUIRE(!respMsgB->equal(*respMsgC));
+    BOOST_REQUIRE(!respMsgD->equal(*respMsgC));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

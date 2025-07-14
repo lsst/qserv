@@ -200,7 +200,7 @@ public:
     QueryStatistics::Ptr getStats(QueryId qId) const;
 
     /// @see _addQueryId
-    QueryStatistics::Ptr addQueryId(QueryId qId, CzarIdType czarId);
+    QueryStatistics::Ptr addQueryId(QueryId qId, CzarId czarId);
 
     void addTask(wbase::Task::Ptr const& task);
     void addTasks(std::vector<wbase::Task::Ptr> const& tasks, std::vector<util::Command::Ptr>& cmds);
@@ -243,7 +243,7 @@ public:
 
     /// If the worker believes this czar has died, it calls this to stop
     /// all Tasks associated with that czar.
-    void killAllQueriesFromCzar(CzarIdType czarId);
+    void killAllQueriesFromCzar(CzarId czarId);
 
     friend std::ostream& operator<<(std::ostream& os, QueriesAndChunks const& qc);
 
@@ -257,7 +257,7 @@ private:
     /// message arrives before any tasks have been created.
     /// @see getStats()
     /// _queryStatsMapMtx must be locked before calling.
-    QueryStatistics::Ptr _addQueryId(QueryId qId, CzarIdType czarId);
+    QueryStatistics::Ptr _addQueryId(QueryId qId, CzarId czarId);
 
     /// @return the statistics for a user query.
     /// _queryStatsMtx must be locked before calling.

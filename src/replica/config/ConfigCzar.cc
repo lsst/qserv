@@ -42,7 +42,7 @@ ConfigCzar::ConfigCzar(json const& obj) {
     }
     try {
         parseRequired<string>(name, obj, "name");
-        parseRequired<qmeta::CzarId>(id, obj, "id");
+        parseRequired<CzarId>(id, obj, "id");
         parseRequired<string>(host.addr, obj.at("host"), "addr");
         parseRequired<string>(host.name, obj.at("host"), "name");
         parseOptional<uint16_t>(port, obj, "port");

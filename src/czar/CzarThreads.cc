@@ -257,7 +257,7 @@ void startGarbageCollectAsync(shared_ptr<cconfig::CzarConfig> czarConfig) {
     t.detach();
 }
 
-void startGarbageCollectInProgress(shared_ptr<cconfig::CzarConfig> czarConfig, qmeta::CzarId czarId,
+void startGarbageCollectInProgress(shared_ptr<cconfig::CzarConfig> czarConfig, CzarId czarId,
                                    shared_ptr<qmeta::QMeta> queryMetadata) {
     // Sanitize a value of the configuration parameters to tolerate a misconfiguration of Czar.
     chrono::seconds const cleanupInterval = max(czarConfig->getInProgressCleanupIvalSec(), 1U) * 1s;

@@ -28,6 +28,7 @@
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "http/RequestBodyJSON.h"
+#include "protojson/ResponseMsg.h"
 #include "util/common.h"
 #include "util/TimeUtils.h"
 
@@ -61,7 +62,7 @@ shared_ptr<json> WorkerCzarComIssue::toJson() const {
 
     jsCzarR["thoughtczarwasdead"] = _thoughtCzarWasDead;
 
-    // TODO:UJ add list of failed transmits
+    // TODO:DM-53242 add list of failed transmits
 
     return jsCzarReqPtr;
 }
@@ -95,10 +96,10 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
 }
 
 json WorkerCzarComIssue::responseToJson() const {
-    json jsResp = {{"success", 1}, {"errortype", "none"}, {"note", ""}};
+    protojson::ResponseMsg respMsg(true);
 
-    // TODO:UJ add lists of uberjobs that are scheduled to have files collected because of this message.
-    return jsResp;
+    // TODO:DM-53242 add lists of uberjobs that are scheduled to have files collected because of this message.
+    return respMsg.toJson();
 }
 
 string WorkerCzarComIssue::dump() const {

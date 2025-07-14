@@ -33,7 +33,6 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "qmeta/QMetaSelect.h"
-#include "qmeta/types.h"
 
 // Forward decl
 namespace lsst::qserv::qmeta {
@@ -58,7 +57,7 @@ public:
      *  @param userQueryId Unique string identifying query
      */
     UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
-                         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, qmeta::CzarId czarId,
+                         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, CzarId czarId,
                          std::string const& userQueryId, std::string const& resultDb);
 
     /**
@@ -69,8 +68,8 @@ public:
      *  @param czarId Czar ID for QMeta queries
      *  @param userQueryId Unique string identifying query
      */
-    UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                         qmeta::CzarId czarId, std::string const& userQueryId, std::string const& resultDb);
+    UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, CzarId czarId,
+                         std::string const& userQueryId, std::string const& resultDb);
 
     UserQueryProcessList(UserQueryProcessList const&) = delete;
     UserQueryProcessList& operator=(UserQueryProcessList const&) = delete;
@@ -111,7 +110,7 @@ private:
     std::string _getResultOrderBy() const { return _orderBy; }
 
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
-    qmeta::CzarId const _czarId;  ///< Czar ID in QMeta database
+    CzarId const _czarId;  ///< Czar ID in QMeta database
     QueryState _qState = UNKNOWN;
     std::shared_ptr<qmeta::MessageStore> _messageStore;
     std::string _resultTableName;

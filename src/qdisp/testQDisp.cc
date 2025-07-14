@@ -89,7 +89,7 @@ public:
     }
     void flushHttpError(int errorCode, std::string const& errorMsg, int status) override {}
     void errorFlush(std::string const& msg, int code) override {};
-    void cancelFileMerge() override {};
+    bool cancelFileMerge() override { return cancelFileMergeRet; };
 
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override {
@@ -98,6 +98,7 @@ public:
     }
 
     atomic<int> ujCount = 0;
+    bool cancelFileMergeRet = false;
 
 private:
     bool _ok = true;
@@ -112,11 +113,10 @@ public:
     using PtrUT = std::shared_ptr<UberJobUT>;
 
     UberJobUT(std::shared_ptr<Executive> const& executive,
-              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
-              qmeta::CzarId czarId, int rowLimit, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData,
+              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId, CzarId czarId,
+              int rowLimit, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData,
               TestInfo::Ptr const& testInfo_)
-            : UberJob(executive, respHandler, queryId, uberJobId, czarId, rowLimit, workerData),
-              testInfo(testInfo_) {}
+            : UberJob(executive, respHandler, queryId, uberJobId, czarId, rowLimit), testInfo(testInfo_) {}
 
     void runUberJob() override {
         LOGS(_log, LOG_LVL_INFO, "runUberJob() chunkId=" << chunkId);
@@ -144,8 +144,8 @@ public:
                 util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QProgress> const& qProgress,
                 shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
                 shared_ptr<qproc::QuerySession> const& querySession, TestInfo::Ptr const& testInfo_)
-            : Executive(qmetaTimeBetweenUpdates, ms, qdispPool, qProgress, queryProgressHistory,
-                        querySession),
+            : Executive(qmetaTimeBetweenUpdates, ms, qdispPool, qProgress, queryProgressHistory, querySession,
+                        5 /* jobMaxAttempts */),
               testInfo(testInfo_) {}
 
     void assignJobsToUberJobs() override {
@@ -169,7 +169,7 @@ public:
         LOGS(_log, LOG_LVL_INFO, "assignJobsToUberJobs() end");
     }
 
-    CzarIdType czarId = 1;
+    CzarId czarId = 1;
     UberJobId ujId = 1;
     int rowLimit = 0;
     czar::CzarChunkMap::WorkerChunksData::Ptr targetWorker = nullptr;
@@ -184,7 +184,7 @@ qdisp::JobDescription::Ptr makeMockJobDescription(qdisp::Executive::Ptr const& e
                                                   std::shared_ptr<qdisp::ResponseHandler> const& mHandler) {
     auto cqs = std::make_shared<qproc::ChunkQuerySpec>();  // dummy, unused in this case.
     std::string chunkResultName = "dummyResultTableName";
-    qmeta::CzarId const czarId = 1;
+    CzarId const czarId = 1;
     auto job = qdisp::JobDescription::create(czarId, ex->getId(), sequence, ru, cqs, true);
     return job;
 }
