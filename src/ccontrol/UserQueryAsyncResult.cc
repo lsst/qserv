@@ -42,7 +42,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryAsyncResult");
 
 namespace lsst::qserv::ccontrol {
 
-UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId,
+// Constructors
+UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, CzarId czarId,
                                            std::shared_ptr<qmeta::QMeta> const& qMeta)
         : UserQuery(),
           _queryId(queryId),

@@ -129,7 +129,7 @@ void QueriesAndChunks::setBlendScheduler(shared_ptr<wsched::BlendScheduler> cons
 
 void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) { _requiredTasksCompleted = value; }
 
-QueryStatistics::Ptr QueriesAndChunks::_addQueryId(QueryId qId, CzarIdType czarId) {
+QueryStatistics::Ptr QueriesAndChunks::_addQueryId(QueryId qId, CzarId czarId) {
     auto itr = _queryStatsMap.find(qId);
     QueryStatistics::Ptr stats;
     if (_queryStatsMap.end() == itr) {
@@ -141,7 +141,7 @@ QueryStatistics::Ptr QueriesAndChunks::_addQueryId(QueryId qId, CzarIdType czarI
     return stats;
 }
 
-QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId, CzarIdType czarId) {
+QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId, CzarId czarId) {
     unique_lock<mutex> guardStats(_queryStatsMapMtx);
     return _addQueryId(qId, czarId);
 }
@@ -702,7 +702,7 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
     return removedList;
 }
 
-void QueriesAndChunks::killAllQueriesFromCzar(CzarIdType czarId) {
+void QueriesAndChunks::killAllQueriesFromCzar(CzarId czarId) {
     std::map<QueryId, QueryStatistics::Ptr> qsMap;
     {
         lock_guard<mutex> lgQsm(_queryStatsMapMtx);

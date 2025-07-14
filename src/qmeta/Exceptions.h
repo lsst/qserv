@@ -28,7 +28,7 @@
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
-#include "qmeta/types.h"
+#include "global/intTypes.h"
 #include "sql/SqlErrorObject.h"
 #include "util/Issue.h"
 
