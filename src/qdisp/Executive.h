@@ -60,7 +60,8 @@ class QProgress;
 class QProgressHistory;
 }  // namespace lsst::qserv::qmeta
 
-namespace qproc {
+
+namespace lsst::qserv::qproc {
 class QuerySession;
 }  // namespace lsst::qserv::qproc
 
@@ -193,9 +194,8 @@ public:
 
     std::string dumpUberJobCounts() const;
 
-    // The below value should probably be based on the user query, with longer sleeps for slower queries.
-    int getAttemptSleepSeconds() const { return 15; }  // As above or until added to config file.
-    int getMaxAttempts() const { return 5; }           // TODO:UJ Should be set by config
+    /// Maximum number of times to try running a job before squashing the query.
+    int getMaxAttempts() const { return _jobMaxAttempts; }
 
     /// Calling this indicates all Jobs for this user query have been created.
     void setAllJobsCreated() { _allJobsCreated = true; }
@@ -238,7 +238,7 @@ protected:
               std::shared_ptr<util::QdispPool> const& sharedResources,
               std::shared_ptr<qmeta::QProgress> const& queryProgress,
               std::shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
-              std::shared_ptr<qproc::QuerySession> const& querySession);
+              std::shared_ptr<qproc::QuerySession> const& querySession, unsigned int maxJobAttempts);
 
 private:
     void _setupLimit();
@@ -264,7 +264,7 @@ private:
     /// The stats are pushed to qdisp::CzarStats.
     void _updateStats() const;
 
-    util::InstanceCount const _icEx{"Executive"};
+    // util::InstanceCount const _icEx{"Executive"};
     std::atomic<bool> _empty{true};
     std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
@@ -295,8 +295,8 @@ private:
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
-    // TODO:UJ see what it takes to make this a normal mutex.
-    mutable std::recursive_mutex _jobMapMtx;
+
+    mutable std::mutex _jobMapMtx;  ///< Protects _jobMap.
 
     QueryId _id = 0;  ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
@@ -314,8 +314,6 @@ private:
     bool _scanInteractive = false;
 
     // Add a job to the _chunkToJobMap
-    // TODO:UJ This may need review as large changes were made to this part of the code.
-    //     code is no longer destructive to _chunkToJobMap
     void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);
     std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap
     ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId
@@ -336,6 +334,9 @@ private:
 
     /// true if query can be returned as soon as _limit rows have been read.
     bool _limitSquashApplies = false;
+
+    /// Maximum number of time to try running a job before squashing the query.
+    unsigned int const _jobMaxAttempts;
 
     /// Number of time data has been ignored for for this user query.
     std::atomic<int> _dataIgnoredCount{0};

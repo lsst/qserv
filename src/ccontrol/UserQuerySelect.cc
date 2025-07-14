@@ -80,7 +80,7 @@
 #include "ccontrol/TmpTableName.h"
 #include "ccontrol/UserQueryError.h"
 #include "czar/Czar.h"
-#include "czar/CzarChunkMap.h"
+#include "czar/CzarFamilyMap.h"
 #include "czar/CzarRegistry.h"
 #include "global/constants.h"
 #include "global/LogContext.h"
@@ -130,7 +130,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                                 std::shared_ptr<qmeta::QProgress> const& queryProgress, qmeta::CzarId czarId,
+                                 std::shared_ptr<qmeta::QProgress> const& queryProgress, CzarId czarId,
                                  std::string const& errorExtra, bool async, std::string const& resultDb,
                                  int uberJobMaxChunks)
         : _qSession(qs),
@@ -271,7 +271,7 @@ void UserQuerySelect::submit() {
 
         QSERV_LOGCONTEXT_QUERY(_queryId);
 
-        // TODO:UJ The template(s) is generated here and later it is compared to other
+        // TODO:UJTemplate The template(s) is generated here and later it is compared to other
         //         templates. It would be better to create the list of query templates here
         //         and just store the index into the list of templates in the `cs`.
         qproc::ChunkQuerySpec::Ptr cs;
@@ -307,14 +307,13 @@ void UserQuerySelect::submit() {
     buildAndSendUberJobs();
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
-    // TODO:UJ Waiting for all jobs to start may not be needed anymore?
+    // Waiting for all jobs to start seems to provide more consistent results.
     exec->waitForAllJobsToStart();
 }
 
 util::HistogramRolling histoBuildAndS("&&&uj histoBuildAndS", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
 
 void UserQuerySelect::buildAndSendUberJobs() {
-    // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_queryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
 
@@ -367,7 +366,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
 
     auto const [chunkMapPtr, workerChunkMapPtr] = czChunkMap->getMaps();
     // Make a map of all jobs in the executive.
-    // TODO:UJ Maybe a check should be made that all databases are in the same family?
+    // TODO:DM-53239 Maybe a check should be made that all databases are in the same family?
 
     // keep cycling through workers until no more chunks to place.
     //  - create a map of UberJobs  key=<workerId>, val=<vector<uberjob::ptr>>
@@ -421,7 +420,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         czar::CzarChunkMap::ChunkData::Ptr chunkData = iter->second;
         auto targetWorker = chunkData->getPrimaryScanWorker().lock();
-        // TODO:UJ maybe  if (targetWorker == nullptr || ... ||  this worker already tried for this chunk) {
         if (targetWorker == nullptr || targetWorker->isDead()) {
             LOGS(_log, LOG_LVL_WARN,
                  funcN << " No primary scan worker for chunk=" + chunkData->dump()
@@ -453,10 +451,11 @@ void UserQuerySelect::buildAndSendUberJobs() {
             wInfUJ = make_shared<WInfoAndUJPtr>();
             auto iter = wContactMap->find(workerId);
             if (iter == wContactMap->end()) {
-                // TODO:UJ Not appropriate to throw for this. Need to re-direct all jobs to different workers.
-                //         Also, this really shouldn't happen, but crashing the czar is probably a bad idea,
-                //         so maybe return internal error to the user?
-                throw util::Bug(ERR_LOC, funcN + " TODO:UJ no contact information for " + workerId);
+                // This should never happen. However, if the worker contact info isn't found in the DB,
+                // the attempt count for this job will eventually reach max and the job will cancel itself.
+                LOGS(_log, LOG_LVL_ERROR,
+                     funcN << " workerId=" << workerId << " could not be found in wContactMap.");
+                break;
             }
             wInfUJ->wInf = iter->second;
         }
@@ -466,7 +465,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
             string uberResultName = _ttn->make(ujId);
             auto respHandler =
                     ccontrol::MergingHandler::Ptr(new ccontrol::MergingHandler(_infileMerger, exec));
-            auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _czarId, targetWorker);
+            auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _czarId);
             uJob->setWorkerContactInfo(wInfUJ->wInf);
             wInfUJ->uberJobPtr = uJob;
         };

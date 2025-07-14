@@ -55,7 +55,7 @@ namespace lsst::qserv::mysql {
 TransferTracker::Ptr TransferTracker::_globalMt;
 
 void TransferTracker::setup(std::size_t max, string const& directory, std::size_t minMBInMem,
-                            std::size_t maxResultTableSizeBytes, CzarIdType czarId) {
+                            std::size_t maxResultTableSizeBytes, CzarId czarId) {
     if (_globalMt != nullptr) {
         throw util::Bug(ERR_LOC, "MemoryTracker::setup called when MemoryTracker already setup!");
     }
