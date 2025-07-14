@@ -103,6 +103,13 @@ private:
     boost::asio::io_service _asioIoService;
     std::unique_ptr<boost::asio::io_service::work> _asioWork;
     std::unique_ptr<std::thread> _asioTimerThread;
+
+    /// This protects the CSS calls inside qs->analyzeQuery(query, stmt); as well
+    /// as some changes UserQueries may be making to databases.
+    /// TODO: It would be safer to have CSS be thread safe.
+    /// TODO: Go through all of the affected database interactions and make sure
+    ///       they are thread safe without this mutex.
+    std::mutex _factoryMtx;
 };
 
 }  // namespace lsst::qserv::ccontrol
