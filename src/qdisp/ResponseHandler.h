@@ -81,7 +81,8 @@ public:
     virtual void errorFlush(std::string const& msg, int code) = 0;
 
     /// Stop an ongoing file merge, if possible.
-    virtual void cancelFileMerge() = 0;
+    /// @return true if the merge was cancelled.
+    virtual bool cancelFileMerge() = 0;
 
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
