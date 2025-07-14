@@ -97,7 +97,7 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
                              << " secsSinceUpdate=" << secsSinceUpdate);
 
         // Update the last time the registry contacted this worker.
-        // TODO:UJ - This needs to be added to the dashboard.
+        // TODO:DM-53240 - This needs to be added to the dashboard.
         switch (_state) {
             case ALIVE: {
                 if (secsSinceUpdate >= timeoutAliveSecs) {
@@ -181,7 +181,8 @@ void ActiveWorker::_sendStatusMsg(protojson::WorkerContactInfo::Ptr const& wInf,
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read start");
         response = client.readAsJson();
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
-        if (0 != response.at("success").get<int>()) {
+        auto respMsg = protojson::ResponseMsg::createFromJson(response);
+        if (respMsg->success) {
             bool startupTimeChanged = false;
             startupTimeChanged = _wqsData->handleResponseJson(response);
             transmitSuccess = true;
@@ -191,7 +192,7 @@ void ActiveWorker::_sendStatusMsg(protojson::WorkerContactInfo::Ptr const& wInf,
                 czar::Czar::getCzar()->killIncompleteUbjerJobsOn(wInf->wId);
             }
         } else {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure response success=0 " << response);
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure " << *respMsg);
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, requestContext + " transmit failure, ex: " + ex.what());
@@ -236,7 +237,7 @@ string ActiveWorker::_dump() const {
     return os.str();
 }
 
-void ActiveWorkerMap::setCzarCancelAfterRestart(CzarIdType czId, QueryId lastQId) {
+void ActiveWorkerMap::setCzarCancelAfterRestart(CzarId czId, QueryId lastQId) {
     _czarCancelAfterRestart = true;
     _czarCancelAfterRestartCzId = czId;
     _czarCancelAfterRestartQId = lastQId;
