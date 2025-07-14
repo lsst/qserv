@@ -91,8 +91,7 @@ namespace lsst::qserv::qdisp {
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(int secondsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
-                     util::QdispPool::Ptr const& qdispPool,
-                     shared_ptr<qmeta::QProgress> const& queryProgress,
+                     util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QProgress> const& queryProgress,
                      shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
                      shared_ptr<qproc::QuerySession> const& querySession)
         : _messageStore(ms),
@@ -124,18 +123,17 @@ Executive::~Executive() {
             }
         }
     }
-    qdisp::CzarStats::get()->untrackQueryProgress(_id);
 }
 
-
 Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
-                                 std::shared_ptr<util::QdispPool> const& qdispPool,
+                                 shared_ptr<util::QdispPool> const& qdispPool,
                                  shared_ptr<qmeta::QProgress> const& queryProgress,
                                  shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
                                  shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
-    Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, queryProgress, queryProgressHistory, querySession));
+    Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, queryProgress, queryProgressHistory,
+                                     querySession));
 
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
@@ -784,15 +782,17 @@ void Executive::checkLimitRowComplete() {
 }
 
 void Executive::checkResultFileSize(uint64_t fileSize) {
+    if (_cancelled || isRowLimitComplete()) return;
     _totalResultFileSize += fileSize;
-    if (_cancelled) return;
 
     size_t const MB_SIZE_BYTES = 1024 * 1024;
     uint64_t maxResultTableSizeBytes = cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES;
     LOGS(_log, LOG_LVL_TRACE,
          cName(__func__) << " sz=" << fileSize << " total=" << _totalResultFileSize
                          << " max=" << maxResultTableSizeBytes);
-    if (_totalResultFileSize > maxResultTableSizeBytes) {
+
+    if ((fileSize > maxResultTableSizeBytes) ||
+        (!_limitSquashApplies && _totalResultFileSize > maxResultTableSizeBytes)) {
         LOGS(_log, LOG_LVL_WARN,
              cName(__func__) << " total=" << _totalResultFileSize << " max=" << maxResultTableSizeBytes);
         // _totalResultFileSize may include non zero values from dead UberJobs,
@@ -812,9 +812,59 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
             util::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
                             "Incomplete result already too large " + to_string(total));
             _multiError.push_back(err);
+            _resultFileSizeExceeded = true;
             squash("czar, file too large");
         }
     }
+}
+
+shared_ptr<lock_guard<mutex>> Executive::getLimitSquashLock() {
+    shared_ptr<lock_guard<mutex>> ptr(new lock_guard<mutex>(_mtxLimitSquash));
+    return ptr;
+}
+
+void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& fileUrl, uint64_t fileSize,
+                            uint64_t rowCount, std::string const& idStr) {
+    // Limit collecting LIMIT queries to one at a time, but only those.
+    shared_ptr<lock_guard<mutex>> limitSquashL;
+    if (_limitSquashApplies) {
+        limitSquashL.reset(new lock_guard<mutex>(_mtxLimitSquash));
+    }
+    MergeEndStatus flushStatus = ujPtr->getRespHandler()->flushHttp(fileUrl, fileSize);
+    LOGS(_log, LOG_LVL_TRACE,
+         cName(__func__) << "ujId=" << ujPtr->getUjId() << " success=" << flushStatus.success
+                         << " contaminated=" << flushStatus.contaminated);
+    if (flushStatus.success) {
+        CzarStats::get()->addTotalRowsRecv(rowCount);
+        CzarStats::get()->addTotalBytesRecv(fileSize);
+    } else {
+        if (flushStatus.contaminated) {
+            // This would probably indicate malformed file+rowCount or writing the result table failed.
+            // If any merging happened, the result table is ruined.
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << "ujId=" << ujPtr->getUjId()
+                                 << " flushHttp failed after merging, results ruined.");
+        } else {
+            // Perhaps something went wrong with file collection, so it is worth trying the jobs again
+            // by abandoning this UberJob.
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << "ujId=" << ujPtr->getUjId() << " flushHttp failed, retrying Jobs.");
+        }
+        ujPtr->importResultError(flushStatus.contaminated, "mergeError", "merging failed");
+    }
+
+    // At this point all data for this job have been read and merged
+    bool const statusSet = ujPtr->importResultFinish();
+    if (!statusSet) {
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << "ujId=" << ujPtr->getUjId() << " failed to set status, squashing "
+                             << getIdStr());
+        // Something has gone very wrong
+        squash(cName(__func__) + " couldn't set UberJob status");
+        return;
+    }
+    addResultRows(rowCount);
+    checkLimitRowComplete();
 }
 
 ostream& operator<<(ostream& os, Executive::JobMap::value_type const& v) {

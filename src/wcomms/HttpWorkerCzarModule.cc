@@ -140,19 +140,19 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         }
 
         std::shared_ptr<wcontrol::Foreman> foremanPtr = foreman();
-        std::string authKeyStr = authKey();
+        auto authCtx = getAuthContext();
 
         // It is important to create UberJobData at this point as it will be the only way to
         // inform the czar of errors after this function returns.
         auto ujData = wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
                                                  ujCzInfo->czPort, ujQueryId, ujRowLimit, maxTableSizeBytes,
                                                  scanInfo, scanInteractive, targetWorkerId, foremanPtr,
-                                                 authKeyStr, foremanPtr->httpPort());
+                                                 authCtx.authKey, foremanPtr->httpPort());
 
         auto lFunc = [ujId, ujQueryId, ujCzInfo, ujRowLimit, maxTableSizeBytes, targetWorkerId, userQueryInfo,
-                      uberJobMsg, foremanPtr, authKeyStr, ujData](util::CmdData*) {
+                      uberJobMsg, foremanPtr, authCtx, ujData](util::CmdData*) {
             _buildTasks(ujId, ujQueryId, ujCzInfo, ujRowLimit, maxTableSizeBytes, targetWorkerId,
-                        userQueryInfo, uberJobMsg, foremanPtr, authKeyStr, ujData);
+                        userQueryInfo, uberJobMsg, foremanPtr, authCtx.authKey, ujData);
         };
 
         util::Command::Ptr taskLoadCmd = std::make_shared<util::Command>(lFunc);

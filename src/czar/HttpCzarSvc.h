@@ -60,6 +60,7 @@ struct HttpCzarConfig {
     std::size_t maxQueuedRequests = 0;    ///< 0 implies unlimited
     std::size_t clientConnPoolSize = 0;   ///< 0 implies the default set by libcurl
     std::size_t numBoostAsioThreads = 0;  ///< 0 implies the number of hardware threads
+    std::string dump() const;
 };
 
 /**
