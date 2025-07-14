@@ -31,7 +31,6 @@
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "qmeta/types.h"
 #include "util/ResultFileName.h"
 
 // Boost unit test header
@@ -49,7 +48,7 @@ BOOST_AUTO_TEST_SUITE(Suite)
 BOOST_AUTO_TEST_CASE(ResultFileNameTest) {
     LOGS_INFO("ResultFileNameTest");
 
-    lsst::qserv::qmeta::CzarId const czarId = 1;
+    lsst::qserv::CzarId const czarId = 1;
     lsst::qserv::QueryId const queryId = 2;
     lsst::qserv::UberJobId const ujId = 3;
 

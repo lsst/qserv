@@ -63,9 +63,8 @@ namespace lsst::qserv::ccontrol {
 
 // Constructor
 UserQueryQueries::UserQueryQueries(std::shared_ptr<query::SelectStmt> const& statement,
-                                   std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                   qmeta::CzarId czarId, std::string const& userQueryId,
-                                   std::string const& resultDb)
+                                   std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, CzarId czarId,
+                                   std::string const& userQueryId, std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
           _czarId(czarId),
           _messageStore(std::make_shared<qmeta::MessageStore>()),

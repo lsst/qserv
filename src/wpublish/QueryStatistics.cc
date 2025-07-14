@@ -50,7 +50,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wpublish.QueriesAndChunks");
 
 namespace lsst::qserv::wpublish {
 
-QueryStatistics::QueryStatistics(QueryId qId_, CzarIdType czarId_)
+QueryStatistics::QueryStatistics(QueryId qId_, CzarId czarId_)
         : creationTime(CLOCK::now()),
           queryId(qId_),
           _userQueryInfo(wbase::UserQueryInfo::create(qId_, czarId_)) {
