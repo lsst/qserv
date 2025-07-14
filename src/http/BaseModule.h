@@ -219,7 +219,7 @@ protected:
      */
     void sendData(nlohmann::json& result);
 
-    std::string authKey() const { return _authKey; }
+    AuthContext getAuthContext() const { return _authContext; }
 
 private:
     /**
