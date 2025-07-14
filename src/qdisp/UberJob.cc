@@ -27,7 +27,6 @@
 #include <stdexcept>
 
 // Third-party headers
-#include <google/protobuf/arena.h>
 #include "nlohmann/json.hpp"
 
 // Qserv headers
@@ -127,7 +126,7 @@ void UberJob::runUberJob() {
     uint64_t maxTableSizeMB = czarConfig->getMaxTableSizeMB();
     auto czInfo = protojson::CzarContactInfo::create(
             czarConfig->name(), czarConfig->id(), czarConfig->replicationHttpPort(),
-            util::get_current_host_fqdn(), czar::Czar::czarStartupTime);
+            czar::Czar::getCzar()->getFqdn(), czar::Czar::czarStartupTime);
     auto scanInfoPtr = exec->getScanInfo();
     bool scanInteractive = exec->getScanInteractive();
 
@@ -269,12 +268,12 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " no executive");
-        return _importResultError(true, "cancelled", "Query cancelled - no executive");
+        return importResultError(true, "cancelled", "Query cancelled - no executive");
     }
 
     if (exec->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " import job was cancelled.");
-        return _importResultError(true, "cancelled", "Query cancelled");
+        return importResultError(true, "cancelled", "Query cancelled");
     }
 
     if (exec->isRowLimitComplete()) {
@@ -283,7 +282,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
             LOGS(_log, LOG_LVL_INFO,
                  "UberJob ignoring, enough rows already " << "dataIgnored=" << dataIgnored);
         }
-        return _importResultError(false, "rowLimited", "Enough rows already");
+        return importResultError(false, "rowLimited", "Enough rows already");
     }
 
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileSize);
@@ -291,7 +290,7 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     bool const statusSet = setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrl);
     if (!statusSet) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " setStatusFail could not set status to RESPONSE_READY");
-        return _importResultError(false, "setStatusFail", "could not set status to RESPONSE_READY");
+        return importResultError(false, "setStatusFail", "could not set status to RESPONSE_READY");
     }
 
     weak_ptr<UberJob> ujThis = weak_from_this();
@@ -305,31 +304,14 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
                  "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrl);
             return;
         }
-        MergeEndStatus flushStatus = ujPtr->getRespHandler()->flushHttp(fileUrl, fileSize);
-        LOGS(_log, LOG_LVL_TRACE,
-             ujPtr->cName(__func__) << "::fileCollectFunc success=" << flushStatus.success
-                                    << " contaminated=" << flushStatus.contaminated);
-        if (flushStatus.success) {
-            qdisp::CzarStats::get()->addTotalRowsRecv(rowCount);
-            qdisp::CzarStats::get()->addTotalBytesRecv(fileSize);
-        } else {
-            if (flushStatus.contaminated) {
-                // This would probably indicate malformed file+rowCount or writing the result table failed.
-                // If any merging happened, the result table is ruined.
-                LOGS(_log, LOG_LVL_ERROR,
-                     ujPtr->cName(__func__)
-                             << "::fileCollectFunc flushHttp failed after merging, results ruined.");
-            } else {
-                // Perhaps something went wrong with file collection, so it is worth trying the jobs again
-                // by abandoning this UberJob.
-                LOGS(_log, LOG_LVL_ERROR,
-                     ujPtr->cName(__func__) << "::fileCollectFunc flushHttp failed, retrying Jobs.");
-            }
-            ujPtr->_importResultError(flushStatus.contaminated, "mergeError", "merging failed");
+        auto exec = ujPtr->getExecutive();
+        if (exec == nullptr) {
+            LOGS(_log, LOG_LVL_DEBUG,
+                 "UberJob::fileCollectFunction exec ptr is null " << idStr << " " << fileUrl);
+            return;
         }
 
-        // At this point all data for this job have been read.
-        ujPtr->_importResultFinish(rowCount);
+        exec->collectFile(ujPtr, fileUrl, fileSize, rowCount, idStr);
     };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(fileCollectFunc));
@@ -388,7 +370,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
     return _workerErrorFinish(deleteData, errType, "");
 }
 
-json UberJob::_importResultError(bool shouldCancel, string const& errorType, string const& note) {
+json UberJob::importResultError(bool shouldCancel, string const& errorType, string const& note) {
     json jsRet = {{"success", 0}, {"errortype", errorType}, {"note", note}};
     // In all cases, the worker should delete the file as this czar will not ask for it.
 
@@ -419,14 +401,8 @@ json UberJob::_importResultError(bool shouldCancel, string const& errorType, str
     return jsRet;
 }
 
-void UberJob::_importResultFinish(uint64_t resultRows) {
+bool UberJob::importResultFinish() {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
-
-    auto exec = _executive.lock();
-    if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
-        return;
-    }
 
     /// If this is called, the file has been collected and the worker should delete it
     ///
@@ -434,17 +410,11 @@ void UberJob::_importResultFinish(uint64_t resultRows) {
     /// and return a "success:1" json message to be sent to the worker.
     bool const statusSet =
             setStatusIfOk(qmeta::JobStatus::RESPONSE_DONE, getIdStr() + " _importResultFinish");
-    if (!statusSet) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failed to set status, squashing " << getIdStr());
-        // Something has gone very wrong
-        exec->squash("UberJob::_importResultFinish couldn't set status");
-        return;
+    if (statusSet) {
+        bool const success = true;
+        callMarkCompleteFunc(success);  // sets status to COMPLETE
     }
-
-    bool const success = true;
-    callMarkCompleteFunc(success);  // sets status to COMPLETE
-    exec->addResultRows(resultRows);
-    exec->checkLimitRowComplete();
+    return statusSet;
 }
 
 nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& errorType,
