@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
 #include "replica/worker/FileClient.h"
@@ -141,7 +142,8 @@ bool WorkerReplicationRequest::execute() {
         _initialized = true;
 
         auto const config = serviceProvider()->config();
-        fs::path const outDir = fs::path(config->get<string>("worker", "data-dir")) / database();
+        fs::path const outDir =
+                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
 
         vector<fs::path> tmpFiles;
         vector<fs::path> outFiles;

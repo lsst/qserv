@@ -38,6 +38,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/mysql/DatabaseMySQLUtils.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
@@ -95,12 +96,13 @@ vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo, uns
     string const chunkSuffix = "_" + to_string(chunk);
 
     for (auto&& table : databaseInfo.partitionedTables()) {
-        string const file = table + chunkSuffix;
-        for (auto&& ext : ::extensions) {
+        string const tableFsName = database::mysql::obj2fs(table);
+        string const file = tableFsName + chunkSuffix;
+        for (const string& ext : ::extensions) {
             result.push_back(file + "." + ext);
         }
-        string const fileOverlap = table + "FullOverlap" + chunkSuffix;
-        for (auto&& ext : ::extensions) {
+        string const fileOverlap = tableFsName + "FullOverlap" + chunkSuffix;
+        for (const string& ext : ::extensions) {
             result.push_back(fileOverlap + "." + ext);
         }
     }
@@ -109,11 +111,10 @@ vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo, uns
 
 vector<string> FileUtils::regularFiles(DatabaseInfo const& databaseInfo) {
     vector<string> result;
-
     for (auto&& table : databaseInfo.regularTables()) {
-        string const filename = table;
-        for (auto&& ext : ::extensions) {
-            result.push_back(filename + "." + ext);
+        string const file = database::mysql::obj2fs(table);
+        for (const string& ext : ::extensions) {
+            result.push_back(file + "." + ext);
         }
     }
     return result;
@@ -143,8 +144,7 @@ bool FileUtils::parsePartitionedFile(tuple<string, unsigned int, string>& parsed
     }
 
     // Find the table name and check if it's allowed for the specified database
-
-    const string table = fileName.substr(0, posBeforeChunk);
+    const string table = database::mysql::fs2obj(fileName.substr(0, posBeforeChunk));
     if (!::isValidPartitionedTable(table, databaseInfo)) return false;  // unknown table
 
     // Success

@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
 #include "util/TimeUtils.h"
@@ -93,7 +94,8 @@ bool WorkerDeleteRequest::execute() {
     boost::system::error_code ec;
     {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
-        fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
+        fs::path const dataDir =
+                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext = errorContext or
                        reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,
