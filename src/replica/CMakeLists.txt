@@ -103,6 +103,7 @@ replica_tests(
     testJson
     testMessageQueue
     testNamedMutexRegistry
+    testMySQLObjNameTrans
     testQueryGenerator
     testReplicaInfo
     testSemanticMap
