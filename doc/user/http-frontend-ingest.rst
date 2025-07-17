@@ -78,8 +78,42 @@ Most services described in this document require user database and table names. 
 
   This prefix is reserved for naming internal tables that Qserv places into user databases.
 
-A failure to follow these conventions will result in an error response from the service.
+Depending on the version of the Qserv AOI, there are additional restrictions on the names of databases and tables.
+Before version number **46** of the API, database and table names could only container alphanumeric characters and underscores.
+This restriction was imposed to avoid issues with the MySQL server. This restriction was relaxed in version **46** of the API
+to allow the following special characters:
 
+  -       (white space)
+  - ``-`` (hyphen)
+  - ``.`` (dot)
+  - ``@`` (at sign)
+  - ``+`` (plus sign)
+  - ``#`` (hash)
+  - ``$`` (dollar sign)
+  - ``%`` (percent sign)
+  - ``&`` (ampersand)
+  - ``!`` (exclamation mark)
+  - ``=`` (equal sign)
+  - ``?`` (question mark)
+  - ``~`` (tilde)
+  - ``^`` (caret)
+  - ``|`` (vertical bar)
+  - ``:`` (colon)
+  - ``;`` (semicolon)
+  - ``'`` (single quote)
+  - ``"`` (double quote)
+  - ``<`` (less than)
+  - ``>`` (greater than)
+  - ``(`` (left parenthesis)
+  - ``)`` (right parenthesis)
+  - ``{`` (left brace)
+  - ``}`` (right brace)
+  - ``[`` (left bracket)
+  - ``]`` (right bracket)
+  - ``/`` (forward slash)
+  - ``\`` (backslash)
+
+A failure to follow these conventions will result in an error response from the service.
 
 Ingesting tables
 ----------------
