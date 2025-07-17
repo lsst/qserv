@@ -330,6 +330,9 @@ class ReplicationInterface:
                 )
             ),
         )
+        return ChunkLocation(
+            res["chunk"], res["host"], str(res["port"]), res["http_host"], str(res["http_port"])
+        )
 
     def ingest_chunk_configs(self, transaction_id: int, chunk_ids: list[int]) -> list[ChunkLocation]:
         """Get the locations where a list of chunk ids should be ingested.
