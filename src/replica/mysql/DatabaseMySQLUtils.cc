@@ -28,10 +28,36 @@
 #include "replica/mysql/DatabaseMySQLExceptions.h"
 
 // System headers
+#include <cctype>
 #include <stdexcept>
 
 using namespace std;
 using json = nlohmann::json;
+
+namespace {
+
+// Bi-directional translation maps.
+// Note that the translation is always between a single character and and a string that
+// has exactly 5 characters. This assumption is used in the implementation of the methods below.
+// The first character of the string is always '@', and the rest of the characters are
+// the hexadecimal representation of the character in the ASCII encoding.
+
+map<char, string> const obj2fsMap = {
+        {' ', "@0020"},  {'!', "@0021"},  {'"', "@0022"}, {'#', "@0023"}, {'$', "@0024"}, {'%', "@0025"},
+        {'&', "@0026"},  {'\'', "@0027"}, {'(', "@0028"}, {')', "@0029"}, {'*', "@002a"}, {'+', "@002b"},
+        {',', "@002c"},  {'-', "@002d"},  {'.', "@002e"}, {'/', "@002f"}, {':', "@003a"}, {';', "@003b"},
+        {'<', "@003c"},  {'=', "@003d"},  {'>', "@003e"}, {'?', "@003f"}, {'@', "@0040"}, {'[', "@005b"},
+        {'\\', "@005c"}, {']', "@005d"},  {'^', "@005e"}, {'`', "@0060"}, {'{', "@007b"}, {'|', "@007c"},
+        {'}', "@007d"},  {'~', "@007e"}};
+
+map<string, char> const fs2objMap = {
+        {"@0020", ' '},  {"@0021", '!'},  {"@0022", '"'}, {"@0023", '#'}, {"@0024", '$'}, {"@0025", '%'},
+        {"@0026", '&'},  {"@0027", '\''}, {"@0028", '('}, {"@0029", ')'}, {"@002a", '*'}, {"@002b", '+'},
+        {"@002c", ','},  {"@002d", '-'},  {"@002e", '.'}, {"@002f", '/'}, {"@003a", ':'}, {"@003b", ';'},
+        {"@003c", '<'},  {"@003d", '='},  {"@003e", '>'}, {"@003f", '?'}, {"@0040", '@'}, {"@005b", '['},
+        {"@005c", '\\'}, {"@005d", ']'},  {"@005e", '^'}, {"@0060", '`'}, {"@007b", '{'}, {"@007c", '|'},
+        {"@007d", '}'},  {"@007e", '~'}};
+}  // namespace
 
 namespace lsst::qserv::replica::database::mysql {
 namespace detail {
@@ -86,6 +112,48 @@ json processList(shared_ptr<Connection> const& conn, bool full) {
         }
     });
     return result;
+}
+
+std::string obj2fs(std::string const& objectName) {
+    if (objectName.empty()) throw invalid_argument("Object name is empty");
+    string result;
+    result.reserve(objectName.size() * 5);  // Reserve enough space for the worst case
+    for (char c : objectName) {
+        auto it = ::obj2fsMap.find(c);
+        if (it != ::obj2fsMap.end()) {
+            result += it->second;
+        } else {
+            result += c;
+        }
+    }
+    return result;
+}
+
+std::string fs2obj(std::string const& fileSystemName) {
+    if (fileSystemName.empty()) throw invalid_argument("File system name is empty");
+    string result = fileSystemName;
+    size_t pos = 0;
+    while ((pos = result.find('@', pos)) != string::npos) {
+        // Ensure that at least 5 characters are remaining to form a valid translation
+        if (pos + 5 > result.size()) break;
+
+        auto it = ::fs2objMap.find(result.substr(pos, 5));
+        if (it != ::fs2objMap.end()) {
+            result.replace(pos, 5, string(1, it->second));
+        }
+        pos += 1;  // Move to the next character after the '@'
+    }
+    return result;
+}
+
+bool isValidObjectName(std::string const& objectName) {
+    if (objectName.empty()) throw invalid_argument("Object name is empty");
+    for (char c : objectName) {
+        if (isalnum(c) || c == '_') continue;
+        if (::obj2fsMap.find(c) != ::obj2fsMap.end()) continue;
+        return false;
+    }
+    return true;
 }
 
 }  // namespace lsst::qserv::replica::database::mysql

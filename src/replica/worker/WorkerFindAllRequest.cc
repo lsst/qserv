@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/util/FileUtils.h"
 #include "replica/services/ServiceProvider.h"
 #include "util/TimeUtils.h"
@@ -93,7 +94,8 @@ bool WorkerFindAllRequest::execute() {
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
-        fs::path const dataDir = fs::path(config->get<string>("worker", "data-dir")) / database();
+        fs::path const dataDir =
+                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext = errorContext or
                        reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,

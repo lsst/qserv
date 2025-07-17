@@ -35,6 +35,7 @@
 #include "global/constants.h"
 #include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/util/Performance.h"
 #include "replica/util/ProtocolBuffer.h"
 
@@ -75,8 +76,9 @@ WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(ServiceProvider::Ptr cons
           _connectionPool(connectionPool),
           _request(request),
           _tmpDirName(serviceProvider->config()->get<string>("worker", "loader-tmp-dir") + "/" +
-                      request.database()),
-          _fileName(_tmpDirName + "/" + request.director_table() + "-" + to_string(request.chunk()) +
+                      database::mysql::obj2fs(request.database())),
+          _fileName(_tmpDirName + "/" + database::mysql::obj2fs(request.director_table()) + "-" +
+                    to_string(request.chunk()) +
                     (request.has_transactions() ? "-p" + to_string(request.transaction_id()) : "") + "-" +
                     id) {}
 

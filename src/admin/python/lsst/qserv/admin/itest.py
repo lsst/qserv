@@ -1097,9 +1097,16 @@ def run_http_ingest(
         ["3", "Charlie", "1"],
     ]
 
-    database = "user_testdb"
-    table_json = "json"
-    table_csv = "csv"
+    # The database and table names have special symbols "-" "and "$" in the names.
+    # These names require quoting in MySQL queries. And they also require special mapping
+    # to the underlying file system. See MySQL documentation for more details:
+    # https://dev.mysql.com/doc/refman/8.4/en/identifiers.html
+    # https://dev.mysql.com/doc/refman/8.4/en/identifier-mapping.html
+    # This is test for an ability of Qserv and Replication/Ingest system to properly handle
+    # this scenario..
+    database = "user_test-db"
+    table_json = "json-table"
+    table_csv = "csv$table"
     timeout = 30
 
     _log.debug("Testing user database: %s", database)

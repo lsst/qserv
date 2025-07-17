@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
 
 // LSST headers
@@ -179,9 +180,8 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
             break;
         }
         boost::system::error_code ec;
-
         fs::path const file = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
-                              request.database() / request.file();
+                              database::mysql::obj2fs(request.database()) / request.file();
         fs::file_status const stat = fs::status(file, ec);
         if (stat.type() == fs::status_error) {
             LOGS(_log, LOG_LVL_ERROR,

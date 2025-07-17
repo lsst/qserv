@@ -27,6 +27,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/proto/protocol.pb.h"
 #include "util/TablePrinter.h"
 
@@ -84,7 +85,7 @@ string ReplicaInfo::FileInfo::baseTable() const {
     // efficient than others based on the C++ Regular Expression library.
     // It also works for both regular and partitioned tables.
 
-    string const noChunkNoExt = _removeChunkAndExt();
+    string const noChunkNoExt = database::mysql::fs2obj(_removeChunkAndExt());
     if (noChunkNoExt.size() <= _overlapSize) {
         // no room for overlap, or the table name is "FullOverlap" which is also legit
         return noChunkNoExt;
