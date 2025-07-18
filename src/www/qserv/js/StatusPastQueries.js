@@ -180,6 +180,7 @@ function(CSSLoader,
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-download"></i></th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-bar-chart-steps"></i></th>
           <th class="sticky">Query</th>
         </tr>
       </thead>
@@ -304,6 +305,7 @@ function(CSSLoader,
             const queryCopyTitle = "Click to copy the query text to the clipboard.";
             const queryDownloadTitle = "Click to download the query text to your computer.";
             const queryInspectTitle = "Click to see detailed info (progress, messages, etc.) on the query.";
+            const queryProgressTitle = "Click to see query progression plot (if it's available).";
             const queryStyle = "color:#4d4dff;";
             let html = '';
             let that = this;
@@ -330,6 +332,13 @@ function(CSSLoader,
                 Fwk.find("Status", "Query Inspector").set_query_id(queryId);
                 Fwk.show("Status", "Query Inspector");
             };
+            let displayQueryProgress  = function(e) {
+                let button = $(e.currentTarget);
+                let queryId = button.parent().parent().attr("id");
+                let czar = button.parent().parent().attr("czar");
+                Fwk.find("Czar", "Query Progress").set_query_id(czar, queryId);
+                Fwk.show("Czar", "Query Progress");
+            };
             for (let i in data.queries_past) {
                 let query = data.queries_past[i];
                 this._id2query[query.queryId] = query.query;
@@ -339,7 +348,7 @@ function(CSSLoader,
                 let performance = this._performance(query.chunkCount, query.completed_sec - query.submitted_sec);
                 let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
                 html += `
-<tr class="${failed_query_class}" id="${query.queryId}">
+<tr class="${failed_query_class}" id="${query.queryId}" czar="${data.czar_ids[query.czarId]}">
   <td style="padding-right:10px;"><pre>${query.submitted}</pre></td>
   <td><pre>${query.qType}</pre></td>
   <td style="padding-right:10px;"><pre>${query.status}</pre></td>
@@ -360,13 +369,17 @@ function(CSSLoader,
   <td style="text-align:center; padding-top:0; padding-bottom:0">
     <button class="btn btn-outline-info btn-sm inspect-query" style="height:20px; margin:0px;" title="${queryInspectTitle}"></button>
   </td>
-  <td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
+  <td style="text-align:center; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-info btn-sm query-progress" style="height:20px; margin:0px;" title="${queryProgressTitle}"></button>
+  </td>
+<td class="query_toggler" title="${queryToggleTitle}"><pre class="query" style="${queryStyle}">` + this._query2text(query.queryId, expanded) + `</pre></td>
 </tr>`;
             }
             let tbodyPastQueries = this._table().children('tbody').html(html);
             tbodyPastQueries.find("td.query_toggler").click(toggleQueryDisplay);
             tbodyPastQueries.find("button.copy-query").click(copyQueryToClipboard);
             tbodyPastQueries.find("button.inspect-query").click(displayQuery);
+            tbodyPastQueries.find("button.query-progress").click(displayQueryProgress);
         }
         
         /**

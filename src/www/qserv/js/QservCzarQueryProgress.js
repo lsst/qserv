@@ -49,12 +49,12 @@ function(CSSLoader,
             }
         }
         /// Set the identifier and begin loading the query info in the background.
-        set_query_id(query_id) {
+        set_query_id(czar, query_id) {
             this._init();
-            this._set_query_ids([query_id]);    // To get the minimally-polulated selector
+            this._set_czar(czar);
             this._set_query_id(query_id);
-            this._set_last_seconds(24 * 3600);  // Track the known history (if any) of the query
-            this._load();
+            this._set_last_seconds(24 * 3600);
+            this._load(czar);
         }
         _init() {
             if (this._initialized === undefined) this._initialized = false;
@@ -73,9 +73,7 @@ function(CSSLoader,
       </div>
       <div class="form-group col-md">
         <label for="query-id">Query Id:</label>
-        <select id="query-id" class="form-control form-control-selector">
-          <option value="0" selected>&lt;any&gt;</option>
-        </select>
+        <input type="number" id="query-id" class="form-control" value="">
       </div>
       <div class="form-group col-md">
         <label for="last-seconds">Track last:</label>
@@ -133,13 +131,17 @@ function(CSSLoader,
             cont.find(".form-control-selector").change(() => {
                 this._load();
             });
+            cont.find(".form-control#query-id").change(() => {
+                if (this._query_id()) this._set_last_seconds(24 * 3600);
+                this._load();
+            });
             cont.find(".form-control-viewer").change(() => {
                 if (_.isUndefined(this._data)) this._load();
                 else this._display(this._data.queries);
             });
             cont.find("button#reset-form").click(() => {
                 this._set_update_interval_sec(10);
-                this._set_query_id(0);
+                this._set_query_id('');
                 this._set_last_seconds(QservCzarQueryProgress.last_seconds());
                 this._set_vertical_scale('logarithmic');
                 this._set_horizontal_scale('auto-zoom-in');
@@ -169,21 +171,9 @@ function(CSSLoader,
             }
             this._form_control('select', 'czar').html(html);
         }
-        _query_id() { return this._form_control('select', 'query-id').val(); }
+        _query_id() { return this._form_control('input', 'query-id').val(); }
         _set_query_id(val) {
-            this._form_control('select', 'query-id').val(val);
-        }
-        _set_query_ids(queries) {
-            const prev_query = this._query_id();
-            let html = '<option value="0" selected>&lt;any&gt;</option>';
-            for (let i in queries) {
-                const query = queries[i];
-                const selected = (_.isEmpty(prev_query) && (i === 0)) ||
-                                (!_.isEmpty(prev_query) && (prev_query === query));
-                html += `
-<option value="${query}" ${selected ? "selected" : ""}>${query}</option>`;
-            }
-            this._form_control('select', 'query-id').html(html);
+            this._form_control('input', 'query-id').val(val);
         }
         _vertical_scale() { return this._form_control('select', 'vertical-scale').val(); }
         _set_vertical_scale(val) { this._form_control('select', 'vertical-scale').val(val); }
@@ -242,7 +232,7 @@ function(CSSLoader,
                 "replication/qserv/master/queries/active/progress/" + this._czar(),
                 {   version: Common.RestAPIVersion,
                     timeout_sec: 2,
-                    query_id: this._query_id(),
+                    query_id: this._query_id() ? this._query_id() : 0,
                     last_seconds: this._last_seconds()
                 },
                 (data) => {
@@ -269,7 +259,6 @@ function(CSSLoader,
             const query_ids = _.keys(queries);
             query_ids.sort();
             query_ids.reverse();
-            this._set_query_ids(query_ids); // Update a collection of queries in the selector.
             // Add a small delta to the points to allow seeing zeroes on the log scale,
             // in case the one was requested.
             const valueDeltaForLogScale = this._vertical_scale() === 'linear' ? 0 : 0.1;
@@ -290,7 +279,9 @@ function(CSSLoader,
                     data: points,
                     animation: {
                         enabled: false
-                    }
+                    },
+                    showInLegend: false,
+                    // color: '#F00',
                 });
             }
             if (!_.isUndefined(this._queries_chart)) {
