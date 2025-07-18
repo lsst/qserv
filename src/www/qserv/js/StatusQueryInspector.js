@@ -96,7 +96,7 @@ function(CSSLoader,
   </div>
 </div>
 <div class="row" id="fwk-status-query-info">
-  <div class="col col-md-4">
+  <div class="col col-md-3">
     <table class="table table-sm table-hover">
       <thead>
         <tr>
@@ -112,31 +112,47 @@ function(CSSLoader,
         <tr>
           <th style="text-align:left" scope="row">Status</th>
           <td style="text-align:left" id="status"><pre></pre></td>
-          <th style="text-align:left" scope="row">Chunks</th>
-          <td style="text-align:left"><pre id="chunkCount"></pre></td>
         </tr>
         <tr>
           <th style="text-align:left" scope="row">Type</th>
           <td style="text-align:left"><pre id="qType"></pre></td>
-          <th style="text-align:left" scope="row">Collected Bytes</th>
-          <td style="text-align:left"><pre id="collectedBytes"></pre></td>
         </tr>
         <tr>
           <th style="text-align:left" scope="row">Submitted</th>
           <td style="text-align:left"><pre id="submitted"></pre></td>
-          <th style="text-align:left" scope="row">Collected Rows</th>
-          <td style="text-align:left"><pre id="collectedRows"></pre></td>
         </tr>
         <tr>
           <th style="text-align:left" scope="row">Completed</th>
           <td style="text-align:left"><pre id="completed"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">Chunks</th>
+          <td style="text-align:left"><pre id="chunkCount"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">Collected Bytes</th>
+          <td style="text-align:left"><pre id="collectedBytes"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">Collected Rows</th>
+          <td style="text-align:left"><pre id="collectedRows"></pre></td>
+        </tr>
+        <tr>
           <th style="text-align:left" scope="row">Final Rows</th>
           <td style="text-align:left"><pre id="finalRows"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">Czar</th>
+          <td style="text-align:left"><pre id="czar"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">&nbsp;</th>
+          <td style="text-align:left">&nbsp;</td>
         </tr>
       </tbody>
     </table>
   </div>
-  <div class="col col-md-8">
+  <div class="col col-md-9">
     <table class="table table-sm table-hover">
       <thead>
         <tr>
@@ -299,7 +315,7 @@ function(CSSLoader,
                       this._on_failed('No info returned by the server for query_id=' + query_id);
                         return;
                     } else {
-                        this._display(data["queries_past"][0]);
+                        this._display(data);
                         Fwk.setLastUpdate(this._status());
                     }
                     this._status().removeClass('updating');
@@ -322,6 +338,7 @@ function(CSSLoader,
             this._set_query_info("qTemplate", "");
             this._set_query_info("qMerge", "");
             this._set_query_info("resultQuery", "");
+            this._set_query_info("czar", "");
             this._status().html('<span style="color:maroon">' + msg + '</span>');
             this._status().removeClass('updating');
             this._loading = false;
@@ -331,7 +348,9 @@ function(CSSLoader,
             this._download_url[target] = URL.createObjectURL(new Blob([query]));
             this._query_status().find("a.download-query[target='" + target + "']").attr("href", this._download_url[target], {type: "text/plain"});
         }
-        _display(info) {
+        _display(data) {
+            let info = data["queries_past"][0];
+            let czar = data.czar_ids[info.czarId];
             this._info = info;
             this._set_query_info_state("status", `<pre class="${this._status2class(info.status)}">${info.status}</pre>`);
             this._set_query_info("qType", info.qType);
@@ -350,6 +369,7 @@ function(CSSLoader,
             this._set_query_download_url("qMerge", info.qMerge);
             this._set_query_info("resultQuery", Common.query2text(info.resultQuery, this._expanded["resultQuery"]));
             this._set_query_download_url("resultQuery", info.resultQuery);
+            this._set_query_info("czar", czar + "[" + info.czarId + "]");
             let html = '';
             for (let i in info.messages) {
                 let msg = info.messages[i];

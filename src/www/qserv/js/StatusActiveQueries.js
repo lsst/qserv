@@ -110,8 +110,8 @@ function(CSSLoader,
           <th class="sticky" style="text-align:right;">QID</th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-clipboard-fill"></i></th>
           <th class="sticky" style="text-align:center;"><i class="bi bi-download"></i></th>
-          <th class="sticky" class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
-          <th class="sticky" class="sticky" style="text-align:center;"><i class="bi bi-bar-chart-steps"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-info-circle-fill"></i></th>
+          <th class="sticky" style="text-align:center;"><i class="bi bi-bar-chart-steps"></i></th>
           <th class="sticky">Query</th>
         </tr>
       </thead>
@@ -219,7 +219,7 @@ function(CSSLoader,
                 const performance = this._performance(query.completedChunks, query.samplingTime_sec - query.queryBegin_sec);
                 const expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
                 html += `
-<tr id="${query.queryId}">
+<tr id="${query.queryId}" czar="${data.czar_ids[query.czarId]}">
   <td><pre>` + query.queryBegin + `</pre></td>
   <th scope="row">
     <div class="progress" style="height: 22px;">
@@ -276,8 +276,9 @@ function(CSSLoader,
             };
             let displayQueryProgress  = function(e) {
                 let button = $(e.currentTarget);
+                let czar = button.parent().parent().attr("czar");
                 let queryId = button.parent().parent().attr("id");
-                Fwk.find("Czar", "Query Progress").set_query_id(queryId);
+                Fwk.find("Czar", "Query Progress").set_query_id(czar, queryId);
                 Fwk.show("Czar", "Query Progress");
             };
             let tbodyQueries = this._table().children('tbody').html(html);
