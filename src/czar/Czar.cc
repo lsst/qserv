@@ -438,11 +438,15 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlQmetaConfig());
     string sql =
             "SELECT "
-            "status,qc.czarId,qc.czar,UNIX_TIMESTAMP(submitted),UNIX_TIMESTAMP(completed),chunkCount,"
-            "collectedBytes,collectedRows,finalRows,messageTable,resultQuery "
-            "FROM QInfo, QCzar qc WHERE "
-            "queryId=" +
-            to_string(queryId) + " AND qc.czarId=QInfo.czarId";
+            "qi.status,qc.czarId,qc.czar,UNIX_TIMESTAMP(qi.submitted),UNIX_TIMESTAMP(qi.completed),qi."
+            "chunkCount,"
+            "qi.collectedBytes,qi.collectedRows,qi.finalRows,qi.messageTable,qi.resultQuery,qi.query,"
+            "TRIM(BOTH ',' FROM GROUP_CONCAT(IF(qm.severity='ERROR',qm.message,''))) "
+            "FROM QInfo qi "
+            "JOIN QCzar qc ON qi.czarId=qc.czarId "
+            "LEFT OUTER JOIN QMessages AS qm ON qi.queryId=qm.queryId "
+            "WHERE qi.queryId=" +
+            to_string(queryId);
     sql::SqlResults results;
     sql::SqlErrorObject err;
     if (!sqlConn->runQuery(sql, results, err)) {
@@ -462,9 +466,11 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     vector<string> colFinalRows;
     vector<string> colMessageTable;
     vector<string> colResultQuery;
+    vector<string> colQuery;
+    vector<string> colError;
     if (!results.extractFirstColumns(err, colStatus, colCzarId, colCzarType, colSubmitted, colCompleted,
                                      colChunkCount, colCollectedBytes, colCollectedRows, colFinalRows,
-                                     colMessageTable, colResultQuery)) {
+                                     colMessageTable, colResultQuery, colQuery, colError)) {
         string const msg = context + "Failed to extract info for the user query, err=" + err.printErrMsg() +
                            ", sql=" + sql;
         throw runtime_error(msg);
@@ -475,14 +481,11 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     }
 
     SubmitResult result;
-    if (colStatus[0] == "FAILED") {
-        result.errorMessage = "The query failed";
-    } else if (colStatus[0] == "FAILED") {
-        result.errorMessage = "The query was aborted";
-    }
+    result.errorMessage = colError[0];
     result.resultTable = "result_" + to_string(queryId);
     result.messageTable = colMessageTable[0];
     result.resultQuery = colResultQuery[0];
+    result.query = colQuery[0];
     result.queryId = queryId;
     result.status = colStatus[0];
     result.czarId = stoul(colCzarId[0]);

@@ -128,7 +128,7 @@ json HttpCzarQueryModule::_cancel() {
 
 json HttpCzarQueryModule::_status() {
     debug(__func__);
-    checkApiVersion(__func__, 41);
+    checkApiVersion(__func__, 47);
     SubmitResult const submitResult = _getQueryInfo();
     _dumpQueryInfo(__func__, submitResult);
     json statusJson = json::object();
@@ -143,6 +143,8 @@ json HttpCzarQueryModule::_status() {
     statusJson["finalRows"] = submitResult.finalRows;
     statusJson["queryBeginEpoch"] = submitResult.queryBeginEpoch;
     statusJson["lastUpdateEpoch"] = submitResult.lastUpdateEpoch;
+    statusJson["query"] = submitResult.query;
+    statusJson["error"] = submitResult.errorMessage;
     return json::object({{"status", statusJson}});
 }
 
@@ -210,6 +212,7 @@ void HttpCzarQueryModule::_dumpQueryInfo(string const& func, SubmitResult const&
     debug(func, "submitResult.queryId=" + to_string(submitResult.queryId));
     debug(func, "submitResult.resultTable=" + submitResult.resultTable);
     debug(func, "submitResult.messageTable=" + submitResult.messageTable);
+    debug(func, "submitResult.query=" + submitResult.query);
     debug(func, "submitResult.resultQuery=" + submitResult.resultQuery);
     debug(func, "submitResult.status=" + submitResult.status);
     debug(func, "submitResult.czarId=" + to_string(submitResult.czarId));

@@ -591,6 +591,11 @@ class ITestQueryHttp:
             _log.debug("SQLCmd.execute query status = %s", status)
             if status == "COMPLETED":
                 break
+            elif status == "EXECUTING":
+                # The query is still running, wait a bit and try again
+                time.sleep(0.1)
+            else:
+                raise RuntimeError(f"Detached query {query_id} failed, status: {status}, error: {res['status']['error']}")
         else:
             raise RuntimeError(f"Timeout while waiting for detached query {query_id}")
 
