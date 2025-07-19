@@ -42,6 +42,7 @@ struct SubmitResult {
     std::string resultTable;   ///< Result table name
     std::string messageTable;  ///< Message table name
     std::string resultQuery;   ///< The query to execute to get results
+    std::string query;         ///< The original user query
     QueryId queryId = 0;       ///< The unique identifier of the user query
 
     // Populated by Czar::getQueryInfo only for queries which are still in flight
