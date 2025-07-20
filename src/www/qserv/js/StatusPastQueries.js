@@ -103,6 +103,7 @@ function(CSSLoader,
           <option value="" selected></option>
           <option value="COMPLETED">COMPLETED</option>
           <option value="FAILED">FAILED</option>
+          <option value="FAILED_LR">FAILED_LR</option>
           <option value="ABORTED">ABORTED</option>
         </select>
       </div>
@@ -344,11 +345,20 @@ function(CSSLoader,
                 this._id2query[query.queryId] = query.query;
                 this._id2url[query.queryId] = URL.createObjectURL(new Blob([query.query], {type: "text/plain"}));
                 let elapsed = this._elapsed(query.completed_sec - query.submitted_sec);
-                let failed_query_class = query.status !== "COMPLETED" ? "table-danger" : "";
+                let queryStatusClass = "";
+                switch (query.status) {
+                    case "ABORTED":
+                    case "FAILED":
+                        queryStatusClass = "table-danger";
+                        break;
+                    case "FAILED_LR":
+                        queryStatusClass = "table-warning";
+                        break;
+                }
                 let performance = this._performance(query.chunkCount, query.completed_sec - query.submitted_sec);
                 let expanded = (query.queryId in this._queryId2Expanded) && this._queryId2Expanded[query.queryId];
                 html += `
-<tr class="${failed_query_class}" id="${query.queryId}" czar="${data.czar_ids[query.czarId]}">
+<tr class="${queryStatusClass}" id="${query.queryId}" czar="${data.czar_ids[query.czarId]}">
   <td style="padding-right:10px;"><pre>${query.submitted}</pre></td>
   <td><pre>${query.qType}</pre></td>
   <td style="padding-right:10px;"><pre>${query.status}</pre></td>
