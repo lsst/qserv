@@ -29,6 +29,7 @@
 /// (see individual class documentation for more information)
 
 // System headers
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <set>
@@ -110,6 +111,7 @@ public:
 
     /// @return error details if finalize() returns false
     util::Error const& getError() const { return _error; }
+
     /// @return final target table name  storing results after post processing
     std::string getTargetTable() const { return _config.targetTable; }
 
@@ -120,8 +122,15 @@ public:
     ///    function. A negative value indicates that its value is meaningless,
     ///    which happens when there is no postprocessing of the result table.
     bool finalize(size_t& collectedBytes, int64_t& rowCount);
+
     /// Check if the object has completed all processing.
     bool isFinished() const;
+
+    /// Check if the result size limit has been exceeded.
+    bool resultSizeLimitExceeded() const { return _resultSizeLimitExceeded.load(); }
+
+    /// Check if the result size limit has been exceeded.
+    void setResultSizeLimitExceeded() { _resultSizeLimitExceeded.store(true); }
 
     void setMergeStmtFromList(std::shared_ptr<query::SelectStmt> const& mergeStmt) const;
 
@@ -166,12 +175,13 @@ private:
     void _fixupTargetName();
     bool _setupConnectionMyIsam();
 
-    InfileMergerConfig _config;                    ///< Configuration
-    std::shared_ptr<sql::SqlConnection> _sqlConn;  ///< SQL connection
-    std::string _mergeTable;                       ///< Table for result loading
-    util::Error _error;                            ///< Error state
-    bool _isFinished = false;                      ///< Completed?
-    std::mutex _sqlMutex;                          ///< Protection for SQL connection
+    InfileMergerConfig _config;                         ///< Configuration
+    std::shared_ptr<sql::SqlConnection> _sqlConn;       ///< SQL connection
+    std::string _mergeTable;                            ///< Table for result loading
+    util::Error _error;                                 ///< Error state
+    bool _isFinished = false;                           ///< Completed?
+    std::atomic<bool> _resultSizeLimitExceeded{false};  ///< Large result query?
+    std::mutex _sqlMutex;                               ///< Protection for SQL connection
     mysql::MySqlConnection _mysqlConn;
     std::mutex _mysqlMutex;
     mysql::LocalInfile::Mgr _infileMgr;

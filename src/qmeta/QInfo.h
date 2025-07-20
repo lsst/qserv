@@ -57,6 +57,7 @@ public:
         EXECUTING,  ///< Query is currently executing (or being prepared)
         COMPLETED,  ///< Query execution completed successfully
         FAILED,     ///< Query execution failed
+        FAILED_LR,  ///< Query execution failed due to large result set
         ABORTED     ///< Query execution was intentionally aborted
     };
 
