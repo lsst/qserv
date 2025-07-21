@@ -162,7 +162,9 @@ If the query identifier is valid then the following object will be returned:
         ...
         "status" : {
             "queryId" :         <number>,
+            "query" :           <string>,
             "status" :          <string>,
+            "error" :           <string>,
             "czarId" :          <number>,
             "czarType" :        <string>,
             "totalChunks" :     <number>,
@@ -180,12 +182,16 @@ Where the ``status`` is an object that has following attributes:
 ``queryId`` : *number*
   The unique identifier of the previously submitted query.
 
+``query`` : *string*
+  The text of the query that was submitted for processing.
+
 ``status`` : *string*
   The current status of the query can have one of the following values:
 
   - ``EXECUTING`` - The query processing is still in progress.
   - ``COMPLETED`` - The query has been completed.
   - ``FAILED`` - The query failed.
+  - ``FAILED_LR`` - The query failed after hitting the limit of the maximum size of the result set to be returned.
   - ``ABORTED`` - The query was aborted:
 
     - explicitly by a user using the query cancellation REST service explained in the document.
@@ -193,6 +199,10 @@ Where the ``status`` is an object that has following attributes:
       limit (which is configured by the Qserv administrators).
     - or, implicitly when the query processing service was restarted due to some failure or by
       Qserv administrators.
+
+``error`` : *string*
+  The error message in case the query has failed. The value of this attribute is an empty string
+  if the query has been successfully processed.
 
 ``czarId`` : *number*
     The unique identifier of the Czar node that is responsible for processing the query.
@@ -239,10 +249,16 @@ Below is an example response for a query that is currently being processed:
 
 .. code-block::
 
-    {   "success" : 1,
-        "status" : {
+    {
+        "success" :   1,
+        "error" :     "",
+        "error_ext" : {},
+        "warning" : "",
+        "status" :  {
             "queryId" :         310554,
+            "query" :           "SELECT objectId,coord_ra,coord_dec FROM dp02_dc2_catalogs.Object",
             "status" :          "EXECUTING",
+            "error" :           "",
             "czarId" :          7,
             "czarType" :        "http",
             "totalChunks" :     1477,
@@ -258,6 +274,36 @@ Below is an example response for a query that is currently being processed:
 Users can use the status service to estimate when the query will finish. Typically, client
 applications should wait until the query status is "COMPLETED" before fetching
 the result set by calling the next service explained below.
+
+The next example illustrates a response for a query that has failed after hitting the limit
+of the maximum size of the result set to be returned:
+
+.. code-block::
+
+    {
+        "success" :   1,
+        "error" :     "",
+        "error_ext" : {},
+        "warning" :   "",
+        "status" :    {
+            "queryId" :         404591,
+            "query" :           "SELECT * FROM dp1.Source",
+            "status" :          "FAILED_LR",
+            "error" :           "MERGE_ERROR 1470 (QI=404591:81; cancelling the query,
+                                 queryResult table result_404591 is too large
+                                 at 571829258 bytes, max allowed size is 536870912 bytes)
+                                 2025-07-21T05:36:23+0000",
+            "collectedBytes" :  860211304,
+            "collectedRows" :   521359,
+            "completedChunks" : 86,
+            "czarId" :          9,
+            "czarType" :        "proxy",
+            "finalRows" :       521359,
+            "lastUpdateEpoch" : 1753076184,
+            "queryBeginEpoch" : 1753076175,
+            "totalChunks" :     86
+        }
+    }
 
 .. _http-frontend-query-async-result:
 

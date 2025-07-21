@@ -147,10 +147,42 @@ The query will return:
               ROWS: 1
                DBS: dp02_dc2_catalogs
              QUERY: SELECT COUNT(*) FROM dp02_dc2_catalogs.Object WHERE coord_ra !=0
+             ERROR:
 
 Particularly interesting columns here are:
 
-- ``STATUS``: the query status, which can be one of: ``EXECUTING``, ``COMPLETED``, ``FAILED``, or ``ABORTED``
+- ``STATUS``: the query status, which can be one of: ``EXECUTING``, ``COMPLETED``, ``FAILED``, ``FAILED_LR``, or ``ABORTED``, where:
+
+  - ``EXECUTING`` means the query is still being processed
+  - ``COMPLETED`` means the query has been successfully completed
+  - ``FAILED`` means the query has failed during processing
+  - ``FAILED_LR`` means the query has failed after hitting the limit of the maximum size of the result set to be returned (the "Large Result" failure mode)
+  - ``ABORTED`` means the query has been cancelled by the user, or the query has been aborted after Qserv was restarted
+
+- ``ERROR``: the error message if the query has failed during processing. This column will be empty if the query has been successfully completed.
+
+Here is another example of a query that has failed with the "Large Result" error:
+
+.. code-block::
+
+    *************************** 1. row ***************************
+                ID: 404591
+              TYPE: ASYNC
+              CZAR: proxy
+           CZAR_ID: 9
+            STATUS: FAILED_LR
+         SUBMITTED: 2025-07-21 05:36:15
+         COMPLETED: 2025-07-21 05:36:24
+          RETURNED: NULL
+            CHUNKS: 86
+             BYTES: 860211304
+    ROWS_COLLECTED: 521359
+              ROWS: 521359
+               DBS: dp1
+             QUERY: SELECT * FROM dp1.Source
+             ERROR: MERGE_ERROR 1470 (QI=404591:81; cancelling the query, queryResult
+                    table result_404591 is too large at 571829258 bytes, max allowed
+                    size is 536870912 bytes) 2025-07-21T05:36:23+0000
 
 Retrieving Results
 ==================
