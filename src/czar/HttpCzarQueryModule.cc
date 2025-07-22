@@ -128,7 +128,7 @@ json HttpCzarQueryModule::_cancel() {
 
 json HttpCzarQueryModule::_status() {
     debug(__func__);
-    checkApiVersion(__func__, 41);
+    checkApiVersion(__func__, 47);
     SubmitResult const submitResult = _getQueryInfo();
     _dumpQueryInfo(__func__, submitResult);
     json statusJson = json::object();
@@ -143,6 +143,8 @@ json HttpCzarQueryModule::_status() {
     statusJson["finalRows"] = submitResult.finalRows;
     statusJson["queryBeginEpoch"] = submitResult.queryBeginEpoch;
     statusJson["lastUpdateEpoch"] = submitResult.lastUpdateEpoch;
+    statusJson["query"] = submitResult.query;
+    statusJson["error"] = submitResult.errorMessage;
     return json::object({{"status", statusJson}});
 }
 
@@ -152,7 +154,8 @@ json HttpCzarQueryModule::_result() {
     string const binaryEncodingStr = query().optionalString("binary_encoding", "hex");
     http::BinaryEncodingMode const binaryEncoding = http::parseBinaryEncoding(binaryEncodingStr);
     debug(__func__, "binary_encoding=" + http::binaryEncoding2string(binaryEncoding));
-    return _waitAndExtractResult(_getQueryInfo(), binaryEncoding);
+    bool const async = true;
+    return _waitAndExtractResult(_getQueryInfo(), binaryEncoding, async);
 }
 
 json HttpCzarQueryModule::_resultDelete() {
@@ -200,9 +203,6 @@ SubmitResult HttpCzarQueryModule::_getQueryInfo() const {
         error(__func__, msg);
         throw http::Error(context() + __func__, msg);
     }
-    if (!submitResult.errorMessage.empty()) {
-        throw http::Error(context() + __func__, submitResult.errorMessage);
-    }
     return submitResult;
 }
 
@@ -210,6 +210,7 @@ void HttpCzarQueryModule::_dumpQueryInfo(string const& func, SubmitResult const&
     debug(func, "submitResult.queryId=" + to_string(submitResult.queryId));
     debug(func, "submitResult.resultTable=" + submitResult.resultTable);
     debug(func, "submitResult.messageTable=" + submitResult.messageTable);
+    debug(func, "submitResult.query=" + submitResult.query);
     debug(func, "submitResult.resultQuery=" + submitResult.resultQuery);
     debug(func, "submitResult.status=" + submitResult.status);
     debug(func, "submitResult.czarId=" + to_string(submitResult.czarId));
@@ -225,53 +226,70 @@ void HttpCzarQueryModule::_dumpQueryInfo(string const& func, SubmitResult const&
 }
 
 json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult,
-                                                http::BinaryEncodingMode binaryEncoding) const {
-    // Block the current thread before the query will finish or fail.
-    string const messageSelectQuery =
-            "SELECT chunkId, code, message, severity+0, timeStamp FROM " + submitResult.messageTable;
+                                                http::BinaryEncodingMode binaryEncoding, bool async) const {
     auto const conn =
             sql::SqlConnectionFactory::make(cconfig::CzarConfig::instance()->getMySqlResultConfig());
-    sql::SqlResults messageQueryResults;
-    sql::SqlErrorObject messageQueryErr;
-    if (!conn->runQuery(messageSelectQuery, messageQueryResults, messageQueryErr)) {
-        _dropTable(submitResult.messageTable);
-        _dropTable(submitResult.resultTable);
-        string const msg = "failed query=" + messageSelectQuery + " err=" + messageQueryErr.printErrMsg();
-        error(__func__, msg);
-        throw http::Error(context() + __func__, msg);
-    }
-
-    // Read thе message table to see if the user query suceeded or failed
-    vector<string> chunkId;
-    vector<string> code;
-    vector<string> message;
-    vector<string> severity;
-    sql::SqlErrorObject messageProcessErr;
-    if (!messageQueryResults.extractFirst4Columns(chunkId, code, message, severity, messageProcessErr)) {
-        messageQueryResults.freeResults();
-        _dropTable(submitResult.messageTable);
-        _dropTable(submitResult.resultTable);
-        string const msg = "failed to extract results of query=" + messageSelectQuery +
-                           " err=" + messageProcessErr.printErrMsg();
-        error(__func__, msg);
-        throw http::Error(context() + __func__, msg);
-    }
-    string errorMsg;
-    for (size_t i = 0; i < chunkId.size(); ++i) {
-        if (stoi(code[i]) > 0) {
-            errorMsg += "[chunkId=" + chunkId[i] + " code=" + code[i] + " message=" + message[i] +
-                        " severity=" + severity[i] + "], ";
+    if (async) {
+        // For the async queries the result table is not going to be ready
+        // until the query is completed. The caller should wait for the query
+        // to finish before calling this method.
+        if (submitResult.status != "COMPLETED") {
+            throw http::Error(context() + __func__,
+                              "queryId=" + to_string(submitResult.queryId) +
+                                      " is still executing or it has failed, status=" + submitResult.status);
         }
-    }
-    if (!errorMsg.empty()) {
+
+        // For the async queries the message table (if it still exists) is not used.
+        _dropTable(submitResult.messageTable);
+    } else {
+        // The sync queries are required to wait on the message table to be unlocked
+        // before proceeding to the result table. The message table is expected to be ready
+        // at any point of time after the query has been submitted. If the query is still
+        // executing the thread will block until the query is completed or failed.
+        string const messageSelectQuery =
+                "SELECT chunkId, code, message, severity+0, timeStamp FROM " + submitResult.messageTable;
+        sql::SqlResults messageQueryResults;
+        sql::SqlErrorObject messageQueryErr;
+        if (!conn->runQuery(messageSelectQuery, messageQueryResults, messageQueryErr)) {
+            _dropTable(submitResult.messageTable);
+            _dropTable(submitResult.resultTable);
+            string const msg = "failed query=" + messageSelectQuery + " err=" + messageQueryErr.printErrMsg();
+            error(__func__, msg);
+            throw http::Error(context() + __func__, msg);
+        }
+
+        // Read thе message table to see if the user query suceeded or failed
+        vector<string> chunkId;
+        vector<string> code;
+        vector<string> message;
+        vector<string> severity;
+        sql::SqlErrorObject messageProcessErr;
+        if (!messageQueryResults.extractFirst4Columns(chunkId, code, message, severity, messageProcessErr)) {
+            messageQueryResults.freeResults();
+            _dropTable(submitResult.messageTable);
+            _dropTable(submitResult.resultTable);
+            string const msg = "failed to extract results of query=" + messageSelectQuery +
+                               " err=" + messageProcessErr.printErrMsg();
+            error(__func__, msg);
+            throw http::Error(context() + __func__, msg);
+        }
+        string errorMsg;
+        for (size_t i = 0; i < chunkId.size(); ++i) {
+            if (stoi(code[i]) > 0) {
+                errorMsg += "[chunkId=" + chunkId[i] + " code=" + code[i] + " message=" + message[i] +
+                            " severity=" + severity[i] + "], ";
+            }
+        }
+        if (!errorMsg.empty()) {
+            messageQueryResults.freeResults();
+            _dropTable(submitResult.messageTable);
+            _dropTable(submitResult.resultTable);
+            error(__func__, errorMsg);
+            throw http::Error(context() + __func__, errorMsg);
+        }
         messageQueryResults.freeResults();
         _dropTable(submitResult.messageTable);
-        _dropTable(submitResult.resultTable);
-        error(__func__, errorMsg);
-        throw http::Error(context() + __func__, errorMsg);
     }
-    messageQueryResults.freeResults();
-    _dropTable(submitResult.messageTable);
 
     // Read a result set from the result table, package it into the JSON object
     // and sent it back to a user.
@@ -297,7 +315,14 @@ json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult
     }
     json rowsJson = _rowsToJson(resultQueryResults, schemaJson, binaryEncoding);
     resultQueryResults.freeResults();
-    _dropTable(submitResult.resultTable);
+
+    // Note that the result table of the asynchronously submitted queries is required to be
+    // explicitly deleted by the caller after the result has been extracted. If this is not
+    // done by the user the table will be automatically garbage collected by Czar after
+    // a certain period of time.
+    if (!async) {
+        _dropTable(submitResult.resultTable);
+    }
     return json::object({{"schema", schemaJson}, {"rows", rowsJson}});
 }
 

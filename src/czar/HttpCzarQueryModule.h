@@ -97,7 +97,7 @@ private:
     QueryId _getQueryId() const;
     void _dumpQueryInfo(std::string const& func, SubmitResult const& submitResult) const;
     nlohmann::json _waitAndExtractResult(SubmitResult const& submitResult,
-                                         http::BinaryEncodingMode binaryEncoding) const;
+                                         http::BinaryEncodingMode binaryEncoding, bool async = false) const;
     void _dropTable(std::string const& tableName) const;
     nlohmann::json _schemaToJson(sql::Schema const& schema) const;
     nlohmann::json _rowsToJson(sql::SqlResults& results, nlohmann::json const& schemaJson,

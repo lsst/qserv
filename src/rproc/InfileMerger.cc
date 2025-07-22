@@ -203,6 +203,7 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
            << " bytes";
         LOGS(_log, LOG_LVL_ERROR, os.str());
         _error = util::Error(-1, os.str(), -1);
+        _resultSizeLimitExceeded.store(true);
         return false;
     }
 

@@ -216,6 +216,15 @@ bool MergingHandler::flush(proto::ResponseSummary const& responseSummary) {
         LOGS(_log, LOG_LVL_ERROR,
              "MergingHandler::" << __func__ << " error from worker:" << responseSummary.wname()
                                 << " error: " << _error);
+        // This way we can track if the worker has reported this error. The current implementation
+        // requires the large result size to be reported as an error via the InfileMerger regardless
+        // of an origin of the error (Czar or the worker). Note that large results can be produced
+        // by the Czar itself, e.g., when the aggregate result of multiple worker queries is too large
+        // or by the worker when the result set of a single query is too large.
+        // The error will be reported to the Czar as a part of the response summary.
+        if (responseSummary.errorcode() == util::ErrorCode::WORKER_RESULT_TOO_LARGE) {
+            _infileMerger->setResultSizeLimitExceeded();
+        }
         return false;
     }
 

@@ -191,6 +191,7 @@ BOOST_AUTO_TEST_CASE(messWithQueries) {
     std::vector<QInfo::QStatus> statuses;
     statuses.push_back(QInfo::COMPLETED);
     statuses.push_back(QInfo::FAILED);
+    statuses.push_back(QInfo::FAILED_LR);
     statuses.push_back(QInfo::ABORTED);
     queries = qMeta->findQueries(0, QInfo::ANY, "", statuses);
     BOOST_CHECK_EQUAL(queries.size(), 0U);

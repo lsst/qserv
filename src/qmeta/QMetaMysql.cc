@@ -47,7 +47,7 @@ using namespace std;
 namespace {
 
 // Current version of QMeta schema
-char const VERSION_STR[] = "10";
+char const VERSION_STR[] = "11";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
@@ -61,6 +61,8 @@ char const* status2string(QInfo::QStatus qStatus) {
             return "'COMPLETED'";
         case QInfo::FAILED:
             return "'FAILED'";
+        case QInfo::FAILED_LR:
+            return "'FAILED_LR'";
         case QInfo::ABORTED:
             return "'ABORTED'";
         default:
@@ -79,6 +81,8 @@ QInfo::QStatus string2status(char const* statusStr) {
         return QInfo::COMPLETED;
     } else if (strcmp(statusStr, "FAILED") == 0) {
         return QInfo::FAILED;
+    } else if (strcmp(statusStr, "FAILED_LR") == 0) {
+        return QInfo::FAILED_LR;
     } else if (strcmp(statusStr, "ABORTED") == 0) {
         return QInfo::ABORTED;
     } else {

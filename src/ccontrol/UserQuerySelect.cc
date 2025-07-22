@@ -325,6 +325,7 @@ QueryState UserQuerySelect::join() {
     // Since all data are in, run final SQL commands like GROUP BY.
     size_t collectedBytes = 0;
     int64_t finalRows = 0;
+    bool const resultSizeLimitExceeded = _infileMerger->resultSizeLimitExceeded();
     if (!_infileMerger->finalize(collectedBytes, finalRows)) {
         successful = false;
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
@@ -364,7 +365,8 @@ QueryState UserQuerySelect::join() {
         operation = proto::QueryManagement::CANCEL;
         state = ERROR;
     } else {
-        _qMetaUpdateStatus(qmeta::QInfo::FAILED, collectedRows, collectedBytes, finalRows);
+        auto const status = resultSizeLimitExceeded ? qmeta::QInfo::FAILED_LR : qmeta::QInfo::FAILED;
+        _qMetaUpdateStatus(status, collectedRows, collectedBytes, finalRows);
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!)");
         operation = proto::QueryManagement::CANCEL;
         state = ERROR;

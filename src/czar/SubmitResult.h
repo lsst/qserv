@@ -42,10 +42,11 @@ struct SubmitResult {
     std::string resultTable;   ///< Result table name
     std::string messageTable;  ///< Message table name
     std::string resultQuery;   ///< The query to execute to get results
+    std::string query;         ///< The original user query
     QueryId queryId = 0;       ///< The unique identifier of the user query
 
     // Populated by Czar::getQueryInfo only for queries which are still in flight
-    std::string status;                ///< 'EXECUTING','COMPLETED','FAILED','ABORTED'
+    std::string status;                ///< 'EXECUTING','COMPLETED','FAILED','FAILED_LR','ABORTED'
     qmeta::CzarId czarId = 0;          ///< The identifier of the czar which is processing the query
     std::string czarType;              ///< The type of the czar which is processing the query
     int totalChunks = 0;               ///< The total number of chunks required by the query
