@@ -40,7 +40,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "cconfig/CzarConfig.h"
 #include "ccontrol/msgCode.h"
 #include "global/clock_defs.h"
 #include "global/debugUtil.h"
@@ -53,14 +52,13 @@
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
+#include "qdisp/QueryRequest.h"
 #include "rproc/InfileMerger.h"
 #include "util/Bug.h"
 #include "util/common.h"
 
-using lsst::qserv::proto::ProtoHeaderWrap;
-using lsst::qserv::proto::ResponseData;
-using lsst::qserv::proto::ResponseSummary;
 namespace http = lsst::qserv::http;
+namespace qdisp = lsst::qserv::qdisp;
 
 using namespace std;
 
@@ -99,9 +97,13 @@ public:
     using std::runtime_error::runtime_error;
 };
 
+/**
+ * The function for reading result files from workers over the HTTP protocol.
+ * The function reads the file in chunks and calls the callback function
+ * for each chunk of data read from the file.
+ */
 string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
-                            function<void(char const*, uint32_t)> const& messageIsReady,
-                            shared_ptr<http::ClientConnPool> const& httpConnPool) {
+                            function<void(char const*, uint32_t)> const& messageIsReady) {
     string const context = "MergingHandler::" + string(__func__) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "httpUrl=" << httpUrl);
@@ -119,14 +121,10 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
     try {
         string const noClientData;
         vector<string> const noClientHeaders;
-        http::ClientConfig clientConfig;
-        clientConfig.httpVersion = CURL_HTTP_VERSION_1_1;  // same as in qhttp
-        clientConfig.bufferSize = CURL_MAX_READ_SIZE;      // 10 MB in the current version of libcurl
-        clientConfig.tcpKeepAlive = true;
-        clientConfig.tcpKeepIdle = 5;   // the default is 60 sec
-        clientConfig.tcpKeepIntvl = 5;  // the default is 60 sec
-        http::Client reader(http::Method::GET, httpUrl, noClientData, noClientHeaders, clientConfig,
-                            httpConnPool);
+
+        http::Client reader(http::Method::GET, httpUrl, noClientData, noClientHeaders,
+                            qdisp::QueryRequest::makeHttpClientConfig(),
+                            qdisp::QueryRequest::getHttpConnPool());
 
         // Starts the tracker to measure the performance of the network I/O.
         transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
@@ -157,33 +155,12 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
         LOGS(_log, LOG_LVL_ERROR, context << errMsg);
         return errMsg;
     }
-
-    // Remove the file from the worker if it still exists. Report and ignore errors.
-    // The files will be garbage-collected by workers.
-    try {
-        http::Client remover(http::Method::DELETE, httpUrl);
-        remover.read([](char const* inBuf, size_t inBufSize) {});
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, context << "failed to remove " << httpUrl << ", ex: " << ex.what());
-    }
     return string();
 }
 
 }  // namespace
 
 namespace lsst::qserv::ccontrol {
-
-shared_ptr<http::ClientConnPool> MergingHandler::_httpConnPool;
-mutex MergingHandler::_httpConnPoolMutex;
-
-shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
-    lock_guard<mutex> const lock(_httpConnPoolMutex);
-    if (nullptr == _httpConnPool) {
-        _httpConnPool = make_shared<http::ClientConnPool>(
-                cconfig::CzarConfig::instance()->getResultMaxHttpConnections());
-    }
-    return _httpConnPool;
-}
 
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
         : _infileMerger{merger}, _tableName{tableName} {
@@ -196,7 +173,7 @@ bool MergingHandler::flush(proto::ResponseSummary const& responseSummary) {
     _wName = responseSummary.wname();
 
     // This is needed to ensure the job query would be staying alive for the duration
-    // of the operation to prevent inconsistency witin the application.
+    // of the operation to prevent inconsistency within the application.
     auto const jobQuery = getJobQuery().lock();
     if (jobQuery == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobQuery was NULL");
@@ -317,8 +294,7 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
                                     ", transmitsize=" + to_string(responseSummary.transmitsize()));
                         }
                     }
-                },
-                MergingHandler::_getHttpConnPool());
+                });
         // Push the stream terminator to indicate the end of the stream.
         // It may be neeeded to unblock the table merger which may be still attempting to read
         // from the CSV stream.

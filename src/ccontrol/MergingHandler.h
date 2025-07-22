@@ -33,10 +33,6 @@
 
 // Forward declarations
 
-namespace lsst::qserv::http {
-class ClientConnPool;
-}  // namespace lsst::qserv::http
-
 namespace lsst::qserv::proto {
 class ResponseData;
 class ResponseSummary;
@@ -107,14 +103,6 @@ private:
     /// @param jobQuery the query to check
     /// @return true if the query is no longer active
     bool _queryIsNoLongerActive(std::shared_ptr<qdisp::JobQuery> const& jobQuery) const;
-
-    // All instances of the HTTP client class are members of the same pool. This allows
-    // connection reuse and a significant reduction of the kernel memory pressure.
-    // Note that the pool gets instantiated at the very first call to method _getHttpConnPool()
-    // because the instantiation depends on the availability of the Czar configuration.
-    static std::shared_ptr<http::ClientConnPool> const& _getHttpConnPool();
-    static std::shared_ptr<http::ClientConnPool> _httpConnPool;
-    static std::mutex _httpConnPoolMutex;
 
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
     std::string _tableName;                              ///< Target table name

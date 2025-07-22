@@ -21,6 +21,7 @@ target_include_directories(qdisp PRIVATE
 target_link_libraries(qdisp PUBLIC
     cconfig
     log
+    http
     XrdSsiLib
 )
 
