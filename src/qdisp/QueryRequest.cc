@@ -231,15 +231,15 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
 
     LOGS(_log, LOG_LVL_DEBUG, __func__ << " _jobIdStr=" << _jobIdStr << ", messageSize=" << messageSize);
 
-    proto::ResponseSummary responseSummary;
-    if (!(responseSummary.ParseFromArray(message, messageSize) && responseSummary.IsInitialized())) {
+    proto::ResponseSummary resp;
+    if (!(resp.ParseFromArray(message, messageSize) && resp.IsInitialized())) {
         string const err = "failed to parse the response summary, messageSize=" + to_string(messageSize);
         LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
         throw util::Bug(ERR_LOC, err);
     }
 
     // The file gets removed regardless of the outcome of the merge operation.
-    HttpFileRemoverRAII const fileRemover(responseSummary.fileresource_http());
+    HttpFileRemoverRAII const fileRemover(resp.fileresource_http());
 
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (jq->isQueryCancelled()) {
@@ -262,12 +262,12 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
         _errorFinish(true);
         return false;
     }
-    if (!jq->getDescription()->respHandler()->flush(responseSummary)) {
+    if (!jq->getDescription()->respHandler()->flush(resp)) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " not flushOk");
         _flushError(jq);
         return false;
     }
-    _totalRows += responseSummary.rowcount();
+    _totalRows += resp.rowcount();
 
     // If the query meets the limit row complete complete criteria, it will start
     // squashing superfluous results so the answer can be returned quickly.

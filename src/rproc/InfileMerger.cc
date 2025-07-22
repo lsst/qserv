@@ -164,12 +164,12 @@ void InfileMerger::mergeCompleteFor(int jobId) {
     _totalResultSize += _perJobResultSize[jobId];
 }
 
-bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
+bool InfileMerger::merge(proto::ResponseSummary const& resp,
                          std::shared_ptr<mysql::CsvStream> const& csvStream) {
-    int const jobId = responseSummary.jobid();
-    std::string queryIdJobStr = QueryIdHelper::makeIdStr(responseSummary.queryid(), jobId);
+    int const jobId = resp.jobid();
+    std::string queryIdJobStr = QueryIdHelper::makeIdStr(resp.queryid(), jobId);
     if (!_queryIdStrSet) {
-        _setQueryIdStr(QueryIdHelper::makeIdStr(responseSummary.queryid()));
+        _setQueryIdStr(QueryIdHelper::makeIdStr(resp.queryid()));
     }
 
     TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
@@ -193,7 +193,7 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
     size_t tResultSize;
     {
         std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-        _perJobResultSize[jobId] += responseSummary.transmitsize();
+        _perJobResultSize[jobId] += resp.transmitsize();
         tResultSize = _totalResultSize + _perJobResultSize[jobId];
     }
     if (tResultSize > _maxResultTableSizeBytes) {
@@ -207,7 +207,7 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
         return false;
     }
 
-    tct->addToValue(responseSummary.transmitsize());
+    tct->addToValue(resp.transmitsize());
     tct->setSuccess();
     tct.reset();  // stop transmit recieve timer before merging happens.
 
@@ -216,7 +216,7 @@ bool InfileMerger::merge(proto::ResponseSummary const& responseSummary,
     if (_config.debugNoMerge) return true;
 
     auto start = std::chrono::system_clock::now();
-    ret = _applyMysqlMyIsam(infileStatement, responseSummary.transmitsize());
+    ret = _applyMysqlMyIsam(infileStatement, resp.transmitsize());
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
