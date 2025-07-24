@@ -17,7 +17,7 @@ table data:
 
   LOAD DATA [LOCAL] INFILE ...
 
-According to the MySQL/MariaDB documentation https://mariadb.com/kb/en/load-data-infile/#character-sets), the database
+According to the MySQL/MariaDB documentation https://mariadb.com/kb/en/load-data-infile/#character-sets, the database
 server may interpret or transform the input data (CSV) differently depending on the character set assumed by the operation.
 Incorrect data transformation can result in distorted data being stored in the target table. This issue is most likely
 to occur when the input data were produced from another MySQL server using the following SQL statement:
