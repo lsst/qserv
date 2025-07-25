@@ -24,6 +24,7 @@ function(CSSLoader,
                                           // queries between updates.
             this._id2query = {};          // Store query text for each identifier
             this._id2url = {};            // Store URL to the query blob for each identifier
+            this._id2scheduler = {};      // Cache the name of a scheduler (when it's seen for the first time) for each identifier
         }
 
         /**
@@ -201,7 +202,10 @@ function(CSSLoader,
                 this._id2query[query.queryId] = query.query;
                 this._id2url[query.queryId] = URL.createObjectURL(new Blob([query.query], {type: "text/plain"}));
                 const progress = Math.floor(100. * query.completedChunks  / query.totalChunks);
-                const scheduler = _.isUndefined(query.scheduler) ? 'Loading...' : query.scheduler.substring('Sched'.length);
+                if (!_.isUndefined(query.scheduler) && query.scheduler.startsWith('Sched')) {
+                    this._id2scheduler[query.queryId] = query.scheduler.substring('Sched'.length);
+                }
+                const scheduler = _.has(this._id2scheduler, query.queryId) ? this._id2scheduler[query.queryId] : 'Loading...';
                 const scheduler_color = _.has(this._scheduler2color, scheduler) ?
                     this._scheduler2color[scheduler] :
                     this._scheduler2color['Loading'];

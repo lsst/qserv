@@ -469,7 +469,11 @@ json HttpQservMonitorModule::_activeQueries() {
                 string const scheduerName = scheduler["name"];
                 for (auto&& queryId2count : scheduler["query_id_to_count"]) {
                     QueryId const queryId = queryId2count[0];
-                    queryId2scheduler[queryId] = scheduerName;
+                    // Keep the name of the "SchedSnail" scheduler to indicate the worst case scenario
+                    // for the query.
+                    if (queryId2scheduler[queryId] != "SchedSnail") {
+                        queryId2scheduler[queryId] = scheduerName;
+                    }
                 }
             }
         }
