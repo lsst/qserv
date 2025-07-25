@@ -33,10 +33,6 @@
 
 // Forward declarations
 
-namespace lsst::qserv::http {
-class ClientConnPool;
-}  // namespace lsst::qserv::http
-
 namespace lsst::qserv::proto {
 class ResponseData;
 class ResponseSummary;
@@ -72,7 +68,7 @@ public:
 
     /// Process the response and read the result file if no error was reported by a worker.
     /// @return true if successful (no error)
-    bool flush(proto::ResponseSummary const& responseSummary) override;
+    bool flush(proto::ResponseSummary const& resp) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
@@ -95,8 +91,7 @@ private:
     /// Prepare for first call to flush().
     void _initState();
 
-    bool _merge(proto::ResponseSummary const& responseSummary,
-                std::shared_ptr<qdisp::JobQuery> const& jobQuery);
+    bool _merge(proto::ResponseSummary const& resp, std::shared_ptr<qdisp::JobQuery> const& jobQuery);
 
     /// Set error code and string.
     void _setError(int code, std::string const& msg);
@@ -107,14 +102,6 @@ private:
     /// @param jobQuery the query to check
     /// @return true if the query is no longer active
     bool _queryIsNoLongerActive(std::shared_ptr<qdisp::JobQuery> const& jobQuery) const;
-
-    // All instances of the HTTP client class are members of the same pool. This allows
-    // connection reuse and a significant reduction of the kernel memory pressure.
-    // Note that the pool gets instantiated at the very first call to method _getHttpConnPool()
-    // because the instantiation depends on the availability of the Czar configuration.
-    static std::shared_ptr<http::ClientConnPool> const& _getHttpConnPool();
-    static std::shared_ptr<http::ClientConnPool> _httpConnPool;
-    static std::mutex _httpConnPoolMutex;
 
     std::shared_ptr<rproc::InfileMerger> _infileMerger;  ///< Merging delegate
     std::string _tableName;                              ///< Target table name

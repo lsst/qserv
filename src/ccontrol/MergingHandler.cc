@@ -40,7 +40,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "cconfig/CzarConfig.h"
 #include "ccontrol/msgCode.h"
 #include "global/clock_defs.h"
 #include "global/debugUtil.h"
@@ -53,14 +52,13 @@
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
+#include "qdisp/QueryRequest.h"
 #include "rproc/InfileMerger.h"
 #include "util/Bug.h"
 #include "util/common.h"
 
-using lsst::qserv::proto::ProtoHeaderWrap;
-using lsst::qserv::proto::ResponseData;
-using lsst::qserv::proto::ResponseSummary;
 namespace http = lsst::qserv::http;
+namespace qdisp = lsst::qserv::qdisp;
 
 using namespace std;
 
@@ -99,9 +97,13 @@ public:
     using std::runtime_error::runtime_error;
 };
 
+/**
+ * The function for reading result files from workers over the HTTP protocol.
+ * The function reads the file in chunks and calls the callback function
+ * for each chunk of data read from the file.
+ */
 string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
-                            function<void(char const*, uint32_t)> const& messageIsReady,
-                            shared_ptr<http::ClientConnPool> const& httpConnPool) {
+                            function<void(char const*, uint32_t)> const& messageIsReady) {
     string const context = "MergingHandler::" + string(__func__) + " ";
 
     LOGS(_log, LOG_LVL_DEBUG, context << "httpUrl=" << httpUrl);
@@ -119,14 +121,10 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
     try {
         string const noClientData;
         vector<string> const noClientHeaders;
-        http::ClientConfig clientConfig;
-        clientConfig.httpVersion = CURL_HTTP_VERSION_1_1;  // same as in qhttp
-        clientConfig.bufferSize = CURL_MAX_READ_SIZE;      // 10 MB in the current version of libcurl
-        clientConfig.tcpKeepAlive = true;
-        clientConfig.tcpKeepIdle = 5;   // the default is 60 sec
-        clientConfig.tcpKeepIntvl = 5;  // the default is 60 sec
-        http::Client reader(http::Method::GET, httpUrl, noClientData, noClientHeaders, clientConfig,
-                            httpConnPool);
+
+        http::Client reader(http::Method::GET, httpUrl, noClientData, noClientHeaders,
+                            qdisp::QueryRequest::makeHttpClientConfig(),
+                            qdisp::QueryRequest::getHttpConnPool());
 
         // Starts the tracker to measure the performance of the network I/O.
         transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
@@ -157,33 +155,12 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
         LOGS(_log, LOG_LVL_ERROR, context << errMsg);
         return errMsg;
     }
-
-    // Remove the file from the worker if it still exists. Report and ignore errors.
-    // The files will be garbage-collected by workers.
-    try {
-        http::Client remover(http::Method::DELETE, httpUrl);
-        remover.read([](char const* inBuf, size_t inBufSize) {});
-    } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, context << "failed to remove " << httpUrl << ", ex: " << ex.what());
-    }
     return string();
 }
 
 }  // namespace
 
 namespace lsst::qserv::ccontrol {
-
-shared_ptr<http::ClientConnPool> MergingHandler::_httpConnPool;
-mutex MergingHandler::_httpConnPoolMutex;
-
-shared_ptr<http::ClientConnPool> const& MergingHandler::_getHttpConnPool() {
-    lock_guard<mutex> const lock(_httpConnPoolMutex);
-    if (nullptr == _httpConnPool) {
-        _httpConnPool = make_shared<http::ClientConnPool>(
-                cconfig::CzarConfig::instance()->getResultMaxHttpConnections());
-    }
-    return _httpConnPool;
-}
 
 MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std::string const& tableName)
         : _infileMerger{merger}, _tableName{tableName} {
@@ -192,47 +169,44 @@ MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> merger, std:
 
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_DEBUG, __func__); }
 
-bool MergingHandler::flush(proto::ResponseSummary const& responseSummary) {
-    _wName = responseSummary.wname();
+bool MergingHandler::flush(proto::ResponseSummary const& resp) {
+    _wName = resp.wname();
 
     // This is needed to ensure the job query would be staying alive for the duration
-    // of the operation to prevent inconsistency witin the application.
+    // of the operation to prevent inconsistency within the application.
     auto const jobQuery = getJobQuery().lock();
     if (jobQuery == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobQuery was NULL");
         return false;
     }
     LOGS(_log, LOG_LVL_TRACE,
-         "MergingHandler::" << __func__ << " jobid=" << responseSummary.jobid()
-                            << " transmitsize=" << responseSummary.transmitsize()
-                            << " rowcount=" << responseSummary.rowcount() << " rowSize="
-                            << " attemptcount=" << responseSummary.attemptcount() << " errorcode="
-                            << responseSummary.errorcode() << " errormsg=" << responseSummary.errormsg());
+         "MergingHandler::" << __func__ << " jobid=" << resp.jobid() << " transmitsize="
+                            << resp.transmitsize() << " rowcount=" << resp.rowcount() << " rowSize="
+                            << " attemptcount=" << resp.attemptcount() << " errorcode=" << resp.errorcode()
+                            << " errormsg=" << resp.errormsg());
 
-    if (responseSummary.errorcode() != 0 || !responseSummary.errormsg().empty()) {
-        _error = util::Error(responseSummary.errorcode(), responseSummary.errormsg(),
-                             util::ErrorCode::MYSQLEXEC);
+    if (resp.errorcode() != 0 || !resp.errormsg().empty()) {
+        _error = util::Error(resp.errorcode(), resp.errormsg(), util::ErrorCode::MYSQLEXEC);
         _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());
         LOGS(_log, LOG_LVL_ERROR,
-             "MergingHandler::" << __func__ << " error from worker:" << responseSummary.wname()
-                                << " error: " << _error);
+             "MergingHandler::" << __func__ << " error from worker:" << resp.wname() << " error: " << _error);
         // This way we can track if the worker has reported this error. The current implementation
         // requires the large result size to be reported as an error via the InfileMerger regardless
         // of an origin of the error (Czar or the worker). Note that large results can be produced
         // by the Czar itself, e.g., when the aggregate result of multiple worker queries is too large
         // or by the worker when the result set of a single query is too large.
         // The error will be reported to the Czar as a part of the response summary.
-        if (responseSummary.errorcode() == util::ErrorCode::WORKER_RESULT_TOO_LARGE) {
+        if (resp.errorcode() == util::ErrorCode::WORKER_RESULT_TOO_LARGE) {
             _infileMerger->setResultSizeLimitExceeded();
         }
         return false;
     }
 
-    bool const success = _merge(responseSummary, jobQuery);
+    bool const success = _merge(resp, jobQuery);
     if (success) {
-        _infileMerger->mergeCompleteFor(responseSummary.jobid());
-        qdisp::CzarStats::get()->addTotalRowsRecv(responseSummary.rowcount());
-        qdisp::CzarStats::get()->addTotalBytesRecv(responseSummary.transmitsize());
+        _infileMerger->mergeCompleteFor(resp.jobid());
+        qdisp::CzarStats::get()->addTotalRowsRecv(resp.rowcount());
+        qdisp::CzarStats::get()->addTotalBytesRecv(resp.transmitsize());
     }
     return success;
 }
@@ -280,10 +254,9 @@ bool MergingHandler::_queryIsNoLongerActive(shared_ptr<qdisp::JobQuery> const& j
     return !getError().isNone();
 }
 
-bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
-                            shared_ptr<qdisp::JobQuery> const& jobQuery) {
+bool MergingHandler::_merge(proto::ResponseSummary const& resp, shared_ptr<qdisp::JobQuery> const& jobQuery) {
     if (_flushed) throw util::Bug(ERR_LOC, "already flushed");
-    if (responseSummary.transmitsize() == 0) return true;
+    if (resp.transmitsize() == 0) return true;
 
     // After this final test the job's result processing can't be interrupted.
     if (_queryIsNoLongerActive(jobQuery)) return true;
@@ -297,8 +270,7 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
     thread csvThread([&]() {
         size_t bytesRead = 0;
         fileReadErrorMsg = ::readHttpFileAndMerge(
-                responseSummary.fileresource_http(), responseSummary.transmitsize(),
-                [&](char const* buf, uint32_t size) {
+                resp.fileresource_http(), resp.transmitsize(), [&](char const* buf, uint32_t size) {
                     bool const queryEnded = _queryIsNoLongerActive(jobQuery);
                     bool last = false;
                     if (buf == nullptr || size == 0 || queryEnded) {
@@ -306,7 +278,7 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
                     } else {
                         csvStream->push(buf, size);
                         bytesRead += size;
-                        last = bytesRead >= responseSummary.transmitsize();
+                        last = bytesRead >= resp.transmitsize();
                     }
                     if (last) {
                         csvStream->push(nullptr, 0);
@@ -314,11 +286,10 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
                             throw ::QueryEnded(
                                     "query " + jobQuery->getIdStr() +
                                     " ended while reading the file, bytesRead=" + to_string(bytesRead) +
-                                    ", transmitsize=" + to_string(responseSummary.transmitsize()));
+                                    ", transmitsize=" + to_string(resp.transmitsize()));
                         }
                     }
-                },
-                MergingHandler::_getHttpConnPool());
+                });
         // Push the stream terminator to indicate the end of the stream.
         // It may be neeeded to unblock the table merger which may be still attempting to read
         // from the CSV stream.
@@ -328,7 +299,7 @@ bool MergingHandler::_merge(proto::ResponseSummary const& responseSummary,
     });
 
     // Attempt the actual merge.
-    bool const fileMergeSuccess = _infileMerger->merge(responseSummary, csvStream);
+    bool const fileMergeSuccess = _infileMerger->merge(resp, csvStream);
     if (!fileMergeSuccess) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
         util::Error const& err = _infileMerger->getError();

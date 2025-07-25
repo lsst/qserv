@@ -39,6 +39,13 @@
 #include "qdisp/JobQuery.h"
 #include "qdisp/QdispPool.h"
 
+// Forward declarations
+
+namespace lsst::qserv::http {
+class ClientConfig;
+class ClientConnPool;
+}  // namespace lsst::qserv::http
+
 namespace lsst::qserv::qdisp {
 
 /// Bad response received from SSI API
@@ -83,6 +90,9 @@ class QueryRequest : public XrdSsiRequest, public std::enable_shared_from_this<Q
 public:
     typedef std::shared_ptr<QueryRequest> Ptr;
 
+    static http::ClientConfig makeHttpClientConfig();
+    static std::shared_ptr<http::ClientConnPool> const& getHttpConnPool();
+
     static Ptr create(std::shared_ptr<JobQuery> const& jobQuery) {
         Ptr newQueryRequest(new QueryRequest(jobQuery));
         newQueryRequest->_keepAlive = newQueryRequest;
@@ -126,6 +136,13 @@ private:
     bool _errorFinish(bool stopTrying = false);
     void _finish();
     void _flushError(JobQuery::Ptr const& jq);
+
+    // All instances of the HTTP client class are members of the same pool. This allows
+    // connection reuse and a significant reduction of the kernel memory pressure.
+    // Note that the pool gets instantiated at the very first call to method getHttpConnPool()
+    // because the instantiation depends on the availability of the Czar configuration.
+    static std::shared_ptr<http::ClientConnPool> _httpConnPool;
+    static std::mutex _httpConnPoolMutex;
 
     /// Job information. Not using a weak_ptr as Executive could drop its JobQuery::Ptr before we're done with
     /// it. A call to cancel() could reset _jobQuery early, so copy or protect _jobQuery with

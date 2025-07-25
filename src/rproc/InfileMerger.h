@@ -103,8 +103,7 @@ public:
 
     /// Merge a worker response, which contains a single message
     /// @return true if merge was successfully imported.
-    bool merge(proto::ResponseSummary const& responseSummary,
-               std::shared_ptr<mysql::CsvStream> const& csvStream);
+    bool merge(proto::ResponseSummary const& resp, std::shared_ptr<mysql::CsvStream> const& csvStream);
 
     /// Indicate the merge for the job is complete.
     void mergeCompleteFor(int jobId);

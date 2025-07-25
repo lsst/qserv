@@ -36,14 +36,19 @@
 // System headers
 #include <cstddef>
 #include <iostream>
+#include <vector>
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
 #include "qdisp/CzarStats.h"
 #include "global/LogContext.h"
+#include "http/Client.h"
+#include "http/ClientConnPool.h"
+#include "http/Method.h"
 #include "proto/worker.pb.h"
 #include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
@@ -52,14 +57,68 @@
 #include "util/InstanceCount.h"
 #include "util/Timer.h"
 
+namespace http = lsst::qserv::http;
+namespace qdisp = lsst::qserv::qdisp;
+
 using namespace std;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.QueryRequest");
-}
+
+/**
+ * The RAII class for removing the HTTP file (if it still exist).
+ * @note Errors are logged, but not reported to the caller.
+ */
+class HttpFileRemoverRAII {
+public:
+    HttpFileRemoverRAII() = delete;
+    HttpFileRemoverRAII(HttpFileRemoverRAII const&) = delete;
+    HttpFileRemoverRAII& operator=(HttpFileRemoverRAII const&) = delete;
+    HttpFileRemoverRAII(string const& httpUrl) : _httpUrl(httpUrl) {}
+
+    ~HttpFileRemoverRAII() {
+        if (_httpUrl.empty()) return;
+        string const noClientData;
+        vector<string> const noClientHeaders;
+        try {
+            http::Client remover(http::Method::DELETE, _httpUrl, noClientData, noClientHeaders,
+                                 qdisp::QueryRequest::makeHttpClientConfig(),
+                                 qdisp::QueryRequest::getHttpConnPool());
+            remover.read([](char const*, size_t) {});
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_WARN,
+                 "HttpFileRemoverRAII failed to remove " << _httpUrl << ", ex: " << ex.what());
+        }
+    }
+
+private:
+    string const _httpUrl;
+};
+}  // namespace
 
 namespace lsst::qserv::qdisp {
 
+shared_ptr<http::ClientConnPool> QueryRequest::_httpConnPool;
+mutex QueryRequest::_httpConnPoolMutex;
+
+http::ClientConfig QueryRequest::makeHttpClientConfig() {
+    http::ClientConfig clientConfig;
+    clientConfig.httpVersion = CURL_HTTP_VERSION_1_1;  // same as in qhttp
+    clientConfig.bufferSize = CURL_MAX_READ_SIZE;      // 10 MB in the current version of libcurl
+    clientConfig.tcpKeepAlive = true;
+    clientConfig.tcpKeepIdle = 5;   // the default is 60 sec
+    clientConfig.tcpKeepIntvl = 5;  // the default is 60 sec
+    return clientConfig;
+}
+
+shared_ptr<http::ClientConnPool> const& QueryRequest::getHttpConnPool() {
+    lock_guard<mutex> const lock(_httpConnPoolMutex);
+    if (nullptr == _httpConnPool) {
+        _httpConnPool = make_shared<http::ClientConnPool>(
+                cconfig::CzarConfig::instance()->getResultMaxHttpConnections());
+    }
+    return _httpConnPool;
+}
 QueryRequest::QueryRequest(JobQuery::Ptr const& jobQuery)
         : _jobQuery(jobQuery),
           _qid(jobQuery->getQueryId()),
@@ -166,6 +225,22 @@ bool QueryRequest::ProcessResponse(XrdSsiErrInfo const& eInfo, XrdSsiRespInfo co
 /// Retrieve and process a result file using the file-based protocol
 /// Uses a copy of JobQuery::Ptr instead of _jobQuery as a call to cancel() would reset _jobQuery.
 bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
+    // The message needs to be parsed to extract the response summary.
+    int messageSize = 0;
+    const char* message = GetMetadata(messageSize);
+
+    LOGS(_log, LOG_LVL_DEBUG, __func__ << " _jobIdStr=" << _jobIdStr << ", messageSize=" << messageSize);
+
+    proto::ResponseSummary resp;
+    if (!(resp.ParseFromArray(message, messageSize) && resp.IsInitialized())) {
+        string const err = "failed to parse the response summary, messageSize=" + to_string(messageSize);
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
+        throw util::Bug(ERR_LOC, err);
+    }
+
+    // The file gets removed regardless of the outcome of the merge operation.
+    HttpFileRemoverRAII const fileRemover(resp.fileresource_http());
+
     // It's possible jq and _jobQuery differ, so need to use jq.
     if (jq->isQueryCancelled()) {
         LOGS(_log, LOG_LVL_WARN, "QueryRequest::_processData job was cancelled.");
@@ -187,24 +262,12 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
         _errorFinish(true);
         return false;
     }
-
-    int messageSize = 0;
-    const char* message = GetMetadata(messageSize);
-
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << " _jobIdStr=" << _jobIdStr << ", messageSize=" << messageSize);
-
-    proto::ResponseSummary responseSummary;
-    if (!(responseSummary.ParseFromArray(message, messageSize) && responseSummary.IsInitialized())) {
-        string const err = "failed to parse the response summary, messageSize=" + to_string(messageSize);
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " " << err);
-        throw util::Bug(ERR_LOC, err);
-    }
-    if (!jq->getDescription()->respHandler()->flush(responseSummary)) {
+    if (!jq->getDescription()->respHandler()->flush(resp)) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " not flushOk");
         _flushError(jq);
         return false;
     }
-    _totalRows += responseSummary.rowcount();
+    _totalRows += resp.rowcount();
 
     // If the query meets the limit row complete complete criteria, it will start
     // squashing superfluous results so the answer can be returned quickly.
