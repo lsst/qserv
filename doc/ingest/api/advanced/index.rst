@@ -24,3 +24,4 @@ Advanced Scenarios
     directors
     ref-match
     warnings
+    generated
