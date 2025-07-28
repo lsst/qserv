@@ -141,37 +141,6 @@ public:
     virtual QueryId registerQuery(QInfo const& qInfo, TableNames const& tables) = 0;
 
     /**
-     *  @brief Add list of chunks to query.
-     *
-     *  This method will throw if query ID is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunks:    Set of chunk numbers.
-     */
-    virtual void addChunks(QueryId queryId, std::vector<int> const& chunks) = 0;
-
-    /**
-     *  @brief Assign or re-assign chunk to a worker.
-     *
-     *  This method will throw if query ID or chunk number is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunk:     Chunk number.
-     *  @param xrdEndpoint:  Worker xrootd communication endpoint ("host:port").
-     */
-    virtual void assignChunk(QueryId queryId, int chunk, std::string const& xrdEndpoint) = 0;
-
-    /**
-     *  @brief Mark chunk as completed.
-     *
-     *  This method will throw if query ID or chunk number is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunk:     Sequence of chunk numbers.
-     */
-    virtual void finishChunk(QueryId queryId, int chunk) = 0;
-
-    /**
      *  @brief Mark query as completed or failed.
      *
      *  This should be called when all data is collected in the result table or

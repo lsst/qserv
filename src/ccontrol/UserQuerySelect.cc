@@ -243,10 +243,7 @@ void UserQuerySelect::submit() {
 
     auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>();
     TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
-    std::vector<int> chunks;
-    std::mutex chunksMtx;
     int sequence = 0;
-
     auto queryTemplates = _qSession->makeQueryTemplates();
 
     LOGS(_log, LOG_LVL_DEBUG,
@@ -262,7 +259,7 @@ void UserQuerySelect::submit() {
         threadPriority.setPriorityPolicy(10);
     }
 
-    // Add QStatsTmp table entry
+    // Add QProgress table entry
     try {
         _queryStatsData->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize());
     } catch (qmeta::SqlError const& e) {
@@ -276,17 +273,13 @@ void UserQuerySelect::submit() {
         auto& chunkSpec = *i;
 
         std::function<void(util::CmdData*)> funcBuildJob = [this, sequence,  // sequence must be a copy
-                                                            &chunkSpec, &queryTemplates, &chunks, &chunksMtx,
-                                                            &ttn, &taskMsgFactory](util::CmdData*) {
+                                                            &chunkSpec, &queryTemplates, &ttn,
+                                                            &taskMsgFactory](util::CmdData*) {
             QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
 
-            qproc::ChunkQuerySpec::Ptr cs;
-            {
-                std::lock_guard<std::mutex> lock(chunksMtx);
-                bool const fillInChunkIdTag = false;
-                cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
-                chunks.push_back(cs->chunkId);
-            }
+            bool const fillInChunkIdTag = false;
+            qproc::ChunkQuerySpec::Ptr const cs =
+                    _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
             std::string chunkResultName = ttn.make(cs->chunkId);
 
             ResourceUnit ru;
@@ -310,12 +303,6 @@ void UserQuerySelect::submit() {
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     _executive->waitForAllJobsToStart();
-
-    // we only care about per-chunk info for ASYNC queries
-    if (_async) {
-        std::lock_guard<std::mutex> lock(chunksMtx);
-        _qMetaAddChunks(chunks);
-    }
 }
 
 /// Block until a submit()'ed query completes.
@@ -642,11 +629,6 @@ void UserQuerySelect::_qMetaUpdateMessages() {
     } catch (qmeta::SqlError const& ex) {
         LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
     }
-}
-
-// add chunk information to qmeta
-void UserQuerySelect::_qMetaAddChunks(std::vector<int> const& chunks) {
-    _queryMetadata->addChunks(_qMetaQueryId, chunks);
 }
 
 /// Return this query's QueryId string.

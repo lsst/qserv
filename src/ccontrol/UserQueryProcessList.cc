@@ -104,7 +104,7 @@ UserQueryProcessList::UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMe
     _query += (full ? "`qi`.`query`" : "SUBSTR(`qi`.`query`,1,32) `QUERY`");
     _query +=
             " FROM `QInfo` AS `qi` "
-            " LEFT OUTER JOIN `QStatsTmp` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`"
+            " LEFT OUTER JOIN `QProgress` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`"
             " JOIN `QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`"
             " WHERE `qi`.`status` = 'EXECUTING'";
     _orderBy = "`SUBMITTED`";

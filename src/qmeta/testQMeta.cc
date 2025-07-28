@@ -339,45 +339,6 @@ BOOST_AUTO_TEST_CASE(messWithTables) {
     BOOST_CHECK_EQUAL(queries.size(), 0U);
 }
 
-BOOST_AUTO_TEST_CASE(messWithChunks) {
-    // make sure that we have czars from previous test
-    CzarId cid1 = qMeta->getCzarID("czar:1000");
-    BOOST_CHECK(cid1 != 0U);
-    CzarId cid2 = qMeta->getCzarID("czar-2:1000");
-    BOOST_CHECK(cid2 != 0U);
-
-    // resister one query
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "",
-                0);
-    QMeta::TableNames tables;
-    tables.push_back(std::make_pair("TestDB", "Object"));
-    lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
-    BOOST_CHECK(qid1 != 0U);
-
-    // register few chunks and assign them to workers
-    std::vector<int> chunks;
-    chunks.push_back(10);
-    chunks.push_back(20);
-    chunks.push_back(37);
-    qMeta->addChunks(qid1, chunks);
-
-    // assign chunks to workers
-    qMeta->assignChunk(qid1, 10, "worker1");
-    qMeta->assignChunk(qid1, 20, "worker2");
-    qMeta->assignChunk(qid1, 37, "worker2");
-    BOOST_CHECK_THROW(qMeta->assignChunk(qid1, 42, "worker2"), ChunkIdError);
-    BOOST_CHECK_THROW(qMeta->assignChunk(99999, 10, "worker2"), ChunkIdError);
-
-    // re-assign chunk
-    qMeta->assignChunk(qid1, 37, "worker33");
-
-    // mark chunks as complete
-    qMeta->finishChunk(qid1, 10);
-    qMeta->finishChunk(qid1, 20);
-    qMeta->finishChunk(qid1, 37);
-    BOOST_CHECK_THROW(qMeta->finishChunk(qid1, 42), ChunkIdError);
-}
-
 BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats connect");
     std::shared_ptr<QStatus> qStatus = std::make_shared<QStatusMysql>(testDB.sqlConfig);
