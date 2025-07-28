@@ -633,7 +633,8 @@ json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
                      g.as(g.UNIX_TIMESTAMP(Sql::NOW), "samplingTime_sec"), g.id("QInfo", "query"),
                      g.id("QInfo", "czarId"), g.id("QInfo", "qType")) +
             g.from("QProgress", "QInfo") +
-            g.where(g.eq(g.id("QProgress", "queryId"), g.id("QInfo", "queryId"))) +
+            g.where(g.eq(g.id("QProgress", "queryId"), g.id("QInfo", "queryId")),
+                    g.eq(g.id("QInfo", "status"), "EXECUTING")) +
             g.orderBy(make_pair(g.id("QProgress", "queryBegin"), "DESC"));
     conn->execute(query);
 
