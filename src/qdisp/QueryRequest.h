@@ -38,6 +38,7 @@
 #include "czar/Czar.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/QdispPool.h"
+#include "util/InstanceCount.h"
 
 // Forward declarations
 
@@ -170,7 +171,11 @@ private:
     int64_t _totalRows = 0;  ///< number of rows in query added to the result table.
 
     std::atomic<int> _rowsIgnored{0};  ///< Limit log messages about rows being ignored.
-    std::atomic<uint> _respCount{0};   ///< number of responses created
+
+    std::atomic<uint> _respCount{0};  ///< number of responses created
+
+    // Remove or disable these members after debugging.
+    util::InstanceCount _instC{"QueryRequest"};
 };
 
 std::ostream& operator<<(std::ostream& os, QueryRequest const& r);

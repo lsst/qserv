@@ -130,6 +130,9 @@ protected:
     std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.
 
     std::shared_ptr<QdispPool> _qdispPool;
+
+    // Remove or disable these members after debugging.
+    util::InstanceCount _instC{"JobQuery"};
 };
 
 }  // namespace lsst::qserv::qdisp

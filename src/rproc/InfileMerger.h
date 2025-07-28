@@ -42,6 +42,7 @@
 #include "sql/SqlConnection.h"
 #include "util/Error.h"
 #include "util/EventThread.h"
+#include "util/InstanceCount.h"
 
 // Forward declarations
 namespace lsst::qserv {
@@ -196,6 +197,9 @@ private:
     size_t _totalResultSize = 0;              ///< Size of result so far in bytes.
     std::map<int, size_t> _perJobResultSize;  ///< Result size for each job
     std::mutex _mtxResultSizeMtx;             ///< Protects _perJobResultSize and _totalResultSize.
+
+    // Remove or disable these members after debugging.
+    util::InstanceCount _instC{"InfileMerger"};
 };
 
 }  // namespace lsst::qserv::rproc

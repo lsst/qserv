@@ -54,7 +54,6 @@
 #include "qdisp/ResponseHandler.h"
 #include "util/Bug.h"
 #include "util/common.h"
-#include "util/InstanceCount.h"
 #include "util/Timer.h"
 
 namespace http = lsst::qserv::http;
