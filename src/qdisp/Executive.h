@@ -229,7 +229,6 @@ private:
 
     QueryId _id{0};  ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
-    // util::InstanceCount _instC{"Executive"};
 
     std::shared_ptr<qmeta::QProgress> _queryProgress;  ///< Query progress, used to update QMeta.
     /// Last time Executive updated QMeta, defaults to epoch for clock.
@@ -254,6 +253,9 @@ private:
 
     /// Number of time data has been ignored for for this user query.
     std::atomic<int> _dataIgnoredCount{0};
+
+    // Remove or disable these members after debugging.
+    util::InstanceCount _instC{"Executive"};
 };
 
 class MarkCompleteFunc {

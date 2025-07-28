@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "qdisp/ResponseHandler.h"
+#include "util/InstanceCount.h"
 
 // Forward declarations
 
@@ -109,6 +110,9 @@ private:
     mutable std::mutex _errorMutex;                      ///< Protect readers from partial updates
     bool _flushed{false};                                ///< flushed to InfileMerger?
     std::string _wName{"~"};                             ///< worker name
+
+    // Remove or disable these members after debugging.
+    util::InstanceCount _instC{"MergingHandler"};
 };
 
 }  // namespace lsst::qserv::ccontrol
