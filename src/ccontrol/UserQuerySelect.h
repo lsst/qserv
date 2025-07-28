@@ -133,7 +133,7 @@ public:
     std::string getQueryIdString() const override;
 
     /// @return this query's QueryId.
-    QueryId getQueryId() const override { return _qMetaQueryId; }
+    QueryId getQueryId() const override { return _queryId; }
 
     /// @return True if query is async query
     bool isAsync() const override { return _async; }
@@ -175,11 +175,10 @@ private:
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
     std::shared_ptr<qmeta::QProgress> _queryProgress;
 
-    qmeta::CzarId _qMetaCzarId;  ///< Czar ID in QMeta database
-    QueryId _qMetaQueryId{0};    ///< Query ID in QMeta database
-    /// QueryId in a standard string form, initially set to unknown.
-    std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
-    bool _killed{false};
+    qmeta::CzarId _czarId;                                        ///< Czar ID in QMeta database
+    QueryId _queryId = 0;                                         ///< Query ID in QMeta database
+    std::string _queryIdStr = QueryIdHelper::makeIdStr(0, true);  ///< Initialized to unknown
+    bool _killed = false;
     std::mutex _killMutex;
     mutable std::string _errorExtra;  ///< Additional error information
     std::string _resultTable;         ///< Result table name

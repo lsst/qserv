@@ -64,10 +64,10 @@ namespace lsst::qserv::ccontrol {
 // Constructor
 UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
                                            std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                           qmeta::CzarId qMetaCzarId, std::string const& userQueryId,
+                                           qmeta::CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
-          _qMetaCzarId(qMetaCzarId),
+          _czarId(czarId),
           _messageStore(std::make_shared<qdisp::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {
@@ -91,10 +91,10 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
 }
 
 UserQueryProcessList::UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                           qmeta::CzarId qMetaCzarId, std::string const& userQueryId,
+                                           qmeta::CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
-          _qMetaCzarId(qMetaCzarId),
+          _czarId(czarId),
           _messageStore(std::make_shared<qdisp::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {

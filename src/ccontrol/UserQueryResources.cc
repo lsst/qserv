@@ -48,7 +48,7 @@ UserQuerySharedResources::UserQuerySharedResources(
           interactiveChunkLimit(interactiveChunkLimit_) {
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?
-    qMetaCzarId = queryMetadata->registerCzar(czarName);
+    czarId = queryMetadata->registerCzar(czarName);
 }
 
 std::shared_ptr<UserQueryResources> UserQuerySharedResources::makeUserQueryResources(

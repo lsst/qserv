@@ -132,7 +132,7 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
     LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
     try {
         return std::make_shared<UserQueryProcessList>(stmt, sharedResources->qMetaSelect,
-                                                      sharedResources->qMetaCzarId, userQueryId, resultDb);
+                                                      sharedResources->czarId, userQueryId, resultDb);
     } catch (std::exception const& exc) {
         return std::make_shared<UserQueryInvalid>(exc.what());
     }
@@ -159,8 +159,8 @@ std::shared_ptr<UserQuery> _makeUserQueryQueries(query::SelectStmt::Ptr& stmt,
     }
     LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a QUERIES");
     try {
-        return std::make_shared<UserQueryQueries>(stmt, sharedResources->qMetaSelect,
-                                                  sharedResources->qMetaCzarId, userQueryId, resultDb);
+        return std::make_shared<UserQueryQueries>(stmt, sharedResources->qMetaSelect, sharedResources->czarId,
+                                                  userQueryId, resultDb);
     } catch (std::exception const& exc) {
         return std::make_shared<UserQueryInvalid>(exc.what());
     }
@@ -230,11 +230,11 @@ UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, s
     // are left in EXECUTING state in QMeta. We want to cleanup that state
     // to avoid confusion. Note that when/if clean czar restart is implemented
     // we'll need a new logic to restart query processing.
-    _userQuerySharedResources->queryMetadata->cleanup(_userQuerySharedResources->qMetaCzarId);
+    _userQuerySharedResources->queryMetadata->cleanup(_userQuerySharedResources->czarId);
 
     // Add logging context with czar ID
-    qmeta::CzarId qMetaCzarId = _userQuerySharedResources->qMetaCzarId;
-    LOG_MDC_INIT([qMetaCzarId]() { LOG_MDC("CZID", std::to_string(qMetaCzarId)); });
+    qmeta::CzarId czarId = _userQuerySharedResources->czarId;
+    LOG_MDC_INIT([czarId]() { LOG_MDC("CZID", std::to_string(czarId)); });
 
     // BOOST ASIO service is started to process asynchronous timer requests
     // in the dedicated thread. However, before starting the thread we need
@@ -322,7 +322,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             LOGS(_log, LOG_LVL_DEBUG, "make UserQuerySelectCountStar");
             auto uq = std::make_shared<UserQuerySelectCountStar>(
                     query, _userQuerySharedResources->qMetaSelect, _userQuerySharedResources->queryMetadata,
-                    userQueryId, rowsTable, resultDb, countSpelling, _userQuerySharedResources->qMetaCzarId,
+                    userQueryId, rowsTable, resultDb, countSpelling, _userQuerySharedResources->czarId,
                     async);
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->saveResultQuery();
@@ -366,7 +366,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto uq = std::make_shared<UserQuerySelect>(
                 qs, messageStore, executive, _userQuerySharedResources->databaseModels, infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
-                _userQuerySharedResources->queryProgress, _userQuerySharedResources->qMetaCzarId, errorExtra,
+                _userQuerySharedResources->queryProgress, _userQuerySharedResources->czarId, errorExtra,
                 async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
@@ -375,7 +375,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {
-        auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _userQuerySharedResources->qMetaCzarId,
+        auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _userQuerySharedResources->czarId,
                                                          _userQuerySharedResources->queryMetadata);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
         return uq;
@@ -383,7 +383,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
         try {
             return std::make_shared<UserQueryProcessList>(full, _userQuerySharedResources->qMetaSelect,
-                                                          _userQuerySharedResources->qMetaCzarId, userQueryId,
+                                                          _userQuerySharedResources->czarId, userQueryId,
                                                           resultDb);
         } catch (std::exception const& exc) {
             return std::make_shared<UserQueryInvalid>(exc.what());

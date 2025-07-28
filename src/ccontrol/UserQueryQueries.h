@@ -52,13 +52,13 @@ public:
     /**
      *  Constructor for "SELECT ... FROM  INFORMATION_SCHEMA.QUERIES ...".
      *
-     *  @param statement:     Parsed SELECT statement
-     *  @param qMetaSelect:   QMetaSelect instance
-     *  @param qMetaCzarId:   Czar ID for QMeta queries
-     *  @param userQueryId:   Unique string identifying query
+     *  @param statement Parsed SELECT statement
+     *  @param qMetaSelect QMetaSelect instance
+     *  @param czarId Czar ID for QMeta queries
+     *  @param userQueryId Unique string identifying query
      */
     UserQueryQueries(std::shared_ptr<query::SelectStmt> const& statement,
-                     std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, qmeta::CzarId qMetaCzarId,
+                     std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect, qmeta::CzarId czarId,
                      std::string const& userQueryId, std::string const& resultDb);
 
     UserQueryQueries(UserQueryQueries const&) = delete;
@@ -100,7 +100,7 @@ private:
     std::string _getResultOrderBy() const { return _orderBy; }
 
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
-    qmeta::CzarId const _qMetaCzarId;  ///< Czar ID in QMeta database
+    qmeta::CzarId const _czarId;  ///< Czar ID in QMeta database
     QueryState _qState = UNKNOWN;
     std::shared_ptr<qdisp::MessageStore> _messageStore;
     std::string _resultTableName;
