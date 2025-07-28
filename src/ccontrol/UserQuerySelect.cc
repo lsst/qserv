@@ -86,8 +86,9 @@
 #include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
-#include "qmeta/QMeta.h"
 #include "qmeta/Exceptions.h"
+#include "qmeta/QMeta.h"
+#include "qmeta/QProgress.h"
 #include "qproc/geomAdapter.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
@@ -133,7 +134,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                                 std::shared_ptr<qmeta::QStatus> const& queryStatsData, qmeta::CzarId czarId,
+                                 std::shared_ptr<qmeta::QProgress> const& queryProgress, qmeta::CzarId czarId,
                                  std::string const& errorExtra, bool async, std::string const& resultDb)
         : _qSession(qs),
           _messageStore(messageStore),
@@ -142,7 +143,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
           _infileMergerConfig(infileMergerConfig),
           _secondaryIndex(secondaryIndex),
           _queryMetadata(queryMetadata),
-          _queryStatsData(queryStatsData),
+          _queryProgress(queryProgress),
           _qMetaCzarId(czarId),
           _errorExtra(errorExtra),
           _resultDb(resultDb),
@@ -261,9 +262,9 @@ void UserQuerySelect::submit() {
 
     // Add QProgress table entry
     try {
-        _queryStatsData->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize());
+        _queryProgress->insert(_qMetaQueryId, _qSession->getChunksSize());
     } catch (qmeta::SqlError const& e) {
-        LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << e.what());
+        LOGS(_log, LOG_LVL_WARN, "Failed QProgress::insert, ex: " << e.what());
     }
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
@@ -614,9 +615,9 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t r
     _queryMetadata->completeQuery(_qMetaQueryId, qStatus, rows, bytes, finalRows);
     // Remove the row for temporary query statistics.
     try {
-        _queryStatsData->queryStatsTmpRemove(_qMetaQueryId);
+        _queryProgress->remove(_qMetaQueryId);
     } catch (qmeta::SqlError const&) {
-        LOGS(_log, LOG_LVL_WARN, "queryStatsTmp remove failed " << _queryIdStr);
+        LOGS(_log, LOG_LVL_WARN, "QProgress::remove failed, queryId: " << _queryIdStr);
     }
 }
 
@@ -627,7 +628,7 @@ void UserQuerySelect::_qMetaUpdateMessages() {
     try {
         _queryMetadata->addQueryMessages(_qMetaQueryId, msgStore);
     } catch (qmeta::SqlError const& ex) {
-        LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
+        LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
     }
 }
 

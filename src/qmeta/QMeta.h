@@ -32,7 +32,6 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "qmeta/QInfo.h"
-#include "qmeta/QStats.h"
 #include "qmeta/types.h"
 
 namespace lsst::qserv::qdisp {
@@ -46,7 +45,6 @@ namespace lsst::qserv::qmeta {
 
 /**
  *  @ingroup qmeta
- *
  *  @brief Interface for query metadata.
  */
 

@@ -657,7 +657,7 @@ void QMetaMysql::_checkDb() {
     }
 
     // check that all tables are there
-    char const* requiredTables[] = {"QCzar", "QInfo", "QTable", "QWorker", "QMetadata", "QProgress"};
+    char const* requiredTables[] = {"QCzar", "QInfo", "QTable", "QMetadata", "QProgress"};
     int const nTables = sizeof requiredTables / sizeof requiredTables[0];
     for (int i = 0; i != nTables; ++i) {
         char const* const table = requiredTables[i];

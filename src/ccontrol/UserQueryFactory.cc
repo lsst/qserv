@@ -57,7 +57,7 @@
 #include "qdisp/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QMetaSelect.h"
-#include "qmeta/QStatusMysql.h"
+#include "qmeta/QProgress.h"
 #include "qproc/DatabaseModels.h"
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
@@ -212,7 +212,7 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
             std::make_shared<qproc::SecondaryIndex>(czarConfig->getMySqlQmetaConfig()),
             std::make_shared<qmeta::QMetaMysql>(czarConfig->getMySqlQmetaConfig(),
                                                 czarConfig->getMaxMsgSourceStore()),
-            std::make_shared<qmeta::QStatusMysql>(czarConfig->getMySqlQStatusDataConfig()),
+            std::make_shared<qmeta::QProgress>(czarConfig->getMySqlQStatusDataConfig()),
             std::make_shared<qmeta::QMetaSelect>(czarConfig->getMySqlQmetaConfig()), dbModels, czarName,
             czarConfig->getInteractiveChunkLimit());
 }
@@ -355,7 +355,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         if (sessionValid) {
             executive =
                     qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
-                                             _userQuerySharedResources->queryStatsData, qs, _asioIoService);
+                                             _userQuerySharedResources->queryProgress, qs, _asioIoService);
             infileMergerConfig =
                     std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
             infileMergerConfig->debugNoMerge = _debugNoMerge;
@@ -366,7 +366,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto uq = std::make_shared<UserQuerySelect>(
                 qs, messageStore, executive, _userQuerySharedResources->databaseModels, infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
-                _userQuerySharedResources->queryStatsData, _userQuerySharedResources->qMetaCzarId, errorExtra,
+                _userQuerySharedResources->queryProgress, _userQuerySharedResources->qMetaCzarId, errorExtra,
                 async, resultDb);
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
