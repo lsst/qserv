@@ -54,26 +54,25 @@
 // Forward declarations
 class XrdSsiService;
 
-namespace lsst::qserv {
+namespace lsst::qserv::qmeta {
+class QProgress;
+}  // namespace lsst::qserv::qmeta
 
-namespace qmeta {
-class QStatus;
-}
-
-namespace qproc {
+namespace lsst::qserv::qproc {
 class QuerySession;
-}
+}  // namespace lsst::qserv::qproc
 
-namespace qdisp {
+namespace lsst::qserv::qdisp {
 class JobQuery;
 class MessageStore;
-}  // namespace qdisp
+}  // namespace lsst::qserv::qdisp
 
-namespace util {
+namespace lsst::qserv::util {
 class AsyncTimer;
-}
+}  // namespace lsst::qserv::util
 
-namespace qdisp {
+// This header declarations
+namespace lsst::qserv::qdisp {
 
 struct ExecutiveConfig {
     typedef std::shared_ptr<ExecutiveConfig> Ptr;
@@ -98,7 +97,7 @@ public:
     /// instead of a real XrdSsiService
     static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
-                                 std::shared_ptr<qmeta::QStatus> const& qMeta,
+                                 std::shared_ptr<qmeta::QProgress> const& queryProgress,
                                  std::shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService);
 
@@ -169,7 +168,8 @@ public:
 
 private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-              SharedResources::Ptr const& sharedResources, std::shared_ptr<qmeta::QStatus> const& qStatus,
+              SharedResources::Ptr const& sharedResources,
+              std::shared_ptr<qmeta::QProgress> const& queryProgress,
               std::shared_ptr<qproc::QuerySession> const& querySession);
 
     void _setup();
@@ -231,7 +231,7 @@ private:
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
     // util::InstanceCount _instC{"Executive"};
 
-    std::shared_ptr<qmeta::QStatus> _qMeta;
+    std::shared_ptr<qmeta::QProgress> _queryProgress;  ///< Query progress, used to update QMeta.
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
     /// Minimum number of seconds between QMeta chunk updates (set by config)
@@ -275,7 +275,6 @@ private:
     int _jobId;
 };
 
-}  // namespace qdisp
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::qdisp
 
 #endif  // LSST_QSERV_QDISP_EXECUTIVE_H

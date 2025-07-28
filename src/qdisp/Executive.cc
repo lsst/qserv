@@ -70,7 +70,7 @@
 #include "query/QueryContext.h"
 #include "qproc/QuerySession.h"
 #include "qmeta/Exceptions.h"
-#include "qmeta/QStatus.h"
+#include "qmeta/QProgress.h"
 #include "query/SelectStmt.h"
 #include "util/AsyncTimer.h"
 #include "util/Bug.h"
@@ -100,12 +100,13 @@ namespace lsst::qserv::qdisp {
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
-                     SharedResources::Ptr const& sharedResources, shared_ptr<qmeta::QStatus> const& qStatus,
+                     SharedResources::Ptr const& sharedResources,
+                     shared_ptr<qmeta::QProgress> const& queryProgress,
                      shared_ptr<qproc::QuerySession> const& querySession)
         : _config(c),
           _messageStore(ms),
           _qdispPool(sharedResources->getQdispPool()),
-          _qMeta(qStatus),
+          _queryProgress(queryProgress),
           _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
@@ -126,11 +127,11 @@ Executive::~Executive() {
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
-                                 shared_ptr<qmeta::QStatus> const& qMeta,
+                                 shared_ptr<qmeta::QProgress> const& queryProgress,
                                  shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
-    Executive::Ptr ptr(new Executive(c, ms, sharedResources, qMeta, querySession));
+    Executive::Ptr ptr(new Executive(c, ms, sharedResources, queryProgress, querySession));
 
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
@@ -527,14 +528,14 @@ void Executive::_unTrack(int jobId) {
         if (now - _lastQMetaUpdate > _secondsBetweenQMetaUpdates || incompleteJobs == _totalJobs / 2 ||
             incompleteJobs == 0) {
             _lastQMetaUpdate = now;
-            lastUpdateLock.unlock();  // unlock asap, _qMeta write can be slow.
+            lastUpdateLock.unlock();  // unlock asap, _queryProgress write can be slow.
             int completedJobs = _totalJobs - incompleteJobs;
-            if (_qMeta != nullptr) {
+            if (_queryProgress != nullptr) {
                 // This is not vital (logging), if it fails keep going.
                 try {
-                    _qMeta->queryStatsTmpChunkUpdate(_id, completedJobs);
+                    _queryProgress->update(_id, completedJobs);
                 } catch (qmeta::SqlError const& e) {
-                    LOGS(_log, LOG_LVL_WARN, "Failed to update StatsTmp " << e.what());
+                    LOGS(_log, LOG_LVL_WARN, "Failed in QProgress::update, ex: " << e.what());
                 }
             }
         }

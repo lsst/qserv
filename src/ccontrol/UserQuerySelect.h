@@ -43,7 +43,6 @@
 #include "css/StripingParams.h"
 #include "qdisp/SharedResources.h"
 #include "qmeta/QInfo.h"
-#include "qmeta/QStatus.h"
 #include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
 
@@ -56,7 +55,8 @@ class QdispPool;
 
 namespace lsst::qserv::qmeta {
 class QMeta;
-}
+class QProgress;
+}  // namespace lsst::qserv::qmeta
 
 namespace lsst::qserv::qproc {
 class DatabaseModels;
@@ -86,7 +86,7 @@ public:
                     std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                    std::shared_ptr<qmeta::QStatus> const& queryStatsData, qmeta::CzarId czarId,
+                    std::shared_ptr<qmeta::QProgress> const& queryProgress, qmeta::CzarId czarId,
                     std::string const& errorExtra, bool async, std::string const& resultDb);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
@@ -173,7 +173,7 @@ private:
     std::shared_ptr<rproc::InfileMerger> _infileMerger;
     std::shared_ptr<qproc::SecondaryIndex> _secondaryIndex;
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
-    std::shared_ptr<qmeta::QStatus> _queryStatsData;
+    std::shared_ptr<qmeta::QProgress> _queryProgress;
 
     qmeta::CzarId _qMetaCzarId;  ///< Czar ID in QMeta database
     QueryId _qMetaQueryId{0};    ///< Query ID in QMeta database

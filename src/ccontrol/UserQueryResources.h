@@ -44,8 +44,8 @@ class MySqlConfig;
 
 namespace lsst::qserv::qmeta {
 class QMeta;
-class QStatus;
 class QMetaSelect;
+class QProgress;
 }  // namespace lsst::qserv::qmeta
 
 namespace lsst::qserv::qproc {
@@ -60,22 +60,24 @@ namespace lsst::qserv::ccontrol {
  */
 class UserQuerySharedResources {
 public:
+    UserQuerySharedResources() = default;
     UserQuerySharedResources(std::shared_ptr<css::CssAccess> const& css_,
                              mysql::MySqlConfig const& mysqlResultConfig_,
                              std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
-                             std::shared_ptr<qmeta::QStatus> const& queryStatsData_,
+                             std::shared_ptr<qmeta::QProgress> const& queryProgress_,
                              std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
                              std::shared_ptr<qproc::DatabaseModels> const& databaseModels_,
                              std::string const& czarName, int interactiveChunkLimit_);
 
-    UserQuerySharedResources(UserQuerySharedResources const& rhs) = default;
-    UserQuerySharedResources& operator=(UserQuerySharedResources const& rhs) = delete;
+    UserQuerySharedResources(UserQuerySharedResources const&) = default;
+    UserQuerySharedResources& operator=(UserQuerySharedResources const&) = delete;
+
     std::shared_ptr<css::CssAccess> css;
     mysql::MySqlConfig const mysqlResultConfig;
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
-    std::shared_ptr<qmeta::QStatus> queryStatsData;
+    std::shared_ptr<qmeta::QProgress> queryProgress;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::shared_ptr<qproc::DatabaseModels> databaseModels;
     qmeta::CzarId qMetaCzarId;  ///< Czar ID in QMeta database

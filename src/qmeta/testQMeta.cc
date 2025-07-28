@@ -33,8 +33,10 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "QMetaMysql.h"
-#include "QStatusMysql.h"
+#include "qmeta/Exceptions.h"
+#include "qmeta/QMetaMysql.h"
+#include "qmeta/QProgress.h"
+#include "qmeta/QProgressData.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlErrorObject.h"
@@ -341,34 +343,34 @@ BOOST_AUTO_TEST_CASE(messWithTables) {
 
 BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats connect");
-    std::shared_ptr<QStatus> qStatus = std::make_shared<QStatusMysql>(testDB.sqlConfig);
+    std::shared_ptr<QProgress> queryProgress = std::make_shared<QProgress>(testDB.sqlConfig);
     sqlConn = SqlConnectionFactory::make(testDB.sqlConfig);
     CzarId qid1 = 7;  // just need a number.
 
     int totalChunks = 99;
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats register");
-    qStatus->queryStatsTmpRegister(qid1, totalChunks);
+    queryProgress->insert(qid1, totalChunks);
 
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats get");
-    QStats qStats = qStatus->queryStatsTmpGet(qid1);
-    BOOST_CHECK(qStats.totalChunks == totalChunks);
-    BOOST_CHECK(qStats.completedChunks == 0);
+    auto queryProgressData = queryProgress->get(qid1);
+    BOOST_CHECK(queryProgressData.totalChunks == totalChunks);
+    BOOST_CHECK(queryProgressData.completedChunks == 0);
 
     int completedChunks = 35;
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats chunk update");
-    qStatus->queryStatsTmpChunkUpdate(qid1, completedChunks);
+    queryProgress->update(qid1, completedChunks);
 
-    qStats = qStatus->queryStatsTmpGet(qid1);
-    BOOST_CHECK(qStats.totalChunks == totalChunks);
-    BOOST_CHECK(qStats.completedChunks == completedChunks);
+    queryProgressData = queryProgress->get(qid1);
+    BOOST_CHECK(queryProgressData.totalChunks == totalChunks);
+    BOOST_CHECK(queryProgressData.completedChunks == completedChunks);
 
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats remove");
-    qStatus->queryStatsTmpRemove(qid1);
+    queryProgress->remove(qid1);
 
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats check get failure discovery");
     bool caught = false;
     try {
-        qStats = qStatus->queryStatsTmpGet(qid1);
+        queryProgressData = queryProgress->get(qid1);
     } catch (QueryIdError const&) {
         caught = true;
     }
