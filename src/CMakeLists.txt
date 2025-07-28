@@ -8,7 +8,7 @@ set(ANTLR_EXECUTABLE /usr/share/java/antlr-4.8-complete.jar)
 find_package(ANTLR REQUIRED)
 find_package(antlr4-runtime REQUIRED)
 
-find_package(Boost REQUIRED
+find_package(Boost REQUIRED NO_MODULE COMPONENTS
     filesystem REQUIRED
     program_options REQUIRED
     regex REQUIRED
@@ -18,6 +18,7 @@ find_package(Boost REQUIRED
 
 find_package(Lua51 REQUIRED)
 find_package(Protobuf REQUIRED)
+find_package(Python REQUIRED COMPONENTS Development Interpreter)
 find_package(pybind11 REQUIRED)
 find_package(Threads REQUIRED)
 find_package(XRootD REQUIRED)
