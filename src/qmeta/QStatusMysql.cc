@@ -58,7 +58,7 @@ void QStatusMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     string query =
-            "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
+            "INSERT INTO QProgress (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
             "VALUES ( " +
             to_string(queryId) + ", " + to_string(totalChunks) + ", 0, NOW(), NOW())";
 
@@ -76,7 +76,7 @@ void QStatusMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
-    string query = "UPDATE QStatsTmp SET completedChunks = " + to_string(completedChunks) +
+    string query = "UPDATE QProgress SET completedChunks = " + to_string(completedChunks) +
                    ", lastUpdate = NOW() WHERE queryId =" + to_string(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
@@ -97,7 +97,7 @@ QStats QStatusMysql::queryStatsTmpGet(QueryId queryId) {
     string query =
             "SELECT queryId, totalChunks, completedChunks, "
             "UNIX_TIMESTAMP(queryBegin), UNIX_TIMESTAMP(lastUpdate) "
-            "FROM QStatsTmp WHERE queryId= " +
+            "FROM QProgress WHERE queryId= " +
             to_string(queryId);
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
@@ -128,7 +128,7 @@ void QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
-    string query = "DELETE FROM QStatsTmp WHERE queryId =" + to_string(queryId);
+    string query = "DELETE FROM QProgress WHERE queryId =" + to_string(queryId);
 
     LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, errObj)) {

@@ -85,38 +85,20 @@ CREATE TABLE IF NOT EXISTS `QTable` (
 ENGINE = InnoDB
 COMMENT = 'Table containing table names used by query.';
 
-
 -- -----------------------------------------------------
--- Table `QWorker`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QWorker` (
-  `queryId` BIGINT NOT NULL COMMENT 'Query ID',
-  `chunk` INT NOT NULL COMMENT 'Chunk number',
-  `wXrd` CHAR(63) NULL COMMENT 'Worker xrootd endpoint (host name/IP and port number)',
-  `submitted` TIMESTAMP NULL DEFAULT NULL COMMENT 'Time when chunk query was submitted to worker',
-  `completed` TIMESTAMP NULL DEFAULT NULL COMMENT 'Set to non-NULL when query result for this chunk is processed',
-  PRIMARY KEY (`queryId`, `chunk`),
-  CONSTRAINT `QWorker_qid`
-    FOREIGN KEY (`queryId`)
-    REFERENCES `QInfo` (`queryId`)
-    ON DELETE CASCADE
-    ON UPDATE CASCADE)
-ENGINE = InnoDB
-COMMENT = 'Mapping of queries to workers';
-
--- -----------------------------------------------------
--- Table `QStatsTmp`
+-- Table `QProgress`
 -- MEMORY table - will be recreated(but empty) by mariadb every time server starts.
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QStatsTmp` (
+CREATE TABLE IF NOT EXISTS `QProgress` (
   `queryId` BIGINT NOT NULL COMMENT 'Query ID',
   `totalChunks` INT COMMENT 'Total number of chunks in the query',
   `completedChunks` INT COMMENT 'Number of completed chunks in the query',
   `queryBegin` TIMESTAMP DEFAULT 0 COMMENT 'When the query was started',
   `lastUpdate` TIMESTAMP DEFAULT 0 COMMENT 'Last time completedChunks was updated',
-  PRIMARY KEY (`queryId`))
+  PRIMARY KEY (`queryId`),
+  CONSTRAINT `fk_queryId` FOREIGN KEY (`queryId`) REFERENCES `QInfo` (`queryId`) ON DELETE CASCADE ON UPDATE CASCADE)
 ENGINE = MEMORY
-COMMENT = 'Table to track statistics of running queries.';
+COMMENT = 'Table to track chunk processing progress of the running queries.';
 
 -- ----------------------------------------------------------------------------------------
 -- View `InfoSchemaProcessList`
@@ -135,7 +117,7 @@ CREATE OR REPLACE
          `qs`.`completedChunks` `CHUNKS_COMP`,
          `qi`.`query` `QUERY`
     FROM `QInfo` AS `qi`
-    LEFT OUTER JOIN `QStatsTmp` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`
+    LEFT OUTER JOIN `QProgress` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`
     JOIN `QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`
     WHERE `qi`.`status` = 'EXECUTING';
 
@@ -211,4 +193,5 @@ COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 -- Version 9 removed the full-text index on the query text from QInfo.
 -- Version 10 redefined schema of the ProcessList tables.
 -- Version 11 extended view InfoSchemaQueries to report errors on the faile queries. Added status option FAILED_LR to QInfo.status.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '11');
+-- Version 12 renamed table QStatsTmp into QProgress to reflect its purpose and add a foreign key constraint to QInfo table. Drop the obsolete table QWorker.
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '12');

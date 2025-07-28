@@ -628,13 +628,13 @@ json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
                                                  map<QueryId, string> const& queryId2scheduler) {
     QueryGenerator const g(conn);
     string const query =
-            g.select(g.id("QStatsTmp", Sql::STAR), g.as(g.UNIX_TIMESTAMP("queryBegin"), "queryBegin_sec"),
+            g.select(g.id("QProgress", Sql::STAR), g.as(g.UNIX_TIMESTAMP("queryBegin"), "queryBegin_sec"),
                      g.as(g.UNIX_TIMESTAMP("lastUpdate"), "lastUpdate_sec"), g.as(Sql::NOW, "samplingTime"),
                      g.as(g.UNIX_TIMESTAMP(Sql::NOW), "samplingTime_sec"), g.id("QInfo", "query"),
                      g.id("QInfo", "czarId"), g.id("QInfo", "qType")) +
-            g.from("QStatsTmp", "QInfo") +
-            g.where(g.eq(g.id("QStatsTmp", "queryId"), g.id("QInfo", "queryId"))) +
-            g.orderBy(make_pair(g.id("QStatsTmp", "queryBegin"), "DESC"));
+            g.from("QProgress", "QInfo") +
+            g.where(g.eq(g.id("QProgress", "queryId"), g.id("QInfo", "queryId"))) +
+            g.orderBy(make_pair(g.id("QProgress", "queryBegin"), "DESC"));
     conn->execute(query);
 
     json result = json::array();

@@ -161,7 +161,6 @@ private:
     /// @see QMeta::completeQuery
     void _qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t collectedRows = 0,
                             size_t collectedBytes = 0, size_t finalRows = 0);
-    void _qMetaAddChunks(std::vector<int> const& chunks);
     void _qMetaUpdateMessages();
     void _setupChunking();
 

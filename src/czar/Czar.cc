@@ -494,11 +494,10 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     result.collectedRows = stoull(ZERO_IF_EMPTY_STR(colCollectedRows[0]));
     result.finalRows = stoull(ZERO_IF_EMPTY_STR(colFinalRows[0]));
 
-    // Pull ongoing query processing stats if this information is still available.
-    // This is a transient information located in the temporary table.
-    // It's available for the duration of the query processing.
+    // Pull the progress info on the ongoing query processing if this information is still available.
+    // This is a transient information that is only available for queries that are still in progress.
     sql = "SELECT totalChunks,completedChunks,UNIX_TIMESTAMP(queryBegin),UNIX_TIMESTAMP(lastUpdate) FROM "
-          "QStatsTmp WHERE queryId=" +
+          "QProgress WHERE queryId=" +
           to_string(queryId);
     if (!sqlConn->runQuery(sql, results, err)) {
         string const msg = context +
