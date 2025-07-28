@@ -46,6 +46,7 @@
 #include "qmeta/QStatus.h"
 #include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
+#include "util/InstanceCount.h"
 
 // Forward declarations
 namespace lsst::qserv::qdisp {
@@ -187,6 +188,9 @@ private:
     std::string _resultLoc;           ///< Result location
     std::string _resultDb;            ///< Result database (todo is this the same as resultLoc??)
     bool _async;                      ///< true for async query
+
+    // Remove or disable these members after debugging.
+    util::InstanceCount _instC{"UserQuerySelect"};
 };
 
 }  // namespace lsst::qserv::ccontrol
