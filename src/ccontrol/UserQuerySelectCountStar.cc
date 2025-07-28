@@ -67,7 +67,7 @@ UserQuerySelectCountStar::UserQuerySelectCountStar(std::string query,
           _resultDb(resultDb),
           _countSpelling(countSpelling),
           _query(query),
-          _qMetaCzarId(czarId),
+          _czarId(czarId),
           _async(async) {}
 
 // Submit or execute the query.
@@ -176,17 +176,17 @@ void UserQuerySelectCountStar::qMetaRegister(std::string const& resultLocation,
         _resultLoc = "table:result_#QID#";
     }
     int chunkCount = 0;
-    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _query, qTemplate, qMerge, _resultLoc, msgTableName,
+    qmeta::QInfo qInfo(qType, _czarId, user, _query, qTemplate, qMerge, _resultLoc, msgTableName,
                        getResultQuery(), chunkCount);
     // register query, save its ID
     qmeta::QMeta::TableNames tableNames;
-    _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
-    _queryIdStr = QueryIdHelper::makeIdStr(_qMetaQueryId);
+    _queryId = _queryMetadata->registerQuery(qInfo, tableNames);
+    _queryIdStr = QueryIdHelper::makeIdStr(_queryId);
     // Add logging context with query ID
-    QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+    QSERV_LOGCONTEXT_QUERY(_queryId);
 
     // update #QID# with actual query ID
-    boost::replace_all(_resultLoc, "#QID#", std::to_string(_qMetaQueryId));
+    boost::replace_all(_resultLoc, "#QID#", std::to_string(_queryId));
 
     // guess query result location
     if (_resultLoc.compare(0, 6, "table:") == 0) {
@@ -200,12 +200,12 @@ void UserQuerySelectCountStar::qMetaRegister(std::string const& resultLocation,
 }
 
 void UserQuerySelectCountStar::saveResultQuery() {
-    _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery());
+    _queryMetadata->saveResultQuery(_queryId, getResultQuery());
 }
 
 QueryState UserQuerySelectCountStar::join() {
     // bytes and rows collected from workers should be 0.
-    _queryMetadata->completeQuery(_qMetaQueryId,
+    _queryMetadata->completeQuery(_queryId,
                                   _qState == SUCCESS ? qmeta::QInfo::COMPLETED : qmeta::QInfo::FAILED);
     return _qState;
 }

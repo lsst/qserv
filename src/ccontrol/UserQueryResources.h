@@ -80,7 +80,7 @@ public:
     std::shared_ptr<qmeta::QProgress> queryProgress;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::shared_ptr<qproc::DatabaseModels> databaseModels;
-    qmeta::CzarId qMetaCzarId;  ///< Czar ID in QMeta database
+    qmeta::CzarId czarId;  ///< Czar ID in QMeta database
     int const interactiveChunkLimit;
 
     /**

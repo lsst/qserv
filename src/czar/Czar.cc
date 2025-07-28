@@ -109,7 +109,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
 
     // NOTE: This steps should be done after constructing the query factory where
     //       the name of the Czar gets translated into a numeric identifier.
-    _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
+    _czarConfig->setId(_uqFactory->userQuerySharedResources()->czarId);
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar database before the restart.
