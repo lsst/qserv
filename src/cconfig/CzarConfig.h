@@ -240,6 +240,9 @@ public:
     /// This logic should be fixed in some future version of Qserv.
     void setId(qmeta::CzarId id);
 
+    /// @return The interval in seconds for cleaning up the in-progress queries in QMeta.
+    unsigned int getInProgressCleanupIvalSec() const { return _inProgressCleanupIvalSec->getVal(); }
+
     /// @return the JSON representation of the configuration parameters.
     /// @note The object has two collections of the parameters: 'input' - for
     /// parameters that were proided to the construction of the class, and
@@ -346,6 +349,9 @@ private:
             util::ConfigValTStr::create(_configValMap, "partitioner", "emptyChunkPath", notReq, ".");
     CVTIntPtr _maxMsgSourceStore =
             util::ConfigValTInt::create(_configValMap, "qmeta", "maxMsgSourceStore", notReq, 3);
+
+    CVTIntPtr _inProgressCleanupIvalSec =
+            util::ConfigValTInt::create(_configValMap, "qmeta", "inProgressCleanupIvalSec", notReq, 60);
 
     CVTIntPtr _qdispPoolSize =
             util::ConfigValTInt::create(_configValMap, "qdisppool", "poolSize", notReq, 1000);

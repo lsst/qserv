@@ -236,24 +236,39 @@ void QMetaMysql::setCzarActive(CzarId czarId, bool active) {
 }
 
 // Cleanup of query status.
-void QMetaMysql::cleanup(CzarId czarId) {
+void QMetaMysql::cleanupQueriesAtStart(CzarId czarId) {
+    string const czarIdStr = to_string(czarId);
+    vector<string> const queries = {
+            "UPDATE QInfo SET status = 'ABORTED', completed = NOW()"
+            " WHERE czarId = " +
+                    czarIdStr + " AND status = 'EXECUTING'",
+            "DELETE qp FROM QProgress qp INNER JOIN QInfo qi ON qp.queryId=qi.queryId"
+            " WHERE qi.czarId=" +
+                    czarIdStr + " AND qi.status != 'EXECUTING'"};
+    _executeQueries(queries);
+}
+
+void QMetaMysql::cleanupInProgressQueries(CzarId czarId) {
+    string const czarIdStr = to_string(czarId);
+    vector<string> const queries = {
+            "DELETE qp FROM QProgress qp INNER JOIN QInfo qi ON qp.queryId=qi.queryId"
+            " WHERE qi.czarId=" +
+            czarIdStr + " AND qi.status != 'EXECUTING'"};
+    _executeQueries(queries);
+}
+
+void QMetaMysql::_executeQueries(vector<string> const& queries) {
     lock_guard<mutex> sync(_dbMutex);
-
     auto trans = QMetaTransaction::create(*_conn);
-
-    // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    string const query =
-            "UPDATE QInfo SET status = 'ABORTED', completed = NOW() "
-            " WHERE czarId = " +
-            to_string(czarId) + " AND status = 'EXECUTING'";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        throw SqlError(ERR_LOC, errObj);
+    for (const auto& query : queries) {
+        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+        if (!_conn->runQuery(query, results, errObj)) {
+            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+            throw SqlError(ERR_LOC, errObj);
+        }
     }
-
     trans->commit();
 }
 
