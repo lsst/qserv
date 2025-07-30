@@ -47,7 +47,7 @@ using namespace std;
 namespace {
 
 // Current version of QMeta schema
-char const VERSION_STR[] = "11";
+char const VERSION_STR[] = "12";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 
@@ -236,24 +236,39 @@ void QMetaMysql::setCzarActive(CzarId czarId, bool active) {
 }
 
 // Cleanup of query status.
-void QMetaMysql::cleanup(CzarId czarId) {
+void QMetaMysql::cleanupQueriesAtStart(CzarId czarId) {
+    string const czarIdStr = to_string(czarId);
+    vector<string> const queries = {
+            "UPDATE QInfo SET status = 'ABORTED', completed = NOW()"
+            " WHERE czarId = " +
+                    czarIdStr + " AND status = 'EXECUTING'",
+            "DELETE qp FROM QProgress qp INNER JOIN QInfo qi ON qp.queryId=qi.queryId"
+            " WHERE qi.czarId=" +
+                    czarIdStr + " AND qi.status != 'EXECUTING'"};
+    _executeQueries(queries);
+}
+
+void QMetaMysql::cleanupInProgressQueries(CzarId czarId) {
+    string const czarIdStr = to_string(czarId);
+    vector<string> const queries = {
+            "DELETE qp FROM QProgress qp INNER JOIN QInfo qi ON qp.queryId=qi.queryId"
+            " WHERE qi.czarId=" +
+            czarIdStr + " AND qi.status != 'EXECUTING'"};
+    _executeQueries(queries);
+}
+
+void QMetaMysql::_executeQueries(vector<string> const& queries) {
     lock_guard<mutex> sync(_dbMutex);
-
     auto trans = QMetaTransaction::create(*_conn);
-
-    // run query
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    string const query =
-            "UPDATE QInfo SET status = 'ABORTED', completed = NOW() "
-            " WHERE czarId = " +
-            to_string(czarId) + " AND status = 'EXECUTING'";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        throw SqlError(ERR_LOC, errObj);
+    for (const auto& query : queries) {
+        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+        if (!_conn->runQuery(query, results, errObj)) {
+            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+            throw SqlError(ERR_LOC, errObj);
+        }
     }
-
     trans->commit();
 }
 
@@ -334,97 +349,6 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     LOGS(_log, LOG_LVL_DEBUG, "assigned to UserQuery:" << qInfo.queryText());
 
     return queryId;
-}
-
-// Add list of chunks to query.
-void QMetaMysql::addChunks(QueryId queryId, vector<int> const& chunks) {
-    lock_guard<mutex> sync(_dbMutex);
-
-    auto trans = QMetaTransaction::create(*_conn);
-
-    // register all tables
-    sql::SqlErrorObject errObj;
-    for (vector<int>::const_iterator itr = chunks.begin(); itr != chunks.end(); ++itr) {
-        string query = "INSERT INTO QWorker (queryId, chunk) VALUES (";
-        query += to_string(queryId);
-        query += ", ";
-        query += to_string(*itr);
-        query += ")";
-
-        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-        if (not _conn->runQuery(query, errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-            throw SqlError(ERR_LOC, errObj);
-        }
-    }
-
-    trans->commit();
-}
-
-// Assign or re-assign chunk to a worker.
-void QMetaMysql::assignChunk(QueryId queryId, int chunk, string const& xrdEndpoint) {
-    lock_guard<mutex> sync(_dbMutex);
-
-    auto trans = QMetaTransaction::create(*_conn);
-
-    // find and update chunk info
-    sql::SqlErrorObject errObj;
-    string query = "UPDATE QWorker SET wxrd = '";
-    query += _conn->escapeString(xrdEndpoint);
-    query += "', submitted = NOW() WHERE queryId = ";
-    query += to_string(queryId);
-    query += " AND chunk = ";
-    query += to_string(chunk);
-
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    sql::SqlResults results;
-    if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        throw SqlError(ERR_LOC, errObj);
-    }
-
-    // check number of rows updated, expect exactly one
-    if (results.getAffectedRows() == 0) {
-        throw ChunkIdError(ERR_LOC, queryId, chunk);
-    } else if (results.getAffectedRows() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one row updated for query/chunk ID " + to_string(queryId) +
-                                                "/" + to_string(chunk) + ": " +
-                                                to_string(results.getAffectedRows()));
-    }
-
-    trans->commit();
-}
-
-// Mark chunk as completed.
-void QMetaMysql::finishChunk(QueryId queryId, int chunk) {
-    lock_guard<mutex> sync(_dbMutex);
-
-    auto trans = QMetaTransaction::create(*_conn);
-
-    // find and update query info
-    sql::SqlErrorObject errObj;
-    string query = "UPDATE QWorker SET completed = NOW() WHERE queryId = ";
-    query += to_string(queryId);
-    query += " AND chunk = ";
-    query += to_string(chunk);
-
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    sql::SqlResults results;
-    if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        throw SqlError(ERR_LOC, errObj);
-    }
-
-    // check number of rows updated, expect exactly one
-    if (results.getAffectedRows() == 0) {
-        throw ChunkIdError(ERR_LOC, queryId, chunk);
-    } else if (results.getAffectedRows() > 1) {
-        throw ConsistencyError(ERR_LOC, "More than one row updated for query/chunk ID " + to_string(queryId) +
-                                                "/" + to_string(chunk) + ": " +
-                                                to_string(results.getAffectedRows()));
-    }
-
-    trans->commit();
 }
 
 // Mark query as completed or failed.
@@ -748,7 +672,7 @@ void QMetaMysql::_checkDb() {
     }
 
     // check that all tables are there
-    char const* requiredTables[] = {"QCzar", "QInfo", "QTable", "QWorker", "QMetadata", "QStatsTmp"};
+    char const* requiredTables[] = {"QCzar", "QInfo", "QTable", "QMetadata", "QProgress"};
     int const nTables = sizeof requiredTables / sizeof requiredTables[0];
     for (int i = 0; i != nTables; ++i) {
         char const* const table = requiredTables[i];

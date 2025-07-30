@@ -21,7 +21,7 @@
  */
 
 // Class header
-#include "qmeta/QStatusMysql.h"
+#include "qmeta/QProgress.h"
 
 // System headers
 #include <algorithm>
@@ -36,6 +36,7 @@
 // Qserv headers
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMetaTransaction.h"
+#include "qmeta/QProgressData.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
@@ -43,101 +44,86 @@
 using namespace std;
 
 namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QStatusMysql");
-
+LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QProgress");
 }
 
 namespace lsst::qserv::qmeta {
 
-QStatusMysql::QStatusMysql(mysql::MySqlConfig const& mysqlConf)
-        : QStatus(), _conn(sql::SqlConnectionFactory::make(mysqlConf)) {}
+QProgress::QProgress(mysql::MySqlConfig const& mysqlConf)
+        : _conn(sql::SqlConnectionFactory::make(mysqlConf)) {}
 
-void QStatusMysql::queryStatsTmpRegister(QueryId queryId, int totalChunks) {
+void QProgress::insert(QueryId queryId, int totalChunks) const {
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
-    string query =
-            "INSERT INTO QStatsTmp (queryId, totalChunks, completedChunks, queryBegin, lastUpdate) "
+    string const query =
+            "INSERT INTO `QProgress` (`queryId`,`totalChunks`,`completedChunks`,`queryBegin`,`lastUpdate`) "
             "VALUES ( " +
-            to_string(queryId) + ", " + to_string(totalChunks) + ", 0, NOW(), NOW())";
-
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn->runQuery(query, errObj)) {
+            to_string(queryId) + ", " + to_string(totalChunks) + ",0,NOW(),NOW())";
+    LOGS(_log, LOG_LVL_TRACE, "Executing query: " << query);
+    if (!_conn->runQuery(query, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        // If this doesn't work, it is not vital to qserv functionality.
         throw SqlError(ERR_LOC, errObj);
     }
 
     trans->commit();
 }
 
-void QStatusMysql::queryStatsTmpChunkUpdate(QueryId queryId, int completedChunks) {
+void QProgress::update(QueryId queryId, int completedChunks) const {
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
-    string query = "UPDATE QStatsTmp SET completedChunks = " + to_string(completedChunks) +
-                   ", lastUpdate = NOW() WHERE queryId =" + to_string(queryId);
-
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn->runQuery(query, errObj)) {
+    string const query = "UPDATE `QProgress` SET `completedChunks`=" + to_string(completedChunks) +
+                         ", `lastUpdate`=NOW() WHERE `queryId`=" + to_string(queryId);
+    LOGS(_log, LOG_LVL_TRACE, "Executing query: " << query);
+    if (!_conn->runQuery(query, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        // If this doesn't work, it is not at all vital to qserv functionality.
         throw SqlError(ERR_LOC, errObj);
     }
-
     trans->commit();
 }
 
-QStats QStatusMysql::queryStatsTmpGet(QueryId queryId) {
+QProgressData QProgress::get(QueryId queryId) const {
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    string query =
-            "SELECT queryId, totalChunks, completedChunks, "
-            "UNIX_TIMESTAMP(queryBegin), UNIX_TIMESTAMP(lastUpdate) "
-            "FROM QStatsTmp WHERE queryId= " +
+    string const query =
+            "SELECT "
+            "`queryId`,`totalChunks`,`completedChunks`,UNIX_TIMESTAMP(`queryBegin`),UNIX_TIMESTAMP(`"
+            "lastUpdate`) "
+            "FROM `QProgress` WHERE `queryId`=" +
             to_string(queryId);
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn->runQuery(query, results, errObj)) {
+    LOGS(_log, LOG_LVL_TRACE, "Executing query: " << query);
+    if (!_conn->runQuery(query, results, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
-
     sql::SqlResults::iterator rowIter = results.begin();
     if (rowIter == results.end()) {
-        // no records found
+        LOGS(_log, LOG_LVL_ERROR, "Unknown query: " << queryId);
         throw QueryIdError(ERR_LOC, queryId);
     }
-
-    // make sure that iterator does not move until we are done with row
     sql::SqlResults::value_type const& row = *rowIter;
-
     QueryId qId = boost::lexical_cast<QueryId>(row[0].first);
     int totalChunks = boost::lexical_cast<int>(row[1].first);
     int completedChunks = boost::lexical_cast<int>(row[2].first);
-    time_t begin = boost::lexical_cast<time_t>(row[3].first);
-    time_t lastUpdate = boost::lexical_cast<time_t>(row[4].first);
-
+    time_t const begin = boost::lexical_cast<time_t>(row[3].first);
+    time_t const lastUpdate = boost::lexical_cast<time_t>(row[4].first);
     trans->commit();
-    return QStats(qId, totalChunks, completedChunks, begin, lastUpdate);
+    return QProgressData(qId, totalChunks, completedChunks, begin, lastUpdate);
 }
 
-void QStatusMysql::queryStatsTmpRemove(QueryId queryId) {
+void QProgress::remove(QueryId queryId) const {
     lock_guard<mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
-    string query = "DELETE FROM QStatsTmp WHERE queryId =" + to_string(queryId);
-
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
-    if (not _conn->runQuery(query, errObj)) {
+    string const query = "DELETE FROM `QProgress` WHERE `queryId`=" + to_string(queryId);
+    LOGS(_log, LOG_LVL_TRACE, "Executing query: " << query);
+    if (!_conn->runQuery(query, errObj)) {
         LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
-        // If this doesn't work, it is not vital to qserv functionality. It's an in memory table, and,
-        // if needed, there could be a check added to remove any rows more than a couple of weeks old.
         throw SqlError(ERR_LOC, errObj);
     }
-
     trans->commit();
 }
 

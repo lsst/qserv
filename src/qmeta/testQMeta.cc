@@ -33,8 +33,10 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "QMetaMysql.h"
-#include "QStatusMysql.h"
+#include "qmeta/Exceptions.h"
+#include "qmeta/QMetaMysql.h"
+#include "qmeta/QProgress.h"
+#include "qmeta/QProgressData.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlErrorObject.h"
@@ -339,75 +341,36 @@ BOOST_AUTO_TEST_CASE(messWithTables) {
     BOOST_CHECK_EQUAL(queries.size(), 0U);
 }
 
-BOOST_AUTO_TEST_CASE(messWithChunks) {
-    // make sure that we have czars from previous test
-    CzarId cid1 = qMeta->getCzarID("czar:1000");
-    BOOST_CHECK(cid1 != 0U);
-    CzarId cid2 = qMeta->getCzarID("czar-2:1000");
-    BOOST_CHECK(cid2 != 0U);
-
-    // resister one query
-    QInfo qinfo(QInfo::SYNC, cid1, "user1", "SELECT * from Object", "SELECT * from Object_{}", "", "", "", "",
-                0);
-    QMeta::TableNames tables;
-    tables.push_back(std::make_pair("TestDB", "Object"));
-    lsst::qserv::QueryId qid1 = qMeta->registerQuery(qinfo, tables);
-    BOOST_CHECK(qid1 != 0U);
-
-    // register few chunks and assign them to workers
-    std::vector<int> chunks;
-    chunks.push_back(10);
-    chunks.push_back(20);
-    chunks.push_back(37);
-    qMeta->addChunks(qid1, chunks);
-
-    // assign chunks to workers
-    qMeta->assignChunk(qid1, 10, "worker1");
-    qMeta->assignChunk(qid1, 20, "worker2");
-    qMeta->assignChunk(qid1, 37, "worker2");
-    BOOST_CHECK_THROW(qMeta->assignChunk(qid1, 42, "worker2"), ChunkIdError);
-    BOOST_CHECK_THROW(qMeta->assignChunk(99999, 10, "worker2"), ChunkIdError);
-
-    // re-assign chunk
-    qMeta->assignChunk(qid1, 37, "worker33");
-
-    // mark chunks as complete
-    qMeta->finishChunk(qid1, 10);
-    qMeta->finishChunk(qid1, 20);
-    qMeta->finishChunk(qid1, 37);
-    BOOST_CHECK_THROW(qMeta->finishChunk(qid1, 42), ChunkIdError);
-}
-
 BOOST_AUTO_TEST_CASE(messWithQueryStats) {
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats connect");
-    std::shared_ptr<QStatus> qStatus = std::make_shared<QStatusMysql>(testDB.sqlConfig);
+    std::shared_ptr<QProgress> queryProgress = std::make_shared<QProgress>(testDB.sqlConfig);
     sqlConn = SqlConnectionFactory::make(testDB.sqlConfig);
     CzarId qid1 = 7;  // just need a number.
 
     int totalChunks = 99;
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats register");
-    qStatus->queryStatsTmpRegister(qid1, totalChunks);
+    queryProgress->insert(qid1, totalChunks);
 
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats get");
-    QStats qStats = qStatus->queryStatsTmpGet(qid1);
-    BOOST_CHECK(qStats.totalChunks == totalChunks);
-    BOOST_CHECK(qStats.completedChunks == 0);
+    auto queryProgressData = queryProgress->get(qid1);
+    BOOST_CHECK(queryProgressData.totalChunks == totalChunks);
+    BOOST_CHECK(queryProgressData.completedChunks == 0);
 
     int completedChunks = 35;
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats chunk update");
-    qStatus->queryStatsTmpChunkUpdate(qid1, completedChunks);
+    queryProgress->update(qid1, completedChunks);
 
-    qStats = qStatus->queryStatsTmpGet(qid1);
-    BOOST_CHECK(qStats.totalChunks == totalChunks);
-    BOOST_CHECK(qStats.completedChunks == completedChunks);
+    queryProgressData = queryProgress->get(qid1);
+    BOOST_CHECK(queryProgressData.totalChunks == totalChunks);
+    BOOST_CHECK(queryProgressData.completedChunks == completedChunks);
 
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats remove");
-    qStatus->queryStatsTmpRemove(qid1);
+    queryProgress->remove(qid1);
 
     LOGS(_log, LOG_LVL_WARN, "messWithQueryStats check get failure discovery");
     bool caught = false;
     try {
-        qStats = qStatus->queryStatsTmpGet(qid1);
+        queryProgressData = queryProgress->get(qid1);
     } catch (QueryIdError const&) {
         caught = true;
     }

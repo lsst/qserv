@@ -109,7 +109,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
 
     // NOTE: This steps should be done after constructing the query factory where
     //       the name of the Czar gets translated into a numeric identifier.
-    _czarConfig->setId(_uqFactory->userQuerySharedResources()->qMetaCzarId);
+    _czarConfig->setId(_uqFactory->userQuerySharedResources()->czarId);
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar database before the restart.
@@ -179,8 +179,10 @@ Czar::Czar(string const& configFilePath, string const& czarName)
 
     // Start special threads.
     startRegistryUpdate(_czarConfig);
-    startGarbageCollection(_czarConfig);
-    startGarbageCollectionAsync(_czarConfig);
+    startGarbageCollect(_czarConfig);
+    startGarbageCollectAsync(_czarConfig);
+    startGarbageCollectInProgress(_czarConfig, _uqFactory->userQuerySharedResources()->czarId,
+                                  _uqFactory->userQuerySharedResources()->queryMetadata);
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
@@ -494,11 +496,10 @@ SubmitResult Czar::getQueryInfo(QueryId queryId) const {
     result.collectedRows = stoull(ZERO_IF_EMPTY_STR(colCollectedRows[0]));
     result.finalRows = stoull(ZERO_IF_EMPTY_STR(colFinalRows[0]));
 
-    // Pull ongoing query processing stats if this information is still available.
-    // This is a transient information located in the temporary table.
-    // It's available for the duration of the query processing.
+    // Pull the progress info on the ongoing query processing if this information is still available.
+    // This is a transient information that is only available for queries that are still in progress.
     sql = "SELECT totalChunks,completedChunks,UNIX_TIMESTAMP(queryBegin),UNIX_TIMESTAMP(lastUpdate) FROM "
-          "QStatsTmp WHERE queryId=" +
+          "QProgress WHERE queryId=" +
           to_string(queryId);
     if (!sqlConn->runQuery(sql, results, err)) {
         string const msg = context +

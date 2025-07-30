@@ -54,12 +54,11 @@ public:
     /**
      *  Constructor for "SELECT * FROM QSERV_RESULT(QID)".
      *
-     *  @param queryId:       Query ID for which to return result
-     *  @param qMetaCzarId:   ID for current czar
-     *  @param qMetaSelect:   QMetaSelect instance
+     *  @param queryId Query ID for which to return result
+     *  @param czarId ID for current czar
+     *  @param qMeta QMeta instance
      */
-    UserQueryAsyncResult(QueryId queryId, qmeta::CzarId qMetaCzarId,
-                         std::shared_ptr<qmeta::QMeta> const& qMeta);
+    UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId, std::shared_ptr<qmeta::QMeta> const& qMeta);
 
     // Destructor
     ~UserQueryAsyncResult();
@@ -104,7 +103,7 @@ public:
 protected:
 private:
     QueryId _queryId;
-    qmeta::CzarId _qMetaCzarId;
+    qmeta::CzarId _czarId;
     std::shared_ptr<qmeta::QMeta> _qMeta;
     qmeta::QInfo _qInfo;
     std::shared_ptr<qdisp::MessageStore> _messageStore;

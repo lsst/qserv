@@ -224,6 +224,7 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {"`col`=1", g.eq("col", true)},
             {"`col`='abc'", g.eq("col", "abc")},
             {"`col`=NULL", g.eq("col", Sql::NULL_)},
+            {"`col`=123", g.eq(g.id("col"), 123)},
             {"`col`!=123", g.neq("col", 123)},
             {"`col`<123", g.lt("col", 123)},
             {"`col`<=123", g.leq("col", 123)},
