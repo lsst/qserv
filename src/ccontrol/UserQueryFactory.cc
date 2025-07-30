@@ -230,7 +230,7 @@ UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, s
     // are left in EXECUTING state in QMeta. We want to cleanup that state
     // to avoid confusion. Note that when/if clean czar restart is implemented
     // we'll need a new logic to restart query processing.
-    _userQuerySharedResources->queryMetadata->cleanup(_userQuerySharedResources->czarId);
+    _userQuerySharedResources->queryMetadata->cleanupQueriesAtStart(_userQuerySharedResources->czarId);
 
     // Add logging context with czar ID
     qmeta::CzarId czarId = _userQuerySharedResources->czarId;

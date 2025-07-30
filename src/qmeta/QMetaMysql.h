@@ -25,6 +25,7 @@
 // System headers
 #include <map>
 #include <mutex>
+#include <vector>
 
 // Third-party headers
 
@@ -101,7 +102,20 @@ public:
      *
      *  @param name:  Czar ID, non-negative number.
      */
-    void cleanup(CzarId czarId) override;
+    void cleanupQueriesAtStart(CzarId czarId) override;
+
+    /**
+     *  @brief Cleanup of the in-progress query status.
+     *
+     *  Usually called periodically when czar is running to remove
+     *  entries from the in-progress table. Normally the completed queries
+     *  are removed from the in-progress table by the czar when it finishes
+     *  processing the query, but in case of a crash or other failure the
+     *  in-progress entries may need to be cleaned up explicitly.
+     *
+     *  @param name:  Czar ID, non-negative number.
+     */
+    void cleanupInProgressQueries(CzarId czarId) override;
 
     /**
      *  @brief Register new query.
@@ -250,6 +264,12 @@ private:
     void _addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
                           int& completeCount, int& execFailCount,
                           std::map<std::string, ManyMsg>& msgCountMap);
+
+    /// Execute queries in the same order as they are registered in the array.
+    /// The method is used to execute queries that do not return any results.
+    /// @note All queries are executed in a scope of the same transaction.
+    /// @throws qmeta::SqlError if any of the queries fails.
+    void _executeQueries(std::vector<std::string> const& queries);
 
     std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations

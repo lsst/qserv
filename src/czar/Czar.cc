@@ -179,8 +179,10 @@ Czar::Czar(string const& configFilePath, string const& czarName)
 
     // Start special threads.
     startRegistryUpdate(_czarConfig);
-    startGarbageCollection(_czarConfig);
-    startGarbageCollectionAsync(_czarConfig);
+    startGarbageCollect(_czarConfig);
+    startGarbageCollectAsync(_czarConfig);
+    startGarbageCollectInProgress(_czarConfig, _uqFactory->userQuerySharedResources()->czarId,
+                                  _uqFactory->userQuerySharedResources()->queryMetadata);
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {

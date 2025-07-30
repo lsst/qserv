@@ -43,6 +43,7 @@
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "http/Method.h"
+#include "qmeta/QMeta.h"
 #include "sql/SqlErrorObject.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
@@ -149,7 +150,7 @@ void garbageCollection(shared_ptr<cconfig::CzarConfig> czarConfig) {
     }
 }
 
-void startGarbageCollection(shared_ptr<cconfig::CzarConfig> czarConfig) {
+void startGarbageCollect(shared_ptr<cconfig::CzarConfig> czarConfig) {
     thread t(garbageCollection, czarConfig);
     t.detach();
 }
@@ -251,9 +252,21 @@ void garbageCollectionAsync(shared_ptr<cconfig::CzarConfig> czarConfig) {
     }
 }
 
-void startGarbageCollectionAsync(shared_ptr<cconfig::CzarConfig> czarConfig) {
+void startGarbageCollectAsync(shared_ptr<cconfig::CzarConfig> czarConfig) {
     thread t(garbageCollectionAsync, czarConfig);
     t.detach();
 }
 
+void startGarbageCollectInProgress(shared_ptr<cconfig::CzarConfig> czarConfig, qmeta::CzarId czarId,
+                                   shared_ptr<qmeta::QMeta> queryMetadata) {
+    // Sanitize a value of the configuration parameters to tolerate a misconfiguration of Czar.
+    chrono::seconds const cleanupInterval = max(czarConfig->getInProgressCleanupIvalSec(), 1U) * 1s;
+    thread t([czarConfig, czarId, queryMetadata, cleanupInterval]() {
+        while (true) {
+            queryMetadata->cleanupInProgressQueries(czarId);
+            this_thread::sleep_for(cleanupInterval);
+        }
+    });
+    t.detach();
+}
 }  // namespace lsst::qserv::czar

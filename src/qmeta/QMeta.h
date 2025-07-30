@@ -123,7 +123,20 @@ public:
      *
      *  @param name:  Czar ID, non-negative number.
      */
-    virtual void cleanup(CzarId czarId) = 0;
+    virtual void cleanupQueriesAtStart(CzarId czarId) = 0;
+
+    /**
+     *  @brief Cleanup of the in-progress query status.
+     *
+     *  Usually called periodically when czar is running to remove
+     *  entries from the in-progress table. Normally the completed queries
+     *  are removed from the in-progress table by the czar when it finishes
+     *  processing the query, but in case of a crash or other failure the
+     *  in-progress entries may need to be cleaned up explicitly.
+     *
+     *  @param name:  Czar ID, non-negative number.
+     */
+    virtual void cleanupInProgressQueries(CzarId czarId) = 0;
 
     /**
      *  @brief Register new query.
