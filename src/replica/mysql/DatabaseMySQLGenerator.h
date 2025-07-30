@@ -449,6 +449,11 @@ public:
         return op2(id(col), val(v), "=");
     }
 
+    template <typename T>
+    std::string eq(DoNotProcess const& lhs, T const& v) const {
+        return op2(lhs, val(v), "=");
+    }
+
     std::string eq(DoNotProcess const& lhs, DoNotProcess const& rhs) const { return op2(lhs, rhs, "="); }
 
     /// @return "<quoted-col> != <escaped-quoted-value>"

@@ -24,11 +24,18 @@
 // System headers
 #include <memory>
 
+// Qserv headers
+#include "qmeta/types.h"
+
 // Forward declarations
 
 namespace lsst::qserv::cconfig {
 class CzarConfig;
 }  // namespace lsst::qserv::cconfig
+
+namespace lsst::qserv::qmeta {
+class QMeta;
+}  // namespace lsst::qserv::qmeta
 
 // This header declarations
 
@@ -62,7 +69,7 @@ void startRegistryUpdate(std::shared_ptr<cconfig::CzarConfig> czarConfig);
  *
  * @param czarConfig A pointer to the Czar configuration service.
  */
-void startGarbageCollection(std::shared_ptr<cconfig::CzarConfig> czarConfig);
+void startGarbageCollect(std::shared_ptr<cconfig::CzarConfig> czarConfig);
 
 /**
  * Start a detached thread that will periodically check a status of the completed
@@ -81,7 +88,21 @@ void startGarbageCollection(std::shared_ptr<cconfig::CzarConfig> czarConfig);
  *
  * @param czarConfig A pointer to the Czar configuration service.
  */
-void startGarbageCollectionAsync(std::shared_ptr<cconfig::CzarConfig> czarConfig);
+void startGarbageCollectAsync(std::shared_ptr<cconfig::CzarConfig> czarConfig);
+
+/**
+ * Start a detached thread that will periodically check a status of the in-progress
+ * queries. The entries of the queries that are no longer in progress will be removed.
+ *
+ * @note The period of the tests is determined by a value of the configuraton
+ * parameters "secondsBetweenInProgressUpdates" in the Czar's configuration service.
+ *
+ * @param czarConfig A pointer to the Czar configuration service.
+ * @param czarId The identifier of the Czar instance.
+ * @param queryMetadata A pointer to the QMeta service.
+ */
+void startGarbageCollectInProgress(std::shared_ptr<cconfig::CzarConfig> czarConfig, qmeta::CzarId czarId,
+                                   std::shared_ptr<qmeta::QMeta> queryMetadata);
 
 }  // namespace lsst::qserv::czar
 

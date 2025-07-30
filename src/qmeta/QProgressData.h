@@ -19,30 +19,32 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_QMETA_QSTATS_H
-#define LSST_QSERV_QMETA_QSTATS_H
+#ifndef LSST_QSERV_QMETA_QPROGRESSDATA_H
+#define LSST_QSERV_QMETA_QPROGRESSDATA_H
 
 // System headers
 #include <ctime>
-#include <string>
 
 // Qserv headers
-#include "qmeta/types.h"
+#include "global/intTypes.h"
 
 namespace lsst::qserv::qmeta {
 
-/// Contains query completion statistics for a running query.
-/// The object is only meant for returning function results in a reasonable form.
-struct QStats {
-    QStats() {}
-    QStats(QueryId const& queryId_, int totalChunks_, int completedChunks_, std::time_t begin_,
-           std::time_t lastUpdate_)
+/**
+ * Class QProgressData stores the transient state of the query progress counters
+ * retrieved from the Qserv's metadata database.
+ */
+class QProgressData {
+public:
+    QProgressData() = default;
+    QProgressData(QProgressData const&) = default;
+    QProgressData(QueryId const& queryId_, int totalChunks_, int completedChunks_, std::time_t begin_,
+                  std::time_t lastUpdate_)
             : queryId(queryId_),
               totalChunks(totalChunks_),
               completedChunks(completedChunks_),
               begin(begin_),
               lastUpdate(lastUpdate_) {}
-    // Default operators and destructor should be fine.
 
     QueryId queryId{0};         ///< Query Id
     int totalChunks{0};         ///< Total number of chunks to be searched by the query.
@@ -53,4 +55,4 @@ struct QStats {
 
 }  // namespace lsst::qserv::qmeta
 
-#endif  // LSST_QSERV_QMETA_QSTATS_H
+#endif  // LSST_QSERV_QMETA_QPROGRESSDATA_H

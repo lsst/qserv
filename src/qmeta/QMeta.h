@@ -32,7 +32,6 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "qmeta/QInfo.h"
-#include "qmeta/QStats.h"
 #include "qmeta/types.h"
 
 namespace lsst::qserv::qdisp {
@@ -46,7 +45,6 @@ namespace lsst::qserv::qmeta {
 
 /**
  *  @ingroup qmeta
- *
  *  @brief Interface for query metadata.
  */
 
@@ -125,7 +123,20 @@ public:
      *
      *  @param name:  Czar ID, non-negative number.
      */
-    virtual void cleanup(CzarId czarId) = 0;
+    virtual void cleanupQueriesAtStart(CzarId czarId) = 0;
+
+    /**
+     *  @brief Cleanup of the in-progress query status.
+     *
+     *  Usually called periodically when czar is running to remove
+     *  entries from the in-progress table. Normally the completed queries
+     *  are removed from the in-progress table by the czar when it finishes
+     *  processing the query, but in case of a crash or other failure the
+     *  in-progress entries may need to be cleaned up explicitly.
+     *
+     *  @param name:  Czar ID, non-negative number.
+     */
+    virtual void cleanupInProgressQueries(CzarId czarId) = 0;
 
     /**
      *  @brief Register new query.
@@ -139,37 +150,6 @@ public:
      *  @return: Query ID, non-negative number
      */
     virtual QueryId registerQuery(QInfo const& qInfo, TableNames const& tables) = 0;
-
-    /**
-     *  @brief Add list of chunks to query.
-     *
-     *  This method will throw if query ID is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunks:    Set of chunk numbers.
-     */
-    virtual void addChunks(QueryId queryId, std::vector<int> const& chunks) = 0;
-
-    /**
-     *  @brief Assign or re-assign chunk to a worker.
-     *
-     *  This method will throw if query ID or chunk number is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunk:     Chunk number.
-     *  @param xrdEndpoint:  Worker xrootd communication endpoint ("host:port").
-     */
-    virtual void assignChunk(QueryId queryId, int chunk, std::string const& xrdEndpoint) = 0;
-
-    /**
-     *  @brief Mark chunk as completed.
-     *
-     *  This method will throw if query ID or chunk number is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunk:     Sequence of chunk numbers.
-     */
-    virtual void finishChunk(QueryId queryId, int chunk) = 0;
 
     /**
      *  @brief Mark query as completed or failed.

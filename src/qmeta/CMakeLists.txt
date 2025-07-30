@@ -5,7 +5,7 @@ target_sources(qmeta PRIVATE
     QMetaMysql.cc
     QMetaSelect.cc
     QMetaTransaction.cc
-    QStatusMysql.cc
+    QProgress.cc
 )
 
 target_link_libraries(qmeta PUBLIC

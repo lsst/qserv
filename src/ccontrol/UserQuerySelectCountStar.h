@@ -101,7 +101,7 @@ public:
     std::string getQueryIdString() const override { return _queryIdStr; }
 
     /// @return this query's QueryId.
-    QueryId getQueryId() const override { return _qMetaQueryId; }
+    QueryId getQueryId() const override { return _queryId; }
 
     /**
      *  @param resultLocation:  Result location, if empty use result table with unique
@@ -126,8 +126,8 @@ private:
     std::string _resultDb;
     std::string _countSpelling;  // keeps track of how "COUNT" is spelled, for the result query.
     std::string _query;          // The original query text (without SUBMIT if async)
-    qmeta::CzarId _qMetaCzarId;
-    QueryId _qMetaQueryId;
+    qmeta::CzarId _czarId;
+    QueryId _queryId;
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
     bool _async;
