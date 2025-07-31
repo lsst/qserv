@@ -100,6 +100,23 @@ CREATE TABLE IF NOT EXISTS `QProgress` (
 ENGINE = MEMORY
 COMMENT = 'Table to track chunk processing progress of the running queries.';
 
+-- -----------------------------------------------------
+-- Table `QProgressHistory`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `QProgressHistory` (
+  `queryId` BIGINT NOT NULL COMMENT 'Query ID',
+  `history` MEDIUMTEXT COMMENT 'Serialized JSON object representing the latest state of the history',
+  `begin` BIGINT UNSIGNED NOT NULL COMMENT 'The timestamp (milliseconds since UNIX Epoch) of the first point in the history',
+  `end` BIGINT UNSIGNED NOT NULL COMMENT 'The timestamp (milliseconds since UNIX Epoch) of the last point in the history',
+  `totalPoints` INT UNSIGNED NOT NULL COMMENT 'The total number of points in the history',
+  PRIMARY KEY (`queryId`),
+  INDEX `idx_begin` (`begin` ASC),
+  INDEX `idx_end` (`end` ASC),
+  INDEX `idx_totalPoints` (`totalPoints` ASC),
+  CONSTRAINT `fk_queryId` FOREIGN KEY (`queryId`) REFERENCES `QInfo` (`queryId`) ON DELETE CASCADE ON UPDATE CASCADE)
+ENGINE = InnoDB
+COMMENT = 'Table to store the query progression history.';
+
 -- ----------------------------------------------------------------------------------------
 -- View `InfoSchemaProcessList`
 -- This shows full Qmeta info suitable for "SELECT ... FROM INFORMATION_SCHEMA.PROCESSLIST"
@@ -215,4 +232,5 @@ COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 -- Version 11 extended view InfoSchemaQueries to report errors on the faile queries. Added status option FAILED_LR to QInfo.status.
 -- Version 12 renamed table QStatsTmp into QProgress to reflect its purpose and add a foreign key constraint to QInfo table. Drop the obsolete table QWorker.
 -- Version 13 added tables chunkMap and chunkMapStatus. The tables are meant for storing persistent chunk-to-workers map.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '13');
+-- Version 14 added table QProgressHistory to store the query progrerssion history
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '14');
