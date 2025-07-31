@@ -100,6 +100,17 @@ CREATE TABLE IF NOT EXISTS `QProgress` (
 ENGINE = MEMORY
 COMMENT = 'Table to track chunk processing progress of the running queries.';
 
+-- -----------------------------------------------------
+-- Table `QProgressPlot`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `QProgressPlot` (
+  `queryId` BIGINT NOT NULL COMMENT 'Query ID',
+  `plot` MEDIUMTEXT COMMENT 'Serialized JSON object representing the latest state of the plot',
+  PRIMARY KEY (`queryId`),
+  CONSTRAINT `fk_queryId` FOREIGN KEY (`queryId`) REFERENCES `QInfo` (`queryId`) ON DELETE CASCADE ON UPDATE CASCADE)
+ENGINE = InnoDB
+COMMENT = 'Table to store the query progression plots.';
+
 -- ----------------------------------------------------------------------------------------
 -- View `InfoSchemaProcessList`
 -- This shows full Qmeta info suitable for "SELECT ... FROM INFORMATION_SCHEMA.PROCESSLIST"
@@ -194,4 +205,5 @@ COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 -- Version 10 redefined schema of the ProcessList tables.
 -- Version 11 extended view InfoSchemaQueries to report errors on the faile queries. Added status option FAILED_LR to QInfo.status.
 -- Version 12 renamed table QStatsTmp into QProgress to reflect its purpose and add a foreign key constraint to QInfo table. Drop the obsolete table QWorker.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '12');
+-- Version 13 added table QProgressPlot to store the query progrerssion plots
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '13');
