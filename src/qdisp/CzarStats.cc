@@ -123,30 +123,27 @@ void CzarStats::addFileReadRate(double bytesPerSec) {
 
 void CzarStats::trackQueryProgress(QueryId qid) {
     if (qid == 0) return;
-    uint64_t const currentTimestampMs = util::TimeUtils::now();
     std::lock_guard<util::Mutex> const lock(_queryProgressMtx);
     if (auto itr = _queryNumIncompleteJobs.find(qid); itr != _queryNumIncompleteJobs.end()) return;
-    _queryNumIncompleteJobs[qid].emplace_back(currentTimestampMs, 0);
+    _queryNumIncompleteJobs[qid].emplace_back(util::TimeUtils::now(), 0);
 }
 
 void CzarStats::updateQueryProgress(QueryId qid, int numUnfinishedJobs) {
     if (qid == 0) return;
-    uint64_t const currentTimestampMs = util::TimeUtils::now();
     std::lock_guard<util::Mutex> const lock(_queryProgressMtx);
     if (auto itr = _queryNumIncompleteJobs.find(qid); itr != _queryNumIncompleteJobs.end()) {
         auto&& history = itr->second;
         if (history.empty() || (history.back().numJobs != numUnfinishedJobs)) {
-            history.emplace_back(currentTimestampMs, numUnfinishedJobs);
+            history.emplace_back(util::TimeUtils::now(), numUnfinishedJobs);
         }
     } else {
-        _queryNumIncompleteJobs[qid].emplace_back(currentTimestampMs, numUnfinishedJobs);
+        _queryNumIncompleteJobs[qid].emplace_back(util::TimeUtils::now(), numUnfinishedJobs);
     }
 }
 
 void CzarStats::untrackQueryProgress(QueryId qid) {
     if (qid == 0) return;
     unsigned int const lastSeconds = cconfig::CzarConfig::instance()->czarStatsRetainPeriodSec();
-    uint64_t const minTimestampMs = util::TimeUtils::now() - 1000 * lastSeconds;
     std::lock_guard<util::Mutex> const lock(_queryProgressMtx);
     if (lastSeconds == 0) {
         // The query gets removed instantaneously if archiving is not enabled.
@@ -156,6 +153,7 @@ void CzarStats::untrackQueryProgress(QueryId qid) {
     } else {
         // Erase queries with the last recorded timestamp that's older
         // than the specified cut-off time.
+        uint64_t const minTimestampMs = util::TimeUtils::now() - 1000 * lastSeconds;
         for (auto iter = _queryNumIncompleteJobs.begin(); iter != _queryNumIncompleteJobs.end();) {
             auto const& history = iter->second;
             // It's critical that `iter` is only advanced once.
