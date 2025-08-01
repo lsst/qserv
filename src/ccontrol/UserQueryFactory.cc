@@ -58,6 +58,7 @@
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QMetaSelect.h"
 #include "qmeta/QProgress.h"
+#include "qmeta/QProgressHistory.h"
 #include "qproc/DatabaseModels.h"
 #include "qproc/QuerySession.h"
 #include "qproc/SecondaryIndex.h"
@@ -213,6 +214,7 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
             std::make_shared<qmeta::QMetaMysql>(czarConfig->getMySqlQmetaConfig(),
                                                 czarConfig->getMaxMsgSourceStore()),
             std::make_shared<qmeta::QProgress>(czarConfig->getMySqlQStatusDataConfig()),
+            qmeta::QProgressHistory::create(czarConfig->getMySqlQStatusDataConfig()),
             std::make_shared<qmeta::QMetaSelect>(czarConfig->getMySqlQmetaConfig()), dbModels, czarName,
             czarConfig->getInteractiveChunkLimit());
 }
@@ -353,9 +355,10 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive =
-                    qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
-                                             _userQuerySharedResources->queryProgress, qs, _asioIoService);
+            executive = qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
+                                                 _userQuerySharedResources->queryProgress,
+                                                 _userQuerySharedResources->queryProgressHistory, qs,
+                                                 _asioIoService);
             infileMergerConfig =
                     std::make_shared<rproc::InfileMergerConfig>(_userQuerySharedResources->mysqlResultConfig);
             infileMergerConfig->debugNoMerge = _debugNoMerge;

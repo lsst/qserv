@@ -40,19 +40,20 @@ namespace lsst::qserv::replica {
 
 shared_ptr<GetQueryProgressQservCzarMgtRequest> GetQueryProgressQservCzarMgtRequest::create(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& czarName,
-        vector<QueryId> const& queryIds, unsigned int lastSeconds,
+        vector<QueryId> const& queryIds, unsigned int lastSeconds, string const& queryStatus,
         GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish) {
     return shared_ptr<GetQueryProgressQservCzarMgtRequest>(new GetQueryProgressQservCzarMgtRequest(
-            serviceProvider, czarName, queryIds, lastSeconds, onFinish));
+            serviceProvider, czarName, queryIds, lastSeconds, queryStatus, onFinish));
 }
 
 GetQueryProgressQservCzarMgtRequest::GetQueryProgressQservCzarMgtRequest(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& czarName,
-        vector<QueryId> const& queryIds, unsigned int lastSeconds,
+        vector<QueryId> const& queryIds, unsigned int lastSeconds, string const& queryStatus,
         GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish)
         : QservCzarMgtRequest(serviceProvider, "QSERV_CZAR_GET_QUERY_PROGRESS", czarName),
           _queryIds(queryIds),
           _lastSeconds(lastSeconds),
+          _queryStatus(queryStatus),
           _onFinish(onFinish) {}
 
 void GetQueryProgressQservCzarMgtRequest::createHttpReqImpl(replica::Lock const& lock) {
@@ -60,6 +61,7 @@ void GetQueryProgressQservCzarMgtRequest::createHttpReqImpl(replica::Lock const&
     string query;
     query += "?query_ids=" + util::String::toString(_queryIds);
     query += "&last_seconds=" + to_string(_lastSeconds);
+    query += "&query_status=" + _queryStatus;
     createHttpReq(lock, service, query);
 }
 

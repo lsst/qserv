@@ -64,13 +64,15 @@ public:
      * @param queryIds The optional selector for queries. If empty then all queries will
      *   be considered.
      * @param lastSeconds The optional limit for age of the queries. If 0 then no limit is set.
+     * @param queryStatus The optional status ("EXECUTING", "COMPLETED", "FAILED", etc. or
+     *   the empty string for all) of the queries to be selected.
      * @param onFinish (optional) callback function to be called upon request completion.
      * @return A pointer to the created object.
      */
     static std::shared_ptr<GetQueryProgressQservCzarMgtRequest> create(
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& czarName,
             std::vector<QueryId> const& queryIds = std::vector<QueryId>(), unsigned int lastSeconds = 0,
-            CallbackType const& onFinish = nullptr);
+            std::string const& queryStatus = std::string(), CallbackType const& onFinish = nullptr);
 
 protected:
     /// @see QservMgtRequest::createHttpReqImpl()
@@ -83,12 +85,14 @@ private:
     /// @see GetQueryProgressQservCzarMgtRequest::create()
     GetQueryProgressQservCzarMgtRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                                         std::string const& czarName, std::vector<QueryId> const& queryIds,
-                                        unsigned int lastSeconds, CallbackType const& onFinish);
+                                        unsigned int lastSeconds, std::string const& queryStatus,
+                                        CallbackType const& onFinish);
 
     // Input parameters
 
     std::vector<QueryId> const _queryIds;
     unsigned int const _lastSeconds;
+    std::string const _queryStatus;
 
     CallbackType _onFinish;  ///< This callback is reset after finishing the request.
 };

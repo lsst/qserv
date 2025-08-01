@@ -46,6 +46,7 @@ namespace lsst::qserv::qmeta {
 class QMeta;
 class QMetaSelect;
 class QProgress;
+class QProgressHistory;
 }  // namespace lsst::qserv::qmeta
 
 namespace lsst::qserv::qproc {
@@ -66,6 +67,7 @@ public:
                              std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
                              std::shared_ptr<qmeta::QProgress> const& queryProgress_,
+                             std::shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory_,
                              std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
                              std::shared_ptr<qproc::DatabaseModels> const& databaseModels_,
                              std::string const& czarName, int interactiveChunkLimit_);
@@ -78,6 +80,7 @@ public:
     std::shared_ptr<qproc::SecondaryIndex> secondaryIndex;
     std::shared_ptr<qmeta::QMeta> queryMetadata;
     std::shared_ptr<qmeta::QProgress> queryProgress;
+    std::shared_ptr<qmeta::QProgressHistory> queryProgressHistory;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::shared_ptr<qproc::DatabaseModels> databaseModels;
     qmeta::CzarId czarId;  ///< Czar ID in QMeta database

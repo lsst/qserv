@@ -196,13 +196,6 @@ public:
     /// the method then the monitoring will be disabled.
     unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec->getVal(); }
 
-    /// @return The maximum retain period for keeping in memory the relevant metrics
-    /// captured by the Czar monitoring system. If 0 is returned by the method then
-    /// query history archiving will be disabled.
-    /// @note Setting the limit too high may be potentially result in runing onto
-    /// the OOM situation.
-    unsigned int czarStatsRetainPeriodSec() const { return _czarStatsRetainPeriodSec->getVal(); }
-
     // Parameters of the Czar management service
 
     std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
@@ -379,8 +372,6 @@ private:
             util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnCzarRestart", notReq, 1);
     CVTIntPtr _czarStatsUpdateIvalSec =
             util::ConfigValTInt::create(_configValMap, "tuning", "czarStatsUpdateIvalSec", notReq, 1);
-    CVTIntPtr _czarStatsRetainPeriodSec = util::ConfigValTInt::create(
-            _configValMap, "tuning", "czarStatsRetainPeriodSec", notReq, 24 * 3600);
 
     // Replicator
     CVTStrPtr _replicationInstanceId =

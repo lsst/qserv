@@ -56,6 +56,7 @@ class XrdSsiService;
 
 namespace lsst::qserv::qmeta {
 class QProgress;
+class QProgressHistory;
 }  // namespace lsst::qserv::qmeta
 
 namespace lsst::qserv::qproc {
@@ -98,6 +99,7 @@ public:
     static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
                                  std::shared_ptr<qmeta::QProgress> const& queryProgress,
+                                 std::shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
                                  std::shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService);
 
@@ -170,6 +172,7 @@ private:
     Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
               SharedResources::Ptr const& sharedResources,
               std::shared_ptr<qmeta::QProgress> const& queryProgress,
+              std::shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
               std::shared_ptr<qproc::QuerySession> const& querySession);
 
     void _setup();
@@ -232,6 +235,8 @@ private:
     // util::InstanceCount _instC{"Executive"};
 
     std::shared_ptr<qmeta::QProgress> _queryProgress;  ///< Query progress, used to update QMeta.
+    std::shared_ptr<qmeta::QProgressHistory>
+            _queryProgressHistory;  ///< Query progress history, used to update QMeta.
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
     /// Minimum number of seconds between QMeta chunk updates (set by config)
