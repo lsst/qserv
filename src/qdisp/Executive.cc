@@ -71,6 +71,7 @@
 #include "qproc/QuerySession.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QProgress.h"
+#include "qmeta/QProgressPlot.h"
 #include "query/SelectStmt.h"
 #include "util/AsyncTimer.h"
 #include "util/Bug.h"
@@ -102,11 +103,13 @@ namespace lsst::qserv::qdisp {
 Executive::Executive(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
                      SharedResources::Ptr const& sharedResources,
                      shared_ptr<qmeta::QProgress> const& queryProgress,
+                     shared_ptr<qmeta::QProgressPlot> const& queryProgressPlot,
                      shared_ptr<qproc::QuerySession> const& querySession)
         : _config(c),
           _messageStore(ms),
           _qdispPool(sharedResources->getQdispPool()),
           _queryProgress(queryProgress),
+          _queryProgressPlot(queryProgressPlot),
           _querySession(querySession) {
     _secondsBetweenQMetaUpdates = chrono::seconds(_config.secondsBetweenChunkUpdates);
     _setup();
@@ -121,17 +124,24 @@ Executive::~Executive() {
     delete dynamic_cast<XrdSsiServiceMock*>(_xrdSsiService);
     if (_asyncTimer != nullptr) {
         _asyncTimer->cancel();
-        qdisp::CzarStats::get()->untrackQueryProgress(_id);
+        if (_queryProgressPlot != nullptr) {
+            try {
+                _queryProgressPlot->untrack(_id);
+            } catch (exception const& e) {
+                LOGS(_log, LOG_LVL_WARN, "Failed in QProgressPlot::untrack, ex: " << e.what());
+            }
+        }
     }
 }
 
 Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageStore> const& ms,
                                  SharedResources::Ptr const& sharedResources,
                                  shared_ptr<qmeta::QProgress> const& queryProgress,
+                                 shared_ptr<qmeta::QProgressPlot> const& queryProgressPlot,
                                  shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
-    Executive::Ptr ptr(new Executive(c, ms, sharedResources, queryProgress, querySession));
+    Executive::Ptr ptr(new Executive(c, ms, sharedResources, queryProgress, queryProgressPlot, querySession));
 
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
@@ -162,14 +172,25 @@ Executive::Ptr Executive::create(ExecutiveConfig const& c, shared_ptr<MessageSto
 }
 
 void Executive::_updateStats() const {
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
-    qdisp::CzarStats::get()->updateQueryProgress(_id, getNumInflight());
+    if (_queryProgressPlot != nullptr) {
+        try {
+            _queryProgressPlot->update(_id, getNumInflight());
+        } catch (exception const& e) {
+            LOGS(_log, LOG_LVL_WARN, "Failed in QProgressPlot::update, ex: " << e.what());
+        }
+    }
 }
 
 void Executive::setQueryId(QueryId id) {
     _id = id;
     _idStr = QueryIdHelper::makeIdStr(_id);
-    qdisp::CzarStats::get()->trackQueryProgress(_id);
+    if (_queryProgressPlot != nullptr) {
+        try {
+            _queryProgressPlot->track(_id);
+        } catch (exception const& e) {
+            LOGS(_log, LOG_LVL_WARN, "Failed in QProgressPlot::track, ex: " << e.what());
+        }
+    }
 }
 
 /// Add a new job to executive queue, if not already in. Not thread-safe.

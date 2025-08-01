@@ -35,6 +35,7 @@ UserQuerySharedResources::UserQuerySharedResources(
         std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
         std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
         std::shared_ptr<qmeta::QProgress> const& queryProgress_,
+        std::shared_ptr<qmeta::QProgressPlot> const& queryProgressPlot_,
         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
         std::shared_ptr<qproc::DatabaseModels> const& dbModels_, std::string const& czarName,
         int interactiveChunkLimit_)
@@ -43,6 +44,7 @@ UserQuerySharedResources::UserQuerySharedResources(
           secondaryIndex(secondaryIndex_),
           queryMetadata(queryMetadata_),
           queryProgress(queryProgress_),
+          queryProgressPlot(queryProgressPlot_),
           qMetaSelect(qMetaSelect_),
           databaseModels(dbModels_),
           interactiveChunkLimit(interactiveChunkLimit_) {
