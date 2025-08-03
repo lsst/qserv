@@ -86,8 +86,9 @@
 #include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
-#include "qmeta/QMeta.h"
 #include "qmeta/Exceptions.h"
+#include "qmeta/QMeta.h"
+#include "qmeta/QProgress.h"
 #include "qproc/geomAdapter.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
@@ -133,7 +134,7 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                                  std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                                  std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                                 std::shared_ptr<qmeta::QStatus> const& queryStatsData, qmeta::CzarId czarId,
+                                 std::shared_ptr<qmeta::QProgress> const& queryProgress, qmeta::CzarId czarId,
                                  std::string const& errorExtra, bool async, std::string const& resultDb)
         : _qSession(qs),
           _messageStore(messageStore),
@@ -142,8 +143,8 @@ UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
           _infileMergerConfig(infileMergerConfig),
           _secondaryIndex(secondaryIndex),
           _queryMetadata(queryMetadata),
-          _queryStatsData(queryStatsData),
-          _qMetaCzarId(czarId),
+          _queryProgress(queryProgress),
+          _czarId(czarId),
           _errorExtra(errorExtra),
           _resultDb(resultDb),
           _async(async) {}
@@ -242,11 +243,8 @@ void UserQuerySelect::submit() {
     assert(_infileMerger);
 
     auto taskMsgFactory = std::make_shared<qproc::TaskMsgFactory>();
-    TmpTableName ttn(_qMetaQueryId, _qSession->getOriginal());
-    std::vector<int> chunks;
-    std::mutex chunksMtx;
+    TmpTableName ttn(_queryId, _qSession->getOriginal());
     int sequence = 0;
-
     auto queryTemplates = _qSession->makeQueryTemplates();
 
     LOGS(_log, LOG_LVL_DEBUG,
@@ -262,11 +260,11 @@ void UserQuerySelect::submit() {
         threadPriority.setPriorityPolicy(10);
     }
 
-    // Add QStatsTmp table entry
+    // Add QProgress table entry
     try {
-        _queryStatsData->queryStatsTmpRegister(_qMetaQueryId, _qSession->getChunksSize());
+        _queryProgress->insert(_queryId, _qSession->getChunksSize());
     } catch (qmeta::SqlError const& e) {
-        LOGS(_log, LOG_LVL_WARN, "Failed queryStatsTmpRegister " << e.what());
+        LOGS(_log, LOG_LVL_WARN, "Failed QProgress::insert, ex: " << e.what());
     }
 
     _executive->setScanInteractive(_qSession->getScanInteractive());
@@ -276,23 +274,19 @@ void UserQuerySelect::submit() {
         auto& chunkSpec = *i;
 
         std::function<void(util::CmdData*)> funcBuildJob = [this, sequence,  // sequence must be a copy
-                                                            &chunkSpec, &queryTemplates, &chunks, &chunksMtx,
-                                                            &ttn, &taskMsgFactory](util::CmdData*) {
-            QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+                                                            &chunkSpec, &queryTemplates, &ttn,
+                                                            &taskMsgFactory](util::CmdData*) {
+            QSERV_LOGCONTEXT_QUERY(_queryId);
 
-            qproc::ChunkQuerySpec::Ptr cs;
-            {
-                std::lock_guard<std::mutex> lock(chunksMtx);
-                bool const fillInChunkIdTag = false;
-                cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
-                chunks.push_back(cs->chunkId);
-            }
+            bool const fillInChunkIdTag = false;
+            qproc::ChunkQuerySpec::Ptr const cs =
+                    _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
             std::string chunkResultName = ttn.make(cs->chunkId);
 
             ResourceUnit ru;
             ru.setAsDbChunk(cs->db, cs->chunkId);
             qdisp::JobDescription::Ptr jobDesc = qdisp::JobDescription::create(
-                    _qMetaCzarId, _executive->getId(), sequence, ru,
+                    _czarId, _executive->getId(), sequence, ru,
                     std::make_shared<MergingHandler>(_infileMerger, chunkResultName), taskMsgFactory, cs,
                     chunkResultName);
             _executive->add(jobDesc);
@@ -310,12 +304,6 @@ void UserQuerySelect::submit() {
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     _executive->waitForAllJobsToStart();
-
-    // we only care about per-chunk info for ASYNC queries
-    if (_async) {
-        std::lock_guard<std::mutex> lock(chunksMtx);
-        _qMetaAddChunks(chunks);
-    }
 }
 
 /// Block until a submit()'ed query completes.
@@ -375,7 +363,7 @@ QueryState UserQuerySelect::join() {
     if (czarConfig->notifyWorkersOnQueryFinish()) {
         try {
             xrdreq::QueryManagementAction::notifyAllWorkers(czarConfig->getXrootdFrontendUrl(), operation,
-                                                            _qMetaCzarId, _qMetaQueryId);
+                                                            _czarId, _queryId);
         } catch (std::exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }
@@ -474,7 +462,7 @@ void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::Se
     }
 }
 
-void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_qMetaQueryId, getResultQuery()); }
+void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_queryId, getResultQuery()); }
 
 void UserQuerySelect::_setupChunking() {
     LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
@@ -557,7 +545,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 
     int const chunkCount = _qSession->getChunksSize();
 
-    qmeta::QInfo qInfo(qType, _qMetaCzarId, user, _qSession->getOriginal(), qTemplate, qMerge, _resultLoc,
+    qmeta::QInfo qInfo(qType, _czarId, user, _qSession->getOriginal(), qTemplate, qMerge, _resultLoc,
                        msgTableName, "", chunkCount);
 
     // find all table names used by statement (which appear in FROM ... [JOIN ...])
@@ -578,14 +566,14 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     }
 
     // register query, save its ID
-    _qMetaQueryId = _queryMetadata->registerQuery(qInfo, tableNames);
-    _queryIdStr = QueryIdHelper::makeIdStr(_qMetaQueryId);
+    _queryId = _queryMetadata->registerQuery(qInfo, tableNames);
+    _queryIdStr = QueryIdHelper::makeIdStr(_queryId);
     // Add logging context with query ID
-    QSERV_LOGCONTEXT_QUERY(_qMetaQueryId);
+    QSERV_LOGCONTEXT_QUERY(_queryId);
     LOGS(_log, LOG_LVL_DEBUG, "UserQuery registered " << _qSession->getOriginal());
 
     // update #QID# with actual query ID
-    boost::replace_all(_resultLoc, "#QID#", std::to_string(_qMetaQueryId));
+    boost::replace_all(_resultLoc, "#QID#", std::to_string(_queryId));
 
     // guess query result location
     if (_resultLoc.compare(0, 6, "table:") == 0) {
@@ -598,7 +586,7 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     }
 
     if (_executive != nullptr) {
-        _executive->setQueryId(_qMetaQueryId);
+        _executive->setQueryId(_queryId);
     } else {
         LOGS(_log, LOG_LVL_WARN, "No Executive, assuming invalid query");
     }
@@ -624,12 +612,12 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
 // update query status in QMeta
 void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t rows, size_t bytes,
                                          size_t finalRows) {
-    _queryMetadata->completeQuery(_qMetaQueryId, qStatus, rows, bytes, finalRows);
+    _queryMetadata->completeQuery(_queryId, qStatus, rows, bytes, finalRows);
     // Remove the row for temporary query statistics.
     try {
-        _queryStatsData->queryStatsTmpRemove(_qMetaQueryId);
+        _queryProgress->remove(_queryId);
     } catch (qmeta::SqlError const&) {
-        LOGS(_log, LOG_LVL_WARN, "queryStatsTmp remove failed " << _queryIdStr);
+        LOGS(_log, LOG_LVL_WARN, "QProgress::remove failed, queryId: " << _queryIdStr);
     }
 }
 
@@ -638,15 +626,10 @@ void UserQuerySelect::_qMetaUpdateMessages() {
 
     auto msgStore = getMessageStore();
     try {
-        _queryMetadata->addQueryMessages(_qMetaQueryId, msgStore);
+        _queryMetadata->addQueryMessages(_queryId, msgStore);
     } catch (qmeta::SqlError const& ex) {
-        LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
+        LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
     }
-}
-
-// add chunk information to qmeta
-void UserQuerySelect::_qMetaAddChunks(std::vector<int> const& chunks) {
-    _queryMetadata->addChunks(_qMetaQueryId, chunks);
 }
 
 /// Return this query's QueryId string.

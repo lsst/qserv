@@ -25,6 +25,7 @@
 // System headers
 #include <map>
 #include <mutex>
+#include <vector>
 
 // Third-party headers
 
@@ -101,7 +102,20 @@ public:
      *
      *  @param name:  Czar ID, non-negative number.
      */
-    void cleanup(CzarId czarId) override;
+    void cleanupQueriesAtStart(CzarId czarId) override;
+
+    /**
+     *  @brief Cleanup of the in-progress query status.
+     *
+     *  Usually called periodically when czar is running to remove
+     *  entries from the in-progress table. Normally the completed queries
+     *  are removed from the in-progress table by the czar when it finishes
+     *  processing the query, but in case of a crash or other failure the
+     *  in-progress entries may need to be cleaned up explicitly.
+     *
+     *  @param name:  Czar ID, non-negative number.
+     */
+    void cleanupInProgressQueries(CzarId czarId) override;
 
     /**
      *  @brief Register new query.
@@ -115,37 +129,6 @@ public:
      *  @return: Query ID, non-negative number
      */
     QueryId registerQuery(QInfo const& qInfo, TableNames const& tables) override;
-
-    /**
-     *  @brief Add list of chunks to query.
-     *
-     *  This method will throw if query ID is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunks:    Set of chunk numbers.
-     */
-    void addChunks(QueryId queryId, std::vector<int> const& chunks) override;
-
-    /**
-     *  @brief Assign or re-assign chunk to a worker.
-     *
-     *  This method will throw if query ID or chunk number is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunk:     Chunk number.
-     *  @param xrdEndpoint:  Worker xrootd communication endpoint ("host:port").
-     */
-    void assignChunk(QueryId queryId, int chunk, std::string const& xrdEndpoint) override;
-
-    /**
-     *  @brief Mark chunk as completed.
-     *
-     *  This method will throw if query ID or chunk number is not known.
-     *
-     *  @param queryId:   Query ID, non-negative number.
-     *  @param chunk:     Sequence of chunk numbers.
-     */
-    void finishChunk(QueryId queryId, int chunk) override;
 
     /**
      *  @brief Mark query as completed or failed.
@@ -281,6 +264,12 @@ private:
     void _addQueryMessage(QueryId queryId, qdisp::QueryMessage const& qMsg, int& cancelCount,
                           int& completeCount, int& execFailCount,
                           std::map<std::string, ManyMsg>& msgCountMap);
+
+    /// Execute queries in the same order as they are registered in the array.
+    /// The method is used to execute queries that do not return any results.
+    /// @note All queries are executed in a scope of the same transaction.
+    /// @throws qmeta::SqlError if any of the queries fails.
+    void _executeQueries(std::vector<std::string> const& queries);
 
     std::shared_ptr<sql::SqlConnection> _conn;
     std::mutex _dbMutex;  ///< Synchronizes access to certain DB operations

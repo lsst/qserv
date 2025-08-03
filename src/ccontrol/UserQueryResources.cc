@@ -24,18 +24,17 @@
 // Class header
 #include "ccontrol/UserQueryResources.h"
 
-#include "qmeta/QMeta.h"
-
-// qserv headers
+// Qserv headers
 #include "cconfig/CzarConfig.h"
-
+#include "qmeta/QMeta.h"
+#include "qmeta/QProgress.h"
 namespace lsst::qserv::ccontrol {
 
 UserQuerySharedResources::UserQuerySharedResources(
         std::shared_ptr<css::CssAccess> const& css_, mysql::MySqlConfig const& mysqlResultConfig_,
         std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex_,
         std::shared_ptr<qmeta::QMeta> const& queryMetadata_,
-        std::shared_ptr<qmeta::QStatus> const& queryStatsData_,
+        std::shared_ptr<qmeta::QProgress> const& queryProgress_,
         std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect_,
         std::shared_ptr<qproc::DatabaseModels> const& dbModels_, std::string const& czarName,
         int interactiveChunkLimit_)
@@ -43,13 +42,13 @@ UserQuerySharedResources::UserQuerySharedResources(
           mysqlResultConfig(mysqlResultConfig_),
           secondaryIndex(secondaryIndex_),
           queryMetadata(queryMetadata_),
-          queryStatsData(queryStatsData_),
+          queryProgress(queryProgress_),
           qMetaSelect(qMetaSelect_),
           databaseModels(dbModels_),
           interactiveChunkLimit(interactiveChunkLimit_) {
     // register czar in QMeta
     // TODO: check that czar with the same name is not active already?
-    qMetaCzarId = queryMetadata->registerCzar(czarName);
+    czarId = queryMetadata->registerCzar(czarName);
 }
 
 std::shared_ptr<UserQueryResources> UserQuerySharedResources::makeUserQueryResources(

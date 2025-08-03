@@ -47,11 +47,11 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryAsyncResult");
 namespace lsst::qserv::ccontrol {
 
 // Constructors
-UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId qMetaCzarId,
+UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId,
                                            std::shared_ptr<qmeta::QMeta> const& qMeta)
         : UserQuery(),
           _queryId(queryId),
-          _qMetaCzarId(qMetaCzarId),
+          _czarId(czarId),
           _qMeta(qMeta),
           _messageStore(std::make_shared<qdisp::MessageStore>()) {
     LOGS(_log, LOG_LVL_DEBUG, "UserQueryAsyncResult: QID=" << queryId);
@@ -89,7 +89,7 @@ void UserQueryAsyncResult::submit() {
     }
 
     // Presently we cannot return query results that originated from different czar
-    if (_qInfo.czarId() != _qMetaCzarId) {
+    if (_qInfo.czarId() != _czarId) {
         // TODO: tell user which czar was it?
         std::string message = "Query originated from different czar";
         _messageStore->addErrorMessage("SYSTEM", message);
