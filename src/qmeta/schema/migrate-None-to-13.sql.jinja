@@ -170,6 +170,26 @@ CREATE OR REPLACE
     GROUP BY `qi`.`queryId`;
 
 -- -----------------------------------------------------
+-- Table `chunkMap`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `chunkMap` (
+  `worker` VARCHAR(256) NOT NULL COMMENT 'A unique identifier of a worker hosting the chunk replica',
+  `database` VARCHAR(256) NOT NULL COMMENT 'The name of a database',
+  `table` VARCHAR(256) NOT NULL COMMENT 'The name of a table',
+  `chunk` INT UNSIGNED NOT NULL COMMENT 'The number of a chunk',
+  `size` BIGINT UNSIGNED NOT NULL COMMENT 'The size of a chunk')
+ENGINE = InnoDB
+COMMENT = 'Chunk disposition across workers';
+
+-- -----------------------------------------------------
+-- Table `chunkMapStatus`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `chunkMapStatus` (
+  `update_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'The most recent update time of the map')
+ENGINE = InnoDB
+COMMENT = 'Satus info on the chunk map';
+
+-- -----------------------------------------------------
 -- Table `QMetadata`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `QMetadata` (
@@ -194,4 +214,5 @@ COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 -- Version 10 redefined schema of the ProcessList tables.
 -- Version 11 extended view InfoSchemaQueries to report errors on the faile queries. Added status option FAILED_LR to QInfo.status.
 -- Version 12 renamed table QStatsTmp into QProgress to reflect its purpose and add a foreign key constraint to QInfo table. Drop the obsolete table QWorker.
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '12');
+-- Version 13 added tables chunkMap and chunkMapStatus. The tables are meant for storing persistent chunk-to-workers map.
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '13');
