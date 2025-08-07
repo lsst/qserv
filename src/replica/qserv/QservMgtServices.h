@@ -342,10 +342,12 @@ public:
      * Request the query progress records from the Qserv Czar.
      * @param czarName  The name of a Czar.
      * @param jobId  An optional identifier of a job specifying a context in which
-     *    a request will be executed.
+     *   a request will be executed.
      * @param queryIds The optional selector for queries. If empty then all queries will
      *   be considered.
      * @param lastSeconds The optional limit for age of the queries. If 0 then no limit is set.
+     * @param queryStatus The optional status ("EXECUTING", "COMPLETED", "FAILED", etc. or
+     *   the empty string for all) of the queries to be selected.
      * @param onFinish  A callback function to be called upon request completion.
      * @param requestExpirationIvalSec The maximum amount of time to wait before
      *   completion of the request. If a value of the parameter is set to 0 then no
@@ -356,6 +358,7 @@ public:
     GetQueryProgressQservCzarMgtRequest::Ptr czarQueryProgress(
             std::string const& czarName, std::string const& jobId = "",
             std::vector<QueryId> const& queryIds = std::vector<QueryId>(), unsigned int lastSeconds = 0,
+            std::string const& queryStatus = std::string(),
             GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish = nullptr,
             unsigned int requestExpirationIvalSec = 0);
 

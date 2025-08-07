@@ -32,6 +32,7 @@
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
 #include "qdisp/CzarStats.h"
+#include "qmeta/QProgressHistory.h"
 #include "util/String.h"
 
 using namespace std;
@@ -80,31 +81,30 @@ json HttpMonitorModule::_status() {
 
 json HttpMonitorModule::_queryProgress() {
     debug(__func__);
-    checkApiVersion(__func__, 29);
-    auto queryIds = query().optionalVectorUInt64("query_ids");
-    if (queryIds.empty()) {
-        // Injecting 0 forces the query progress method to return info
-        // on all known queries matching the (optionaly) specified age.
-        queryIds.push_back(0);
-    }
-    unsigned int lastSeconds = query().optionalUInt("last_seconds", 0);
+    checkApiVersion(__func__, 48);
+
+    auto const queryIds = query().optionalVectorUInt64("query_ids");
+    unsigned int const lastSeconds = query().optionalUInt("last_seconds", 0);
+    string const queryStatus = query().optionalString("query_status");
+
     debug(__func__, "query_ids=" + util::String::toString(queryIds));
     debug(__func__, "last_seconds=" + to_string(lastSeconds));
+    debug(__func__, "query_status=" + queryStatus);
 
-    auto const stats = qdisp::CzarStats::get();
-    json queries = json::object();
-    for (auto const id : queryIds) {
-        QueryId const selectQueryId = id;
-        for (auto&& [queryId, history] : stats->getQueryProgress(selectQueryId, lastSeconds)) {
-            string const queryIdStr = to_string(queryId);
-            queries[queryIdStr] = json::array();
-            json& queryJson = queries[queryIdStr];
-            for (auto&& point : history) {
-                queryJson.push_back(json::array({point.timestampMs, point.numJobs}));
-            }
+    auto const queryProgressHistory = qmeta::QProgressHistory::get();
+    if (queryProgressHistory == nullptr) {
+        throw http::Error(context() + __func__, " QProgressHistory is not initialized");
+    }
+    json result = json::object();
+    if (queryIds.empty()) {
+        result["queries"] = queryProgressHistory->findMany(lastSeconds, queryStatus);
+    } else {
+        result["queries"] = json::array();
+        for (auto const queryId : queryIds) {
+            result["queries"].push_back(queryProgressHistory->findOne(queryId));
         }
     }
-    return json::object({{"queries", queries}});
+    return result;
 }
 
 }  // namespace lsst::qserv::czar

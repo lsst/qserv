@@ -498,20 +498,20 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
 
     auto const czar = params().at("czar");
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
-    QueryId const selectQueryId = query().optionalUInt64("query_id", 0);
-    unsigned int const selectLastSeconds = query().optionalUInt("last_seconds", 0);
+    auto const queryIds = query().optionalVectorUInt64("query_ids");
+    unsigned int const lastSeconds = query().optionalUInt("last_seconds", 0);
+    string const queryStatus = query().optionalString("query_status");
 
     debug(__func__, "czar=" + czar);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
-    debug(__func__, "query_id=" + to_string(selectQueryId));
-    debug(__func__, "last_seconds=" + to_string(selectLastSeconds));
+    debug(__func__, "query_ids=" + util::String::toString(queryIds));
+    debug(__func__, "last_seconds=" + to_string(lastSeconds));
+    debug(__func__, "query_status=" + queryStatus);
 
     string const noParentJobId;
-    vector<QueryId> queryIds;
-    if (selectQueryId != 0) queryIds.push_back(selectQueryId);
     GetQueryProgressQservCzarMgtRequest::CallbackType const onFinish = nullptr;
     auto const request = controller()->serviceProvider()->qservMgtServices()->czarQueryProgress(
-            czar, noParentJobId, queryIds, selectLastSeconds, onFinish, timeoutSec);
+            czar, noParentJobId, queryIds, lastSeconds, queryStatus, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 

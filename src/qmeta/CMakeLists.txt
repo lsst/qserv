@@ -6,6 +6,7 @@ target_sources(qmeta PRIVATE
     QMetaSelect.cc
     QMetaTransaction.cc
     QProgress.cc
+    QProgressHistory.cc
 )
 
 target_link_libraries(qmeta PUBLIC

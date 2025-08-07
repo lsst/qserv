@@ -45,6 +45,7 @@
 #include "qdisp/SharedResources.h"
 #include "qdisp/XrdSsiMocks.h"
 #include "qmeta/QProgress.h"
+#include "qmeta/QProgressHistory.h"
 #include "qproc/ChunkQuerySpec.h"
 #include "qproc/TaskMsgFactory.h"
 #include "util/threadSafe.h"
@@ -170,7 +171,10 @@ public:
         sharedResources = qdisp::SharedResources::create(qdispPool);
 
         std::shared_ptr<qmeta::QProgress> queryProgress;  // No updating QProgress, nullptr
-        ex = qdisp::Executive::create(*conf, ms, sharedResources, queryProgress, nullptr, asioIoService);
+        std::shared_ptr<qmeta::QProgressHistory>
+                queryProgressHistory;  // No updating QProgressHistory, nullptr
+        ex = qdisp::Executive::create(*conf, ms, sharedResources, queryProgress, queryProgressHistory,
+                                      nullptr, asioIoService);
     }
     ~SetupTest() {}
 };

@@ -53,7 +53,10 @@ function(CSSLoader,
             this._init();
             this._set_czar(czar);
             this._set_query_id(query_id);
-            this._set_last_seconds(24 * 3600);
+            this._set_last_seconds('');
+            this._set_query_status('');
+            this._set_display_type('chunks');
+            this._disable_selectors_for_query_id();
             this._load(czar);
         }
         _init() {
@@ -71,28 +74,55 @@ function(CSSLoader,
         <select id="czar" class="form-control form-control-selector">
         </select>
       </div>
-      <div class="form-group col-md">
+      <div class="form-group col-md-1">
         <label for="query-id">Query Id:</label>
         <input type="number" id="query-id" class="form-control" value="">
       </div>
-      <div class="form-group col-md">
+      <div class="form-group col-md-1">
         <label for="last-seconds">Track last:</label>
-        <select id="last-seconds" class="form-control form-control-selector">` + _.reduce(lastMinutes, function (html, m) { return html + `
+        <select id="last-seconds" class="form-control form-control-selector">
+          <option value=""></option>` + _.reduce(lastMinutes, function (html, m) { return html + `
           <option value="${m * 60}">${m} min</option>`; }, '') + _.reduce(lastHours, function (html, hr) { return html + `
           <option value="${hr * 3600}">${hr} hr</option>`; }, '') + `
         </select>
       </div>
-      <div class="form-group col-md"
+      <div class="form-group col-md-1">
+        <label for="query-status">Status:</label>
+        <select id="query-status" class="form-control form-control-selector">
+          <option value="" selected></option>
+          <option value="EXECUTING">EXECUTING</option>
+          <option value="!EXECUTING">!EXECUTING</option>
+          <option value="COMPLETED">COMPLETED</option>
+          <option value="!COMPLETED">!COMPLETED</option>
+          <option value="FAILED">FAILED</option>
+          <option value="FAILED_LR">FAILED_LR</option>
+          <option value="ABORTED">ABORTED</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group col-md-1"
+           title="Display types: 'chunks' - per-chunk progress, 'queries' - per-query progress"
+           data-toggle="tooltip"
+           data-placement="top">
+        <label for="display-type">Display:</label>
+        <select id="display-type" class="form-control form-control-viewer">
+          <option selected value="chunks">chunks</option>
+          <option value="queries">queries</option>
+        </select>
+      </div>
+      <div class="form-group col-md-2"
            title="Zero values are not plotted in the logarithmic scale"
            data-toggle="tooltip"
            data-placement="top">
         <label for="vertical-scale">Vertical scale:</label>
         <select id="vertical-scale" class="form-control form-control-viewer">
+          <option value=""></option>
           <option selected value="logarithmic">logarithmic</option>
           <option value="linear">linear</option>
         </select>
       </div>
-      <div class="form-group col-md"
+      <div class="form-group col-md-2
            title="Enabling auto-zoom would expand the plot all the way to the right"
            data-toggle="tooltip"
            data-placement="top">
@@ -102,10 +132,10 @@ function(CSSLoader,
           <option selected value="auto-zoom-in">auto-zoom-in</option>
         </select>
       </div>
-      <div class="form-group col-md">
+      <div class="form-group col-md-1">
         ${Common.html_update_ival('update-interval', 10)}
       </div>
-      <div class="form-group col-md">
+      <div class="form-group col-md-1">
         <label for="reset-form">&nbsp;</label>
         <button id="reset-form" class="btn btn-primary form-control">Reset</button>
       </div>
@@ -143,8 +173,11 @@ function(CSSLoader,
                 this._set_update_interval_sec(10);
                 this._set_query_id('');
                 this._set_last_seconds(QservCzarQueryProgress.last_seconds());
+                this._set_query_status('');
+                this._set_display_type('chunks');
                 this._set_vertical_scale('logarithmic');
                 this._set_horizontal_scale('auto-zoom-in');
+                this._disable_selectors_for_query_id();
                 this._load();
             });
         }
@@ -175,12 +208,16 @@ function(CSSLoader,
         _set_query_id(val) {
             this._form_control('input', 'query-id').val(val);
         }
+        _last_seconds() { return this._form_control('select', 'last-seconds').val(); }
+        _set_last_seconds(val) { this._form_control('select', 'last-seconds').val(val); }
+        _query_status() { return this._form_control('select', 'query-status').val(); }
+        _set_query_status(val) { this._form_control('select', 'query-status').val(val); }
+        _display_type() { return this._form_control('select', 'display-type').val(); }
+        _set_display_type(val) { this._form_control('select', 'display-type').val(val); }
         _vertical_scale() { return this._form_control('select', 'vertical-scale').val(); }
         _set_vertical_scale(val) { this._form_control('select', 'vertical-scale').val(val); }
         _horizontal_scale() { return this._form_control('select', 'horizontal-scale').val(); }
         _set_horizontal_scale(val) { this._form_control('select', 'horizontal-scale').val(val); }
-        _last_seconds() { return this._form_control('select', 'last-seconds').val(); }
-        _set_last_seconds(val) { this._form_control('select', 'last-seconds').val(val); }
         _table(name) {
             if (_.isUndefined(this._table_obj)) this._table_obj = {};
             if (!_.has(this._table_obj, name)) {
@@ -199,6 +236,12 @@ function(CSSLoader,
                 this._queries_obj = this.fwk_app_container.find('canvas#queries');
             }
             return this._queries_obj;
+        }
+        _disable_selectors_for_query_id() {
+            let disabled = this._query_id() ? true : false;
+            this._form_control('select', 'last-seconds').prop('disabled', disabled);
+            this._form_control('select', 'query-type').prop('disabled', disabled);
+            this._form_control('select', 'query-status').prop('disabled', disabled);
         }
         _load(czar = undefined) {
             if (this._loading === undefined) this._loading = false;
@@ -228,13 +271,19 @@ function(CSSLoader,
             );
         }
         _load_query() {
+            var params = {
+                version: Common.RestAPIVersion,
+                timeout_sec: 2,
+            };
+            if (this._query_id()) {
+                params.query_ids = this._query_id();
+            } else {
+                params.last_seconds = this._last_seconds();
+                params.query_status = this._query_status();
+            }
             Fwk.web_service_GET(
                 "replication/qserv/master/queries/active/progress/" + this._czar(),
-                {   version: Common.RestAPIVersion,
-                    timeout_sec: 2,
-                    query_id: this._query_id() ? this._query_id() : 0,
-                    last_seconds: this._last_seconds()
-                },
+                params,
                 (data) => {
                     if (data.success) {
                         this._data = data;
@@ -256,18 +305,22 @@ function(CSSLoader,
             );
         }
         _display(queries) {
-            const query_ids = _.keys(queries);
-            query_ids.sort();
-            query_ids.reverse();
+            if (this._display_type() === 'chunks') {
+                this._display_chunks(queries);
+            } else {
+                this._display_queries(queries);
+            }
+        }
+        _display_chunks(queries) {
             // Add a small delta to the points to allow seeing zeroes on the log scale,
             // in case the one was requested.
             const valueDeltaForLogScale = this._vertical_scale() === 'linear' ? 0 : 0.1;
             let series = [];
-            for (let qid in queries) {
+            for (let i in queries) {
+                let query = queries[i];
                 let points = [];
-                let query_data = queries[qid];
-                for (let i in query_data) {
-                    const point = query_data[i];
+                for (let i in query.history) {
+                    const point = query.history[i];
                     // Convert from milliseconds
                     const timestampSec = point[0] / 1000;
                     let x = new Date(0);
@@ -275,13 +328,13 @@ function(CSSLoader,
                     points.push([x.getTime(), point[1] + valueDeltaForLogScale]);
                 }
                 series.push({
-                    name: qid,
+                    name: query.queryId,
                     data: points,
                     animation: {
                         enabled: false
                     },
                     showInLegend: false,
-                    // color: '#F00',
+                    color: this._query_color(query.status),
                 });
             }
             if (!_.isUndefined(this._queries_chart)) {
@@ -292,7 +345,7 @@ function(CSSLoader,
                     type: 'line'
                 },
                 title: {
-                    text: '# Unfinished Jobs'
+                    text: '# Unfinished Chunks'
                 },
                 subtitle: {
                     text: '< 24 hours'
@@ -309,12 +362,12 @@ function(CSSLoader,
                 yAxis: {
                     type: this._vertical_scale(),
                     title: {
-                        text: '# jobs'
+                        text: '# chunks'
                     }
                 },
                 tooltip: {
                     headerFormat: '<b>{series.name}</b><br>',
-                    pointFormat: '{point.x:%e. %b}: {point.y:.2f} jobs'
+                    pointFormat: '{point.x:%e. %b}: {point.y:.2f} chunks'
                 },
                 time: {
                     useUTC: true
@@ -332,6 +385,84 @@ function(CSSLoader,
                 series: series
             });
         }
+        _display_queries(queries) {
+            let series = [];
+            for (let i in queries) {
+                let query = queries[i];
+                let points = [];
+                for (let i in query.history) {
+                    const point = query.history[i];
+                    // Convert from milliseconds
+                    const timestampSec = point[0] / 1000;
+                    let x = new Date(0);
+                    x.setSeconds(timestampSec);
+                    points.push([x.getTime(), parseInt(query.queryId)]);
+                }
+                series.push({
+                    name: query.queryId,
+                    data: points,
+                    animation: {
+                        enabled: false
+                    },
+                    showInLegend: false,
+                    color: this._query_color(query.status),
+                });
+            }
+            if (!_.isUndefined(this._queries_chart)) {
+                this._queries_chart.destroy();
+            }
+            this._queries_chart = Highcharts.chart('fwk-qserv-czar-query-prog-status-queries', {
+                chart: {
+                    type: 'line'
+                },
+                title: {
+                    text: 'Queries'
+                },
+                subtitle: {
+                    text: '< 24 hours'
+                },
+                xAxis: {
+                    type: 'datetime',
+                    title: {
+                        text: 'Time [UTC]'
+                    },
+                    // If auto-zoom is not enabled the plot will go all the way through
+                    // the (viewer's) current time on the right.
+                    max: this._horizontal_scale() === 'auto-zoom-in' ? undefined : new Date().setSeconds(0)
+                },
+                yAxis: {
+                    type: this._vertical_scale(),
+                    title: {
+                        text: 'QID'
+                    }
+                },
+                tooltip: {
+                    headerFormat: '<b>{series.name}</b><br>',
+                    pointFormat: '{point.x:%e. %b}: {point.y:.2f} QID'
+                },
+                time: {
+                    useUTC: true
+                },
+                plotOptions: {
+                    series: {
+                        marker: {
+                            fillColor: '#dddddd',
+                            lineWidth: 2,
+                            lineColor: null
+                        }
+                    }
+                },
+                colors: ['#6CF', '#39F', '#06C', '#036', '#000'],
+                series: series
+            });
+        }
+        _query_color(status) {
+            if (status === 'EXECUTING') return '#006400';
+            if (status === 'FAILED') return '#ff0000';
+            if (status === 'FAILED_LR') return '#ffa500';
+            if (status === 'ABORTED') return '#ff0000';
+            return '#000000';
+         }
     }
     return QservCzarQueryProgress;
 });

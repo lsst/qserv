@@ -179,10 +179,11 @@ GetStatusQservCzarMgtRequest::Ptr QservMgtServices::czarStatus(
 
 GetQueryProgressQservCzarMgtRequest::Ptr QservMgtServices::czarQueryProgress(
         string const& czarName, string const& jobId, vector<QueryId> const& queryIds,
-        unsigned int lastSeconds, GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish,
+        unsigned int lastSeconds, string const& queryStatus,
+        GetQueryProgressQservCzarMgtRequest::CallbackType const& onFinish,
         unsigned int requestExpirationIvalSec) {
     auto const request = GetQueryProgressQservCzarMgtRequest::create(
-            serviceProvider(), czarName, queryIds, lastSeconds,
+            serviceProvider(), czarName, queryIds, lastSeconds, queryStatus,
             [self = shared_from_this()](QservMgtRequest::Ptr const& request) {
                 self->_finish(request->id());
             });
