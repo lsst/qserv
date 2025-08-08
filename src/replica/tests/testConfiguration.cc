@@ -766,6 +766,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl11");
     BOOST_CHECK(table.longitudeColName == "ra11");
     BOOST_CHECK(table.columns.size() == 4);
@@ -829,6 +831,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, false);
+    BOOST_CHECK(table.charsetName == "latin1");
+    BOOST_CHECK(table.collationName == "latin1_swedish_ci");
     BOOST_CHECK(table.latitudeColName == "decl21");
     BOOST_CHECK(table.longitudeColName == "ra21");
     BOOST_CHECK(table.columns.size() == 4);
@@ -845,6 +849,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table21", "id22"));
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.charsetName == "utf8mb4");
+    BOOST_CHECK(table.collationName == "utf8mb4_general_ci");
     BOOST_CHECK(table.latitudeColName == "decl22");
     BOOST_CHECK(table.longitudeColName == "ra22");
     BOOST_CHECK(table.columns.size() == 3);
@@ -1048,6 +1054,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl41");
     BOOST_CHECK(table.longitudeColName == "ra41");
     BOOST_CHECK(table.columns.size() == 4);
@@ -1065,6 +1073,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl42");
     BOOST_CHECK(table.longitudeColName == "ra42");
     BOOST_CHECK(table.columns.size() == 4);
@@ -1083,6 +1093,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(table.flagColName == "flag");
     BOOST_CHECK(table.angSep == 0.01);
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName.empty());
     BOOST_CHECK(table.longitudeColName.empty());
     BOOST_CHECK(table.columns.size() == 3);
@@ -1101,6 +1113,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(table.flagColName == "flag");
     BOOST_CHECK(table.angSep == 0.01667);
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName.empty());
     BOOST_CHECK(table.longitudeColName.empty());
     BOOST_CHECK(table.columns.size() == 3);
@@ -1146,6 +1160,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl51");
     BOOST_CHECK(table.longitudeColName == "ra51");
     BOOST_CHECK(table.columns.size() == 4);
@@ -1193,6 +1209,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl61");
     BOOST_CHECK(table.longitudeColName == "ra61");
     BOOST_CHECK(table.columns.size() == 4);
@@ -1210,6 +1228,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName.empty());
     BOOST_CHECK(table.longitudeColName.empty());
     BOOST_CHECK(table.columns.empty());
@@ -1299,6 +1319,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
         BOOST_CHECK(!table.isPublished);
         BOOST_CHECK(table.isDirector());
         BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+        BOOST_CHECK(table.charsetName.empty());
+        BOOST_CHECK(table.collationName.empty());
         BOOST_CHECK(table.createTime != 0);
         BOOST_CHECK(table.publishTime == 0);
         BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);

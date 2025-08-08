@@ -90,6 +90,8 @@ DatabaseInfo DatabaseInfo::parse(json const& obj, map<string, DatabaseFamilyInfo
                     table.flagColName = tableJson.at("flag").get<string>();
                     table.angSep = tableJson.at("ang_sep").get<double>();
                     table.uniquePrimaryKey = tableJson.at("unique_primary_key").get<int>() != 0;
+                    table.charsetName = tableJson.at("charset_name").get<string>();
+                    table.collationName = tableJson.at("collation_name").get<string>();
                     table.latitudeColName = tableJson.at("latitude_key").get<string>();
                     table.longitudeColName = tableJson.at("longitude_key").get<string>();
                 }

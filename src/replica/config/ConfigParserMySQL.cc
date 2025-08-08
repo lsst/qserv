@@ -37,7 +37,7 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-int const ConfigParserMySQL::expectedSchemaVersion = 14;
+int const ConfigParserMySQL::expectedSchemaVersion = 15;
 
 ConfigParserMySQL::ConfigParserMySQL(Connection::Ptr const& conn, json& data,
                                      map<string, ConfigWorker>& workers,
@@ -135,6 +135,8 @@ void ConfigParserMySQL::_parseDatabases() {
         table.flagColName = _parseParam<string>("flag");
         table.angSep = _parseParam<double>("ang_sep");
         table.uniquePrimaryKey = _parseParam<int>("unique_primary_key") != 0;
+        table.charsetName = _parseParam<string>("charset_name");
+        table.collationName = _parseParam<string>("collation_name");
         table.latitudeColName = _parseParam<string>("latitude_key");
         table.longitudeColName = _parseParam<string>("longitude_key");
         table.isPartitioned = _parseParam<int>("is_partitioned") != 0;
