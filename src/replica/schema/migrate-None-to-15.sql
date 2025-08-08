@@ -74,6 +74,8 @@ CREATE TABLE IF NOT EXISTS `config_database_table` (
   `flag`            VARCHAR(255) DEFAULT "" , -- The name of a column for flags (if the current table is RefMatch)
   `ang_sep`         DOUBLE       DEFAULT 0 ,  -- The angular separation parameter (if the current table is RefMatch)
   `unique_primary_key` BOOLEAN NOT NULL DEFAULT TRUE ,
+  `charset_name`    VARCHAR(255) DEFAULT "" , -- The name of the character set for the table (optional)
+  `collation_name`  VARCHAR(255) DEFAULT "" , -- The name of the collation for the table (optional)
   `latitude_key`    VARCHAR(255) DEFAULT "" , -- The name for latitude (declination) column in this table
   `longitude_key`   VARCHAR(255) DEFAULT "" , -- The name for longitude (right ascension) column in this table
   `is_published`    BOOLEAN DEFAULT TRUE ,
@@ -520,4 +522,4 @@ ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, key-value pairs' ;
 
 -- Add record for schema version, migration script expects this record to exist
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '14');
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '15');
