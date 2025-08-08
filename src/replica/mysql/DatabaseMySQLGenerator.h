@@ -796,12 +796,19 @@ public:
      *   are supposed to be generated using the above defined method sqlPackTableKey.
      * @param engine The name of the table engine for generating "ENGINE=<engine>".
      * @param comment The optional comment. If a non-empty value will be provided then
-     *   the resulting query will have "COMMENT='<comment>'";
+     *   the resulting query will have "COMMENT='<comment>'".
+     * @param charsetName The optional name of the character set for the table. This name
+     *   will be used to generate "DEFAULT CHARACTER SET <charsetName>".
+     *   If the empty string is provided then the default character set will be used.
+     * @param collationName The optional name of the collation for the table. This name
+     *   will be used to generate "COLLATE <collationName>".
+     * @return The complete query.
      */
     std::string createTable(SqlId const& sqlId, bool ifNotExists, std::list<SqlColDef> const& columns,
                             std::list<std::string> const& keys = std::list<std::string>(),
-                            std::string const& engine = "InnoDB",
-                            std::string const& comment = std::string()) const;
+                            std::string const& engine = "InnoDB", std::string const& comment = std::string(),
+                            std::string const& charsetName = std::string(),
+                            std::string const& collationName = std::string()) const;
 
     /**
      * @brief Generate table creation query (no database name is provided).
@@ -809,9 +816,11 @@ public:
     std::string createTable(std::string const& tableName, bool ifNotExists,
                             std::list<SqlColDef> const& columns,
                             std::list<std::string> const& keys = std::list<std::string>(),
-                            std::string const& engine = "InnoDB",
-                            std::string const& comment = std::string()) const {
-        return createTable(id(tableName), ifNotExists, columns, keys, engine, comment);
+                            std::string const& engine = "InnoDB", std::string const& comment = std::string(),
+                            std::string const& charsetName = std::string(),
+                            std::string const& collationName = std::string()) const {
+        return createTable(id(tableName), ifNotExists, columns, keys, engine, comment, charsetName,
+                           collationName);
     }
 
     /**
@@ -820,9 +829,11 @@ public:
     std::string createTable(std::string const& databaseName, std::string const& tableName, bool ifNotExists,
                             std::list<SqlColDef> const& columns,
                             std::list<std::string> const& keys = std::list<std::string>(),
-                            std::string const& engine = "InnoDB",
-                            std::string const& comment = std::string()) const {
-        return createTable(id(databaseName, tableName), ifNotExists, columns, keys, engine, comment);
+                            std::string const& engine = "InnoDB", std::string const& comment = std::string(),
+                            std::string const& charsetName = std::string(),
+                            std::string const& collationName = std::string()) const {
+        return createTable(id(databaseName, tableName), ifNotExists, columns, keys, engine, comment,
+                           charsetName, collationName);
     }
 
     template <typename IDTYPE1, typename IDTYPE2>
