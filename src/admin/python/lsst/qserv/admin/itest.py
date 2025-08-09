@@ -1111,8 +1111,12 @@ def run_http_ingest(
     # this scenario..
     database = "user_test-db"
     table_json = "json-table"
+    table_json_utf8 = "json-table-utf8"
     table_csv = "csv$table"
+    table_csv_utf8 = "csv$table-utf8"
     timeout = 30
+    charset = "utf8mb4"
+    collation = "utf8mb4_uca1400_ai_ci"
 
     _log.debug("Testing user database: %s", database)
 
@@ -1138,6 +1142,19 @@ def run_http_ingest(
         _log.error("Failed to query table: %s of user database: %s, error: ", table_json, database, e)
         return False
 
+    # Create the table and ingest data using the JSON option. Then query the table.
+    try:
+        _http_ingest_data_json(http_frontend_uri, user, password, database, table_json_utf8, schema, indexes, rows, charset, collation)
+    except Exception as e:
+        _log.error("Failed to ingest data into table: %s of user database: %s, error: %s", table_json_utf8, database, e)
+        return False
+    try:
+        _http_query_table(http_frontend_uri, user, password, database, table_json_utf8, rows)
+    except Exception as e:
+        _log.error("Failed to query table: %s of user database: %s, error: ", table_json_utf8, database, e)
+        return False
+
+
     # Create the table and ingest data using the CSV option. Then query the table.
     try:
         _http_ingest_data_csv(http_frontend_uri, user, password, database, table_csv, schema, indexes, rows, timeout)
@@ -1149,10 +1166,21 @@ def run_http_ingest(
     except Exception as e:
         _log.error("Failed to query table: %s of user database: %s, error: ", table_csv, database, e)
 
+    # Create the table and ingest data using the CSV option. Then query the table.
+    try:
+        _http_ingest_data_csv(http_frontend_uri, user, password, database, table_csv_utf8, schema, indexes, rows, timeout, charset, collation)
+    except Exception as e:
+        _log.error("Failed to ingest data into table: %s of user database: %s, error: %s", table_csv_utf8, database, e)
+        return False
+    try:
+        _http_query_table(http_frontend_uri, user, password, database, table_csv_utf8, rows)
+    except Exception as e:
+        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_utf8, database, e)
+
     # Cleanup the tables and the database in two separate steps unless the user
     # requested to keep the results.
     if not keep_results:
-        for table in [table_json, table_csv]:
+        for table in [table_json, table_json_utf8, table_csv, table_csv_utf8]:
             try:
                 _http_delete_table(http_frontend_uri, user, password, database, table)
             except Exception as e:
@@ -1234,6 +1262,8 @@ def _http_ingest_data_json(
     schema: List[Dict[str, str]],
     indexes: List[Dict[str, Sequence[Collection[str]]]],
     rows: List[List[Any]],
+    charset: Optional[str] = None,
+    collation: Optional[str] = None,
 ) -> None:
     """Ingest data into an existing table of the user database.
 
@@ -1253,6 +1283,14 @@ def _http_ingest_data_json(
         The schema of the table to be created.
     indexes : `list` [`dict` [`str`, `list` [`list` [`str`]]]]
         The indexes of the table to be created.
+    rows : `list` [`list` [`Any`]]
+        The rows of data to be ingested into the table.
+    charset : `str`, optional
+        The character set to use for the table. If not provided, the default
+        character set will be used.
+    collation : `str`, optional
+        The collation to use for the table. If not provided, the default
+        collation will be used.
     """
     _log.debug("Ingesting JSON data into table: %s of user database: %s", table, database)
     data = {
@@ -1262,6 +1300,11 @@ def _http_ingest_data_json(
         "indexes": indexes,
         "rows": rows,
     }
+    if charset is not None:
+        data["charset_name"] = charset
+    if collation is not None:
+        data["collation_name"] = collation
+
     url = str(urljoin(http_frontend_uri, f"/ingest/data?version={repl_api_version}"))
     req = requests.post(url, json=data, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
     req.raise_for_status()
@@ -1279,7 +1322,9 @@ def _http_ingest_data_csv(
     schema: List[Dict[str, str]],
     indexes: List[Dict[str, Sequence[Collection[str]]]],
     rows: List[List[Any]],
-    timeout: int
+    timeout: int,
+    charset: Optional[str] = None,
+    collation: Optional[str] = None,
 ) -> None:
     """Create the table and ingest the data into the table.
 
@@ -1299,7 +1344,16 @@ def _http_ingest_data_csv(
         The schema of the table to be created.
     indexes : `list` [`dict` [`str`, `list` [`list` [`str`]]]]
         The indexes of the table to be created.
+    rows : `list` [`list` [`Any`]]
+        The rows of data to be ingested into the table.
     timeout : `int`
+        The timeout for the ingestion operation in seconds.
+    charset : `str`, optional
+        The character set to use for the table. If not provided, the default
+        character set will be used.
+    collation : `str`, optional
+        The collation to use for the table. If not provided, the default
+        collation will be used.
     """
     _log.debug("Ingesting CSV data into table: %s of user database: %s", table, database)
     base_dir = "/tmp"
@@ -1319,17 +1373,21 @@ def _http_ingest_data_csv(
         for row in rows:
             csv_writer.writerow(row)
 
-    encoder = MultipartEncoder(
-        fields = {
-            "database" : (None, database),
-            "table": (None, table),
-            "fields_terminated_by": (None, ","),
-            "timeout": (None, str(timeout)),
-            "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
-            "indexes": (indexes_file, open(indexes_file_path, "rb"), "application/json"),
-            "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),
-        }
-    )
+    fields = {
+        "database" : (None, database),
+        "table": (None, table),
+        "fields_terminated_by": (None, ","),
+        "timeout": (None, str(timeout)),
+        "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
+        "indexes": (indexes_file, open(indexes_file_path, "rb"), "application/json"),
+        "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),
+    }
+    if charset is not None:
+        fields["charset_name"] = (None, charset)
+    if collation is not None:
+        fields["collation_name"] = (None, collation)
+
+    encoder = MultipartEncoder(fields=fields)
     url = str(urljoin(http_frontend_uri, f"/ingest/csv?version={repl_api_version}"))
     req = requests.post(url, data=encoder, headers={'Content-Type': encoder.content_type}, verify=False,
                         auth=(requests.auth.HTTPBasicAuth(user, password)))
