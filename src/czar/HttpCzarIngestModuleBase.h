@@ -73,6 +73,8 @@ protected:
      * Ingest the table into the Qserv.
      * @param databaseName The name of the database to ingest the data into.
      * @param tableName The name of the table to ingest the data into.
+     * @param charsetName The name of the character set for the table.
+     * @param collationName The name of the collation for the table.
      * @param schema The schema of the table.
      * @param indexes The indexes to be created for the table.
      * @param submitRequestsToWorkers A function to submit requests to the workers. The function is
@@ -83,8 +85,8 @@ protected:
      * @throw http::Error In case of a communication error or an error reported by the server.
      */
     std::list<std::pair<std::string, std::string>> ingestData(
-            std::string const& databaseName, std::string const& tableName, nlohmann::json const& schema,
-            nlohmann::json const& indexes,
+            std::string const& databaseName, std::string const& tableName, std::string const& charsetName,
+            std::string const& collationName, nlohmann::json const& schema, nlohmann::json const& indexes,
             std::function<std::map<std::string, std::string>(uint32_t)> const& submitRequestsToWorkers);
 
     /**
@@ -178,6 +180,7 @@ private:
     void _publishDatabase(std::string const& databaseName);
 
     void _createTable(std::string const& databaseName, std::string const& tableName,
+                      std::string const& charsetName, std::string const& collationName,
                       nlohmann::json const& schema);
     void _createDirectorTable(std::string const& databaseName);
 

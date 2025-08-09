@@ -225,6 +225,14 @@ ConfigApp::ConfigApp(int argc, char* argv[]) : ConfigAppBase(argc, argv, descrip
                   " the 'UNIQUE' constraint in a definition of the corresponiding key of the 'director'"
                   " table schema when the index is constructed at the transaction commit time",
                   _nonUniquePrimaryKey)
+            .option("charset-name",
+                    "The name of a character set for the table. The server default will be used"
+                    " for an empty name.",
+                    _table.charsetName)
+            .option("collation-name",
+                    "The name of a collation for the table. The server default will be used"
+                    " for an empty name.",
+                    _table.collationName)
             .option("latitude-key",
                     "The name of a column in the 'partitioned' table indicating a column which"
                     " stores latitude (declination) of the object/sources. This parameter is optional.",

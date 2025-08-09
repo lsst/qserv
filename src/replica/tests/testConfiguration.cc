@@ -160,6 +160,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
 
     BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 3);
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 4);
+    BOOST_CHECK(config->get<size_t>("worker", "num-http-svc-threads") == 10);
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 5);
     BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1024);
     BOOST_CHECK(config->get<size_t>("worker", "num-loader-processing-threads") == 6);
@@ -170,6 +171,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("worker", "async-loader-cleanup-on-resume") == 0);
     BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 512);
     BOOST_CHECK(config->get<size_t>("worker", "http-max-queued-requests") == 1024);
+    BOOST_CHECK(config->get<size_t>("worker", "http-svc-max-queued-requests") == 2048);
     BOOST_CHECK(config->get<unsigned int>("worker", "loader-max-warnings") == 2);
     BOOST_CHECK(config->get<string>("worker", "ingest-charset-name") == "latin1");
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-num-retries") == 1);
@@ -329,6 +331,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-svc-processing-threads", 5));
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 5);
 
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-http-svc-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-http-svc-threads", 11));
+    BOOST_CHECK(config->get<size_t>("worker", "num-http-svc-threads") == 11);
+
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-fs-processing-threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-fs-processing-threads", 6));
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 6);
@@ -376,6 +382,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("worker", "http-max-queued-requests") == 2048);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "http-max-queued-requests", 0));
     BOOST_CHECK(config->get<size_t>("worker", "http-max-queued-requests") == 0);
+
+    BOOST_CHECK(config->get<size_t>("worker", "http-svc-max-queued-requests") == 2048);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "http-svc-max-queued-requests", 4096));
+    BOOST_CHECK(config->get<size_t>("worker", "http-svc-max-queued-requests") == 4096);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "http-svc-max-queued-requests", 0));
+    BOOST_CHECK(config->get<size_t>("worker", "http-svc-max-queued-requests") == 0);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 100));
@@ -469,6 +481,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK(workerA.isEnabled);
     BOOST_CHECK(!workerA.isReadOnly);
     BOOST_CHECK_EQUAL(workerA.svcHost, hostA);
+    BOOST_CHECK_EQUAL(workerA.httpSvcHost, hostA);
     BOOST_CHECK_EQUAL(workerA.fsHost, hostA);
     BOOST_CHECK_EQUAL(workerA.loaderHost, hostA);
     BOOST_CHECK_EQUAL(workerA.exporterHost, hostA);
@@ -481,6 +494,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK(workerB.isEnabled);
     BOOST_CHECK(workerB.isReadOnly);
     BOOST_CHECK_EQUAL(workerB.svcHost, hostB);
+    BOOST_CHECK_EQUAL(workerB.httpSvcHost, hostB);
     BOOST_CHECK_EQUAL(workerB.fsHost, hostB);
     BOOST_CHECK_EQUAL(workerB.loaderHost, hostB);
     BOOST_CHECK_EQUAL(workerB.exporterHost, hostB);
@@ -493,6 +507,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK(workerC.name == "worker-C");
     BOOST_CHECK(!workerC.isEnabled);
     BOOST_CHECK_EQUAL(workerC.svcHost, ConfigHost({"168.1.1.1", "host-C1"}));
+    BOOST_CHECK_EQUAL(workerC.httpSvcHost, ConfigHost({"168.1.1.7", "host-C7"}));
     BOOST_CHECK_EQUAL(workerC.fsHost, ConfigHost({"168.1.1.2", "host-C2"}));
     BOOST_CHECK_EQUAL(workerC.loaderHost, ConfigHost({"168.1.1.3", "host-C3"}));
     BOOST_CHECK_EQUAL(workerC.exporterHost, ConfigHost({"168.1.1.4", "host-C4"}));
@@ -766,6 +781,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl11");
     BOOST_CHECK(table.longitudeColName == "ra11");
     BOOST_CHECK(table.columns.size() == 4);
@@ -829,6 +846,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, false);
+    BOOST_CHECK(table.charsetName == "latin1");
+    BOOST_CHECK(table.collationName == "latin1_swedish_ci");
     BOOST_CHECK(table.latitudeColName == "decl21");
     BOOST_CHECK(table.longitudeColName == "ra21");
     BOOST_CHECK(table.columns.size() == 4);
@@ -845,6 +864,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable, DirectorTableRef("Table21", "id22"));
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
+    BOOST_CHECK(table.charsetName == "utf8mb4");
+    BOOST_CHECK(table.collationName == "utf8mb4_general_ci");
     BOOST_CHECK(table.latitudeColName == "decl22");
     BOOST_CHECK(table.longitudeColName == "ra22");
     BOOST_CHECK(table.columns.size() == 3);
@@ -1048,6 +1069,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl41");
     BOOST_CHECK(table.longitudeColName == "ra41");
     BOOST_CHECK(table.columns.size() == 4);
@@ -1065,6 +1088,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl42");
     BOOST_CHECK(table.longitudeColName == "ra42");
     BOOST_CHECK(table.columns.size() == 4);
@@ -1083,6 +1108,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(table.flagColName == "flag");
     BOOST_CHECK(table.angSep == 0.01);
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName.empty());
     BOOST_CHECK(table.longitudeColName.empty());
     BOOST_CHECK(table.columns.size() == 3);
@@ -1101,6 +1128,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(table.flagColName == "flag");
     BOOST_CHECK(table.angSep == 0.01667);
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName.empty());
     BOOST_CHECK(table.longitudeColName.empty());
     BOOST_CHECK(table.columns.size() == 3);
@@ -1146,6 +1175,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl51");
     BOOST_CHECK(table.longitudeColName == "ra51");
     BOOST_CHECK(table.columns.size() == 4);
@@ -1193,6 +1224,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName == "decl61");
     BOOST_CHECK(table.longitudeColName == "ra61");
     BOOST_CHECK(table.columns.size() == 4);
@@ -1210,6 +1243,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK_EQUAL(table.directorTable2, DirectorTableRef("", ""));
     BOOST_CHECK(table.flagColName.empty());
     BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+    BOOST_CHECK(table.charsetName.empty());
+    BOOST_CHECK(table.collationName.empty());
     BOOST_CHECK(table.latitudeColName.empty());
     BOOST_CHECK(table.longitudeColName.empty());
     BOOST_CHECK(table.columns.empty());
@@ -1299,6 +1334,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
         BOOST_CHECK(!table.isPublished);
         BOOST_CHECK(table.isDirector());
         BOOST_CHECK_EQUAL(table.uniquePrimaryKey, true);
+        BOOST_CHECK(table.charsetName.empty());
+        BOOST_CHECK(table.collationName.empty());
         BOOST_CHECK(table.createTime != 0);
         BOOST_CHECK(table.publishTime == 0);
         BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);

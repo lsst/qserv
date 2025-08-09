@@ -240,6 +240,10 @@ message ProtocolRequestSql {
     optional string table    = 8 [default = ""];    /// The name of a table
     optional string engine   = 9 [default = ""];    /// The name of an MySQL engine
 
+    optional string comment   = 20 [default = ""];  /// The comment for the table
+    optional string charset   = 21 [default = ""];  /// The name of the default character set
+    optional string collation = 22 [default = ""];  /// The name of the collations
+
     /// The name of a column (if any) which will be used as a key for MySQL partitions
     optional string partition_by_column = 10 [default = ""];
 
@@ -399,7 +403,6 @@ enum ProtocolStatusExt {
     NONE = 0;                   // unspecified problem
     INVALID_PARAM = 1;          // invalid parameter(s) of a request
     INVALID_ID = 2;             // an invalid request identifier
-    DUPLICATE = 3;              // a duplicate request
     FOLDER_STAT = 4;            // failed to obtain fstat() for a folder
     FOLDER_CREATE = 5;          // failed to create a folder
     FILE_STAT = 6;              // failed to obtain fstat() for a file
@@ -487,9 +490,6 @@ message ProtocolResponseReplicate {
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
 
-    /// The field is set for duplicate requests only
-    optional string duplicate_request_id = 3 [default = ""];
-
     /// The performance of this operation
     required ProtocolPerformance performance = 4;
 
@@ -518,9 +518,6 @@ message ProtocolResponseDelete {
 
     /// Extended status of this operation
     optional ProtocolStatusExt status_ext = 2 [default = NONE];
-
-    /// The field is set for duplicate requests only
-    optional string duplicate_request_id = 3 [default = ""];
 
     /// The performance of this operation
     required ProtocolPerformance performance = 4;

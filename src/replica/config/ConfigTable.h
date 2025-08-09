@@ -171,6 +171,12 @@ public:
      */
     bool uniquePrimaryKey = true;
 
+    // The names of the character set and the collation for the table (optional).
+    // Server defaults will be used for the empty names.
+
+    std::string charsetName;
+    std::string collationName;
+
     // Names of special columns of the partitioned tables.
     // The non-empty values are required for the "director" tables only.
     // The "dependent" tables may have non empty values here.
