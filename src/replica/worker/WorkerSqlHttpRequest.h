@@ -170,6 +170,9 @@ private:
     std::string _partitionByColumn;  ///< The name of the column to be used for partitioning
     SqlIndexDef _index;              ///< The index definition
     std::string _engine;             ///< The name of the table engine to be used
+    std::string _charsetName;        ///< The name of the default character set for the table
+    std::string _collationName;      ///< The name of the collation for the table
+    std::string _comment;            ///< The comment for the table
     TransactionId _transactionId;    ///< The transaction identifier
     std::string _indexName;          ///< The name of the index to be dropped
     std::string _alterTableSpec;     ///< The specification for the ALTER TABLE request

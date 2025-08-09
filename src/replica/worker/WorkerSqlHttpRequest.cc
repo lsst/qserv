@@ -81,6 +81,9 @@ WorkerSqlHttpRequest::WorkerSqlHttpRequest(shared_ptr<ServiceProvider> const& se
         case protocol::SqlRequestType::CREATE_TABLE:
             if (!_batchMode) _table = req.at("table");
             _engine = req.at("engine");
+            _comment = req.at("comment");
+            _charsetName = req.at("charset_name");
+            _collationName = req.at("collation_name");
             _columns = replica::parseSqlColumns(req.at("columns"));
             _partitionByColumn = req.at("partition_by_column");
             break;
@@ -296,7 +299,8 @@ Query WorkerSqlHttpRequest::_generateQuery(Connection::Ptr const& conn, string c
         case protocol::SqlRequestType::CREATE_TABLE: {
             list<string> const keys;
             bool const ifNotExists = true;
-            string query = g.createTable(databaseTable, ifNotExists, _columns, keys, _engine);
+            string query = g.createTable(databaseTable, ifNotExists, _columns, keys, _engine, _comment,
+                                         _charsetName, _collationName);
 
             // If MySQL partitioning was requested for the table then configure partitioning
             // parameters and add the initial partition corresponding to the default
