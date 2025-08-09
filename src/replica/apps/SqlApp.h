@@ -66,39 +66,31 @@ private:
     std::string _engine;
     std::string _schemaFile;
     std::string _partitionByColumn;
+    std::string _charsetName;
+    std::string _collationName;
     std::string _indexName;
     std::string _indexSpecStr;
     std::string _indexComment;
     std::string _indexColumnsFile;
     std::string _alterSpec;
-
-    TransactionId _transactionId = 0;  /// An identifier of a super-transaction corresponding to
-                                       /// to a MySQL partition.
-
-    uint64_t _maxRows = 10000;  /// the "hard" limit for the result set extractor.
-                                /// This is not the same as SQL's 'LIMIT <num-rows>'.
-    bool _allWorkers = false;   /// send the query to all workers regardless of their status
-
-    bool _ignoreNonPartitioned = false;  /// To allow (if 'true') running the partitions removal
+    TransactionId _transactionId = 0;    ///< An identifier of a super-transaction corresponding to
+                                         /// to a MySQL partition.
+    uint64_t _maxRows = 10000;           ///< The "hard" limit for the result set extractor.
+                                         /// This is not the same as SQL's 'LIMIT <num-rows>'.
+    bool _allWorkers = false;            ///< Send the query to all workers regardless of their status
+    bool _ignoreNonPartitioned = false;  ///< To allow (if 'true') running the partitions removal
                                          /// job multiple times.
-
-    bool _ignoreDuplicateKey = false;  /// To allow (if 'true') running the index creation tool
-                                       /// job multiple times without failing on tables that may already
-                                       /// have the desired indexe created by the previous run of the job.
-
-    unsigned int _timeoutSec = 300;  /// When waiting for the completion of the queries
-
-    size_t _pageSize = 100;  /// Rows per page in the printout
-
-    unsigned int _reportLevel = 0;
-
-    bool _overlap = false;  /// Specifies a subset of the partitioned tables
-
+    bool _ignoreDuplicateKey = false;    ///< To allow (if 'true') running the index creation tool
+                                         /// job multiple times without failing on tables that may already
+                                         /// have the desired index created by the previous run of the job.
+    unsigned int _timeoutSec = 300;      ///< When waiting for the completion of the queries
+    size_t _pageSize = 100;              ///< Rows per page in the printout
+    unsigned int _reportLevel = 0;       ///< The verbosity of the job completion report
+    bool _overlap = false;               ///< Specifies a subset of the partitioned tables
     std::string _overlapSelector = "CHUNK_AND_OVERLAP";  ///< The optional selector for a flavor of
                                                          /// the overlap tables.
-
-    std::string _stateUpdatePolicy = "DISABLED";  ///< The policy for updating the persistent
-                                                  ///  state of the row counters.
+    std::string _stateUpdatePolicy = "DISABLED";         ///< The policy for updating the persistent
+                                                         /// state of the row counters.
 };
 
 }  // namespace lsst::qserv::replica

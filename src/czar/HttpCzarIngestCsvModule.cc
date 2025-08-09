@@ -154,11 +154,12 @@ void HttpCzarIngestCsvModule::onEndOfFile() {
 
 json HttpCzarIngestCsvModule::onEndOfBody() {
     debug(__func__);
-    checkApiVersion(__func__, 39);
+    checkApiVersion(__func__, 49);
 
     _databaseName = body().required<string>("database");
     _tableName = body().required<string>("table");
     _charsetName = body().optional<string>("charset_name", "latin1");
+    _collationName = body().optional<string>("collation_name", "latin1_swedish_ci");
     _fieldsTerminatedBy = body().optional<string>("fields_terminated_by", R"(\t)");
     _fieldsEnclosedBy = body().optional<string>("fields_enclosed_by", R"(\0)");
     _fieldsEscapedBy = body().optional<string>("fields_escaped_by", R"(\\)");
@@ -178,6 +179,7 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
     debug(__func__, "database: '" + _databaseName + "'");
     debug(__func__, "table: '" + _tableName + "'");
     debug(__func__, "charsetName: '" + _charsetName + "'");
+    debug(__func__, "collationName: '" + _collationName + "'");
     debug(__func__, "fields_terminated_by: '" + _fieldsTerminatedBy + "'");
     debug(__func__, "fields_enclosed_by: '" + _fieldsEnclosedBy + "'");
     debug(__func__, "fields_escaped_by: '" + _fieldsEscapedBy + "'");
@@ -216,7 +218,7 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
 
     // Make changes to the persistent state of Qserv and the Replicaton/Ingest system.
     list<pair<string, string>> const warnings = ingestData(
-            _databaseName, _tableName, schema, indexes,
+            _databaseName, _tableName, _charsetName, _collationName, schema, indexes,
             [&](uint32_t transactionId) -> map<string, string> { return _pushDataToWorkers(transactionId); });
     for (auto const& warning : warnings) {
         warn(warning.first, warning.second);

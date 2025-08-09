@@ -64,6 +64,8 @@ public:
      *   This variation of table schema will be used for the super-transaction-based
      *   ingest into the table.
      * @param columns column definitions (name,type) of the table
+     * @param charsetName (optional, if not empty) the name of a character set for the new table
+     * @param collationName (optional, if not empty) the name of a collation for the new table
      * @param allWorkers engage all known workers regardless of their status. If the flag
      *   is set to 'false' then only 'ENABLED' workers which are not in
      *   the 'READ-ONLY' state will be involved into the operation.
@@ -75,7 +77,8 @@ public:
      */
     static Ptr create(std::string const& database, std::string const& table, std::string const& engine,
                       std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
-                      bool allWorkers, Controller::Ptr const& controller, std::string const& parentJobId,
+                      std::string const& charsetName, std::string const& collationName, bool allWorkers,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
                       CallbackType const& onFinish, int priority);
 
     SqlCreateTableJob() = delete;
@@ -89,6 +92,8 @@ public:
     std::string const& engine() const { return _engine; }
     std::string const& partitionByColumn() const { return _partitionByColumn; }
     std::list<SqlColDef> const& columns() const { return _columns; }
+    std::string const& charsetName() const { return _charsetName; }
+    std::string const& collationName() const { return _collationName; }
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
@@ -99,7 +104,8 @@ protected:
 private:
     SqlCreateTableJob(std::string const& database, std::string const& table, std::string const& engine,
                       std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
-                      bool allWorkers, Controller::Ptr const& controller, std::string const& parentJobId,
+                      std::string const& charsetName, std::string const& collationName, bool allWorkers,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
                       CallbackType const& onFinish, int priority);
 
     // Input parameters
@@ -108,6 +114,8 @@ private:
     std::string const _engine;
     std::string const _partitionByColumn;
     std::list<SqlColDef> const _columns;
+    std::string const _charsetName;
+    std::string const _collationName;
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.

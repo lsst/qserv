@@ -160,7 +160,16 @@ SqlApp::SqlApp(int argc, char* argv[])
             .option("partition-by-column",
                     "The name of a column which is used for creating the table based on"
                     " the MySQL partitioning mechanism.",
-                    _partitionByColumn);
+                    _partitionByColumn)
+            .option("charset-name",
+                    "The name of a character set for the table. The server default will be used"
+                    " for an empty name.",
+                    _charsetName)
+            .option("collation-name",
+                    "The name of a collation for the table. The server default will be used"
+                    " for an empty name.",
+                    _collationName);
+    ;
 
     parser().command("CREATE_TABLES")
             .required("database", "The name of an existing database where the tables will be created.",
@@ -176,7 +185,16 @@ SqlApp::SqlApp(int argc, char* argv[])
             .option("partition-by-column",
                     "The name of a column which is used for creating the tables based on"
                     " the MySQL partitioning mechanism.",
-                    _partitionByColumn);
+                    _partitionByColumn)
+            .option("charset-name",
+                    "The name of a character set for the table. The server default will be used"
+                    " for an empty name.",
+                    _charsetName)
+            .option("collation-name",
+                    "The name of a collation for the table. The server default will be used"
+                    " for an empty name.",
+                    _collationName);
+    ;
 
     parser().command("DELETE_TABLE")
             .required("database", "The name of an existing database where the table is residing.", _database)
@@ -294,12 +312,14 @@ int SqlApp::runImpl() {
                                         nullptr, PRIORITY_NORMAL);
     } else if (_command == "CREATE_TABLE") {
         job = SqlCreateTableJob::create(_database, _table, _engine, _partitionByColumn,
-                                        SqlSchemaUtils::readFromTextFile(_schemaFile), _allWorkers,
-                                        controller, noParentJobId, nullptr, PRIORITY_NORMAL);
+                                        SqlSchemaUtils::readFromTextFile(_schemaFile), _charsetName,
+                                        _collationName, _allWorkers, controller, noParentJobId, nullptr,
+                                        PRIORITY_NORMAL);
     } else if (_command == "CREATE_TABLES") {
         job = SqlCreateTablesJob::create(_database, _table, _engine, _partitionByColumn,
-                                         SqlSchemaUtils::readFromTextFile(_schemaFile), _allWorkers,
-                                         controller, noParentJobId, nullptr, PRIORITY_NORMAL);
+                                         SqlSchemaUtils::readFromTextFile(_schemaFile), _charsetName,
+                                         _collationName, _allWorkers, controller, noParentJobId, nullptr,
+                                         PRIORITY_NORMAL);
     } else if (_command == "DELETE_TABLE") {
         job = SqlDeleteTableJob::create(_database, _table, _allWorkers, controller, noParentJobId, nullptr,
                                         PRIORITY_NORMAL);

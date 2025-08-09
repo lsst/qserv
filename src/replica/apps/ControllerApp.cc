@@ -262,7 +262,15 @@ void ControllerApp::_configureParserCommandSQL() {
             .option("partition-by-column",
                     "The name of a column which is used for creating the table based on"
                     " the MySQL partitioning mechanism,",
-                    _sqlPartitionByColumn);
+                    _sqlPartitionByColumn)
+            .option("charset-name",
+                    "The name of a character set for the table. The server default will be used"
+                    " for an empty name.",
+                    _sqlCharsetName)
+            .option("collation-name",
+                    "The name of a collation for the table. The server default will be used"
+                    " for an empty name.",
+                    _sqlCollationName);
 
     parser().command("SQL_CREATE_TABLES")
             .required("database", "The name of an existing database where the table will be created.",
@@ -278,7 +286,15 @@ void ControllerApp::_configureParserCommandSQL() {
             .option("partition-by-column",
                     "The name of a column which is used for creating the table based on"
                     " the MySQL partitioning mechanism,",
-                    _sqlPartitionByColumn);
+                    _sqlPartitionByColumn)
+            .option("charset-name",
+                    "The name of a character set for the table. The server default will be used"
+                    " for an empty name.",
+                    _sqlCharsetName)
+            .option("collation-name",
+                    "The name of a collation for the table. The server default will be used"
+                    " for an empty name.",
+                    _sqlCollationName);
 
     parser().command("SQL_DELETE_TABLE")
             .required("database", "The name of an existing database where the table is residing.",
@@ -488,14 +504,14 @@ int ControllerApp::runImpl() {
     } else if ("SQL_CREATE_TABLE" == _requestType) {
         request = SqlCreateTableRequest::createAndStart(
                 controller, _workerName, _sqlDatabase, _sqlTable, _sqlEngine, _sqlPartitionByColumn,
-                SqlSchemaUtils::readFromTextFile(_sqlSchemaFile), SqlRequest::extendedPrinter, _priority,
-                !_doNotTrackRequest);
+                SqlSchemaUtils::readFromTextFile(_sqlSchemaFile), _sqlCharsetName, _sqlCollationName,
+                SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
     } else if ("SQL_CREATE_TABLES" == _requestType) {
         vector<string> const tables = {_sqlTable};
         request = SqlCreateTablesRequest::createAndStart(
                 controller, _workerName, _sqlDatabase, tables, _sqlEngine, _sqlPartitionByColumn,
-                SqlSchemaUtils::readFromTextFile(_sqlSchemaFile), SqlRequest::extendedPrinter, _priority,
-                !_doNotTrackRequest);
+                SqlSchemaUtils::readFromTextFile(_sqlSchemaFile), _sqlCharsetName, _sqlCollationName,
+                SqlRequest::extendedPrinter, _priority, !_doNotTrackRequest);
     } else if ("SQL_DELETE_TABLE" == _requestType) {
         vector<string> const tables = {_sqlTable};
         request = SqlDeleteTableRequest::createAndStart(controller, _workerName, _sqlDatabase, tables,

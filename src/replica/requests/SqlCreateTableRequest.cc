@@ -38,10 +38,12 @@ namespace lsst::qserv::replica {
 SqlCreateTableRequest::Ptr SqlCreateTableRequest::createAndStart(
         shared_ptr<Controller> const& controller, string const& workerName, std::string const& database,
         std::string const& table, std::string const& engine, string const& partitionByColumn,
-        std::list<SqlColDef> const& columns, CallbackType const& onFinish, int priority, bool keepTracking,
-        string const& jobId, unsigned int requestExpirationIvalSec) {
+        std::list<SqlColDef> const& columns, std::string const& charsetName, std::string const& collationName,
+        CallbackType const& onFinish, int priority, bool keepTracking, string const& jobId,
+        unsigned int requestExpirationIvalSec) {
     auto ptr = Ptr(new SqlCreateTableRequest(controller, workerName, database, table, engine,
-                                             partitionByColumn, columns, onFinish, priority, keepTracking));
+                                             partitionByColumn, columns, charsetName, collationName, onFinish,
+                                             priority, keepTracking));
     ptr->start(jobId, requestExpirationIvalSec);
     return ptr;
 }
@@ -51,6 +53,7 @@ SqlCreateTableRequest::SqlCreateTableRequest(shared_ptr<Controller> const& contr
                                              std::string const& table, std::string const& engine,
                                              string const& partitionByColumn,
                                              std::list<SqlColDef> const& columns,
+                                             std::string const& charsetName, std::string const& collationName,
                                              CallbackType const& onFinish, int priority, bool keepTracking)
         : SqlRequest(controller, "SQL_CREATE_TABLE", workerName, ::unlimitedMaxRows, priority, keepTracking),
           _onFinish(onFinish) {
@@ -65,6 +68,8 @@ SqlCreateTableRequest::SqlCreateTableRequest(shared_ptr<Controller> const& contr
         out->set_name(column.name);
         out->set_type(column.type);
     }
+    requestBody.set_charset(charsetName);
+    requestBody.set_collation(collationName);
 }
 
 void SqlCreateTableRequest::notify(replica::Lock const& lock) {

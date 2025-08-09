@@ -275,7 +275,8 @@ Query WorkerSqlRequest::_query(Connection::Ptr const& conn, string const& table)
             }
             list<string> const keys;
             bool const ifNotExists = true;
-            string query = g.createTable(databaseTable, ifNotExists, columns, keys, _request.engine());
+            string query = g.createTable(databaseTable, ifNotExists, columns, keys, _request.engine(),
+                                         _request.comment(), _request.charset(), _request.collation());
 
             // If MySQL partitioning was requested for the table then configure partitioning
             // parameters and add the initial partition corresponding to the default

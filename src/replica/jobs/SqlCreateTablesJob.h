@@ -81,7 +81,8 @@ public:
      */
     static Ptr create(std::string const& database, std::string const& table, std::string const& engine,
                       std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
-                      bool allWorkers, Controller::Ptr const& controller, std::string const& parentJobId,
+                      std::string const& charsetName, std::string const& collationName, bool allWorkers,
+                      Controller::Ptr const& controller, std::string const& parentJobId,
                       CallbackType const& onFinish, int priority);
 
     SqlCreateTablesJob() = delete;
@@ -95,6 +96,8 @@ public:
     std::string const& engine() const { return _engine; }
     std::string const& partitionByColumn() const { return _partitionByColumn; }
     std::list<SqlColDef> const& columns() const { return _columns; }
+    std::string const& charsetName() const { return _charsetName; }
+    std::string const& collationName() const { return _collationName; }
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
 
 protected:
@@ -105,7 +108,8 @@ protected:
 private:
     SqlCreateTablesJob(std::string const& database, std::string const& table, std::string const& engine,
                        std::string const& partitionByColumn, std::list<SqlColDef> const& columns,
-                       bool allWorkers, Controller::Ptr const& controller, std::string const& parentJobId,
+                       std::string const& charsetName, std::string const& collationName, bool allWorkers,
+                       Controller::Ptr const& controller, std::string const& parentJobId,
                        CallbackType const& onFinish, int priority);
 
     // Input parameters
@@ -114,6 +118,8 @@ private:
     std::string const _engine;
     std::string const _partitionByColumn;
     std::list<SqlColDef> const _columns;
+    std::string const _charsetName;
+    std::string const _collationName;
     CallbackType _onFinish;  /// @note is reset when the job finishes
 
     /// A registry of workers to mark those for which request has been sent.

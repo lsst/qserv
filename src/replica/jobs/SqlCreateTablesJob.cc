@@ -45,16 +45,19 @@ string SqlCreateTablesJob::typeName() { return "SqlCreateTablesJob"; }
 
 SqlCreateTablesJob::Ptr SqlCreateTablesJob::create(string const& database, string const& table,
                                                    string const& engine, string const& partitionByColumn,
-                                                   list<SqlColDef> const& columns, bool allWorkers,
+                                                   list<SqlColDef> const& columns, string const& charsetName,
+                                                   string const& collationName, bool allWorkers,
                                                    Controller::Ptr const& controller,
                                                    string const& parentJobId, CallbackType const& onFinish,
                                                    int priority) {
-    return Ptr(new SqlCreateTablesJob(database, table, engine, partitionByColumn, columns, allWorkers,
-                                      controller, parentJobId, onFinish, priority));
+    return Ptr(new SqlCreateTablesJob(database, table, engine, partitionByColumn, columns, charsetName,
+                                      collationName, allWorkers, controller, parentJobId, onFinish,
+                                      priority));
 }
 
 SqlCreateTablesJob::SqlCreateTablesJob(string const& database, string const& table, string const& engine,
                                        string const& partitionByColumn, list<SqlColDef> const& columns,
+                                       string const& charsetName, string const& collationName,
                                        bool allWorkers, Controller::Ptr const& controller,
                                        string const& parentJobId, CallbackType const& onFinish, int priority)
         : SqlJob(0, allWorkers, controller, parentJobId, "SQL_CREATE_TABLES", priority),
@@ -63,6 +66,8 @@ SqlCreateTablesJob::SqlCreateTablesJob(string const& database, string const& tab
           _engine(engine),
           _partitionByColumn(partitionByColumn),
           _columns(columns),
+          _charsetName(charsetName),
+          _collationName(collationName),
           _onFinish(onFinish) {}
 
 list<pair<string, string>> SqlCreateTablesJob::extendedPersistentState() const {
@@ -72,6 +77,8 @@ list<pair<string, string>> SqlCreateTablesJob::extendedPersistentState() const {
     result.emplace_back("engine", engine());
     result.emplace_back("partition_by_column", partitionByColumn());
     result.emplace_back("num_columns", to_string(columns().size()));
+    result.emplace_back("charset_name", charsetName());
+    result.emplace_back("collation_name", collationName());
     result.emplace_back("all_workers", bool2str(allWorkers()));
     return result;
 }
@@ -94,6 +101,7 @@ list<SqlRequest::Ptr> SqlCreateTablesJob::launchRequests(replica::Lock const& lo
         bool const keepTracking = true;
         requests.push_back(SqlCreateTablesRequest::createAndStart(
                 controller(), worker, database(), tables, engine(), partitionByColumn(), columns(),
+                charsetName(), collationName(),
                 [self = shared_from_base<SqlCreateTablesJob>()](SqlCreateTablesRequest::Ptr const& request) {
                     self->onRequestFinish(request);
                 },

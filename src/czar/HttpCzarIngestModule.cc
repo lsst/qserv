@@ -74,10 +74,12 @@ json HttpCzarIngestModule::executeImpl(string const& subModuleName) {
 
 json HttpCzarIngestModule::_ingestData() {
     debug(__func__);
-    checkApiVersion(__func__, 35);
+    checkApiVersion(__func__, 49);
 
     auto const databaseName = body().required<string>("database");
     auto const tableName = body().required<string>("table");
+    auto const charsetName = body().optional<string>("charset_name", "latin1");
+    auto const collationName = body().optional<string>("collation_name", "latin1_swedish_ci");
     setTimeoutSec(max(1U, body().optional<unsigned int>("timeout", timeoutSec())));
 
     // This is needed for decoding values of the binary columns should they be present
@@ -129,13 +131,15 @@ json HttpCzarIngestModule::_ingestData() {
     // Make changes to the persistent state of Qserv and the Replicaton/Ingest system.
     // Post warnings if any reported by the method.
     list<pair<string, string>> const warnings = ingestData(
-            databaseName, tableName, schema, indexes, [&](uint32_t transactionId) -> map<string, string> {
+            databaseName, tableName, charsetName, collationName, schema, indexes,
+            [&](uint32_t transactionId) -> map<string, string> {
                 // Send table data to all eligible workers and wait for the responses.
                 // Note that requests are sent in parallel, and the duration of each such request
                 // is limited by the timeout parameter.
                 json dataJson =
                         json::object({{"transaction_id", transactionId},
                                       {"table", tableName},
+                                      {"charset_name", charsetName},
                                       {"chunk", 0},
                                       {"overlap", 0},
                                       {"rows", rows},
