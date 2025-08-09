@@ -240,6 +240,10 @@ message ProtocolRequestSql {
     optional string table    = 8 [default = ""];    /// The name of a table
     optional string engine   = 9 [default = ""];    /// The name of an MySQL engine
 
+    optional string comment   = 20 [default = ""];  /// The comment for the table
+    optional string charset   = 21 [default = ""];  /// The name of the default character set
+    optional string collation = 22 [default = ""];  /// The name of the collations
+
     /// The name of a column (if any) which will be used as a key for MySQL partitions
     optional string partition_by_column = 10 [default = ""];
 

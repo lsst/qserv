@@ -119,6 +119,7 @@ private:
     std::string _databaseName;
     std::string _tableName;
     std::string _charsetName;
+    std::string _collationName;
     std::string _fieldsTerminatedBy;
     std::string _fieldsEnclosedBy;
     std::string _fieldsEscapedBy;

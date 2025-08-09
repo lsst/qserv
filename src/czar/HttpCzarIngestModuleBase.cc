@@ -82,10 +82,11 @@ HttpCzarIngestModuleBase::HttpCzarIngestModuleBase(asio::io_service& io_service)
                            to_string(cconfig::CzarConfig::instance()->replicationRegistryPort())) {}
 
 list<pair<string, string>> HttpCzarIngestModuleBase::ingestData(
-        string const& databaseName, string const& tableName, json const& schema, json const& indexes,
+        string const& databaseName, string const& tableName, string const& charsetName,
+        string const& collationName, json const& schema, json const& indexes,
         function<map<string, string>(uint32_t)> const& submitRequestsToWorkers) {
     _unpublishOrCreateDatabase(databaseName);
-    _createTable(databaseName, tableName, schema);
+    _createTable(databaseName, tableName, charsetName, collationName, schema);
 
     uint32_t transactionId = 0;
     try {
@@ -192,9 +193,14 @@ void HttpCzarIngestModuleBase::_publishDatabase(string const& databaseName) {
 }
 
 void HttpCzarIngestModuleBase::_createTable(string const& databaseName, string const& tableName,
+                                            string const& charsetName, string const& collationName,
                                             json const& schema) {
-    json data = json::object(
-            {{"database", databaseName}, {"table", tableName}, {"is_partitioned", 0}, {"schema", schema}});
+    json data = json::object({{"database", databaseName},
+                              {"table", tableName},
+                              {"is_partitioned", 0},
+                              {"charset_name", charsetName},
+                              {"collation_name", collationName},
+                              {"schema", schema}});
     _requestController(http::Method::POST, "/ingest/table/", data);
 }
 
