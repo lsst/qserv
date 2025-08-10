@@ -46,6 +46,8 @@ that has the following schema (of which only the database and database family-re
                             "latitude_key" :            "coord_dec",
                             "create_time" :             1662774817703,
                             "unique_primary_key" :      1,
+                            "charset_name" :            "latin1",
+                            "collation_name" :          "latin1_swedish_ci",
                             "flag" :                    "",
                             "name" :                    "Source",
                             "director_database_name" :  "",
@@ -221,7 +223,9 @@ the **partitioned** tables is presented below:
         "longitude_key"        : <string>,
         "flag"                 : <string>,
         "ang_sep"              : <double>,
-        "unique_primary_key"   : <number>
+        "unique_primary_key"   : <number>,
+        "charset_name"         : <string>,
+        "collation_name"       : <string>
     }
 
 A description of the *regular* tables has a fewer number of attributes (attributes that which are specific to the *partitioned*
@@ -316,6 +320,13 @@ Where the attributes are:
 
   - ``0``: The primary key is not unique.
   - ``1``: The primary key is unique.
+
+``charset_name`` : *part* = ``latin1``
+  The optional parameter that affects the interpretation of the data in the CSV file when ingesting the contribution.
+  The name will be also used for setting the ``CHARSET`` attribute of the relevant MySQL tables created by the service.
+
+``collation_name`` : *part* = ``latin1_swedish_ci``
+  The optional parameter is used for setting the ``COLLATE`` attribute of the relevant MySQL tables created by the service.
 
 .. warning::
 

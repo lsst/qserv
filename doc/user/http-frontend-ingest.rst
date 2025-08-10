@@ -79,9 +79,8 @@ Most services described in this document require user database and table names. 
   This prefix is reserved for naming internal tables that Qserv places into user databases.
 
 Depending on the version of the Qserv AOI, there are additional restrictions on the names of databases and tables.
-Before version number **46** of the API, database and table names could only container alphanumeric characters and underscores.
-This restriction was imposed to avoid issues with the MySQL server. This restriction was relaxed in version **46** of the API
-to allow the following special characters:
+Before version number **46** of the API, database and table names could only contain alphanumeric characters and underscores.
+This restriction is relaxed as of version **46** of the API to allow the following special characters:
 
   -       (white space)
   - ``-`` (hyphen)
@@ -140,6 +139,8 @@ to specify the operation to be performed. The object follows this schema:
     {   "database" :        <string>,
         "table" :           <string>,
         "binary_encoding" : <string>,
+        "charset_name" :    <string>,
+        "collation_name" :  <string>,
         "timeout" :         <number>,
         "schema" :          <array>,
         "indexes" :         <array>,
@@ -158,6 +159,13 @@ Where:
   The optional binary encoding of the binary data in the table. For further details see:
 
   - :ref:`ingest-general-binary-encoding` (REST)
+
+``charset_name`` : *part* = ``latin1``
+  The optional parameter that affects the interpretation of the data in the CSV file when ingesting the contribution.
+  The name will be used for setting the ``CHARSET`` attribute of the relevant MySQL tables created by the service.
+
+``collation_name`` : *part* = ``latin1_swedish_ci``
+  The optional parameter is used for setting the ``COLLATE`` attribute of the relevant MySQL tables created by the service.
 
 ``schema`` : *array*
   The required schema definition. The schema must be a JSON array, where each entry represents a column specification.
@@ -328,11 +336,11 @@ and files:
   The default value assumes the newline character.
 
 ``charset_name`` : *part* = ``latin1``
-  The optional parameters specify the desired character set name to be assumed when ingesting
-  the contribution. The default value may be also affected by the ingest services configuration.
-  See the following document for more details:
+  The optional parameter that affects the interpretation of the data in the CSV file when ingesting the contribution.
+  The name will be also used for setting the ``CHARSET`` attribute of the relevant MySQL tables created by the service.
 
-  - :ref:`ingest-api-advanced-charset` (ADVANCED)
+``collation_name`` : *part* = ``latin1_swedish_ci``
+  The optional parameter is used for setting the ``COLLATE`` attribute of the relevant MySQL tables created by the service.
 
 ``timeout`` : *part* = ``300``
   The optional timeout (in seconds) that limits the duration of the internal operations initiated by the service.
@@ -398,6 +406,8 @@ The request could be pushed to the service using:
          -F 'table=employee' \
          -F 'fields_terminated_by=,' \
          -F 'timeout=300' \
+         -F 'charset_name=utf8mb4' \
+         -F 'collation_name=utf8mb4_uca1400_ai_ci' \
          -F 'schema=@/path/to/schema.json' \
          -F 'indexes=@/path/to/indexes.json' \ 
          -F 'rows=@/path/to/employee.csv'
