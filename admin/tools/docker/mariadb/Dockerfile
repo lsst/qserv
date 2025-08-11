@@ -11,7 +11,7 @@
 # Scisql is cloned, built from source, and left installed to /usr/local.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM ubuntu:focal AS mariadb-scisql-builder
+FROM ubuntu:jammy AS mariadb-scisql-builder
 
 RUN apt-get update \
     && apt-get install -y curl \
