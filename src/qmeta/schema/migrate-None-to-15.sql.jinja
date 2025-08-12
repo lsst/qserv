@@ -233,4 +233,5 @@ COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 -- Version 12 renamed table QStatsTmp into QProgress to reflect its purpose and add a foreign key constraint to QInfo table. Drop the obsolete table QWorker.
 -- Version 13 added tables chunkMap and chunkMapStatus. The tables are meant for storing persistent chunk-to-workers map.
 -- Version 14 added table QProgressHistory to store the query progrerssion history
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '14');
+-- Version 15 fixed a definition of the view InfoSchemaProcessList to depend on QProgress instead of QStatsTmp
+INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '15');
