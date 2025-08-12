@@ -79,6 +79,8 @@ public:
      *   This variation of table schema will be used for the super-transaction-based
      *   ingest into the table.
      * @param columns Column definitions (name,type) of the table.
+     * @param charsetName (optional, if not empty) the name of a character set for the new table
+     * @param collationName (optional, if not empty) the name of a collation for the new table
      *
      * @see The very base class Request for the description of the common parameters
      *   of all subclasses.
@@ -88,7 +90,8 @@ public:
     static Ptr createAndStart(std::shared_ptr<Controller> const& controller, std::string const& worker,
                               std::string const& database, std::vector<std::string> const& tables,
                               std::string const& engine, std::string const& partitionByColumn,
-                              std::list<SqlColDef> const& columns, CallbackType const& onFinish = nullptr,
+                              std::list<SqlColDef> const& columns, std::string const& charsetName,
+                              std::string const& collationName, CallbackType const& onFinish = nullptr,
                               int priority = PRIORITY_NORMAL, bool keepTracking = true,
                               std::string const& jobId = "", unsigned int requestExpirationIvalSec = 0);
 
@@ -99,7 +102,8 @@ private:
     SqlCreateTablesRequest(std::shared_ptr<Controller> const& controller, std::string const& worker,
                            std::string const& database, std::vector<std::string> const& tables,
                            std::string const& engine, std::string const& partitionByColumn,
-                           std::list<SqlColDef> const& columns, CallbackType const& onFinish, int priority,
+                           std::list<SqlColDef> const& columns, std::string const& charsetName,
+                           std::string const& collationName, CallbackType const& onFinish, int priority,
                            bool keepTracking);
 
     CallbackType _onFinish;  ///< @note is reset when the request finishes

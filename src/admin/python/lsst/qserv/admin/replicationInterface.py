@@ -41,7 +41,7 @@ headers = {"Content-Type": "application/json"}
 
 chunk_info_file = "chunk_info.json"
 
-repl_api_version = 48
+repl_api_version = 49
 
 _log = logging.getLogger(__name__)
 

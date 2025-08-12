@@ -124,6 +124,8 @@ json TableInfo::toJson() const {
     result["flag"] = flagColName;
     result["ang_sep"] = angSep;
     result["unique_primary_key"] = uniquePrimaryKey ? 1 : 0;
+    result["charset_name"] = charsetName;
+    result["collation_name"] = collationName;
     result["latitude_key"] = latitudeColName;
     result["longitude_key"] = longitudeColName;
     // The array representation is required to preserve the relative order
@@ -143,7 +145,8 @@ bool operator==(TableInfo const& lhs, TableInfo const& rhs) {
     return (lhs.columns == rhs.columns) && (lhs.name == rhs.name) && (lhs.database == rhs.database) &&
            (lhs.isPartitioned == rhs.isPartitioned) && (lhs.directorTable == rhs.directorTable) &&
            (lhs.directorTable2 == rhs.directorTable2) && (lhs.flagColName == rhs.flagColName) &&
-           (lhs.uniquePrimaryKey == rhs.uniquePrimaryKey) && (lhs.latitudeColName == rhs.latitudeColName) &&
+           (lhs.uniquePrimaryKey == rhs.uniquePrimaryKey) && (lhs.charsetName == rhs.charsetName) &&
+           (lhs.collationName == rhs.collationName) && (lhs.latitudeColName == rhs.latitudeColName) &&
            (lhs.longitudeColName == rhs.longitudeColName);
 }
 

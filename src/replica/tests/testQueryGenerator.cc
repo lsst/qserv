@@ -108,6 +108,21 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             " PARTITION BY LIST (`qserv_trans_id`)"
             " (PARTITION `p1` VALUES IN (1))";
 
+    string const createTableFive =
+            "CREATE TABLE `five` ("
+            "`id` INT NOT NULL,`col1` VARCHAR(256) DEFAULT='',`col2` DOUBLE"
+            ") ENGINE=MEMORY DEFAULT CHARSET=latin1 COMMENT='the memory table'";
+
+    string const createTableSix =
+            "CREATE TABLE `six` ("
+            "`id` INT NOT NULL,`col1` VARCHAR(256) DEFAULT='',`col2` DOUBLE"
+            ") ENGINE=MEMORY COLLATE=latin1_swedish_ci COMMENT='the memory table'";
+
+    string const createTableSeven =
+            "CREATE TABLE `seven` ("
+            "`id` INT NOT NULL,`col1` VARCHAR(256) DEFAULT='',`col2` DOUBLE"
+            ") ENGINE=MEMORY DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci COMMENT='the memory table'";
+
     list<tuple<string, unsigned int, bool>> const indexKeys = {make_tuple("worker", 0, true),
                                                                make_tuple("status", 0, false)};
     list<tuple<string, unsigned int, bool>> const indexKeys2 = {make_tuple("worker", 16, true)};
@@ -320,6 +335,12 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {createTableThree, g.createTable("three", false, columns, keys)},
             {createTableFour, g.createTable("four", false, columns, keys, "MyISAM", "partitioned table") +
                                       g.partitionByList("qserv_trans_id") + g.partition(1)},
+            {createTableFive,
+             g.createTable("five", false, columns, list<string>(), "MEMORY", "the memory table", "latin1")},
+            {createTableSix, g.createTable("six", false, columns, list<string>(), "MEMORY",
+                                           "the memory table", "", "latin1_swedish_ci")},
+            {createTableSeven, g.createTable("seven", false, columns, list<string>(), "MEMORY",
+                                             "the memory table", "latin1", "latin1_swedish_ci")},
 
             {"CREATE TABLE `dst` LIKE `src`", g.createTableLike("dst", "src")},
             {"CREATE TABLE IF NOT EXISTS `dst` LIKE `src`",

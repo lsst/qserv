@@ -515,6 +515,9 @@ json HttpIngestModule::_addTable() {
     // supported.
     if (body().has("unique_primary_key")) {
         checkApiVersion(__func__, 21, "'unique_primary_key' requires API version 21 or newer.");
+    }
+    if (body().has("charset_name") || body().has("collation_name")) {
+        checkApiVersion(__func__, 49, "'charset_name' and 'collation_name' require API version 49 or newer.");
     } else {
         checkApiVersion(__func__, 12);
     }
@@ -532,6 +535,8 @@ json HttpIngestModule::_addTable() {
     table.flagColName = body().optional<string>("flag", "");
     table.angSep = body().optional<double>("ang_sep", 0);
     table.uniquePrimaryKey = body().optional<int>("unique_primary_key", 1) != 0;
+    table.charsetName = body().optional<string>("charset_name", "latin1");
+    table.collationName = body().optional<string>("collation_name", "latin1_general_ci");
 
     auto const schema = body().required<json>("schema");
 
@@ -547,6 +552,8 @@ json HttpIngestModule::_addTable() {
     debug(__func__, "flag=" + table.flagColName);
     debug(__func__, "ang_sep=" + to_string(table.angSep));
     debug(__func__, "unique_primary_key=" + bool2str(table.uniquePrimaryKey));
+    debug(__func__, "charset_name=" + table.charsetName);
+    debug(__func__, "collation_name=" + table.collationName);
     debug(__func__, "schema=" + schema.dump());
 
     auto const config = controller()->serviceProvider()->config();
@@ -624,10 +631,10 @@ json HttpIngestModule::_addTable() {
         tables.push_back(ChunkedTable(table.name, chunk, overlap).name());
     }
     for (auto&& thisTableName : tables) {
-        auto const job =
-                SqlCreateTableJob::create(database.name, thisTableName, engine, _partitionByColumn,
-                                          table.columns, allWorkers, controller(), noParentJobId, nullptr,
-                                          config->get<int>("controller", "ingest-priority-level"));
+        auto const job = SqlCreateTableJob::create(database.name, thisTableName, engine, _partitionByColumn,
+                                                   table.columns, table.charsetName, table.collationName,
+                                                   allWorkers, controller(), noParentJobId, nullptr,
+                                                   config->get<int>("controller", "ingest-priority-level"));
         job->start();
         logJobStartedEvent(SqlCreateTableJob::typeName(), job, database.family);
         job->wait();
@@ -1077,8 +1084,8 @@ void HttpIngestModule::_createMissingChunkTables(DatabaseInfo const& database, b
             throw http::Error(__func__, "schema is empty for table: '" + table.name + "'");
         }
         auto const job = SqlCreateTablesJob::create(
-                database.name, table.name, engine, _partitionByColumn, table.columns, allWorkers,
-                controller(), noParentJobId, nullptr,
+                database.name, table.name, engine, _partitionByColumn, table.columns, table.charsetName,
+                table.collationName, allWorkers, controller(), noParentJobId, nullptr,
                 controller()->serviceProvider()->config()->get<int>("controller", "ingest-priority-level"));
         job->start();
         logJobStartedEvent(SqlCreateTablesJob::typeName(), job, database.family);
@@ -1144,8 +1151,10 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
             // are applied to both classes of tables.
             list<string> const noKeys;
             string const tableEngine = "MyISAM";
-            string const query = g.createTable(table.database, table.name, ifNotExists, table.columns, noKeys,
-                                               tableEngine);
+            string const tableComment;
+            string const query =
+                    g.createTable(table.database, table.name, ifNotExists, table.columns, noKeys, tableEngine,
+                                  tableComment, table.charsetName, table.collationName);
             statements.push_back(query);
         }
 

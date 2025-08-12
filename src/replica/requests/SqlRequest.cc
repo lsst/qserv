@@ -90,6 +90,8 @@ list<pair<string, string>> SqlRequest::extendedPersistentState() const {
     result.emplace_back("partition_by_column", requestBody.partition_by_column());
     result.emplace_back("transaction_id", to_string(requestBody.transaction_id()));
     result.emplace_back("num_columns", to_string(requestBody.columns_size()));
+    result.emplace_back("charset_name", requestBody.charset());
+    result.emplace_back("collation_name", requestBody.collation());
     result.emplace_back("tables", util::String::toString(requestBody.tables()));
     result.emplace_back("batch_mode", bool2str(requestBody.batch_mode()));
     return result;

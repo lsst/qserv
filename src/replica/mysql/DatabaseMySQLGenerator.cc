@@ -83,8 +83,8 @@ string QueryGenerator::limit(unsigned int num, unsigned int offset) const {
 }
 
 string QueryGenerator::createTable(SqlId const& sqlId, bool ifNotExists, list<SqlColDef> const& columns,
-                                   list<string> const& keys, string const& engine,
-                                   string const& comment) const {
+                                   list<string> const& keys, string const& engine, string const& comment,
+                                   string const& charsetName, string const& collationName) const {
     string sql = "CREATE TABLE ";
     if (ifNotExists) sql += "IF NOT EXISTS ";
     sql += sqlId.str + " (";
@@ -98,6 +98,9 @@ string QueryGenerator::createTable(SqlId const& sqlId, bool ifNotExists, list<Sq
         sql += "," + key;
     }
     sql += ") ENGINE=" + engine;
+    // Note that the charset name and collation names are not quoted.
+    if (!charsetName.empty()) sql += " DEFAULT CHARSET=" + charsetName;
+    if (!collationName.empty()) sql += " COLLATE=" + collationName;
     if (!comment.empty()) sql += " COMMENT=" + val(comment).str;
     return sql;
 }
