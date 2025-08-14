@@ -91,8 +91,7 @@ namespace lsst::qserv::qdisp {
 // class Executive implementation
 ////////////////////////////////////////////////////////////////////////
 Executive::Executive(int secondsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
-                     util::QdispPool::Ptr const& qdispPool,
-                     shared_ptr<qmeta::QProgress> const& queryProgress,
+                     util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QProgress> const& queryProgress,
                      shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
                      shared_ptr<qproc::QuerySession> const& querySession)
         : _messageStore(ms),
@@ -125,7 +124,6 @@ Executive::~Executive() {
         }
     }
 }
-
 
 Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                                  shared_ptr<util::QdispPool> const& qdispPool,

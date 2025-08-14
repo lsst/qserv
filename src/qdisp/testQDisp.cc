@@ -41,9 +41,6 @@
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
-#include "qdisp/QueryRequest.h"
-#include "qdisp/SharedResources.h"
-#include "qdisp/XrdSsiMocks.h"
 #include "qmeta/QProgress.h"
 #include "qmeta/QProgressHistory.h"
 #include "qmeta/MessageStore.h"
@@ -272,7 +269,7 @@ public:
         std::shared_ptr<qmeta::QProgressHistory>
                 queryProgressHistory;  // No updating QProgressHistory, nullptr
         ex = qdisp::ExecutiveUT::PtrUT(new qdisp::ExecutiveUT(60, ms, qdispPool, qProgress,
-                                       queryProgressHistory, nullptr, testInfo));
+                                                              queryProgressHistory, nullptr, testInfo));
         LOGS(_log, LOG_LVL_INFO, "SetupTest end");
     }
     ~SetupTest() {}

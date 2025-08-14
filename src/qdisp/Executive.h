@@ -50,7 +50,6 @@
 #include "util/threadSafe.h"
 #include "util/ThreadPool.h"
 
-
 namespace lsst::qserv::ccontrol {
 class UserQuerySelect;
 }
