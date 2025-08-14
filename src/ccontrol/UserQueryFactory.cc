@@ -51,10 +51,11 @@
 #include "ccontrol/UserQueryType.h"
 #include "css/CssAccess.h"
 #include "css/KvInterfaceImplMem.h"
+#include "czar/Czar.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "qdisp/Executive.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QMetaMysql.h"
 #include "qmeta/QMetaSelect.h"
 #include "qmeta/QProgress.h"
@@ -67,6 +68,7 @@
 #include "rproc/InfileMerger.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
+#include "util/QdispPool.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
@@ -222,12 +224,9 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, std::string const& czarName)
         : _userQuerySharedResources(makeUserQuerySharedResources(dbModels, czarName)),
+          _qmetaSecondsBetweenUpdates(cconfig::CzarConfig::instance()->getQMetaSecondsBetweenChunkUpdates()),
           _useQservRowCounterOptimization(true),
           _asioIoService() {
-    auto const czarConfig = cconfig::CzarConfig::instance();
-    _executiveConfig = std::make_shared<qdisp::ExecutiveConfig>(
-            czarConfig->getXrootdFrontendUrl(), czarConfig->getQMetaSecondsBetweenChunkUpdates());
-
     // When czar crashes/exits while some queries are still in flight they
     // are left in EXECUTING state in QMeta. We want to cleanup that state
     // to avoid confusion. Note that when/if clean czar restart is implemented
@@ -258,7 +257,7 @@ UserQueryFactory::~UserQueryFactory() {
 }
 
 UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::string const& defaultDb,
-                                              qdisp::SharedResources::Ptr const& qdispSharedResources,
+                                              util::QdispPool::Ptr const& qdispPool,
                                               std::string const& userQueryId, std::string const& msgTableName,
                                               std::string const& resultDb) {
     // result location could potentially be specified by SUBMIT command, for now
@@ -351,11 +350,11 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             sessionValid = false;
         }
 
-        auto messageStore = std::make_shared<qdisp::MessageStore>();
+        auto messageStore = std::make_shared<qmeta::MessageStore>();
         std::shared_ptr<qdisp::Executive> executive;
         std::shared_ptr<rproc::InfileMergerConfig> infileMergerConfig;
         if (sessionValid) {
-            executive = qdisp::Executive::create(*_executiveConfig, messageStore, qdispSharedResources,
+            executive = qdisp::Executive::create(_qmetaSecondsBetweenUpdates, messageStore, qdispPool,
                                                  _userQuerySharedResources->queryProgress,
                                                  _userQuerySharedResources->queryProgressHistory, qs,
                                                  _asioIoService);
@@ -364,17 +363,22 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             infileMergerConfig->debugNoMerge = _debugNoMerge;
         }
 
+        auto czarConfig = cconfig::CzarConfig::instance();
+        int uberJobMaxChunks = czarConfig->getUberJobMaxChunks();
+
         // This, effectively invalid, UserQuerySelect object should report errors from both `errorExtra`
         // and errors that the QuerySession `qs` has stored internally.
         auto uq = std::make_shared<UserQuerySelect>(
                 qs, messageStore, executive, _userQuerySharedResources->databaseModels, infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
                 _userQuerySharedResources->queryProgress, _userQuerySharedResources->czarId, errorExtra,
-                async, resultDb);
+                async, resultDb, uberJobMaxChunks);
+
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupMerger();
             uq->saveResultQuery();
+            executive->setUserQuerySelect(uq);
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {

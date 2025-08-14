@@ -1,6 +1,8 @@
 add_library(qmeta SHARED)
 
 target_sources(qmeta PRIVATE
+    JobStatus.cc
+    MessageStore.cc
     QMeta.cc
     QMetaMysql.cc
     QMetaSelect.cc
@@ -12,10 +14,10 @@ target_sources(qmeta PRIVATE
 target_link_libraries(qmeta PUBLIC
     cconfig
     global
+    http
     mysql
-    qdisp
     log
-    util
+    util 
 )
 
 install(TARGETS qmeta)
@@ -25,7 +27,6 @@ add_executable(testQMeta testQMeta.cc)
 
 target_link_libraries(testQMeta
     cconfig
-    proto
     qmeta
     sql
     Boost::unit_test_framework

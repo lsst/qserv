@@ -27,7 +27,7 @@ target_link_libraries(czarProxy PRIVATE
     rproc
     css
     qmeta
-    xrdreq)
+)
 
 install(TARGETS czarProxy DESTINATION ${CMAKE_INSTALL_PREFIX}/lua/qserv/lib)
 install(FILES mysqlProxy.lua DESTINATION ${CMAKE_INSTALL_PREFIX}/lua/qserv/scripts)
