@@ -67,7 +67,6 @@
 #include "wsched/GroupScheduler.h"
 #include "wsched/ScanScheduler.h"
 #include "wcomms/HttpSvc.h"
-#include "wcomms/XrdName.h"
 
 using namespace lsst::qserv;
 using namespace nlohmann;

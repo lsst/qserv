@@ -135,7 +135,7 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
     LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
     try {
         return std::make_shared<UserQueryProcessList>(stmt, sharedResources->qMetaSelect,
-                                                      sharedResources->qMetaCzarId, userQueryId, resultDb);
+                                                      sharedResources->czarId, userQueryId, resultDb);
     } catch (std::exception const& exc) {
         return std::make_shared<UserQueryInvalid>(exc.what());
     }
@@ -372,7 +372,8 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                 qs, messageStore, executive, _userQuerySharedResources->databaseModels, infileMergerConfig,
                 _userQuerySharedResources->secondaryIndex, _userQuerySharedResources->queryMetadata,
                 _userQuerySharedResources->queryProgress, _userQuerySharedResources->czarId, errorExtra,
-                async, resultDb);
+                async, resultDb, uberJobMaxChunks);
+
         if (sessionValid) {
             uq->qMetaRegister(resultLocation, msgTableName);
             uq->setupMerger();

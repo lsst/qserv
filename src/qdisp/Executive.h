@@ -50,40 +50,32 @@
 #include "util/threadSafe.h"
 #include "util/ThreadPool.h"
 
+
+namespace lsst::qserv::ccontrol {
+class UserQuerySelect;
+}
+
 namespace lsst::qserv::qmeta {
+class MessageStore;
 class QProgress;
 class QProgressHistory;
 }  // namespace lsst::qserv::qmeta
 
-
-namespace lsst::qserv {
-
-namespace ccontrol {
-class UserQuerySelect;
-}
-
-namespace qmeta {
-class MessageStore;
-}  // namespace qmeta
-
-namespace qproc {
+namespace lsst::qserv::qproc {
 class QuerySession;
 }  // namespace lsst::qserv::qproc
 
-namespace qdisp {
-class JobQuery;
-class UberJob;
-}  // namespace qdisp
-
-
-namespace util {
+namespace lsst::qserv::util {
 class AsyncTimer;
 class PriorityCommand;
 class QdispPool;
-}  // namespace util
+}  // namespace lsst::qserv::util
 
 // This header declarations
 namespace lsst::qserv::qdisp {
+
+class JobQuery;
+class UberJob;
 
 /// class Executive manages the execution of jobs for a UserQuery.
 class Executive : public std::enable_shared_from_this<Executive> {

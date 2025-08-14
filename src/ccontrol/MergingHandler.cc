@@ -39,6 +39,7 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "cconfig/CzarConfig.h"
 #include "ccontrol/msgCode.h"
 #include "global/clock_defs.h"
 #include "global/debugUtil.h"
@@ -49,7 +50,6 @@
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qdisp/JobQuery.h"
-#include "qdisp/QueryRequest.h"
 #include "qdisp/UberJob.h"
 #include "rproc/InfileMerger.h"
 #include "util/Bug.h"
@@ -83,7 +83,6 @@ lsst::qserv::TimeCountTracker<double>::CALLBACKFUNC const reportFileRecvRate =
                 lsst::qserv::qdisp::CzarStats::get()->addFileReadRate(bytes / seconds.count());
             }
         };
-
 
 string readHttpFileAndMerge(lsst::qserv::qdisp::UberJob::Ptr const& uberJob, string const& httpUrl,
                             size_t fileSize, function<void(char const*, uint32_t)> const& messageIsReady,
@@ -179,52 +178,6 @@ MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> const& merge
         : _infileMerger(merger), _executive(exec) {}
 
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__); }
-
-
-bool MergingHandler::flush(proto::ResponseSummary const& resp) {
-    _wName = resp.wname();
-
-    // This is needed to ensure the job query would be staying alive for the duration
-    // of the operation to prevent inconsistency within the application.
-    auto const jobQuery = getJobQuery().lock();
-    if (jobQuery == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, jobQuery was NULL");
-        return false;
-    }
-    auto const jobQuery = std::dynamic_pointer_cast<qdisp::JobQuery>(jobBase);
-
-    LOGS(_log, LOG_LVL_TRACE,
-         "MergingHandler::" << __func__ << " jobid=" << resp.jobid() << " transmitsize="
-                            << resp.transmitsize() << " rowcount=" << resp.rowcount() << " rowSize="
-                            << " attemptcount=" << resp.attemptcount() << " errorcode=" << resp.errorcode()
-                            << " errormsg=" << resp.errormsg());
-
-    if (resp.errorcode() != 0 || !resp.errormsg().empty()) {
-        _error = util::Error(resp.errorcode(), resp.errormsg(), util::ErrorCode::MYSQLEXEC);
-        _setError(ccontrol::MSG_RESULT_ERROR, _error.getMsg());
-        LOGS(_log, LOG_LVL_ERROR,
-             "MergingHandler::" << __func__ << " error from worker:" << resp.wname() << " error: " << _error);
-        // This way we can track if the worker has reported this error. The current implementation
-        // requires the large result size to be reported as an error via the InfileMerger regardless
-        // of an origin of the error (Czar or the worker). Note that large results can be produced
-        // by the Czar itself, e.g., when the aggregate result of multiple worker queries is too large
-        // or by the worker when the result set of a single query is too large.
-        // The error will be reported to the Czar as a part of the response summary.
-        if (resp.errorcode() == util::ErrorCode::WORKER_RESULT_TOO_LARGE) {
-            _infileMerger->setResultSizeLimitExceeded();
-        }
-        return false;
-    }
-
-    bool const success = _merge(resp, jobQuery);
-
-    if (success) {
-        _infileMerger->mergeCompleteFor(resp.jobid());
-        qdisp::CzarStats::get()->addTotalRowsRecv(resp.rowcount());
-        qdisp::CzarStats::get()->addTotalBytesRecv(resp.transmitsize());
-    }
-    return success;
-}
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, msg, util::ErrorCode::RESULT_IMPORT);

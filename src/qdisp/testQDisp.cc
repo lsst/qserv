@@ -144,9 +144,12 @@ public:
     ~ExecutiveUT() override = default;
 
     ExecutiveUT(int qmetaTimeBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
-                util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QStatus> const& qStatus,
+                util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QProgress> const& qProgress,
+                shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
                 shared_ptr<qproc::QuerySession> const& querySession, TestInfo::Ptr const& testInfo_)
-            : Executive(qmetaTimeBetweenUpdates, ms, qdispPool, qStatus, querySession), testInfo(testInfo_) {}
+            : Executive(qmetaTimeBetweenUpdates, ms, qdispPool, qProgress, queryProgressHistory,
+                        querySession),
+              testInfo(testInfo_) {}
 
     void assignJobsToUberJobs() override {
         vector<qdisp::UberJob::Ptr> ujVect;

@@ -119,7 +119,6 @@ bool QueryRunner::_initConnection() {
     return true;
 }
 
-
 bool QueryRunner::runQuery() {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());

@@ -123,7 +123,6 @@ public:
      */
     static Ptr getCzar() { return _czar; }
 
-
     /// Remove all old tables in the qservResult database.
     void removeOldResultTables();
 

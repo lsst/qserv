@@ -124,18 +124,18 @@ Executive::~Executive() {
             }
         }
     }
-    qdisp::CzarStats::get()->untrackQueryProgress(_id);
 }
 
 
 Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
-                                 std::shared_ptr<util::QdispPool> const& qdispPool,
+                                 shared_ptr<util::QdispPool> const& qdispPool,
                                  shared_ptr<qmeta::QProgress> const& queryProgress,
                                  shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
                                  shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
-    Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, queryProgress, queryProgressHistory, querySession));
+    Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, queryProgress, queryProgressHistory,
+                                     querySession));
 
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
