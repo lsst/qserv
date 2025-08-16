@@ -494,6 +494,7 @@
 namespace lsst::qserv {
 namespace query {
 class ColumnRef;
+class CompPredicate;
 class QueryContext;
 class SelectStmt;
 }  // namespace query
@@ -577,19 +578,16 @@ struct Vertex {
         tr.setTable(info->getChunkTemplate());
     }
 
-    /// `rewriteAsSubChunkTemplate` rewrites `tr` to contain a sub-chunk
-    /// specific name pattern.
-    void rewriteAsSubChunkTemplate() {
-        tr.setDb(info->getSubChunkDb());
-        tr.setTable(info->getSubChunkTemplate());
-    }
-
     /// `rewriteAsOverlapTemplate` rewrites `tr` to contain an overlap
     /// sub-chunk specific name pattern.
     void rewriteAsOverlapTemplate() {
-        tr.setDb(info->getSubChunkDb());
+        tr.setDb(info->database);
         tr.setTable(info->getOverlapTemplate());
     }
+
+    /// `makeSubChunkCompPredicate` creates a shared pointer to a new
+    /// comparison predicate for the sub-chunk column.
+    std::shared_ptr<query::CompPredicate> makeSubChunkCompPredicate() const;
 };
 
 std::ostream& operator<<(std::ostream& out, Vertex const& vertex);
