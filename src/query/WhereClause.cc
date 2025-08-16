@@ -141,7 +141,26 @@ void WhereClause::prependAndTerm(std::shared_ptr<BoolTerm> t) {
             throw std::logic_error("Term of first OR term is not an AND term; there is no global AND term");
         }
     } else {
-        throw std::logic_error("There is more than term in the root OR term; can't pick a global AND term");
+        // We've hit the following case:
+        //
+        //   WHERE ... OR .. OR ...
+        //
+        // A solution is to construct the new root and the global AndTerm.
+        // Push down the current root as the only child of the AndTerm.
+        // In essence, we're replacing the following constraints:
+        //
+        //   WHERE ... OR .. OR ...
+        //
+        // With:
+        //
+        //   WHERE <BoolTerm> AND (... OR .. OR ...)
+        //
+        auto newRootOrTerm = std::make_shared<OrTerm>();
+        andTerm = std::make_shared<AndTerm>();
+        andTerm->addBoolTerm(_rootOrTerm);
+        newRootOrTerm->addBoolTerm(andTerm);
+        _rootOrTerm = newRootOrTerm;
+        andTerm = std::dynamic_pointer_cast<AndTerm>(_rootOrTerm->_terms[0]);
     }
 
     if (!andTerm->merge(*t, AndTerm::PREPEND)) {
