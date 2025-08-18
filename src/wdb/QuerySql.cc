@@ -51,6 +51,7 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wdb.QuerySql");
 
+#if 0
 template <typename T>
 class ScScriptBuilder {
 public:
@@ -71,6 +72,7 @@ public:
     std::string cleanT;
     lsst::qserv::wdb::QuerySql& qSql;
 };
+#endif
 }  // anonymous namespace
 
 namespace lsst::qserv::wdb {
@@ -116,7 +118,7 @@ QuerySql::QuerySql(std::string const& db, int chunkId, proto::TaskMsg_Fragment c
         executeList.push_back(ss.str());
         ss.str("");
     }
-
+#if 0
     if (f.has_subchunks()) {
         proto::TaskMsg_Subchunk const& sc = f.subchunks();
         for (int i = 0; i < sc.dbtbl_size(); ++i) {
@@ -128,6 +130,7 @@ QuerySql::QuerySql(std::string const& db, int chunkId, proto::TaskMsg_Fragment c
             }
         }
     }
+#endif
 }
 
 }  // namespace lsst::qserv::wdb
