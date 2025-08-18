@@ -164,7 +164,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
     _scanInfo.sortTablesSlowestFirst();
     _scanInteractive = t->scaninteractive();
     _maxTableSize = t->maxtablesize_mb() * ::MB_SIZE_BYTES;
-
+#if 0
     // Create sets and vectors for 'aquiring' subchunk temporary tables.
     proto::TaskMsg_Fragment const& fragment(t->fragment(_queryFragmentNum));
     DbTableSet dbTbls_;
@@ -203,6 +203,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
                               << " subChunks=" << util::printable(subchunksVect_));
     }
     _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
+#endif
     if (_sendChannel == nullptr) {
         throw util::Bug(ERR_LOC, "Task::Task _sendChannel==null " + getIdStr());
     }
