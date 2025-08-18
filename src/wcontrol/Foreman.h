@@ -59,7 +59,6 @@ class Server;
 }  // namespace lsst::qserv::qhttp
 
 namespace lsst::qserv::wdb {
-class ChunkResourceMgr;
 class QueryRunner;
 }  // namespace lsst::qserv::wdb
 
@@ -93,7 +92,6 @@ public:
 };
 
 /// Foreman is used to maintain a thread pool and schedule Tasks for the thread pool.
-/// It also manages sub-chunk tables with the ChunkResourceMgr.
 /// The schedulers may limit the number of threads they will use from the thread pool.
 class Foreman : public wbase::MsgProcessor {
 public:
@@ -117,7 +115,6 @@ public:
     Foreman(Foreman const&) = delete;
     Foreman& operator=(Foreman const&) = delete;
 
-    std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr() const { return _chunkResourceMgr; }
     mysql::MySqlConfig const& mySqlConfig() const { return _mySqlConfig; }
     std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks() const { return _queries; }
     std::shared_ptr<wpublish::ChunkInventory> const& chunkInventory() const { return _chunkInventory; }
@@ -139,8 +136,6 @@ public:
     virtual nlohmann::json statusToJson(wbase::TaskSelector const& taskSelector) override;
 
 private:
-    std::shared_ptr<wdb::ChunkResourceMgr> _chunkResourceMgr;
-
     util::ThreadPool::Ptr _pool;
     Scheduler::Ptr _scheduler;
 

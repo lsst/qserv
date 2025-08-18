@@ -60,9 +60,6 @@ class FileChannelShared;
 namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
 }
-namespace lsst::qserv::wdb {
-class ChunkResourceMgr;
-}
 namespace lsst::qserv::wpublish {
 class QueriesAndChunks;
 class QueryStatistics;
@@ -165,7 +162,6 @@ public:
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                         std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-                                        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                         mysql::MySqlConfig const& mySqlConfig,
                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                                         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
