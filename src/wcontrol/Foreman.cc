@@ -44,8 +44,6 @@
 #include "wcontrol/ResourceMonitor.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wcontrol/WorkerStats.h"
-#include "wdb/ChunkResource.h"
-#include "wdb/SQLBackend.h"
 #include "wpublish/QueriesAndChunks.h"
 
 using namespace std;
@@ -90,13 +88,6 @@ Foreman::Foreman(Scheduler::Ptr const& scheduler, unsigned int poolSize, unsigne
           _resourceMonitor(make_shared<ResourceMonitor>()),
           _io_service(),
           _httpServer(qhttp::Server::create(_io_service, 0 /* grab the first available port */)) {
-    // Make the chunk resource mgr
-    // Creating backend makes a connection to the database for making temporary tables.
-    // It will delete temporary tables that it can identify as being created by a worker.
-    // Previous instances of the worker will terminate when they try to use or create temporary tables.
-    // Previous instances of the worker should be terminated before a new worker is started.
-    _chunkResourceMgr = wdb::ChunkResourceMgr::newMgr(make_shared<wdb::SQLBackend>(_mySqlConfig));
-
     assert(_scheduler);  // Cannot operate without scheduler.
 
     LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize << " maxPoolThreads=" << maxPoolThreads);
