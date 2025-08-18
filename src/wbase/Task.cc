@@ -221,7 +221,6 @@ Task::~Task() {
 
 vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
                                     shared_ptr<wbase::FileChannelShared> const& sendChannel,
-                                    shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                     mysql::MySqlConfig const& mySqlConfig,
                                     shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                                     shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
@@ -259,8 +258,8 @@ vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
     }
     for (auto task : vect) {
         // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
-        task->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig,
-                                                                  sqlConnMgr, queriesAndChunks));
+        task->setTaskQueryRunner(
+                wdb::QueryRunner::newQueryRunner(task, mySqlConfig, sqlConnMgr, queriesAndChunks));
     }
     sendChannel->setTaskCount(vect.size());
 
