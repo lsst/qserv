@@ -177,15 +177,6 @@ public:
     /// the method then the monitoring will be disabled.
     unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec->getVal(); }
 
-    /* &&&
-    /// @return The maximum retain period for keeping in memory the relevant metrics
-    /// captured by the Czar monitoring system. If 0 is returned by the method then
-    /// query history archiving will be disabled.
-    /// @note Setting the limit too high may be potentially result in runing onto
-    /// the OOM situation.
-    unsigned int czarStatsRetainPeriodSec() const { return _czarStatsRetainPeriodSec->getVal(); }
-    */
-
     /// A worker is considered fully ALIVE if the last update from the worker has been
     /// heard in less than _activeWorkerTimeoutAliveSecs seconds.
     int getActiveWorkerTimeoutAliveSecs() const { return _activeWorkerTimeoutAliveSecs->getVal(); }

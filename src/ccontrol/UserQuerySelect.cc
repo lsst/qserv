@@ -524,7 +524,7 @@ QueryState UserQuerySelect::join() {
     // Since all data are in, run final SQL commands like GROUP BY.
     size_t collectedBytes = 0;
     int64_t finalRows = 0;
-    bool const resultSizeLimitExceeded = _infileMerger->resultSizeLimitExceeded();
+    bool const resultSizeLimitExceeded = exec->resultSizeLimitExceeded();
     if (!_infileMerger->finalize(collectedBytes, finalRows)) {
         successful = false;
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");

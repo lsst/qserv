@@ -812,6 +812,7 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
             util::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
                             "Incomplete result already too large " + to_string(total));
             _multiError.push_back(err);
+            _resultFileSizeExceeded = true;
             squash("czar, file too large");
         }
     }

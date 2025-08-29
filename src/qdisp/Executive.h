@@ -230,6 +230,9 @@ public:
     void collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& fileUrl, uint64_t fileSize,
                      uint64_t rowCount, std::string const& idStr);
 
+    /// Return true if the result size limit has been exceeded.
+    bool resultSizeLimitExceeded() const { return _resultFileSizeExceeded; }
+
 protected:
     Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,
@@ -355,6 +358,9 @@ private:
     /// This keeps data transfers (and temporary storage requirements) from
     /// getting out of hand.
     std::mutex _mtxLimitSquash;
+
+    /// Set to true if the result file is too large.
+    std::atomic<bool> _resultFileSizeExceeded{false};
 };
 
 }  // namespace lsst::qserv::qdisp
