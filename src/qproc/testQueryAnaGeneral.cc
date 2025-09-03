@@ -199,15 +199,15 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
             "where qserv_areaspec_box(6,6,7,7) AND rFlux_PS<0.005 AND "
             "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.001;";
     std::string expected_100_subchunk_core =
-            "SELECT count(*) AS `QS1_COUNT` FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS "
-            "`o1`,`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2` "
+            "SELECT count(*) AS `QS1_COUNT` FROM `LSST`.`Object_100_%S\007S%` AS "
+            "`o1`,`LSST`.`Object_100_%S\007S%` AS `o2` "
             "WHERE scisql_s2PtInBox(`o1`.`ra_Test`,`o1`.`decl_Test`,6,6,7,7)=1 AND "
             "scisql_s2PtInBox(`o2`.`ra_Test`,`o2`.`decl_Test`,6,6,7,7)=1 AND "
             "`o1`.`rFlux_PS`<0.005 AND "
             "scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`)<0.001";
     std::string expected_100_subchunk_overlap =
-            "SELECT count(*) AS `QS1_COUNT` FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS "
-            "`o1`,`Subchunks_LSST_100`.`ObjectFullOverlap_100_%S\007S%` AS `o2` "
+            "SELECT count(*) AS `QS1_COUNT` FROM `LSST`.`Object_100_%S\007S%` AS "
+            "`o1`,`LSST`.`ObjectFullOverlap_100_%S\007S%` AS `o2` "
             "WHERE scisql_s2PtInBox(`o1`.`ra_Test`,`o1`.`decl_Test`,6,6,7,7)=1 "
             "AND scisql_s2PtInBox(`o2`.`ra_Test`,`o2`.`decl_Test`,6,6,7,7)=1 "
             "AND `o1`.`rFlux_PS`<0.005 AND "
@@ -253,8 +253,8 @@ BOOST_AUTO_TEST_CASE(Triple) {
             "0.024 > scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) and "
             "Source.objectIdSourceTest=o2.objectIdObjTest;";
     std::string expected =
-            "SELECT * FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS "
-            "`o1`,`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2`,`LSST`.`Source_100` AS `LSST.Source` "
+            "SELECT * FROM `LSST`.`Object_100_%S\007S%` AS "
+            "`o1`,`LSST`.`Object_100_%S\007S%` AS `o2`,`LSST`.`Source_100` AS `LSST.Source` "
             "WHERE `o1`.`id`!=`o2`.`id` AND "
             "0.024>scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`) AND "
             "`LSST.Source`.`objectIdSourceTest`=`o2`.`objectIdObjTest`";
@@ -509,8 +509,8 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
             "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.02";
     std::string expected =
             "SELECT count(*) AS `QS1_COUNT` "
-            "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o1`,"
-            "`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2` "
+            "FROM `LSST`.`Object_100_%S\007S%` AS `o1`,"
+            "`LSST`.`Object_100_%S\007S%` AS `o2` "
             "WHERE scisql_s2PtInBox(`o1`.`ra_Test`,`o1`.`decl_Test`,5.5,5.5,6.1,6.1)=1 "
             "AND scisql_s2PtInBox(`o2`.`ra_Test`,`o2`.`decl_Test`,5.5,5.5,6.1,6.1)=1 "
             "AND scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`)<0.02";
@@ -951,8 +951,8 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
            "(scisql_fluxToAbMag(o2.gFlux_PS)-scisql_fluxToAbMag(o2.rFlux_PS)) ) < 1;";
     expected =
             "SELECT `o1`.`objectId` AS `o1.objectId`,`o2`.`objectId` AS `objectId2` "
-            "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS "
-            "`o1`,`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2` "
+            "FROM `LSST`.`Object_100_%S\007S%` AS "
+            "`o1`,`LSST`.`Object_100_%S\007S%` AS `o2` "
             "WHERE scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`)<0.00001 "
             "AND `o1`.`objectId`<>`o2`.`objectId` AND "
             "ABS((scisql_fluxToAbMag(`o1`.`gFlux_PS`)-scisql_fluxToAbMag(`o1`.`rFlux_PS`))-(scisql_"
@@ -1294,16 +1294,16 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
             "WHERE  closestToObj = 1 OR closestToObj is NULL;";
     std::string expected_100_subchunk_core =
             "SELECT count(*) AS `QS1_COUNT` "
-            "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o` "
+            "FROM `LSST`.`Object_100_%S\007S%` AS `o` "
             "INNER JOIN `LSST`.`RefObjMatch_100` AS `o2t` ON `o`.`objectIdObjTest`=`o2t`.`objectId` "
-            "INNER JOIN `Subchunks_LSST_100`.`SimRefObject_100_%S\007S%` AS `t` ON "
+            "INNER JOIN `LSST`.`SimRefObject_100_%S\007S%` AS `t` ON "
             "`o2t`.`refObjectId`=`t`.`refObjectId` "
             "WHERE `o`.`closestToObj`=1 OR `o`.`closestToObj` IS NULL";
     std::string expected_100_subchunk_overlap =
             "SELECT count(*) AS `QS1_COUNT` "
-            "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o` "
+            "FROM `LSST`.`Object_100_%S\007S%` AS `o` "
             "INNER JOIN `LSST`.`RefObjMatch_100` AS `o2t` ON `o`.`objectIdObjTest`=`o2t`.`objectId` "
-            "INNER JOIN `Subchunks_LSST_100`.`SimRefObjectFullOverlap_100_%S\007S%` AS `t` ON "
+            "INNER JOIN `LSST`.`SimRefObjectFullOverlap_100_%S\007S%` AS `t` ON "
             "`o2t`.`refObjectId`=`t`.`refObjectId` "
             "WHERE `o`.`closestToObj`=1 OR `o`.`closestToObj` IS NULL";
     qsTest.sqlConfig =

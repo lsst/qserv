@@ -580,14 +580,14 @@ struct Vertex {
     /// `rewriteAsSubChunkTemplate` rewrites `tr` to contain a sub-chunk
     /// specific name pattern.
     void rewriteAsSubChunkTemplate() {
-        tr.setDb(info->getSubChunkDb());
+        // tr.setDb(info->getSubChunkDb());
         tr.setTable(info->getSubChunkTemplate());
     }
 
     /// `rewriteAsOverlapTemplate` rewrites `tr` to contain an overlap
     /// sub-chunk specific name pattern.
     void rewriteAsOverlapTemplate() {
-        tr.setDb(info->getSubChunkDb());
+        // tr.setDb(info->getSubChunkDb());
         tr.setTable(info->getOverlapTemplate());
     }
 };
