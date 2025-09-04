@@ -103,7 +103,10 @@ private:
     boost::asio::io_service _asioIoService;
     std::unique_ptr<boost::asio::io_service::work> _asioWork;
     std::unique_ptr<std::thread> _asioTimerThread;
+
+    std::mutex _factoryMtx;  // &&& is this needed
 };
+
 
 }  // namespace lsst::qserv::ccontrol
 
