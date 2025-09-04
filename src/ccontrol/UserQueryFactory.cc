@@ -298,14 +298,20 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         }
         auto stmt = parser->getSelectStmt();
 
+        /// &&& not entirely sure what the _mutex was protecting _clientToQuery and _idToQuery aren't touched
+        /// &&& Not sure what internal elements of UserQueryFactory need protection?
+        /// &&&     None of its members look like they need protection.
+        /// &&& Is there an order of operations to things happening in the database?
+        std::unique_lock<std::mutex> uLock(_factoryMtx); //&&&
+
         // handle special database/table names
         if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
             return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
-                                             async);
+                    async);
         }
         if (_stmtRefersQueriesTable(stmt, defaultDb)) {
             return _makeUserQueryQueries(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
-                                         async);
+                    async);
         }
 
         /// Determine if a SelectStmt is a simple COUNT(*) query and can be run as an optimized query.
@@ -337,6 +343,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto qs = std::make_shared<qproc::QuerySession>(_userQuerySharedResources->css,
                                                         _userQuerySharedResources->databaseModels, defaultDb,
                                                         _userQuerySharedResources->interactiveChunkLimit);
+        uLock.unlock(); // &&& unlock the mutex before going back to expensive operations.
         try {
             qs->analyzeQuery(query, stmt);
         } catch (...) {
