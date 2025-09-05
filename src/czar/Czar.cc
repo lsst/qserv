@@ -226,9 +226,9 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     // this is atomic
     ccontrol::UserQuery::Ptr uq;
     {
-        lock_guard<mutex> lock(_mutex);
+        // lock_guard<mutex> lock(_mutex);
         uq = _uqFactory->newUserQuery(query, defaultDb, getQdispSharedResources(), userQueryId, msgTableName,
-                                      resultDb);
+                                      resultDb, _mutex);
     }
 
     // Add logging context with query ID
