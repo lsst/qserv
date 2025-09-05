@@ -104,9 +104,10 @@ private:
     std::unique_ptr<boost::asio::io_service::work> _asioWork;
     std::unique_ptr<std::thread> _asioTimerThread;
 
-    std::mutex _factoryMtx;  // &&& is this needed
+    /// Protects CSS in `qs->analyzeQuery(query, stmt);` and
+    /// protects uq calls that alter the database.
+    std::mutex _factoryMtx;
 };
-
 
 }  // namespace lsst::qserv::ccontrol
 
