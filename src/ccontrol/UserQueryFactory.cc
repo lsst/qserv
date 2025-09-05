@@ -260,7 +260,7 @@ UserQueryFactory::~UserQueryFactory() {
 UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::string const& defaultDb,
                                               qdisp::SharedResources::Ptr const& qdispSharedResources,
                                               std::string const& userQueryId, std::string const& msgTableName,
-                                              std::string const& resultDb) {
+                                              std::string const& resultDb, std::mutex& mutex) {
     // result location could potentially be specified by SUBMIT command, for now
     // we keep it empty which means that UserQuerySelect uses default result table.
     std::string resultLocation;
@@ -338,6 +338,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                                                         _userQuerySharedResources->databaseModels, defaultDb,
                                                         _userQuerySharedResources->interactiveChunkLimit);
         try {
+            std::lock_guard<std::mutex> lock(mutex);
             qs->analyzeQuery(query, stmt);
         } catch (...) {
             errorExtra = "Unknown failure occurred setting up QuerySession (query is invalid).";
