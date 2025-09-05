@@ -34,6 +34,7 @@
 // System headers
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <thread>
 
 // Third-party headers
@@ -84,7 +85,7 @@ public:
     std::shared_ptr<UserQuery> newUserQuery(std::string const& query, std::string const& defaultDb,
                                             qdisp::SharedResources::Ptr const& qdispSharedResources,
                                             std::string const& userQueryId, std::string const& msgTableName,
-                                            std::string const& resultDb);
+                                            std::string const& resultDb, std::mutex& mutex);
 
     std::shared_ptr<UserQuerySharedResources> const& userQuerySharedResources() const {
         return _userQuerySharedResources;
