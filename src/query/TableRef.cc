@@ -68,18 +68,18 @@ TableRef::TableRef(std::string const& db, std::string const& table, std::string 
 }
 
 void TableRef::setAlias(std::string const& alias) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
+    // LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
     _alias = alias;
 }
 
 void TableRef::setDb(std::string const& db) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
+    // LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
     _db = db;
     _verify();
 }
 
 void TableRef::setTable(std::string const& table) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
+    // LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
     _table = table;
     _verify();
 }

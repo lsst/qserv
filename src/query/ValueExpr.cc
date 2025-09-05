@@ -198,7 +198,7 @@ bool ValueExpr::addOp(query::ValueExpr::Op op) {
 }
 
 void ValueExpr::setAlias(std::string const& alias) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
+    // LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
     _alias = alias;
 }
 

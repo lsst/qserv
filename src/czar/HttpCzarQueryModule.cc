@@ -95,9 +95,13 @@ json HttpCzarQueryModule::_submit() {
 json HttpCzarQueryModule::_submitAsync() {
     debug(__func__);
     checkApiVersion(__func__, 32);
+    debug("SUBMIT_ASYNC:1");
     SubmitResult const submitResult = _getRequestParamsAndSubmit(__func__, true);
+    debug("SUBMIT_ASYNC:4");
     _dropTable(submitResult.messageTable);
+    debug("SUBMIT_ASYNC:5");
     _dropTable(submitResult.resultTable);
+    debug("SUBMIT_ASYNC:6");
     return json::object({{"queryId", submitResult.queryId}});
 }
 
@@ -109,7 +113,9 @@ SubmitResult HttpCzarQueryModule::_getRequestParamsAndSubmit(string const& func,
     string const query = async ? "SUBMIT " + userQuery : userQuery;
     map<string, string> const hints{{"db", defaultDatabase}};
     SubmitResult const submitResult = Czar::getCzar()->submitQuery(query, hints);
+    debug("SUBMIT_ASYNC:2");
     _dumpQueryInfo(func, submitResult);
+    debug("SUBMIT_ASYNC:3");
     if (!submitResult.errorMessage.empty()) {
         _dropTable(submitResult.messageTable);
         throw http::Error(context() + __func__, submitResult.errorMessage);

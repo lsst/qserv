@@ -90,19 +90,19 @@ ColumnRef::ColumnRef(std::shared_ptr<TableRef> const& table, std::string const& 
 }
 
 void ColumnRef::setDb(std::string const& db) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
+    // LOGS(_log, LOG_LVL_TRACE, *this << "; set db:" << db);
     _tableRef->setDb(db);
     _verify();
 }
 
 void ColumnRef::setTable(std::string const& table) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
+    // LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << table);
     _tableRef->setTable(table);
     _verify();
 }
 
 void ColumnRef::setTable(std::shared_ptr<TableRef> const& tableRef) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << *tableRef);
+    // LOGS(_log, LOG_LVL_TRACE, *this << "; set table:" << *tableRef);
     if (not tableRef->isSimple()) {
         throw std::logic_error("The TableRef used by a ColumnRef must not have any joins.");
     }
@@ -111,7 +111,7 @@ void ColumnRef::setTable(std::shared_ptr<TableRef> const& tableRef) {
 }
 
 void ColumnRef::setColumn(std::string const& column) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set column:" << column);
+    // LOGS(_log, LOG_LVL_TRACE, *this << "; set column:" << column);
     _column = column;
     _verify();
 }
