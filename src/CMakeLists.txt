@@ -4,7 +4,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(ANTLR_EXECUTABLE /usr/share/java/antlr-4.8-complete.jar)
+set(ANTLR_EXECUTABLE /usr/share/java/antlr-4.13.2-complete.jar)
 find_package(ANTLR REQUIRED)
 find_package(antlr4-runtime REQUIRED)
 

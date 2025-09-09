@@ -106,16 +106,15 @@ RUN cd /tmp \
     && rm -rf json
 
 RUN cd /usr/share/java \
-    && curl -O https://www.antlr.org/download/antlr-4.8-complete.jar \
+    && curl -O https://www.antlr.org/download/antlr-4.13.2-complete.jar \
     && cd /tmp \
     && git clone https://github.com/antlr/antlr4 \
     && cd antlr4 \
-    && git reset --hard 1284814c2112c7ffe275a4831511b4a0f21dd44c \
+    && git checkout 4.13.2 \
     && git config user.email "qserv@qserv-build" \
-    && curl https://patch-diff.githubusercontent.com/raw/antlr/antlr4/pull/2773.patch | git am \
     && mkdir runtime/Cpp/build \
     && cd runtime/Cpp/build \
-    && cmake -DANTLR4_INSTALL=on .. \
+    && cmake -DANTLR4_USE_THREAD_LOCAL_CACHE=1 -DANTLR4_INSTALL=on .. \
     && make -j8 \
     && make install \
     && cp ../cmake/FindANTLR.cmake /usr/local/share/cmake-3.31/Modules/ \
@@ -285,7 +284,7 @@ COPY --from=lite-build /usr/local/lib/pkgconfig/jemalloc.pc /usr/local/lib/pkgco
 COPY --from=lite-build /usr/local/lib/libjemalloc* /usr/local/lib
 
 COPY --from=lite-build /usr/local/lib64/liblog4cxx.so /usr/local/lib64/
-COPY --from=lite-build /usr/local/lib/libantlr4-runtime.so /usr/local/lib/
+COPY --from=lite-build /usr/local/lib64/libantlr4-runtime.so /usr/local/lib64/
 COPY --from=lite-build /usr/local/bin/mysql-proxy /usr/local/bin/
 COPY --from=lite-build /usr/local/lib/libmysql-*.so /usr/local/lib/
 COPY --from=lite-build /usr/local/lib/mysql-proxy/lua/*.so /usr/local/lib/mysql-proxy/lua/
