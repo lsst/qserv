@@ -130,7 +130,7 @@ ParseListener::VecPairStr ParseListener::getTokenPairs(antlr4::CommonTokenStream
                                                        QSMySqlLexer const& lexer) {
     VecPairStr ret;
     for (auto const& t : tokens.getTokens()) {
-        std::string name = lexer.getVocabulary().getSymbolicName(t->getType());
+        std::string name(lexer.getVocabulary().getSymbolicName(t->getType()));
         if (name.empty()) {
             name = lexer.getVocabulary().getLiteralName(t->getType());
         }
