@@ -15,7 +15,7 @@ target_include_directories(parser PRIVATE
 )
 
 target_compile_options(parser PRIVATE
-    -fno-char8_t -Wno-deprecated
+    -fno-char8_t -Wno-deprecated -DANTLR4_USE_THREAD_LOCAL_CACHE=1
 )
 
 target_sources(parser PRIVATE
