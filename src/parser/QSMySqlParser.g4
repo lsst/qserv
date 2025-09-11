@@ -19,7 +19,6 @@ callStatement
 // adds `MINUS?` before REAL_LITERAL
 constant
     : stringLiteral | decimalLiteral
-    | hexadecimalLiteral | booleanLiteral
     | MINUS? REAL_LITERAL | BIT_STRING
     | NOT? nullLiteral=(NULL_LITERAL | NULL_SPEC_LITERAL)
     ;
@@ -29,7 +28,6 @@ constant
 expression
     : notOperator=(NOT | '!') expression                            #notExpression
     | expression logicalOperator expression                         #logicalExpression
-    | predicate IS NOT? testValue=(TRUE | FALSE | UNKNOWN)          #isExpression
     | predicate                                                     #predicateExpression
     | ((DECIMAL_LITERAL EQUAL_SYMBOL qservFunctionSpec) |
        (qservFunctionSpec EQUAL_SYMBOL DECIMAL_LITERAL) |
@@ -48,12 +46,8 @@ predicate
    : predicate NOT? IN '(' (selectStatement | expressions) ')'     #inPredicate
    | predicate IS nullNotnull                                      #isNullPredicate
    | left=predicate comparisonOperator right=predicate             #binaryComparasionPredicate
-   | predicate comparisonOperator
-     quantifier=(ALL | ANY | SOME) '(' selectStatement ')'         #subqueryComparasionPredicate
    | val=predicate NOT? BETWEEN min=predicate AND max=predicate    #betweenPredicate
-   | predicate SOUNDS LIKE predicate                               #soundsLikePredicate
    | predicate NOT? LIKE predicate (ESCAPE STRING_LITERAL)?        #likePredicate
-   | predicate NOT? regex=(REGEXP | RLIKE) predicate               #regexpPredicate
    | (LOCAL_ID VAR_ASSIGN)? expressionAtom                         #expressionAtomPredicate
    ;
 
