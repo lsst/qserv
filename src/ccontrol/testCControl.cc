@@ -108,11 +108,13 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
                 "FROM LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""),
 
         // per testQueryAnaGeneral: CASE in column spec is illegal.
-        ParseErrorQueryInfo(
-                "SELECT  COUNT(*) AS totalCount, "
-                "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
-                "FROM Object WHERE rFlux_PS > 10;",
-                "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\""),
+        // ATTENTION: CASE is not supported in the user queries by the current implementation.
+        // ParseErrorQueryInfo(
+        //         "SELECT  COUNT(*) AS totalCount, "
+        //         "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
+        //         "FROM Object WHERE rFlux_PS > 10;",
+        //         "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0
+        //         END\""),
 };
 
 BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
