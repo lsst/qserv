@@ -68,7 +68,7 @@ private:
 
     void sync(antlr4::Parser* recognizer) override {
         // we want this function to be a no-op so we override it.
-        LOGS(_log, LOG_LVL_TRACE, "run:*");
+        // LOGS(_log, LOG_LVL_TRACE, "run:*");
     }
 
     std::string const& _statement;
