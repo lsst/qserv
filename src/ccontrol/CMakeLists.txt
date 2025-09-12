@@ -1,9 +1,7 @@
 add_library(ccontrol SHARED)
-add_dependencies(ccontrol proto)
 
 target_include_directories(ccontrol PRIVATE
     ${ANTLR4_INCLUDE_DIR}
-    ${XROOTD_INCLUDE_DIRS}
 )
 
 target_sources(ccontrol PRIVATE
@@ -27,12 +25,14 @@ target_sources(ccontrol PRIVATE
 target_link_libraries(ccontrol PUBLIC
     boost_regex
     cconfig
+    css
     log
     parser
-    replica
     sphgeom
-    xrdreq
-    XrdCl
+)
+
+install(
+	TARGETS ccontrol
 )
 
 install(
@@ -54,7 +54,6 @@ FUNCTION(ccontrol_tests)
             qmeta
             query
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )
@@ -67,3 +66,6 @@ ccontrol_tests(
     testCControl
     testUserQueryType
 )
+
+# set_tests_properties(testCControl PROPERTIES WILL_FAIL 1)
+
