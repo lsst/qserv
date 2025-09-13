@@ -25,6 +25,7 @@
 // System headers
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
@@ -488,23 +489,29 @@ public:
      *  Return underlying KvInterface instance.
      *
      *  This may be useful for testing, not much for regular clients.
+     *
+     * @note The method is not thread-safe. Do not use it in the multi-threaded
+     *       code.
      */
     std::shared_ptr<KvInterface> getKvI() { return _kvI; }
 
     /**
      * @return a pointer to empty chunks cache.
      */
-    std::shared_ptr<EmptyChunks> getEmptyChunks() { return _emptyChunks; }
+    std::shared_ptr<EmptyChunks> getEmptyChunks() {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _emptyChunks;
+    }
 
     /**
      * @return the name of the empty chunks table for the given database name.
      */
-    std::string getEmptyChunksTableName(std::string const& dbName);
+    static std::string getEmptyChunksTableName(std::string const& dbName);
 
     /**
      * @return the create table schema for the empty chunks table for 'dbName'.
      */
-    std::string getEmptyChunksSchema(std::string const& dbName);
+    static std::string getEmptyChunksSchema(std::string const& dbName);
 
 protected:
     // Construct from Key-value and database instances.
@@ -554,12 +561,21 @@ private:
     void _fillScanTableParams(std::map<std::string, std::string>& paramMap, ScanTableParams& params,
                               std::string const& tableKey) const;
 
+    bool _containsDb(std::string const& dbName) const;
+    NodeParams _getNodeParams(std::string const& nodeName) const;
+    std::vector<std::string> _getNodeNames() const;
+    std::vector<std::string> _getDbNames() const;
+    std::vector<std::string> _getTableNames(std::string const& dbName, bool readyOnly) const;
+    std::map<int, std::vector<std::string>> _getChunks(std::string const& dbName,
+                                                       std::string const& tableName) const;
+
 private:
     std::shared_ptr<KvInterface> _kvI;
     std::shared_ptr<DbInterfaceMySql> _dbI;
     std::string _prefix;                        // optional prefix, for isolating tests from production
     mutable bool _versionOk;                    // True if version is checked (and is OK)
     std::shared_ptr<EmptyChunks> _emptyChunks;  ///< Cache of empty chunks.
+    mutable std::mutex _mutex;                  ///< Mutex for thread safety of the public methods.
 };
 
 }  // namespace lsst::qserv::css
