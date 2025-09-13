@@ -338,7 +338,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
                                                         _userQuerySharedResources->databaseModels, defaultDb,
                                                         _userQuerySharedResources->interactiveChunkLimit);
         try {
-            std::lock_guard<std::mutex> lock(mutex);
+            // std::lock_guard<std::mutex> lock(mutex);
             qs->analyzeQuery(query, stmt);
         } catch (...) {
             errorExtra = "Unknown failure occurred setting up QuerySession (query is invalid).";
