@@ -20,17 +20,17 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-import backoff
-from contextlib import closing
 import importlib
 import logging
-import mysql.connector
+from contextlib import closing
+
+import backoff
 from _mysql_connector import MySQLInterfaceError
-from typing import Optional, Type, Union
+
+import mysql.connector
 
 from ..admin.qserv_backoff import max_backoff_sec, on_backoff
-from . import MigMgrArgs, Migration, SchemaMigMgr, SchemaUpdateRequired, Uninitialized, Version
-
+from . import MigMgrArgs, Migration, SchemaMigMgr, SchemaUpdateRequiredError, Uninitialized, Version
 
 _mig_module_name = "schema_migration"
 _factory_method_name = "make_migration_manager"
@@ -41,7 +41,7 @@ def _load_migration_mgr(
     mod_name: str,
     connection: str,
     scripts_dir: str,
-    mig_mgr_args: MigMgrArgs = dict(),
+    mig_mgr_args: MigMgrArgs | None = None,
 ) -> SchemaMigMgr:
     """Dynamic loading of the migration manager based on module name.
 
@@ -66,11 +66,12 @@ def _load_migration_mgr(
     Exception is raised for any error.
     """
 
+    if mig_mgr_args is None:
+        mig_mgr_args = {}
+
     # load module "lsst.qserv.<module>.schema_migration"
     try:
-        mod_instance = importlib.import_module(
-            "lsst.qserv." + mod_name + "." + _mig_module_name
-        )
+        mod_instance = importlib.import_module("lsst.qserv." + mod_name + "." + _mig_module_name)
     except ImportError:
         logging.error(
             "Failed to load %s module from lsst.qserv.%s package",
@@ -144,7 +145,7 @@ def smig(
     module: str,
     mig_mgr_args: MigMgrArgs,
     update: bool,
-) -> Optional[int]:
+) -> int | None:
     """Execute schema migration.
 
     Parameters
@@ -186,7 +187,7 @@ def smig(
         If the module does not have a migration manager factory method.
     ValueErrors
         If the config_file's 'technology' parameter specifies an unrecognized
-        techology for database connection.    """
+        techology for database connection."""
 
     # if not connection:  # and not config_file:
     #     raise RuntimeError("A connection or config file is required.")
@@ -222,25 +223,31 @@ def smig(
         )
     ) as mgr:
         current = mgr.current_version()
-        _log.info("Current {} schema version: {}".format(module, current))
+        _log.info(f"Current {module} schema version: {current}")
 
         latest = mgr.latest_version()
-        _log.info("Latest {} schema version: {}".format(module, latest))
+        _log.info(f"Latest {module} schema version: {latest}")
 
         def format_migration(migration: Migration) -> str:
             tag = " (X)" if migration.from_version >= current else ""
             return f"{migration.from_version} -> {migration.to_version} : {migration.name}{tag}"
 
-        _log.info(f"Known migrations for {module}: "
-                f"{', '.join(format_migration(migration) for migration in mgr.migrations)}")
+        _log.info(
+            f"Known migrations for {module}: "
+            f"{', '.join(format_migration(migration) for migration in mgr.migrations)}"
+        )
 
         if check:
             return 0 if mgr.current_version() == mgr.latest_version() else 1
 
-        if (mgr.current_version() != Uninitialized and
-            mgr.current_version() != mgr.latest_version() and
-            update == False):
-            raise SchemaUpdateRequired(f"Can not upgrade {module} from version {mgr.current_version()} without upgrade=True.")
+        if (
+            mgr.current_version() != Uninitialized
+            and mgr.current_version() != mgr.latest_version()
+            and update is False
+        ):
+            raise SchemaUpdateRequiredError(
+                f"Can not upgrade {module} from version {mgr.current_version()} without upgrade=True."
+            )
 
         if not mgr.migrations:
             raise RuntimeError(f"Did not find any migrations for {module}")
@@ -251,9 +258,9 @@ def smig(
             _log.info("No migration was needed")
         else:
             if do_migrate:
-                _log.info("Database was migrated to version {}".format(migrated_to))
+                _log.info(f"Database was migrated to version {migrated_to}")
             else:
-                _log.info("Database would be migrated to version {}".format(migrated_to))
+                _log.info(f"Database would be migrated to version {migrated_to}")
     return None
 
 
@@ -261,12 +268,18 @@ class VersionMismatchError(RuntimeError):
     """Rasing a VersionMismatchError indicates that the schema do not match yet.
     This can be handled by @backoff which may retry later.
     """
-    def __init__(self, module: str, current: Union[int, Type[Uninitialized]], latest: Version):
+
+    def __init__(self, module: str, current: int | type[Uninitialized], latest: Version):
         super().__init__(f"Module {module} schema is at version {current}, latest is {latest}")
 
 
 @backoff.on_exception(
-    exception=(VersionMismatchError, mysql.connector.errors.DatabaseError, MySQLInterfaceError, mysql.connector.errors.ProgrammingError),
+    exception=(
+        VersionMismatchError,
+        mysql.connector.errors.DatabaseError,
+        MySQLInterfaceError,
+        mysql.connector.errors.ProgrammingError,
+    ),
     wait_gen=backoff.expo,
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,

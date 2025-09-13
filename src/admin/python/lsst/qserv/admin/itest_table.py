@@ -1,4 +1,3 @@
-
 # This file is part of qserv.
 #
 # Developed for the LSST Data Management System.
@@ -21,13 +20,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import os
-from typing import Any, Dict, List
-
 from dataclasses import dataclass
+from typing import Any
+
 
 @dataclass
 class LoadTable:
-
     """Contains information about a table to be loaded.
 
     Parameters
@@ -47,9 +45,9 @@ class LoadTable:
     """
 
     table_name: str
-    ingest_config: Dict[Any, Any]
+    ingest_config: dict[Any, Any]
     data_file: str
-    partition_config_files: List[str]
+    partition_config_files: list[str]
     data_staging_dir: str
     ref_db_table_schema_file: str
 
@@ -82,5 +80,6 @@ class LoadTable:
         return self._csv_dialect_attr("lines_terminated_by", "\\n")
 
     def _csv_dialect_attr(self, attr: str, default_val: str = "") -> str:
-        if value := self.ingest_config.get(attr): return value
+        if value := self.ingest_config.get(attr):
+            return value
         return default_val

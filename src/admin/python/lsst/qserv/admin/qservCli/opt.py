@@ -24,16 +24,15 @@ there will be a CLI command called qserv. Use `qserv --help` to for more
 information.
 """
 
-import click
-from functools import partial
 import getpass
 import logging
 import os
-from typing import Callable, List, Optional, Union
+from collections.abc import Callable
+from functools import partial
 
+import click
 
 from .images import get_description
-
 
 _log = logging.getLogger(__name__)
 
@@ -56,12 +55,12 @@ class EV:
         True if the value should not be printed or logged.
     """
 
-    def __init__(self, env_var: str, default: Optional[str], private: bool):
+    def __init__(self, env_var: str, default: str | None, private: bool):
         self.env_var = env_var
         self.default = default
         self.private = private
 
-    def val(self) -> Optional[str]:
+    def val(self) -> str | None:
         """Get the value of the environment variable or a default value.
 
         Returns
@@ -72,14 +71,13 @@ class EV:
         return os.getenv(self.env_var, self.default)
 
     @property
-    def var_val(self) -> Optional[str]:
+    def var_val(self) -> str | None:
         """Get the value of the environment variable or return None if the var
         is not defined."""
         return os.getenv(self.env_var, None)
 
 
 class EnvVal(EV):
-
     """Defines an environment varaible and defaults that may be used by options.
     Parameters
     ----------
@@ -97,7 +95,7 @@ class EnvVal(EV):
         """Get the description of what the EnvVal is used for, for help output."""
         return self.description
 
-    def val(self) -> Optional[str]:
+    def val(self) -> str | None:
         """Get the value.
 
         Returns
@@ -136,7 +134,7 @@ class FlagEnvVal(EV):
         The option flag.
     """
 
-    def __init__(self, opt: str, env_var: str, default: Optional[str]):
+    def __init__(self, opt: str, env_var: str, default: str | None):
         super().__init__(env_var, default, private=False)
         self.opt = opt
 
@@ -175,7 +173,6 @@ class FlagEnvVal(EV):
 
 
 class ImageName:
-
     """Generate an image name and/or tag based on image type, considering:
     * image type (see `image_types`)
     * the last time an image type's docker file has changed
@@ -188,7 +185,7 @@ class ImageName:
     run_base_dockerfile = "admin/tools/docker/base/Dockerfile"
     mariadb_dockerfile = "admin/tools/docker/mariadb/Dockerfile"
 
-    image_types = ["qserv", "run-base", "mariadb", "build-base", "build-user"]
+    image_types = ("qserv", "run-base", "mariadb", "build-base", "build-user")
 
     def __init__(self, image: str):
         if image not in self.image_types:
@@ -257,7 +254,7 @@ class ImageName:
         return env_image_tag.val_with_default(get_description(self.dockerfiles, qserv_root))
 
     @property
-    def dockerfiles(self) -> Optional[List[str]]:
+    def dockerfiles(self) -> list[str] | None:
         """Get the path(s) (relative to qserv root) of the dockerfile(s)
         associated with the current image type.
 
@@ -323,31 +320,20 @@ env_dh_token = EnvVal(
     "CI only; the dockerhub user token for pushing and pulling images",
     private=True,
 )
-env_ltd_user = EnvVal(
-    "QSERV_LTD_USERNAME",
-    "CI only; the LSST The Docs user for pushing docs."
-)
+env_ltd_user = EnvVal("QSERV_LTD_USERNAME", "CI only; the LSST The Docs user for pushing docs.")
 env_ltd_password = EnvVal(
-    "QSERV_LTD_PASSWORD",
-    "CI only; the LSST The Docs password for pushing docs.",
-    private=True
+    "QSERV_LTD_PASSWORD", "CI only; the LSST The Docs password for pushing docs.", private=True
 )
 env_gh_event_name = EnvVal(
-    "QSERV_GH_EVENT_NAME",
-    "CI only; The name of the event that triggered the GHA workflow."
+    "QSERV_GH_EVENT_NAME", "CI only; The name of the event that triggered the GHA workflow."
 )
 env_gh_head_ref = EnvVal(
-    "QSERV_GH_HEAD_REF",
-    "CI only; The head ref or source branch of the pull request in a GHA workflow run."
+    "QSERV_GH_HEAD_REF", "CI only; The head ref or source branch of the pull request in a GHA workflow run."
 )
-env_gh_ref = EnvVal(
-    "QSERV_GH_REF",
-    "CI only; The branch or tag ref that triggered the workflow run."
-)
+env_gh_ref = EnvVal("QSERV_GH_REF", "CI only; The branch or tag ref that triggered the workflow run.")
 
 
 class OptDefault:
-
     """Associates CLI flags with a default value that can be derived using a
     FlagEnvVal environment variable.
 
@@ -368,8 +354,8 @@ class OptDefault:
 
     def __init__(
         self,
-        opt: List[str],
-        default: Optional[str],
+        opt: list[str],
+        default: str | None,
         ev: FlagEnvVal,
         val: Callable[[str], str],
     ):
@@ -378,7 +364,7 @@ class OptDefault:
         self.ev = ev
         self._val = val
 
-    def val(self) -> Optional[str]:
+    def val(self) -> str | None:
         """Get the value for this default: if the environment variable is
         defined, returns the value derived from that environment variable, or a
         default value (which may be `None`).
@@ -462,7 +448,7 @@ compose_file_default = OptDefault(
 )
 build_container_default = OptDefault(
     opt=["--build-container-name"],
-    default=f"build_container",
+    default="build_container",
     ev=env_project,
     val=lambda ev_val: f"{ev_val}_build",
 )
@@ -477,7 +463,7 @@ class FlagEnvVals:
         The `FlagEnvVal` instances used by the qserv command.
     """
 
-    def __init__(self, evs: List[Union[FlagEnvVal, EnvVal]]):
+    def __init__(self, evs: list[FlagEnvVal | EnvVal]):
         self.evs = evs
 
     def describe(self) -> str:
@@ -489,16 +475,15 @@ class FlagEnvVals:
         for ev in self.evs:
             ret += indent
             ret += f"{click.style(ev.env_var, bold=True)} "
-            ret += f"({click.style('***' if ev.private else ev.var_val) if ev.var_val else click.style('Not defined', fg='red')}) "
+            ret += f"({click.style('***' if ev.private else ev.var_val) if ev.var_val else click.style('Not defined', fg='red')}) "  # noqa: E501
             ret += f"for {click.style(ev.used_for)} "
             ret += f"(default: {click.style(ev.default, fg='blue')}) "
-            ret += f"is {click.style('***' if ev.private else ev.val(), fg='green', bold=True) if ev.val() else click.style('None', fg='red')}."
+            ret += f"is {click.style('***' if ev.private else ev.val(), fg='green', bold=True) if ev.val() else click.style('None', fg='red')}."  # noqa: E501
             ret += "\n"
         return ret
 
 
 class DefaultValues:
-
     """Container for the OptDefault instances.
 
     Parameters
@@ -507,7 +492,7 @@ class DefaultValues:
         The `OptDefault` instances used by the qserv command.
     """
 
-    def __init__(self, defaults: List[OptDefault]):
+    def __init__(self, defaults: list[OptDefault]):
         self.defaults = defaults
 
     def describe(self) -> str:
@@ -652,7 +637,9 @@ option_qserv_build_root = partial(
 option_outdir = partial(
     click.option,
     env_outdir.opt,
-    help=env_outdir.help("Location of the folder that will contain unzipped and partitioned integration test datasets"),
+    help=env_outdir.help(
+        "Location of the folder that will contain unzipped and partitioned integration test datasets"
+    ),
     envvar=env_outdir.env_var,
     default=env_outdir.default,
 )
@@ -756,7 +743,9 @@ option_itest_file = partial(
 option_itest_http_container_name = partial(
     click.option,
     *itest_http_container_default.opt,
-    help=itest_http_container_default.help("The name to give the integration test container for HTTP frontend."),
+    help=itest_http_container_default.help(
+        "The name to give the integration test container for HTTP frontend."
+    ),
     default=itest_http_container_default.val(),
     required=True,
 )
@@ -764,8 +753,9 @@ option_itest_http_container_name = partial(
 option_itest_http_ingest_container_name = partial(
     click.option,
     *itest_http_ingest_container_default.opt,
-    help=itest_http_ingest_container_default.help("The name to give the integration test container for testing"
-                                                  " user table ingest via the HTTP frontend."),
+    help=itest_http_ingest_container_default.help(
+        "The name to give the integration test container for testing user table ingest via the HTTP frontend."
+    ),
     default=itest_http_ingest_container_default.val(),
     required=True,
 )
@@ -796,7 +786,10 @@ option_cmake = partial(
     click.option,
     "--cmake/--no-cmake",
     "run_cmake",
-    help="Force cmake to run or not run, before running make. By default runs cmake if the build folder does not exist yet.",
+    help=(
+        "Force cmake to run or not run, before running make. By default runs cmake if the build folder "
+        "does not exist yet."
+    ),
     is_flag=True,
     default=None,
 )
@@ -853,8 +846,8 @@ option_clang_format = partial(
     type=click.Choice(["CHECK", "REFORMAT", "OFF"], case_sensitive=False),
     callback=lambda ctx, par, val: val.lower(),
     help="If CHECK, check C++ files with clang-format and fail if any changes are needed. "
-         "If REFORMAT, run clang-format on C++ files (will reformat files)."
-         "If OFF, do not run clang-format.",
+    "If REFORMAT, run clang-format on C++ files (will reformat files)."
+    "If OFF, do not run clang-format.",
     default="OFF",
 )
 

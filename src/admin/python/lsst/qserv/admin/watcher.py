@@ -21,28 +21,36 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from collections import namedtuple
-from contextlib import closing
 import logging
-import requests
+from collections import namedtuple
+from collections.abc import Sequence
+from contextlib import closing
 from time import sleep
-from typing import List, Sequence, Set, Type, Union, Any
+from typing import Any
+
+import requests
 
 _log = logging.getLogger(__name__)
 
 try:
     from .mysql_connection import mysql_connection
-except:
+except Exception:
     _log.warning("Could not import mysql.connection")
 
 
 CheckFailure = namedtuple("CheckFailure", "query_id execution_time query")
 
-start_msg_t = "Starting watcher on *{cluster_id}*. Will notify for queries running longer than {timeout_sec} seconds, polling every {interval_sec} seconds."
+start_msg_t = (
+    "Starting watcher on *{cluster_id}*. Will notify for queries running longer than {timeout_sec} seconds, "
+    "polling every {interval_sec} seconds."
+)
 
 stop_msg_t = "Stopping watcher on *{cluster_id}*."
 
-first_check_msg_t = "On *{cluster_id}* during the first check the following query ids had already exceeded the {timeout_sec} second timeout: {ids}"
+first_check_msg_t = (
+    "On *{cluster_id}* during the first check the following query ids had already exceeded the "
+    "{timeout_sec} second timeout: {ids}"
+)
 
 msg_prefix_t = "On *{cluster_id}* the following queries exceeded the {timeout_sec} second timeout:\n"
 show_query_msg_t = "- Query '{query}' id {id} has been running for {time} seconds.\n"
@@ -59,7 +67,6 @@ class NotifyUrlError:
 
 
 class Watcher:
-
     """Poll a qserv instance for queries that have been executing for longer
     than a given time, and send an alert to a given url if any are found.
 
@@ -90,31 +97,27 @@ class Watcher:
         show_query: bool,
     ):
         self.cluster_id = cluster_id
-        self.prev_failed_ids: Set[str] = set()
+        self.prev_failed_ids: set[str] = set()
         self.first_check = True
         self.qserv = qserv
         self.timeout_sec = timeout_sec
         self.interval_sec = interval_sec
         self.show_query = show_query
-        self.notify_url: Union[None, Type[NotifyUrlError], str] = self._get_notify_url(
-            notify_url_file
-        )
+        self.notify_url: None | type[NotifyUrlError] | str = self._get_notify_url(notify_url_file)
 
-    def _get_notify_url(
-        self, notify_url_file: str
-    ) -> Union[Type[NotifyUrlError], str]:
+    def _get_notify_url(self, notify_url_file: str) -> type[NotifyUrlError] | str:
         _log.debug(f"Reading notify url {notify_url_file}")
-        notify_url: Union[Type[NotifyUrlError], str] = NotifyUrlError
+        notify_url: type[NotifyUrlError] | str = NotifyUrlError
         try:
             with open(notify_url_file) as f:
                 notify_url = f.read()
             _log.debug(f"Notify url: {notify_url}")
-        except:
+        except Exception:
             notify_url = NotifyUrlError
             _log.error(f"Could not get notify url from {notify_url_file}")
         return notify_url
 
-    def alert(self, check_failures: List[CheckFailure]) -> None:
+    def alert(self, check_failures: list[CheckFailure]) -> None:
         """Send an alert for queries that failed the timeout."""
         if self.first_check:
             msg = first_check_msg_t.format(
@@ -123,18 +126,13 @@ class Watcher:
                 ids=", ".join([str(cf.query_id) for cf in check_failures]),
             )
         else:
-            msg = msg_prefix_t.format(
-                timeout_sec=self.timeout_sec, cluster_id=self.cluster_id
-            )
+            msg = msg_prefix_t.format(timeout_sec=self.timeout_sec, cluster_id=self.cluster_id)
             if self.show_query:
                 msg_t = show_query_msg_t
             else:
                 msg_t = query_msg_t
             msg += " ".join(
-                [
-                    msg_t.format(query=f.query, id=f.query_id, time=f.execution_time)
-                    for f in check_failures
-                ]
+                [msg_t.format(query=f.query, id=f.query_id, time=f.execution_time) for f in check_failures]
             )
         self.notify(msg=msg)
 
@@ -148,18 +146,14 @@ class Watcher:
         if url is None:
             return
         if url is NotifyUrlError:
-            _log.error(
-                f"Could not open the notify url file, can not send notification: {msg}"
-            )
+            _log.error(f"Could not open the notify url file, can not send notification: {msg}")
             return
         # This satisfies the type checker; mypy does not seem to realize that `if url is NotifyUrlError`
         # handles that case, and the only remaning possibility is that url is a str.
         if not isinstance(url, str):
             raise RuntimeError(f"notify_url is {url}, expected a string value.")
         try:
-            res = requests.post(
-                url, headers=notify_headers, data=notify_data.format(msg=msg)
-            )
+            res = requests.post(url, headers=notify_headers, data=notify_data.format(msg=msg))
             if res.status_code != 200:
                 _log.error(
                     f"FAILED TO SEND NOTIFICATION cluster: {self.cluster_id}, msg: {msg} to {url}: {res}"
@@ -187,14 +181,14 @@ class Watcher:
         try:
             with closing(mysql_connection(uri)) as cnx:
                 with closing(cnx.cursor()) as cursor:
-                    res = cursor.execute(stmt)
+                    cursor.execute(stmt)
                     results = cursor.fetchall()
         except Exception as e:
             results = []
             _log.error(f"Failed to execute the query {stmt} at {uri}, exception: {e}")
         return results
 
-    def check(self) -> List[CheckFailure]:
+    def check(self) -> list[CheckFailure]:
         """Check that no queries have been running for longer than a given time.
 
         Returns
@@ -270,7 +264,5 @@ def watch(
     interval_sec: int,
     show_query: bool,
 ) -> None:
-    watcher = Watcher(
-        cluster_id, notify_url_file, qserv, timeout_sec, interval_sec, show_query
-    )
+    watcher = Watcher(cluster_id, notify_url_file, qserv, timeout_sec, interval_sec, show_query)
     watcher.watch()

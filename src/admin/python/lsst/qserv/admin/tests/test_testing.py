@@ -20,8 +20,7 @@
 # the GNU General Public License along with this program.  If not,
 # see <http://www.lsstcorp.org/LegalNotices/>.
 
-"""This is a unittest for admin.testing package
-"""
+"""This is a unittest for admin.testing package"""
 
 import io
 import logging
@@ -30,7 +29,6 @@ import tempfile
 import unittest
 
 from lsst.qserv.testing import config, mock_db, monitor, query_runner, runner_mgr
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -82,28 +80,18 @@ queryClasses:
 
 
 class TestConfig(unittest.TestCase):
-
     def test_merge(self):
-
-        cfg1 = {
-            "a": 1, "b": 2, "c": {"d": 3, "0": 0}
-        }
-        cfg2 = {
-            "a": 3, "e": 4, "c": {"0": [], "x": None}
-        }
-        expect = {
-            "a": 3, "b": 2, "e": 4, "c": {"d": 3, "x": None, "0": []}
-        }
+        cfg1 = {"a": 1, "b": 2, "c": {"d": 3, "0": 0}}
+        cfg2 = {"a": 3, "e": 4, "c": {"0": [], "x": None}}
+        expect = {"a": 3, "b": 2, "e": 4, "c": {"d": 3, "x": None, "0": []}}
         cfg = config.Config._merge(cfg1, cfg2)
         self.assertEqual(cfg, expect)
 
     def test_construct_empty(self):
-
         with self.assertRaises(ValueError):
             config.Config([])
 
     def test_construct_yaml_one(self):
-
         # construct with single YAML
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
         self.assertEqual(set(cfg._config.keys()), {"queryClasses", "queries"})
@@ -114,13 +102,12 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(cfg.classes(), {"LV", "FTSObj"})
         self.assertEqual(len(cfg.queries("LV")), 2)
         self.assertEqual(len(cfg.queries("FTSObj")), 3)
-        self.assertEqual(cfg.concurrentQueries("LV"), 80)
-        self.assertEqual(cfg.concurrentQueries("FTSObj"), 12)
-        self.assertEqual(cfg.maxRate("LV"), 100)
-        self.assertIsNone(cfg.maxRate("FTSObj"))
+        self.assertEqual(cfg.concurrent_queries("LV"), 80)
+        self.assertEqual(cfg.concurrent_queries("FTSObj"), 12)
+        self.assertEqual(cfg.max_rate("LV"), 100)
+        self.assertIsNone(cfg.max_rate("FTSObj"))
 
     def test_construct_yaml_two(self):
-
         # construct with overrides
         cfg = config.Config.from_yaml([io.StringIO(_CFG1), io.StringIO(_CFG2)])
         self.assertEqual(set(cfg._config.keys()), {"queryClasses", "queries"})
@@ -131,47 +118,44 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(cfg.classes(), {"LV", "FTSObj"})
         self.assertEqual(len(cfg.queries("LV")), 2)
         self.assertEqual(len(cfg.queries("FTSObj")), 3)
-        self.assertEqual(cfg.concurrentQueries("LV"), 100)
-        self.assertEqual(cfg.concurrentQueries("FTSObj"), 12)
-        self.assertEqual(cfg.maxRate("LV"), 100)
-        self.assertEqual(cfg.maxRate("FTSObj"), 1)
+        self.assertEqual(cfg.concurrent_queries("LV"), 100)
+        self.assertEqual(cfg.concurrent_queries("FTSObj"), 12)
+        self.assertEqual(cfg.max_rate("LV"), 100)
+        self.assertEqual(cfg.max_rate("FTSObj"), 1)
 
     def test_split(self):
-
         # construct with single YAML
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
 
-        self.assertEqual(cfg.concurrentQueries("LV"), 80)
-        self.assertEqual(cfg.concurrentQueries("FTSObj"), 12)
-        self.assertEqual(cfg.maxRate("LV"), 100)
-        self.assertIsNone(cfg.maxRate("FTSObj"))
+        self.assertEqual(cfg.concurrent_queries("LV"), 80)
+        self.assertEqual(cfg.concurrent_queries("FTSObj"), 12)
+        self.assertEqual(cfg.max_rate("LV"), 100)
+        self.assertIsNone(cfg.max_rate("FTSObj"))
 
         cfg0 = cfg.split(3, 0)
         cfg1 = cfg.split(3, 1)
         cfg2 = cfg.split(3, 2)
-        self.assertEqual(cfg0.concurrentQueries("LV"), 27)
-        self.assertEqual(cfg1.concurrentQueries("LV"), 27)
-        self.assertEqual(cfg2.concurrentQueries("LV"), 26)
-        self.assertEqual(cfg0.maxRate("LV"), 100.)
-        self.assertEqual(cfg1.maxRate("LV"), 100.)
-        self.assertEqual(cfg2.maxRate("LV"), 100.)
-        self.assertEqual(cfg0.concurrentQueries("FTSObj"), 4)
-        self.assertEqual(cfg1.concurrentQueries("FTSObj"), 4)
-        self.assertEqual(cfg2.concurrentQueries("FTSObj"), 4)
-        self.assertIsNone(cfg0.maxRate("FTSObj"))
-        self.assertIsNone(cfg1.maxRate("FTSObj"))
-        self.assertIsNone(cfg2.maxRate("FTSObj"))
+        self.assertEqual(cfg0.concurrent_queries("LV"), 27)
+        self.assertEqual(cfg1.concurrent_queries("LV"), 27)
+        self.assertEqual(cfg2.concurrent_queries("LV"), 26)
+        self.assertEqual(cfg0.max_rate("LV"), 100.0)
+        self.assertEqual(cfg1.max_rate("LV"), 100.0)
+        self.assertEqual(cfg2.max_rate("LV"), 100.0)
+        self.assertEqual(cfg0.concurrent_queries("FTSObj"), 4)
+        self.assertEqual(cfg1.concurrent_queries("FTSObj"), 4)
+        self.assertEqual(cfg2.concurrent_queries("FTSObj"), 4)
+        self.assertIsNone(cfg0.max_rate("FTSObj"))
+        self.assertIsNone(cfg1.max_rate("FTSObj"))
+        self.assertIsNone(cfg2.max_rate("FTSObj"))
 
-    def test_ValueRandomUniform(self):
-
-        gen = config._ValueRandomUniform(1., 42.)
-        for i in range(100):
+    def test_value_random_uniform(self):
+        gen = config._ValueRandomUniform(1.0, 42.0)
+        for _ in range(100):
             val = gen()
-            self.assertGreaterEqual(val, 1.)
-            self.assertLessEqual(val, 42.)
+            self.assertGreaterEqual(val, 1.0)
+            self.assertLessEqual(val, 42.0)
 
-    def test_ValueIntFromFile(self):
-
+    def test_value_int_from_file(self):
         with self.assertRaises(AssertionError):
             # bad mode
             config._ValueIntFromFile("/dev/null", "non-random")
@@ -202,25 +186,21 @@ class TestConfig(unittest.TestCase):
             values = [gen() for i in range(10)]
             self.assertEqual(values, [1, 10, 20, 30, 42, 1, 10, 20, 30, 42])
 
-    def test_QueryFactory(self):
-
+    def test_query_factory(self):
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
 
         for qclass in cfg.classes():
             queries = cfg.queries(qclass)
-            for qid, factory in queries.items():
-                for i in range(10):
+            for factory in queries.values():
+                for _ in range(10):
                     query = factory.query()
                     self.assertIsInstance(query, str)
 
 
 class TestMockDb(unittest.TestCase):
-
     def test_mock_db_fetchall(self):
-
         # can take any args
-        conn = mock_db.connect(host="host", port=4040, user='qsmaster',
-                               passwd='', db='LSST')
+        conn = mock_db.connect(host="host", port=4040, user="qsmaster", passwd="", db="LSST")
 
         cursor = conn.cursor()
 
@@ -240,10 +220,8 @@ class TestMockDb(unittest.TestCase):
         self.assertEqual(len(rows), 22)
 
     def test_mock_db_fetchmany(self):
-
         # can take any args
-        conn = mock_db.connect(host="host", port=4040, user='qsmaster',
-                               passwd='', db='LSST')
+        conn = mock_db.connect(host="host", port=4040, user="qsmaster", passwd="", db="LSST")
 
         cursor = conn.cursor()
 
@@ -274,7 +252,6 @@ class TestMockDb(unittest.TestCase):
 
 
 class TestQueryRunner(unittest.TestCase):
-
     def test_query_runner_count(self):
         """Test for queryCountLimit parameter.
 
@@ -285,16 +262,16 @@ class TestQueryRunner(unittest.TestCase):
         queries = cfg.queries("LV")
         monit = monitor.LogMonitor("testmonit")
 
-        connectionFactory = mock_db.connect
+        connection_factory = mock_db.connect
         runner = query_runner.QueryRunner(
             queries=queries,
-            maxRate=None,
-            connectionFactory=connectionFactory,
-            runnerId="runner1",
+            max_rate=None,
+            connection_factory=connection_factory,
+            runner_id="runner1",
             arraysize=1000,
-            queryCountLimit=10,
-            runTimeLimit=None,
-            monitor=monit
+            query_count_limit=10,
+            run_time_limit=None,
+            monitor=monit,
         )
         runner()
 
@@ -307,22 +284,21 @@ class TestQueryRunner(unittest.TestCase):
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
         queries = cfg.queries("FTSObj")
 
-        connectionFactory = mock_db.connect
+        connection_factory = mock_db.connect
         runner = query_runner.QueryRunner(
             queries=queries,
-            maxRate=None,
-            connectionFactory=connectionFactory,
-            runnerId="runner1",
+            max_rate=None,
+            connection_factory=connection_factory,
+            runner_id="runner1",
             arraysize=1000,
-            queryCountLimit=None,
-            runTimeLimit=1.5,
-            monitor=None
+            query_count_limit=None,
+            run_time_limit=1.5,
+            monitor=None,
         )
         runner()
 
 
 class TestRunnerManager(unittest.TestCase):
-
     def test_slot_none(self):
         """Test for RunnerManager execution with slot=None.
 
@@ -331,11 +307,9 @@ class TestRunnerManager(unittest.TestCase):
         be useful.
         """
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
-        connectionFactory = mock_db.connect
+        connection_factory = mock_db.connect
         slot = None
-        mgr = runner_mgr.RunnerManager(
-            cfg, connectionFactory, slot, runTimeLimit=1.5, monitor=None
-        )
+        mgr = runner_mgr.RunnerManager(cfg, connection_factory, slot, runtime_limit=1.5, monitor=None)
         mgr.run()
 
     def test_slot_7(self):
@@ -346,33 +320,20 @@ class TestRunnerManager(unittest.TestCase):
         be useful (it should include "slot=7").
         """
         cfg = config.Config.from_yaml([io.StringIO(_CFG1)])
-        connectionFactory = mock_db.connect
+        connection_factory = mock_db.connect
         slot = 7
-        mgr = runner_mgr.RunnerManager(
-            cfg, connectionFactory, slot, runTimeLimit=1.5, monitor=None
-        )
+        mgr = runner_mgr.RunnerManager(cfg, connection_factory, slot, runtime_limit=1.5, monitor=None)
         mgr.run()
 
 
 class TestMonitor(unittest.TestCase):
-
     def test_monitor_influxdb_file(self):
-
         with tempfile.TemporaryDirectory() as tmpdir:
-
             fname = os.path.join(tmpdir, "monit1-%T.dat")
             monit = monitor.InfluxDBFileMonitor(fname, None)
 
-            monit.add_metrics(
-                "metrics1",
-                value=1
-            )
-            monit.add_metrics(
-                "metrics2",
-                value1=1,
-                value2=2,
-                tags={"tag1": "tag", "tag2": 100}
-            )
+            monit.add_metrics("metrics1", value=1)
+            monit.add_metrics("metrics2", value1=1, value2=2, tags={"tag1": "tag", "tag2": 100})
 
             path = monit.path
             self.assertTrue(path.endswith(".dat"))
@@ -391,16 +352,8 @@ class TestMonitor(unittest.TestCase):
             fname = os.path.join(tmpdir, "monit2.dat")
             monit = monitor.InfluxDBFileMonitor(fname, 1000000, "metricsdb")
 
-            monit.add_metrics(
-                "metrics1",
-                value=1
-            )
-            monit.add_metrics(
-                "metrics2",
-                value1=1,
-                value2=2,
-                tags={"tag1": "tag", "tag2": 100}
-            )
+            monit.add_metrics("metrics1", value=1)
+            monit.add_metrics("metrics2", value1=1, value2=2, tags={"tag1": "tag", "tag2": 100})
 
             path = monit.path
             # name should end with timestamp
@@ -418,23 +371,15 @@ class TestMonitor(unittest.TestCase):
                 self.assertTrue(data[3].startswith("metrics2,tag1=tag,tag2=100 value1=1,value2=2 "))
 
     def test_monitor_extratags(self):
-        """Test for extra tags passed to constructor.
-        """
+        """Test for extra tags passed to constructor."""
 
         with tempfile.TemporaryDirectory() as tmpdir:
-
             fname = os.path.join(tmpdir, "monit1-%T.dat")
             monit = monitor.InfluxDBFileMonitor(fname, None, tags={"tag3": "supertag"})
 
+            monit.add_metrics("metrics1", value=1)
             monit.add_metrics(
-                "metrics1",
-                value=1
-            )
-            monit.add_metrics(
-                "metrics2",
-                value1=1,
-                value2=2,
-                tags={"tag1": "tag", "tag2": 100, "tag3": 1000000}
+                "metrics2", value1=1, value2=2, tags={"tag1": "tag", "tag2": 100, "tag3": 1000000}
             )
 
             path = monit.path
@@ -445,8 +390,8 @@ class TestMonitor(unittest.TestCase):
                 self.assertEqual(data[0], "# DML")
                 # ignores timestamps
                 self.assertTrue(data[1].startswith("metrics1,tag3=supertag value=1 "))
-                self.assertTrue(data[2].startswith(
-                    "metrics2,tag3=1000000,tag1=tag,tag2=100 value1=1,value2=2 ")
+                self.assertTrue(
+                    data[2].startswith("metrics2,tag3=1000000,tag1=tag,tag2=100 value1=1,value2=2 ")
                 )
 
 

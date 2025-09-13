@@ -19,16 +19,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit tests for qserv_cli.
-"""
+"""Unit tests for qserv_cli."""
 
 import unittest
 
 from lsst.qserv.admin.qservCli.qserv_log import (
     default_log_level,
     invalid_value_msg,
-    log_level_from_args,
     log_level_choices,
+    log_level_from_args,
     missing_argument_msg,
 )
 

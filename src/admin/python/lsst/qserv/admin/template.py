@@ -19,11 +19,12 @@
 # You should have received a copy of the GNU General Public License
 
 
-import jinja2
 import logging
 import os
 import stat
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any
+
+import jinja2
 import yaml
 
 from .cli.utils import Targs
@@ -47,7 +48,7 @@ def save_template_cfg(values: Targs) -> None:
     if not values:
         return
     try:
-        with open(cfg_file_path, "r") as f:
+        with open(cfg_file_path) as f:
             cfg = yaml.safe_load(f.read())
     except FileNotFoundError:
         cfg = {}
@@ -56,10 +57,10 @@ def save_template_cfg(values: Targs) -> None:
         f.write(yaml.dump(cfg))
 
 
-def get_template_cfg() -> Dict[Any, Any]:
+def get_template_cfg() -> dict[Any, Any]:
     """Get the dict of key-value pairs from the config parameter file."""
     try:
-        with open(cfg_file_path, "r") as f:
+        with open(cfg_file_path) as f:
             cfg = yaml.safe_load(f.read())
     except FileNotFoundError:
         cfg = {}
@@ -68,7 +69,7 @@ def get_template_cfg() -> Dict[Any, Any]:
     return cfg
 
 
-def apply_template_cfg(template: str, targs: Optional[Targs] = None) -> str:
+def apply_template_cfg(template: str, targs: Targs | None = None) -> str:
     """Apply template values as found in the config parameter file to a
     template.
 
@@ -100,14 +101,11 @@ def apply_template_cfg(template: str, targs: Optional[Targs] = None) -> str:
         else:
             return t.render(**get_template_cfg())
     except jinja2.exceptions.UndefinedError as e:
-        _log.error(f"Missing template value: {str(e)}")
+        _log.error(f"Missing template value: {e!s}")
         raise
 
 
-def apply_template_cfg_file(
-    src: str,
-    dest: str,
-    targs: Optional[Targs] = None) -> None:
+def apply_template_cfg_file(src: str, dest: str, targs: Targs | None = None) -> None:
     """Open and read a template file, apply the config values to it, and write
     the rendered version to a file.
 

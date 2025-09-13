@@ -25,81 +25,76 @@ there will be a CLI command called qserv. Use `qserv --help` to for more
 information.
 """
 
+import sys
 
 import click
-import sys
-from typing import List, Optional
-
 
 from ..cli.options import (
-    option_czar_connection,
-    option_load,
-    option_log_level,
-    option_unload,
-    option_reload,
-    option_load_http,
-    option_run_tests,
-    option_keep_results,
-    option_compare_results,
     option_case,
+    option_compare_results,
+    option_czar_connection,
+    option_keep_results,
+    option_load,
+    option_load_http,
+    option_log_level,
+    option_reload,
     option_repl_connection,
+    option_run_tests,
     option_tests_yaml,
+    option_unload,
     option_worker_connection,
 )
-
 from . import images, launch
-
 from .opt import (
+    env_build_image,
+    env_dh_token,
+    env_dh_user,
+    env_gh_event_name,
+    env_gh_head_ref,
+    env_gh_ref,
+    env_ltd_password,
+    env_ltd_user,
+    env_mariadb_image,
+    env_qserv_image,
+    env_run_base_image,
+    env_user_build_image,
     option_bind,
     option_build_container_name,
-    env_build_image,
     option_build_image,
     option_clang_format,
     option_cmake,
     option_compose_file,
     option_dashboard_port,
-    option_http_frontend_port,
     option_debuggable,
-    env_dh_user,
-    env_dh_token,
     option_do_build_image,
     option_dry,
-    env_gh_event_name,
-    env_gh_head_ref,
-    env_gh_ref,
+    option_http_frontend_port,
     option_itest_container_name,
-    option_itest_ref_container_name,
     option_itest_file,
     option_itest_http_container_name,
     option_itest_http_ingest_container_name,
+    option_itest_ref_container_name,
     option_jobs,
-    env_ltd_password,
-    env_ltd_user,
     option_make,
-    env_mariadb_image,
     option_mariadb_image,
     option_mypy,
     option_outdir,
     option_project,
     option_pull_image,
     option_push_image,
-    qserv_default_vals,
-    option_qserv_group,
-    option_qserv_root,
     option_qserv_build_root,
-    qserv_env_vals,
-    env_qserv_image,
+    option_qserv_group,
     option_qserv_image,
+    option_qserv_root,
     option_remove,
-    env_user_build_image,
-    option_user_build_image,
-    option_user,
     option_run_base_image,
-    env_run_base_image,
     option_test_container_name,
     option_unit_test,
+    option_user,
+    option_user_build_image,
+    qserv_default_vals,
+    qserv_env_vals,
 )
-
 
 # This list defines the order of commands output when running "qserv --help".
 # If commands are added or removed from from "qserv" then they must be added
@@ -132,7 +127,7 @@ help_order = [
 class QservCommandGroup(click.Group):
     """Group class for custom qserv command behaviors."""
 
-    def list_commands(self, ctx: click.Context) -> List[str]:
+    def list_commands(self, ctx: click.Context) -> list[str]:
         """List the qserv commands in the order specified by help_order."""
         # make sure that all the commands are named in our help_order list:
         missing = set(help_order).symmetric_difference(self.commands.keys())
@@ -213,7 +208,7 @@ def build(
     qserv_build_root: str,
     unit_test: bool,
     dry: bool,
-    jobs: Optional[int],
+    jobs: int | None,
     run_cmake: bool,
     run_make: bool,
     run_mypy: bool,
@@ -247,7 +242,8 @@ def build(
     )
 
 
-@qserv.command(help=f"""Build the qserv documentation.
+@qserv.command(
+    help=f"""Build the qserv documentation.
 
     Passing --upload will cause the docs to be uploaded to LSST The Docs (LTD).
     Typically this is only used by Github Actions (GHA)
@@ -385,7 +381,9 @@ def build_mariadb_image(
 @option_qserv_group()
 @option_run_base_image(help=env_run_base_image.help("The name of the lite-run-base image to create."))
 @option_mariadb_image(help=env_mariadb_image.help("The name of the mariadb image to create."))
-@option_push_image(help="Push base images to dockerhub if they do not exist. Requires login to dockerhub first.")
+@option_push_image(
+    help="Push base images to dockerhub if they do not exist. Requires login to dockerhub first."
+)
 @option_pull_image(help="Pull images from dockerhub if they exist.")
 @option_qserv_root()
 @option_dry()
@@ -422,7 +420,7 @@ def run_dev(
     qserv_root: str,
     test_container: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     project: str,
     dry: bool,
 ) -> None:
@@ -446,10 +444,9 @@ def run_dev(
     type=click.Choice(("long-lived", "temp")),
     help="Indicates the container lifecycle.\n\n"
     "* 'long-lived' for long-lived container; runs and does not enter the container.\n\n"
-    "* 'temp' for a temporary container; runs and enters container, removes container when exiting.\n\n"
-    ,
+    "* 'temp' for a temporary container; runs and enters container, removes container when exiting.\n\n",
     default="temp",
-    show_default=True
+    show_default=True,
 )
 @option_dry()
 def run_build(
@@ -533,15 +530,15 @@ def itest(
     itest_container: str,
     itest_ref_container: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
@@ -573,6 +570,7 @@ def itest(
         remove=remove,
     )
     sys.exit(returncode)
+
 
 @qserv.command()
 @option_qserv_image()
@@ -609,15 +607,15 @@ def itest_http(
     itest_http_container: str,
     itest_ref_container: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
@@ -650,6 +648,7 @@ def itest_http(
     )
     sys.exit(returncode)
 
+
 @qserv.command()
 @option_qserv_image()
 @option_qserv_root()
@@ -674,7 +673,7 @@ def itest_http_ingest(
     qserv_root: str,
     itest_http_ingest_container: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
@@ -711,6 +710,7 @@ def itest_rm(project: str, dry: bool) -> None:
     """Remove volumes created by itest."""
     launch.itest_rm(project, dry)
 
+
 @qserv.command()
 @option_qserv_image()
 @option_qserv_root()
@@ -742,6 +742,7 @@ def prepare_data(
     )
     sys.exit(returncode)
 
+
 # These defaults match connection options used in
 # admin/local/docker/compose/docker-compose.yml
 czar_connection_default = "mysql://root:CHANGEME@czar-proxy:3306"
@@ -761,23 +762,23 @@ repl_connection_default = "mysql://root:CHANGEME@repl-mgr-db:3306/qservw_worker"
 )
 @option_worker_connection(
     default=worker_connections_default,
-    help=f"""{option_worker_connection.keywords['help']}
+    help=f"""{option_worker_connection.keywords["help"]}
     The default values work with the default
     {len(worker_connections_default)}-worker docker-compose file:
-    {click.style(worker_connections_default, fg='green', bold=True)}""",
+    {click.style(worker_connections_default, fg="green", bold=True)}""",
 )
 @option_repl_connection(
     default=repl_connection_default,
-    help=f"""{option_repl_connection.keywords['help']}
+    help=f"""{option_repl_connection.keywords["help"]}
     The default value works with the default docker-compose file:
-    {click.style(repl_connection_default, fg='green', bold=True)}""",
+    {click.style(repl_connection_default, fg="green", bold=True)}""",
 )
 @option_qserv_image()
 @option_project()
 @option_dry()
 def update_schema(
     czar_connection: str,
-    worker_connections: List[str],
+    worker_connections: list[str],
     repl_connection: str,
     qserv_image: str,
     project: str,
@@ -878,7 +879,7 @@ def down(
 )
 @option_dry()
 def entrypoint_help(
-    command: Optional[str],
+    command: str | None,
     qserv_image: str,
     entrypoint: bool,
     spawned: bool,
@@ -900,7 +901,9 @@ def entrypoint_help(
         dry=dry,
     )
 
-@qserv.command(help=f"""Check if an image is in dockerhub.
+
+@qserv.command(
+    help="""Check if an image is in dockerhub.
 
     IMAGE is the image name + tag.
 
@@ -918,8 +921,10 @@ def dh_image_exists(image: str) -> None:
     if not (user and token):
         click.echo("QSERV_DH_USER and QSERV_DH_TOKEN must be set to use this command.")
         return
-    click.echo(images.dh_image_exists(
-        image,
-        user,
-        token,
-    ))
+    click.echo(
+        images.dh_image_exists(
+            image,
+            user,
+            token,
+        )
+    )

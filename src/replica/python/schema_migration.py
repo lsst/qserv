@@ -18,27 +18,25 @@
 #
 # You should have received a copy of the GNU General Public License
 
-"""Module defining methods used in schema migration of the Replication system's database.
-"""
+"""Module defining methods used in schema migration of the Replication system's database."""
 
 __all__ = ["make_migration_manager"]
 
-from contextlib import closing
 import logging
-from sqlalchemy.engine.url import make_url
-from typing import Callable, List, Optional
+from contextlib import closing
 
 from lsst.qserv.schema import (
     Migration,
     SchemaMigMgr,
-    Version,
     Uninitialized,
+    Version,
 )
-
+from sqlalchemy.engine.url import make_url
 
 _log = logging.getLogger(__name__)
 
 database = "qservReplica"
+
 
 class MasterReplicationMigrationManager(SchemaMigMgr):
     """Class implementing schema migration for the master replication
@@ -53,7 +51,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         self,
         connection: str,
         scripts_dir: str,
-        repl_connection: Optional[str],
+        repl_connection: str | None,
     ):
         self.repl_connection = repl_connection
         super().__init__(scripts_dir, connection)
@@ -67,13 +65,13 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             The current schema version.
         """
         # If the database does not exist then the version is `Uninitialized`.
-        if not self.databaseExists(database):
+        if not self.database_exists(database):
             return Version(Uninitialized)
 
         # Initial database schema implementation did not have version number stored at all,
         # and we call this version 0. Since version=1 version number is stored in
         # QMetadata table with key="version"
-        if not self.tableExists(database, 'QMetadata'):
+        if not self.table_exists(database, "QMetadata"):
             return 0
 
         self.connection.database = database
@@ -100,11 +98,11 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         current = self.current_version()
         if current != version:
             raise RuntimeError(
-                f"Failed to update version of database {database} to {version}, current version is {current}.")
+                f"Failed to update version of database {database} to {version}, current version is {current}."
+            )
 
     def _create_database(self) -> None:
-        """Create the replication controller database.
-        """
+        """Create the replication controller database."""
         with closing(self.connection.cursor()) as cursor:
             cursor.execute(f"CREATE DATABASE {database};")
             warnings = cursor.fetchwarnings()
@@ -114,8 +112,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         self.connection.commit()
 
     def _create_users(self) -> None:
-        """Create the users for the replication controller database.
-        """
+        """Create the users for the replication controller database."""
         if not self.repl_connection:
             raise RuntimeError(
                 "A non-admin replication database connection uri must be provided to initialize the "
@@ -132,7 +129,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             f"CREATE USER IF NOT EXISTS {user}@'%';",
             f"GRANT ALL ON {database}.* TO  {user}@localhost;",
             f"GRANT ALL ON {database}.* TO  {user}@'%';",
-            f"FLUSH PRIVILEGES;",
+            "FLUSH PRIVILEGES;",
         ]:
             with closing(self.connection.cursor()) as cursor:
                 _log.info(f"executing: {stmt}")
@@ -142,7 +139,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
                     _log.warn("Warnings were issued when creating user %s.", user)
         self.connection.commit()
 
-    def apply_migrations(self, migrations: List[Migration]) -> Version:
+    def apply_migrations(self, migrations: list[Migration]) -> Version:
         """Apply migrations.
 
         Parameters
@@ -171,7 +168,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
 def make_migration_manager(
     connection: str,
     scripts_dir: str,
-    repl_connection: Optional[str] = None,
+    repl_connection: str | None = None,
 ) -> SchemaMigMgr:
     """Factory method for master replication controller schema migration
     manager

@@ -20,49 +20,47 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Module defining SchemaMigMgr abstract base class.
-"""
+"""Module defining SchemaMigMgr abstract base class."""
 
 from __future__ import annotations
 
 __all__ = ["SchemaMigMgr", "Uninitialized"]
 
+import logging
+import os
+import re
 from abc import ABCMeta, abstractmethod
-import backoff
+from collections.abc import Callable
 from contextlib import closing
 from dataclasses import dataclass
+from typing import cast
+
+import backoff
 import jinja2
-import logging
-import mysql.connector
-from typing import Callable, Dict, Union, cast
 
 # MySQLInterfaceError can get thrown, we need to catch it.
 # It's not exposed as a public python object but *is* used in mysql.connector unit tests.
 from _mysql_connector import MySQLInterfaceError
-import os
-import re
 from sqlalchemy.engine.url import make_url
-from typing import Callable, List, Optional, Type, Union
 
-from ..admin.template import get_template_cfg
+import mysql.connector
+
 from ..admin.qserv_backoff import max_backoff_sec, on_backoff
-
+from ..admin.template import get_template_cfg
 
 _log = logging.getLogger(__name__)
 database_error_connection_refused_code = 2003
 
 
-MigMgrArgs = Dict[str, Union[Callable[[], None], str, None]]
+MigMgrArgs = dict[str, Callable[[], None] | str | None]
 
 
-class SchemaUpdateRequired(RuntimeError):
+class SchemaUpdateRequiredError(RuntimeError):
     """Error that indicates that a schema update is required.
 
     It may be raised when the update could not be performed because necessary
     arguments (e.g. update=True) were not passed.
     """
-
-    pass
 
 
 class Uninitialized:
@@ -79,16 +77,16 @@ class Version:
     `Uninitialized` if the schema is not yet initialized to any version.
     """
 
-    def __init__(self, value: Union[int, Type[Uninitialized]]):
+    def __init__(self, value: int | type[Uninitialized]):
         if isinstance(value, Version):
-            self.value: Union[int, Type[Uninitialized]] = value.value
+            self.value: int | type[Uninitialized] = value.value
             return
         if not isinstance(value, int) and value is not Uninitialized:
             raise RuntimeError(f"Version value must be an int or Uninitialized, not {value}")
         self.value = value
 
     @staticmethod
-    def cast(other: Union[int, Type[Uninitialized], Version]) -> Version:
+    def cast(other: int | type[Uninitialized] | Version) -> Version:
         """Ensure that the passed-in object is a Version instance; if it is
         just return it, if not create a Version and use it as the value.
         """
@@ -97,11 +95,11 @@ class Version:
         return Version(other)
 
     @staticmethod
-    def _validateOther(other: object) -> bool:
-        return isinstance(other, (int, Version)) or other is Uninitialized
+    def _validate_other(other: object) -> bool:
+        return isinstance(other, int | Version) or other is Uninitialized
 
     @staticmethod
-    def _otherVal(other: object) -> Union[int, Type[Uninitialized]]:
+    def _other_val(other: object) -> int | type[Uninitialized]:
         """Get the value of the other value. May be a ``Version`` instance,
         ``Uninitialized``, or an ``int``.
 
@@ -116,29 +114,29 @@ class Version:
         raise NotImplementedError(f"_otherVal is not implemented for the type of {other}")
 
     def __lt__(self, other: object) -> bool:
-        if not self._validateOther(other):
+        if not self._validate_other(other):
             return NotImplemented
-        otherVal = self._otherVal(other)
-        if self.value is Uninitialized and otherVal is not Uninitialized:
+        other_val = self._other_val(other)
+        if self.value is Uninitialized and other_val is not Uninitialized:
             return True
-        if isinstance(self.value, int) and isinstance(otherVal, int):
-            return self.value < otherVal
+        if isinstance(self.value, int) and isinstance(other_val, int):
+            return self.value < other_val
         return False
 
     def __gt__(self, other: object) -> bool:
-        if not self._validateOther(other):
+        if not self._validate_other(other):
             return NotImplemented
         return not self.__lt__(other) and not self.__eq__(other)
 
     def __ge__(self, other: object) -> bool:
-        if not self._validateOther(other):
+        if not self._validate_other(other):
             return NotImplemented
         return not self < other
 
     def __eq__(self, other: object) -> bool:
-        if not self._validateOther(other):
+        if not self._validate_other(other):
             return NotImplemented
-        other = self._otherVal(other)
+        other = self._other_val(other)
         if self.value is Uninitialized and other is Uninitialized:
             return True
         if self.value is Uninitialized or other is Uninitialized:
@@ -167,7 +165,7 @@ class Migration:
 
     def __init__(
         self,
-        from_version: Union[int, Type[Uninitialized]],
+        from_version: int | type[Uninitialized],
         to_version: int,
         name: str,
         filepath: str,
@@ -187,7 +185,7 @@ class Migration:
             other.filepath,
         )
 
-    def __lt__(self, other: "Migration") -> bool:
+    def __lt__(self, other: Migration) -> bool:
         return (self.from_version, self.to_version, self.name, self.filepath) < (
             other.from_version,
             other.to_version,
@@ -209,12 +207,11 @@ class Migration:
 class MigMatch:
     """Helper for tracking schema migrations in SchemaMigMgr."""
 
-    from_version: Union[int, Type[Uninitialized]]
+    from_version: int | type[Uninitialized]
     to_version: int
 
 
 class SchemaMigMgr(metaclass=ABCMeta):
-
     """Abstract base class for schema migration managers.
 
     Parameters
@@ -226,7 +223,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def current_version(self) -> Union[int, Type[Uninitialized]]:
+    def current_version(self) -> int | type[Uninitialized]:
         """Returns current schema version.
 
         Returns
@@ -234,7 +231,6 @@ class SchemaMigMgr(metaclass=ABCMeta):
         version : `int` or ``Uninitialized``
             The current schema version.
         """
-        pass
 
     # mig_name_re describes a common migration file name pattern. Subclasses
     # can override this. This pattern looks for name "migrate-N-to-M.sql" or
@@ -254,7 +250,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
             self.connection.close()
 
     @property
-    def max_migration_version(self) -> Optional[Version]:
+    def max_migration_version(self) -> Version | None:
         """Get the migration Version with the highest 'to' version."""
         if not self.migrations:
             return None
@@ -308,7 +304,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         # docs. Assuming it's because the connection was rejected, and hoping that
         # retry will succeed.
     )
-    def apply_migrations(self, migrations: List[Migration]) -> Optional[Version]:
+    def apply_migrations(self, migrations: list[Migration]) -> Version | None:
         """Apply migrations.
 
         Parameters
@@ -337,18 +333,20 @@ class SchemaMigMgr(metaclass=ABCMeta):
                         stmt = env.get_template(migration.name).render(get_template_cfg())
                     except jinja2.exceptions.UndefinedError as e:
                         raise RuntimeError(
-                            f"A template parameter is missing from the configuration for {migration.filepath}: {e.message}"
+                            "A template parameter is missing from the configuration for "
+                            f"{migration.filepath}: {e.message}"
                         ) from e
                 else:
-                    with open(migration.filepath, "r") as f:
+                    with open(migration.filepath) as f:
                         stmt = f.read()
                 _log.debug(f"Migration statement: {stmt}")
                 if stmt:
-                    for result in cursor.execute(stmt, multi=True): # type: ignore
-                        # Cast here because MySQLCursorAbtract does not have with_rows for some reason, even though both of
-                        # its subclasses do...
+                    for result in cursor.execute(stmt, multi=True):  # type: ignore[union-attr]
+                        # Cast here because MySQLCursorAbtract does not have with_rows for some reason, even
+                        # though both of its subclasses do...
                         result = cast(
-                            Union[mysql.connector.cursor.MySQLCursor, mysql.connector.cursor_cext.CMySQLCursor], result
+                            mysql.connector.cursor.MySQLCursor | mysql.connector.cursor_cext.CMySQLCursor,
+                            result,
                         )
                         if result.with_rows:
                             result.fetchall()
@@ -360,7 +358,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
                 _log.info("+++ Script %s completed successfully", migration.name)
         return Version(migration.to_version.value)
 
-    def migrate(self, to_version: Optional[int] = None, do_migrate: bool = False) -> Optional[int]:
+    def migrate(self, to_version: int | None = None, do_migrate: bool = False) -> int | None:
         """Perform schema migration from current version to given version.
 
         Parameters
@@ -398,8 +396,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         migrations = self.migration_path(from_version, resolved_to_version, self.migrations)
         if not migrations:
             raise ValueError(
-                "No known scripts to migrate from version "
-                f"{from_version} to version {resolved_to_version}."
+                f"No known scripts to migrate from version {from_version} to version {resolved_to_version}."
             )
         if do_migrate:
             final_version = self.apply_migrations(migrations)
@@ -415,8 +412,8 @@ class SchemaMigMgr(metaclass=ABCMeta):
     def migration_path(
         from_version: Version,
         to_version: Version,
-        migrations: List[Migration],
-    ) -> Optional[List[Migration]]:
+        migrations: list[Migration],
+    ) -> list[Migration] | None:
         """Look in migrations and find the shortest possible path between
         versions.
 
@@ -457,7 +454,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         return mig or []
 
     @classmethod
-    def script_match(cls, fname: str) -> Optional[MigMatch]:
+    def script_match(cls, fname: str) -> MigMatch | None:
         """Match script name against pattern.
 
         Returns
@@ -472,9 +469,9 @@ class SchemaMigMgr(metaclass=ABCMeta):
         match = cls.mig_name_re.match(fname)
         if match:
             v_from_ = match.group("from")
-            v_from: Union[int, Type[Uninitialized]] = Uninitialized if v_from_ == "None" else int(v_from_)
+            v_from: int | type[Uninitialized] = Uninitialized if v_from_ == "None" else int(v_from_)
             v_to = int(match.group("to"))
-            _log.debug(f"from %s to %s", v_from, v_to)
+            _log.debug("from %s to %s", v_from, v_to)
             return MigMatch(from_version=v_from, to_version=v_to)
         return None
 
@@ -495,9 +492,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
         return version
 
     @classmethod
-    def find_scripts(
-        cls, scripts_dir: str, match_fun: Callable[[str], Optional[MigMatch]]
-    ) -> List[Migration]:
+    def find_scripts(cls, scripts_dir: str, match_fun: Callable[[str], MigMatch | None]) -> list[Migration]:
         """Helper function for finding migration scripts.
 
         Parameters
@@ -538,7 +533,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
                     )
         return migrations
 
-    def databaseExists(self, dbName: str) -> bool:
+    def database_exists(self, dbname: str) -> bool:
         """Determine if a database exists
 
         Parameters
@@ -553,11 +548,11 @@ class SchemaMigMgr(metaclass=ABCMeta):
         """
         with closing(self.connection.cursor()) as cursor:
             cursor.execute("SHOW DATABASES")
-            if (dbName,) in cursor.fetchall():
+            if (dbname,) in cursor.fetchall():
                 return True
         return False
 
-    def tableExists(self, dbName: str, tableName: str) -> bool:
+    def table_exists(self, dbname: str, tablename: str) -> bool:
         """Determine if a table exists
 
         Parameters
@@ -573,7 +568,11 @@ class SchemaMigMgr(metaclass=ABCMeta):
             True if the table exists, else False.
         """
         with closing(self.connection.cursor()) as cursor:
-            cursor.execute(f"SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = '{dbName}' AND TABLE_NAME = '{tableName}'")
+            cursor.execute(
+                f"SELECT 1 FROM information_schema.TABLES "
+                f"WHERE TABLE_SCHEMA = '{dbname}' "
+                f"AND TABLE_NAME = '{tablename}'"
+            )
             if not cursor.fetchone():
                 return False
         return True

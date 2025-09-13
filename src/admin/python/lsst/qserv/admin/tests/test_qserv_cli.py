@@ -19,14 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Unit tests for qserv_cli.
-"""
+"""Unit tests for qserv_cli."""
 
-from click.testing import CliRunner
 import os
 import unittest
-from unittest.mock import patch, ANY
+from unittest.mock import ANY, patch
 
+from click.testing import CliRunner
 from lsst.qserv.admin.qservCli import launch
 from lsst.qserv.admin.qservCli.qserv_cli import qserv
 
@@ -127,6 +126,7 @@ def itest_args(**kwargs):
     args.update(kwargs)
     return args
 
+
 def prepare_data_args(**kwargs):
     """Get a safely-mutable dict of the launch.launch kwargs, with all the values set to ANY,
     for use with mock.assert_called_with().
@@ -155,7 +155,6 @@ def prepare_data_args(**kwargs):
     return args
 
 
-
 class QservCliTestCase(unittest.TestCase):
     """Tests features of the qserv command line interface."""
 
@@ -163,7 +162,7 @@ class QservCliTestCase(unittest.TestCase):
         self.runner = CliRunner()
 
     @patch.object(launch, "build")
-    def test_EnvVal_var(self, build_mock):
+    def test_env_val_var(self, build_mock):
         """Verify that an `opt.FlagEnvVal` option can be set using the environment
         variable.
         """
@@ -174,7 +173,7 @@ class QservCliTestCase(unittest.TestCase):
         build_mock.assert_called_with(**build_args(qserv_root=fake_root))
 
     @patch.object(launch, "build")
-    def test_EnvVal_flag(self, build_mock):
+    def test_env_val_flag(self, build_mock):
         """Verify that an `opt.FlagEnvVal` option can be set using the flag and it
         overrides the environment variable.
         """
@@ -190,7 +189,7 @@ class QservCliTestCase(unittest.TestCase):
         build_mock.assert_called_with(**build_args(qserv_root=flag_root))
 
     @patch.object(launch, "itest", return_value=0)
-    def test_itest_OptDefault_default(self, itest_mock):
+    def test_itest_opt_default_default(self, itest_mock):
         """Verify that an `opt.OptDefault` option value can be inferred from its
         associated environment variable.
         """
@@ -207,7 +206,7 @@ class QservCliTestCase(unittest.TestCase):
         itest_mock.assert_called_with(**itest_args(qserv_root=expected))
 
     @patch.object(launch, "prepare_data", return_value=0)
-    def test_prepare_data_OptDefault_default(self, prepare_data_mock):
+    def test_prepare_data_opt_default_default(self, prepare_data_mock):
         """Verify that an `opt.OptDefault` option value can be inferred from its
         associated environment variable.
         """

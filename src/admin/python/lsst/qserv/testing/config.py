@@ -1,5 +1,4 @@
-"""Configuration classes for testing harness.
-"""
+"""Configuration classes for testing harness."""
 
 __all__ = ["Config", "QueryFactory"]
 
@@ -7,8 +6,8 @@ import contextlib
 import logging
 import random
 
-import yaml
 import numpy as np
+import yaml
 
 _LOG = logging.getLogger(__name__)
 
@@ -37,6 +36,7 @@ class _ValueRandomUniform:
     min, max : `float`
         Range for generated numbers.
     """
+
     def __init__(self, min, max):
         self._min = float(min)
         self._max = float(max)
@@ -53,6 +53,7 @@ class _ValueRandomUniformInt:
     min, max : `int`
         Range for generated numbers.
     """
+
     def __init__(self, min, max):
         self._min = float(min)
         self._max = float(max)
@@ -71,6 +72,7 @@ class _ValueIntFromFile:
     mode : `str`, optional
         One of "random" or "sequential".
     """
+
     def __init__(self, path, mode="random"):
         # read all numbers from file as integers
         if path == "/dev/null":
@@ -105,17 +107,17 @@ class QueryFactory:
         Dictionary whose keys are variable names and values are dictionaries
         with a description of how to generate variable value.
     """
+
     def __init__(self, txt, variables=None):
         self._txt = txt
         self._vars = {}
         if variables is not None:
-
             for var, config in variables.items():
                 generator = None
                 if "distribution" in config:
                     if config["distribution"] == "uniform":
-                        min = config.get("min", 0.)
-                        max = config.get("max", 1.)
+                        min = config.get("min", 0.0)
+                        max = config.get("max", 1.0)
                         generator = _ValueRandomUniform(min, max)
                     elif config["distribution"] == "uniform_int":
                         min = config.get("min", 0)
@@ -154,8 +156,8 @@ class Config:
     configs : `list` [`dict`]
         List of dictionaries, cannot be empty.
     """
-    def __init__(self, configs):
 
+    def __init__(self, configs):
         if not configs:
             raise ValueError("empty configurations list")
 
@@ -171,8 +173,9 @@ class Config:
 
         self._classes = classes & querykeys
         if not self._classes:
-            raise ValueError(f"Query classes has no common keys with queries: "
-                             f"queryClasses={classes}, queries={querykeys}")
+            raise ValueError(
+                f"Query classes has no common keys with queries: queryClasses={classes}, queries={querykeys}"
+            )
 
         self._queries = {}
         for qclass in self._classes:
@@ -243,7 +246,7 @@ class Config:
         """
         return self._queries[q_class]
 
-    def concurrentQueries(self, q_class):
+    def concurrent_queries(self, q_class):
         """Return number of concurrent queries for given class.
 
         Parameters
@@ -258,7 +261,7 @@ class Config:
         """
         return self._config["queryClasses"][q_class]["concurrentQueries"]
 
-    def maxRate(self, q_class):
+    def max_rate(self, q_class):
         """Return maximum rate for given class.
 
         Parameters
@@ -314,7 +317,7 @@ class Config:
         """
         overrides = {}
         for q_class in self._classes:
-            n_queries = self.concurrentQueries(q_class)
+            n_queries = self.concurrent_queries(q_class)
             quot, rem = divmod(n_queries, n_workers)
             if i_worker < rem:
                 quot += 1

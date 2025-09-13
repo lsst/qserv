@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 
 
-import json
 import logging
 import os
 import shlex
@@ -27,25 +26,24 @@ import socket
 import subprocess
 import sys
 import time
+from collections.abc import Callable, Sequence
 from contextlib import closing
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Union
 
 import backoff
-import jinja2
-import mysql.connector
 from sqlalchemy.engine.url import URL, make_url
 
-from ...schema import MigMgrArgs, SchemaUpdateRequired, smig, smig_block
+import mysql.connector
+
+from ...schema import MigMgrArgs, SchemaUpdateRequiredError, smig, smig_block
 from ..itest import ITestResults
 from ..itest_table import LoadTable
-from ..mysql_connection import mysql_connection
 from ..qserv_backoff import on_backoff
-from ..replicationInterface import ReplicationInterface
+from ..replication_interface import ReplicationInterface
 from ..template import apply_template_cfg_file, save_template_cfg
 from . import _integration_test, options
-from .utils import Targs, split_kv
+from .utils import Targs
 
 smig_dir_env_var = "QSERV_SMIG_DIRECTORY"
 default_smig_dir = "/usr/local/qserv/smig"
@@ -75,7 +73,7 @@ def _jitter(f: float) -> float:
 
 
 @backoff.on_exception(
-    exception=SchemaUpdateRequired,
+    exception=SchemaUpdateRequiredError,
     on_backoff=on_backoff(log=_log),
     wait_gen=backoff.constant,
     interval=10,  # Wait 10 seconds between retries.
@@ -150,12 +148,10 @@ def _do_smig_block(module_smig_dir: str, module: str, connection: str) -> None:
     )
 
 
-class InvalidQueryParameter(RuntimeError):
+class InvalidQueryParameterError(RuntimeError):
     """Raised when a URI contains query keys that are not supported for that
     URI.
     """
-
-    pass
 
 
 def _process_uri(uri: str, query_keys: Sequence[str], option: str, block: bool) -> URL:
@@ -210,7 +206,7 @@ def _process_uri(uri: str, query_keys: Sequence[str], option: str, block: bool) 
 
     url = make_url(uri)
     if any(remainders := set(url.query.keys()) - set(query_keys)):
-        raise InvalidQueryParameter(
+        raise InvalidQueryParameterError(
             f"Invalid query key(s) ({remainders}); {option} accepts {query_keys or 'no keys'}."
         )
     if block and url.host and url.port:
@@ -239,7 +235,7 @@ def smig_czar(connection: str, update: bool) -> None:
 
 
 def smig_replication_controller(
-    db_uri: Optional[str],
+    db_uri: str | None,
     db_admin_uri: str,
     update: bool,
 ) -> None:
@@ -471,7 +467,6 @@ def enter_worker_xrootd(
     save_template_cfg({"mysqld_user_qserv": mysqld_user_qserv})
     save_template_cfg({"mysqld_user_qserv_password": mysqld_user_qserv_password})
 
-
     smig_worker(db_admin_uri, update=False)
 
     # TODO worker (and manager) xrootd+cmsd pair should "share" the cfg file
@@ -655,15 +650,14 @@ def enter_proxy(
     sys.exit(_run(args=None, cmd=cmd, env=env))
 
 
-
 def enter_czar_http(
     targs: Targs,
     db_uri: str,
     czar_cfg_file: str,
     czar_cfg_path: str,
     log_cfg_file: str,
-    http_ssl_cert_file : str,
-    http_ssl_private_key_file : str,
+    http_ssl_cert_file: str,
+    http_ssl_private_key_file: str,
     cmd: str,
 ) -> None:
     """Entrypoint script for the proxy container.
@@ -715,8 +709,11 @@ def enter_czar_http(
     # check if the SSL certificate and private key files exist and create
     # them if they don't.
     if not os.path.exists(http_ssl_cert_file) or not os.path.exists(http_ssl_private_key_file):
-        _log.info("Generating self-signed SSL/TLS certificate %s and private key %s for HTTPS",
-                  http_ssl_cert_file, http_ssl_private_key_file)
+        _log.info(
+            "Generating self-signed SSL/TLS certificate %s and private key %s for HTTPS",
+            http_ssl_cert_file,
+            http_ssl_private_key_file,
+        )
         country = "US"
         state = "California"
         loc = "Menlo Park"
@@ -725,16 +722,29 @@ def enter_czar_http(
         hostname = socket.gethostbyaddr(socket.gethostname())[0]  # FQDN if available
         subj = f"/C={country}/ST={state}/L={loc}/O={org}/OU={org_unit}/CN={hostname}"
         openssl_cmd = [
-            "openssl", "req",
+            "openssl",
+            "req",
             "-x509",
-            "-newkey", "rsa:4096",
-            "-out", http_ssl_cert_file,
-            "-keyout", http_ssl_private_key_file,
+            "-newkey",
+            "rsa:4096",
+            "-out",
+            http_ssl_cert_file,
+            "-keyout",
+            http_ssl_private_key_file,
             "-sha256",
-            "-days", "365",
+            "-days",
+            "365",
             "-nodes",
-            "-subj", subj]
-        ret = subprocess.run(openssl_cmd, env=dict(os.environ,), cwd="/home/qserv")
+            "-subj",
+            subj,
+        ]
+        ret = subprocess.run(
+            openssl_cmd,
+            env=dict(
+                os.environ,
+            ),
+            cwd="/home/qserv",
+        )
         if ret.returncode != 0:
             raise RuntimeError("Failed to create SSL certificate and private key files.")
 
@@ -746,7 +756,6 @@ def enter_czar_http(
     )
 
     sys.exit(_run(args=None, cmd=cmd, env=env))
-
 
 
 def enter_replication_controller(
@@ -844,9 +853,9 @@ def enter_replication_registry(
         block=True,
     )
 
-    # N.B. When the replication controller smigs the replication database, if it is migrating from Uninitialized
-    # it will also set initial configuration values in the replication database. It sets the schema
-    # version of the replica database *after* setting the config values, which allows us to wait here
+    # N.B. When the replication controller smigs the replication database, if it is migrating from
+    # Uninitialized it will also set initial configuration values in the replication database. It sets the
+    # schema version of the replica database *after* setting the config values, which allows us to wait here
     # on the schema version to be sure that there are values in the database.
     _do_smig_block(replication_controller_smig_dir, "replica", db_uri)
 
@@ -859,7 +868,7 @@ def enter_replication_registry(
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
 
 
-def smig_update(czar_connection: str, worker_connections: List[str], repl_connection: str) -> None:
+def smig_update(czar_connection: str, worker_connections: list[str], repl_connection: str) -> None:
     """Update smig on nodes that need it.
 
     All connection strings are in format mysql://user:pass@host:port/database
@@ -883,10 +892,10 @@ def smig_update(czar_connection: str, worker_connections: List[str], repl_connec
 
 
 def _run(
-    args: Optional[Sequence[Union[str, int]]],
-    cmd: Optional[str] = None,
-    env: Optional[Dict[str, str]] = None,
-    debug_port: Optional[int] = None,
+    args: Sequence[str | int] | None,
+    cmd: str | None = None,
+    env: dict[str, str] | None = None,
+    debug_port: int | None = None,
     run: bool = True,
     check_returncode: bool = False,
 ) -> int:
@@ -928,7 +937,7 @@ def _run(
     if args:
         str_args = [str(a) for a in args]
         if debug_port:
-            str_args = ["gdbserver", f"localhost:{debug_port}"] + str_args
+            str_args = ["gdbserver", f"localhost:{debug_port}", *str_args]
         if not run:
             print(" ".join(str_args))
             return 0
@@ -937,7 +946,7 @@ def _run(
         args = shlex.split(cmd)
         result = subprocess.run(args, env=env, cwd="/home/qserv")
     if check_returncode:
-        result.check_returncode
+        result.check_returncode()
     return result.returncode
 
 
@@ -1016,7 +1025,7 @@ def load_simple(repl_ctrl_uri: str, auth_key: str, load_http: bool) -> None:
         ],
     )
     data_file = os.path.join(Path(__file__).parent.absolute(), "chunk_0.txt")
-    partition_config_files = List[str]()
+    partition_config_files = list[str]()
     data_staging_dir = ""
     ref_db_table_schema_file = ""
     table = LoadTable(
@@ -1049,10 +1058,10 @@ def load_simple(repl_ctrl_uri: str, auth_key: str, load_http: bool) -> None:
 def integration_test(
     repl_connection: str,
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
@@ -1077,10 +1086,10 @@ def integration_test(
 def integration_test_http(
     repl_connection: str,
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
