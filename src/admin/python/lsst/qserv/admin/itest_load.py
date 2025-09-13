@@ -20,27 +20,30 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from pathlib import Path
-import tarfile
-import backoff
-from contextlib import closing
 import gzip
 import json
 import logging
-import mysql.connector
-from mysql.connector.abstracts import MySQLConnectionAbstract, MySQLCursorAbstract
 import os
 import shutil
 import subprocess
+import tarfile
+from collections.abc import Generator
+from contextlib import closing
+from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Union, cast
+from typing import Any, NamedTuple, cast
+
+import backoff
 import yaml
 
+import mysql.connector
+from mysql.connector.abstracts import MySQLConnectionAbstract, MySQLCursorAbstract
+
 from .constants import tmp_data_dir
-from .qserv_backoff import on_backoff, max_backoff_sec
 from .itest_table import LoadTable
 from .mysql_connection import mysql_connection
-from .replicationInterface import ReplicationInterface
+from .qserv_backoff import max_backoff_sec, on_backoff
+from .replication_interface import ReplicationInterface
 from .template import apply_template_cfg
 
 qserv_data_dir = "/qserv/data"
@@ -64,10 +67,10 @@ def execute(cursor: MySQLCursorAbstract, stmt: str, multi: bool = False) -> None
     results = []
     # cursors may contain results objects (if multi==True) or a MySQLCursor (if
     # multi==False)
-    cursors: List[Any] = []
+    cursors: list[Any] = []
 
     if multi:
-        cursors = cursor.execute(stmt, multi=True)  # type: ignore
+        cursors = cursor.execute(stmt, multi=True)  # type: ignore[assignment]
     else:
         cursor.execute(stmt, multi=False)
         cursors = [cursor]
@@ -75,19 +78,17 @@ def execute(cursor: MySQLCursorAbstract, stmt: str, multi: bool = False) -> None
     for cursor in cursors:
         # Cast here because MySQLCursorAbtract does not have with_rows for some reason, even though both of
         # its subclasses do...
-        cursor = cast(
-            Union[mysql.connector.cursor.MySQLCursor, mysql.connector.cursor_cext.CMySQLCursor], cursor
-        )
+        cursor = cast(mysql.connector.cursor.MySQLCursor | mysql.connector.cursor_cext.CMySQLCursor, cursor)
         if cursor.with_rows:
             for row in cursor.fetchall():
                 results.append(row)
-            if (w := cursor.fetchwarnings()):
+            if w := cursor.fetchwarnings():
                 warnings.append(w)
 
     if warnings:
-        _log.warn("Warnings were issued when executing \"%s\": %s", stmt, warnings)
+        _log.warn('Warnings were issued when executing "%s": %s', stmt, warnings)
     if results:
-        _log.info("Results were returned when executing \"%s\": %s", results, stmt)
+        _log.info('Results were returned when executing "%s": %s', results, stmt)
 
 
 @backoff.on_exception(
@@ -107,8 +108,14 @@ def _create_ref_db(ref_db_admin: str, name: str) -> None:
         The name of the database to create.
     """
     statements = [
-        "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'localhost' IDENTIFIED BY '{{ mysqld_user_qserv_password }}';",
-        "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'%' IDENTIFIED BY '{{ mysqld_user_qserv_password }}';",
+        (
+            "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'localhost' "
+            "IDENTIFIED BY '{{ mysqld_user_qserv_password }}';"
+        ),
+        (
+            "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'%' "
+            "IDENTIFIED BY '{{ mysqld_user_qserv_password }}';"
+        ),
         "CREATE DATABASE IF NOT EXISTS {name};",
         "GRANT ALL ON {name}.* TO '{{ mysqld_user_qserv }}'@'localhost';",
         "GRANT ALL ON {name}.* TO '{{ mysqld_user_qserv }}'@'%';",
@@ -185,10 +192,10 @@ class LoadDb:
     """Contains information about a database to be loaded."""
 
     class TablePartition(NamedTuple):
-        configs_t: List[str]
+        configs_t: list[str]
         output_t: str
 
-    def __init__(self, load_db_cfg: Dict[Any, Any]):
+    def __init__(self, load_db_cfg: dict[Any, Any]):
         # The path to the root of the database files.
         self.root = load_db_cfg["root"]
 
@@ -276,9 +283,7 @@ def _partition(staging_dir: str, table: LoadTable, data_file: str) -> None:
         for f in table.partition_config_files
     ]
     os.makedirs(staging_dir)
-    args = [
-        "sph-partition-matches" if table.is_match else "sph-partition"
-    ]
+    args = ["sph-partition-matches" if table.is_match else "sph-partition"]
     for config_file in partition_config_files:
         args.append("--config-file")
         args.append(config_file)
@@ -300,8 +305,8 @@ def _partition(staging_dir: str, table: LoadTable, data_file: str) -> None:
         f.write(partition_info)
 
 
-def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
-    """ Unzip and partition, if needed, input data for a table.
+def _prep_table_data(load_table: LoadTable, dest_dir: str) -> tuple[str, str]:
+    """Unzip and partition, if needed, input data for a table.
 
     Parameters
     ----------
@@ -313,11 +318,13 @@ def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
     Returns
     -------
     staging_dir : `str`
-        The absolute path to a folder that has been used to stage files used during processing that do not need to be kept.
+        The absolute path to a folder that has been used to stage files used
+        during processing that do not need to be kept.
     data_file : `str`
-        The absolute path to the file that contains the table data. (It may have been unzipped to a location different than in table.)
+        The absolute path to the file that contains the table data.
+        (It may have been unzipped to a location different than in table.)
     """
-    _log.info(f"_prep_table_data(1): dest_dir: %s load_table.data_file: %s", dest_dir, load_table.data_file)
+    _log.info("_prep_table_data(1): dest_dir: %s load_table.data_file: %s", dest_dir, load_table.data_file)
     if load_table.is_gzipped:
         data_file = os.path.join(dest_dir, os.path.splitext(os.path.basename(load_table.data_file))[0])
         unzip(source=load_table.data_file, destination=data_file)
@@ -327,7 +334,7 @@ def _prep_table_data(load_table: LoadTable, dest_dir: str) ->  Tuple[str, str]:
     staging_dir = os.path.join(dest_dir, load_table.data_staging_dir)
     if load_table.is_partitioned:
         _partition(staging_dir, load_table, data_file)
-    _log.info(f"_prep_table_data(2): staging_dir: %s data_file: %s", staging_dir, data_file)
+    _log.info("_prep_table_data(2): staging_dir: %s data_file: %s", staging_dir, data_file)
     return staging_dir, data_file
 
 
@@ -359,7 +366,13 @@ def _load_database(
     load_http : `bool`, optional
         The protocol to use for loading the data.
     """
-    _log.info(f"Loading database %s for test %s auth_key %s admin_auth_key %s", load_db.name, load_db.id, auth_key, admin_auth_key)
+    _log.info(
+        "Loading database %s for test %s auth_key %s admin_auth_key %s",
+        load_db.name,
+        load_db.id,
+        auth_key,
+        admin_auth_key,
+    )
     repl = ReplicationInterface(repl_ctrl_uri, auth_key, admin_auth_key)
 
     @backoff.on_exception(
@@ -395,7 +408,7 @@ def _load_database(
                     on_backoff=on_backoff(log=_log),
                     max_time=max_backoff_sec,
                 )
-                def do_ingest_table_config() -> None:
+                def do_ingest_table_config(table: LoadTable = table) -> None:
                     repl.ingest_table_config(table.ingest_config)
 
                 do_ingest_table_config()
@@ -421,14 +434,12 @@ def _load_database(
     repl.publish_database(load_db.name)
     if load_db.build_table_stats:
         if not load_db.instance_id:
-            raise RuntimeError(
-                "To build table stats, instance_id must contain a non-empty value."
-            )
+            raise RuntimeError("To build table stats, instance_id must contain a non-empty value.")
         repl.build_table_stats(load_db.name, load_db.tables, load_db.instance_id)
 
 
 def _remove_database(
-    case_data: Dict[Any, Any],
+    case_data: dict[Any, Any],
     ref_db_connection: str,
     repl_ctrl_uri: str,
     auth_key: str,
@@ -461,7 +472,7 @@ def _remove_database(
             execute(cursor, sql)
 
 
-def _get_cases(cases: Optional[List[str]], test_cases_data: List[Dict[Any, Any]]) -> List[Dict[Any, Any]]:
+def _get_cases(cases: list[str] | None, test_cases_data: list[dict[Any, Any]]) -> list[dict[Any, Any]]:
     """Get the test case data for the cases listed in cases.
 
     Parameters
@@ -484,14 +495,14 @@ def _get_cases(cases: Optional[List[str]], test_cases_data: List[Dict[Any, Any]]
         try:
             cases_data = [db_data[case] for case in cases]
         except KeyError as e:
-            raise RuntimeError(f"{e.args[0]} is not in {test_cases_data}")
+            raise RuntimeError(f"{e.args[0]} is not in {test_cases_data}") from None
     else:
         cases_data = test_cases_data
     return cases_data
 
 
 def prepare_data(
-    test_cases_data: List[Dict[Any, Any]],
+    test_cases_data: list[dict[Any, Any]],
 ) -> None:
     """Unzip and partition integration test dataset(s) inside a persistent volume
        also R-I system configuration files for input data
@@ -517,7 +528,9 @@ def prepare_data(
         for table_name in load_db.tables:
             ingest_table_json = load_db.ingest_table_t.format(table_name=table_name)
             shutil.copy(ingest_table_json, dest_dir)
-        _log.info("Preparing input dataset %s for test %s inside directory %s", load_db.name, load_db.id, dest_dir)
+        _log.info(
+            "Preparing input dataset %s for test %s inside directory %s", load_db.name, load_db.id, dest_dir
+        )
         for table in load_db.iter_tables():
             _prep_table_data(table, dest_dir)
 
@@ -530,11 +543,11 @@ def prepare_data(
 def load(
     repl_ctrl_uri: str,
     ref_db_uri: str,
-    test_cases_data: List[Dict[Any, Any]],
+    test_cases_data: list[dict[Any, Any]],
     ref_db_admin: str,
-    load: Optional[bool],
+    load: bool | None,
     load_http: bool,
-    cases: Optional[List[str]],
+    cases: list[str] | None,
     auth_key: str,
     admin_auth_key: str,
     remove: bool = False,
@@ -577,18 +590,26 @@ def load(
     qserv_dbs = ReplicationInterface(repl_ctrl_uri).get_databases()
     for case_data in cases_data:
         load_db = LoadDb(case_data)
-        if load == True or (load is None and load_db.name not in qserv_dbs):
-            _load_database(load_db, ref_db_uri, ref_db_admin, repl_ctrl_uri, auth_key, admin_auth_key, load_http=load_http)
+        if load is True or (load is None and load_db.name not in qserv_dbs):
+            _load_database(
+                load_db,
+                ref_db_uri,
+                ref_db_admin,
+                repl_ctrl_uri,
+                auth_key,
+                admin_auth_key,
+                load_http=load_http,
+            )
 
 
 def remove(
     repl_ctrl_uri: str,
     ref_db_uri: str,
-    test_cases_data: List[Dict[Any, Any]],
+    test_cases_data: list[dict[Any, Any]],
     ref_db_admin: str,
     auth_key: str,
     admin_auth_key: str,
-    cases: Optional[List[str]] = None,
+    cases: list[str] | None = None,
 ) -> None:
     """Remove integration test data from qserv.
 

@@ -1,19 +1,16 @@
-"""Mock for MySQL DBAPI.
-"""
+"""Mock for MySQL DBAPI."""
 
-from collections import namedtuple
 import logging
 import re
 import time
-
+from collections import namedtuple
 
 _LOG = logging.getLogger(__name__)
 
 _num_re = re.compile(r"\d+")
 
 
-ColDesriptor = namedtuple("ColDesriptor",
-                          "name type_code display_size internal_size precision scale null_ok")
+ColDesriptor = namedtuple("ColDesriptor", "name type_code display_size internal_size precision scale null_ok")
 
 
 class MockCursor:
@@ -63,15 +60,22 @@ class MockCursor:
     def description(self):
         # some randome codes
         return [
-            ColDesriptor(name="ID", type_code=1, display_size=10, internal_size=4,
-                         precision=0, scale=1, null_ok=False),
-            ColDesriptor(name="name", type_code=15, display_size=32, internal_size=8,
-                         precision=0, scale=1, null_ok=True)
+            ColDesriptor(
+                name="ID", type_code=1, display_size=10, internal_size=4, precision=0, scale=1, null_ok=False
+            ),
+            ColDesriptor(
+                name="name",
+                type_code=15,
+                display_size=32,
+                internal_size=8,
+                precision=0,
+                scale=1,
+                null_ok=True,
+            ),
         ]
 
 
 class MockConnection:
-
     def cursor(self):
         return MockCursor()
 

@@ -26,11 +26,10 @@ upstream dependencies, i.e. `lsst.utls` depends on numpy, but we don't need
 numpy for the `lsst.utils` functions used by `lsst.log`
 """
 
-
 import sys
 
 
-def continueClass(cls):
+def continue_class(cls):
     """Re-open the decorated class, adding any new definitions into the
     original.
 
@@ -69,25 +68,27 @@ def continueClass(cls):
         # class rather than a classmethod instance we can put on the target
         # class.
         attr = cls.__dict__.get(name, None) or getattr(cls, name)
-        if isAttributeSafeToTransfer(name, attr):
+        if is_attribute_safe_to_transfer(name, attr):
             setattr(orig, name, attr)
     return orig
 
 
-INTRINSIC_SPECIAL_ATTRIBUTES = frozenset((
-    "__qualname__",
-    "__module__",
-    "__metaclass__",
-    "__dict__",
-    "__weakref__",
-    "__class__",
-    "__subclasshook__",
-    "__name__",
-    "__doc__",
-))
+INTRINSIC_SPECIAL_ATTRIBUTES = frozenset(
+    (
+        "__qualname__",
+        "__module__",
+        "__metaclass__",
+        "__dict__",
+        "__weakref__",
+        "__class__",
+        "__subclasshook__",
+        "__name__",
+        "__doc__",
+    )
+)
 
 
-def isAttributeSafeToTransfer(name, value):
+def is_attribute_safe_to_transfer(name, value):
     """Return True if an attribute is safe to monkeypatch-transfer to another
     class.
 
@@ -95,7 +96,8 @@ def isAttributeSafeToTransfer(name, value):
     classes, leaving only those explicitly defined in a class decorated by
     `continueClass` or registered with an instance of `TemplateMeta`.
     """
-    if name.startswith("__") and (value is getattr(object, name, None)
-                                  or name in INTRINSIC_SPECIAL_ATTRIBUTES):
+    if name.startswith("__") and (
+        value is getattr(object, name, None) or name in INTRINSIC_SPECIAL_ATTRIBUTES
+    ):
         return False
     return True

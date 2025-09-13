@@ -29,7 +29,6 @@ import logging
 import os
 import sys
 
-
 # Adding the src/admin/python path to sys.path allows options declared in
 # src/admin/cli/options.py to be imported and used by the qserv command.
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../src/admin/python")))
@@ -38,15 +37,15 @@ from lsst.qserv.admin.qservCli.qserv_log import log_level_from_args
 from lsst.qserv.admin.qservCli.subproc import QservSubprocessError
 
 if __name__ == "__main__":
-    success, levelMsg = log_level_from_args(sys.argv)
+    success, level_msg = log_level_from_args(sys.argv)
     if success:
         logging.basicConfig(
-            level=levelMsg,
+            level=level_msg,
             format="%(asctime)s %(levelname)-8s %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
     else:
-        print(levelMsg)
+        print(level_msg)
         sys.exit(1)
 
 
@@ -57,6 +56,7 @@ def import_and_run():
     # errors that require exiting
     try:
         from lsst.qserv.admin.qservCli.qserv_cli import qserv
+
         sys.exit(qserv())
     except QservSubprocessError:
         sys.exit(1)

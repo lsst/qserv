@@ -20,15 +20,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Utilities for working with docker images and dockerhub.
-"""
+"""Utilities for working with docker images and dockerhub."""
 
-
-from copy import copy
 import logging
-import requests
 import subprocess
-from typing import List, Optional
+from copy import copy
+
+import requests
 
 from . import subproc
 
@@ -42,7 +40,7 @@ auth_header = "Bearer {token}"
 _log = logging.getLogger(__name__)
 
 
-def get_description(dockerfiles: Optional[List[str]], cwd: str) -> str:
+def get_description(dockerfiles: list[str] | None, cwd: str) -> str:
     """Get the git description of the commit that contains the most recent
     change to any of the given dockerfiles, or of the commit of the most
     recent tag if it is more recent than the dockerfile changes.
@@ -66,7 +64,7 @@ def get_description(dockerfiles: Optional[List[str]], cwd: str) -> str:
     if dockerfiles is not None:
         shas = [get_last_change(fname, cwd) for fname in dockerfiles]
         shas.append(last_git_tag(cwd))
-        sha: Optional[str] = get_most_recent(shas, cwd)
+        sha: str | None = get_most_recent(shas, cwd)
     else:
         sha = None
     tag = describe(sha, cwd)
@@ -97,7 +95,7 @@ def last_git_tag(cwd: str) -> str:
         "git describe --abbrev=0".split(),
         capture_stdout=True,
         cwd=cwd,
-        errmsg=f"Failed to get most recent tag from repo at {cwd}."
+        errmsg=f"Failed to get most recent tag from repo at {cwd}.",
     )
     tag = res.stdout.decode().strip()
     res = subproc.run(
@@ -109,7 +107,7 @@ def last_git_tag(cwd: str) -> str:
     return res.stdout.decode().strip()
 
 
-def describe(sha: Optional[str], cwd: str) -> str:
+def describe(sha: str | None, cwd: str) -> str:
     """Get the description of the change from `git describe`.
 
     Parameters
@@ -166,7 +164,7 @@ def get_last_change(fname: str, cwd: str) -> str:
         The sha of the commit that contains the most recent change.
     """
     args = ["git", "log", "--pretty=format:%H", "--max-count=1", fname]
-    _log.debug(f"running %s", " ".join(args))
+    _log.debug("running %s", " ".join(args))
     res = subproc.run(
         args,
         cwd=cwd,
@@ -174,11 +172,11 @@ def get_last_change(fname: str, cwd: str) -> str:
         errmsg=f"Failed to get git sha of most recent change to {fname}.",
     )
     sha = res.stdout.decode().strip()
-    _log.debug(f"The most recent change to %s was in %s", fname, sha)
+    _log.debug("The most recent change to %s was in %s", fname, sha)
     return sha
 
 
-def git_log(a: str, b: str, cwd: str) -> List[str]:
+def git_log(a: str, b: str, cwd: str) -> list[str]:
     """Get the commits between two shas.
 
     Parameters
@@ -201,16 +199,11 @@ def git_log(a: str, b: str, cwd: str) -> List[str]:
         If there is an error running `git log a..b`.
     """
     args = ["git", "log", "--pretty=format:%H", f"{a}..{b}"]
-    res = subproc.run(
-        args,
-        cwd=cwd,
-        capture_stdout=True,
-        errmsg=f"Get log of shas {a}..{b}."
-    )
+    res = subproc.run(args, cwd=cwd, capture_stdout=True, errmsg=f"Get log of shas {a}..{b}.")
     return res.stdout.strip().split()
 
 
-def get_most_recent(shas: List[str], cwd: str) -> str:
+def get_most_recent(shas: list[str], cwd: str) -> str:
     """Get the most recent sha of a given list of shas.
 
     Parameters
@@ -238,11 +231,11 @@ def get_most_recent(shas: List[str], cwd: str) -> str:
             history = git_log(other, newest, cwd)
             if not history:
                 raise RuntimeError(f"Could not establish a relationship between shas {newest} and {other}.")
-    _log.debug(f"The newest sha out of %s is %s", shas, newest)
+    _log.debug("The newest sha out of %s is %s", shas, newest)
     return newest
 
 
-def dh_get_repo_tags(repository: str, token: str) -> List[str]:
+def dh_get_repo_tags(repository: str, token: str) -> list[str]:
     """Get the tags associated with a repository in dockerhub.
 
     Parameters
@@ -268,7 +261,7 @@ def dh_get_repo_tags(repository: str, token: str) -> List[str]:
     # Raise if there was a failure getting the token.
     res.raise_for_status()
     tags = [str(t) for t in res.json()["tags"]]
-    _log.debug(f"The tags in dockerhub for %s are: %s", repository, tags)
+    _log.debug("The tags in dockerhub for %s are: %s", repository, tags)
     return tags
 
 
@@ -376,11 +369,11 @@ def dh_push_image(image_name: str, dry: bool) -> None:
 
 def build_image(
     image_name: str,
-    target: Optional[str],
+    target: str | None,
     run_dir: str,
     dry: bool,
-    options: Optional[List[str]] = None,
-    dockerfile: Optional[str] = None,
+    options: list[str] | None = None,
+    dockerfile: str | None = None,
 ) -> None:
     """Build the qserv lite-build image.
 
@@ -415,4 +408,4 @@ def build_image(
         print(f"cd {run_dir}; {' '.join(args)}; cd -")
     else:
         _log.debug('Running "%s" from directory %s', " ".join(args), run_dir)
-        result = subproc.run(args, cwd=run_dir)
+        subproc.run(args, cwd=run_dir)

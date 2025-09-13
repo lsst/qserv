@@ -18,28 +18,25 @@
 #
 # You should have received a copy of the GNU General Public License
 
-import backoff
-from contextlib import closing
 import logging
-import mysql.connector
+import os
+from contextlib import closing
+from urllib.parse import urlparse
+
+import backoff
+import requests
+import yaml
 
 # MySQLInterfaceError can get thrown, we need to catch it.
 # It's not exposed as a public python object but *is* used in mysql.connector unit tests.
 from _mysql_connector import MySQLInterfaceError
-import os
-import requests
-import shutil
-import subprocess
-from typing import List, Optional
-from urllib.parse import urlparse
-import yaml
 
-from .. import itest_load
+import mysql.connector
+
+from .. import itest, itest_load
 from ..qserv_backoff import max_backoff_sec, on_backoff
-from ..replicationInterface import ReplicationInterface
+from ..replication_interface import ReplicationInterface
 from ..template import save_template_cfg
-from .. import itest
-
 
 _log = logging.getLogger(__name__)
 
@@ -62,11 +59,12 @@ def wait_for_replication_system(repl_ctrl_uri: str) -> None:
     ReplicationInterface(repl_ctrl_uri).version()
 
 
-class DbServiceNotReady(RuntimeError):
+class DbServiceNotReadyError(RuntimeError):
     pass
 
+
 @backoff.on_exception(
-    exception=(DbServiceNotReady, mysql.connector.errors.DatabaseError, MySQLInterfaceError),
+    exception=(DbServiceNotReadyError, mysql.connector.errors.DatabaseError, MySQLInterfaceError),
     wait_gen=backoff.expo,
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,
@@ -90,7 +88,7 @@ def wait_for_db_service(db_uri: str, checkdb: str) -> None:
     """
     parsed = urlparse(db_uri)
 
-    def get_databases() -> List[str]:
+    def get_databases() -> list[str]:
         """Get the names of the databases in the database service."""
         with closing(
             mysql.connector.connect(
@@ -102,21 +100,20 @@ def wait_for_db_service(db_uri: str, checkdb: str) -> None:
         ) as connection:
             with closing(connection.cursor()) as cursor:
                 cursor.execute("show databases;")
-                result: List[str] = []
                 return [str(db) for (db,) in cursor.fetchall()]
 
     databases = get_databases()
     if checkdb in databases:
         return
-    raise DbServiceNotReady(f"{checkdb} not in existing databases: {databases}")
+    raise DbServiceNotReadyError(f"{checkdb} not in existing databases: {databases}")
 
 
 def run_integration_tests(
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
@@ -175,7 +172,7 @@ def run_integration_tests(
     if not os.path.exists(qserv_testdata_dir):
         raise RuntimeError("qserv_testdata sources are not present.")
 
-    if unload or load != False or reload or run_tests:
+    if unload or load is not False or reload or run_tests:
         wait_for_db_service(tests_data["reference-db-admin-uri"], "mysql")
         wait_for_db_service(tests_data["czar-db-admin-uri"], "qservMeta")
         wait_for_replication_system(tests_data["replication-controller-uri"])
@@ -196,7 +193,7 @@ def run_integration_tests(
             cases=cases,
         )
 
-    if load != False or reload:
+    if load is not False or reload:
         itest_load.load(
             repl_ctrl_uri=tests_data["replication-controller-uri"],
             ref_db_uri=tests_data["reference-db-uri"],
@@ -220,7 +217,7 @@ def run_integration_tests(
         )
 
     if compare_results:
-        test_case_results = itest.compareQueryResults(run_cases=cases, outputs_dir=testdata_output)
+        test_case_results = itest.compare_query_results(run_cases=cases, outputs_dir=testdata_output)
     else:
         test_case_results = []
 
@@ -233,10 +230,10 @@ def run_integration_tests(
 
 def run_integration_tests_http(
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
@@ -295,7 +292,7 @@ def run_integration_tests_http(
     if not os.path.exists(qserv_testdata_dir):
         raise RuntimeError("qserv_testdata sources are not present.")
 
-    if unload or load != False or reload or run_tests:
+    if unload or load is not False or reload or run_tests:
         wait_for_db_service(tests_data["reference-db-admin-uri"], "mysql")
         wait_for_db_service(tests_data["czar-db-admin-uri"], "qservMeta")
         wait_for_replication_system(tests_data["replication-controller-uri"])
@@ -316,7 +313,7 @@ def run_integration_tests_http(
             cases=cases,
         )
 
-    if load != False or reload:
+    if load is not False or reload:
         itest_load.load(
             repl_ctrl_uri=tests_data["replication-controller-uri"],
             ref_db_uri=tests_data["reference-db-uri"],
@@ -342,7 +339,7 @@ def run_integration_tests_http(
         )
 
     if compare_results:
-        test_case_results = itest.compareQueryResults(run_cases=cases, outputs_dir=testdata_output)
+        test_case_results = itest.compare_query_results(run_cases=cases, outputs_dir=testdata_output)
     else:
         test_case_results = []
 
@@ -391,9 +388,8 @@ def run_integration_tests_http_ingest(
         )
     return True
 
-def prepare_data(
-    tests_yaml: str
-) -> bool:
+
+def prepare_data(tests_yaml: str) -> bool:
     """Top level script to unzip and partition test datasets
 
     Parameters
@@ -415,9 +411,6 @@ def prepare_data(
     if not os.path.exists(qserv_testdata_dir):
         raise RuntimeError("qserv_testdata sources are not present.")
 
-    itest_load.prepare_data(
-        test_cases_data=tests_data["test_cases"]
-    )
+    itest_load.prepare_data(test_cases_data=tests_data["test_cases"])
 
     return True
-

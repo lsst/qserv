@@ -20,21 +20,18 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Module defining methods used in schema migration of the CSS database.
-"""
+"""Module defining methods used in schema migration of the CSS database."""
 
 __all__ = ["make_migration_manager"]
 
 
 from ..schema import SchemaMigMgr, Uninitialized, Version
 
-
 database = "qservCssData"
 
 
 class CssMigrationManager(SchemaMigMgr):
-    """Class implementing schema migration for the CSS database.
-    """
+    """Class implementing schema migration for the CSS database."""
 
     def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
@@ -49,7 +46,7 @@ class CssMigrationManager(SchemaMigMgr):
         """
 
         # If the css database does not exist then css is Uninitialized.
-        if not self.databaseExists(database):
+        if not self.database_exists(database):
             return Version(Uninitialized)
 
         # css does not have multiple versions yet, so if the database exists

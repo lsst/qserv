@@ -21,8 +21,10 @@
 """
 This is an out-of-date test harness for the app.py functions in qserv/master.
 """
-import lsst.qserv.master as qMaster
+
 import unittest
+
+import lsst.qserv.master as q_master
 
 
 class AppTest(unittest.TestCase):
@@ -32,7 +34,6 @@ class AppTest(unittest.TestCase):
 
     def setUp(self):
         global _options
-        pass
 
     def tearDown(self):
         pass
@@ -40,40 +41,39 @@ class AppTest(unittest.TestCase):
     def test_parse(self):
         query = " SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), x_chunkId FROM Object GROUP BY x_chunkId;"
 
-        qConfig = self._prepareConfig()
-        sess = qMaster.newSession(qConfig)
-        qMaster.setupQuery(sess, query)
-        cvec = qMaster.getConstraints(1)
+        q_config = self._prepare_config()
+        sess = q_master.newSession(q_config)
+        q_master.setupQuery(sess, query)
+        cvec = q_master.getConstraints(1)
 
-        def vecGen(constr):
+        def vec_gen(constr):
             s = constr.paramsSize()
             for i in range(s):
                 yield constr.paramsGet(i)
-            pass
 
-        def vecConGen(cvec):
+        def vec_con_gen(cvec):
             sz = cvec.size()
             for i in range(sz):
                 c = cvec.get(i)
-                yield c.name + "-->" + ",".join(vecGen(c))
-        print("\n".join(vecConGen(cvec)))
+                yield c.name + "-->" + ",".join(vec_gen(c))
+
+        print("\n".join(vec_con_gen(cvec)))
 
         for i in range(3):
-            self._addChunk(1, i)
+            self._add_chunk(1, i)
 
-        pass
         self.assertEqual(1, 1)
 
-    def _addChunk(self, session, base):
-        cs = qMaster.ChunkSpec()
+    def _add_chunk(self, session, base):
+        cs = q_master.ChunkSpec()
         cs.chunkId = 1000 + base
         for i in range(base * 10, 10 + (base * 10)):
             cs.addSubChunk(i)
-        qMaster.addChunk(session, cs)
+        q_master.addChunk(session, cs)
 
-    def _prepareConfig(self):
-        qMaster.config.load()  # Init.
-        cfg = qMaster.config.getStringMap()
+    def _prepare_config(self):
+        q_master.config.load()  # Init.
+        cfg = q_master.config.getStringMap()
         cfg["table.defaultdb"] = "ddb"
         cfg["query.hints"] = "box,0,0,5,1;circle,1,1,1;"
         return cfg

@@ -19,7 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-from collections import namedtuple
 import getpass
 import grp
 import logging
@@ -27,22 +26,21 @@ import os
 import pwd
 import subprocess
 import time
+from collections import namedtuple
 from urllib.parse import urlparse
-import yaml
-from typing import Dict, List, Optional
 
+import yaml
+
+from ..constants import tmp_data_dir
+from . import images, subproc
 from .opt import (
     env_dashboard_port,
+    env_dh_token,
+    env_dh_user,
     env_http_frontend_port,
     env_mariadb_image,
     env_qserv_image,
-    env_dh_user,
-    env_dh_token,
 )
-from ..constants import tmp_data_dir
-from . import images
-from . import subproc
-
 
 # The location where the lite-build and run-base images should be built from:
 base_image_build_subdir = "admin/tools/docker/base"
@@ -58,15 +56,13 @@ _log = logging.getLogger(__name__)
 
 
 ITestVolumes = namedtuple("ITestVolumes", "db_data, db_lib, exe")
-def make_itest_volumes(project : str) -> ITestVolumes:
-    return ITestVolumes(
-        project + "_itest_db_data",
-        project + "_itest_db_lib",
-        project + "_itest_exe"
-    )
 
 
-def do_pull_image(image_name: str, dh_user: Optional[str], dh_token: Optional[str], dry: bool) -> bool:
+def make_itest_volumes(project: str) -> ITestVolumes:
+    return ITestVolumes(project + "_itest_db_data", project + "_itest_db_lib", project + "_itest_exe")
+
+
+def do_pull_image(image_name: str, dh_user: str | None, dh_token: str | None, dry: bool) -> bool:
     """Attempt to pull an image. If valid dockerhub credentials are provided
     check the registry for the image first. If they are not provided then just
     try to pull the image and accept any failure as 'image does not exist'.
@@ -118,7 +114,7 @@ def root_mount(qserv_root: str, qserv_build_root: str, user: str) -> str:
     return f"src={qserv_root},dst={qserv_build_root},type=bind"
 
 
-def add_network_option(args: List[str], project: str) -> None:
+def add_network_option(args: list[str], project: str) -> None:
     """If project is not None, add a network option to a list of subprocess
     arguments for running a docker process.
 
@@ -208,12 +204,7 @@ def submodules_initalized(qserv_root: str) -> bool:
 
 
 def cmake(
-    qserv_root: str,
-    qserv_build_root: str,
-    build_image: str,
-    user: str,
-    run_cmake: Optional[bool],
-    dry: bool
+    qserv_root: str, qserv_build_root: str, build_image: str, user: str, run_cmake: bool | None, dry: bool
 ) -> None:
     """Run cmake on qserv, optionally if needed.
 
@@ -238,7 +229,8 @@ def cmake(
     if run_cmake is False or (run_cmake is None and build_dir_exists):
         _log.debug(
             "run_cmake is %s, the build dir %s.",
-            run_cmake, "exists" if build_dir_exists else "does not exist",
+            run_cmake,
+            "exists" if build_dir_exists else "does not exist",
         )
         return
 
@@ -277,7 +269,7 @@ def make(
     build_image: str,
     user: str,
     dry: bool,
-    jobs: Optional[int],
+    jobs: int | None,
 ) -> None:
     """Make qserv (but do not build the qserv image).
 
@@ -378,12 +370,7 @@ def mypy(
 
 
 def clang_format(
-    clang_format_mode: str,
-    qserv_root: str,
-    qserv_build_root: str,
-    build_image: str,
-    user: str,
-    dry: bool
+    clang_format_mode: str, qserv_root: str, qserv_build_root: str, build_image: str, user: str, dry: bool
 ) -> None:
     if clang_format_mode == "check":
         print("Checking all .h and .cc files in 'src' with clang-format...")
@@ -392,8 +379,10 @@ def clang_format(
     else:
         raise RuntimeError(f"Unexpected value for clang_format_mode: {clang_format_mode}")
 
-    cmd = (f"docker run --init --rm -u {user} --mount {root_mount(qserv_root, qserv_build_root, user)} "
-          f"-w {src_dir(qserv_build_root.format(user=user))} {build_image} ")
+    cmd = (
+        f"docker run --init --rm -u {user} --mount {root_mount(qserv_root, qserv_build_root, user)} "
+        f"-w {src_dir(qserv_build_root.format(user=user))} {build_image} "
+    )
     find_cmd = cmd + "find . -name *.h -o -name *.cc"
     args = find_cmd.split()
     result = subproc.run(args, capture_stdout=True, encoding="utf-8")
@@ -414,7 +403,7 @@ def build(
     qserv_build_root: str,
     unit_test: bool,
     dry: bool,
-    jobs: Optional[int],
+    jobs: int | None,
     run_cmake: bool,
     run_make: bool,
     run_mypy: bool,
@@ -497,11 +486,11 @@ def build(
 
 def build_docs(
     upload: bool,
-    ltd_user: Optional[str],
-    ltd_password: Optional[str],
-    gh_event: Optional[str],
-    gh_head_ref: Optional[str],
-    gh_ref: Optional[str],
+    ltd_user: str | None,
+    ltd_password: str | None,
+    gh_event: str | None,
+    gh_head_ref: str | None,
+    gh_ref: str | None,
     qserv_root: str,
     qserv_build_root: str,
     build_image: str,
@@ -549,33 +538,36 @@ def build_docs(
     upload_cmd = None
     if upload:
         upload_vars = (
-            f'-e LTD_USERNAME={ltd_user} -e LTD_PASSWORD={ltd_password} -e '
-            f'GITHUB_EVENT_NAME={gh_event} -e GITHUB_HEAD_REF={gh_head_ref} -e GITHUB_REF={gh_ref} '
+            f"-e LTD_USERNAME={ltd_user} -e LTD_PASSWORD={ltd_password} -e "
+            f"GITHUB_EVENT_NAME={gh_event} -e GITHUB_HEAD_REF={gh_head_ref} -e GITHUB_REF={gh_ref} "
         ).split()
-        upload_cmd = f" && ltd upload --product qserv --gh --dir {doc_dir(qserv_build_root.format(user=user))}"
+        upload_cmd = (
+            f" && ltd upload --product qserv --gh --dir {doc_dir(qserv_build_root.format(user=user))}"
+        )
     args = [
         "docker",
         "run",
     ]
     if upload_vars:
         args.extend(upload_vars)
-    args.extend([
-        "-u",
-        user,
-        "--mount",
-        root_mount(qserv_root, qserv_build_root, user),
-        "-w",
-        build_dir(qserv_build_root.format(user=user)),
-        build_image,
-        "/bin/bash",
-        "-c",
-        f"make {'docs-linkcheck ' if linkcheck else ''}docs-html{' ' + upload_cmd if upload_cmd else ''}",
-    ])
+    args.extend(
+        [
+            "-u",
+            user,
+            "--mount",
+            root_mount(qserv_root, qserv_build_root, user),
+            "-w",
+            build_dir(qserv_build_root.format(user=user)),
+            build_image,
+            "/bin/bash",
+            "-c",
+            f"make {'docs-linkcheck ' if linkcheck else ''}docs-html{' ' + upload_cmd if upload_cmd else ''}",
+        ]
+    )
     if dry:
         print(" ".join(args))
         return
     subprocess.run(args, check=True)
-
 
 
 def build_build_image(
@@ -669,7 +661,7 @@ def build_mariadb_image(
         images.dh_push_image(mariadb_image, dry)
 
 
-def bind_args(qserv_root: str, bind_names: List[str]) -> List[str]:
+def bind_args(qserv_root: str, bind_names: list[str]) -> list[str]:
     """Get the options for `docker run` to bind locations in qserv run container to locations in the
     built products.
 
@@ -708,7 +700,7 @@ def run_dev(
     qserv_root: str,
     test_container: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     project: str,
     dry: bool,
 ) -> str:
@@ -777,7 +769,7 @@ def run_build(
         f"docker run --init {'--rm' if rm else ''} {'-it' if enter else ''} --name {build_container_name} "
         f"-u {user} "
         f"{'' if enter else '-d'} --mount {root_mount(qserv_root, qserv_build_root, user)} "
-        f"{'--cap-add sys_admin --cap-add sys_ptrace --security-opt seccomp=unconfined' if debuggable else ''} "
+        f"{'--cap-add sys_admin --cap-add sys_ptrace --security-opt seccomp=unconfined' if debuggable else ''} "  # noqa: E501
         f"-w {build_dir(qserv_build_root.format(user=user))} {user_build_image} "
         f"{'/bin/bash' if enter else ''}"
     )
@@ -923,15 +915,15 @@ def integration_test(
     itest_container: str,
     itest_volume: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
@@ -1030,12 +1022,12 @@ def integration_test(
     args.append("--run-tests" if run_tests else "--no-run-tests")
     args.append("--compare-results" if compare_results else "--no-compare-results")
 
-    def add_flag_if(val: Optional[bool], true_flag: str, false_flag: str, args: List[str]) -> None:
+    def add_flag_if(val: bool | None, true_flag: str, false_flag: str, args: list[str]) -> None:
         """Add a do-or-do-not flag to `args` if `val` is `True` or `False`, do
         not add if `val` is `None`."""
-        if val == True:
+        if val is True:
             args.append(true_flag)
-        elif val == False:
+        elif val is False:
             args.append(false_flag)
 
     add_flag_if(load, "--load", "--no-load", args)
@@ -1057,15 +1049,15 @@ def integration_test_http(
     itest_container_http: str,
     itest_volume: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
@@ -1155,12 +1147,12 @@ def integration_test_http(
     args.append("--run-tests" if run_tests else "--no-run-tests")
     args.append("--compare-results" if compare_results else "--no-compare-results")
 
-    def add_flag_if(val: Optional[bool], true_flag: str, false_flag: str, args: List[str]) -> None:
+    def add_flag_if(val: bool | None, true_flag: str, false_flag: str, args: list[str]) -> None:
         """Add a do-or-do-not flag to `args` if `val` is `True` or `False`, do
         not add if `val` is `None`."""
-        if val == True:
+        if val is True:
             args.append(true_flag)
-        elif val == False:
+        elif val is False:
             args.append(false_flag)
 
     add_flag_if(load, "--load", "--no-load", args)
@@ -1176,12 +1168,13 @@ def integration_test_http(
     result = subprocess.run(args)
     return result.returncode
 
+
 def integration_test_http_ingest(
     qserv_root: str,
     itest_container_http_ingest: str,
     itest_volume: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
@@ -1271,21 +1264,22 @@ def integration_test_http_ingest(
     result = subprocess.run(args)
     return result.returncode
 
+
 def itest(
     qserv_root: str,
     mariadb_image: str,
     itest_container: str,
     itest_ref_container: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
@@ -1316,7 +1310,6 @@ def itest(
         dry,
     )
     try:
-
         returncode = integration_test(
             qserv_root,
             itest_container,
@@ -1348,23 +1341,22 @@ def itest_http(
     itest_http_container: str,
     itest_ref_container: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
     unload: bool,
-    load: Optional[bool],
+    load: bool | None,
     reload: bool,
     load_http: bool,
-    cases: List[str],
+    cases: list[str],
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
     wait: int,
     remove: bool,
 ) -> int:
-    """Run integration tests of the HTTP frontend.
-    """
+    """Run integration tests of the HTTP frontend."""
     itest_volumes = make_itest_volumes(project)
     itest_ref(
         qserv_root,
@@ -1376,7 +1368,6 @@ def itest_http(
         dry,
     )
     try:
-
         returncode = integration_test_http(
             qserv_root,
             itest_http_container,
@@ -1401,11 +1392,12 @@ def itest_http(
         stop_db_returncode = stop_itest_ref(itest_ref_container, dry) if remove else 0
     return returncode or stop_db_returncode
 
+
 def itest_http_ingest(
     qserv_root: str,
     itest_http_ingest_container: str,
     qserv_image: str,
-    bind: List[str],
+    bind: list[str],
     itest_file: str,
     dry: bool,
     project: str,
@@ -1415,8 +1407,7 @@ def itest_http_ingest(
     wait: int,
     remove: bool,
 ) -> int:
-    """Run integration tests of ingesting user tables via the HTTP frontend.
-    """
+    """Run integration tests of ingesting user tables via the HTTP frontend."""
     itest_volumes = make_itest_volumes(project)
     returncode = integration_test_http_ingest(
         qserv_root,
@@ -1513,7 +1504,7 @@ def prepare_data(
         "--mount",
         f"src={os.path.join(qserv_root, testdata_subdir)},dst={tests_data['qserv-testdata-dir']},type=bind",
         "--mount",
-        f"src={outdir},dst={tmp_data_dir},type=bind"
+        f"src={outdir},dst={tmp_data_dir},type=bind",
     ]
 
     add_network_option(args, project)
@@ -1529,7 +1520,7 @@ def prepare_data(
 
 def update_schema(
     czar_connection: str,
-    worker_connections: List[str],
+    worker_connections: list[str],
     repl_connection: str,
     qserv_image: str,
     project: str,
@@ -1582,7 +1573,7 @@ def update_schema(
     subproc.run(args)
 
 
-def get_env(vals: Dict[str, str]) -> Dict[str, str]:
+def get_env(vals: dict[str, str]) -> dict[str, str]:
     """Get a dict of the current environment variables with additional values.
 
     Parameters
@@ -1602,8 +1593,8 @@ def up(
     project: str,
     qserv_image: str,
     mariadb_image: str,
-    dashboard_port: Optional[int],
-    http_frontend_port: Optional[int],
+    dashboard_port: int | None,
+    http_frontend_port: int | None,
 ) -> None:
     """Send docker compose up and down commands.
 
@@ -1695,7 +1686,7 @@ def down(
 
 
 def entrypoint_help(
-    command: Optional[str],
+    command: str | None,
     qserv_image: str,
     entrypoint: bool,
     spawned: bool,

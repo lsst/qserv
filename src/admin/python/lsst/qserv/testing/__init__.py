@@ -1,2 +1,3 @@
+from .config import Config, QueryFactory
 
-from .config import *
+__all__ = [Config, QueryFactory]

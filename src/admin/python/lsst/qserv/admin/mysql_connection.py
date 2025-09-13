@@ -22,11 +22,11 @@
 
 "Mysql utilities."
 
-
 import logging
-import mysql.connector
 from typing import cast
 from urllib.parse import urlparse
+
+import mysql.connector
 
 _log = logging.getLogger(__name__)
 

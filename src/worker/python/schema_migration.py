@@ -19,27 +19,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-"""Module defining methods used in schema migration of Worker metadata database.
-"""
+"""Module defining methods used in schema migration of Worker metadata database."""
 
 __all__ = ["make_migration_manager"]
 
 
-import backoff
 import logging
-import mysql.connector
-from typing import Sequence
+from collections.abc import Sequence
 
+import backoff
 from lsst.qserv.admin.qserv_backoff import max_backoff_sec, on_backoff
 from lsst.qserv.schema import Migration, SchemaMigMgr, Uninitialized, Version
+
+import mysql.connector
 
 database = "qservw_worker"
 
 _log = logging.getLogger(__name__)
 
+
 class WorkerMigrationManager(SchemaMigMgr):
-    """Class implementing schema migration for Worker metadata database.
-    """
+    """Class implementing schema migration for Worker metadata database."""
 
     def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
@@ -54,13 +54,13 @@ class WorkerMigrationManager(SchemaMigMgr):
         """
 
         # If the database does not exist then the version is `Uninitialized`.
-        if not self.databaseExists(database):
+        if not self.database_exists(database):
             return Version(Uninitialized)
 
         # Initial database schema implementation did not have version number stored at all,
         # and we call this version 0. Since version=1 version number is stored in
         # QMetadata table with key="version"
-        if not self.tableExists(database, 'QMetadata'):
+        if not self.table_exists(database, "QMetadata"):
             return 0
 
         self.connection.database = database
@@ -89,7 +89,9 @@ class WorkerMigrationManager(SchemaMigMgr):
         current = self.current_version()
         if current != version:
             raise RuntimeError(
-                f"Failed to update version number in the database to {version}, current version is now {current}")
+                f"Failed to update version number in the database to {version}, "
+                f"current version is now {current}"
+            )
 
     def apply_migrations(self, migrations: Sequence[Migration]) -> Version:
         """Apply migrations.
@@ -107,6 +109,7 @@ class WorkerMigrationManager(SchemaMigMgr):
         version = super().apply_migrations(migrations)
         self._set_version(version)
         return Version(version)
+
 
 def make_migration_manager(connection: str, scripts_dir: str) -> SchemaMigMgr:
     """Factory method for admin schema migration manager

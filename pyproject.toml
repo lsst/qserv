@@ -1,3 +1,30 @@
-[tool.black]
+[tool.ruff]
 line-length = 110
-target-version = ['py38']
+target-version = "py312"
+extend-include = [
+    "./admin/local/cli/qserv",
+    "./src/admin/bin/entrypoint",
+    "./src/admin/bin/qserv-kraken",
+]
+extend-exclude = [
+    "build/*",
+    "extern/*",
+    "doc/conf.py",
+]
+output-format = "concise"
+
+[tool.ruff.lint]
+select = [
+    "B",    # flake8-bugbear
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "FURB", # refurb
+    "N",    # pep8-naming
+    "PGH",  # pygrep-hooks
+    "PIE",  # flake8-pie
+    "RUF",  # Ruff-specific
+    "UP",   # pyupgrade
+    "W",    # pycodestyle
+]
+ignore = [
+]

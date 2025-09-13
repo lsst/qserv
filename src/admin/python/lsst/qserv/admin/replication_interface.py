@@ -19,20 +19,22 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import backoff
 import copy
-from .qserv_backoff import max_backoff_sec, on_backoff
 import json
 import logging
 import os
+import subprocess
+from collections.abc import Callable, Generator
+from typing import Any, NamedTuple
+from urllib.parse import urlparse
+
+import backoff
 from requests import delete, get, post, put
 from requests.exceptions import ConnectionError
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-import subprocess
-from .itest_table import LoadTable
-from typing import Any, Callable, Dict, Generator, List, Optional, NamedTuple, Tuple
-from urllib.parse import urlparse
 
+from .itest_table import LoadTable
+from .qserv_backoff import max_backoff_sec, on_backoff
 
 chunk_file_t = "chunk_{chunk_id}.txt"
 chunk_overlap_file_t = "chunk_{chunk_id}_overlap.txt"
@@ -61,7 +63,7 @@ class RegularLocation(NamedTuple):
     http_port: str
 
 
-def _check(result: Dict[Any, Any], url: str) -> None:
+def _check(result: dict[Any, Any], url: str) -> None:
     """Check the result of an http command and raise a RuntimeError if it was
     not successful.
 
@@ -82,7 +84,7 @@ def _check(result: Dict[Any, Any], url: str) -> None:
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,
 )
-def _post(url: str, data: str) -> Dict[Any, Any]:
+def _post(url: str, data: str) -> dict[Any, Any]:
     """Call requests.post and check the result for success=1.
 
     Parameters
@@ -97,9 +99,10 @@ def _post(url: str, data: str) -> Dict[Any, Any]:
     result : `dict`
         The dict containing the result of calling `post`.
     """
-    res: Dict[Any, Any] = post(url, headers=headers, data=data).json()
+    res: dict[Any, Any] = post(url, headers=headers, data=data).json()
     _check(res, url)
     return res
+
 
 @backoff.on_exception(
     exception=ConnectionError,
@@ -107,7 +110,7 @@ def _post(url: str, data: str) -> Dict[Any, Any]:
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,
 )
-def _post_file_upload(url: str, encoder: MultipartEncoder) -> Dict[Any, Any]:
+def _post_file_upload(url: str, encoder: MultipartEncoder) -> dict[Any, Any]:
     """Call requests.post and check the result for success=1.
 
     Parameters
@@ -122,9 +125,10 @@ def _post_file_upload(url: str, encoder: MultipartEncoder) -> Dict[Any, Any]:
     result : `dict`
         The dict containing the result of calling `post`.
     """
-    res: Dict[Any, Any] = post(url, data=encoder, headers={'Content-Type': encoder.content_type}).json()
+    res: dict[Any, Any] = post(url, data=encoder, headers={"Content-Type": encoder.content_type}).json()
     _check(res, url)
     return res
+
 
 @backoff.on_exception(
     exception=ConnectionError,
@@ -132,7 +136,7 @@ def _post_file_upload(url: str, encoder: MultipartEncoder) -> Dict[Any, Any]:
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,
 )
-def _delete(url: str, data: str, check: Callable[[Dict[Any, Any], str], None] = _check) -> Dict[Any, Any]:
+def _delete(url: str, data: str, check: Callable[[dict[Any, Any], str], None] = _check) -> dict[Any, Any]:
     """Call requests.delete and apply a check function.
 
     Parameters
@@ -151,7 +155,7 @@ def _delete(url: str, data: str, check: Callable[[Dict[Any, Any], str], None] = 
     result : `dict`
         The dict containing the result of calling `delete`.
     """
-    res: Dict[Any, Any] = delete(url, headers=headers, data=data).json()
+    res: dict[Any, Any] = delete(url, headers=headers, data=data).json()
     check(res, url)
     return res
 
@@ -162,7 +166,7 @@ def _delete(url: str, data: str, check: Callable[[Dict[Any, Any], str], None] = 
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,
 )
-def _put(url: str, data: str) -> Dict[Any, Any]:
+def _put(url: str, data: str) -> dict[Any, Any]:
     """Call requests.put and check the result for success=1.
 
     Parameters
@@ -177,7 +181,7 @@ def _put(url: str, data: str) -> Dict[Any, Any]:
     result : `dict`
         The dict containing the result of calling `put`.
     """
-    res: Dict[Any, Any] = put(url, headers=headers, data=data).json()
+    res: dict[Any, Any] = put(url, headers=headers, data=data).json()
     _check(res, url)
     return res
 
@@ -188,7 +192,7 @@ def _put(url: str, data: str) -> Dict[Any, Any]:
     on_backoff=on_backoff(log=_log),
     max_time=max_backoff_sec,
 )
-def _get(url: str, data: str) -> Dict[Any, Any]:
+def _get(url: str, data: str) -> dict[Any, Any]:
     """Call requests.get and check the result for success=1.
 
     Parameters
@@ -203,7 +207,7 @@ def _get(url: str, data: str) -> Dict[Any, Any]:
     result : `dict`
         The dict containing the result of calling `get`.
     """
-    res: Dict[Any, Any] = get(url, headers=headers, data=data).json()
+    res: dict[Any, Any] = get(url, headers=headers, data=data).json()
     _check(res, url)
     return res
 
@@ -221,18 +225,12 @@ class ReplicationInterface:
 
     class CommandError(RuntimeError):
         """Raised when the call to the replication system returns not-success."""
-        pass
 
-    def __init__(
-        self,
-        repl_ctrl_uri: str,
-        auth_key: Optional[str] = None,
-        admin_auth_key: Optional[str] = None
-    ):
+    def __init__(self, repl_ctrl_uri: str, auth_key: str | None = None, admin_auth_key: str | None = None):
         self.repl_ctrl = urlparse(repl_ctrl_uri)
         self.auth_key = auth_key
         self.admin_auth_key = admin_auth_key
-        _log.debug(f"ReplicationInterface %s", self.repl_ctrl)
+        _log.debug("ReplicationInterface %s", self.repl_ctrl)
 
     def version(self) -> str:
         """Get the replication system version."""
@@ -243,9 +241,9 @@ class ReplicationInterface:
         )
         return str(res["version"])
 
-    def ingest_database(self, database_json: Dict[Any, Any]) -> None:
+    def ingest_database(self, database_json: dict[Any, Any]) -> None:
         _log.debug("ingest_database json: %s", database_json)
-        dj = copy.copy(database_json) # todo input var name needs changing
+        dj = copy.copy(database_json)  # todo input var name needs changing
         dj["auth_key"] = self.auth_key
         js = json.dumps(dj)
         _post(
@@ -253,9 +251,9 @@ class ReplicationInterface:
             data=js,
         )
 
-    def ingest_table_config(self, table_json: Dict[Any, Any]) -> None:
+    def ingest_table_config(self, table_json: dict[Any, Any]) -> None:
         _log.debug("ingest_table_config: %s", table_json)
-        dj = copy.copy(table_json) # todo name needs changing
+        dj = copy.copy(table_json)  # todo name needs changing
         dj["auth_key"] = self.auth_key
         js = json.dumps(dj)
         _post(
@@ -279,7 +277,12 @@ class ReplicationInterface:
         _log.debug("start_transaction database: %s", database)
         res = _post(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/trans?version={repl_api_version}",
-            data=json.dumps(dict(database=database, auth_key=self.auth_key,)),
+            data=json.dumps(
+                dict(
+                    database=database,
+                    auth_key=self.auth_key,
+                )
+            ),
         )
         return int(res["databases"][database]["transactions"][0]["id"])
 
@@ -292,9 +295,13 @@ class ReplicationInterface:
             The transaction id obtained by calling `start_transaction`.
         """
         _log.debug("commit_transaction transaction_id: %s", transaction_id)
-        res = _put(
+        _put(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/trans/{transaction_id}?version={repl_api_version}&abort=0",
-            data=json.dumps(dict(auth_key=self.auth_key,)),
+            data=json.dumps(
+                dict(
+                    auth_key=self.auth_key,
+                )
+            ),
         )
 
     def ingest_chunk_config(self, transaction_id: int, chunk_id: str) -> ChunkLocation:
@@ -315,12 +322,19 @@ class ReplicationInterface:
         """
         res = _post(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/chunk?version={repl_api_version}",
-            data=json.dumps(dict(transaction_id=transaction_id, chunk=chunk_id, auth_key=self.auth_key,)),
+            data=json.dumps(
+                dict(
+                    transaction_id=transaction_id,
+                    chunk=chunk_id,
+                    auth_key=self.auth_key,
+                )
+            ),
         )
-        return ChunkLocation(chunk_id, res["location"]["host"], str(res["location"]["port"]),
-                             res["location"]["http_host"], str(res["location"]["http_port"]))
+        return ChunkLocation(
+            res["chunk"], res["host"], str(res["port"]), res["http_host"], str(res["http_port"])
+        )
 
-    def ingest_chunk_configs(self, transaction_id: int, chunk_ids: List[int]) -> List[ChunkLocation]:
+    def ingest_chunk_configs(self, transaction_id: int, chunk_ids: list[int]) -> list[ChunkLocation]:
         """Get the locations where a list of chunk ids should be ingested.
 
         Parameters
@@ -337,12 +351,22 @@ class ReplicationInterface:
         """
         res = _post(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/chunks?version={repl_api_version}",
-            data=json.dumps(dict(transaction_id=transaction_id, chunks=chunk_ids, auth_key=self.auth_key,)),
+            data=json.dumps(
+                dict(
+                    transaction_id=transaction_id,
+                    chunks=chunk_ids,
+                    auth_key=self.auth_key,
+                )
+            ),
         )
-        return [ChunkLocation(l["chunk"], l["host"], str(l["port"]),
-                              l["http_host"], str(l["http_port"])) for l in res["location"]]
+        return [
+            ChunkLocation(
+                loc["chunk"], loc["host"], str(loc["port"]), loc["http_host"], str(loc["http_port"])
+            )
+            for loc in res["location"]
+        ]
 
-    def ingest_regular_table(self, transaction_id: int) -> List[RegularLocation]:
+    def ingest_regular_table(self, transaction_id: int) -> list[RegularLocation]:
         """Get the locations where a non-chunk table should be ingested.
 
         Parameters
@@ -359,10 +383,19 @@ class ReplicationInterface:
         _log.debug("ingest_regular_table transaction_id: %s", transaction_id)
         res = _get(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/regular?version={repl_api_version}",
-            data=json.dumps(dict(auth_key=self.auth_key, transaction_id=transaction_id,)),
+            data=json.dumps(
+                dict(
+                    auth_key=self.auth_key,
+                    transaction_id=transaction_id,
+                )
+            ),
         )
-        return [RegularLocation(location["host"], str(location["port"]),
-                                location["http_host"], str(location["http_port"])) for location in res["locations"]]
+        return [
+            RegularLocation(
+                location["host"], str(location["port"]), location["http_host"], str(location["http_port"])
+            )
+            for location in res["locations"]
+        ]
 
     def ingest_data_file(
         self,
@@ -421,8 +454,8 @@ class ReplicationInterface:
             )
             _log.debug("encoder: %s", encoder)
             res_http = _post_file_upload(
-                url=f"http://{worker_http_host}:{worker_http_port}/ingest/csv",
-                encoder=encoder)
+                url=f"http://{worker_http_host}:{worker_http_port}/ingest/csv", encoder=encoder
+            )
             if not res_http["success"]:
                 raise RuntimeError(f"Ingest failed ({res_http})")
             _log.debug("ingest file res: %s", res_http)
@@ -448,8 +481,7 @@ class ReplicationInterface:
             _log.debug("ingest file args: %s", args)
             res = subprocess.run(
                 args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                capture_output=True,
                 encoding="utf-8",
                 errors="replace",
             )
@@ -462,8 +494,8 @@ class ReplicationInterface:
     def build_table_stats(
         self,
         database: str,
-        tables: List[str],
-        instance_id: Optional[str],
+        tables: list[str],
+        instance_id: str | None,
     ) -> None:
         for table in tables:
             _log.debug("build table stats for %s.%s", database, table)
@@ -494,7 +526,11 @@ class ReplicationInterface:
         _log.debug("publish_database database: %s", database)
         _put(
             url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/database/{database}?version={repl_api_version}",
-            data=json.dumps(dict(auth_key=self.auth_key,)),
+            data=json.dumps(
+                dict(
+                    auth_key=self.auth_key,
+                )
+            ),
         )
 
     def ingest_chunks_data(
@@ -532,19 +568,20 @@ class ReplicationInterface:
 
         # Create locations for the chunk configs (repl system calls this "ingest" chunk)
         locations = self.ingest_chunk_configs(
-            transaction_id, [chunk["id"] for chunk in chunk_info["chunks"]],
+            transaction_id,
+            [chunk["id"] for chunk in chunk_info["chunks"]],
         )
 
         # Ingest the chunk files:
         # Helpful note: Generator type decl is Generator[yield, send, return],
         # see https://www.python.org/dev/peps/pep-0484/#annotating-generator-functions-and-coroutines
-        def generate_locations() -> Generator[Tuple[str, str, str, str, str, str, bool], None, None]:
+        def generate_locations() -> Generator[tuple[str, str, str, str, str, str, bool], None, None]:
             for location in locations:
                 for chunk_file in (chunk_file_t, chunk_overlap_file_t):
                     full_path = os.path.join(chunks_folder, chunk_file.format(chunk_id=location.chunk_id))
                     if os.path.exists(full_path):
                         _log.debug(
-                            f"Ingesting %s to %s:%s/%s:%s chunk %s.",
+                            "Ingesting %s to %s:%s/%s:%s chunk %s.",
                             full_path,
                             location.host,
                             location.port,
@@ -553,7 +590,15 @@ class ReplicationInterface:
                             location.chunk_id,
                         )
                         overlap = "overlap" in chunk_file
-                        yield full_path, location.host, location.port, location.http_host, location.http_port, location.chunk_id, overlap
+                        yield (
+                            full_path,
+                            location.host,
+                            location.port,
+                            location.http_host,
+                            location.http_port,
+                            location.chunk_id,
+                            overlap,
+                        )
                     else:
                         _log.warn(
                             "Not ingesting %s; it does not exist (probably there is no data for that chunk).",
@@ -571,11 +616,12 @@ class ReplicationInterface:
                 http_port,
                 data_file=_file,
                 table=table,
-                load_http=load_http
+                load_http=load_http,
             )
 
     def ingest_table_data(
-        self, transaction_id: int,
+        self,
+        transaction_id: int,
         table: LoadTable,
         data_file: str,
         load_http: bool,
@@ -637,11 +683,17 @@ class ReplicationInterface:
         admin : `bool`
             True if the admin auth key should be used.
         """
-        if admin: data = dict(admin_auth_key=self.admin_auth_key,)
-        else: data = dict(auth_key=self.auth_key,)
+        if admin:
+            data = dict(
+                admin_auth_key=self.admin_auth_key,
+            )
+        else:
+            data = dict(
+                auth_key=self.auth_key,
+            )
         _log.debug("delete_database database:%s, data:%s", database, data)
 
-        def warn_if_not_exist(res: Dict[Any, Any], url: str) -> None:
+        def warn_if_not_exist(res: dict[Any, Any], url: str) -> None:
             if not res["success"]:
                 if "no such database" in res["error"]:
                     _log.warn("Can not delete database %s; it does not exist.", database)
@@ -649,14 +701,12 @@ class ReplicationInterface:
             _check(res, url)
 
         _delete(
-            url="http://{hostname}:{port}/ingest/database/{database}?version={version}&delete_secondary_index=1".format(
-                hostname=self.repl_ctrl.hostname, port=self.repl_ctrl.port, version=repl_api_version, database=database,
-            ),
+            url=f"http://{self.repl_ctrl.hostname}:{self.repl_ctrl.port}/ingest/database/{database}?version={repl_api_version}&delete_secondary_index=1",
             data=json.dumps(data),
             check=warn_if_not_exist,
         )
 
-    def get_databases(self) -> List[str]:
+    def get_databases(self) -> list[str]:
         """Get the names of the existing databases from the replication system.
 
         Returns

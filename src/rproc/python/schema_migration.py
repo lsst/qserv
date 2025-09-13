@@ -20,22 +20,18 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Module defining methods used in schema migration of results processing database.
-"""
-
+"""Module defining methods used in schema migration of results processing database."""
 
 __all__ = ["make_migration_manager"]
 
 
 from lsst.qserv.schema import SchemaMigMgr, Uninitialized, Version
 
-
 database = "qservResult"
 
 
 class RprocMigrationManager(SchemaMigMgr):
-    """Class implementing schema migration for results processing database.
-    """
+    """Class implementing schema migration for results processing database."""
 
     def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
@@ -50,7 +46,7 @@ class RprocMigrationManager(SchemaMigMgr):
         """
 
         # If the database does not exist then it's Uninitialized.
-        if not self.databaseExists(database):
+        if not self.database_exists(database):
             return Uninitialized
 
         # The database does not have multiple versions yet, so if it doesn't exists

@@ -1,24 +1,23 @@
-"""Module defining methods used in schema migration of QMeta database.
-"""
+"""Module defining methods used in schema migration of QMeta database."""
 
 __all__ = ["make_migration_manager"]
 
-import backoff
 import logging
-import mysql.connector
-from typing import Sequence
+from collections.abc import Sequence
 
+import backoff
 from lsst.qserv.admin.qserv_backoff import max_backoff_sec, on_backoff
 from lsst.qserv.schema import Migration, SchemaMigMgr, Uninitialized, Version
 
+import mysql.connector
 
 _log = logging.getLogger(__name__)
 
 database = "qservMeta"
 
+
 class QMetaMigrationManager(SchemaMigMgr):
-    """Class implementing schema migration for QMeta database.
-    """
+    """Class implementing schema migration for QMeta database."""
 
     def __init__(self, connection: str, scripts_dir: str):
         super().__init__(scripts_dir, connection)
@@ -33,13 +32,13 @@ class QMetaMigrationManager(SchemaMigMgr):
         """
 
         # If the database does not exist then it's Uninitialized.
-        if not self.databaseExists(database):
+        if not self.database_exists(database):
             return Version(Uninitialized)
 
         # Initial database schema implementation did not have version number stored at all,
         # and we call this version 0. Since version=1 version number is stored in
         # QMetadata table with key="version"
-        if not self.tableExists(database, 'QMetadata'):
+        if not self.table_exists(database, "QMetadata"):
             return 0
 
         self.connection.database = database
@@ -68,7 +67,8 @@ class QMetaMigrationManager(SchemaMigMgr):
         current = self.current_version()
         if current != version:
             raise RuntimeError(
-                f"Failed to update database {database} to {version}, current version is {current}")
+                f"Failed to update database {database} to {version}, current version is {current}"
+            )
 
     def apply_migrations(self, migrations: Sequence[Migration]) -> Version:
         """Apply migrations.

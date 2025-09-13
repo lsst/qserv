@@ -11,15 +11,15 @@ import os
 
 import MySQLdb
 
-from .config import Config
 from . import mock_db
+from .config import Config
 from .monitor import InfluxDBFileMonitor, LogMonitor
 from .runner_mgr import RunnerManager
 
 _LOG = logging.getLogger(__name__)
 
 
-def _logConfig(level, slot):
+def _log_config(level, slot):
     levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
     if slot is None:
         simple_format = "%(asctime)s %(levelname)7s %(name)s -- %(message)s"
@@ -30,53 +30,103 @@ def _logConfig(level, slot):
 
 
 def main():
-
     parser = argparse.ArgumentParser(description="Test harness to generate load for QServ")
 
-    parser.add_argument('-v', '--verbose', default=0, action='count',
-                        help='More verbose output, can use several times.')
+    parser.add_argument(
+        "-v", "--verbose", default=0, action="count", help="More verbose output, can use several times."
+    )
 
     agroup = parser.add_argument_group("Database connection options")
-    agroup.add_argument("--dummy-db", action="store_true", default=False,
-                        help="Use dummy implementation of database connection, for testing.")
-    agroup.add_argument("--host", default=None, metavar="HOST",
-                        help="Host name for qserv connection.")
-    agroup.add_argument("--port", default=4040, metavar="NUMBER",
-                        help="Port number for qserv connection, default: %(default)s.")
-    agroup.add_argument("--user", default="qsmaster", metavar="STRING",
-                        help="User name for qserv connection, default: %(default)s.")
-    agroup.add_argument("--password", default=None, metavar="STRING",
-                        help="Password for qserv connection.")
-    agroup.add_argument("--db", default="LSST", metavar="STRING",
-                        help="Database name, default: %(default)s.")
+    agroup.add_argument(
+        "--dummy-db",
+        action="store_true",
+        default=False,
+        help="Use dummy implementation of database connection, for testing.",
+    )
+    agroup.add_argument("--host", default=None, metavar="HOST", help="Host name for qserv connection.")
+    agroup.add_argument(
+        "--port",
+        default=4040,
+        metavar="NUMBER",
+        help="Port number for qserv connection, default: %(default)s.",
+    )
+    agroup.add_argument(
+        "--user",
+        default="qsmaster",
+        metavar="STRING",
+        help="User name for qserv connection, default: %(default)s.",
+    )
+    agroup.add_argument("--password", default=None, metavar="STRING", help="Password for qserv connection.")
+    agroup.add_argument("--db", default="LSST", metavar="STRING", help="Database name, default: %(default)s.")
 
     agroup = parser.add_argument_group("Execution options")
-    agroup.add_argument("-n", "--num-slots", type=int, default=None, metavar="NUMBER",
-                        help="Number of slots to divide the whole workload into.")
-    agroup.add_argument("-s", "--slot", type=int, default=None, metavar="NUMBER",
-                        help="Slot number for this process, in range [0, num-slots)."
-                        " --num-slots and --slot must be specified together.")
-    agroup.add_argument("-t", "--time-limit", type=int, default=None, metavar="SECONDS",
-                        help="Run for maximum number of seconds.")
-    agroup.add_argument("--slurm", action="store_true", default=False,
-                        help="Obtain slot information from slurm.")
+    agroup.add_argument(
+        "-n",
+        "--num-slots",
+        type=int,
+        default=None,
+        metavar="NUMBER",
+        help="Number of slots to divide the whole workload into.",
+    )
+    agroup.add_argument(
+        "-s",
+        "--slot",
+        type=int,
+        default=None,
+        metavar="NUMBER",
+        help="Slot number for this process, in range [0, num-slots)."
+        " --num-slots and --slot must be specified together.",
+    )
+    agroup.add_argument(
+        "-t",
+        "--time-limit",
+        type=int,
+        default=None,
+        metavar="SECONDS",
+        help="Run for maximum number of seconds.",
+    )
+    agroup.add_argument(
+        "--slurm", action="store_true", default=False, help="Obtain slot information from slurm."
+    )
 
     agroup = parser.add_argument_group("Monitoring options")
-    agroup.add_argument("-m", "--monitor", choices=["log", "influxdb-file"],
-                        help="Type for monitoring output, one of %(choices)s, default is no output.")
-    agroup.add_argument("-r", "--monitor-rollover", type=int, default=3600, metavar="SECONDS",
-                        help="Number of seconds between rollovers for influxdb-file monitor,"
-                        " default: %(default)s")
-    agroup.add_argument("--influxdb-file-name", default="qserv-kraken-mon-%S-%T.dat", metavar="PATH",
-                        help="File name template for influxdb-file monitor, default: %(default)s.")
-    agroup.add_argument("--influxdb-db", default="qserv_kraken", metavar="DATABASE",
-                        help="InfluxDB database name, default: %(default)s.")
+    agroup.add_argument(
+        "-m",
+        "--monitor",
+        choices=["log", "influxdb-file"],
+        help="Type for monitoring output, one of %(choices)s, default is no output.",
+    )
+    agroup.add_argument(
+        "-r",
+        "--monitor-rollover",
+        type=int,
+        default=3600,
+        metavar="SECONDS",
+        help="Number of seconds between rollovers for influxdb-file monitor, default: %(default)s",
+    )
+    agroup.add_argument(
+        "--influxdb-file-name",
+        default="qserv-kraken-mon-%S-%T.dat",
+        metavar="PATH",
+        help="File name template for influxdb-file monitor, default: %(default)s.",
+    )
+    agroup.add_argument(
+        "--influxdb-db",
+        default="qserv_kraken",
+        metavar="DATABASE",
+        help="InfluxDB database name, default: %(default)s.",
+    )
 
-    parser.add_argument("--dump-config", action="store_true", default=False,
-                        help="Dump resulting configuration.")
+    parser.add_argument(
+        "--dump-config", action="store_true", default=False, help="Dump resulting configuration."
+    )
 
-    parser.add_argument("config", nargs="+", type=argparse.FileType(),
-                        help="Configuration file name, at least one is required.")
+    parser.add_argument(
+        "config",
+        nargs="+",
+        type=argparse.FileType(),
+        help="Configuration file name, at least one is required.",
+    )
     args = parser.parse_args()
 
     if (args.num_slots, args.slot).count(None) == 1:
@@ -96,7 +146,7 @@ def main():
             args.num_slots = num_slots
             args.slot = int(slot)
 
-    _logConfig(args.verbose, args.slot)
+    _log_config(args.verbose, args.slot)
 
     # build/split config
     cfg = Config.from_yaml(args.config)
@@ -108,15 +158,10 @@ def main():
 
     # connection factory
     if args.dummy_db:
-        connFactory = mock_db.connect
+        conn_factory = mock_db.connect
     else:
-        connFactory = functools.partial(
-            MySQLdb.connect,
-            host=args.host,
-            port=args.port,
-            user=args.user,
-            passwd=args.password,
-            db=args.db
+        conn_factory = functools.partial(
+            MySQLdb.connect, host=args.host, port=args.port, user=args.user, passwd=args.password, db=args.db
         )
 
     # monitor
@@ -128,14 +173,10 @@ def main():
         slot = "" if args.slot is None else str(args.slot)
         fname = args.influxdb_file_name.replace("%S", slot)
         monitor = InfluxDBFileMonitor(
-            fname,
-            periodSec=args.monitor_rollover,
-            dbname=args.influxdb_db,
-            tags=tags
+            fname, period_sec=args.monitor_rollover, dbname=args.influxdb_db, tags=tags
         )
 
-    mgr = RunnerManager(cfg, connFactory, args.slot,
-                        runTimeLimit=args.time_limit, monitor=monitor)
+    mgr = RunnerManager(cfg, conn_factory, args.slot, runtime_limit=args.time_limit, monitor=monitor)
     mgr.run()
 
     if monitor:
