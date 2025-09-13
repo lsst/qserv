@@ -152,6 +152,11 @@ void CssAccess::_checkVersion(bool mustExist) const {
 }
 
 std::vector<std::string> CssAccess::getDbNames() const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _getDbNames();
+}
+
+std::vector<std::string> CssAccess::_getDbNames() const {
     _checkVersion();
 
     std::string p = _prefix + "/DBS";
@@ -163,8 +168,8 @@ std::vector<std::string> CssAccess::getDbNames() const {
 
     return names;
 }
-
 std::map<std::string, std::string> CssAccess::getDbStatus() const {
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string p = _prefix + "/DBS";
@@ -178,6 +183,7 @@ std::map<std::string, std::string> CssAccess::getDbStatus() const {
 
 void CssAccess::setDbStatus(std::string const& dbName, std::string const& status) {
     LOGS(_log, LOG_LVL_DEBUG, "setDbStatus(" << dbName << ", " << status << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     _assertDbExists(dbName);
@@ -186,6 +192,11 @@ void CssAccess::setDbStatus(std::string const& dbName, std::string const& status
 }
 
 bool CssAccess::containsDb(std::string const& dbName) const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _containsDb(dbName);
+}
+
+bool CssAccess::_containsDb(std::string const& dbName) const {
     _checkVersion();
     if (dbName.empty()) {
         LOGS(_log, LOG_LVL_DEBUG, "Empty database name passed.");
@@ -199,6 +210,7 @@ bool CssAccess::containsDb(std::string const& dbName) const {
 
 StripingParams CssAccess::getDbStriping(std::string const& dbName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getDbStriping(" << dbName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     StripingParams striping;
@@ -241,6 +253,7 @@ StripingParams CssAccess::getDbStriping(std::string const& dbName) const {
 void CssAccess::createDb(std::string const& dbName, StripingParams const& striping,
                          std::string const& storageClass, std::string const& releaseStatus) {
     LOGS(_log, LOG_LVL_DEBUG, "createDb(" << dbName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion(false);
 
     std::string partId;
@@ -275,6 +288,7 @@ void CssAccess::createDb(std::string const& dbName, StripingParams const& stripi
 
 void CssAccess::createDbLike(std::string const& dbName, std::string const& templateDbName) {
     LOGS(_log, LOG_LVL_DEBUG, "createDbLike(" << dbName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::vector<std::string> subKeys{"partitioningId", "releaseStatus", "storageClass"};
@@ -292,6 +306,7 @@ void CssAccess::createDbLike(std::string const& dbName, std::string const& templ
 
 void CssAccess::dropDb(std::string const& dbName) {
     LOGS(_log, LOG_LVL_DEBUG, "dropDb(" << dbName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string key = _prefix + "/DBS/" + dbName;
@@ -307,6 +322,11 @@ void CssAccess::dropDb(std::string const& dbName) {
 }
 
 std::vector<std::string> CssAccess::getTableNames(std::string const& dbName, bool readyOnly) const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _getTableNames(dbName, readyOnly);
+}
+
+std::vector<std::string> CssAccess::_getTableNames(std::string const& dbName, bool readyOnly) const {
     LOGS(_log, LOG_LVL_DEBUG, "getTableNames(" << dbName << ")");
     _checkVersion();
 
@@ -338,6 +358,7 @@ std::vector<std::string> CssAccess::getTableNames(std::string const& dbName, boo
 
 std::map<std::string, std::string> CssAccess::getTableStatus(std::string const& dbName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getTableStatus(" << dbName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string key = _prefix + "/DBS/" + dbName + "/TABLES";
@@ -358,6 +379,7 @@ std::map<std::string, std::string> CssAccess::getTableStatus(std::string const& 
 void CssAccess::setTableStatus(std::string const& dbName, std::string const& tableName,
                                std::string const& status) {
     LOGS(_log, LOG_LVL_DEBUG, "setTableStatus(" << dbName << ", " << tableName << ", " << status << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -367,6 +389,7 @@ void CssAccess::setTableStatus(std::string const& dbName, std::string const& tab
 
 bool CssAccess::containsTable(std::string const& dbName, std::string const& tableName, bool readyOnly) const {
     LOGS(_log, LOG_LVL_DEBUG, "containsTable(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const key = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -387,6 +410,7 @@ bool CssAccess::containsTable(std::string const& dbName, std::string const& tabl
 
 std::string CssAccess::getTableSchema(std::string const& dbName, std::string const& tableName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getTableSchema(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -402,6 +426,7 @@ std::string CssAccess::getTableSchema(std::string const& dbName, std::string con
 void CssAccess::setTableSchema(std::string const& dbName, std::string const& tableName,
                                std::string const& schema) const {
     LOGS(_log, LOG_LVL_DEBUG, "setTableSchema(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -412,6 +437,7 @@ void CssAccess::setTableSchema(std::string const& dbName, std::string const& tab
 MatchTableParams CssAccess::getMatchTableParams(std::string const& dbName,
                                                 std::string const& tableName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getMatchTableParams(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -433,6 +459,7 @@ MatchTableParams CssAccess::getMatchTableParams(std::string const& dbName,
 
 PartTableParams CssAccess::getPartTableParams(std::string const& dbName, std::string const& tableName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getPartTableParams(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -461,6 +488,7 @@ PartTableParams CssAccess::getPartTableParams(std::string const& dbName, std::st
 
 ScanTableParams CssAccess::getScanTableParams(std::string const& dbName, std::string const& tableName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getScanTableParams(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -482,6 +510,7 @@ ScanTableParams CssAccess::getScanTableParams(std::string const& dbName, std::st
 void CssAccess::setScanTableParams(std::string const& dbName, std::string const& tableName,
                                    ScanTableParams const& scanParams) {
     LOGS(_log, LOG_LVL_DEBUG, "setScanTableParams(dbName:" << dbName << ", tableName:" << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
     if (!_kvI->exists(tableKey)) throw NoSuchTable(ERR_LOC, dbName, tableName);
@@ -493,12 +522,11 @@ void CssAccess::setScanTableParams(std::string const& dbName, std::string const&
 
 TableParams CssAccess::getTableParams(std::string const& dbName, std::string const& tableName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getTableParams(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
-
     TableParams params;
-
     std::vector<std::string> subKeys{"partitioning/subChunks",
                                      "partitioning/dirDb",
                                      "partitioning/dirTable",
@@ -535,10 +563,10 @@ void CssAccess::createTable(std::string const& dbName, std::string const& tableN
                             std::string const& schema, PartTableParams const& partParams,
                             ScanTableParams const& scanParams) {
     LOGS(_log, LOG_LVL_DEBUG, "createTable(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
-
     try {
         _kvI->create(tableKey, KEY_STATUS_IGNORE);
     } catch (KeyExistsError const& exc) {
@@ -585,10 +613,10 @@ void CssAccess::createTable(std::string const& dbName, std::string const& tableN
 void CssAccess::createMatchTable(std::string const& dbName, std::string const& tableName,
                                  std::string const& schema, MatchTableParams const& matchParams) {
     LOGS(_log, LOG_LVL_DEBUG, "createMatchTable(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const tableKey = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
-
     try {
         _kvI->create(tableKey, KEY_STATUS_IGNORE);
     } catch (KeyExistsError const& exc) {
@@ -622,6 +650,7 @@ void CssAccess::createMatchTable(std::string const& dbName, std::string const& t
 
 void CssAccess::dropTable(std::string const& dbName, std::string const& tableName) {
     LOGS(_log, LOG_LVL_DEBUG, "dropTable(" << dbName << ", " << tableName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const key = _prefix + "/DBS/" + dbName + "/TABLES/" + tableName;
@@ -637,6 +666,11 @@ void CssAccess::dropTable(std::string const& dbName, std::string const& tableNam
 }
 
 std::vector<std::string> CssAccess::getNodeNames() const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _getNodeNames();
+}
+
+std::vector<std::string> CssAccess::_getNodeNames() const {
     std::string const key = _prefix + "/NODES";
     auto nodes = _kvI->getChildren(key);
     _checkVersion();
@@ -649,6 +683,11 @@ std::vector<std::string> CssAccess::getNodeNames() const {
 }
 
 NodeParams CssAccess::getNodeParams(std::string const& nodeName) const {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _getNodeParams(nodeName);
+}
+
+NodeParams CssAccess::_getNodeParams(std::string const& nodeName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getNodeParams(" << nodeName << ")");
     _checkVersion();
 
@@ -684,6 +723,7 @@ NodeParams CssAccess::getNodeParams(std::string const& nodeName) const {
 
 std::map<std::string, NodeParams> CssAccess::getAllNodeParams() const {
     LOGS(_log, LOG_LVL_DEBUG, "getAllParams()");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const key = _prefix + "/NODES";
@@ -691,9 +731,9 @@ std::map<std::string, NodeParams> CssAccess::getAllNodeParams() const {
     // we do not really care much about consistency here and
     // are prepared to deal with nodes disappearing.
     std::map<std::string, NodeParams> result;
-    for (auto& node : getNodeNames()) {
+    for (auto& node : _getNodeNames()) {
         try {
-            result.insert(std::make_pair(node, getNodeParams(node)));
+            result.insert(std::make_pair(node, _getNodeParams(node)));
         } catch (NoSuchNode const& exc) {
             LOGS(_log, LOG_LVL_DEBUG, "node disappeared");
         }
@@ -704,6 +744,7 @@ std::map<std::string, NodeParams> CssAccess::getAllNodeParams() const {
 
 void CssAccess::addNode(std::string const& nodeName, NodeParams const& nodeParams) {
     LOGS(_log, LOG_LVL_DEBUG, "addNode(" << nodeName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion(false);
 
     std::string const key = _prefix + "/NODES/" + nodeName;
@@ -728,6 +769,7 @@ void CssAccess::addNode(std::string const& nodeName, NodeParams const& nodeParam
 
 void CssAccess::setNodeState(std::string const& nodeName, std::string const& newState) {
     LOGS(_log, LOG_LVL_DEBUG, "setNodeState(" << nodeName << ", " << newState << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const key = _prefix + "/NODES/" + nodeName;
@@ -742,12 +784,13 @@ void CssAccess::setNodeState(std::string const& nodeName, std::string const& new
 
 void CssAccess::deleteNode(std::string const& nodeName) {
     LOGS(_log, LOG_LVL_DEBUG, "deleteNode(" << nodeName << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     // check if the node is used by any chunk
-    for (auto& dbName : getDbNames()) {
-        for (auto& tblName : getTableNames(dbName, false)) {
-            for (auto& chunkPair : getChunks(dbName, tblName)) {
+    for (auto& dbName : _getDbNames()) {
+        for (auto& tblName : _getTableNames(dbName, false)) {
+            for (auto& chunkPair : _getChunks(dbName, tblName)) {
                 for (auto& node : chunkPair.second) {
                     if (node == nodeName) {
                         throw NodeInUse(ERR_LOC, nodeName);
@@ -772,6 +815,7 @@ void CssAccess::deleteNode(std::string const& nodeName) {
 void CssAccess::addChunk(std::string const& dbName, std::string const& tableName, int chunk,
                          std::vector<std::string> const& nodeNames) {
     LOGS(_log, LOG_LVL_DEBUG, "addChunk(" << dbName << ", " << tableName << ", " << chunk << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     std::string const key =
@@ -788,6 +832,7 @@ void CssAccess::addChunk(std::string const& dbName, std::string const& tableName
 
 void CssAccess::deleteChunk(std::string const& dbName, std::string const& tableName, int chunk) {
     LOGS(_log, LOG_LVL_DEBUG, "deleteChunk(" << dbName << ", " << tableName << ", " << chunk << ")");
+    std::lock_guard<std::mutex> lock(_mutex);
     _checkVersion();
 
     // delete a whole tree for this chunk
@@ -808,6 +853,12 @@ void CssAccess::deleteChunk(std::string const& dbName, std::string const& tableN
 
 std::map<int, std::vector<std::string>> CssAccess::getChunks(std::string const& dbName,
                                                              std::string const& tableName) {
+    std::lock_guard<std::mutex> lock(_mutex);
+    return _getChunks(dbName, tableName);
+}
+
+std::map<int, std::vector<std::string>> CssAccess::_getChunks(std::string const& dbName,
+                                                              std::string const& tableName) const {
     LOGS(_log, LOG_LVL_DEBUG, "getChunks(" << dbName << ", " << tableName << ")");
     _checkVersion();
 
@@ -861,7 +912,7 @@ std::map<int, std::vector<std::string>> CssAccess::getChunks(std::string const& 
 }
 
 void CssAccess::_assertDbExists(std::string const& dbName) const {
-    if (!containsDb(dbName)) {
+    if (!_containsDb(dbName)) {
         LOGS(_log, LOG_LVL_DEBUG, "Db '" << dbName << "' not found.");
         throw NoSuchDb(ERR_LOC, dbName);
     }
