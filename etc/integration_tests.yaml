@@ -1,0 +1,141 @@
+---
+reference-db-uri: mysql://qsmaster:CHANGEME2@integration-test-reference:3306
+reference-db-admin-uri: mysql://root:CHANGEME@integration-test-reference:3306
+replication-controller-uri: repl://@repl-controller:25081
+qserv-uri: qserv://qsmaster:CHANGEME2@czar-proxy:4040
+qserv-http-uri: https://czar-http:4048
+qserv-http-user: qsmaster
+qserv-http-password: CHANGEME2
+czar-db-admin-uri: mysql://root:CHANGEME@czar-mariadb:3306
+# The folder where the itest sources will be mounted in the container:
+qserv-testdata-dir: /tmp/qserv/data
+# The path to the test case folders, relative to qserv-testdata-dir
+qserv-testdata-test-case-dir: .
+# The location where itest query results will be written. (After writing they
+# are evaluated/compared by the itest tool)
+testdata-output: /qserv/data/
+# The auth key and admin auth key for the replication-ingest system. If running
+# integration tests with docker-compose, it must match the --auth-key and
+# --admin-auth-key values passed to the replication system executables in the
+# docker-compose file.
+repl-auth-key: "replauthkey"
+repl-admin-auth-key: "repladminauthkey"
+test_cases:
+  - id: case01
+    instance_id: qserv_proj
+    build_table_stats: True
+    root: /tmp/qserv/data/case01
+    data: data/{table_name}.tsv.gz
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case01/{table_name}
+    ingest:
+      metadata: data/ingest/metadata.json
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - Object                 # director
+      - Source                 # child
+      - Filter
+      - LeapSeconds
+      - Logs
+      - RefSrcMatch
+      - Science_Ccd_Exposure
+      - sdqa_Metric
+      - SimRefObject
+    skip_numbers:
+      # The query is perfectly valid in Qserv. Though, it can't be tested in MySQL since
+      # it's ordering rows based on the Qserv-specifc column chunkId.
+      - "2100"
+      # The perfectly valid query for both Qserv and MySQL. However, in Qserv it returns
+      # extra Qserv-specific columns preventing the test from doing the successful comparison.
+      # The second problem is that it won't work in the Qserv async mode SUBMIT SHOW COLUMNS...
+      - "3008"
+  - id: case02
+    root: /tmp/qserv/data/case02
+    data: data/{table_name}.csv.gz
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case02/{table_name}
+    ingest:
+      metadata: data/ingest/metadata.json
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - Object
+      - Source
+    skip_numbers:
+      # The following queries would produce different results in Qserv and MySQL because
+      # the Qserv version of the table has additional Qserv-specific columns. One option
+      # would be to rewrite the queries to explicitly mention all (but Qserv-specific)
+      # columns.
+      - "0002"
+      - "3020"
+      - "3020.2"
+  - id: case03
+    root: /tmp/qserv/data/case03
+    data: data/{table_name}.csv.gz
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case03/{table_name}
+    ingest:
+      metadata: data/ingest/metadata.json
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - RefObject  # director, must come first.
+      - RunDeepSource  # director, must come first.
+      - RunDeepForcedSource  # child of RunDeepSource
+      - RefDeepSrcMatch  # match table for RefObject and RunDeepSource
+      - AvgForcedPhot
+      - AvgForcedPhotYearly
+      - DeepCoadd
+      - DeepCoadd_Metadata
+      - DeepCoadd_To_Htm10
+      - Filter
+      - LeapSeconds
+      - Science_Ccd_Exposure
+      - Science_Ccd_Exposure_Metadata
+      - Science_Ccd_Exposure_Metadata_coadd_r
+      - Science_Ccd_Exposure_To_Htm10_coadd_r
+      - Science_Ccd_Exposure_coadd_r
+      - ZZZ_Db_Description
+    skip_numbers:
+      - "0005"  # Async SUBMIT for SHOW ... is not presently supported by Qserv.
+                # The query still works for the submitting the query via the regular
+                # sync interface. So, this looks like a bug or the missing functionality
+                # that needs to be adressed.
+  - id: case04
+    root: /tmp/qserv/data/case04
+    data: data/{table_name}.csv.gz
+    schema: data/schema/{table_name}.schema
+    partition:
+      config:
+        - data/partition/{table_name}.json
+        - data/partition/common.json
+      output: partition/case04/{table_name}
+    ingest:
+      metadata: data/ingest/metadata.json
+      database: data/ingest/database.json
+      table: data/ingest/{table_name}.json
+    tables:
+      - DeepSource  # director, must come first.
+      - DeepForcedSource  # child of DeepSource
+      - DeepSourceDupKeys  # standalone director that has duplicate keys.
+      - DeepCoadd
+      - Science_Ccd_Exposure
+    skip_numbers:
+      # These tests are for SHOW COLUMNS. For this query, Qserv returns additional
+      # columns that screw the comparison. Otherwise, these are teh perfectly valid
+      # ones.
+      - "0001"
+      - "0020"

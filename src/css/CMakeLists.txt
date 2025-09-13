@@ -40,7 +40,3 @@ css_tests(
 # Even though this and the test is commented out, leave this so it's findable by
 # searching for text similar to other WILL_FAIL tests.
 # set_tests_properties(testKvInterfaceImplMySql PROPERTIES WILL_FAIL 1)
-
-#-----------------------------------------------------------------------------
-
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/ DESTINATION ${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/css)
