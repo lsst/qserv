@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: repl-config
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+data:
+  99-qserv-repl.cnf: |
+    [mysqld]
+    datadir=/qserv/data/mysql
+    max-connections=16384
+    connect_timeout=28800
+    net_read_timeout=86400
+    net_write_timeout=86400
+    wait_timeout=86400
+    innodb_lock_wait_timeout=3600
+    innodb-read-io-threads=16
+    innodb-random-read-ahead=1
+    innodb-buffer-pool-size=8589934592
+    symbolic-links=0
+    tmp_table_size=4G
+    max_heap_table_size=4G
+    query-cache-size=0

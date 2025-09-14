@@ -1,0 +1,117 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "qserv.name" . }}-czar
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "qserv.name" . }}-czars
+  replicas: {{ .Values.czars.replicas }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "qserv.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: czar
+  template:
+    metadata:
+      labels:
+        {{- include "qserv.labels" . | nindent 8 }}
+        app.kubernetes.io/component: czar
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: qserv.lsst.io/tier
+                operator: In
+                values: [ czar ]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values: [ {{ include "qserv.name" . }} ]
+              - key: app.kubernetes.io/instance
+                operator: In
+                values: [ {{ .Release.Name }} ]
+              - key: app.kubernetes.io/component
+                operator: In
+                values: [ czar ]
+            topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+      - name: mariadb
+        image: {{ .Values.mariadbImageName | quote }}
+        imagePullPolicy: {{ .Values.mariadbimagePullPolicy | quote }}
+        ports:
+        - name: mysql
+          containerPort: 3306
+        env:
+        - name: MARIADB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: czar-secrets
+              key: mariadb-root-password
+        startupProbe:
+          exec:
+            command:
+              - bash
+              - -ec
+              - |
+                mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 60
+        readinessProbe:
+          exec:
+            command:
+              - bash
+              - -ec
+              - |
+                mariadb --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" -N -e "SELECT 1"
+          periodSeconds: 5
+          timeoutSeconds: 3
+        livenessProbe:
+          exec:
+            command:
+              - bash
+              - -ec
+              - |
+                mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
+          periodSeconds: 10
+          timeoutSeconds: 3
+        volumeMounts:
+        - name: mariadb-config
+          mountPath: /etc/mysql/conf.d/99-qserv-czar.cnf
+          subPath: 99-qserv-czar.cnf
+          readOnly: true
+        - name: tmp
+          mountPath: /tmp
+        - name: czar-data
+          mountPath: /qserv/data
+      volumes:
+      - name: mariadb-config
+        configMap:
+          name: czar-config
+          items:
+          - key: 99-qserv-czar.cnf
+            path: 99-qserv-czar.cnf
+      - name: tmp
+        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: czar-data
+      labels:
+        {{- include "qserv.labels" . | nindent 8 }}
+    spec:
+      accessModes: [ ReadWriteOnce ]
+      storageClassName: {{ .Values.czars.mariadb.storage.class | quote }}
+      resources:
+        requests:
+          storage: {{ .Values.czars.mariadb.storage.size | quote }}

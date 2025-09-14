@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: czar-config
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+data:
+  99-qserv-czar.cnf: |
+    [mysqld]
+    datadir=/qserv/data/mysql
+    max-connections=16384
+    max_allowed_packet=128M
+    connect_timeout=28800
+    net_read_timeout=90000
+    net_write_timeout=90000
+    wait_timeout=90000
+    symbolic-links=0
+    tmp_table_size=4G
+    max_heap_table_size=4G
+    use_stat_tables='preferably'
+    optimizer_use_condition_selectivity=3
+    query-cache-size=0
+    bulk-insert-buffer-size=1G
