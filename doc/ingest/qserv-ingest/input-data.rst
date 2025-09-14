@@ -17,7 +17,7 @@ are used by `Qserv ingest continuous integration process <https://github.com/lss
 Input data
 ==========
 
-Input data is produced by `Qserv partitioner <https://github.com/lsst/partition>`_ (i.e. ``sph-partition``) and is made of multiples ``*.csv``, ``*.tsv`` or ``*.txt`` files.
+Input data is produced by `Qserv partitioner <https://github.com/lsst-dm/legacy-partition>`_ (i.e. ``sph-partition``) and is made of multiples ``*.csv``, ``*.tsv`` or ``*.txt`` files.
 Each of these files contains a part of a chunk for a given database and table,
 as shown in `this example <https://github.com/lsst-dm/qserv-ingest/blob/main/itest/datasets/case01/partition/case01/Source/chunk_6630.txt>`_.
 Relation between an input data file and its related table and database is available inside ``metadata.json``, detailed below.

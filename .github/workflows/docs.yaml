@@ -45,7 +45,7 @@ jobs:
         uses: lsst-sqre/ltd-upload@v1
         with:
           project: "Qserv"
-          dir: "doc/_build/html"
+          dir: "build/doc/html"
           username: ${{ secrets.LTD_USERNAME }}
           password: ${{ secrets.LTD_PASSWORD }}
         if: >

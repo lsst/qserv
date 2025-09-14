@@ -16,7 +16,7 @@ Test data
 The data used in this example is a small collection of ready-to-use ``CSV`` files and ``JSON`` configurations
 located in the directory ``test101``. The directory is available in the Qserv repository at the following subfolder:
 
-- `doc_datasets/test101 <https://github.com/lsst/qserv/tree/main/doc_datasets/test101>`_
+- `data/test101 <https://github.com/lsst/qserv/tree/main/data/test101>`_
 
 The following configuration and data files are available in the directory:
 
