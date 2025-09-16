@@ -2,10 +2,8 @@ add_library(wdb SHARED)
 add_dependencies(wdb proto)
 
 target_sources(wdb PRIVATE
-    ChunkResource.cc
     QueryRunner.cc
     QuerySql.cc
-    SQLBackend.cc
 )
 
 target_include_directories(wdb PRIVATE
@@ -38,7 +36,6 @@ FUNCTION(wdb_tests)
 ENDFUNCTION()
 
 wdb_tests(
-    testChunkResource
     testQueryRunner
     testQuerySql
 )
