@@ -254,7 +254,9 @@ def cmake(
         build_image,
         "cmake",
         "..",
+        "-DCMAKE_BUILD_TYPE=Debug"
     ]
+    # "-DCMAKE_BUILD_TYPE=Debug"
     if dry:
         print(" ".join(args))
         return
