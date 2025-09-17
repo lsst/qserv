@@ -108,9 +108,9 @@ RUN cd /tmp \
 RUN cd /usr/share/java \
     && curl -O https://www.antlr.org/download/antlr-4.13.2-complete.jar \
     && cd /tmp \
-    && git clone https://github.com/antlr/antlr4 \
+    && git clone https://github.com/iagaponenko/antlr4.git \
     && cd antlr4 \
-    && git checkout 4.13.2 \
+    && git checkout qserv \
     && git config user.email "qserv@qserv-build" \
     && mkdir runtime/Cpp/build \
     && cd runtime/Cpp/build \
