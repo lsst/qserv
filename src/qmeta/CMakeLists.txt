@@ -7,6 +7,8 @@ target_sources(qmeta PRIVATE
     QMetaTransaction.cc
     QProgress.cc
     QProgressHistory.cc
+    UserTables.cc
+    UserTableIngestRequest.cc
 )
 
 target_link_libraries(qmeta PUBLIC
