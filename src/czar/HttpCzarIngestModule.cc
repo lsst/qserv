@@ -35,6 +35,8 @@
 #include "http/BinaryEncoding.h"
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
+#include "qmeta/UserTables.h"
+#include "qmeta/UserTableIngestRequest.h"
 #include "qhttp/Status.h"
 
 using namespace std;
@@ -128,56 +130,101 @@ json HttpCzarIngestModule::_ingestData() {
         }
     }
 
-    // Make changes to the persistent state of Qserv and the Replicaton/Ingest system.
-    // Post warnings if any reported by the method.
-    list<pair<string, string>> const warnings = ingestData(
-            databaseName, tableName, charsetName, collationName, schema, indexes,
-            [&](uint32_t transactionId) -> map<string, string> {
-                // Send table data to all eligible workers and wait for the responses.
-                // Note that requests are sent in parallel, and the duration of each such request
-                // is limited by the timeout parameter.
-                json dataJson =
-                        json::object({{"transaction_id", transactionId},
-                                      {"table", tableName},
-                                      {"charset_name", charsetName},
-                                      {"chunk", 0},
-                                      {"overlap", 0},
-                                      {"rows", rows},
-                                      {"binary_encoding", http::binaryEncoding2string(binaryEncodingMode)}});
-                setProtocolFields(dataJson);
-                auto const data = dataJson.dump();
-                map<string, shared_ptr<http::AsyncReq>> workerRequests;
-                for (auto const& workerId : getWorkerIds()) {
-                    auto const request = asyncRequestWorker(workerId, data);
-                    request->start();
-                    workerRequests[workerId] = request;
-                }
-                for (auto const& [workerId, request] : workerRequests) {
-                    request->wait();
-                }
+    // Register the request in the QMeta database.
+    qmeta::UserTables userTables(cconfig::CzarConfig::instance()->getMySqlQmetaConfig());
+    qmeta::UserTableIngestRequest request;
+    request.database = databaseName;
+    request.table = tableName;
+    request.tableType = qmeta::UserTableIngestRequest::TableType::FULLY_REPLICATED;
+    request.isTemporary = true;
+    request.dataFormat = qmeta::UserTableIngestRequest::DataFormat::JSON;
+    request.schema = schema;
+    request.indexes = indexes;
+    request.extended["charset"] = charsetName;
+    request.extended["collation"] = collationName;
+    request.extended["binary_encoding"] = http::binaryEncoding2string(binaryEncodingMode);
 
-                // Process responses from workers.
-                map<string, string> errors;
-                for (auto const& [workerId, request] : workerRequests) {
-                    if (request->responseCode() != qhttp::STATUS_OK) {
-                        errors[workerId] = "http_code: " + to_string(request->responseCode());
-                        continue;
+    request = userTables.registerRequest(request);
+    debug(__func__, "registered a new ingest request, id: " + to_string(request.id));
+
+    // Ingest statistics
+    std::uint32_t thisTransactionId = 0;
+    std::atomic<std::uint32_t> numChunks{0};
+    std::atomic<std::uint64_t> numRows{0};
+    std::atomic<std::uint64_t> numBytes{0};
+
+    // Push the data to all workers and monitor the progress.
+    try {
+        list<pair<string, string>> const warnings = ingestData(
+                databaseName, tableName, charsetName, collationName, schema, indexes,
+                [&](uint32_t transactionId) -> map<string, string> {
+                    thisTransactionId = transactionId;
+
+                    // Send table data to all eligible workers and wait for the responses.
+                    // Note that requests are sent in parallel, and the duration of each such request
+                    // is limited by the timeout parameter.
+                    json dataJson = json::object(
+                            {{"transaction_id", transactionId},
+                             {"table", tableName},
+                             {"charset_name", charsetName},
+                             {"chunk", 0},
+                             {"overlap", 0},
+                             {"rows", rows},
+                             {"binary_encoding", http::binaryEncoding2string(binaryEncodingMode)}});
+                    setProtocolFields(dataJson);
+                    auto const data = dataJson.dump();
+                    map<string, shared_ptr<http::AsyncReq>> workerRequests;
+                    for (auto const& workerId : getWorkerIds()) {
+                        auto const req = asyncRequestWorker(workerId, data);
+                        req->start();
+                        workerRequests[workerId] = req;
                     }
-                    json response;
-                    try {
-                        response = json::parse(request->responseBody());
-                    } catch (exception const& ex) {
-                        errors[workerId] = "ex: " + string(ex.what());
-                        continue;
+                    for (auto const& [workerId, req] : workerRequests) {
+                        req->wait();
                     }
-                    if (response.at("success").get<int>() == 0) {
-                        errors[workerId] = "error: " + response.at("error").get<string>();
+
+                    // Process workers' responses.
+                    map<string, string> errors;
+                    for (auto const& [workerId, req] : workerRequests) {
+                        if (req->responseCode() != qhttp::STATUS_OK) {
+                            errors[workerId] = "http_code: " + to_string(req->responseCode());
+                            continue;
+                        }
+                        json resp;
+                        try {
+                            resp = json::parse(req->responseBody());
+                        } catch (exception const& ex) {
+                            errors[workerId] = "ex: " + string(ex.what());
+                            continue;
+                        }
+                        if (resp.at("success").get<int>() == 0) {
+                            errors[workerId] = "error: " + resp.at("error").get<string>();
+                        } else {
+                            // Update ingest statistics. Values of the counters reported by workers
+                            // are expected to be the same for the fully replicated tables.
+                            // Though the last statement is not checked or enforced by the current
+                            // implementation updating ingest statistics for each worker allows to get the
+                            // values even if only one worker completes the request successfully.
+                            json const& contrib = resp.at("contrib");
+                            numRows = contrib.at("num_rows").get<std::uint64_t>();
+                            numBytes = contrib.at("num_bytes").get<std::uint64_t>();
+                        }
                     }
-                }
-                return errors;
-            });
-    for (auto const& warning : warnings) {
-        warn(warning.first, warning.second);
+                    return errors;
+                });
+
+        // Make sure any warnings reported during the ingest are returned to the caller.
+        for (auto const& warning : warnings) {
+            warn(warning.first, warning.second);
+        }
+        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::COMPLETED,
+                                            string(), thisTransactionId, numChunks, numRows, numBytes);
+        debug(__func__, "ingest request completed, id: " + to_string(request.id));
+    } catch (exception const& ex) {
+        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::FAILED,
+                                            ex.what(), thisTransactionId, numChunks, numRows, numBytes);
+        error(__func__, "ingest request failed, id: " + to_string(request.id) + ", error: " + ex.what());
+        throw;
     }
     return json();
 }
@@ -194,6 +241,10 @@ json HttpCzarIngestModule::_deleteDatabase() {
 
     verifyUserDatabaseName(__func__, databaseName);
     deleteDatabase(databaseName);
+
+    // Mark all relevant tables of the database as deleted in the registry.
+    qmeta::UserTables userTables(cconfig::CzarConfig::instance()->getMySqlQmetaConfig());
+    userTables.databaseDeleted(databaseName);
     return json();
 }
 
@@ -212,6 +263,15 @@ json HttpCzarIngestModule::_deleteTable() {
     verifyUserDatabaseName(__func__, databaseName);
     verifyUserTableName(__func__, tableName);
     deleteTable(databaseName, tableName);
+
+    // Mark the table as deleted in the registry.
+    qmeta::UserTables userTables(cconfig::CzarConfig::instance()->getMySqlQmetaConfig());
+    bool const extended = false;
+    try {
+        userTables.tableDeleted(userTables.findRequest(databaseName, tableName, extended).id);
+    } catch (qmeta::IngestRequestNotFound const&) {
+        // Ignore the error if the request is not found.
+    }
     return json();
 }
 
