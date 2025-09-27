@@ -30,6 +30,7 @@ target_link_libraries(replica PUBLIC
     XrdSsiLib
     http
     qhttp
+    qmeta
     sphgeom
     partition
     protobuf
