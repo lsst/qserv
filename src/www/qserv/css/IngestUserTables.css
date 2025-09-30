@@ -1,0 +1,49 @@
+#fwk-ingest-user-tables-controls label {
+    font-weight:    bold;
+}
+table#fwk-ingest-user-tables caption {
+    caption-side:   top;
+    text-align:     right;
+    padding-top:    0;
+}
+table#fwk-ingest-user-tables {
+    position: relative;
+}
+table#fwk-ingest-user-tables > thead > tr > th.sticky {
+    position:sticky;
+    top:80px;
+    z-index:2;
+}
+
+table#fwk-ingest-user-tables th.right-aligned,
+table#fwk-ingest-user-tables td.right-aligned {
+    text-align:     right;
+}
+table#fwk-ingest-user-tables th.center-aligned,
+table#fwk-ingest-user-tables td.center-aligned {
+    text-align: center;
+}
+table#fwk-ingest-user-tables tbody th,
+table#fwk-ingest-user-tables tbody td {
+    vertical-align:top;
+}
+table#fwk-ingest-user-tables pre {
+    padding: 0;
+    margin: 0;
+}
+table#fwk-ingest-user-tables tbody pre.database:hover,
+table#fwk-ingest-user-tables tbody pre.database_table:hover,
+table#fwk-ingest-user-tables tbody pre.request_id:hover,
+table#fwk-ingest-user-tables tbody pre.transaction_id:hover {
+    cursor:pointer;
+}
+table#fwk-ingest-user-tables tbody pre.database,
+table#fwk-ingest-user-tables tbody pre.database_table,
+table#fwk-ingest-user-tables tbody pre.request_id,
+table#fwk-ingest-user-tables tbody pre.transaction_id {
+    /* text-decoration: underline; */
+    color:#007bff;
+}
+table#fwk-ingest-user-tables-status caption.updating {
+    background-color: #ffeeba;
+}
