@@ -166,7 +166,7 @@ def targs(
 
     Returns
     -------
-    targs : Dict[str, Union[int, Any]]
+    targs : Dict[str, Any]
         The dict of values to to render templates.
     """
     options = copy.copy(ctx.params)

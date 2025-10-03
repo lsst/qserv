@@ -28,7 +28,7 @@ from unittest.mock import patch
 
 from lsst.qserv.admin.cli import script
 from lsst.qserv.qmeta.schema_migration import QMetaMigrationManager
-from lsst.qserv.schema import SchemaMigMgr, SchemaUpdateRequiredError, Uninitialized
+from lsst.qserv.schema import SchemaMigMgr, SchemaUpdateRequiredError, Uninitialized, Version
 
 migration_files = [
     "migrate-0-to-1.sql",
@@ -40,9 +40,9 @@ migration_files = [
 ]
 
 # This number must match the highest 'to' number in migration_files.
-latest_qmeta_schema_version = 5
+latest_qmeta_schema_version = Version(5)
 # This number must match the second highest 'to' number in migration_files.
-previous_qmeta_schema_version = 4
+previous_qmeta_schema_version = Version(4)
 # This is the file that migrates from Uninitialized to latest
 qmeta_migrate_uninit_to_newest = migration_files[4]
 # This is the file that migrates from previous to latest

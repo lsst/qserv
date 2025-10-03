@@ -33,6 +33,7 @@ from typing import Any
 import click
 from click.decorators import pass_context
 
+from ..template import save_template_cfg
 from ..watcher import watch
 from . import script, utils
 from .options import (
@@ -57,6 +58,7 @@ from .options import (
     option_repl_admin_auth_key,
     option_repl_auth_key,
     option_repl_connection,
+    option_repl_connection_nonadmin,
     option_repl_http_port,
     option_repl_instance_id,
     option_repl_registry_host,
@@ -64,6 +66,7 @@ from .options import (
     option_results_dirname,
     option_run,
     option_run_tests,
+    option_targs,
     option_tests_yaml,
     option_unload,
     option_vnid_config,
@@ -1042,13 +1045,22 @@ def watcher(
 @option_czar_connection()
 @option_worker_connection()
 @option_repl_connection()
-@option_options_file()
-def smig_update(czar_connection: str, worker_connections: list[str], repl_connection: str) -> None:
+@option_repl_connection_nonadmin()
+@option_targs()
+def smig_update(
+    czar_connection: str,
+    worker_connections: list[str],
+    repl_connection: str,
+    repl_connection_nonadmin: str,
+    targs: dict[str, Any],
+) -> None:
     """Run schema update on nodes."""
+    save_template_cfg(targs)
     script.smig_update(
         czar_connection=czar_connection,
         worker_connections=worker_connections,
         repl_connection=repl_connection,
+        repl_connection_nonadmin=repl_connection_nonadmin,
     )
 
 
