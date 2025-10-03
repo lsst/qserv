@@ -230,9 +230,9 @@ class MySqlUdfTestCase(unittest.TestCase):
             self._pt_in_sph_poly(None, 0.0, 0.0, 0, 0, 90, 0, 0, d)
 
         # test for incorrect number of poly coordinates
-        self.assertRaises(Exception, self._pt_in_sph_poly, None, 0.0, 0.0, 0, 0, 90, 0, 60, 45, 30)
-        self.assertRaises(Exception, self._pt_in_sph_poly, None, 0.0, 0.0, 0, 0, 90, 0, 60)
-        self.assertRaises(Exception, self._pt_in_sph_poly, None, 0.0, 0.0, 0, 0, 90, 0)
+        self.assertRaises(Exception, self._pt_in_sph_poly, None, 0.0, 0.0, 0, 0, 90, 0, 60, 45, 30)  # noqa: B017
+        self.assertRaises(Exception, self._pt_in_sph_poly, None, 0.0, 0.0, 0, 0, 90, 0, 60)  # noqa: B017
+        self.assertRaises(Exception, self._pt_in_sph_poly, None, 0.0, 0.0, 0, 0, 90, 0)  # noqa: B017
 
         # Test for non-exceptional cases
         x = (0, 0)
@@ -282,7 +282,7 @@ def main():
     parser.add_option(
         "-p", "--password", dest="password", default="", help="Password for db login. ('-' prompts)"
     )
-    (_options, args) = parser.parse_args()
+    (_options, _) = parser.parse_args()
     if _options.password == "-":
         _options.password = getpass.getpass()
     random.seed(123456789)
