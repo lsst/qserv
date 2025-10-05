@@ -116,6 +116,13 @@ option_repl_connection = partial(
 )
 
 
+option_repl_connection_nonadmin = partial(
+    click.option,
+    "--repl-connection-nonadmin",
+    help="The non-admin connection string for the replication database in format mysql://user:pass@host:port/database",
+)
+
+
 option_repl_instance_id = partial(
     click.option,
     "--repl-instance-id",

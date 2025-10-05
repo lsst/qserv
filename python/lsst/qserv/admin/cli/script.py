@@ -32,9 +32,8 @@ from functools import partial
 from pathlib import Path
 
 import backoff
-from sqlalchemy.engine.url import URL, make_url
-
 import mysql.connector
+from sqlalchemy.engine.url import URL, make_url
 
 from ...schema import MigMgrArgs, SchemaUpdateRequiredError, smig, smig_block
 from ..itest import ITestResults
@@ -868,7 +867,12 @@ def enter_replication_registry(
     sys.exit(_run(args=None, cmd=cmd, env=env, run=run))
 
 
-def smig_update(czar_connection: str, worker_connections: list[str], repl_connection: str) -> None:
+def smig_update(
+    czar_connection: str,
+    worker_connections: list[str],
+    repl_connection: str,
+    repl_connection_nonadmin: str,
+) -> None:
     """Update smig on nodes that need it.
 
     All connection strings are in format mysql://user:pass@host:port/database
@@ -888,7 +892,9 @@ def smig_update(czar_connection: str, worker_connections: list[str], repl_connec
         for c in worker_connections:
             smig_worker(connection=c, update=True)
     if repl_connection:
-        smig_replication_controller(db_admin_uri=repl_connection, db_uri=None, update=True)
+        smig_replication_controller(
+            db_admin_uri=repl_connection, db_uri=repl_connection_nonadmin, update=True
+        )
 
 
 def _run(

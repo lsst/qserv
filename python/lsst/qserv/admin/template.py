@@ -42,7 +42,7 @@ def save_template_cfg(values: Targs) -> None:
 
     Parameters
     ----------
-    values : `dict` [`str`, `str`]
+    values : `dict` [`str`, `Any`]
         Key-value pairs to add.
     """
     if not values:
@@ -57,7 +57,7 @@ def save_template_cfg(values: Targs) -> None:
         f.write(yaml.dump(cfg))
 
 
-def get_template_cfg() -> dict[Any, Any]:
+def get_template_cfg() -> dict[str, Any]:
     """Get the dict of key-value pairs from the config parameter file."""
     try:
         with open(cfg_file_path) as f:

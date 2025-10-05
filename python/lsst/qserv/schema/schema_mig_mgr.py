@@ -37,13 +37,12 @@ from typing import cast
 
 import backoff
 import jinja2
+import mysql.connector
 
 # MySQLInterfaceError can get thrown, we need to catch it.
 # It's not exposed as a public python object but *is* used in mysql.connector unit tests.
 from _mysql_connector import MySQLInterfaceError
 from sqlalchemy.engine.url import make_url
-
-import mysql.connector
 
 from ..admin.qserv_backoff import max_backoff_sec, on_backoff
 from ..admin.template import get_template_cfg
@@ -314,7 +313,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
 
         Returns
         -------
-        version : `int`
+        version : `Version` or `None`
             The current version number after applying migrations.
         """
         if not migrations:
@@ -356,7 +355,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
                     )  # empty migration files are used for testing.
                 self.connection.commit()
                 _log.info("+++ Script %s completed successfully", migration.name)
-        return Version(migration.to_version.value)
+        return migration.to_version
 
     def migrate(self, to_version: int | None = None, do_migrate: bool = False) -> int | None:
         """Perform schema migration from current version to given version.
@@ -400,8 +399,8 @@ class SchemaMigMgr(metaclass=ABCMeta):
             )
         if do_migrate:
             final_version = self.apply_migrations(migrations)
-            if isinstance(final_version, int):
-                return final_version
+            if final_version is not None and isinstance(final_version.value, int):
+                return final_version.value
             return None
         else:
             # Todo can probably format migrations more nicely.

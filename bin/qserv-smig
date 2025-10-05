@@ -23,6 +23,7 @@
 """Application which implements migration process for qserv databases."""
 
 import argparse
+import logging
 import os
 import sys
 
@@ -37,6 +38,7 @@ def main() -> int | None:
     parser.add_argument(
         "-v", "--verbose", default=0, action="count", help="Use one -v for INFO logging, two for DEBUG."
     )
+
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
         "-m",
@@ -51,6 +53,7 @@ def main() -> int | None:
         action="store_true",
         help="Check that migration is needed, script returns 0 if schema is up-to-date, 1 otherwise.",
     )
+
     parser.add_argument(
         "-n",
         "--final",
@@ -60,6 +63,7 @@ def main() -> int | None:
         metavar="VERSION",
         help="Stop migration at given version, by default update to latest version.",
     )
+
     parser.add_argument(
         "--scripts",
         default=_def_scripts,
@@ -67,27 +71,55 @@ def main() -> int | None:
         metavar="PATH",
         help="Location for migration scripts, def: %(default)s.",
     )
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
+
+    parser.add_argument(
         "-c",
         "--connection",
         metavar="CONNECTION",
         help="Connection string in format mysql://user:pass@host:port/database.",
     )
-    group.add_argument(
-        "-f",
-        "--config-file",
-        metavar="PATH",
-        help="Name of configuration file in INI format with connection parameters.",
-    )
+
     parser.add_argument(
-        "-s", "--config-section", metavar="NAME", help="Name of configuration section in configuration file."
+        "module",
+        help="Name of Qserv module for which to update schema, e.g. qmeta.",
     )
 
-    parser.add_argument("module", help="Name of Qserv module for which to update schema, e.g. qmeta.")
+    parser.add_argument(
+        "additional",
+        metavar="--arg[=value]",
+        nargs="*",
+        help="Additional arguments to pass to migration manager.",
+    )
 
     args = parser.parse_args()
-    return smig(**args)
+
+    levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
+    level = levels.get(args.verbose, logging.DEBUG)
+    fmt = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    logging.basicConfig(level=level, format=fmt)
+
+    mig_mgr_args = {}
+    if args.additional:
+        for arg in args.additional:
+            if not arg.startswith("--"):
+                parser.error(f"Additional arguments must start with --: {arg}")
+            arg = arg[2:]
+            if "=" in arg:
+                key, val = arg.split("=", 1)
+            else:
+                key, val = arg, True
+            mig_mgr_args[key] = val
+
+    return smig(
+        do_migrate=args.do_migrate,
+        check=args.check,
+        final=args.final,
+        scripts=args.scripts,
+        connection=args.connection,
+        module=args.module,
+        mig_mgr_args=mig_mgr_args,
+        update=True,
+    )
 
 
 if __name__ == "__main__":
