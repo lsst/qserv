@@ -10,7 +10,7 @@ technology = mysql
 hostname = {{ czar_db_host }}
 port = {{ czar_db_port }}
 username = qsmaster
-password = CHANGEME2
+password = CHANGEME
 database = qservCssData
 socket = {{ czar_db_socket }}
 
@@ -19,7 +19,7 @@ db = qservResult
 unix_socket = {{ czar_db_socket }}
 host = {{ czar_db_host }}
 user = qsmaster
-passwd = CHANGEME2
+passwd = CHANGEME
 port = {{ czar_db_port }}
 
 # Any table in resultdb that hasn't been updated in this many days is deleted.
@@ -36,8 +36,8 @@ maxsqlconnectionattempts = 10
 # maximum user query result size in MB
 maxtablesize_mb = 5100
 
-# maximum number of MB of concurrent csv transfer files allowed to be kept in 
-# memory, after this point the will be temporarily written to disk.  
+# maximum number of MB of concurrent csv transfer files allowed to be kept in
+# memory, after this point the will be temporarily written to disk.
 # 0 is used for testing. 10000 is usually reasonable.
 maxTransferMemMB = 0
 
@@ -55,7 +55,7 @@ db = qservMeta
 unix_socket = {{ czar_db_socket }}
 host = {{ czar_db_host }}
 user = qsmaster
-passwd = CHANGEME2
+passwd = CHANGEME
 port = {{ czar_db_port }}
 maxMsgSourceStore = 5
 
@@ -66,7 +66,7 @@ maxMsgSourceStore = 5
 #db = qservStatusData
 db = qservMeta
 user = qsmaster
-passwd = CHANGEME2
+passwd = CHANGEME
 host = {{ czar_db_host }}
 port = {{ czar_db_port }}
 

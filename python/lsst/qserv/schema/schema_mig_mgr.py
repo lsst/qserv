@@ -350,7 +350,7 @@ class SchemaMigMgr(metaclass=ABCMeta):
                         if result.with_rows:
                             result.fetchall()
                 else:
-                    _log.warn(
+                    _log.warning(
                         "Migration statement was empty, nothing to execute."
                     )  # empty migration files are used for testing.
                 self.connection.commit()

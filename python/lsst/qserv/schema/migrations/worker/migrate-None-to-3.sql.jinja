@@ -1,0 +1,78 @@
+-- -----------------------------------------------------
+-- Script to initialize the worker databases
+-- -----------------------------------------------------
+
+CREATE USER IF NOT EXISTS 'qsmaster'@'localhost' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
+CREATE USER IF NOT EXISTS 'qsmaster'@'%' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
+
+GRANT SELECT ON *.* TO 'qsmaster'@'localhost';
+GRANT SELECT ON *.* TO 'qsmaster'@'%';
+
+GRANT ALL ON `q\_memoryLockDb`.* TO 'qsmaster'@'localhost';
+GRANT ALL ON `q\_memoryLockDb`.* TO 'qsmaster'@'%';
+
+GRANT ALL ON `Subchunks\_%`.* TO 'qsmaster'@'localhost';
+GRANT ALL ON `Subchunks\_%`.* TO 'qsmaster'@'%';
+
+
+-- -----------------------------------------------------
+-- Schema `qservw_worker`
+-- -----------------------------------------------------
+
+CREATE SCHEMA `qservw_worker`;
+GRANT ALL ON `qservw_worker`.* TO 'qsmaster'@'localhost';
+GRANT ALL ON `qservw_worker`.* TO 'qsmaster'@'%';
+
+
+-- -----------------------------------------------------
+-- Table `qservw_worker`.`Dbs`
+-- -----------------------------------------------------
+
+CREATE TABLE `qservw_worker`.`Dbs` (
+  `db` CHAR(200) NOT NULL,
+  PRIMARY KEY (`db`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `qservw_worker`.`Chunks`
+-- -----------------------------------------------------
+
+CREATE TABLE `qservw_worker`.`Chunks` (
+  `db` CHAR(200) NOT NULL,
+  `chunk` INT UNSIGNED NOT NULL,
+  UNIQUE KEY(`db`,`chunk`))
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `qservw_worker`.`Id`
+-- -----------------------------------------------------
+
+CREATE TABLE `qservw_worker`.`Id` (
+  `id` VARCHAR(64) NOT NULL,
+  `type` ENUM('UUID') DEFAULT 'UUID',
+  `created` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY (`type`))
+ENGINE=InnoDB;
+
+INSERT INTO `qservw_worker`.`Id` (`id`) VALUES (UUID());
+
+
+-- -----------------------------------------------------
+-- Table `qservw_worker`.`QMetaData`
+-- -----------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS `qservw_worker`.`QMetadata` (
+  `metakey` CHAR(64) NOT NULL COMMENT 'Key string',
+  `value` TEXT NULL COMMENT 'Value string',
+  PRIMARY KEY (`metakey`))
+ENGINE = InnoDB
+COMMENT = 'Metadata about database as a whole, key-value pairs';
+
+-- Update version on every schema change.
+-- Version 0 corresponds to initial QMeta release and it had no QMetadata table at all
+-- Version 1 add primary key constraint to Dbs, add Chunks, Id, and QMetadata tables
+-- Version 2 grant ALL on qservw_worker to qsmaster
+-- Version 3 merged in contents of admin module; dropped obsolete monitor user and grants
+INSERT INTO `qservw_worker`.`QMetadata` (`metakey`, `value`) VALUES ('version', '3');

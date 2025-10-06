@@ -90,12 +90,12 @@ services:
               source: volume_worker_0_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
         network_mode: "service:worker-svc-0"
-        
+
     worker-svc-0:
         << : *worker-svc
         command: >
           entrypoint worker-svc
-          --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306
+          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
@@ -120,7 +120,7 @@ services:
             default:
                 aliases:
                     - worker-mariadb-0
-        
+
     repl-worker-0:
         << : *repl-worker
         command: >
@@ -169,7 +169,7 @@ services:
         << : *worker-svc
         command: >
           entrypoint --log-level DEBUG worker-svc
-          --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306?socket={{db_socket}}
+          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
@@ -195,7 +195,7 @@ services:
             default:
                 aliases:
                     - worker-mariadb-1
-        
+
     repl-worker-1:
         << : *repl-worker
         # qserv-replica-worker app does not support socket file yet.
@@ -251,7 +251,7 @@ services:
         init: true
         command: >
           entrypoint --log-level DEBUG proxy
-          --db-uri mysql://qsmaster:CHANGEME2@127.0.0.1:3306?socket={{db_socket}}
+          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
@@ -276,7 +276,7 @@ services:
             - type: volume
               source: volume_czar_transfer
               target: /tmp
-              
+
             - << : *log-volume
         expose:
             - "3306" # for czar-mariadb
@@ -292,7 +292,7 @@ services:
         init: true
         command: >
           entrypoint --log-level DEBUG czar-http
-          --db-uri mysql://qsmaster:CHANGEME2@czar-mariadb:3306/
+          --db-uri mysql://qsmaster:CHANGEME@czar-mariadb:3306/
           --czar-name http
           --http-port 4048
           --http-threads 4
@@ -302,7 +302,7 @@ services:
           --http-tmp-dir /tmp
           --http-conn-pool-size 2
           --user qsmaster
-          --password CHANGEME2
+          --password CHANGEME
           --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey

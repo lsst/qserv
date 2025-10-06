@@ -25,9 +25,8 @@ import logging
 from contextlib import closing
 
 import backoff
-from _mysql_connector import MySQLInterfaceError
-
 import mysql.connector
+from _mysql_connector import MySQLInterfaceError
 
 from ..admin.qserv_backoff import max_backoff_sec, on_backoff
 from . import MigMgrArgs, Migration, SchemaMigMgr, SchemaUpdateRequiredError, Uninitialized, Version
@@ -48,7 +47,7 @@ def _load_migration_mgr(
     Parameters
     ----------
     mod_name : `str`
-        Module name, e.g. "qmeta"
+        Module name, e.g. "czar"
     connection : `str`
         The uri to the module database.
     scripts_dir : `str`
@@ -71,7 +70,9 @@ def _load_migration_mgr(
 
     # load module "lsst.qserv.<module>.schema_migration"
     try:
-        mod_instance = importlib.import_module("lsst.qserv." + mod_name + "." + _mig_module_name)
+        mod_instance = importlib.import_module(
+            "lsst.qserv.schema.migrations." + mod_name + "." + _mig_module_name
+        )
     except ImportError:
         logging.error(
             "Failed to load %s module from lsst.qserv.%s package",

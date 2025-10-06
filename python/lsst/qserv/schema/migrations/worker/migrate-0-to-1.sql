@@ -48,12 +48,12 @@ BEGIN
     IF dbDone = 1 THEN
       LEAVE a;
     END IF;
-    
+
     INSERT INTO Chunks
       SELECT DISTINCT TABLE_SCHEMA,SUBSTRING_INDEX(TABLE_NAME,'_',-1)
         FROM information_schema.tables
         WHERE TABLE_SCHEMA=db AND TABLE_NAME REGEXP '_[0-9]*$';
-  
+
   END LOOP a;
 
   CLOSE curs;
@@ -99,4 +99,3 @@ CREATE TABLE IF NOT EXISTS `QMetadata` (
 -- Add record for schema version, migration script expects this record to exist
 
 INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '1');
-
