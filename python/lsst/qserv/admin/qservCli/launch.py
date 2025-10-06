@@ -341,13 +341,6 @@ def mypy(
         If True do not run the command; print what would have been run.
     """
     # elements of qserv_py_modules are relative to the qserv root inside the build container:
-    qserv_py_modules = [
-        "bin/entrypoint",
-        "bin/qserv",
-        "bin/qserv-kraken",
-        "bin/qserv-smig",
-        "python",
-    ]
     args = [
         "docker",
         "run",
@@ -361,15 +354,12 @@ def mypy(
         qserv_build_root.format(user=user),
         build_image,
         "mypy",
-        "--exclude",
-        "lsst/qserv/.*/tests",
-        *qserv_py_modules,
     ]
     if dry:
         print(" ".join(args))
         return
     _log.debug('Running "%s"', " ".join(args))
-    print("Running mypy on all qserv python modules except 'lsst.qserv.*.tests'...")
+    print("Running mypy...")
     subproc.run(args)
 
 
