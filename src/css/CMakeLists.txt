@@ -17,7 +17,6 @@ target_link_libraries(css PUBLIC
 )
 
 install(TARGETS css)
-install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/css/schema/)
 
 FUNCTION(css_tests)
     FOREACH(TEST IN ITEMS ${ARGV})

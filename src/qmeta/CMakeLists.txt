@@ -19,11 +19,10 @@ target_link_libraries(qmeta PUBLIC
     http
     mysql
     log
-    util 
+    util
 )
 
 install(TARGETS qmeta)
-install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/qmeta/schema/)
 
 add_executable(testQMeta testQMeta.cc)
 
