@@ -21,7 +21,6 @@ target_link_libraries(qmeta PUBLIC
 )
 
 install(TARGETS qmeta)
-install(DIRECTORY schema/ DESTINATION ${CMAKE_INSTALL_PREFIX}/qserv/smig/qmeta/schema/)
 
 add_executable(testQMeta testQMeta.cc)
 

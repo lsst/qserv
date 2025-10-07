@@ -71,8 +71,6 @@ replica_utils(
     qserv-replica-worker
 )
 
-install(DIRECTORY schema/ DESTINATION qserv/smig/replica/schema/)
-
 install(
     TARGETS replica
 )
