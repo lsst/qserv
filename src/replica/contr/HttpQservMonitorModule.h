@@ -77,6 +77,7 @@ public:
      *   QUERY                    - get user query info for a specific query
      *   CSS                      - get CSS configurations (the shared scan settings, etc.)
      *   CSS-UPDATE               - update CSS configurations (the shared scan settings, etc.)
+     *   INGEST-REQUESTS          - get user table ingest requests
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -178,6 +179,12 @@ private:
      * launched at Qserv.
      */
     nlohmann::json _userQuery();
+
+    /**
+     * Process a request for extracting a status on user table ingest requests
+     * submitted via the Czar(s) frontend.
+     */
+    nlohmann::json _userTables();
 
     /**
      * Extract and parse values of the worker task selector.

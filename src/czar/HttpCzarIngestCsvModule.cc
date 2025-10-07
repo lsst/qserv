@@ -38,6 +38,8 @@
 #include "http/Client.h"
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
+#include "qmeta/UserTables.h"
+#include "qmeta/UserTableIngestRequest.h"
 #include "qhttp/Status.h"
 
 using namespace std;
@@ -216,12 +218,45 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
         }
     }
 
-    // Make changes to the persistent state of Qserv and the Replicaton/Ingest system.
-    list<pair<string, string>> const warnings = ingestData(
-            _databaseName, _tableName, _charsetName, _collationName, schema, indexes,
-            [&](uint32_t transactionId) -> map<string, string> { return _pushDataToWorkers(transactionId); });
-    for (auto const& warning : warnings) {
-        warn(warning.first, warning.second);
+    // Register the request in the QMeta database.
+    qmeta::UserTables userTables(cconfig::CzarConfig::instance()->getMySqlQmetaConfig());
+    qmeta::UserTableIngestRequest request;
+    request.database = _databaseName;
+    request.table = _tableName;
+    request.tableType = qmeta::UserTableIngestRequest::TableType::FULLY_REPLICATED;
+    request.isTemporary = true;
+    request.dataFormat = qmeta::UserTableIngestRequest::DataFormat::CSV;
+    request.schema = schema;
+    request.indexes = indexes;
+    request.extended["charset"] = _charsetName;
+    request.extended["collation"] = _collationName;
+    request.extended["fields_terminated_by"] = _fieldsTerminatedBy;
+    request.extended["fields_enclosed_by"] = _fieldsEnclosedBy;
+    request.extended["fields_escaped_by"] = _fieldsEscapedBy;
+    request.extended["lines_terminated_by"] = _linesTerminatedBy;
+    request = userTables.registerRequest(request);
+    debug(__func__, "registered a new ingest request, id: " + to_string(request.id));
+
+    // Push the data to all workers and monitor the progress.
+    try {
+        list<pair<string, string>> const warnings =
+                ingestData(_databaseName, _tableName, _charsetName, _collationName, schema, indexes,
+                           [&](uint32_t transactionId) -> map<string, string> {
+                               return _pushDataToWorkers(transactionId);
+                           });
+
+        // Make sure any warnings reported during the ingest are returned to the caller.
+        for (auto const& warning : warnings) {
+            warn(warning.first, warning.second);
+        }
+        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::COMPLETED,
+                                            string(), _transactionId, _numChunks, _numRows, _numBytes);
+        debug(__func__, "ingest request completed, id: " + to_string(request.id));
+    } catch (exception const& ex) {
+        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::FAILED,
+                                            ex.what(), _transactionId, _numChunks, _numRows, _numBytes);
+        error(__func__, "ingest request failed, id: " + to_string(request.id) + ", error: " + ex.what());
+        throw;
     }
     return json();
 }
@@ -239,6 +274,11 @@ map<string, string> HttpCzarIngestCsvModule::_pushDataToWorkers(uint32_t transac
                                             {"rows", "", _csvFileName, "text/csv"}};
     setProtocolFields(mimeData);
 
+    debug(__func__, "pushing data to workers, transactionId: " + to_string(transactionId) + ", table: '" +
+                            _tableName + "', data file: '" + _csvFileName + "'");
+
+    _transactionId = transactionId;
+
     // Send table data to all eligible workers.
     auto const resultQueue = ingest::ResultQueue::create();
     auto const workers = getWorkerIds();
@@ -251,6 +291,15 @@ map<string, string> HttpCzarIngestCsvModule::_pushDataToWorkers(uint32_t transac
                         auto const resp = req->readAsJson();
                         if (resp.at("success").get<int>() == 0) {
                             result.error = "error: " + resp.at("error").get<string>();
+                        } else {
+                            // Update ingest statistics. Values of the counters reported by workers
+                            // are expected to be the same for the fully replicated tables.
+                            // Though the last statement is not checked or enforced by the current
+                            // implementation updating ingest statistics for each worker allows to get the
+                            // values even if only one worker completes the request successfully.
+                            json const& contrib = resp.at("contrib");
+                            _numRows = contrib.at("num_rows").get<std::uint64_t>();
+                            _numBytes = contrib.at("num_bytes").get<std::uint64_t>();
                         }
                     } catch (exception const& ex) {
                         result.error = "ex: " + string(ex.what());

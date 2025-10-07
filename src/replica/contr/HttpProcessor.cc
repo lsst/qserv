@@ -38,12 +38,12 @@
 #include "replica/contr/HttpIngestTransModule.h"
 #include "replica/contr/HttpJobsModule.h"
 #include "replica/contr/HttpQservMonitorModule.h"
+#include "replica/contr/HttpQservSqlModule.h"
 #include "replica/contr/HttpRequestsModule.h"
 #include "replica/contr/HttpReplicationLevelsModule.h"
 #include "replica/contr/HttpSqlIndexModule.h"
 #include "replica/contr/HttpSqlSchemaModule.h"
 #include "replica/contr/HttpWorkerStatusModule.h"
-#include "replica/contr/HttpQservSqlModule.h"
 #include "replica/services/ServiceProvider.h"
 
 // System headers
@@ -302,6 +302,12 @@ void HttpProcessor::registerServices() {
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpQservMonitorModule::process(self->controller(), self->name(),
                                                                  self->_processorConfig, req, resp, "QUERY");
+                             });
+    httpServer()->addHandler("GET", "/replication/qserv/master/ingest-requests",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpQservMonitorModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "INGEST-REQUESTS");
                              });
     httpServer()->addHandler("GET", "/replication/qserv/css/shared-scan",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {

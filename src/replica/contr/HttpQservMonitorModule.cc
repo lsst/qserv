@@ -37,6 +37,9 @@
 #include "global/intTypes.h"
 #include "http/Exceptions.h"
 #include "http/RequestQuery.h"
+#include "mysql/MySqlConfig.h"
+#include "qmeta/UserTables.h"
+#include "qmeta/UserTableIngestRequest.h"
 #include "qmeta/types.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigDatabase.h"
@@ -134,6 +137,17 @@ json czarIdsToJson(map<qmeta::CzarId, string> const& ids) {
     }
     return result;
 }
+
+/**
+ * Create a MySQL configuration for connecting to the Czar's QMeta database.
+ */
+lsst::qserv::mysql::MySqlConfig czarQMetaConfig() {
+    database::mysql::ConnectionParams const params = Configuration::qservCzarDbParams("qservMeta");
+    string const noSocket;
+    return lsst::qserv::mysql::MySqlConfig(params.user, params.password, params.host, params.port, noSocket,
+                                           params.database);
+}
+
 }  // namespace
 
 namespace lsst::qserv::replica {
@@ -189,6 +203,8 @@ json HttpQservMonitorModule::executeImpl(string const& subModuleName) {
         return _css();
     else if (subModuleName == "CSS-UPDATE")
         return _cssUpdate();
+    else if (subModuleName == "INGEST-REQUESTS")
+        return _userTables();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
@@ -801,6 +817,68 @@ json HttpQservMonitorModule::_cssUpdate() {
     auto const cssAccess = qservCssAccess();
     cssAccess->setScanTableParams(databaseName, tableName, params);
     return _cssSharedScanParams(config, cssAccess);
+}
+
+json HttpQservMonitorModule::_userTables() {
+    debug(__func__);
+    checkApiVersion(__func__, 50);
+
+    qmeta::UserTables userTables(::czarQMetaConfig());
+
+    // The implementation of the API supports two modes of operation:
+    // 1) if the 'id' parameter is specified then the request is for a
+    //    specific request.  In this mode all other parameters are ignored.
+    // 2) if the 'id' parameter is omitted or set to zero then the
+    //    request is for a list of requests matching the specified criteria.
+
+    uint64_t const id = query().optionalUInt64("id", 0);
+    bool const extended = query().optionalUInt64("extended", 0) != 0;
+
+    debug(__func__, "id=" + to_string(id));
+    debug(__func__, "extended=" + bool2str(extended));
+
+    if (id != 0) {
+        json requests = json::array();
+        requests.push_back(userTables.findRequest(id, extended).toJson());
+        return json::object({{"requests", requests}});
+    }
+
+    auto const databaseName = query().optionalString("database");
+    auto const tableName = query().optionalString("table");
+    bool filterByStatus = false;
+    qmeta::UserTableIngestRequest::Status status = qmeta::UserTableIngestRequest::Status::IN_PROGRESS;
+    auto const statusStr = query().optionalString("status");
+    if (!statusStr.empty()) {
+        filterByStatus = true;
+        status = qmeta::UserTableIngestRequest::str2status(statusStr);
+    }
+    uint64_t const beginTimeSec = query().optionalUInt64("begin_time_sec", 0);
+    uint64_t const endTimeSec = query().optionalUInt64("end_time_sec", 0);
+    uint64_t const limit = query().optionalUInt64("limit", 1);
+
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
+    debug(__func__,
+          "status=" + (filterByStatus ? qmeta::UserTableIngestRequest::status2str(status) : string()));
+    debug(__func__, "begin_time_sec=" + to_string(beginTimeSec));
+    debug(__func__, "end_time_sec=" + to_string(endTimeSec));
+    debug(__func__, "limit=" + to_string(limit));
+
+    if (tableName.empty() && !databaseName.empty()) {
+        throw invalid_argument(context() + "::" + string(__func__) +
+                               "  the parameter 'table' is required if 'database' is specified");
+    }
+    if (endTimeSec > 0 && beginTimeSec >= endTimeSec) {
+        throw invalid_argument(context() + "::" + string(__func__) +
+                               "  the value of parameter 'begin_time_sec' must be < 'end_time_sec'");
+    }
+
+    json requests = json::array();
+    for (auto&& entry : userTables.findRequests(databaseName, tableName, filterByStatus, status, beginTimeSec,
+                                                endTimeSec, limit, extended)) {
+        requests.push_back(entry.toJson());
+    }
+    return json::object({{"requests", requests}});
 }
 
 json HttpQservMonitorModule::_cssSharedScanParams(shared_ptr<Configuration> const& config,

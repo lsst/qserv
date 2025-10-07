@@ -124,6 +124,12 @@ private:
     std::string _fieldsEnclosedBy;
     std::string _fieldsEscapedBy;
     std::string _linesTerminatedBy;
+
+    // Ingest statistics
+    std::uint32_t _transactionId = 0;  ///< The transaction ID assigned by the Replication/Ingest system.
+    std::atomic<std::uint32_t> _numChunks{0};  ///< The total number of chunks ingested.
+    std::atomic<std::uint64_t> _numRows{0};    ///< The total number of rows ingested.
+    std::atomic<std::uint64_t> _numBytes{0};   ///< The number of bytes found in the input data file/stream.
 };
 
 }  // namespace lsst::qserv::czar

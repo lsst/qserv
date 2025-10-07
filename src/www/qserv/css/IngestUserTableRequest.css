@@ -1,0 +1,44 @@
+#fwk-ingest-contrib-info-controls label {
+    font-weight: bold;
+}
+#fwk-ingest-user-table-request-status #status {
+    text-align: right;
+}
+#fwk-ingest-user-table-request-status #status.updating {
+    background-color: #ffeeba;
+}
+#fwk-ingest-user-table-request-general div.header,
+#fwk-ingest-user-table-request-extended div.header,
+#fwk-ingest-user-table-request-schema div.header,
+#fwk-ingest-user-table-request-indexes div.header {
+    font-weight: bold;
+    margin-top: 0.4em;
+}
+#fwk-ingest-user-table-request-general table pre {
+    padding: 0;
+    padding-top: 0.1em;
+    margin: 0;
+}
+#fwk-ingest-user-table-request-general table #status > pre.status-in-progress {
+    color: green;
+}
+#fwk-ingest-user-table-request-general table #status > pre.status-failed {
+    color: red;
+}
+#fwk-ingest-user-table-request-general table #status > pre.status-failed-lr {
+    color: orange;
+}
+#fwk-ingest-user-table-request-general div#error {
+    width: 100%;
+    height: 100%;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    border:0;
+    overflow-y: scroll;
+    color: maroon;
+}
+#fwk-ingest-user-table-request-extended table pre {
+    padding: 0;
+    padding-top: 0.1em;
+    margin: 0;
+}

@@ -44,8 +44,9 @@ function(CSSLoader,
         }
 
         /// Load and display contributions in the specified context.
-        search(worker = undefined, database = undefined, table = undefined, transaction = undefined) {
+        search(worker = undefined, database = undefined, table = undefined, transaction = undefined, status = undefined) {
             this._init();
+            this._set_status(status === undefined ? 'IN_PROGRESS' : status);
             this._load(worker, database, table, transaction);
         }
 
