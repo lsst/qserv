@@ -420,6 +420,11 @@ int BlendScheduler::_getAdjustedMaxThreads(int oldAdjMax, int inFlight) {
     return newAdjMax;
 }
 
+int BlendScheduler::calcAvailableTheads() {
+    lock_guard lck(_schedMtx);
+    return _calcAvailableTheads();
+}
+
 /// @return the number of threads that are not reserved by any sub-scheduler.
 int BlendScheduler::_calcAvailableTheads() {
     int reserve = 0;
