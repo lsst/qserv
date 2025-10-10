@@ -60,7 +60,7 @@ worker_smig_dir = "worker/schema"
 replication_controller_smig_dir = "replica/schema"
 
 mysqld_user_qserv = "qsmaster"
-mysqld_user_qserv_password = "CHANGEME2"
+mysqld_user_qserv_password = "CHANGEME"
 
 ld_preload = "libjemalloc.so.2"
 

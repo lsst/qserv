@@ -690,7 +690,7 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
 @click.option(
     "--password",
     help="The password for the HTTP server of the frontend.",
-    default="CHANGEME2",
+    default="CHANGEME",
     show_default=True,
 )
 @click.option(
