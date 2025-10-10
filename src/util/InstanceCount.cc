@@ -9,8 +9,6 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-// qserv headers
-
 using namespace std;
 
 namespace {  // File-scope helpers
@@ -61,6 +59,8 @@ void InstanceCount::_increment(std::string const& source) {
         LOGS(_log, LOG_LVL_DEBUG, "InstanceCount brief " << *this << " icD=" << (void*)(&_icData));
     }
 }
+
+uint16_t instanceDestructLogLimiter = 0;
 
 InstanceCount::~InstanceCount() {
     std::lock_guard lg(_icData._mx);

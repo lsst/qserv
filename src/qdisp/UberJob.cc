@@ -135,7 +135,7 @@ void UberJob::runUberJob() {
             czInfo, _wContactInfo, _queryId, _uberJobId, _rowLimit, maxTableSizeMB, scanInfoPtr,
             scanInteractive, _jobs);
 
-    json request = uberJobMsg->serializeJson();
+    json request = uberJobMsg->toJson();
 
     jobsLock.unlock();  // unlock so other _jobsMtx threads can advance while this waits for transmit
 
