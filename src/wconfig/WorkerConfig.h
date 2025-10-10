@@ -48,7 +48,6 @@ class AuthContext;
 // This header declarations
 namespace lsst::qserv::wconfig {
 
-
 /// Provide all configuration parameters for a Qserv worker instance.
 /// Parse an INI configuration file, identify required parameters and ignore
 /// others, analyze and store them inside private member variables, use default

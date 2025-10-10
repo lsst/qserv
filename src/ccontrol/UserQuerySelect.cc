@@ -311,7 +311,6 @@ void UserQuerySelect::submit() {
     exec->waitForAllJobsToStart();
 }
 
-
 void UserQuerySelect::buildAndSendUberJobs() {
     // TODO:UJ Is special handling needed for the dummy chunk, 1234567890 ?
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_queryId));
