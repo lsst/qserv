@@ -112,7 +112,6 @@ services:
           --repl-registry-port 25082
           --results-dirname /qserv/data/results
           --cmsd-manager-name czar-xrootd
-          --mysql-monitor-password CHANGEME_MONITOR
           --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
         volumes:
             - type: volume
@@ -217,7 +216,6 @@ services:
           --repl-registry-port 25082
           --results-dirname /qserv/data/results
           --cmsd-manager-name czar-xrootd
-          --mysql-monitor-password CHANGEME_MONITOR
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --log-cfg-file=/config-etc/log/log-worker-xrootd.cnf
         volumes:

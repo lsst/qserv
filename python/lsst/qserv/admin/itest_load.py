@@ -34,9 +34,8 @@ from tempfile import TemporaryDirectory
 from typing import Any, NamedTuple, cast
 
 import backoff
-import yaml
-
 import mysql.connector
+import yaml
 from mysql.connector.abstracts import MySQLConnectionAbstract, MySQLCursorAbstract
 
 from .constants import tmp_data_dir
@@ -109,16 +108,13 @@ def _create_ref_db(ref_db_admin: str, name: str) -> None:
     """
     statements = [
         (
-            "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'localhost' "
+            "CREATE USER IF NOT EXISTS 'qsmaster'@'localhost' "
             "IDENTIFIED BY '{{ mysqld_user_qserv_password }}';"
         ),
-        (
-            "CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'%' "
-            "IDENTIFIED BY '{{ mysqld_user_qserv_password }}';"
-        ),
+        ("CREATE USER IF NOT EXISTS 'qsmaster'@'%' IDENTIFIED BY '{{ mysqld_user_qserv_password }}';"),
         "CREATE DATABASE IF NOT EXISTS {name};",
-        "GRANT ALL ON {name}.* TO '{{ mysqld_user_qserv }}'@'localhost';",
-        "GRANT ALL ON {name}.* TO '{{ mysqld_user_qserv }}'@'%';",
+        "GRANT ALL ON {name}.* TO 'qsmaster'@'localhost';",
+        "GRANT ALL ON {name}.* TO 'qsmaster'@'%';",
         "FLUSH PRIVILEGES;",
     ]
     for stmt in statements:

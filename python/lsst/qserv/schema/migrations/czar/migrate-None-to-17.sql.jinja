@@ -1,26 +1,26 @@
---
--- Script to initialize the QMeta database
---
+-- -----------------------------------------------------
+-- Script to initialize the czar databases
+-- -----------------------------------------------------
 
-CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'localhost' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
-CREATE USER IF NOT EXISTS '{{ mysqld_user_qserv }}'@'%' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
+CREATE USER IF NOT EXISTS 'qsmaster'@'localhost' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
+CREATE USER IF NOT EXISTS 'qsmaster'@'%' IDENTIFIED BY "{{ mysqld_user_qserv_password }}";
 
--- Director index database (i.e. objectId/chunkId relation)
--- created by integration test script/loader for now
-CREATE DATABASE IF NOT EXISTS qservMeta;
-GRANT ALL ON qservMeta.* TO '{{ mysqld_user_qserv }}'@'localhost';
-GRANT ALL ON qservMeta.* TO '{{ mysqld_user_qserv }}'@'%';
+GRANT SELECT ON *.* TO 'qsmaster'@'localhost';
+GRANT SELECT ON *.* TO 'qsmaster'@'%';
+
 
 -- -----------------------------------------------------
 -- Schema qservMeta
 -- -----------------------------------------------------
 CREATE SCHEMA IF NOT EXISTS `qservMeta` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci ;
-USE `qservMeta` ;
+GRANT ALL ON qservMeta.* TO 'qsmaster'@'localhost';
+GRANT ALL ON qservMeta.* TO 'qsmaster'@'%';
+
 
 -- -----------------------------------------------------
--- Table `QCzar`
+-- Table `qservMeta`.`QCzar`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QCzar` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`QCzar` (
   `czarId` INT NOT NULL AUTO_INCREMENT COMMENT 'Czar identifier',
   `czar` CHAR(63) NOT NULL COMMENT 'Czar unique name',
   `active` BIT NOT NULL COMMENT 'Set to 0 when czar disappears',
@@ -31,9 +31,9 @@ COMMENT = 'Table for czars, definition of every czar ever existed.';
 
 
 -- -----------------------------------------------------
--- Table `QInfo`
+-- Table `qservMeta`.`QInfo`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QInfo` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`QInfo` (
   `queryId` BIGINT NOT NULL AUTO_INCREMENT COMMENT 'Query identifier, unique number',
   `qType` ENUM('SYNC', 'ASYNC') NOT NULL COMMENT 'Query type, either SYNC or ASYNC.',
   `czarId` INT NOT NULL COMMENT 'ID of the \"responsible czar\" of this query',
@@ -69,9 +69,9 @@ COMMENT = 'Table containing per-query information.';
 
 
 -- -----------------------------------------------------
--- Table `QTable`
+-- Table `qservMeta`.`QTable`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QTable` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`QTable` (
   `queryId` BIGINT NOT NULL COMMENT 'Query identifier, foreign key into QueryInfo table',
   `dbName` CHAR(63) NOT NULL COMMENT 'Database name',
   `tblName` CHAR(63) NOT NULL COMMENT 'Table name',
@@ -85,11 +85,12 @@ CREATE TABLE IF NOT EXISTS `QTable` (
 ENGINE = InnoDB
 COMMENT = 'Table containing table names used by query.';
 
+
 -- -----------------------------------------------------
--- Table `QProgress`
+-- Table `qservMeta`.`QProgress`
 -- MEMORY table - will be recreated(but empty) by mariadb every time server starts.
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QProgress` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`QProgress` (
   `queryId` BIGINT NOT NULL COMMENT 'Query ID',
   `totalChunks` INT COMMENT 'Total number of chunks in the query',
   `completedChunks` INT COMMENT 'Number of completed chunks in the query',
@@ -100,10 +101,11 @@ CREATE TABLE IF NOT EXISTS `QProgress` (
 ENGINE = MEMORY
 COMMENT = 'Table to track chunk processing progress of the running queries.';
 
+
 -- -----------------------------------------------------
--- Table `QProgressHistory`
+-- Table `qservMeta`.`QProgressHistory`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QProgressHistory` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`QProgressHistory` (
   `queryId` BIGINT NOT NULL COMMENT 'Query ID',
   `history` MEDIUMTEXT COMMENT 'Serialized JSON object representing the latest state of the history',
   `begin` BIGINT UNSIGNED NOT NULL COMMENT 'The timestamp (milliseconds since UNIX Epoch) of the first point in the history',
@@ -117,13 +119,14 @@ CREATE TABLE IF NOT EXISTS `QProgressHistory` (
 ENGINE = InnoDB
 COMMENT = 'Table to store the query progression history.';
 
+
 -- ----------------------------------------------------------------------------------------
--- View `InfoSchemaProcessList`
+-- View `qservMeta`.`InfoSchemaProcessList`
 -- This shows full Qmeta info suitable for "SELECT ... FROM INFORMATION_SCHEMA.PROCESSLIST"
 -- ----------------------------------------------------------------------------------------
 CREATE OR REPLACE
   SQL SECURITY INVOKER
-  VIEW `InfoSchemaProcessList` AS
+  VIEW `qservMeta`.`InfoSchemaProcessList` AS
   SELECT `qi`.`queryId` `ID`,
          `qi`.`qType` `TYPE`,
          `qc`.`czar` `CZAR`,
@@ -133,15 +136,16 @@ CREATE OR REPLACE
          `qi`.`chunkCount` `CHUNKS`,
          `qs`.`completedChunks` `CHUNKS_COMP`,
          `qi`.`query` `QUERY`
-    FROM `QInfo` AS `qi`
-    LEFT OUTER JOIN `QProgress` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`
-    JOIN `QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`
+    FROM `qservMeta`.`QInfo` AS `qi`
+    LEFT OUTER JOIN `qservMeta`.`QProgress` AS `qs` ON `qi`.`queryId`=`qs`.`queryId`
+    JOIN `qservMeta`.`QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`
     WHERE `qi`.`status` = 'EXECUTING';
 
+
 -- -----------------------------------------------------
--- Table `QMessages`
+-- Table `qservMeta`.`QMessages`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QMessages` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`QMessages` (
   `queryId` BIGINT NOT NULL COMMENT 'Query identifier, foreign key into QueryInfo table',
   `msgSource` VARCHAR(63) NOT NULL COMMENT 'Brief string describing the source PARSE, COMM, WORKER, etc',
   `chunkId` INT COMMENT 'chunkId',
@@ -158,13 +162,14 @@ CREATE TABLE IF NOT EXISTS `QMessages` (
 ENGINE = InnoDB
 COMMENT = 'Table of messages generated during queries.';
 
+
 -- ------------------------------------------------------------------------------------
--- View `InfoSchemaQueries`
+-- View `qservMeta`.`InfoSchemaQueries`
 -- This shows full Qmeta info suitable for "SELECT ... FROM INFORMATION_SCHEMA.QUERIES"
 -- ------------------------------------------------------------------------------------
 CREATE OR REPLACE
   SQL SECURITY INVOKER
-  VIEW `InfoSchemaQueries` AS
+  VIEW `qservMeta`.`InfoSchemaQueries` AS
   SELECT `qi`.`queryId` `ID`,
          `qi`.`qType` `TYPE`,
          `qc`.`czar` `CZAR`,
@@ -180,16 +185,17 @@ CREATE OR REPLACE
          GROUP_CONCAT(DISTINCT `qt`.`dbName`) `DBS`,
          `qi`.`query` `QUERY`,
          TRIM(BOTH ',' FROM GROUP_CONCAT(IF(`qm`.`severity`='ERROR',`qm`.`message`,''))) `ERROR`
-    FROM `QInfo` AS `qi`
-    JOIN `QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`
-    LEFT OUTER JOIN `QTable` AS `qt` ON `qi`.`queryId`=`qt`.`queryId`
-    LEFT OUTER JOIN `QMessages` AS `qm` ON `qi`.`queryId`=`qm`.`queryId`
+    FROM `qservMeta`.`QInfo` AS `qi`
+    JOIN `qservMeta`.`QCzar` AS `qc` ON `qi`.`czarId`=`qc`.`czarId`
+    LEFT OUTER JOIN `qservMeta`.`QTable` AS `qt` ON `qi`.`queryId`=`qt`.`queryId`
+    LEFT OUTER JOIN `qservMeta`.`QMessages` AS `qm` ON `qi`.`queryId`=`qm`.`queryId`
     GROUP BY `qi`.`queryId`;
 
+
 -- -----------------------------------------------------
--- Table `chunkMap`
+-- Table `qservMeta`.`chunkMap`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `chunkMap` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`chunkMap` (
   `worker` VARCHAR(256) NOT NULL COMMENT 'A unique identifier of a worker hosting the chunk replica',
   `database` VARCHAR(256) NOT NULL COMMENT 'The name of a database',
   `table` VARCHAR(256) NOT NULL COMMENT 'The name of a table',
@@ -198,18 +204,20 @@ CREATE TABLE IF NOT EXISTS `chunkMap` (
 ENGINE = InnoDB
 COMMENT = 'Chunk disposition across workers';
 
+
 -- -----------------------------------------------------
--- Table `chunkMapStatus`
+-- Table `qservMeta`.`chunkMapStatus`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `chunkMapStatus` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`chunkMapStatus` (
   `update_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'The most recent update time of the map')
 ENGINE = InnoDB
 COMMENT = 'Satus info on the chunk map';
 
+
 -- -----------------------------------------------------
--- Table `UserTables`
+-- Table `qservMeta`.`UserTables`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `UserTables` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`UserTables` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'A unique identifier of the ingest request',
   `status` ENUM('IN_PROGRESS','COMPLETED','FAILED','FAILED_LR') DEFAULT 'IN_PROGRESS' COMMENT 'The status of the request',
   `begin_time` BIGINT UNSIGNED NOT NULL COMMENT 'The timestamp (ms) since UNIX Epoch when the request processing started',
@@ -235,10 +243,11 @@ CREATE TABLE IF NOT EXISTS `UserTables` (
 ENGINE = InnoDB
 COMMENT = 'A registry for the user table ingest requests';
 
+
 -- -----------------------------------------------------
--- Table `UserTablesParams`
+-- Table `qservMeta`.`UserTablesParams`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `UserTablesParams` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`UserTablesParams` (
   `id` INT UNSIGNED NOT NULL COMMENT 'A unique identifier of the ingest request',
   `key` VARCHAR(256) NOT NULL COMMENT 'The name of a parameter',
   `val` MEDIUMTEXT NOT NULL COMMENT 'The value of a parameter',
@@ -253,19 +262,74 @@ CREATE TABLE IF NOT EXISTS `UserTablesParams` (
 ENGINE = InnoDB
 COMMENT = 'Extended parameters of the table ingest requests';
 
+
 -- -----------------------------------------------------
--- Table `QMetadata`
+-- Table `qservMeta`.`QMetadata`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `QMetadata` (
+CREATE TABLE IF NOT EXISTS `qservMeta`.`QMetadata` (
   `metakey` CHAR(64) NOT NULL COMMENT 'Key string',
-  `value` TEXT NULL COMMENT 'Key string',
+  `value` TEXT NULL COMMENT 'Value string',
   PRIMARY KEY (`metakey`))
 ENGINE = InnoDB
 COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 
+
+-- -----------------------------------------------------
+-- Table `qservMeta`.`chunkMap`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `qservMeta`.`chunkMap` (
+  `worker` VARCHAR(256) NOT NULL COMMENT 'A unique identifier of a worker hosting the chunk replica',
+  `database` VARCHAR(256) NOT NULL COMMENT 'The name of a database',
+  `table` VARCHAR(256) NOT NULL COMMENT 'The name of a table',
+  `chunk` INT UNSIGNED NOT NULL COMMENT 'The number of a chunk',
+  `size` BIGINT UNSIGNED NOT NULL COMMENT 'The size of a chunk')
+ENGINE = InnoDB
+COMMENT = 'Chunk disposition across workers';
+
+
+-- -----------------------------------------------------
+-- Table `qservMeta`.`chunkMapStatus`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `qservMeta`.`chunkMapStatus` (
+  `update_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'The most recent update time of the map')
+ENGINE = InnoDB
+COMMENT = 'Satus info on the chunk map';
+
+
+-- -----------------------------------------------------
+-- Schema qservCssData
+-- -----------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS `qservCssData` DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+GRANT ALL ON qservCssData.* TO 'qsmaster'@'localhost';
+GRANT ALL ON qservCssData.* TO 'qsmaster'@'%';
+
+
+-- -----------------------------------------------------
+-- Table `qservCssData`.`kvData`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `qservCssData`.`kvData` (
+  `kvId` INT NOT NULL AUTO_INCREMENT,
+  `kvKey` CHAR(255) NOT NULL COMMENT 'slash delimited path',
+  `kvVal` TEXT(1024) NOT NULL COMMENT 'value for key',
+  `parentKvId` INT NULL COMMENT 'id of parent key',
+  PRIMARY KEY (`kvId`),
+  CONSTRAINT `kvData_parent_key`
+    FOREIGN KEY (parentKvId)
+    REFERENCES kvData(kvId),
+  UNIQUE INDEX `kvData_kvKey_UNIQUE` (`kvKey` ASC)
+) ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Schema qservResult
+-- -----------------------------------------------------
+CREATE SCHEMA IF NOT EXISTS qservResult DEFAULT CHARACTER SET utf8 COLLATE utf8_general_ci;
+GRANT ALL ON qservResult.* TO 'qsmaster'@'localhost';
+GRANT ALL ON qservResult.* TO 'qsmaster'@'%';
+
+
 -- Update version on every schema change.
--- Version 0 corresponds to initial QMeta release and it had no
--- QMetadata table at all.
+-- Version 0 corresponds to initial QMeta release and it had no QMetadata table at all.
 -- Version 1 introduced QMetadata table and altered schema for QInfo table
 -- Version 2 added query progress data to ProcessList tables.
 -- Version 3 added storing the result query in QMeta.
@@ -282,4 +346,5 @@ COMMENT = 'Metadata about database as a whole, bunch of key-value pairs';
 -- Version 14 added table QProgressHistory to store the query progrerssion history
 -- Version 15 fixed a definition of the view InfoSchemaProcessList to depend on QProgress instead of QStatsTmp
 -- Version 16 added tables UserTables and UserTablesParams for processing and monitoring ingest requests into the user tables
-INSERT INTO `QMetadata` (`metakey`, `value`) VALUES ('version', '16');
+-- Version 17 merged in contents of admin, css, and rproc modules; dropped obsolete monitor user
+INSERT INTO `qservMeta`.`QMetadata` (`metakey`, `value`) VALUES ('version', '17');
