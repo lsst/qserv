@@ -24,14 +24,13 @@ from contextlib import closing
 from urllib.parse import urlparse
 
 import backoff
+import mysql.connector
 import requests
 import yaml
 
 # MySQLInterfaceError can get thrown, we need to catch it.
 # It's not exposed as a public python object but *is* used in mysql.connector unit tests.
 from _mysql_connector import MySQLInterfaceError
-
-import mysql.connector
 
 from .. import itest, itest_load
 from ..qserv_backoff import max_backoff_sec, on_backoff
@@ -117,7 +116,6 @@ def run_integration_tests(
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
-    mysqld_user: str,
     mysqld_password: str,
 ) -> itest.ITestResults:
     """Top level script to run the integration tests.
@@ -145,8 +143,6 @@ def run_integration_tests(
         tests. The files will be merged, higher index files get priority.
     compare_resutls : `bool`
         If True run query output comparison, if False do not.
-    mysqld_user : `str`
-        The name of the qserv user.
     mysqld_password : `str`
         The password for the qserv user.
 
@@ -157,7 +153,6 @@ def run_integration_tests(
     """
     save_template_cfg(
         dict(
-            mysqld_user_qserv=mysqld_user,
             mysqld_user_qserv_password=mysqld_password,
         )
     )
@@ -237,7 +232,6 @@ def run_integration_tests_http(
     run_tests: bool,
     tests_yaml: str,
     compare_results: bool,
-    mysqld_user: str,
     mysqld_password: str,
 ) -> itest.ITestResults:
     """Top level script to run the integration tests of the HTTP frontend.
@@ -265,8 +259,6 @@ def run_integration_tests_http(
         tests. The files will be merged, higher index files get priority.
     compare_resutls : `bool`
         If True run query output comparison, if False do not.
-    mysqld_user : `str`
-        The name of the qserv user.
     mysqld_password : `str`
         The password for the qserv user.
 
@@ -277,7 +269,6 @@ def run_integration_tests_http(
     """
     save_template_cfg(
         dict(
-            mysqld_user_qserv=mysqld_user,
             mysqld_user_qserv_password=mysqld_password,
         )
     )

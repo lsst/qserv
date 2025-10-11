@@ -28,17 +28,16 @@ import logging
 from collections.abc import Sequence
 
 import backoff
+import mysql.connector
 from lsst.qserv.admin.qserv_backoff import max_backoff_sec, on_backoff
 from lsst.qserv.schema import Migration, SchemaMigMgr, Uninitialized, Version
 
-import mysql.connector
+database = "qservw_worker"
 
 _log = logging.getLogger(__name__)
 
-database = "qservw_worker"
 
-
-class WdbMigrationManager(SchemaMigMgr):
+class WorkerMigrationManager(SchemaMigMgr):
     """Class implementing schema migration for Worker metadata database."""
 
     def __init__(self, connection: str, scripts_dir: str):
@@ -49,7 +48,7 @@ class WdbMigrationManager(SchemaMigMgr):
 
         Returns
         -------
-        version : `int` or ``Uninitialized``
+        version : `Version`
             The current schema version.
         """
 
@@ -61,14 +60,14 @@ class WdbMigrationManager(SchemaMigMgr):
         # and we call this version 0. Since version=1 version number is stored in
         # QMetadata table with key="version"
         if not self.table_exists(database, "QMetadata"):
-            return 0
+            return Version(0)
 
         self.connection.database = database
         cursor = self.connection.cursor()
         cursor.execute("SELECT value FROM QMetadata WHERE metakey = 'version'")
         result = cursor.fetchone()
         if not result:
-            return Uninitialized
+            return Version(Uninitialized)
         return Version(int(result[0]))
 
     @backoff.on_exception(
@@ -87,7 +86,7 @@ class WdbMigrationManager(SchemaMigMgr):
 
         # read it back and compare with expected
         current = self.current_version()
-        if current != version:
+        if current != Version(version):
             raise RuntimeError(
                 f"Failed to update version number in the database to {version}, "
                 f"current version is now {current}"
@@ -98,7 +97,7 @@ class WdbMigrationManager(SchemaMigMgr):
 
         Parameters
         ----------
-        migrations : `list` [``Migration``]
+        migrations : `Sequence` [``Migration``]
             Migrations to apply, in order.
 
         Returns
@@ -107,8 +106,8 @@ class WdbMigrationManager(SchemaMigMgr):
             The current version after applying migrations.
         """
         version = super().apply_migrations(migrations)
-        self._set_version(version)
-        return Version(version)
+        self._set_version(version.value)
+        return version
 
 
 def make_migration_manager(connection: str, scripts_dir: str) -> SchemaMigMgr:
@@ -124,4 +123,4 @@ def make_migration_manager(connection: str, scripts_dir: str) -> SchemaMigMgr:
         Path where migration scripts are located, this is system-level directory,
         per-module scripts are usually located in sub-directories.
     """
-    return WdbMigrationManager(connection, scripts_dir)
+    return WorkerMigrationManager(connection, scripts_dir)

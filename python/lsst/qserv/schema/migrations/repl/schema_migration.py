@@ -23,14 +23,10 @@
 __all__ = ["make_migration_manager"]
 
 import logging
+from collections.abc import Sequence
 from contextlib import closing
 
-from lsst.qserv.schema import (
-    Migration,
-    SchemaMigMgr,
-    Uninitialized,
-    Version,
-)
+from lsst.qserv.schema import Migration, SchemaMigMgr, Uninitialized, Version
 from sqlalchemy.engine.url import make_url
 
 _log = logging.getLogger(__name__)
@@ -61,7 +57,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
 
         Returns
         -------
-        version : `int` or ``Uninitialized``
+        version : `Version`
             The current schema version.
         """
         # If the database does not exist then the version is `Uninitialized`.
@@ -72,7 +68,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
         # and we call this version 0. Since version=1 version number is stored in
         # QMetadata table with key="version"
         if not self.table_exists(database, "QMetadata"):
-            return 0
+            return Version(0)
 
         self.connection.database = database
         with closing(self.connection.cursor()) as cursor:
@@ -90,7 +86,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             cursor.execute(f"UPDATE QMetadata SET value = {version} WHERE metakey = 'version'")
             warnings = cursor.fetchwarnings()
             if warnings:
-                _log.warn("Warnings were issued when updating version to %s", version)
+                _log.warning("Warnings were issued when updating version to %s", version)
         _log.info(f"Set replica schema version to {version}.")
         self.connection.commit()
 
@@ -107,7 +103,7 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             cursor.execute(f"CREATE DATABASE {database};")
             warnings = cursor.fetchwarnings()
             if warnings:
-                _log.warn("Warnings were creating database %s.", database)
+                _log.warning("Warnings were creating database %s.", database)
         _log.info("Created database %s.", database)
         self.connection.commit()
 
@@ -136,15 +132,15 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
                 cursor.execute(stmt)
                 warnings = cursor.fetchwarnings()
                 if warnings:
-                    _log.warn("Warnings were issued when creating user %s.", user)
+                    _log.warning("Warnings were issued when creating user %s.", user)
         self.connection.commit()
 
-    def apply_migrations(self, migrations: list[Migration]) -> Version:
+    def apply_migrations(self, migrations: Sequence[Migration]) -> Version:
         """Apply migrations.
 
         Parameters
         ----------
-        migrations : `list` [``Migrations``]
+        migrations : `Sequence` [``Migrations``]
             Migrations to apply, in order.
 
         Returns
@@ -161,8 +157,8 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
             self._create_users()
         self.connection.database = database
         to_version = super().apply_migrations(migrations)
-        self._set_version(to_version)
-        return Version(to_version)
+        self._set_version(to_version.value)
+        return to_version
 
 
 def make_migration_manager(

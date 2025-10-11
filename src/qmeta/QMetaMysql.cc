@@ -47,7 +47,7 @@ using namespace std;
 namespace {
 
 // Current version of QMeta schema
-char const VERSION_STR[] = "16";
+char const VERSION_STR[] = "17";
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaMysql");
 

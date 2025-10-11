@@ -14,7 +14,7 @@ is how it works:
 - application takes the name of the module that is supposed to provide
   migration module for its schema
 - given that name `smig` imports a module with the name
-  `lsst.qserv.<name>.schema_migration`, this module is supposed to
+  `lsst.qserv.schema.migrations.<name>.schema_migration`, this module is supposed to
   implement a factory method with the name `make_migration_manager`.
 - `smig` calls this method with a bunch of parameters, and method should
   return an instance of the special _migration manager_ class which

@@ -52,7 +52,6 @@ from .options import (
     option_load_http,
     option_log_cfg_file,
     option_log_level,
-    option_mysql_monitor_password,
     option_options_file,
     option_reload,
     option_repl_admin_auth_key,
@@ -561,7 +560,6 @@ def delete_database(
     help="The admin URI to the proxy's database, used for schema initialization. " + socket_option_help,
     required=True,
 )
-@option_mysql_monitor_password()
 @option_xrootd_manager(required=True)
 @click.option(
     "--proxy-backend-address",
@@ -628,7 +626,6 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
     help="The non-admin URI to the Czar's database, used for non-smig purposes. " + socket_option_help,
     required=True,
 )
-@option_mysql_monitor_password()
 @option_xrootd_manager(required=True)
 @click.option(
     "--http-port",
@@ -690,7 +687,7 @@ def proxy(ctx: click.Context, **kwargs: Any) -> None:
 @click.option(
     "--password",
     help="The password for the HTTP server of the frontend.",
-    default="CHANGEME2",
+    default="CHANGEME",
     show_default=True,
 )
 @click.option(
@@ -849,7 +846,6 @@ def worker_cmsd(ctx: click.Context, **kwargs: Any) -> None:
 @option_repl_http_port(required=True)
 @option_results_dirname()
 @option_cmsd_manager_name()
-@option_mysql_monitor_password()
 @option_db_qserv_user()
 @option_cmsd_worker_cfg_file()
 @option_cmsd_worker_cfg_path()

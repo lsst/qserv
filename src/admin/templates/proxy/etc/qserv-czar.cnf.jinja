@@ -11,7 +11,7 @@ technology = mysql
 hostname = {{ czar_db_host }}
 port = {{ czar_db_port }}
 username = qsmaster
-password = CHANGEME2
+password = CHANGEME
 database = qservCssData
 socket = {{ czar_db_socket }}
 
@@ -20,7 +20,7 @@ db = qservResult
 unix_socket = {{ czar_db_socket }}
 host = {{ czar_db_host }}
 user = qsmaster
-passwd = CHANGEME2
+passwd = CHANGEME
 port = {{ czar_db_port }}
 
 # Any table in resultdb that hasn't been updated in this many days is deleted.
@@ -39,7 +39,7 @@ db = qservMeta
 unix_socket = {{ czar_db_socket }}
 host = {{ czar_db_host }}
 user = qsmaster
-passwd = CHANGEME2
+passwd = CHANGEME
 port = {{ czar_db_port }}
 maxMsgSourceStore = 5
 
@@ -50,7 +50,7 @@ maxMsgSourceStore = 5
 #db = qservStatusData
 db = qservMeta
 user = qsmaster
-passwd = CHANGEME2
+passwd = CHANGEME
 host = {{ czar_db_host }}
 port = {{ czar_db_port }}
 

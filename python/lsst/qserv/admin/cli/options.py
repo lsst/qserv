@@ -102,13 +102,6 @@ option_log_level = partial(
 )
 
 
-option_mysql_monitor_password = partial(
-    click.option,
-    "--mysql-monitor-password",
-    help="The password for monitoring applications.",
-)
-
-
 option_repl_connection = partial(
     click.option,
     "--repl-connection",

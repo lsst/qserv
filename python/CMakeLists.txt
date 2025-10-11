@@ -1,6 +1,7 @@
 install(
   DIRECTORY . DESTINATION python
   PATTERN CMakeLists.txt EXCLUDE
+  PATTERN __pycache__ EXCLUDE
 )
 
 add_test (NAME test_watcher
@@ -16,7 +17,7 @@ add_test(NAME test_smig
 )
 
 set_tests_properties(test_smig PROPERTIES ENVIRONMENT
-  QSERV_SMIG_DIRECTORY=${CMAKE_INSTALL_PREFIX}/qserv/smig
+  QSERV_SMIG_DIRECTORY=${CMAKE_INSTALL_PREFIX}/python/lsst/qserv/schma/migrations
 )
 
 add_test(NAME test_qserv_cli

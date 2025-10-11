@@ -45,22 +45,18 @@ from . import _integration_test, options
 from .utils import Targs
 
 smig_dir_env_var = "QSERV_SMIG_DIRECTORY"
-default_smig_dir = "/usr/local/qserv/smig"
+default_smig_dir = "/usr/local/python/lsst/qserv/schema/migrations"
 
 
 def smig_dir() -> str:
     return os.environ.get(smig_dir_env_var, default_smig_dir)
 
 
-admin_smig_dir = "admin/schema"
-css_smig_dir = "css/schema"
-rproc_smig_dir = "rproc/schema"
-qmeta_smig_dir = "qmeta/schema"
-worker_smig_dir = "worker/schema"
-replication_controller_smig_dir = "replica/schema"
+czar_smig_dir = "czar"
+worker_smig_dir = "worker"
+repl_smig_dir = "repl"
 
-mysqld_user_qserv = "qsmaster"
-mysqld_user_qserv_password = "CHANGEME2"
+mysqld_user_qserv_password = "CHANGEME"
 
 ld_preload = "libjemalloc.so.2"
 
@@ -224,13 +220,7 @@ def smig_czar(connection: str, update: bool) -> None:
         False if workers may only be smigged from an `Uninitialized` state, or
         True if they maybe upgraded from a (previously initialized) version.
     """
-    for module_smig_dir, module in (
-        (admin_smig_dir, "admin"),
-        (css_smig_dir, "css"),
-        (rproc_smig_dir, "rproc"),
-        (qmeta_smig_dir, "qmeta"),
-    ):
-        _do_smig(module_smig_dir, module, connection, update)
+    _do_smig(czar_smig_dir, "czar", connection, update)
 
 
 def smig_replication_controller(
@@ -253,13 +243,11 @@ def smig_replication_controller(
         True if they maybe upgraded from a (previously initialized) version.
     """
     _do_smig(
-        replication_controller_smig_dir,
-        "replica",
+        repl_smig_dir,
+        "repl",
         db_admin_uri,
         update,
-        mig_mgr_args=dict(
-            repl_connection=db_uri,
-        ),
+        mig_mgr_args={"repl_connection": db_uri},
     )
 
 
@@ -275,7 +263,6 @@ def smig_worker(connection: str, update: bool) -> None:
         True if they maybe upgraded from a (previously initialized) version, by
         default False.
     """
-    _do_smig(admin_smig_dir, "admin", connection, update)
     _do_smig(worker_smig_dir, "worker", connection, update)
 
 
@@ -384,7 +371,6 @@ def enter_worker_cmsd(
     apply_template_cfg_file(cmsd_worker_cfg_file, cmsd_worker_cfg_path, targs)
     apply_template_cfg_file(xrdssi_cfg_file, xrdssi_cfg_path, targs)
 
-    _do_smig_block(admin_smig_dir, "admin", db_uri)
     # wait before worker database will be fully initialized as needed
     # for the vnid plugin to function correctly
     _do_smig_block(worker_smig_dir, "worker", db_uri)
@@ -463,7 +449,6 @@ def enter_worker_xrootd(
     targs["db_socket"] = url.query.get("socket", "")
 
     save_template_cfg(targs)
-    save_template_cfg({"mysqld_user_qserv": mysqld_user_qserv})
     save_template_cfg({"mysqld_user_qserv_password": mysqld_user_qserv_password})
 
     smig_worker(db_admin_uri, update=False)
@@ -535,7 +520,7 @@ def enter_worker_repl(
     # it will also set initial configuration values in the replication database. It sets the schema
     # version of the replica database *after* setting the config values, which allows us to wait here
     # on the schema version to be sure that there are values in the database.
-    _do_smig_block(replication_controller_smig_dir, "replica", repl_connection)
+    _do_smig_block(repl_smig_dir, "repl", repl_connection)
 
     ingest_folder = "/qserv/data/ingest"
     if not os.path.exists(ingest_folder):
@@ -619,7 +604,6 @@ def enter_proxy(
     save_template_cfg(
         {
             "proxy_backend_address": proxy_backend_address,
-            "mysqld_user_qserv": url.username,
             "mysqld_user_qserv_password": url.password,
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
@@ -633,10 +617,7 @@ def enter_proxy(
     apply_template_cfg_file(czar_cfg_file, czar_cfg_path)
 
     # czar smigs these modules, that have templated values:
-    #  admin: mysqld_user_qserv, replication_controller_FQDN, mysql_monitor_password
-    #  css: (no templated values)
-    #  rproc: (no templated values)
-    #  qmeta: mysqld_user_qserv
+    #  czar: mysqld_user_qserv_password
     smig_czar(db_admin_uri, update=False)
 
     env = dict(
@@ -692,7 +673,6 @@ def enter_czar_http(
     save_template_cfg(targs)
     save_template_cfg(
         {
-            "mysqld_user_qserv": url.username,
             "mysqld_user_qserv_password": url.password,
             "czar_db_host": url.host or "",
             "czar_db_port": url.port or "",
@@ -703,7 +683,7 @@ def enter_czar_http(
     # uses vars: czar_db_host, czar_db_port, czar_db_socket,
     apply_template_cfg_file(czar_cfg_file, czar_cfg_path)
 
-    _do_smig_block(qmeta_smig_dir, "qmeta", db_uri)
+    _do_smig_block(czar_smig_dir, "czar", db_uri)
 
     # check if the SSL certificate and private key files exist and create
     # them if they don't.
@@ -856,7 +836,7 @@ def enter_replication_registry(
     # Uninitialized it will also set initial configuration values in the replication database. It sets the
     # schema version of the replica database *after* setting the config values, which allows us to wait here
     # on the schema version to be sure that there are values in the database.
-    _do_smig_block(replication_controller_smig_dir, "replica", db_uri)
+    _do_smig_block(repl_smig_dir, "repl", db_uri)
 
     env = dict(
         os.environ,
@@ -884,7 +864,9 @@ def smig_update(
     worker_connections : `list` [ `str` ]
         Connection strings to the worker databases.
     repl_connection : `str`
-        Connection string replication controller database.
+        Connection string to the replication controller database.
+    repl_connection_nonadmin : `str`
+        Non-administrator connection string to the replication controller database.
     """
     if czar_connection:
         smig_czar(connection=czar_connection, update=True)
@@ -1073,7 +1055,7 @@ def integration_test(
     compare_results: bool,
 ) -> ITestResults:
     if repl_connection is not None:
-        _do_smig_block(admin_smig_dir, "replica", repl_connection)
+        _do_smig_block(repl_smig_dir, "repl", repl_connection)
 
     return _integration_test.run_integration_tests(
         unload=unload,
@@ -1084,7 +1066,6 @@ def integration_test(
         run_tests=run_tests,
         tests_yaml=tests_yaml,
         compare_results=compare_results,
-        mysqld_user=mysqld_user_qserv,
         mysqld_password=mysqld_user_qserv_password,
     )
 
@@ -1101,7 +1082,7 @@ def integration_test_http(
     compare_results: bool,
 ) -> ITestResults:
     if repl_connection is not None:
-        _do_smig_block(admin_smig_dir, "replica", repl_connection)
+        _do_smig_block(repl_smig_dir, "repl", repl_connection)
 
     return _integration_test.run_integration_tests_http(
         unload=unload,
@@ -1112,7 +1093,6 @@ def integration_test_http(
         run_tests=run_tests,
         tests_yaml=tests_yaml,
         compare_results=compare_results,
-        mysqld_user=mysqld_user_qserv,
         mysqld_password=mysqld_user_qserv_password,
     )
 
@@ -1124,7 +1104,7 @@ def integration_test_http_ingest(
     tests_yaml: str,
 ) -> bool:
     if repl_connection is not None:
-        _do_smig_block(admin_smig_dir, "replica", repl_connection)
+        _do_smig_block(repl_smig_dir, "repl", repl_connection)
 
     return _integration_test.run_integration_tests_http_ingest(
         run_tests=run_tests,
