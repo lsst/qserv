@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     auto czarA =
             lsst::qserv::protojson::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
 
-    auto czarAJs = czarA->serializeJson();
+    auto czarAJs = czarA->toJson();
 
     auto czarB = lsst::qserv::protojson::CzarContactInfo::createFromJson(czarAJs);
     BOOST_REQUIRE(czarA->compare(*czarB));
@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     auto workerB = WorkerContactInfo::create("sd_workerB", "host_w2", "mgmhost_a", 3421, start);
     auto workerC = WorkerContactInfo::create("sd_workerC", "host_w3", "mgmhost_b", 3422, start);
 
-    auto jsWorkerA = workerA->serializeJson();
+    auto jsWorkerA = workerA->toJson();
     auto start1Sec = start + 1s;
     auto workerA1 = WorkerContactInfo::createFromJsonWorker(jsWorkerA, start1Sec);
     BOOST_REQUIRE(workerA->isSameContactInfo(*workerA1));
@@ -82,12 +82,12 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
                                                                        replicationAuthKey);
 
     double maxLifetime = 300.0;
-    auto jsDataA = wqsdA->serializeJson(maxLifetime);
+    auto jsDataA = wqsdA->toJson(maxLifetime);
 
     // Check that empty lists work.
     auto wqsdA1 = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
             *jsDataA, replicationInstanceId, replicationAuthKey, start1Sec);
-    auto jsDataA1 = wqsdA1->serializeJson(maxLifetime);
+    auto jsDataA1 = wqsdA1->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsDataA1);
 
     vector<lsst::qserv::QueryId> qIdsDelFiles = {7, 8, 9, 15, 25, 26, 27, 30};
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
         wqsdA->qIdDoneDeleteFiles[qIdDF] = start;
     }
 
-    jsDataA = wqsdA->serializeJson(maxLifetime);
+    jsDataA = wqsdA->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA != *jsDataA1);
 
     for (auto const qIdKF : qIdsKeepFiles) {
@@ -105,24 +105,24 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
 
     wqsdA->addDeadUberJobs(12, {1, 3}, start);
 
-    jsDataA = wqsdA->serializeJson(maxLifetime);
+    jsDataA = wqsdA->toJson(maxLifetime);
 
     auto start5Sec = start + 5s;
     auto workerAFromJson = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
             *jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
-    auto jsWorkerAFromJson = workerAFromJson->serializeJson(maxLifetime);
+    auto jsWorkerAFromJson = workerAFromJson->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
 
     wqsdA->addDeadUberJobs(12, {34}, start5Sec);
     wqsdA->addDeadUberJobs(91, {77}, start5Sec);
     wqsdA->addDeadUberJobs(1059, {1, 4, 6, 7, 8, 10, 3, 22, 93}, start5Sec);
 
-    jsDataA = wqsdA->serializeJson(maxLifetime);
+    jsDataA = wqsdA->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA != *jsWorkerAFromJson);
 
     workerAFromJson = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
             *jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
-    jsWorkerAFromJson = workerAFromJson->serializeJson(maxLifetime);
+    jsWorkerAFromJson = workerAFromJson->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
 
     // Make the response, which contains lists of the items handled by the workers.
@@ -155,11 +155,11 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
 
     auto czarA =
             lsst::qserv::protojson::CzarContactInfo::create(czrName, czrId, czrPort, czrHost, cxrStartTime);
-    auto czarAJs = czarA->serializeJson();
+    auto czarAJs = czarA->toJson();
 
     auto start = lsst::qserv::CLOCK::now();
     auto workerA = WorkerContactInfo::create("sd_workerA", "host_w1", "mgmhost_a", 3421, start);
-    auto jsWorkerA = workerA->serializeJson();
+    auto jsWorkerA = workerA->toJson();
 
     // WorkerCzarComIssue
     auto wccIssueA =

@@ -139,7 +139,7 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
     {
         // Go through the _qIdDoneKeepFiles, _qIdDoneDeleteFiles, and _qIdDeadUberJobs lists to build a
         // message to send to the worker.
-        jsWorkerReqPtr = _wqsData->serializeJson(maxLifetime);
+        jsWorkerReqPtr = _wqsData->toJson(maxLifetime);
     }
 
     // Always send the message as it's a way to inform the worker that this
