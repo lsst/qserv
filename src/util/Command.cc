@@ -26,12 +26,17 @@
 // Class header
 #include "util/Command.h"
 
+// System headers
+#include <sstream>
+
 // LSST headers
 #include "lsst/log/Log.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Command");
 }
+
+using namespace std;
 
 namespace lsst::qserv::util {
 
@@ -69,5 +74,21 @@ void Command::setFunc(std::function<void(CmdData*)> func) {
 /// If _func is a lambda with a captured shared_ptr to this command,
 /// this function must be called or the lambda will keep this object alive.
 void Command::resetFunc() { setFunc(nullptr); }
+
+std::string Command::dump() const {
+    ostringstream os;
+    dump(os);
+    return os.str();
+}
+
+std::ostream& Command::dump(std::ostream& os) const {
+    os << "util::Command";
+    return os;
+}
+
+ostream& operator<<(ostream& os, Command const& cmd) {
+    cmd.dump(os);
+    return os;
+}
 
 }  // namespace lsst::qserv::util
