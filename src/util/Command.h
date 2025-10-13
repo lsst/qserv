@@ -79,6 +79,11 @@ public:
     void setFunc(std::function<void(CmdData*)> func);
     void resetFunc();
 
+    /// Returns a string for logging.
+    virtual std::ostream& dump(std::ostream& os) const;
+    std::string dump() const;
+    friend std::ostream& operator<<(std::ostream& os, Command const& cmd);
+
 protected:
     std::function<void(CmdData*)> _func = [](CmdData*) { ; };
 };
