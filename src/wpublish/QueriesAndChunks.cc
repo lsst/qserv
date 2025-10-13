@@ -93,11 +93,21 @@ QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds ex
     }
 
     auto rExamine = [this]() {
+        int examineAfterSeconds = _examineAfter.count();
+        int seconds = 0;
         while (_loopExamine) {
-            this_thread::sleep_for(_examineAfter);
-            if (_loopExamine) examineAll();
+            // Check frequently so unit tests finish in less time,
+            // as they aren't waiting for a 5 minute sleep to finish.
+            this_thread::sleep_for(chrono::seconds(2));
+            seconds++;
+            if (_loopExamine && seconds > examineAfterSeconds) {
+                examineAll();
+                seconds = 0;
+                examineAfterSeconds = _examineAfter.count();
+            }
         }
     };
+
     thread te(rExamine);
     _examineThread = move(te);
 }
