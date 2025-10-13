@@ -172,7 +172,8 @@ public:
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
             std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
-            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
+            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
+            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
 
     std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
     std::string user;  ///< Incoming username
@@ -211,7 +212,6 @@ public:
     void freeTaskQueryRunner(wdb::QueryRunner* tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
     TaskScheduler::Ptr getTaskScheduler() const { return _taskScheduler.lock(); }
-    friend std::ostream& operator<<(std::ostream& os, Task const& t);
 
     // Shared scan information
     bool getHasChunkId() const { return _hasChunkId; }
@@ -308,6 +308,8 @@ public:
 
     int getLvlWT() const { return _logLvlWT; }
     int getLvlET() const { return _logLvlET; }
+
+    std::ostream& dump(std::ostream& os) const override;
 
 private:
     std::atomic<int> _logLvlWT;  ///< Normally LOG_LVL_WARN, set to TRACE in cancelled Tasks.

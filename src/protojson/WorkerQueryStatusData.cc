@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.WorkerQueryStatusData");
 
 namespace lsst::qserv::protojson {
 
-json CzarContactInfo::serializeJson() const {
+json CzarContactInfo::toJson() const {
     json jsCzar;
     jsCzar["name"] = czName;
     jsCzar["id"] = czId;
@@ -74,12 +74,12 @@ std::string CzarContactInfo::dump() const {
     return os.str();
 }
 
-json WorkerContactInfo::serializeJson() const {
+json WorkerContactInfo::toJson() const {
     lock_guard lg(_rMtx);
-    return _serializeJson();
+    return _toJson();
 }
 
-json WorkerContactInfo::_serializeJson() const {
+json WorkerContactInfo::_toJson() const {
     json jsWorker;
     jsWorker["id"] = wId;
     jsWorker["host"] = _wHost;
@@ -139,7 +139,7 @@ string WorkerContactInfo::_dump() const {
     return os.str();
 }
 
-shared_ptr<json> WorkerQueryStatusData::serializeJson(double maxLifetime) {
+shared_ptr<json> WorkerQueryStatusData::toJson(double maxLifetime) {
     // Go through the _qIdDoneKeepFiles, _qIdDoneDeleteFiles, and _qIdDeadUberJobs lists to build a
     // message to send to the worker.
     auto now = CLOCK::now();
@@ -148,11 +148,11 @@ shared_ptr<json> WorkerQueryStatusData::serializeJson(double maxLifetime) {
     jsWorkerR["version"] = http::MetaModule::version;
     jsWorkerR["instance_id"] = _replicationInstanceId;
     jsWorkerR["auth_key"] = _replicationAuthKey;
-    jsWorkerR["czarinfo"] = _czInfo->serializeJson();
+    jsWorkerR["czarinfo"] = _czInfo->toJson();
     {
         lock_guard lgI(_infoMtx);
         if (_wInfo != nullptr) {
-            jsWorkerR["workerinfo"] = _wInfo->serializeJson();
+            jsWorkerR["workerinfo"] = _wInfo->toJson();
             jsWorkerR["worker"] = _wInfo->wId;
         } else {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " wInfo is null");
