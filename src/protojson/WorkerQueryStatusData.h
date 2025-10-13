@@ -69,7 +69,7 @@ public:
     uint64_t const czStartupTime;  ///< czar startup time
 
     /// Return a json version of the contents of this class.
-    nlohmann::json serializeJson() const;
+    nlohmann::json toJson() const;
 
     std::string dump() const;
 
@@ -104,7 +104,7 @@ public:
     static Ptr createFromJsonWorker(nlohmann::json const& workerJson, TIMEPOINT updateTime);
 
     /// Return a json version of the contents of this object.
-    nlohmann::json serializeJson() const;
+    nlohmann::json toJson() const;
 
     std::string cName(const char* fn) { return std::string("WorkerContactInfo::") + fn; }
 
@@ -203,7 +203,7 @@ private:
     std::string _dump() const;
 
     // _rMtx must be locked before calling
-    nlohmann::json _serializeJson() const;
+    nlohmann::json _toJson() const;
 
     std::string _wHost;            ///< "host-addr" entry.
     std::string _wManagementHost;  ///< "management-host-name" entry.
@@ -293,7 +293,7 @@ public:
     /// Create a json object held by a shared pointer to use as a message.
     /// Old objects in this instance will be removed after being added to the
     /// json message.
-    std::shared_ptr<nlohmann::json> serializeJson(double maxLifetime);
+    std::shared_ptr<nlohmann::json> toJson(double maxLifetime);
 
     /// Add contents of qIdDoneKeepFiles, _qIdDoneDeleteFiles, and _qIdDeadUberJobs to `jsWR`,
     /// and remove map elements that have an age (tmMark - element.touchTime) greater
