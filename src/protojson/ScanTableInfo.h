@@ -71,13 +71,15 @@ public:
     static Ptr createFromJson(nlohmann::json const& ujJson);
 
     /// Return a json version of the contents of this class.
-    nlohmann::json serializeJson() const;
+    nlohmann::json toJson() const;
 
     void sortTablesSlowestFirst();
     int compareTables(ScanInfo const& rhs);
 
     ScanTableInfo::ListOf infoTables;
     int scanRating{Rating::FASTEST};
+
+    std::ostream& dump(std::ostream& os) const;
 };
 
 std::ostream& operator<<(std::ostream& os, ScanTableInfo const& tbl);

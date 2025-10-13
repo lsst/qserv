@@ -132,6 +132,8 @@ public:
     /// Do nothing, the schedulers this class manages keep their own statistics.
     void recordPerformanceData() override {};
 
+    int calcAvailableTheads();
+
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);
     bool _ready();
