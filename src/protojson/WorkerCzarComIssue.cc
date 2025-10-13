@@ -55,9 +55,9 @@ shared_ptr<json> WorkerCzarComIssue::toJson() const {
     jsCzarR["version"] = http::MetaModule::version;
     jsCzarR["instance_id"] = _replicationInstanceId;
     jsCzarR["auth_key"] = _replicationAuthKey;
-    jsCzarR["czarinfo"] = _czInfo->serializeJson();
+    jsCzarR["czarinfo"] = _czInfo->toJson();
     jsCzarR["czar"] = _czInfo->czName;
-    jsCzarR["workerinfo"] = _wInfo->serializeJson();
+    jsCzarR["workerinfo"] = _wInfo->toJson();
 
     jsCzarR["thoughtczarwasdead"] = _thoughtCzarWasDead;
 
