@@ -134,7 +134,6 @@ Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::Messa
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
     Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, queryProgress, queryProgressHistory,
                                      querySession));
-
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
     // gets restarted automatically for as long as the context (the current
