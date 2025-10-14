@@ -205,6 +205,15 @@ TableInfo DatabaseInfo::validate(map<std::string, DatabaseInfo> const& databases
     throwIf(tableExists(table.name), "table already exists");
     throwIf(table.database.empty(), "database name is empty");
     throwIf(table.database != this->name, "database name doesn't match the current database");
+
+    // MySQL restricts database and table names to a maximum of 64 characters.
+    // Qserv creates metadata tables with names formatted as "<database>__<table>__rows".
+    // Ensure the combined length of database and table names plus suffixes does not exceed this limit.
+    size_t const maxDatabaseTableNameLength = 64 - string("__").size() - string("__rows").size();
+    throwIf(table.database.size() + table.name.size() > maxDatabaseTableNameLength,
+            "the combined size of the database and table names exceeds " +
+                    to_string(maxDatabaseTableNameLength) + " characters");
+
     throwIf(table.isPublished && (table.publishTime <= table.createTime),
             "inconsistent timestamps of the published table");
     throwIf(!table.isPublished && (table.publishTime != 0),
