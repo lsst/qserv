@@ -28,6 +28,7 @@
 
 // System headers
 #include <cctype>
+#include <filesystem>
 #include <sstream>
 #include <string>
 
@@ -80,6 +81,14 @@ std::string toString(A&& a) {
  *   found in an official documentation for the latest C++ Standard.
  */
 unsigned int stoui(std::string const& str, size_t* idx = 0, int base = 10);
+
+/**
+ * If the string starts with "file:", the rest of the string is treated as a file path
+ * and the contents of the file are returned. If the path is relative, it is made
+ * absolute by prepending basePath. If the string does not start with "file:", it is
+ * returned unchanged.
+ */
+std::string interpolateFile(std::string_view str, std::filesystem::path const& basePath);
 
 }  // namespace lsst::qserv
 
