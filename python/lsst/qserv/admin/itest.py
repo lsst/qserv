@@ -46,6 +46,31 @@ query_mode_mysql = "mysql"
 query_mode_qserv_attached = "qserv_attached"
 query_mode_qserv_detached = "qserv_detached"
 
+class FrontEndError(Exception):
+    """
+    A custom exception class for errors reported by the REST API of the HTTP-based
+    frontend of Qserv. Inherits from Python's built-in Exception class.
+    """
+    def __init__(self, context: str, error: str):
+        """
+        Initializes the FrontEndError.
+
+        Parameters
+        ----------
+        context : str
+            A descriptive error context.
+        error : str
+            A detailed error message.
+        """
+        super().__init__("FrontEndError")
+        self.message = f"{context}, error:{error}"
+
+    def __str__(self) -> str:
+        """
+        Returns a string representation of the exception.
+        """
+        return self.message
+
 
 class ITestQuery:
     """Represents a query to execute, with utilities for loading the query from a file.
@@ -1261,6 +1286,37 @@ def run_http_ingest(
             _log.error("Failed to delete user database: %s, error: %s", database, e)
             return False
 
+    # Create the database and table whose names deliberately violate the constraint of the REST API
+    # to ensure that the error is properly reported. The API limits the combined length
+    # of the database and table names to 56 characters. Here we attempt to create
+    # such a combination.
+    database = "user_test_db_012345678901234567890"   # 30 characters
+    table_json = "user_table_0123456789012345"    # 27 characters
+    try:
+        _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows)
+    except FrontEndError as e:
+        _log.debug(
+            "The attempt to ingest data into table: %s of user database: %s failed as expected, error: %s",
+            table_json,
+            database,
+            e,
+        )
+    except Exception as e:
+        _log.error(
+            "Failed to ingest data into table: %s of user database: %s, error: %s",
+            table_json,
+            database,
+            e,
+        )
+        return False
+    else:
+        _log.error(
+            "The attempt to ingest data into table: %s of user database: %s did not fail as expected",
+            table_json,
+            database,
+        )
+        return False
+
     return True
 
 
@@ -1290,7 +1346,7 @@ def _http_delete_database(
     res = req.json()
     if res["success"] == 0:
         error = res["error"]
-        raise RuntimeError(f"Failed to delete user database: {database}, error: {error}")
+        raise FrontEndError(f"Failed to delete user database: {database}", error)
 
 
 def _http_delete_table(
@@ -1322,7 +1378,7 @@ def _http_delete_table(
     res = req.json()
     if res["success"] == 0:
         error = res["error"]
-        raise RuntimeError(f"Failed to delete table: {table} from user database: {database}, error: {error}")
+        raise FrontEndError(f"Failed to delete table: {table} from user database: {database}", error)
 
 
 def _http_ingest_data_json(
@@ -1383,8 +1439,8 @@ def _http_ingest_data_json(
     res = req.json()
     if res["success"] == 0:
         error = res["error"]
-        raise RuntimeError(
-            f"Failed to create and load the table: {table} in user database {database}, error: {error}"
+        raise FrontEndError(
+            f"Failed to create and load the table: {table} in user database {database}", error
         )
 
 
@@ -1471,8 +1527,8 @@ def _http_ingest_data_csv(
     res = req.json()
     if res["success"] == 0:
         error = res["error"]
-        raise RuntimeError(
-            f"Failed to create and load the table: {table} in user database {database}, error: {error}"
+        raise FrontEndError(
+            f"Failed to create and load the table: {table} in user database {database}", error
         )
 
 
@@ -1512,7 +1568,7 @@ def _http_query_table(
     res = req.json()
     if res["success"] == 0:
         error = res["error"]
-        raise RuntimeError(f"Failed to query the table: {table} in user database: {database}, error: {error}")
+        raise FrontEndError(f"Failed to query the table: {table} in user database: {database}", error)
     received_rows = res["rows"]
     if received_rows != expected_rows:
         raise RuntimeError(
