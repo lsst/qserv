@@ -600,6 +600,7 @@ DatabaseInfo Configuration::addTable(TableInfo const& table_) {
         throw invalid_argument(_context(__func__) +
                                " adding tables to the published databases isn't allowed.");
     }
+
     // Make sure the input is sanitized & validated before attempting to register
     // the new table in the persistent store. After that the table could be also
     // registered in the transient state.

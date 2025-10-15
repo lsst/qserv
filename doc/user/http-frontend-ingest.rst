@@ -78,7 +78,7 @@ Most services described in this document require user database and table names. 
 
   This prefix is reserved for naming internal tables that Qserv places into user databases.
 
-Depending on the version of the Qserv AOI, there are additional restrictions on the names of databases and tables.
+Depending on the version of the Qserv API, there are additional restrictions on the names of databases and tables.
 Before version number **46** of the API, database and table names could only contain alphanumeric characters and underscores.
 This restriction is relaxed as of version **46** of the API to allow the following special characters:
 
@@ -111,6 +111,12 @@ This restriction is relaxed as of version **46** of the API to allow the followi
   - ``]`` (right bracket)
   - ``/`` (forward slash)
   - ``\`` (backslash)
+
+Another restriction was introduced in version **51** of the API to ensure compatibility with MySQL limitations.
+Specifically, the combined length of database and table names must not exceed a certain limit to accommodate
+the naming conventions used by Qserv for its internal metadata tables. The combined length of the database
+and table names must not exceed 56 characters. This limit is derived from MySQL's maximum
+identifier length of 64 characters, minus the length of the suffixes used by Qserv for its internal tables.
 
 A failure to follow these conventions will result in an error response from the service.
 

@@ -188,6 +188,14 @@ The object containing the database configuration information has the same schema
 Registering tables
 ------------------
 
+.. warning::
+
+    Another restriction was introduced in version **51** of the API to ensure compatibility with MySQL limitations.
+    Specifically, the combined length of database and table names must not exceed a certain limit to accommodate
+    the naming conventions used by Qserv for its internal metadata tables. The combined length of the database
+    and table names must not exceed 56 characters. This limit is derived from MySQL's maximum
+    identifier length of 64 characters, minus the length of the suffixes used by Qserv for its internal tables.
+
 All tables, regardless if they are *partitioned* or *regular* (fully replicated on all worker nodes), have to be registered
 using the following Replication Controller's service:
 
