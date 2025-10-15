@@ -132,24 +132,19 @@ RUN cd /tmp \
     && cd /tmp \
     && rm -rf mysqlproxy
 
-COPY xrootd_f032a1b0.patch /tmp
-
 RUN cd /tmp \
     && git clone https://github.com/xrootd/xrootd.git \
     && cd xrootd \
-    && git checkout tags/v5.6.2 \
+    && git checkout tags/v5.9.0 \
     && git config --global user.email "qserv@slac.stanford.edu" \
     && git config --global user.name "Qserv" \
-    && git cherry-pick d85915a3927261e49859c3e13075bce1dfefcbe4 \
-    && git apply /tmp/xrootd_f032a1b0.patch \
     && mkdir build \
     && cd build \
     && cmake -DENABLE_PYTHON=off .. \
     && make -j8 \
     && make install \
     && cd /tmp \
-    && rm -rf xrootd \
-    && rm /tmp/xrootd_f032a1b0.patch
+    && rm -rf xrootd
 
 RUN cd /tmp \
     && git clone https://github.com/yhirose/cpp-httplib.git \
