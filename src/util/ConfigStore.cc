@@ -25,9 +25,11 @@
 #include "ConfigStore.h"
 
 // System headers
+#include <filesystem>
 #include <sstream>
 
 // Qserv headers
+#include "global/stringUtil.h"
 #include "util/ConfigStoreError.h"
 #include "util/IterableFormatter.h"
 
@@ -38,6 +40,8 @@
 
 // LSST headers
 #include "lsst/log/Log.h"
+
+namespace fs = std::filesystem;
 
 namespace {  // File-scope helpers
 
@@ -53,13 +57,14 @@ std::map<std::string, std::string> const ConfigStore::_parseIniFile(std::string 
     boost::property_tree::ini_parser::read_ini(configFilePath, pt);
 
     std::map<std::string, std::string> configMap;
+    const fs::path basePath = fs::path(configFilePath).parent_path();
 
     // flatten
     for (auto& sectionPair : pt) {
         auto& section = sectionPair.first;
         for (auto& itemPair : sectionPair.second) {
             auto& item = itemPair.first;
-            auto& value = itemPair.second.data();
+            auto value = interpolateFile(itemPair.second.data(), basePath);
             configMap.insert(std::make_pair(section + "." + item, value));
         }
     }

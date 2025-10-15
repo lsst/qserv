@@ -36,6 +36,7 @@ target_sources(util PRIVATE
 target_link_libraries(util PUBLIC
     boost_filesystem
     boost_system
+    global
     log
 )
 

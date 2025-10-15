@@ -16,11 +16,18 @@ install(
     TARGETS global
 )
 
-add_executable(testResourceUnit testResourceUnit.cc)
+FUNCTION(global_tests)
+    FOREACH(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            global
+            Boost::unit_test_framework
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    ENDFOREACH()
+ENDFUNCTION()
 
-target_link_libraries(testResourceUnit
-    global
-    Boost::unit_test_framework
+global_tests(
+    testResourceUnit
+    testStringUtil
 )
-
-add_test(NAME testResourceUnit COMMAND testResourceUnit)
