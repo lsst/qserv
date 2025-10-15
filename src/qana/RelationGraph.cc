@@ -33,6 +33,7 @@
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <unordered_set>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -79,10 +80,12 @@ using query::QueryTemplate;
 using query::SelectStmt;
 using query::TableRef;
 using query::TableRefList;
+using query::ValueExpr;
 using query::ValueExprPtr;
 using query::ValueExprPtrVector;
 using query::ValueFactor;
 using query::ValueFactorPtr;
+using query::WhereClause;
 
 std::ostream& operator<<(std::ostream& out, Vertex const& vertex) {
     out << "Vertex("
@@ -153,6 +156,13 @@ void Vertex::insert(Edge const& e) {
             i->angSep = std::numeric_limits<double>::quiet_NaN();
         }
     }
+}
+
+std::shared_ptr<CompPredicate> Vertex::makeSubChunkCompPredicate() const {
+    auto const table = tr.hasAlias() ? tr.getAlias() : info->table;
+    return std::make_shared<CompPredicate>(ValueExpr::newColumnExpr("", table, "", SUB_CHUNK_COLUMN),
+                                           CompPredicate::EQUALS_OP,
+                                           ValueExpr::newSimple(ValueFactor::newConstFactor(SUBCHUNK_TAG)));
 }
 
 // ----------------------------------------------------------------
@@ -1029,12 +1039,14 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping)
     // Find directors for which overlap is required. At the same time, rewrite
     // all table references as their corresponding chunk templates.
     std::vector<Vertex*> overlapRefs;
+    LOGS(_log, LOG_LVL_INFO, "1:   rewrite _vertices.size()=" << _vertices.size());
     for (ListIter i = _vertices.begin(), e = _vertices.end(); i != e; ++i) {
         i->rewriteAsChunkTemplate();
         if (i->info->kind == TableInfo::DIRECTOR && i->overlap > 0.0) {
             overlapRefs.push_back(&(*i));
         }
     }
+    LOGS(_log, LOG_LVL_INFO, "2:   rewrite overlapRefs.size()=" << overlapRefs.size());
     if (overlapRefs.empty()) {
         // There is no need for sub-chunking, so leave it off for now.
         //
@@ -1058,31 +1070,80 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping)
                 "references that require overlap");
     }
 
+    // Add sub-chunk constraint for all director & match tables
+    // Collect full table names (or aliases) in a set to avoid duplicates in setting sub-chunk constraints
+    std::unordered_set<std::string> tableNames;
+    for (ListIter i = _vertices.begin(), e = _vertices.end(); i != e; ++i) {
+        std::string kindName;
+        switch (i->info->kind) {
+            case TableInfo::DIRECTOR:
+                kindName = "DIRECTOR";
+                break;
+            case TableInfo::CHILD:
+                kindName = "CHILD";
+                break;
+            case TableInfo::MATCH:
+                kindName = "MATCH";
+                break;
+            default:
+                kindName = "UNKNOWN";
+                break;
+        }
+        LOGS(_log, LOG_LVL_INFO,
+             "3:   rewrite i->tr.getAlias()=" << i->tr.getAlias() << " i->info->table=" << i->info->table
+                                              << " overlap=" << i->overlap << " kind=" << kindName);
+        if (i->info->kind == TableInfo::DIRECTOR || i->info->kind == TableInfo::MATCH) {
+            std::string tableName;
+            if (i->tr.hasAlias()) {
+                tableName = i->tr.getAlias();
+            } else {
+                tableName = i->info->database + "." + i->info->table;
+            }
+            if (tableNames.count(tableName) == 0) {
+                tableNames.insert(tableName);
+                auto predicate = i->makeSubChunkCompPredicate();
+                BoolFactor::Ptr bfactor = std::make_shared<BoolFactor>();
+                bfactor->_terms.push_back(predicate);
+                _query->getWhereClause(true).prependAndTerm(bfactor);
+            }
+        }
+    }
+
     // Rewrite director table references not requiring overlap as their
     // corresponding sub-chunk templates, and record the names of all
     // sub-chunked tables.
     for (ListIter i = _vertices.begin(), e = _vertices.end(); i != e; ++i) {
         if (i->info->kind == TableInfo::DIRECTOR) {
             if (i->overlap == 0.0) {
-                i->rewriteAsSubChunkTemplate();
+                i->rewriteAsChunkTemplate();
             }
             DbTable dbTable(i->info->database, i->info->table);
-            LOGS(_log, LOG_LVL_TRACE, "rewrite db=" << dbTable.db << " table=" << dbTable.table);
+            LOGS(_log, LOG_LVL_INFO,
+                 "4:   rewrite db=" << i->info->database << " table=" << i->info->table
+                                    << " overlap=" << i->overlap);
             mapping.insertSubChunkTable(dbTable);
         }
     }
     unsigned n = static_cast<unsigned>(overlapRefs.size());
     unsigned numPermutations = 1 << n;
-    // Each director requiring overlap must be rewritten as both a sub-chunk
-    // template and an overlap sub-chunk template. There are 2ⁿ different
+    // Each director requiring overlap must be rewritten as both a chunk
+    // template and chunk overlap template. There are 2ⁿ different
     // template permutations for n directors requiring overlap; generate them
     // all.
     for (unsigned p = 0; p < numPermutations; ++p) {
         for (unsigned i = 0; i < n; ++i) {
             if ((p & (1 << i)) != 0) {
                 overlapRefs[i]->rewriteAsOverlapTemplate();
+                LOGS(_log, LOG_LVL_INFO,
+                     "5.o: rewrite db=" << overlapRefs[i]->info->database
+                                        << " table=" << overlapRefs[i]->info->table
+                                        << " overlap=" << overlapRefs[i]->overlap);
             } else {
-                overlapRefs[i]->rewriteAsSubChunkTemplate();
+                overlapRefs[i]->rewriteAsChunkTemplate();
+                LOGS(_log, LOG_LVL_INFO,
+                     "5.c: rewrite db=" << overlapRefs[i]->info->database
+                                        << " table=" << overlapRefs[i]->info->table
+                                        << " overlap=" << overlapRefs[i]->overlap);
             }
         }
         // Given the use of shared_ptr by the IR classes, we could shallow
