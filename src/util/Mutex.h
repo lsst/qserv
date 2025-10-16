@@ -35,6 +35,7 @@
 #define USING_VMUTEX 0  // TODO:UJ Should be replaced by variable in build.
 
 #ifdef MUTEX_UNITTEST
+#undef USING_VMUTEX
 #define USING_VMUTEX 1
 #endif
 
