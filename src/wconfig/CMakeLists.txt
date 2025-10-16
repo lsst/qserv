@@ -1,5 +1,4 @@
 add_library(wconfig SHARED)
-add_dependencies(wconfig proto)
 
 target_sources(wconfig PRIVATE
     WorkerConfig.cc
@@ -7,7 +6,6 @@ target_sources(wconfig PRIVATE
 
 target_link_libraries(wconfig PUBLIC
     log
-    proto
 )
 
 install(
@@ -23,6 +21,3 @@ target_link_libraries(testSanityCheck
 
 add_test(NAME testSanityCheck COMMAND testSanityCheck)
 
-install(
-    TARGETS wconfig
-)
