@@ -46,11 +46,13 @@ query_mode_mysql = "mysql"
 query_mode_qserv_attached = "qserv_attached"
 query_mode_qserv_detached = "qserv_detached"
 
+
 class FrontEndError(Exception):
     """
     A custom exception class for errors reported by the REST API of the HTTP-based
     frontend of Qserv. Inherits from Python's built-in Exception class.
     """
+
     def __init__(self, context: str, error: str):
         """
         Initializes the FrontEndError.
@@ -1290,8 +1292,8 @@ def run_http_ingest(
     # to ensure that the error is properly reported. The API limits the combined length
     # of the database and table names to 56 characters. Here we attempt to create
     # such a combination.
-    database = "user_test_db_012345678901234567890"   # 30 characters
-    table_json = "user_table_0123456789012345"    # 27 characters
+    database = "user_test_db_012345678901234567890"  # 30 characters
+    table_json = "user_table_0123456789012345"  # 27 characters
     try:
         _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows)
     except FrontEndError as e:
