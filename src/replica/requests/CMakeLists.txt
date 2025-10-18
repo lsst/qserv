@@ -1,5 +1,7 @@
 add_library(replica_requests OBJECT)
+
 add_dependencies(replica_requests replica_proto)
+
 target_sources(replica_requests PRIVATE
     DeleteRequest.cc
     DirectorIndexRequest.cc
@@ -35,6 +37,7 @@ target_sources(replica_requests PRIVATE
     StatusRequest.cc
     StopRequest.cc
 )
+
 target_link_libraries(replica_requests PUBLIC
     log
 )

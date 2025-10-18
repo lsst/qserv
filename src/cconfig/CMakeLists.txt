@@ -6,16 +6,13 @@ target_sources(cconfig PRIVATE
     EventService.cc
 )
 
-
 target_link_libraries(cconfig PUBLIC
     log
     boost_system
     util
 )
 
-install(
-    TARGETS cconfig
-)
+install(TARGETS cconfig)
 
 FUNCTION(cconfig_tests)
     FOREACH(TEST IN ITEMS ${ARGV})

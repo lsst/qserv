@@ -9,15 +9,12 @@ target_sources(qdisp PRIVATE
     UberJob.cc
 )
 
-
 target_link_libraries(qdisp PUBLIC
     cconfig
     log
 )
 
-install(
-    TARGETS qdisp
-)
+install(TARGETS qdisp)
 
 add_executable(testQDisp testQDisp.cc)
 
