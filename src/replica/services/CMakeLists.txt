@@ -1,4 +1,5 @@
 add_library(replica_services OBJECT)
+
 target_sources(replica_services PRIVATE
     ChunkLocker.cc
     DatabaseServices.cc
@@ -6,6 +7,7 @@ target_sources(replica_services PRIVATE
     DatabaseServicesPool.cc
     ServiceProvider.cc
 )
+
 target_link_libraries(replica_services PUBLIC
     log
 )
