@@ -29,5 +29,3 @@ target_link_libraries(testqhttp PUBLIC
 )
 
 add_test(NAME testqhttp COMMAND testqhttp -- --data=${CMAKE_CURRENT_SOURCE_DIR}/testdata/ --retries=2 --retry-delay=1 --threads=2 --client-threads=4)
-
-# set_tests_properties(testqhttp PROPERTIES WILL_FAIL 1)
