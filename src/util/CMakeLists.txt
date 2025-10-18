@@ -40,9 +40,7 @@ target_link_libraries(util PUBLIC
     log
 )
 
-install(
-    TARGETS util
-)
+install(TARGETS util)
 
 FUNCTION(util_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
