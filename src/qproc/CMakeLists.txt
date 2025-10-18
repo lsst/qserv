@@ -15,9 +15,7 @@ target_link_libraries(qproc PRIVATE
     sphgeom
 )
 
-install(
-    TARGETS qproc
-)
+install(TARGETS qproc)
 
 FUNCTION(qproc_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
@@ -53,6 +51,3 @@ qproc_tests(
     testQueryAnaIn
     testQueryAnaOrderBy
 )
-
-# set_tests_properties(testQueryAnaGeneral PROPERTIES WILL_FAIL 1)
-

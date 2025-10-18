@@ -8,17 +8,11 @@ target_sources(wsched PRIVATE
     SchedulerBase.cc
 )
 
-install(
-	TARGETS wsched
-)
-
 target_link_libraries(wsched PUBLIC
     log
 )
 
-install(
-    TARGETS wsched
-)
+install(TARGETS wsched)
 
 add_executable(testSchedulers testSchedulers.cc)
 

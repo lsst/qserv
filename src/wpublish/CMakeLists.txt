@@ -6,14 +6,12 @@ target_sources(wpublish PRIVATE
     QueryStatistics.cc
 )
 
-install(
-    TARGETS wpublish
-)
-
 target_link_libraries(wpublish PUBLIC
     log
     protobuf
 )
+
+install(TARGETS wpublish)
 
 add_executable(testChunkInventory testChunkInventory.cc)
 
