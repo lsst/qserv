@@ -20,9 +20,7 @@ target_link_libraries(qana PUBLIC
     log
 )
 
-install (
-    TARGETS qana
-)
+install (TARGETS qana)
 
 FUNCTION(qana_tests)
     FOREACH(TEST IN ITEMS ${ARGV})

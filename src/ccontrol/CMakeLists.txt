@@ -31,13 +31,7 @@ target_link_libraries(ccontrol PUBLIC
     sphgeom
 )
 
-install(
-	TARGETS ccontrol
-)
-
-install(
-    TARGETS ccontrol
-)
+install(TARGETS ccontrol)
 
 FUNCTION(ccontrol_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
@@ -66,6 +60,3 @@ ccontrol_tests(
     testCControl
     testUserQueryType
 )
-
-# set_tests_properties(testCControl PROPERTIES WILL_FAIL 1)
-
