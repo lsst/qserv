@@ -8,11 +8,8 @@ target_sources(wcomms PRIVATE
     HttpWorkerCzarModule.cc
 )
 
-
 target_link_libraries(wcomms PUBLIC
     log
 )
 
-install(
-	TARGETS wcomms
-)
+install(TARGETS wcomms)
