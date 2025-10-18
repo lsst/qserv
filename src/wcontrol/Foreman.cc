@@ -26,10 +26,8 @@
 
 // System headers
 #include <cassert>
+#include <filesystem>
 #include <thread>
-
-// Third party headers
-#include "boost/filesystem.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -53,7 +51,7 @@
 #include "wsched/BlendScheduler.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 namespace qhttp = lsst::qserv::qhttp;
 
 namespace {
@@ -67,7 +65,7 @@ qhttp::Status removeResultFile(std::string const& fileName) {
     string const context = "Foreman::" + string(__func__) + " ";
     fs::path const filePath(fileName);
     if (!fs::exists(filePath)) return qhttp::STATUS_NOT_FOUND;
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::remove_all(filePath, ec);
     if (ec.value() != 0) {
         LOGS(_log, LOG_LVL_WARN,
@@ -149,6 +147,12 @@ Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int pool
 
     // Read-only access to the result files via the HTTP protocol's method "GET"
     auto const workerConfig = wconfig::WorkerConfig::instance();
+    std::error_code ec;
+    fs::create_directories(workerConfig->resultsDirname(), ec);
+    if (ec)
+        LOGS(_log, LOG_LVL_ERROR,
+             "Failed to create results directory " << workerConfig->resultsDirname()
+                                                   << ", error: " << ec.message());
     _httpServer->addStaticContent("/*", workerConfig->resultsDirname());
     _httpServer->addHandler(
             "DELETE", "/:file",
