@@ -13,17 +13,11 @@ target_sources(sql PRIVATE
     statement.cc
 )
 
-install(
-	TARGETS sql
-)
-
 target_link_libraries(sql PUBLIC
     log
 )
 
-install(
-    TARGETS sql
-)
+install(TARGETS sql)
 
 FUNCTION(sql_tests)
     FOREACH(TEST IN ITEMS ${ARGV})

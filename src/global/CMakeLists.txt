@@ -8,17 +8,11 @@ target_sources(global PRIVATE
     stringUtil.cc
 )
 
-install(
-	TARGETS global
-)
-
 target_link_libraries(global PUBLIC
     log
 )
 
-install(
-    TARGETS global
-)
+install(TARGETS global)
 
 FUNCTION(global_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
