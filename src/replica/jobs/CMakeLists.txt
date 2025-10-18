@@ -1,4 +1,5 @@
 add_library(replica_jobs OBJECT)
+
 target_sources(replica_jobs PRIVATE
     AbortTransactionJob.cc
     ClusterHealthJob.cc
@@ -37,6 +38,7 @@ target_sources(replica_jobs PRIVATE
     SqlRowStatsJob.cc
     VerifyJob.cc
 )
+
 target_link_libraries(replica_jobs PUBLIC
     log
 )

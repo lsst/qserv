@@ -21,7 +21,6 @@ target_sources(czar PRIVATE
     WorkerIngestProcessor.cc
 )
 
-
 target_link_libraries(czar PUBLIC
     cconfig
     http
@@ -35,9 +34,7 @@ target_link_libraries(czar PUBLIC
     boost_program_options
 )
 
-install(
-	TARGETS czar
-)
+install(TARGETS czar)
 
 function(CZAR_UTILS)
     foreach(UTIL IN ITEMS ${ARGV})
@@ -92,4 +89,3 @@ endfunction()
 czar_tests(
     testCzar
 )
-
