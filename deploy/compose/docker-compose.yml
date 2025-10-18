@@ -272,7 +272,7 @@ services:
             - type: volume
               source: volume_czar_transfer
               target: /tmp
-              
+
             - << : *log-volume
         expose:
             - "3306" # for czar-mariadb
