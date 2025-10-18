@@ -6,18 +6,11 @@ target_sources(wdb PRIVATE
     SQLBackend.cc
 )
 
-
 target_link_libraries(wdb PUBLIC
     log
 )
 
-install(
-	TARGETS wdb
-)
-
-install(
-    TARGETS wdb
-)
+install(TARGETS wdb)
 
 FUNCTION(wdb_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
@@ -46,4 +39,3 @@ ENDFUNCTION()
 wdb_tests(
     testChunkResource
 )
-
