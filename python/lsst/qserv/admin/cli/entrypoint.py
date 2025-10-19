@@ -162,7 +162,7 @@ commands = OrderedDict(
         (
             "worker-svc",
             CommandInfo(
-                "qserv-worker-http -v -c {{worker_svc_cfg_path}} -n worker",
+                "qserv-worker-http -c {{worker_svc_cfg_path}}",
             ),
         ),
         (
