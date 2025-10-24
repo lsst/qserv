@@ -433,7 +433,17 @@ json const ConfigurationSchema::_schemaJson = json::object(
                       to_string(ProtocolBuffer::HARD_LIMIT) +
                       " bytes. Any number set higher than this limit will"
                       " get truncated down to match the limit at run time."},
-             {"default", 16 * 1024 * 1024}}}}}});
+             {"default", 16 * 1024 * 1024}}},
+           {"create-databases-on-scan",
+            {{"description",
+              "The flag controlling the behavior of the worker's replica lookup algorithms during"
+              " scanning the data directory for existing files. If the flag is set to 1"
+              " then any missing databases will be created automatically. Database access privileges"
+              " will be granted to the Qserv user 'qsmaster' for the newly created databases."
+              " The database will be also be also registered as 'enabled' in the worker's"
+              " persistent state. If the flag is set to 0 then missing databases will be ignored."},
+             {"default", 1},
+             {"empty-allowed", 1}}}}}});
 
 string ConfigurationSchema::description(string const& category, string const& param) {
     return _attributeValue<string>(category, param, "description", "");

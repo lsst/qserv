@@ -68,7 +68,8 @@ map<string, set<string>> ConfigTestData::parameters() {
                "ingest-charset-name",
                "ingest-num-retries",
                "ingest-max-retries",
-               "director-index-record-size"}}});
+               "director-index-record-size",
+               "create-databases-on-scan"}}});
 }
 
 json ConfigTestData::data() {
@@ -133,7 +134,8 @@ json ConfigTestData::data() {
                                          {"exporter-port", 54000},
                                          {"exporter-tmp-dir", "/tmp"},
                                          {"http-loader-port", 55000},
-                                         {"http-loader-tmp-dir", "/tmp"}});
+                                         {"http-loader-tmp-dir", "/tmp"},
+                                         {"create-databases-on-scan", 1}});
 
     obj["workers"] = json::array();
     {
