@@ -164,7 +164,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
     _scanInfo.sortTablesSlowestFirst();
     _scanInteractive = t->scaninteractive();
     _maxTableSize = t->maxtablesize_mb() * ::MB_SIZE_BYTES;
-
+#if 0
     // Create sets and vectors for 'aquiring' subchunk temporary tables.
     proto::TaskMsg_Fragment const& fragment(t->fragment(_queryFragmentNum));
     DbTableSet dbTbls_;
@@ -203,6 +203,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
                               << " subChunks=" << util::printable(subchunksVect_));
     }
     _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
+#endif
     if (_sendChannel == nullptr) {
         throw util::Bug(ERR_LOC, "Task::Task _sendChannel==null " + getIdStr());
     }
@@ -221,7 +222,6 @@ Task::~Task() {
 
 vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
                                     shared_ptr<wbase::FileChannelShared> const& sendChannel,
-                                    shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                     mysql::MySqlConfig const& mySqlConfig,
                                     shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                                     shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
@@ -259,8 +259,8 @@ vector<Task::Ptr> Task::createTasks(shared_ptr<proto::TaskMsg> const& taskMsg,
     }
     for (auto task : vect) {
         // newQueryRunner sets the `_taskQueryRunner` pointer in `task`.
-        task->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(task, chunkResourceMgr, mySqlConfig,
-                                                                  sqlConnMgr, queriesAndChunks));
+        task->setTaskQueryRunner(
+                wdb::QueryRunner::newQueryRunner(task, mySqlConfig, sqlConnMgr, queriesAndChunks));
     }
     sendChannel->setTaskCount(vect.size());
 

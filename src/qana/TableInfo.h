@@ -69,7 +69,7 @@
 #include <vector>
 
 // Qserv headers
-#include "global/constants.h"  // for SUBCHUNKDB_PREFIX
+#include "global/constants.h"
 
 // Forward declarations
 namespace lsst::qserv::query {
@@ -134,12 +134,8 @@ struct TableInfo {
         return false;
     }
 
-    std::string const getSubChunkDb() const { return SUBCHUNKDB_PREFIX + database + "_" + CHUNK_TAG; }
     std::string const getChunkTemplate() const { return table + "_" + CHUNK_TAG; }
-    std::string const getSubChunkTemplate() const { return table + "_" + CHUNK_TAG + "_" + SUBCHUNK_TAG; }
-    std::string const getOverlapTemplate() const {
-        return table + "FullOverlap_" + CHUNK_TAG + "_" + SUBCHUNK_TAG;
-    }
+    std::string const getOverlapTemplate() const { return table + "FullOverlap_" + CHUNK_TAG; }
 
     virtual void dump(std::ostream& os) const;
 };
