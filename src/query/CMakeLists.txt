@@ -1,5 +1,4 @@
 add_library(query SHARED)
-add_dependencies(query proto)
 
 target_sources(query PRIVATE
     AggOp.cc
@@ -64,7 +63,6 @@ FUNCTION(query_tests)
             qmeta
             query
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )

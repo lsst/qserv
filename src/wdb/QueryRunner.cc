@@ -24,8 +24,7 @@
  * @file
  *
  * @brief QueryRunner instances perform single-shot query execution with the
- * result reflected in the db state or returned via a SendChannel. Works with
- * new XrdSsi API.
+ * result reflected in the db state or returned via a SendChannel.
  *
  * @author Daniel L. Wang, SLAC; John Gates, SLAC
  */
@@ -38,7 +37,6 @@
 #include <thread>
 
 // Third-party headers
-#include <google/protobuf/arena.h>
 #include <mysql/mysql.h>
 
 // Class header
@@ -52,8 +50,6 @@
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
 #include "mysql/SchemaFactory.h"
-#include "proto/ProtoHeaderWrap.h"
-#include "proto/worker.pb.h"
 #include "sql/Schema.h"
 #include "sql/SqlErrorObject.h"
 #include "util/Bug.h"
@@ -124,10 +120,9 @@ bool QueryRunner::_initConnection() {
 }
 
 bool QueryRunner::runQuery() {
-    util::InstanceCount ic(to_string(_task->getQueryId()) + "_rq_LDB");  // LockupDB
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " tid=" << _task->getIdStr());
+    LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__));
 
     // Start tracking the task.
     auto now = chrono::system_clock::now();
@@ -136,7 +131,7 @@ bool QueryRunner::runQuery() {
     // Make certain our Task knows that this object is no longer in use when this function exits.
     class Release {
     public:
-        Release(wbase::Task::Ptr t, wbase::TaskQueryRunner* tqr,
+        Release(wbase::Task::Ptr t, QueryRunner* tqr,
                 shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks)
                 : _t{t}, _tqr{tqr}, _queriesAndChunks(queriesAndChunks) {}
         ~Release() {
@@ -146,40 +141,29 @@ bool QueryRunner::runQuery() {
 
     private:
         wbase::Task::Ptr _t;
-        wbase::TaskQueryRunner* _tqr;
+        QueryRunner* _tqr;
         shared_ptr<wpublish::QueriesAndChunks> const _queriesAndChunks;
     };
     Release release(_task, this, _queriesAndChunks);
 
     if (_task->checkCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled before it started." << _task->getIdStr());
+        LOGS(_log, LOG_LVL_TRACE, "runQuery, task was cancelled before it started." << _task->getIdStr());
         return false;
     }
 
-    if (_task->checkCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, "runQuery, task was cancelled after locking tables.");
-        return false;
-    }
-
-    LOGS(_log, LOG_LVL_INFO,
-         "Exec in flight for Db=" << _task->getDb() << " sqlConnMgr " << _sqlConnMgr->dump());
     // Queries that span multiple tasks should not be high priority for the SqlConMgr as it risks deadlock.
     bool interactive = _task->getScanInteractive() && !(_task->getSendChannel()->getTaskCount() > 1);
     wcontrol::SqlConnLock sqlConnLock(*_sqlConnMgr, not interactive, _task->getSendChannel());
+
     bool connOk = _initConnection();
     if (!connOk) {
         // Since there's an error, this will be the last transmit from this QueryRunner.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
-            LOGS(_log, LOG_LVL_WARN, " Could not report error to czar as sendChannel not accepting msgs.");
-        }
+        _task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled);
         return false;
     }
 
     // Run the query and send the results back.
-    if (!_dispatchChannel()) {
-        return false;
-    }
-    return true;
+    return _dispatchChannel();
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
@@ -234,17 +218,19 @@ bool QueryRunner::_dispatchChannel() {
         //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
 
         auto taskSched = _task->getTaskScheduler();
-        if (!_cancelled && !_task->getSendChannel()->isDead()) {
+        if (!_cancelled && !_task->checkCancelled()) {
             string const& query = _task->getQueryString();
             util::Timer primeT;
             primeT.start();
             _task->queryExecutionStarted();
+            LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__) << " sql start");
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
+            LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__) << " sql end");
             primeT.stop();
             needToFreeRes = true;
             if (taskSched != nullptr) {
                 taskSched->histTimeOfRunningTasks->addEntry(primeT.getElapsed());
-                LOGS(_log, LOG_LVL_DEBUG, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
+                LOGS(_log, LOG_LVL_TRACE, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
             } else {
                 LOGS(_log, LOG_LVL_ERROR, "QR runtaskSched == nullptr");
             }
@@ -285,10 +271,7 @@ bool QueryRunner::_dispatchChannel() {
         erred = true;
         // Send results. This needs to happen after the error check.
         // If any errors were found, send an error back.
-        if (!_task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled)) {
-            LOGS(_log, LOG_LVL_WARN,
-                 " Could not report error to czar as sendChannel not accepting msgs." << _task->getIdStr());
-        }
+        _task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled);
     }
     return !erred;
 }
@@ -296,16 +279,20 @@ bool QueryRunner::_dispatchChannel() {
 void QueryRunner::cancel() {
     // QueryRunner::cancel() should only be called by Task::cancel()
     // to keep the bookkeeping straight.
-    LOGS(_log, LOG_LVL_WARN, "Trying QueryRunner::cancel() call");
-    util::HoldTrack::Mark mark(ERR_LOC, "QR cancel() QID=" + _task->getIdStr());
-    _cancelled = true;
+    LOGS(_log, LOG_LVL_TRACE, "Trying QueryRunner::cancel() call " << _task->getIdStr());
+
+    bool alreadyCancelled = _cancelled.exchange(true);
+    if (alreadyCancelled) {
+        LOGS(_log, LOG_LVL_WARN, "already cancelled" << _task->getIdStr());
+        return;
+    }
 
     if (_mysqlConn == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() no MysqlConn");
+        LOGS(_log, LOG_LVL_TRACE, "QueryRunner::cancel() no MysqlConn");
     } else {
         switch (_mysqlConn->cancel()) {
             case -1:
-                LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() NOP");
+                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
                 break;
             case 0:
                 LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
