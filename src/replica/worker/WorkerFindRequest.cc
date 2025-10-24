@@ -32,6 +32,7 @@
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
+#include "replica/worker/WorkerUtils.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
@@ -103,6 +104,16 @@ bool WorkerFindRequest::execute() {
         // Check if the data directory exists and it can be read
 
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
+
+        // This operation is needed to support on-the-fly creation of the missing databases
+        // at new workers joining the Qserv cluster. The cluster may already have existing
+        // workers with prepopulated databases. A similar problem to be addressed here
+        // is when a worker was down for a prolonged period of time and during that time
+        // new databases were added to the cluster. In both cases the Replication system will
+        // expect the worker to have all databases which are known to the Controller.
+        if (config->get<unsigned int>("worker", "create-databases-on-scan")) {
+            WorkerUtils::createMissingDatabase(context(__func__), database());
+        }
         fs::path const dataDir =
                 fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);

@@ -16,6 +16,7 @@ target_sources(replica_worker PRIVATE
     WorkerServer.cc
     WorkerServerConnection.cc
     WorkerSqlRequest.cc
+    WorkerUtils.cc
 )
 target_link_libraries(replica_worker PUBLIC
     log
