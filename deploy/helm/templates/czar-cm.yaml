@@ -1,0 +1,121 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: czar-config
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+data:
+
+  99-qserv-czar.cnf: |
+    [mysqld]
+    datadir=/qserv/data/mysql
+    max-connections=16384
+    max_allowed_packet=128M
+    connect_timeout=28800
+    net_read_timeout=90000
+    net_write_timeout=90000
+    wait_timeout=90000
+    symbolic-links=0
+    tmp_table_size=4G
+    max_heap_table_size=4G
+    use_stat_tables='preferably'
+    optimizer_use_condition_selectivity=3
+    query-cache-size=0
+    bulk-insert-buffer-size=1G
+
+  my-proxy.cfg: |
+    [mysql-proxy]
+    proxy-address = :14040
+    proxy-backend-addresses = 127.0.0.1:3306
+    proxy-connect-timeout=30
+    log-level=debug
+
+  log-mysql-proxy.cfg: |
+    log4j.rootLogger=INFO, CONSOLE
+    log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+    log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+    log4j.appender.CONSOLE.layout.ConversionPattern=%d{yyyy-MM-ddTHH:mm:ss.SSSZ} LWP:%X{LWP} QID:%X{QID} %-5p %c{2} - %m%n
+    log4j.logger.lsst.qserv.sql.MySqlConnection=DEBUG
+    log4j.logger.lsst.qserv.qdisp.QueryRequest=DEBUG
+    log4j.logger.lsst.qserv.rproc.InfileMerger=DEBUG
+    log4j.logger.lsst.qserv.ccontrol.MergingHandler=DEBUG
+
+  qserv-czar.cfg: |
+    [css]
+    technology = mysql
+    hostname = 127.0.0.1
+    port = 3306
+    username = qsmaster
+    password = file:/secrets/czar/mariadb-qsmaster-password
+    database = qservCssData
+
+    [resultdb]
+    host = 127.0.0.1
+    port = 3306
+    user = qsmaster
+    passwd = file:/secrets/czar/mariadb-qsmaster-password
+    db = qservResult
+    transferDir = /qserv/data/results
+    #maxTransferMemMB = 10000
+    maxTransferMemMB = 0
+    #transferMinMBInMem = 10
+    transferMinMBInMem = 0
+    oldestResultKeptDays = 7
+    maxsqlconnectionattempts = 10
+    maxtablesize_mb = 5100
+    engine = myisam
+
+    [qmeta]
+    host = 127.0.0.1
+    port = 3306
+    user = qsmaster
+    passwd = file:/secrets/czar/mariadb-qsmaster-password
+    db = qservMeta
+
+    [qstatus]
+    host = 127.0.0.1
+    port = 3306
+    user = qsmaster
+    passwd = file:/secrets/czar/mariadb-qsmaster-password
+    db = qservMeta
+
+    [partitioner]
+    emptyChunkPath = /qserv/data/qserv
+    emptyChunkListFile = /qserv/data/qserv/emptyChunks.txt
+
+    [tuning]
+    #memoryEngine = yes
+    #largeResultConcurrentMerges = 3
+    largeResultConcurrentMerges = 6
+    qMetaSecsBetweenChunkCompletionUpdates = 10
+
+    [qdisppool]
+    poolSize = 250
+    largestPriority = 3
+    vectRunSizes = 200:200:50:50
+
+    [familymap]
+    usingChunkSize = 1
+
+    [replication]
+    instance_id = {{ .Release.Name }}
+    auth_key = file:/secrets/repl/auth-key
+    admin_auth_key = file:/secrets/repl/admin-auth-key
+    registry_host = qserv-registry
+    registry_port = 25082
+    registry_heartbeat_ival_sec = 1
+    http_port = 0
+    num_http_threads = 2
+
+  log-czar-http.cfg: |
+    log4j.rootLogger=INFO, CONSOLE
+    log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+    log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+    log4j.appender.CONSOLE.layout.ConversionPattern=%d{yyyy-MM-ddTHH:mm:ss.SSSZ} LWP:%X{LWP} QID:%X{QID} %-5p %c{2} - %m%n
+    log4j.logger.lsst.qserv.qdisp.Executive=DEBUG
+    log4j.logger.lsst.qserv.qdisp.QueryRequest=DEBUG
+    log4j.logger.lsst.qserv.rproc.InfileMerger=DEBUG
+    log4j.logger.lsst.qserv.ccontrol.MergingHandler=DEBUG
+    #log4j.logger.lsst.qserv.ccontrol.UserQuerySelect=DEBUG
+    #log4j.logger.lsst.qserv.xrdreq.QueryManagementAction=DEBUG
+    #log4j.logger.lsst.qserv.ccontrol.UserQueryQservManager=TRACE
