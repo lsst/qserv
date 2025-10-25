@@ -56,7 +56,9 @@ CREATE TABLE `qservw_worker`.`Id` (
   UNIQUE KEY (`type`))
 ENGINE=InnoDB;
 
-INSERT INTO `qservw_worker`.`Id` (`id`) VALUES (UUID());
+INSERT INTO `qservw_worker`.`Id` (`id`) VALUES (
+  COALESCE(NULLIF('{{ worker_name }}', ''), CONCAT(UUID()))
+);
 
 
 -- -----------------------------------------------------
