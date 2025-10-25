@@ -325,7 +325,12 @@ def enter_worker_svc(
     targs["db_socket"] = url.query.get("socket", "")
 
     save_template_cfg(targs)
-    save_template_cfg({"mysqld_user_qserv_password": mysqld_user_qserv_password})
+    save_template_cfg(
+        {
+            "mysqld_user_qserv_password": mysqld_user_qserv_password,
+            "worker_name": "",
+        }
+    )
 
     smig_worker(db_admin_uri, update=False)
 
