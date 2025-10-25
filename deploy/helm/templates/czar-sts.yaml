@@ -1,0 +1,221 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "qserv.name" . }}-czar
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "qserv.name" . }}-czar
+  replicas: {{ .Values.czars.replicas }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "qserv.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: czar
+  template:
+    metadata:
+      labels:
+        {{- include "qserv.labels" . | nindent 8 }}
+        app.kubernetes.io/component: czar
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: qserv.lsst.io/tier
+                    operator: In
+                    values: [ czar ]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values: [ {{ include "qserv.name" . }} ]
+                  - key: app.kubernetes.io/instance
+                    operator: In
+                    values: [ {{ .Release.Name }} ]
+                  - key: app.kubernetes.io/component
+                    operator: In
+                    values: [ czar ]
+              topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: mariadb
+          image: {{ .Values.mariadbImageName | quote }}
+          imagePullPolicy: {{ .Values.mariadbimagePullPolicy | quote }}
+          ports:
+            - name: mysql
+              containerPort: 3306
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: czar-secrets
+                  key: mariadb-root-password
+          startupProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" -N -e "SELECT 1"
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
+            periodSeconds: 10
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: mariadb-config
+              mountPath: /etc/mysql/conf.d/99-qserv-czar.cnf
+              subPath: 99-qserv-czar.cnf
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: czar-data
+              mountPath: /qserv/data
+        {{- if (include "qserv.enable" . | fromYaml).czar }}
+        - name: mysql-proxy
+          image: {{ .Values.qservImageName | quote }}
+          imagePullPolicy: {{ .Values.qservImagePullPolicy | quote }}
+          ports:
+            - name: mysql-proxy
+              containerPort: 14040
+          env:
+            - name: LSST_LOG_CONFIG
+              value: /config/log-mysql-proxy.cfg
+            - name: LD_PRELOAD
+              value: libjemalloc.so.2
+            - name: QSERV_CONFIG
+              value: /config/qserv-czar.cfg
+          command: [ "/bin/sh", "-c" ]
+          args:
+            - >
+              exec mysql-proxy
+              --proxy-lua-script=/usr/local/lua/qserv/scripts/mysqlProxy.lua
+              --lua-cpath=/usr/local/lua/qserv/lib/czarProxy.so
+              --defaults-file=/config/my-proxy.cfg
+          volumeMounts:
+            - name: czar-data
+              mountPath: /qserv/data
+            - name: czar-config
+              mountPath: /config
+              readOnly: true
+            - name: secrets-czar
+              mountPath: /secrets/czar
+              readOnly: true
+            - name: secrets-repl
+              mountPath: /secrets/repl
+              readOnly: true
+        - name: czar-http
+          image: {{ .Values.qservImageName | quote }}
+          imagePullPolicy: {{ .Values.qservImagePullPolicy | quote }}
+          ports:
+            - name: czar-http
+              containerPort: 4048
+          env:
+            - name: LSST_LOG_CONFIG
+              value: /config/log-czar-http.cfg
+            - name: LD_PRELOAD
+              value: libjemalloc.so.2
+          command: ["tini", "--", "bash", "-c"]
+          args:
+            - >
+              exec qserv-czar-http
+              --user=qsmaster
+              --password=$(cat /secrets/czar/mariadb-qsmaster-password)
+              --config=/config/qserv-czar.cfg
+              --port=4048
+              --threads=16
+              --worker-ingest-threads=16
+              --ssl-cert-file=/certs/czar/tls.crt
+              --ssl-private-key-file=.certs/czar/tls.key
+              --tmp-dir=/qserv/data/ingest
+              --verbose
+          volumeMounts:
+            - name: czar-data
+              mountPath: /qserv/data
+            - name: czar-config
+              mountPath: /config
+              readOnly: true
+            - name: czar-cert
+              mountPath: /certs/czar
+              readOnly: true
+            - name: secrets-czar
+              mountPath: /secrets/czar
+              readOnly: true
+            - name: secrets-repl
+              mountPath: /secrets/repl
+              readOnly: true
+        - name: mysql-proxy-ssl
+          image: {{ .Values.sslProxyImageName | quote }}
+          imagePullPolicy: {{ .Values.sslProxyImagePullPolicy | quote }}
+          ports:
+            - name: mysql-proxy-ssl
+              containerPort: 4040
+          command: [ "proxy" ]
+          args:
+            - "4040"
+            - "14040"
+            - "/certs/czar/tls.crt"
+            - "/certs/czar/tls.key"
+          volumeMounts:
+            - name: czar-cert
+              mountPath: /certs/czar
+              readOnly: true
+        {{- end }}
+      volumes:
+        - name: mariadb-config
+          configMap:
+            name: czar-config
+            defaultMode: 0440
+        - name: czar-config
+          configMap:
+            name: czar-config
+            defaultMode: 0440
+        - name: czar-cert
+          secret:
+            secretName: czar-cert
+            defaultMode: 0440
+        - name: tmp
+          emptyDir: {}
+        - name: secrets-czar
+          secret:
+            secretName: czar-secrets
+            defaultMode: 0440
+        - name: secrets-repl
+          secret:
+            secretName: repl-secrets
+            defaultMode: 0440
+  volumeClaimTemplates:
+    - metadata:
+        name: czar-data
+        labels:
+          {{- include "qserv.labels" . | nindent 10 }}
+      spec:
+        accessModes: [ ReadWriteOnce ]
+        storageClassName: {{ .Values.czars.storage.class | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.czars.storage.size | quote }}
