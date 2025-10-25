@@ -1,0 +1,29 @@
+qservImageName:  qserv/lite-qserv:2025.10.1-rc1-34-g4534d414a
+mariadbImageName: qserv/lite-mariadb:2025.10.1-rc1
+sslProxyImageName: qserv/mysql-proxy-ssl:latest
+
+qservImagePullPolicy: IfNotPresent
+mariadbImagePullPolicy: IfNotPresent
+sslProxyImagePullPolicy: IfNotPresent
+
+mode: full  # full | db-only
+
+czars:
+  replicas: 1
+  mariadb:
+    storage:
+      class: rubin-qserv-storage
+      size: 5Ti
+
+workers:
+  replicas: 72
+  mariadb:
+    storage:
+      class: rubin-qserv-storage
+      size: 10Ti
+
+replication:
+  mariadb:
+    storage:
+      class: rubin-qserv-storage
+      size: 2Ti
