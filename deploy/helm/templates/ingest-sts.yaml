@@ -1,0 +1,86 @@
+{{- if .Values.ingest.enable -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "qserv.name" . }}-ingest
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "qserv.name" . }}-ingest
+  replicas: 1
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "qserv.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: ingest
+  template:
+    metadata:
+      labels:
+        {{- include "qserv.labels" . | nindent 8 }}
+        app.kubernetes.io/component: ingest
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: qserv.lsst.io/tier
+                  operator: In
+                  values: [ utility ]
+      containers:
+        - name: nginx
+          image: nginx:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: ingest-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+              readOnly: true
+            - name: ingest-data
+              mountPath: /qserv/data
+        - name: ingest-helper
+          image: {{ .Values.ingestHelperImageName | quote }}
+          imagePullPolicy: {{ .Values.ingestHelperPullPolicy | quote }}
+          env:
+            - name: QSERV_INSTANCE_ID
+              value: {{ .Release.Name }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: ingest-data
+              mountPath: /qserv/data
+            - name: secrets-czar
+              mountPath: /etc/secrets/czar
+              readOnly: true
+            - name: secrets-repl
+              mountPath: /etc/secrets/repl
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: ingest-config
+          configMap:
+            name: ingest-config
+        - name: secrets-czar
+          secret:
+            secretName: czar-secrets
+        - name: secrets-repl
+          secret:
+            secretName: repl-secrets
+  volumeClaimTemplates:
+    - metadata:
+        name: ingest-data
+        labels:
+          {{- include "qserv.labels" . | nindent 10 }}
+      spec:
+        accessModes: [ ReadWriteOnce ]
+        storageClassName: {{ .Values.ingest.storage.class | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.ingest.storage.size | quote }}
+{{- end }}

@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: repl-config
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+data:
+
+  99-qserv-repl.cnf: |
+    [mysqld]
+    datadir=/qserv/data/mysql
+    max-connections=16384
+    connect_timeout=28800
+    net_read_timeout=86400
+    net_write_timeout=86400
+    wait_timeout=86400
+    innodb_lock_wait_timeout=3600
+    innodb-read-io-threads=16
+    innodb-random-read-ahead=1
+    innodb-buffer-pool-size=8589934592
+    symbolic-links=0
+    tmp_table_size=4G
+    max_heap_table_size=4G
+    query-cache-size=0
+
+  log-repl-contr.cfg: |
+    log4j.rootLogger=INFO, CONSOLE
+    log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+    log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+    log4j.appender.CONSOLE.layout.ConversionPattern=%d{yyyy-MM-ddTHH:mm:ss.SSSZ}  LWP:%-5X{LWP} %-5p %c{2} - %m%n
+    #log4j.logger.lsst.qserv.http.BaseModule=DEBUG
+    #log4j.logger.lsst.qserv.replica=DEBUG
+    #log4j.logger.lsst.qserv.replica.Configuration=DEBUG
+    #log4j.logger.lsst.qserv.replica.ConfigurationIface=DEBUG
+    #log4j.logger.lsst.qserv.replica.ConfigurationBase=DEBUG
+    #log4j.logger.lsst.qserv.replica.ConfigurationMySQL=DEBUG
+    #log4j.logger.lsst.qserv.replica.Controller=DEBUG
+    #log4j.logger.lsst.qserv.replica.DatabaseMySQL=DEBUG
+    #log4j.logger.lsst.qserv.replica.MessengerConnector=DEBUG
+    #log4j.logger.lsst.qserv.replica.DatabaseServicesPool=ERROR
+    #log4j.logger.lsst.qserv.replica.DatabaseServicesMySQL=DEBUG
+    #log4j.logger.lsst.qserv.replica.AbortTransactionJob=TRACE
+    #log4j.logger.lsst.qserv.replica.IndexRequest=DEBUG
+    #log4j.logger.lsst.qserv.replica.DirectorIndexJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.FixUpJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.FindAllJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.QservSyncJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.PurgeJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.HttpProcessor=DEBUG
+    #log4j.logger.lsst.qserv.replica.HttpModuleBase=DEBUG
+    #log4j.logger.lsst.qserv.replica.SqlJob=DEBUG
+    #log4j.logger.lsst.qserv.util=TRACE

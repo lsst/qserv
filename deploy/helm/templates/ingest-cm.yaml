@@ -1,0 +1,19 @@
+{{- if .Values.ingest.enable -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingest-config
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+data:
+
+  default.conf: |
+    server {
+      listen 80;
+      server_name localhost;
+      location / {
+        root /qserv/data/html;
+        index index.html index.htm;
+      }
+    }
+{{- end }}
