@@ -1,0 +1,34 @@
+qservImageName: qserv/lite-qserv:2026.2.1-rc1-49-gcf115b202
+mariadbImageName: qserv/lite-mariadb:2026.2.1-rc1
+sslProxyImageName: qserv/mysql-proxy-ssl:latest
+ingestHelperImageName: qserv/lite-build:2026.2.1-rc1-19-gf0e450b0e
+
+qservImagePullPolicy: IfNotPresent
+mariadbImagePullPolicy: IfNotPresent
+sslProxyImagePullPolicy: IfNotPresent
+ingestHelperPullPolicy: IfNotPresent
+
+mode: full  # full | db-only
+
+czars:
+  replicas: 1
+  storage:
+    class: rubin-qserv-storage
+    size: 5Ti
+
+workers:
+  replicas: 72
+  storage:
+    class: rubin-qserv-storage
+    size: 10Ti
+
+replication:
+  storage:
+    class: rubin-qserv-storage
+    size: 2Ti
+
+ingest:
+  enable: true
+  storage:
+    class: rubin-qserv-storage
+    size: 200Gi

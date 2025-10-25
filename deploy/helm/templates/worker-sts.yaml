@@ -1,0 +1,202 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "qserv.name" . }}-worker
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "qserv.name" . }}-worker
+  replicas: {{ .Values.workers.replicas }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "qserv.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "qserv.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: qserv.lsst.io/tier
+                    operator: In
+                    values: [ worker ]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values: [ {{ include "qserv.name" . }} ]
+                  - key: app.kubernetes.io/instance
+                    operator: In
+                    values: [ {{ .Release.Name }} ]
+                  - key: app.kubernetes.io/component
+                    operator: In
+                    values: [ worker ]
+              topologyKey: kubernetes.io/hostname
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: mariadb
+          image: {{ .Values.mariadbImageName | quote }}
+          imagePullPolicy: {{ .Values.mariadbImagePullPolicy | quote }}
+          ports:
+            - name: mysql
+              containerPort: 3306
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: worker-secrets
+                  key: mariadb-root-password
+          startupProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" -N -e "SELECT 1"
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
+            periodSeconds: 10
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: mariadb-config
+              mountPath: /etc/mysql/conf.d/99-qserv-worker.cnf
+              subPath: 99-qserv-worker.cnf
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: worker-data
+              mountPath: /qserv/data
+        {{- if (include "qserv.enable" . | fromYaml).worker }}
+        - name: repl-worker
+          image: {{ .Values.qservImageName | quote }}
+          imagePullPolicy: {{ .Values.qservImagePullPolicy | quote }}
+          ports:
+            - name: svc
+              containerPort: 25000
+            - name: fs
+              containerPort: 25001
+            - name: loader
+              containerPort: 25002
+            - name: exporter
+              containerPort: 25003
+            - name: http-loader
+              containerPort: 25004
+          env:
+            - name: LSST_LOG_CONFIG
+              value: /config/log-repl-worker.cfg
+            - name: LD_PRELOAD
+              value: libjemalloc.so.2
+          command: ["tini", "--", "bash", "-c"]
+          args:
+            - >
+              exec qserv-replica-worker
+              --registry-host=qserv-registry
+              --config=mysql://qsreplica:$(cat /secrets/repl/mariadb-qsreplica-password)@qserv-repl-0.qserv-repl/qservReplica
+              --instance-id={{ .Release.Name }}
+              --qserv-worker-db=mysql://root:$(cat /secrets/worker/mariadb-root-password)@localhost:3306/qservw_worker
+              --auth-key="$(cat /secrets/repl/auth-key)"
+              --admin-auth-key="$(cat /secrets/repl/admin-auth-key)"
+              --worker-ingest-num-retries=4
+              --worker-num-async-loader-processing-threads=32
+              --schema-upgrade-wait=1
+              --schema-upgrade-wait-timeout=600
+              --debug
+          volumeMounts:
+            - name: worker-config
+              mountPath: /config
+              readOnly: true
+            - name: secrets-worker
+              mountPath: /secrets/worker
+              readOnly: true
+            - name: secrets-repl
+              mountPath: /secrets/repl
+              readOnly: true
+            - name: worker-data
+              mountPath: /qserv/data
+        - name: worker-svc
+          image: {{ .Values.qservImageName | quote }}
+          imagePullPolicy: {{ .Values.qservImagePullPolicy | quote }}
+          ports:
+            - name: http
+              containerPort: 25010
+          env:
+            - name: LSST_LOG_CONFIG
+              value: /config/log-worker-svc.cfg
+            - name: LD_PRELOAD
+              value: libjemalloc.so.2
+          command: ["tini", "--", "bash", "-c"]
+          args:
+            - >
+              exec qserv-worker-http
+              --config=/config/worker-svc.cf
+          volumeMounts:
+            - name: worker-config
+              mountPath: /config
+              readOnly: true
+            - name: secrets-worker
+              mountPath: /secrets/worker
+              readOnly: true
+            - name: secrets-repl
+              mountPath: /secrets/repl
+              readOnly: true
+            - name: worker-data
+              mountPath: /qserv/data
+        {{- end }}
+      volumes:
+        - name: mariadb-config
+          configMap:
+            name: worker-config
+            items:
+            - key: 99-qserv-worker.cnf
+              path: 99-qserv-worker.cnf
+        - name: worker-config
+          configMap:
+            name: worker-config
+        - name: tmp
+          emptyDir: {}
+        - name: secrets-worker
+          secret:
+            secretName: worker-secrets
+        - name: secrets-repl
+          secret:
+            secretName: repl-secrets
+  volumeClaimTemplates:
+    - metadata:
+        name: worker-data
+        labels:
+          {{- include "qserv.labels" . | nindent 10 }}
+      spec:
+        accessModes: [ ReadWriteOnce ]
+        storageClassName: {{ .Values.workers.storage.class | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.workers.storage.size | quote }}

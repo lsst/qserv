@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: worker-config
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+data:
+
+  99-qserv-worker.cnf: |
+    [mysqld]
+    datadir=/qserv/data/mysql
+    max-connections=16384
+    connect_timeout=28800
+    net_read_timeout=90000
+    net_write_timeout=90000
+    wait_timeout=90000
+    symbolic-links=0
+    tmp_table_size=4G
+    max_heap_table_size=4G
+    myisam_sort_buffer_size=16G
+    myisam_repair_threads=2
+    use_stat_tables='preferably'
+    optimizer_use_condition_selectivity=3
+    query-cache-size=0
+    join-buffer-size=4G
+
+  log-repl-worker.cfg: |
+    log4j.rootLogger=INFO, CONSOLE
+    log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+    log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+    log4j.appender.CONSOLE.layout.ConversionPattern=%d{yyyy-MM-ddTHH:mm:ss.SSSZ}  LWP:%-5X{LWP} %-5p %c{2} - %m%n
+    #log4j.logger.lsst.qserv.replica=DEBUG
+    #log4j.logger.lsst.qserv.replica.Configuration=DEBUG
+    #log4j.logger.lsst.qserv.replica.ConfigurationIface=DEBUG
+    #log4j.logger.lsst.qserv.replica.ConfigurationBase=DEBUG
+    #log4j.logger.lsst.qserv.replica.ConfigurationMySQL=DEBUG
+    #log4j.logger.lsst.qserv.replica.Controller=DEBUG
+    #log4j.logger.lsst.qserv.replica.DatabaseMySQL=DEBUG
+    #log4j.logger.lsst.qserv.replica.MessengerConnector=DEBUG
+    #log4j.logger.lsst.qserv.replica.DatabaseServicesPool=ERROR
+    #log4j.logger.lsst.qserv.replica.DatabaseServicesMySQL=DEBUG
+    #log4j.logger.lsst.qserv.replica.AbortTransactionJob=TRACE
+    #log4j.logger.lsst.qserv.replica.IndexRequest=DEBUG
+    #log4j.logger.lsst.qserv.replica.IndexJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.FixUpJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.FindAllJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.QservSyncJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.PurgeJob=DEBUG
+    #log4j.logger.lsst.qserv.replica.HttpProcessor=DEBUG
+    #log4j.logger.lsst.qserv.replica.HttpModuleBase=DEBUG
+    #log4j.logger.lsst.qserv.replica.SqlJob=DEBUG
+    #log4j.logger.lsst.qserv.util=DEBUG
+
+  log-worker-svc.cfg: |
+    log4j.rootLogger=INFO, CONSOLE
+    log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
+    log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
+    log4j.appender.CONSOLE.layout.ConversionPattern=%d{yyyy-MM-ddTHH:mm:ss.SSSZ}  LWP %-5X{LWP} %-5p  %m%n
+
+  worker-svc.cf: |
+    [mysql]
+    hostname = 127.0.0.1
+    port = 3306
+    username = qsmaster
+    password = file:/secrets/worker/mariadb-qsmaster-password
+
+    [scheduler]
+    thread_pool_size = 20
+    required_tasks_completed = 1
+    group_size = 10
+    maxActiveChunks_snail = 1
+    maxActiveChunks_slow = 4
+    maxActiveChunks_med = 4
+    maxActiveChunks_fast = 4
+
+    [sqlconnections]
+    maxsqlconn = 980
+    reservedinteractivesqlconn = 930
+
+    [results]
+    dirname = /qserv/data/results
+    num_http_threads = 4
+    clean_up_on_start = 1
+
+    [replication]
+    instance_id = {{ .Release.Name }}
+    auth_key = file:/secrets/repl/auth-key
+    admin_auth_key = file:/secrets/repl/admin-auth-key
+    registry_host = qserv-registry
+    registry_port = 25082
+    registry_heartbeat_ival_sec = 1
+    http_port = 25010
+    num_http_threads = 2
