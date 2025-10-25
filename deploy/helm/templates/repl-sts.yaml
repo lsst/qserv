@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "qserv.name" . }}-repl
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "qserv.name" . }}-repl
+  replicas: 1
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      {{- include "qserv.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: repl
+  template:
+    metadata:
+      labels:
+        {{- include "qserv.labels" . | nindent 8 }}
+        app.kubernetes.io/component: repl
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: qserv.lsst.io/tier
+                  operator: In
+                  values: [ utility ]
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: mariadb
+          image: {{ .Values.mariadbImageName | quote }}
+          imagePullPolicy: {{ .Values.mariadbImagePullPolicy | quote }}
+          ports:
+            - name: mysql
+              containerPort: 3306
+          env:
+            - name: MARIADB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: repl-secrets
+                  key: mariadb-root-password
+          startupProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" -N -e "SELECT 1"
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command:
+                - bash
+                - -ec
+                - |
+                  mariadb-admin --protocol=TCP -h 127.0.0.1 --connect-timeout=2 -uroot -p"$$MARIADB_ROOT_PASSWORD" ping
+            periodSeconds: 10
+            timeoutSeconds: 3
+          volumeMounts:
+            - name: mariadb-config
+              mountPath: /etc/mysql/conf.d/99-qserv-repl.cnf
+              subPath: 99-qserv-repl.cnf
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: repl-data
+              mountPath: /qserv/data
+        {{- if (include "qserv.enable" . | fromYaml).replication }}
+        - name: repl-controller
+          image: {{ .Values.qservImageName | quote }}
+          imagePullPolicy: {{ .Values.qservImagePullPolicy | quote }}
+          ports:
+            - name: http
+              containerPort: 25081
+          env:
+            - name: LSST_LOG_CONFIG
+              value: /config/log-repl-contr.cfg
+            - name: LD_PRELOAD
+              value: libjemalloc.so.2
+          command: ["tini", "--", "bash", "-c"]
+          args:
+            - >
+              exec qserv-replica-master-http
+              --registry-host=qserv-registry
+              --config=mysql://qsreplica:$(cat /secrets/repl/mariadb-qsreplica-password)@localhost/qservReplica
+              --instance-id={{ .Release.Name }}
+              --qserv-czar-db=mysql://root:$(cat /secrets/czar/mariadb-root-password)@qserv-czar-0.qserv-czar:3306/qservMeta
+              --qserv-chunk-map-update
+              --auth-key="$(cat /secrets/repl/auth-key)"
+              --admin-auth-key="$(cat /secrets/repl/admin-auth-key)"
+              --http-root=/usr/local/qserv/www/
+              --health-probe-interval=120
+              --replication-interval=600
+              --qserv-sync-timeout=600
+              --controller-ingest-job-monitor-ival-sec=1
+              --controller-auto-register-workers=1
+              --purge
+              --debug
+          volumeMounts:
+            - name: repl-data
+              mountPath: /qserv/data
+            - name: repl-config
+              mountPath: /config
+              readOnly: true
+            - name: secrets-repl
+              mountPath: /secrets/repl
+              readOnly: true
+            - name: secrets-czar
+              mountPath: /secrets/czar
+              readOnly: true
+        {{- end }}
+      volumes:
+        - name: mariadb-config
+          configMap:
+            name: repl-config
+            items:
+            - key: 99-qserv-repl.cnf
+              path: 99-qserv-repl.cnf
+        - name: repl-config
+          configMap:
+            name: repl-config
+        - name: tmp
+          emptyDir: {}
+        - name: secrets-repl
+          secret:
+            secretName: repl-secrets
+        - name: secrets-czar
+          secret:
+            secretName: czar-secrets
+  volumeClaimTemplates:
+    - metadata:
+        name: repl-data
+        labels:
+          {{- include "qserv.labels" . | nindent 10 }}
+      spec:
+        accessModes: [ ReadWriteOnce ]
+        storageClassName: {{ .Values.replication.storage.class | quote }}
+        resources:
+          requests:
+            storage: {{ .Values.replication.storage.size | quote }}
