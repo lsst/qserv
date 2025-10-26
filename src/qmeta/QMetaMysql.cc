@@ -808,7 +808,6 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
     vector<vector<string>> const rows = results.extractFirstNColumns(5);
     trans->commit();
 
-    if (rows.empty()) throw EmptyTableError(ERR_LOC, tableName);
     try {
         for (auto const& row : rows) {
             string const& worker = row[0];
@@ -847,7 +846,9 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
         throw SqlError(ERR_LOC, errObj);
     }
     if (updateTime.empty()) {
-        throw EmptyTableError(ERR_LOC, tableName);
+        LOGS(_log, LOG_LVL_TRACE,
+             "QMetaMysql::_getChunkMapUpdateTime empty chunkMapStatus; returning default");
+        return chrono::time_point<chrono::system_clock>();
     } else if (updateTime.size() > 1) {
         throw ConsistencyError(ERR_LOC, "Too many rows in result set of query " + query);
     }
