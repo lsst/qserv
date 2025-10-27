@@ -114,17 +114,25 @@ class MasterReplicationMigrationManager(SchemaMigMgr):
                 "A non-admin replication database connection uri must be provided to initialize the "
                 "replication database."
             )
-        user = make_url(self.repl_connection).username
+        url = make_url(self.repl_connection)
+        user = url.username
+        password = url.password
+
         if not user:
             raise RuntimeError(
                 "To initialize the replication database, the non-admin connection uri must contain a user "
                 "name."
             )
+        if not password:
+            raise RuntimeError(
+                "To initialize the replication database, the non-admin connection uri must contain a "
+                "password."
+            )
         for stmt in [
-            f"CREATE USER IF NOT EXISTS {user}@localhost;",
-            f"CREATE USER IF NOT EXISTS {user}@'%';",
-            f"GRANT ALL ON {database}.* TO  {user}@localhost;",
-            f"GRANT ALL ON {database}.* TO  {user}@'%';",
+            f"CREATE USER IF NOT EXISTS {user}@localhost IDENTIFIED BY '{password}';",
+            f"CREATE USER IF NOT EXISTS {user}@'%' IDENTIFIED BY '{password}';",
+            f"GRANT ALL ON {database}.* TO {user}@localhost;",
+            f"GRANT ALL ON {database}.* TO {user}@'%';",
             "FLUSH PRIVILEGES;",
         ]:
             with closing(self.connection.cursor()) as cursor:
