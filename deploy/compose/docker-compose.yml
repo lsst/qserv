@@ -124,7 +124,7 @@ services:
         command: >
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-mariadb-0:3306/qservw_worker
-          --repl-connection mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --repl-connection mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
           --instance-id=qserv_proj
@@ -198,7 +198,7 @@ services:
         command: >
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-mariadb-1:3306/qservw_worker
-          --repl-connection mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --repl-connection mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
           --instance-id=qserv_proj
@@ -343,7 +343,7 @@ services:
         init: true
         command: >
           entrypoint --log-level DEBUG replication-controller
-          --db-uri mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --db-uri mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
           --qserv-czar-db=mysql://root:CHANGEME@czar-mariadb:3306/qservMeta
           --log-cfg-file=/config-etc/log/log-repl-controller.cnf
@@ -376,7 +376,7 @@ services:
         init: true
         command: >
           entrypoint --log-level DEBUG replication-registry
-          --db-uri mysql://qsreplica@repl-mariadb:3306/qservReplica
+          --db-uri mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-registry.cnf
           --
