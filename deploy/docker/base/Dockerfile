@@ -241,6 +241,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         procps-ng \
         protobuf \
         python3.12 \
+        tini \
         tree \
         vim \
         lsof \
