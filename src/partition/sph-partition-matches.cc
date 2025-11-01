@@ -49,15 +49,14 @@
 #include <cstdio>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "boost/filesystem.hpp"
-#include "boost/make_shared.hpp"
 #include "boost/program_options.hpp"
-#include "boost/shared_ptr.hpp"
 
 #include "partition/Chunker.h"
 #include "partition/ChunkIndex.h"
@@ -101,7 +100,7 @@ public:
     void reduce(RecordIter const begin, RecordIter const end);
     void finish();
 
-    boost::shared_ptr<ChunkIndex> const result() { return _index; }
+    std::shared_ptr<ChunkIndex> const result() { return _index; }
 
     static void defineOptions(po::options_description& opts);
 
@@ -133,7 +132,7 @@ private:
     int _subChunkIdField;
     int _flagsField;
     Chunker _chunker;
-    boost::shared_ptr<ChunkIndex> _index;
+    std::shared_ptr<ChunkIndex> _index;
     int32_t _chunkId;
     uint32_t _numNodes;
     fs::path _outputDir;
@@ -159,7 +158,7 @@ Worker::Worker(ConfigStore const& config)
           _subChunkIdField(-1),
           _flagsField(-1),
           _chunker(config),
-          _index(boost::make_shared<ChunkIndex>()),
+          _index(std::make_shared<ChunkIndex>()),
           _chunkId(-1),
           _numNodes(config.get<uint32_t>("out.num-nodes")),
           _outputDir(config.get<std::string>("out.dir").c_str()),   // defend against GCC PR21334
@@ -477,7 +476,7 @@ int main(int argc, char const* const* argv) {
         part::ensureOutputFieldExists(config, "part.flags");
         part::makeOutputDirectory(config, true);
         part::PartitionMatchesJob job(config);
-        boost::shared_ptr<part::ChunkIndex> index = job.run(part::makeInputLines(config));
+        std::shared_ptr<part::ChunkIndex> index = job.run(part::makeInputLines(config));
         if (!index->empty()) {
             fs::path d(config.get<std::string>("out.dir"));
             fs::path f = config.get<std::string>("part.prefix") + "_index.bin";

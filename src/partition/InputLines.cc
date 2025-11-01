@@ -25,7 +25,6 @@
 #include <cstdlib>
 #include <stdexcept>
 
-#include "boost/make_shared.hpp"
 #include "boost/static_assert.hpp"
 #include "boost/thread.hpp"
 #include "boost/algorithm/string/predicate.hpp"
@@ -85,11 +84,11 @@ struct LineFragment {
 
 // An input file block.
 struct Block {
-    boost::shared_ptr<InputFile> file;
+    std::shared_ptr<InputFile> file;
     off_t offset;
     size_t size;
-    boost::shared_ptr<LineFragment> head;
-    boost::shared_ptr<LineFragment> tail;
+    std::shared_ptr<LineFragment> head;
+    std::shared_ptr<LineFragment> tail;
 
     Block() : file(), offset(0), size(0), head(), tail() {}
 
@@ -180,7 +179,7 @@ std::vector<Block> const split(fs::path const &path, off_t blockSize) {
 
     if (boost::algorithm::ends_with(path.c_str(), ".parquet") ||
         boost::algorithm::ends_with(path.c_str(), ".parq")) {
-        b.file = boost::make_shared<InputFileArrow>(path, blockSize);
+        b.file = std::make_shared<InputFileArrow>(path, blockSize);
 
         b.size = blockSize;
         fileSize = b.file->getBatchNumber();
@@ -194,7 +193,7 @@ std::vector<Block> const split(fs::path const &path, off_t blockSize) {
         return blocks;
     }
 
-    b.file = boost::make_shared<InputFile>(path);
+    b.file = std::make_shared<InputFile>(path);
 
     b.size = blockSize;
     fileSize = b.file->size();
@@ -208,7 +207,7 @@ std::vector<Block> const split(fs::path const &path, off_t blockSize) {
         b.size = static_cast<size_t>(std::min(fileSize - b.offset, blockSize));
         b.head = b.tail;
         if (i < numBlocks - 1) {
-            b.tail = boost::make_shared<LineFragment>();
+            b.tail = std::make_shared<LineFragment>();
         } else {
             b.tail.reset();
         }
@@ -325,11 +324,11 @@ CharPtrPair const InputLines::Impl::read(char *buf) {
 // Method delegation.
 
 InputLines::InputLines(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine)
-        : _impl(boost::make_shared<Impl>(paths, blockSize, skipFirstLine)) {}
+        : _impl(std::make_shared<Impl>(paths, blockSize, skipFirstLine)) {}
 
 InputLines::InputLines(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine,
                        ConfigParamArrow const &configArrow)
-        : _impl(boost::make_shared<Impl>(paths, blockSize, skipFirstLine, configArrow)) {}
+        : _impl(std::make_shared<Impl>(paths, blockSize, skipFirstLine, configArrow)) {}
 
 size_t InputLines::getBlockSize() const { return _impl ? _impl->getBlockSize() : 0; }
 
