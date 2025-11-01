@@ -64,8 +64,9 @@ public:
         }
     };
 
-private:
     typedef boost::unordered_map<int32_t, Entry> ChunkMap;
+
+private:
     typedef boost::unordered_map<int64_t, Entry> SubChunkMap;
     typedef ChunkMap::const_iterator ChunkIter;
     typedef SubChunkMap::const_iterator SubChunkIter;
@@ -118,6 +119,9 @@ public:
         }
         return loc.overlap ? i->second.numOverlapRecords : i->second.numRecords;
     }
+
+    /// Return the map of chunk IDs to record counts.
+    ChunkMap const& getChunks() const { return _chunks; }
 
     /// Return record counts for the given chunk.
     Entry const& operator()(int32_t chunkId) const {

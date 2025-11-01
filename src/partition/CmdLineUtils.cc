@@ -26,11 +26,14 @@
 #include <algorithm>
 #include <iostream>
 #include <set>
+#include <sstream>
+#include <stdexcept>
 #include <vector>
 #include "boost/algorithm/string/predicate.hpp"
 
 #include "partition/ConfigStore.h"
 #include "partition/Constants.h"
+#include "partition/Exceptions.h"
 #include "partition/FileUtils.h"
 
 namespace fs = boost::filesystem;
@@ -75,8 +78,9 @@ ConfigStore parseCommandLine(po::options_description const& options, int argc, c
     po::store(po::parse_command_line(argc, const_cast<char**>(argv), all), vm);
     po::notify(vm);
     if ((vm.count("help") != 0) && vm["help"].as<bool>()) {
-        std::cout << argv[0] << " [options]\n\n" << help << "\n" << all << std::endl;
-        std::exit(EXIT_SUCCESS);
+        std::ostringstream oss;
+        oss << argv[0] << " [options]\n\n" << help << "\n" << all << std::endl;
+        throw ExitOnHelp(oss.str());
     }
     // Parse configuration files, if any.
     if (vm.count("config-file") != 0) {
@@ -218,8 +222,7 @@ void makeOutputDirectory(ConfigStore& config, bool mayExist) {
         outDir = config.get<std::string>("out.dir");
     }
     if (outDir.empty()) {
-        std::cerr << "No output directory specified (use --out.dir)." << std::endl;
-        std::exit(EXIT_FAILURE);
+        throw std::invalid_argument("No output directory specified (use --out.dir).");
     }
     outDir = fs::system_complete(outDir);
     if (outDir.filename() == ".") {
@@ -231,9 +234,8 @@ void makeOutputDirectory(ConfigStore& config, bool mayExist) {
     }
     config.set("out.dir", outDir.string());
     if (fs::create_directories(outDir) == false && !mayExist) {
-        std::cerr << "The output directory --out.dir=" << outDir.string()
-                  << " already exists - please choose another." << std::endl;
-        std::exit(EXIT_FAILURE);
+        throw std::runtime_error("The output directory --out.dir=" + outDir.string() +
+                                 " already exists - please choose another.");
     }
 }
 
@@ -244,8 +246,7 @@ void ensureOutputFieldExists(ConfigStore& config, std::string const& opt) {
     std::vector<std::string> columns;
     if (!config.has("out.csv.field")) {
         if (!config.has("in.csv.field")) {
-            std::cerr << "Input CSV column names not specified." << std::endl;
-            std::exit(EXIT_FAILURE);
+            throw std::invalid_argument("Input CSV column names not specified.");
         }
         columns = config.get<std::vector<std::string>>("in.csv.field");
     } else {

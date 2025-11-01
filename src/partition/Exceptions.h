@@ -1,6 +1,5 @@
 /*
  * LSST Data Management System
- * Copyright 2013 LSST Corporation.
  *
  * This product includes software developed by the
  * LSST Project (http://www.lsst.org/).
@@ -19,32 +18,24 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
+#ifndef LSST_PARTITION_EXCEPTIONS_H
+#define LSST_PARTITION_EXCEPTIONS_H
 
 // System headers
-#include <iostream>
 #include <stdexcept>
 
-// Third party headers
-#include "nlohmann/json.hpp"
+// This header declarations
+namespace lsst::partition {
 
-// Qserv headers
-#include "partition/ChunkIndex.h"
-#include "partition/ConfigStore.h"
-#include "partition/Exceptions.h"
-#include "partition/PartitionTool.h"
+/**
+ * An exception type used to indicate that help information was requested.
+ * The message associated with the exception contains the help text.
+ */
+class ExitOnHelp : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
 
-int main(int argc, char const* const* argv) {
-    try {
-        lsst::partition::PartitionTool partitioner(nlohmann::json::object(), argc, argv);
-        if (partitioner.config->flag("verbose")) {
-            partitioner.chunkIndex->write(std::cout, 0);
-            std::cout << std::endl;
-        }
-    } catch (lsst::partition::ExitOnHelp const& ex) {
-        std::cout << ex.what() << std::endl;
-    } catch (std::exception const& ex) {
-        std::cerr << ex.what() << std::endl;
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
-}
+}  // namespace lsst::partition
+
+#endif  // LSST_PARTITION_EXCEPTIONS_H
