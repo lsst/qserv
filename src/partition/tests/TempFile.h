@@ -23,6 +23,7 @@
 #ifndef TEMPFILE_H
 #define TEMPFILE_H
 
+#include <memory>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,7 +32,6 @@
 #include <stdexcept>
 
 #include "boost/filesystem/path.hpp"
-#include "boost/shared_ptr.hpp"
 
 #include "partition/FileUtils.h"
 
@@ -65,7 +65,7 @@ struct TempFile {
         InputFile if2(t2.path());
         OutputFile of(path(), true);
         size_t sz = static_cast<size_t>(std::max(if1.size(), if2.size()));
-        boost::shared_ptr<void> buf(malloc(sz), free);
+        std::shared_ptr<void> buf(malloc(sz), free);
         if (!buf) {
             throw std::bad_alloc();
         }
