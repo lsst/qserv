@@ -26,6 +26,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -34,7 +35,6 @@
 
 #include "boost/filesystem.hpp"
 #include "boost/program_options.hpp"
-#include "boost/shared_ptr.hpp"
 
 #include "partition/Chunker.h"
 #include "partition/ChunkReducer.h"
@@ -223,7 +223,7 @@ int main(int argc, char const* const* argv) {
         part::ensureOutputFieldExists(config, "part.sub-chunk");
         part::makeOutputDirectory(config, true);
         part::PartitionJob job(config);
-        boost::shared_ptr<part::ChunkIndex> index = job.run(part::makeInputLines(config));
+        std::shared_ptr<part::ChunkIndex> index = job.run(part::makeInputLines(config));
         part::ObjectIndex::instance()->close();
         if (!index->empty()) {
             fs::path d(config.get<std::string>("out.dir"));
