@@ -310,9 +310,21 @@ json HttpCzarIngestModuleBase::_request(http::Method method, string const& url, 
     auto const request = _asyncRequest(method, url, data);
     request->start();
     request->wait();
-    if (request->responseCode() != qhttp::STATUS_OK) {
-        throw http::Error(__func__, "http_code: " + to_string(request->responseCode()), errorExt);
+    if (request->state() == http::AsyncReq::State::FINISHED) {
+        if (request->responseCode() != qhttp::STATUS_OK) {
+            throw http::Error(__func__,
+                              "request state: " + http::AsyncReq::state2str(request->state()) +
+                                      ", error: " + request->errorMessage() +
+                                      ", http_code: " + to_string(request->responseCode()),
+                              errorExt);
+        }
+    } else {
+        throw http::Error(__func__,
+                          "request state: " + http::AsyncReq::state2str(request->state()) +
+                                  ", error: " + request->errorMessage(),
+                          errorExt);
     }
+
     json response;
     try {
         response = json::parse(request->responseBody());

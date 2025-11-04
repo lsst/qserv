@@ -186,10 +186,21 @@ json HttpCzarIngestModule::_ingestData() {
                     // Process workers' responses.
                     map<string, string> errors;
                     for (auto const& [workerId, req] : workerRequests) {
-                        if (req->responseCode() != qhttp::STATUS_OK) {
-                            errors[workerId] = "http_code: " + to_string(req->responseCode());
+                        string error;
+                        if (req->state() == http::AsyncReq::State::FINISHED) {
+                            if (req->responseCode() != qhttp::STATUS_OK) {
+                                errors[workerId] =
+                                        "request state: " + http::AsyncReq::state2str(req->state()) +
+                                        ", error: " + req->errorMessage() +
+                                        ", http_code: " + to_string(req->responseCode());
+                                continue;
+                            }
+                        } else {
+                            errors[workerId] = "request state: " + http::AsyncReq::state2str(req->state()) +
+                                               ", error: " + req->errorMessage();
                             continue;
                         }
+
                         json resp;
                         try {
                             resp = json::parse(req->responseBody());
