@@ -252,10 +252,20 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
         request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::COMPLETED,
                                             string(), _transactionId, _numChunks, _numRows, _numBytes);
         debug(__func__, "ingest request completed, id: " + to_string(request.id));
-    } catch (exception const& ex) {
+    } catch (http::Error const& ex) {
+        json const errorJson = {
+                {"id", request.id}, {"error", string(ex.what())}, {"errorExt", ex.errorExt()}};
+        string const errorJsonStr = errorJson.dump();
         request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::FAILED,
-                                            ex.what(), _transactionId, _numChunks, _numRows, _numBytes);
-        error(__func__, "ingest request failed, id: " + to_string(request.id) + ", error: " + ex.what());
+                                            errorJsonStr, _transactionId, _numChunks, _numRows, _numBytes);
+        error(__func__, "ingest request failed: " + errorJsonStr);
+        throw;
+    } catch (exception const& ex) {
+        json const errorDetails = {{"id", request.id}, {"error", string(ex.what())}};
+        string const errorDetailsStr = errorDetails.dump();
+        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::FAILED,
+                                            errorDetailsStr, _transactionId, _numChunks, _numRows, _numBytes);
+        error(__func__, "ingest request failed: " + errorDetailsStr);
         throw;
     }
     return json();
