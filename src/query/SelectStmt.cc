@@ -169,6 +169,11 @@ void SelectStmt::setFromListAsTable(std::string const& t) {
     _fromList = std::make_shared<FromList>(tr);
 }
 
+WhereClause& SelectStmt::getWhereClause(bool createIfMissing) {
+    if (createIfMissing && !_whereClause) _whereClause = std::make_shared<WhereClause>();
+    return *_whereClause;
+}
+
 bool SelectStmt::operator==(const SelectStmt& rhs) const {
     return (util::ptrCompare<FromList>(_fromList, rhs._fromList) &&
             util::ptrCompare<SelectList>(_selectList, rhs._selectList) &&

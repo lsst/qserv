@@ -60,9 +60,6 @@ class FileChannelShared;
 namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
 }
-namespace lsst::qserv::wdb {
-class ChunkResourceMgr;
-}
 namespace lsst::qserv::wpublish {
 class QueriesAndChunks;
 class QueryStatistics;
@@ -129,7 +126,7 @@ public:
     static std::string const defaultUser;
     using Ptr = std::shared_ptr<Task>;
     using TaskMsgPtr = std::shared_ptr<proto::TaskMsg>;
-
+#if 0
     /// Class to store constant sets and vectors.
     class DbTblsAndSubchunks {
     public:
@@ -147,7 +144,7 @@ public:
         /// Vector of subchunkIds. Set in constructor and should never change.
         const IntVector subchunksVect;
     };
-
+#endif
     struct ChunkEqual {
         bool operator()(Ptr const& x, Ptr const& y);
     };
@@ -165,7 +162,6 @@ public:
     /// Read 'taskMsg' to generate a vector of one or more task objects all using the same 'sendChannel'
     static std::vector<Ptr> createTasks(std::shared_ptr<proto::TaskMsg> const& taskMsg,
                                         std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-                                        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
                                         mysql::MySqlConfig const& mySqlConfig,
                                         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                                         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks,
@@ -276,10 +272,7 @@ public:
     int getSubchunkId() const { return _subchunkId; }
 
     /// Returns a reference to dbTbls.
-    const DbTableSet& getDbTbls() const { return _dbTblsAndSubchunks->dbTbls; }
-
-    /// Return a reference to the list of subchunk ids.
-    const IntVector& getSubchunksVect() const { return _dbTblsAndSubchunks->subchunksVect; }
+    // const DbTableSet& getDbTbls() const { return _dbTblsAndSubchunks->dbTbls; }
 
     /// Return an identifier of the corresponding MySQL query (if any was set).
     unsigned long getMySqlThreadId() const { return _mysqlThreadId.load(); }
@@ -321,7 +314,7 @@ private:
     int const _czarId;                 ///< czar Id from the task message.
 
     /// Set of tables and vector of subchunk ids used by ChunkResourceRequest. Do not change/reset.
-    std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
+    // std::unique_ptr<DbTblsAndSubchunks> _dbTblsAndSubchunks;
 
     /// The path to the result file.
     std::string _resultFileAbsPath;
