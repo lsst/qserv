@@ -93,25 +93,13 @@ function(CSSLoader,
           <td style="text-align:left"><pre id="delete_time"></pre></td>
         </tr>
         <tr>
-          <th style="text-align:left" scope="row">transaction_id</th>
-          <td style="text-align:left"><pre id="transaction_id"></pre></td>
-        </tr>
-        <tr>
-          <th style="text-align:left" scope="row">num_chunks</th>
-          <td style="text-align:left"><pre id="num_chunks"></pre></td>
-        </tr>
-        <tr>
-          <th style="text-align:left" scope="row">num_rows</th>
-          <td style="text-align:left"><pre id="num_rows"></pre></td>
-         </tr>
-        <tr>
-          <th style="text-align:left" scope="row">num_bytes</th>
-          <td style="text-align:left"><pre id="num_bytes"></pre></td>
+          <th style="text-align:left" scope="row">&nbsp;</th>
+          <td style="text-align:left">&nbsp;</td>
         </tr>
       </tbody>
     </table>
   </div>
-  <div class="col col-md-3">
+  <div class="col col-md-5">
     <table class="table table-sm table-hover">
       <tbody>
         <tr>
@@ -134,31 +122,36 @@ function(CSSLoader,
           <th style="text-align:left" scope="row">data_format</th>
           <td style="text-align:left"><pre id="data_format"></pre></td>
         </tr>
-        <tr>
-          <th style="text-align:left" scope="row">&nbsp;</th>
-          <td style="text-align:left">&nbsp;</td>
-        </tr>
-        <tr>
-          <th style="text-align:left" scope="row">&nbsp;</th>
-          <td style="text-align:left">&nbsp;</td>
-        </tr>
-        <tr>
-          <th style="text-align:left" scope="row">&nbsp;</th>
-          <td style="text-align:left">&nbsp;</td>
-        </tr>
       </tbody>
     </table>
   </div>
-  <div class="col col-md-5">
+  <div class="col col-md-3">
     <table class="table table-sm table-hover">
       <tbody>
         <tr>
-          <th style="text-align:left" scope="row">error</th>
-          <td style="text-align:left"><div id="error"></div></td>
+          <th style="text-align:left" scope="row">transaction_id</th>
+          <td style="text-align:left"><pre id="transaction_id"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">num_chunks</th>
+          <td style="text-align:left"><pre id="num_chunks"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">num_rows</th>
+          <td style="text-align:left"><pre id="num_rows"></pre></td>
+         </tr>
+        <tr>
+          <th style="text-align:left" scope="row">num_bytes</th>
+          <td style="text-align:left"><pre id="num_bytes"></pre></td>
+        </tr>
+        <tr>
+          <th style="text-align:left" scope="row">&nbsp;</th>
+          <td style="text-align:left">&nbsp;</td>
         </tr>
       </tbody>
     </table>
   </div>
+
 </div>
 <div class="row" id="fwk-ingest-user-table-request-extended">
   <div class="col col-md-1 header">
@@ -166,15 +159,16 @@ function(CSSLoader,
   </div>
   <div class="col col-md-3">
     <table class="table table-sm table-hover">
-      <thead class="thead-light">
-        <tr>
-          <th>Key</th>
-          <th>Value</th>
-        </tr>
-      </thead>
       <tbody>
       </tbody>
     </table>
+  </div>
+</div>
+<div class="row" id="fwk-ingest-user-table-request-errors">
+  <div class="col col-md-1 header">
+    ERROR(S)
+  </div>
+  <div class="col col-md-11" id="error">
   </div>
 </div>
 <div class="row" id="fwk-ingest-user-table-request-schema">
@@ -252,6 +246,29 @@ function(CSSLoader,
         _set_general(attr, val) {
             this._general_attr(attr).text(val);
         }
+        _set_errors(val) {
+            if (this._errors_obj === undefined) {
+                this._errors_obj = this.fwk_app_container.find('div#fwk-ingest-user-table-request-errors > #error');
+            }
+
+            // If val is a JSON string, pretty print it. Otherwise just show it as is.
+            // Truncate if too long.
+            const maxLen = 2048;
+            try {
+                val = JSON.stringify(JSON.parse(val), null, 2);
+                let len = val ? val.length : 0;
+                if (len > maxLen) {
+                    val = val.substr(0, maxLen) + ' ...';
+                }
+                this._errors_obj.html('<pre>' + val + '</pre>');
+            } catch (e) {
+                let len = val ? val.length : 0;
+                if (len > maxLen) {
+                    val = val.substr(0, maxLen) + ' ...';
+                }
+                this._errors_obj.text(val ? val.substr(0, maxLen) : '');
+            }
+        }
         _schema() {
             if (this._schema_obj === undefined) {
                 this._schema_obj = this.fwk_app_container.find('div#fwk-ingest-user-table-request-schema table > tbody');
@@ -270,7 +287,6 @@ function(CSSLoader,
             }
             return this._extended_obj;
         }
-
         _load() {
             if (!this._get_request_id()) {
                 this._status().html('<span style="color:maroon">Request id is not set</span>');
@@ -323,7 +339,7 @@ function(CSSLoader,
             this._set_general("table_type", req.table_type);
             this._set_general("is_temporary", req.is_temporary);
             this._set_general("data_format", req.data_format);
-            this._set_general("error", req.error);
+            this._set_errors(req.error);
             let html ='';
             if (req.schema) {
                 for (let i in req.schema) {
