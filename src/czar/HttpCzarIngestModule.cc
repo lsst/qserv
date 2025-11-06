@@ -186,10 +186,21 @@ json HttpCzarIngestModule::_ingestData() {
                     // Process workers' responses.
                     map<string, string> errors;
                     for (auto const& [workerId, req] : workerRequests) {
-                        if (req->responseCode() != qhttp::STATUS_OK) {
-                            errors[workerId] = "http_code: " + to_string(req->responseCode());
+                        string error;
+                        if (req->state() == http::AsyncReq::State::FINISHED) {
+                            if (req->responseCode() != qhttp::STATUS_OK) {
+                                errors[workerId] =
+                                        "request state: " + http::AsyncReq::state2str(req->state()) +
+                                        ", error: " + req->errorMessage() +
+                                        ", http_code: " + to_string(req->responseCode());
+                                continue;
+                            }
+                        } else {
+                            errors[workerId] = "request state: " + http::AsyncReq::state2str(req->state()) +
+                                               ", error: " + req->errorMessage();
                             continue;
                         }
+
                         json resp;
                         try {
                             resp = json::parse(req->responseBody());
@@ -220,10 +231,20 @@ json HttpCzarIngestModule::_ingestData() {
         request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::COMPLETED,
                                             string(), thisTransactionId, numChunks, numRows, numBytes);
         debug(__func__, "ingest request completed, id: " + to_string(request.id));
-    } catch (exception const& ex) {
+    } catch (http::Error const& ex) {
+        json const errorDetails = {
+                {"id", request.id}, {"error", string(ex.what())}, {"errorExt", ex.errorExt()}};
+        string const errorDetailsStr = errorDetails.dump();
         request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::FAILED,
-                                            ex.what(), thisTransactionId, numChunks, numRows, numBytes);
-        error(__func__, "ingest request failed, id: " + to_string(request.id) + ", error: " + ex.what());
+                                            errorDetailsStr, thisTransactionId, numChunks, numRows, numBytes);
+        error(__func__, "ingest request failed: " + errorDetailsStr);
+        throw;
+    } catch (exception const& ex) {
+        json const errorDetails = {{"id", request.id}, {"error", string(ex.what())}};
+        string const errorDetailsStr = errorDetails.dump();
+        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::FAILED,
+                                            errorDetailsStr, thisTransactionId, numChunks, numRows, numBytes);
+        error(__func__, "ingest request failed: " + errorDetailsStr);
         throw;
     }
     return json();

@@ -73,6 +73,25 @@ namespace lsst::qserv::http {
  *   io_service.run();
  * @code
  *
+ * Here is the complete algorithm for processing the completion status of a request:
+ * @code
+ *   std::shared_ptr<AsyncReq> const reader = ...;
+ *   switch (reader->state()) {
+ *       case http::AsyncReq::State::FINISHED:
+ *       case http::AsyncReq::State::BODY_LIMIT_ERROR:
+ *           if (reader->responseCode() != qhttp::STATUS_OK) {
+ *               std::cerr << "state: " << http::AsyncReq::state2str(reader->state()) <<
+ *                           ", error: " << reader->errorMessage() <<
+ *                           ", http_code: " << to_string(reader->responseCode()) << std::endl;
+ *           }
+ *           break;
+ *       default:
+ *           std::cerr << "state: " << http::AsyncReq::state2str(reader->state()) <<
+ *                        ", error: " << reader->errorMessage() << std::endl;
+ *           break;
+ *   }
+ * @code
+ *
  * The next example is an illustration of using the dynamically retrieved values
  * of the connection parameters (as needed by the implementation of the class).
  * In this example, a client provides a function that returns a different combination

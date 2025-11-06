@@ -1,6 +1,9 @@
 #fwk-ingest-contrib-info-controls label {
     font-weight: bold;
 }
+#fwk-ingest-user-table-request-status {
+    margin-bottom: 1em;
+}
 #fwk-ingest-user-table-request-status #status {
     text-align: right;
 }
@@ -8,6 +11,7 @@
     background-color: #ffeeba;
 }
 #fwk-ingest-user-table-request-general div.header,
+#fwk-ingest-user-table-request-errors div.header,
 #fwk-ingest-user-table-request-extended div.header,
 #fwk-ingest-user-table-request-schema div.header,
 #fwk-ingest-user-table-request-indexes div.header {
@@ -28,13 +32,19 @@
 #fwk-ingest-user-table-request-general table #status > pre.status-failed-lr {
     color: orange;
 }
-#fwk-ingest-user-table-request-general div#error {
+#fwk-ingest-user-table-request-errors > div#error {
     width: 100%;
     height: 100%;
-    padding-left: 0.5em;
-    padding-right: 0.5em;
+    padding: 1em;
+    padding-top: 0;
+    margin: 0;
     border:0;
+    word-break: break-all;
     overflow-y: scroll;
+    overflow-x: scroll;
+    color: maroon;
+}
+#fwk-ingest-user-table-request-errors > div#error > pre {
     color: maroon;
 }
 #fwk-ingest-user-table-request-extended table pre {

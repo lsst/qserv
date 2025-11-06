@@ -109,7 +109,8 @@ function(CSSLoader,
         <tr>
           <th class="center-aligned"><i class="bi bi-info-circle-fill"></i></th>
           <th class="center-aligned"><i class="bi bi-bar-chart-steps"></i></th>
-          <th class="sticky"><elem style="color:red;">&darr;</elem></th>
+          <th class="sticky right-aligned">Id</th>
+          <th class="sticky right-aligned"><elem style="color:red;">&darr;</elem></th>
           <th class="sticky right-aligned">Started</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky right-aligned">Finished</th>
@@ -243,7 +244,8 @@ function(CSSLoader,
   </th>`;
                 }
                 html += `
-  <th><pre>${beginDateStr}</pre></th>
+  <th class="right-aligned"><pre>${req.id}</pre></th>
+  <th class="right-aligned"><pre>${beginDateStr}</pre></th>
   <td class="right-aligned"><pre>${beginTimeStr}</pre></td>
   <th class="right-aligned"><pre>${endDeltaStr}</pre></th>
   <td class="right-aligned"><pre>${endTimeStr}</pre></td>
