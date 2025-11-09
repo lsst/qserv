@@ -60,8 +60,6 @@ void fetchDbs(string const& instanceName, SqlConnection& sc, C& dbs) {
 
     shared_ptr<SqlResultIter> resultP;
     // TODO we probably want a more elegant backoff mechanism than this.
-    // However, normally xrootd will fail & exit here if it can't connect so
-    // this is maybe just a little bit better than that.
     while (true) {
         LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
         resultP = sc.getQueryIter(query);
@@ -132,22 +130,6 @@ void fetchId(string const& instanceName, SqlConnection& sc, string& id) {
     }
     LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any a unique identifier of the worker");
 }
-
-class Validator : public lsst::qserv::ResourceUnit::Checker {
-public:
-    Validator(lsst::qserv::wpublish::ChunkInventory& c) : chunkInventory(c) {}
-    virtual bool operator()(lsst::qserv::ResourceUnit const& ru) {
-        switch (ru.unitType()) {
-            case lsst::qserv::ResourceUnit::DBCHUNK:
-                return chunkInventory.has(ru.db(), ru.chunk());
-            case lsst::qserv::ResourceUnit::QUERY:
-                return true;
-            default:
-                return false;
-        }
-    }
-    lsst::qserv::wpublish::ChunkInventory& chunkInventory;
-};
 
 }  // anonymous namespace
 
@@ -282,10 +264,6 @@ bool ChunkInventory::has(string const& db, int chunk) const {
     if (chunkItr == chunks.end()) return false;
 
     return true;
-}
-
-shared_ptr<ResourceUnit::Checker> ChunkInventory::newValidator() {
-    return shared_ptr<ResourceUnit::Checker>(new Validator(*this));
 }
 
 void ChunkInventory::dbgPrint(ostream& os) const {

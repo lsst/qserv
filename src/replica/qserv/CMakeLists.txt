@@ -19,7 +19,6 @@ target_sources(replica_qserv PRIVATE
     RemoveReplicaQservMgtRequest.cc
     SetReplicasQservMgtRequest.cc
     TestEchoQservMgtRequest.cc
-    XrdCmsgetVnId.cc
 )
 target_link_libraries(replica_qserv PUBLIC
     log
