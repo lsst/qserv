@@ -155,9 +155,15 @@ json HttpCzarIngestModule::_ingestData() {
 
     // Push the data to all workers and monitor the progress.
     try {
+        bool const isPartitioned = false;
+        string const emptyDirectorIdColName;
+        string const emptyDirectorLongitudeColName;
+        string const emptyDirectorLatitudeColName;
+        set<int32_t> chunkIds;  // no chunks for the fully replicated tables
         list<pair<string, string>> const warnings = ingestData(
-                databaseName, tableName, charsetName, collationName, schema, indexes,
-                [&](uint32_t transactionId) -> map<string, string> {
+                databaseName, tableName, isPartitioned, emptyDirectorIdColName, emptyDirectorLongitudeColName,
+                emptyDirectorLatitudeColName, charsetName, collationName, schema, indexes, chunkIds,
+                [&](uint32_t transactionId, map<int32_t, vector<string>> const&) -> map<string, string> {
                     thisTransactionId = transactionId;
 
                     // Send table data to all eligible workers and wait for the responses.
