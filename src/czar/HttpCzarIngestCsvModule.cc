@@ -24,6 +24,7 @@
 
 // System headers
 #include <algorithm>
+#include <set>
 #include <stdexcept>
 
 // Third party headers
@@ -38,8 +39,11 @@
 #include "http/Client.h"
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
+#include "partition/ChunkIndex.h"
+#include "partition/ConfigStore.h"
+#include "partition/Exceptions.h"
+#include "partition/PartitionTool.h"
 #include "qmeta/UserTables.h"
-#include "qmeta/UserTableIngestRequest.h"
 #include "qhttp/Status.h"
 
 using namespace std;
@@ -48,6 +52,61 @@ namespace cconfig = lsst::qserv::cconfig;
 namespace fs = boost::filesystem;
 namespace http = lsst::qserv::http;
 using json = nlohmann::json;
+
+namespace {
+
+/// @brief Assert that a column exists in the schema.
+/// @param func The name of the function performing the check.
+/// @param schema The JSON schema to check against.
+/// @param colName The name of the column to check for.
+/// @param columnRole A description of the column's role (e.g., "id", "latitude", "longitude").
+void assertColumnExists(string const& func, json const& schema, string const& colName,
+                        string const& columnRole) {
+    if (colName.empty()) {
+        throw http::Error(func, "the " + columnRole + " column name is required for partitioned tables");
+    }
+    bool const found = find_if(schema.begin(), schema.end(), [&](json const& col) {
+                           return col.at("name").get<string>() == colName;
+                       }) != schema.end();
+    if (!found) {
+        throw http::Error(func, "the " + columnRole + " column '" + colName + "' is not found in the schema");
+    }
+}
+
+/**
+ * Translate a string to a single character. The string is expected to be either a single character or an
+ * escaped character (e.g., "\t", "\n", "\r", "\\", "\0"). The translation is needed to pass the single
+ * character string to the partitioning tool.
+ *
+ * @param str The string to translate.
+ * @return The translated single character.
+ * @throw http::Error If the string is not a single character or a valid escaped character.
+ */
+string translateToSingleChar(string const& str) {
+    if (str.size() == 1) {
+        return str;
+    }
+    if (str.size() == 2 && str[0] == '\\') {
+        switch (str[1]) {
+            case 't':
+                return "\t";
+            case 'n':
+                return "\n";
+            case 'r':
+                return "\r";
+            case '\\':
+                return "\\";
+            case '0':
+                return "\0";
+            default:
+                throw http::Error(__func__, "unsupported escape sequence: '" + str + "'");
+        }
+    }
+    throw http::Error(__func__,
+                      "invalid value: '" + str + "'. Expected a single character or an escaped character.");
+}
+
+}  // namespace
 
 namespace lsst::qserv::czar {
 
@@ -85,6 +144,17 @@ HttpCzarIngestCsvModule::~HttpCzarIngestCsvModule() {
             warn(__func__, "failed to delete the data file " + _csvFileName + ", error: " + ec.message());
         }
     }
+
+    // DEBUG: Don't delete the chunks before it's clear that the algorithm works as expected.
+#if 0
+    if (!_chunksDirName.empty()) {
+        boost::system::error_code ec;
+        fs::remove_all(_chunksDirName, ec);
+        if (ec.value() != 0) {
+            warn(__func__, "failed to delete the chunks directory " + _chunksDirName + ", error: " + ec.message());
+        }
+    }
+#endif
 }
 
 string HttpCzarIngestCsvModule::context() const { return _context; }
@@ -156,7 +226,7 @@ void HttpCzarIngestCsvModule::onEndOfFile() {
 
 json HttpCzarIngestCsvModule::onEndOfBody() {
     debug(__func__);
-    checkApiVersion(__func__, 49);
+    checkApiVersion(__func__, 52);
 
     _databaseName = body().required<string>("database");
     _tableName = body().required<string>("table");
@@ -166,7 +236,16 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
     _fieldsEnclosedBy = body().optional<string>("fields_enclosed_by", R"(\0)");
     _fieldsEscapedBy = body().optional<string>("fields_escaped_by", R"(\\)");
     _linesTerminatedBy = body().optional<string>("lines_terminated_by", R"(\n)");
-
+    _isPartitioned = body().optional<string>("is_partitioned", "0") != "0";
+    if (_isPartitioned) {
+        _isDirector = body().required<string>("is_director") != "0";
+        if (!_isDirector) {
+            throw http::Error(__func__, "only director tables are supported for partitioned tables");
+        }
+        _idColName = body().required<string>("id_col_name");
+        _latitudeColName = body().required<string>("latitude_col_name");
+        _longitudeColName = body().required<string>("longitude_col_name");
+    }
     string const timeoutSecStr = body().optional<string>("timeout", string());
     if (timeoutSecStr.empty()) {
         setTimeoutSec(max(1U, timeoutSec()));
@@ -186,6 +265,11 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
     debug(__func__, "fields_enclosed_by: '" + _fieldsEnclosedBy + "'");
     debug(__func__, "fields_escaped_by: '" + _fieldsEscapedBy + "'");
     debug(__func__, "lines_terminated_by: '" + _linesTerminatedBy + "'");
+    debug(__func__, "is_partitioned: " + string(_isPartitioned ? "1" : "0"));
+    debug(__func__, "is_director: " + string(_isDirector ? "1" : "0"));
+    debug(__func__, "id_col_name: '" + _idColName + "'");
+    debug(__func__, "latitude_col_name: '" + _latitudeColName + "'");
+    debug(__func__, "longitude_col_name: '" + _longitudeColName + "'");
     debug(__func__, "timeout: " + to_string(timeoutSec()));
     debug(__func__, "data file name: '" + _csvFileName + "'");
 
@@ -219,29 +303,279 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
     }
 
     // Register the request in the QMeta database.
-    qmeta::UserTables userTables(cconfig::CzarConfig::instance()->getMySqlQmetaConfig());
-    qmeta::UserTableIngestRequest request;
-    request.database = _databaseName;
-    request.table = _tableName;
-    request.tableType = qmeta::UserTableIngestRequest::TableType::FULLY_REPLICATED;
-    request.isTemporary = true;
-    request.dataFormat = qmeta::UserTableIngestRequest::DataFormat::CSV;
-    request.schema = schema;
-    request.indexes = indexes;
-    request.extended["charset"] = _charsetName;
-    request.extended["collation"] = _collationName;
-    request.extended["fields_terminated_by"] = _fieldsTerminatedBy;
-    request.extended["fields_enclosed_by"] = _fieldsEnclosedBy;
-    request.extended["fields_escaped_by"] = _fieldsEscapedBy;
-    request.extended["lines_terminated_by"] = _linesTerminatedBy;
-    request = userTables.registerRequest(request);
-    debug(__func__, "registered a new ingest request, id: " + to_string(request.id));
+    _userTables = make_shared<qmeta::UserTables>(cconfig::CzarConfig::instance()->getMySqlQmetaConfig());
+    _request.database = _databaseName;
+    _request.table = _tableName;
+    _request.dataFormat = qmeta::UserTableIngestRequest::DataFormat::CSV;
+    _request.schema = schema;
+    _request.indexes = indexes;
+    _request.extended["charset"] = _charsetName;
+    _request.extended["collation"] = _collationName;
+    _request.extended["fields_terminated_by"] = _fieldsTerminatedBy;
+    _request.extended["fields_enclosed_by"] = _fieldsEnclosedBy;
+    _request.extended["fields_escaped_by"] = _fieldsEscapedBy;
+    _request.extended["lines_terminated_by"] = _linesTerminatedBy;
+
+    if (_isPartitioned) {
+        // The current implementation supports only director tables for partitioned tables.
+        _request.isTemporary = false;
+        _request.tableType = qmeta::UserTableIngestRequest::TableType::DIRECTOR;
+        _request.extended["is_director"] = "1";
+        _request.extended["id_col_name"] = _idColName;
+        _request.extended["latitude_col_name"] = _latitudeColName;
+        _request.extended["longitude_col_name"] = _longitudeColName;
+
+        // Extend the schema with the additonal columns that will be added to the partitioned
+        // CVS files by the partitioning tool. This change neededs to be done here before
+        // registering the new table to make sure the table schema in the Qserv prototype
+        // database and in the Replication system's database matched the schema of the chunk
+        // contributions to be generated by the partitioning tool.
+        _request.schema.push_back(json::object({{"name", "chunkId"}, {"type", "INT UNSIGNED NOT NULL"}}));
+        _request.schema.push_back(json::object({{"name", "subChunkId"}, {"type", "INT UNSIGNED NOT NULL"}}));
+    } else {
+        _request.isTemporary = true;
+        _request.tableType = qmeta::UserTableIngestRequest::TableType::FULLY_REPLICATED;
+    }
+    _request = _userTables->registerRequest(_request);
+
+    debug(__func__, "registered a new ingest request, id: " + to_string(_request.id));
+
+    // Update the ingest statistics
+    _getFileSize();
+
+    // The rest of the ingest workflow depends on the table type
+    if (_isPartitioned) {
+        return _ingestDirectorTable();
+    } else {
+        return _ingestFullyReplicatedTable();
+    }
+}
+
+json HttpCzarIngestCsvModule::_ingestDirectorTable() {
+    debug(__func__);
+
+    ::assertColumnExists(__func__, _request.schema, _idColName, "id_col_name");
+    ::assertColumnExists(__func__, _request.schema, _latitudeColName, "latitude_col_name");
+    ::assertColumnExists(__func__, _request.schema, _longitudeColName, "longitude_col_name");
+
+    _createChunksDir();
+    _partitionTableData();
 
     // Push the data to all workers and monitor the progress.
     try {
+        bool const isPartitioned = true;
+        list<pair<string, string>> const warnings = ingestData(
+                _databaseName, _tableName, isPartitioned, _idColName, _latitudeColName, _longitudeColName,
+                _charsetName, _collationName, _request.schema, _request.indexes, _chunkIds,
+                [&](uint32_t transactionId,
+                    map<int32_t, string> const& chunk2workerId) -> map<string, string> {
+                    return _pushChunksToWorkers(transactionId, chunk2workerId);
+                });
+
+        // Make sure any warnings reported during the ingest are returned to the caller.
+        for (auto const& warning : warnings) {
+            warn(warning.first, warning.second);
+        }
+        _reportCompletedRequest(__func__);
+    } catch (http::Error const& ex) {
+        _reportFailedRequest(__func__, "push chunks to workers", ex.what(), ex.errorExt());
+        throw;
+    } catch (exception const& ex) {
+        _reportFailedRequest(__func__, "push chunks to workers", ex.what());
+        throw;
+    }
+    return json();
+}
+
+void HttpCzarIngestCsvModule::_createChunksDir() {
+    boost::system::error_code ec;
+    _chunksDirName = _tmpDir + "/" + "http-ingest-chunks-" + to_string(_request.id);
+    fs::create_directories(_chunksDirName, ec);
+    if (ec.value() != 0) {
+        json const errorExt = _reportFailedRequest(
+                __func__, "create chunks dir", "failed to create a temporary directory for chunk files",
+                {{"path", _chunksDirName}, {"error_code", ec.value()}, {"error_message", ec.message()}});
+        throw http::Error(__func__, "ingest request failed", errorExt);
+    }
+}
+
+void HttpCzarIngestCsvModule::_getFileSize() {
+    // Get the size of the input data file.
+    boost::system::error_code ec;
+    _numBytes = fs::file_size(_csvFileName, ec);
+    if (ec.value() != 0) {
+        json const errorExt = _reportFailedRequest(
+                __func__, "get file size", "failed to get the size of the data file",
+                {{"file", _csvFileName}, {"error_code", ec.value()}, {"error_message", ec.message()}});
+        throw http::Error(__func__, "ingest request failed", errorExt);
+    }
+    debug(__func__, "data file size: " + to_string(_numBytes) + " bytes");
+}
+
+void HttpCzarIngestCsvModule::_partitionTableData() {
+    json config = json::object(
+            {{"dirTable", _tableName},
+             {"dirColName", _idColName},
+             {"id", _idColName},
+             {"pos", json::array({_latitudeColName + ", " + _longitudeColName})},
+             {"part", json::object({{"pos", _latitudeColName + ", " + _longitudeColName},
+                                    {"num-stripes", HttpCzarIngestModuleBase::defaultNumStripes},
+                                    {"num-sub-stripes", HttpCzarIngestModuleBase::defaultNumSubStripes},
+                                    {"chunk", "chunkId"},
+                                    {"sub-chunk", "subChunkId"},
+                                    {"overlap", HttpCzarIngestModuleBase::defaultOverlap}})},
+             {"in",
+              json::object({{"path", json::array({_csvFileName})},
+                            {"csv", json::object({{"null", "\\N"},
+                                                  {"delimiter", ::translateToSingleChar(_fieldsTerminatedBy)},
+                                                  {"enclose", ::translateToSingleChar(_fieldsEnclosedBy)},
+                                                  {"escape", ::translateToSingleChar(_fieldsEscapedBy)},
+                                                  {"field", json::array()}})}})},
+             {"out",
+              json::object({{"dir", _chunksDirName},
+                            {"csv", json::object({{"null", "\\N"},
+                                                  {"delimiter", ::translateToSingleChar(_fieldsTerminatedBy)},
+                                                  {"enclose", ::translateToSingleChar(_fieldsEnclosedBy)},
+                                                  {"escape", ::translateToSingleChar(_fieldsEscapedBy)},
+                                                  {"no-quote", true}})}})},
+             {"mr", json::object({{"num-workers", 1}})}});
+    for (auto const& col : _request.schema) {
+        string const colName = col.at("name").get<string>();
+        if (colName == "chunkId" || colName == "subChunkId") {
+            // These special columns are injected by the partitioning tool into the (yet to be) generated
+            // chunk contributions and should not be present in the input collection of columns.
+            continue;
+        }
+        config["in"]["csv"]["field"].push_back(colName);
+    }
+    int const argc = 1;
+    char const* argv[] = {"czar-http"};
+    try {
+        // Instantiate and run the partitioning tool.
+        partition::PartitionTool partitioner(config, argc, argv);
+
+        // Get a collection of unique chunks, chunk tables and overlap tables from the index
+        for (auto const& [chunkId, entry] : partitioner.chunkIndex->getChunks()) {
+            _chunkIds.insert(chunkId);
+            if (entry.numRecords > 0) {
+                _chunkTables[chunkId] = _chunksDirName + "/chunk_" + to_string(chunkId) + ".txt";
+                _numRows += entry.numRecords;
+            }
+            if (entry.numOverlapRecords > 0) {
+                _overlapTables[chunkId] = _chunksDirName + "/chunk_" + to_string(chunkId) + "_overlap.txt";
+            }
+        }
+        debug(__func__, "partitioned the data into " + to_string(_chunkIds.size()) + " unique chunks");
+        debug(__func__, "chunk tables: " + to_string(_chunkTables.size()));
+        debug(__func__, "overlap tables: " + to_string(_overlapTables.size()));
+        if (_chunkIds.empty()) {
+            throw http::Error(__func__, "no chunks were created during partitioning");
+        }
+        _numChunks = _chunkIds.size();
+    } catch (partition::ExitOnHelp const& ex) {
+        _reportFailedRequest(__func__, "partition data", "incorrect implementation of the application");
+        throw;
+    } catch (exception const& ex) {
+        _reportFailedRequest(__func__, "partition data", ex.what());
+        throw;
+    }
+}
+
+map<string, string> HttpCzarIngestCsvModule::_pushChunksToWorkers(
+        uint32_t transactionId, map<int32_t, string> const& chunk2workerId) {
+    _transactionId = transactionId;
+
+    auto const makeWorkerRequestKey = [&](int32_t chunkId, bool overlap) -> string {
+        return chunk2workerId.at(chunkId) + ":" + to_string(chunkId) + (overlap ? ":overlap" : "");
+    };
+    auto const resultQueue = ingest::ResultQueue::create();
+    for (auto const& [chunkId, file] : _chunkTables) {
+        ingest::Request request(
+                [&]() -> ingest::Result {
+                    ingest::Result result{makeWorkerRequestKey(chunkId, false), ""};
+                    try {
+                        auto const mimeData = _makeMimeData(chunkId, false);
+                        auto const workerId = chunk2workerId.at(chunkId);
+                        auto const req = syncCsvRequestWorker(workerId, mimeData, _clientConnPool);
+                        auto const resp = req->readAsJson();
+                        if (resp.at("success").get<int>() == 0) {
+                            result.error = "error: " + resp.at("error").get<string>();
+                        }
+                    } catch (exception const& ex) {
+                        result.error = "ex: " + string(ex.what());
+                    }
+                    return result;
+                },
+                resultQueue);
+        _workerIngestProcessor->push(request);
+    }
+    for (auto const& [chunkId, file] : _overlapTables) {
+        ingest::Request request(
+                [&]() -> ingest::Result {
+                    ingest::Result result{makeWorkerRequestKey(chunkId, true), ""};
+                    try {
+                        auto const mimeData = _makeMimeData(chunkId, true);
+                        auto const workerId = chunk2workerId.at(chunkId);
+                        auto const req = syncCsvRequestWorker(workerId, mimeData, _clientConnPool);
+                        auto const resp = req->readAsJson();
+                        if (resp.at("success").get<int>() == 0) {
+                            result.error = "error: " + resp.at("error").get<string>();
+                        }
+                    } catch (exception const& ex) {
+                        result.error = "ex: " + string(ex.what());
+                    }
+                    return result;
+                },
+                resultQueue);
+        _workerIngestProcessor->push(request);
+    }
+
+    // Wait for responses and analyze completion status of each worker request.
+    // The loop will block until all workers have completed their tasks and results are collected
+    // or the timeout is reached.
+    map<string, string> errors;
+    for (auto const& [chunkId, file] : _chunkTables) {
+        auto const result = resultQueue->pop();
+        if (!result.error.empty()) errors[makeWorkerRequestKey(chunkId, false)] = result.error;
+    }
+    for (auto const& [chunkId, file] : _overlapTables) {
+        auto const result = resultQueue->pop();
+        if (!result.error.empty()) errors[makeWorkerRequestKey(chunkId, true)] = result.error;
+    }
+    return errors;
+}
+
+list<http::ClientMimeEntry> HttpCzarIngestCsvModule::_makeMimeData(int32_t chunkId, bool overlap) const {
+    list<http::ClientMimeEntry> mimeData = {
+            {"transaction_id", to_string(_transactionId), "", ""},
+            {"table", _tableName, "", ""},
+            {"chunk", to_string(chunkId), "", ""},
+            {"overlap", overlap ? "1" : "0", "", ""},
+            {"charset_name", _charsetName, "", ""},
+            {"fields_terminated_by", _fieldsTerminatedBy, "", ""},
+            {"fields_enclosed_by", _fieldsEnclosedBy, "", ""},
+            {"fields_escaped_by", _fieldsEscapedBy, "", ""},
+            {"lines_terminated_by", _linesTerminatedBy, "", ""},
+            {"rows", "", overlap ? _overlapTables.at(chunkId) : _chunkTables.at(chunkId), "text/csv"}};
+    setProtocolFields(mimeData);
+    return mimeData;
+}
+
+json HttpCzarIngestCsvModule::_ingestFullyReplicatedTable() {
+    debug(__func__);
+
+    // Push the data to all workers and monitor the progress.
+    try {
+        bool const isPartitioned = false;
+        string const emptyDirectorIdColName;
+        string const emptyDirectorLongitudeColName;
+        string const emptyDirectorLatitudeColName;
+        set<int32_t> chunkIds;  // no chunks for the fully replicated tables
         list<pair<string, string>> const warnings =
-                ingestData(_databaseName, _tableName, _charsetName, _collationName, schema, indexes,
-                           [&](uint32_t transactionId) -> map<string, string> {
+                ingestData(_databaseName, _tableName, isPartitioned, emptyDirectorIdColName,
+                           emptyDirectorLongitudeColName, emptyDirectorLatitudeColName, _charsetName,
+                           _collationName, _request.schema, _request.indexes, chunkIds,
+                           [&](uint32_t transactionId, map<int32_t, string> const&) -> map<string, string> {
                                return _pushDataToWorkers(transactionId);
                            });
 
@@ -249,30 +583,78 @@ json HttpCzarIngestCsvModule::onEndOfBody() {
         for (auto const& warning : warnings) {
             warn(warning.first, warning.second);
         }
-        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::COMPLETED,
-                                            string(), _transactionId, _numChunks, _numRows, _numBytes);
-        debug(__func__, "ingest request completed, id: " + to_string(request.id));
+        _reportCompletedRequest(__func__);
     } catch (http::Error const& ex) {
-        json const errorJson = {
-                {"id", request.id}, {"error", string(ex.what())}, {"errorExt", ex.errorExt()}};
-        string const errorJsonStr = errorJson.dump();
-        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::FAILED,
-                                            errorJsonStr, _transactionId, _numChunks, _numRows, _numBytes);
-        error(__func__, "ingest request failed: " + errorJsonStr);
+        _reportFailedRequest(__func__, "push data to workers", ex.what(), ex.errorExt());
         throw;
     } catch (exception const& ex) {
-        json const errorDetails = {{"id", request.id}, {"error", string(ex.what())}};
-        string const errorDetailsStr = errorDetails.dump();
-        request = userTables.ingestFinished(request.id, qmeta::UserTableIngestRequest::Status::FAILED,
-                                            errorDetailsStr, _transactionId, _numChunks, _numRows, _numBytes);
-        error(__func__, "ingest request failed: " + errorDetailsStr);
+        _reportFailedRequest(__func__, "push data to workers", ex.what());
         throw;
     }
     return json();
 }
 
+void HttpCzarIngestCsvModule::_reportCompletedRequest(string const& func) {
+    _request = _userTables->ingestFinished(_request.id, qmeta::UserTableIngestRequest::Status::COMPLETED,
+                                           string(), _transactionId, _numChunks, _numRows, _numBytes);
+    debug(func, "ingest request completed, id: " + to_string(_request.id));
+}
+
+json HttpCzarIngestCsvModule::_reportFailedRequest(string const& func, string const& operation,
+                                                   string const& errorMessage, json const& errorExt) {
+    json errorJson = {{"id", _request.id}, {"operation", operation}, {"error", errorMessage}};
+    if (!errorExt.empty()) {
+        errorJson["errorExt"] = errorExt;
+    }
+    string const errorJsonStr = errorJson.dump();
+    _request = _userTables->ingestFinished(_request.id, qmeta::UserTableIngestRequest::Status::FAILED,
+                                           errorJsonStr, _transactionId, _numChunks, _numRows, _numBytes);
+    error(func, "ingest request failed: " + errorJsonStr);
+    return errorJson;
+}
+
 map<string, string> HttpCzarIngestCsvModule::_pushDataToWorkers(uint32_t transactionId) {
-    list<http::ClientMimeEntry> mimeData = {{"transaction_id", to_string(transactionId), "", ""},
+    _transactionId = transactionId;
+
+    auto const resultQueue = ingest::ResultQueue::create();
+    auto const workers = getWorkerIds();
+    for (auto const& workerId : workers) {
+        ingest::Request request(
+                [&]() -> ingest::Result {
+                    ingest::Result result{workerId, ""};
+                    try {
+                        auto const mimeData = _makeMimeData();
+                        auto const req = syncCsvRequestWorker(workerId, mimeData, _clientConnPool);
+                        auto const resp = req->readAsJson();
+                        if (resp.at("success").get<int>() == 0) {
+                            result.error = "error: " + resp.at("error").get<string>();
+                        } else {
+                            // All workers should return the same number of rows for the fully replicated
+                            // tables.
+                            _numRows = resp.at("contrib").at("num_rows").get<std::uint64_t>();
+                        }
+                    } catch (exception const& ex) {
+                        result.error = "ex: " + string(ex.what());
+                    }
+                    return result;
+                },
+                resultQueue);
+        _workerIngestProcessor->push(request);
+    }
+
+    // Wait for responses and analyze completion status of each worker request.
+    // The loop will block until all workers have completed their tasks and results are collected
+    // or the timeout is reached.
+    map<string, string> errors;
+    for (auto const& workerId : workers) {
+        auto const result = resultQueue->pop();
+        if (!result.error.empty()) errors[workerId] = result.error;
+    }
+    return errors;
+}
+
+list<http::ClientMimeEntry> HttpCzarIngestCsvModule::_makeMimeData() const {
+    list<http::ClientMimeEntry> mimeData = {{"transaction_id", to_string(_transactionId), "", ""},
                                             {"table", _tableName, "", ""},
                                             {"chunk", "0", "", ""},
                                             {"overlap", "0", "", ""},
@@ -283,51 +665,7 @@ map<string, string> HttpCzarIngestCsvModule::_pushDataToWorkers(uint32_t transac
                                             {"lines_terminated_by", _linesTerminatedBy, "", ""},
                                             {"rows", "", _csvFileName, "text/csv"}};
     setProtocolFields(mimeData);
-
-    debug(__func__, "pushing data to workers, transactionId: " + to_string(transactionId) + ", table: '" +
-                            _tableName + "', data file: '" + _csvFileName + "'");
-
-    _transactionId = transactionId;
-
-    // Send table data to all eligible workers.
-    auto const resultQueue = ingest::ResultQueue::create();
-    auto const workers = getWorkerIds();
-    for (auto const& workerId : workers) {
-        ingest::Request request(
-                [&]() -> ingest::Result {
-                    ingest::Result result{workerId, ""};
-                    try {
-                        auto const req = syncCsvRequestWorker(workerId, mimeData, _clientConnPool);
-                        auto const resp = req->readAsJson();
-                        if (resp.at("success").get<int>() == 0) {
-                            result.error = "error: " + resp.at("error").get<string>();
-                        } else {
-                            // Update ingest statistics. Values of the counters reported by workers
-                            // are expected to be the same for the fully replicated tables.
-                            // Though the last statement is not checked or enforced by the current
-                            // implementation updating ingest statistics for each worker allows to get the
-                            // values even if only one worker completes the request successfully.
-                            json const& contrib = resp.at("contrib");
-                            _numRows = contrib.at("num_rows").get<std::uint64_t>();
-                            _numBytes = contrib.at("num_bytes").get<std::uint64_t>();
-                        }
-                    } catch (exception const& ex) {
-                        result.error = "ex: " + string(ex.what());
-                    }
-                    return result;
-                },
-                resultQueue);
-        _workerIngestProcessor->push(request);
-    }
-    // Wait for responses and analyze completion status of each worker request.
-    // The loop will block until all workers have completed their tasks and results are collected
-    // or the timeout is reached.
-    map<string, string> errors;
-    for (auto const& workerId : workers) {
-        auto const result = resultQueue->pop();
-        if (!result.error.empty()) errors[workerId] = result.error;
-    }
-    return errors;
+    return mimeData;
 }
 
 }  // namespace lsst::qserv::czar
