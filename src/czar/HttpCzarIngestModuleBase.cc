@@ -61,20 +61,17 @@ size_t countDirectors(const json& database) {
     return numDirectors;
 }
 
-// These parameters correspond to the present partitioning model of 150k chunks.
-// In reality the parameters are not needed for ingesting regular tables which is
-// is the only kind of tables supported by the current implementation of the module.
-// Some value of the parameters are still required by the Replication/Ingest system's API.
-unsigned int defaultNumStripes = 340;
-unsigned int defaultNumSubStripes = 3;
-float defaultOverlap = 0.01667;
-
 string const defaultDirectorTableName = "qserv_director";
-unsigned int const defaultChunkId = 0;
+int32_t const defaultChunkId = 0;
 
 }  // namespace
 
 namespace lsst::qserv::czar {
+
+// These parameters correspond to the present partitioning model of 150k chunks.
+unsigned int HttpCzarIngestModuleBase::defaultNumStripes = 340;
+unsigned int HttpCzarIngestModuleBase::defaultNumSubStripes = 3;
+float HttpCzarIngestModuleBase::defaultOverlap = 0.01667;
 
 HttpCzarIngestModuleBase::HttpCzarIngestModuleBase(asio::io_service& io_service)
         : _io_service(io_service),
@@ -82,11 +79,19 @@ HttpCzarIngestModuleBase::HttpCzarIngestModuleBase(asio::io_service& io_service)
                            to_string(cconfig::CzarConfig::instance()->replicationRegistryPort())) {}
 
 list<pair<string, string>> HttpCzarIngestModuleBase::ingestData(
-        string const& databaseName, string const& tableName, string const& charsetName,
-        string const& collationName, json const& schema, json const& indexes,
-        function<map<string, string>(uint32_t)> const& submitRequestsToWorkers) {
-    _unpublishOrCreateDatabase(databaseName);
-    _createTable(databaseName, tableName, charsetName, collationName, schema);
+        string const& databaseName, string const& tableName, bool isPartitioned, string directorIdColName,
+        string directorLongitudeColName, string directorLatitudeColName, string const& charsetName,
+        string const& collationName, json const& schema, json const& indexes, set<int32_t> const& chunkIds,
+        function<map<string, string>(uint32_t, map<int32_t, vector<string>> const&)> const&
+                submitRequestsToWorkers) {
+    // At lest one director table is needed per catalog for Qserv to function correctly.
+    // The default director should be created unless the ingest is for a partitioned table
+    // and the user has specified a director table (which is presently the only option
+    // supported by the current implementation for the partitioned tables).
+    bool const createDefaultDirectorTable = !isPartitioned;
+    _unpublishOrCreateDatabase(databaseName, createDefaultDirectorTable);
+    _createTable(databaseName, tableName, isPartitioned, directorIdColName, directorLongitudeColName,
+                 directorLatitudeColName, charsetName, collationName, schema);
 
     uint32_t transactionId = 0;
     try {
@@ -95,8 +100,12 @@ list<pair<string, string>> HttpCzarIngestModuleBase::ingestData(
         deleteTable(databaseName, tableName);
         throw;
     }
+    map<int32_t, vector<string>> chunk2workerIds;
+    if (!chunkIds.empty()) {
+        chunk2workerIds = _allocateChunks(chunkIds, databaseName);
+    }
 
-    map<string, string> const workerErrors = submitRequestsToWorkers(transactionId);
+    map<string, string> const workerErrors = submitRequestsToWorkers(transactionId, chunk2workerIds);
 
     if (!workerErrors.empty()) {
         _abortTransaction(transactionId);
@@ -147,8 +156,8 @@ void HttpCzarIngestModuleBase::deleteTable(string const& databaseName, string co
 
 vector<string> HttpCzarIngestModuleBase::getWorkerIds() {
     vector<string> workerIds;
-    auto const workersJson = _requestController(http::Method::GET, "/replication/config");
-    for (auto const& worker : workersJson.at("config").at("workers")) {
+    json const response = _requestController(http::Method::GET, "/replication/config");
+    for (auto const& worker : response.at("config").at("workers")) {
         bool const isEnabled = worker.at("is-enabled").get<int>() != 0;
         bool const isReadOnly = worker.at("is-read-only").get<int>() != 0;
         if (isEnabled && !isReadOnly) {
@@ -161,24 +170,43 @@ vector<string> HttpCzarIngestModuleBase::getWorkerIds() {
     return workerIds;
 }
 
-void HttpCzarIngestModuleBase::_unpublishOrCreateDatabase(const string& databaseName) {
+map<int32_t, vector<string>> HttpCzarIngestModuleBase::_allocateChunks(set<int32_t> const& chunkIds,
+                                                                       string const& databaseName) {
+    json data = json::object({{"database", databaseName}, {"chunks", json::array()}});
+    for (auto const& chunkId : chunkIds) {
+        data.at("chunks").push_back(chunkId);
+    }
+    json const response = _requestController(http::Method::POST, "/ingest/chunks-multi", data);
+    map<int32_t, vector<string>> result;
+    for (auto const& entry : response.at("locations")) {
+        result[entry.at("chunk").get<int32_t>()].push_back(entry.at("worker").get<string>());
+    }
+    return result;
+}
+
+void HttpCzarIngestModuleBase::_unpublishOrCreateDatabase(const string& databaseName,
+                                                          bool createDefaultDirectorTable) {
     json const config = _requestController(http::Method::GET, "/replication/config").at("config");
     for (const auto& database : config.at("databases")) {
         if (boost::iequals(database.at("database").get<string>(), databaseName)) {
             if (database.at("is_published").get<int>() != 0) _unpublishDatabase(databaseName);
-            if (::countDirectors(database) == 0) _createDirectorTable(databaseName);
+            if (::countDirectors(database) == 0 && createDefaultDirectorTable) {
+                _createDefaultDirectorTable(databaseName);
+            }
             return;
         }
     }
     _createDatabase(databaseName);
-    _createDirectorTable(databaseName);
+    if (createDefaultDirectorTable) {
+        _createDefaultDirectorTable(databaseName);
+    }
 }
 
 void HttpCzarIngestModuleBase::_createDatabase(string const& databaseName) {
     json data = json::object({{"database", databaseName},
-                              {"num_stripes", ::defaultNumStripes},
-                              {"num_sub_stripes", ::defaultNumSubStripes},
-                              {"overlap", ::defaultOverlap}});
+                              {"num_stripes", HttpCzarIngestModuleBase::defaultNumStripes},
+                              {"num_sub_stripes", HttpCzarIngestModuleBase::defaultNumSubStripes},
+                              {"overlap", HttpCzarIngestModuleBase::defaultOverlap}});
     _requestController(http::Method::POST, "/ingest/database", data);
 }
 
@@ -193,36 +221,40 @@ void HttpCzarIngestModuleBase::_publishDatabase(string const& databaseName) {
 }
 
 void HttpCzarIngestModuleBase::_createTable(string const& databaseName, string const& tableName,
+                                            bool isPartitioned, string directorIdColName,
+                                            string directorLongitudeColName, string directorLatitudeColName,
                                             string const& charsetName, string const& collationName,
                                             json const& schema) {
     json data = json::object({{"database", databaseName},
                               {"table", tableName},
-                              {"is_partitioned", 0},
+                              {"is_partitioned", isPartitioned ? 1 : 0},
                               {"charset_name", charsetName},
                               {"collation_name", collationName},
                               {"schema", schema}});
+    if (isPartitioned) {
+        data["director_key"] = directorIdColName;
+        data["longitude_key"] = directorLongitudeColName;
+        data["latitude_key"] = directorLatitudeColName;
+    }
     _requestController(http::Method::POST, "/ingest/table/", data);
 }
 
-void HttpCzarIngestModuleBase::_createDirectorTable(string const& databaseName) {
+void HttpCzarIngestModuleBase::_createDefaultDirectorTable(string const& databaseName) {
     json const schema = json::array({{{"name", "objectId"}, {"type", "BIGINT"}},
                                      {{"name", "ra"}, {"type", "DOUBLE"}},
                                      {{"name", "dec"}, {"type", "DOUBLE"}},
                                      {{"name", "chunkId"}, {"type", "INT UNSIGNED NOT NULL"}},
                                      {{"name", "subChunkId"}, {"type", "INT UNSIGNED NOT NULL"}}});
-    json data = json::object(
-            {{"description", "The mandatory director table of the catalog. The table may be empty."},
-             {"fields_terminated_by", ","},
-             {"database", databaseName},
-             {"table", ::defaultDirectorTableName},
-             {"is_partitioned", 1},
-             {"is_director", 1},
-             {"director_key", "objectId"},
-             {"longitude_key", "ra"},
-             {"latitude_key", "dec"},
-             {"chunk_id_key", "chunkId"},
-             {"sub_chunk_id_key", "subChunkId"},
-             {"schema", schema}});
+    json data = json::object({{"database", databaseName},
+                              {"table", ::defaultDirectorTableName},
+                              {"is_partitioned", 1},
+                              {"director_key", "objectId"},
+                              {"longitude_key", "ra"},
+                              {"latitude_key", "dec"},
+                              {"schema", schema}});
+    // After registering the new table in Qserv, at least one chunk of the director table must
+    // be allocated to ensure the table is properly initialized. No data will be ingested into
+    // the table.
     _requestController(http::Method::POST, "/ingest/table/", data);
     _allocateChunk(databaseName, ::defaultChunkId);
 }
@@ -239,9 +271,10 @@ void HttpCzarIngestModuleBase::_abortOrCommitTransaction(uint32_t id, bool abort
     _requestController(http::Method::PUT, service, data);
 }
 
-json HttpCzarIngestModuleBase::_allocateChunk(string const& databaseName, unsigned int chunkId) {
+std::string HttpCzarIngestModuleBase::_allocateChunk(std::string const& databaseName, int32_t chunkId) {
     json data = json::object({{"database", databaseName}, {"chunk", chunkId}});
-    return _requestController(http::Method::POST, "/ingest/chunk", data);
+    json const response = _requestController(http::Method::POST, "/ingest/chunk", data);
+    return response.at("location").at("worker").get<std::string>();
 }
 
 void HttpCzarIngestModuleBase::_createIndexes(string const& func, string const& databaseName,
