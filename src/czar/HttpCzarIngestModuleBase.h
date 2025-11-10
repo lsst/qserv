@@ -26,6 +26,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -62,6 +63,11 @@ public:
     virtual ~HttpCzarIngestModuleBase() = default;
 
 protected:
+    // Common partitioning parameters.
+    static unsigned int defaultNumStripes;
+    static unsigned int defaultNumSubStripes;
+    static float defaultOverlap;
+
     HttpCzarIngestModuleBase(boost::asio::io_service& io_service);
 
     // HTTP timeout management methods.
@@ -73,21 +79,38 @@ protected:
      * Ingest the table into the Qserv.
      * @param databaseName The name of the database to ingest the data into.
      * @param tableName The name of the table to ingest the data into.
+     * @param isPartitioned A flag indicating whether the table is partitioned.
+     * @param directorIdColName The name of the column to be used as a director key.
+     * @param directorLongitudeColName The name of the column to be used as a director longitude.
+     * @param directorLatitudeColName The name of the column to be used as a director latitude.
      * @param charsetName The name of the character set for the table.
      * @param collationName The name of the collation for the table.
      * @param schema The schema of the table.
      * @param indexes The indexes to be created for the table.
+     * @param chunkIds The set of chunk IDs to be allocated (allowed to be empty)
      * @param submitRequestsToWorkers A function to submit requests to the workers. The function is
      *   expected to return a map of worker identifiers and error messages reported by the workers.
-     *   The only input parameter of the function is the transaction identifier.
+     *   The first input parameter of the function is the transaction identifier.
+     *   The second input parameter of the function is the mapping of chunk IDs to the corresponding
+     * collections of worker IDs (the map will match a collection of the chunk IDs in the parameter chunkIds).
+     * @note The current implementation of the function allows creating two types of tables:
+     *   - Fully replicated ables that are not partitioned and have no director columns. In this case,
+     *     the set of chunk IDs and the director-specific parameters are ignored.
+     *   - Partitioned tables that have director-specific columns. In this case, the set of chunk IDs
+     *     and the director-specific parameters are expected to be non-empty.
      * @return A collection of warnings reported by the ingest process, where each entry is represented by
      *   a pair of a scope (function) and a message of the warning.
      * @throw http::Error In case of a communication error or an error reported by the server.
      */
     std::list<std::pair<std::string, std::string>> ingestData(
-            std::string const& databaseName, std::string const& tableName, std::string const& charsetName,
+            std::string const& databaseName, std::string const& tableName, bool isPartitioned,
+            std::string directorIdColName, std::string directorLongitudeColName,
+            std::string directorLatitudeColName, std::string const& charsetName,
             std::string const& collationName, nlohmann::json const& schema, nlohmann::json const& indexes,
-            std::function<std::map<std::string, std::string>(uint32_t)> const& submitRequestsToWorkers);
+            std::set<std::int32_t> const& chunkIds,
+            std::function<std::map<std::string, std::string>(
+                    std::uint32_t, std::map<std::int32_t, std::vector<std::string>> const&)> const&
+                    submitRequestsToWorkers);
 
     /**
      * Verify the user-provided database name to ensure the name starts with the reserved
@@ -174,22 +197,40 @@ private:
     // The methods throw http::Error or other exceptions in case of communication
     // errors or errors reported by the server.
 
-    void _unpublishOrCreateDatabase(const std::string& databaseName);
+    void _unpublishOrCreateDatabase(const std::string& databaseName, bool createDefaultDirectorTable);
     void _createDatabase(std::string const& databaseName);
     void _unpublishDatabase(std::string const& databaseName);
     void _publishDatabase(std::string const& databaseName);
 
-    void _createTable(std::string const& databaseName, std::string const& tableName,
-                      std::string const& charsetName, std::string const& collationName,
-                      nlohmann::json const& schema);
-    void _createDirectorTable(std::string const& databaseName);
+    void _createTable(std::string const& databaseName, std::string const& tableName, bool isPartitioned,
+                      std::string directorIdColName, std::string directorLongitudeColName,
+                      std::string directorLatitudeColName, std::string const& charsetName,
+                      std::string const& collationName, nlohmann::json const& schema);
+    void _createDefaultDirectorTable(std::string const& databaseName);
 
     std::uint32_t _startTransaction(std::string const& databaseName);
     void _abortTransaction(std::uint32_t id) { _abortOrCommitTransaction(id, true); }
     void _commitTransaction(std::uint32_t id) { _abortOrCommitTransaction(id, false); }
     void _abortOrCommitTransaction(std::uint32_t id, bool abort);
 
-    nlohmann::json _allocateChunk(std::string const& databaseName, unsigned int chunkId);
+    /**
+     * Allocate a chunk for the specified chunk ID.
+     * @param databaseName The name of the database to allocate the chunk for.
+     * @param chunkId The chunk ID to be allocated.
+     * @return A worker identifier where the chunk is allocated.
+     * @throw http::Error In case of a communication error or an error reported by the server.
+     */
+    std::string _allocateChunk(std::string const& databaseName, std::int32_t chunkId);
+
+    /**
+     * Allocate chunks for the specified chunks.
+     * @param chunkIds The set of chunk identifiers.
+     * @param databaseName The name of the database to allocate the chunks for.
+     * @return A map of chunks to the corresponding collections of worker identifiers.
+     * @throw http::Error In case of a communication error or an error reported by the server.
+     */
+    std::map<std::int32_t, std::vector<std::string>> _allocateChunks(std::set<std::int32_t> const& chunkIds,
+                                                                     std::string const& databaseName);
 
     void _createIndexes(std::string const& func, std::string const& databaseName,
                         std::string const& tableName, nlohmann::json const& indexes,
