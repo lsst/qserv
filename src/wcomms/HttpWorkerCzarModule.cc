@@ -27,7 +27,6 @@
 #include <stdexcept>
 #include <vector>
 
-#include "../http/RequestBodyJSON.h"
 // Third party headers
 #include "lsst/log/Log.h"
 
@@ -35,6 +34,7 @@
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
 #include "http/RequestQuery.h"
+#include "http/RequestBodyJSON.h"
 #include "mysql/MySqlUtils.h"
 #include "protojson/UberJobMsg.h"
 #include "protojson/WorkerQueryStatusData.h"
@@ -238,7 +238,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
 
     auto const czInfo = wqsData->getCzInfo();
     LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
-    CzarId czId = czInfo->czId;
+    CzarId const czId = czInfo->czId;
     wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
     wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);
     wCzarInfo->czarMsgReceived(CLOCK::now());
@@ -314,11 +314,10 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     }
 
     // Delete files that should be deleted
-    CzarId czarId = wqsData->getCzInfo()->czId;
+    auto const czIdToDelete = wqsData->getCzInfo()->czId;
     for (wbase::UserQueryInfo::Ptr uqiPtr : deleteFilesList) {
         if (uqiPtr == nullptr) continue;
-        QueryId qId = uqiPtr->getQueryId();
-        wbase::FileChannelShared::cleanUpResults(czarId, qId);
+        wbase::FileChannelShared::cleanUpResults(czIdToDelete, uqiPtr->getQueryId());
     }
     // Syntax errors in the message would throw invalid_argument, which is handled elsewhere.
 
