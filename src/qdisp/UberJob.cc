@@ -59,7 +59,7 @@ namespace lsst::qserv::qdisp {
 UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
                              CzarId czarId) {
-    UberJob::Ptr uJob(
+    auto uJob = UberJob::Ptr(
             new UberJob(executive, respHandler, queryId, uberJobId, czarId, executive->getUjRowLimit()));
     uJob->_setup();
     return uJob;
@@ -73,7 +73,7 @@ UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandle
           _uberJobId(uberJobId),
           _czarId(czarId),
           _rowLimit(rowLimit),
-          _idStr("QID=" + to_string(_queryId) + "_ujId=" + to_string(uberJobId)) {
+          _idStr("QID=" + to_string(queryId) + "_ujId=" + to_string(uberJobId)) {
     LOGS(_log, LOG_LVL_TRACE, _idStr << " created");
 }
 
@@ -104,7 +104,6 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
 
 void UberJob::runUberJob() {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
@@ -136,20 +135,6 @@ void UberJob::runUberJob() {
     json request = uberJobMsg->toJson();
 
     jobsLock.unlock();  // unlock so other _jobsMtx threads can advance while this waits for transmit
-    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << "&&&uj runuj c");
-    /* &&&
-    {  // &&& testing only, delete
-        auto parsedReq = protojson::UberJobMsg::createFromJson(request);
-        json jsParsedReq = parsedReq->serializeJson();
-        if (request == jsParsedReq) {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj YAY!!! ");
-        } else {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj noYAY request != jsParsedReq");
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj request=" << request);
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " &&&uj jsParsedReq=" << jsParsedReq);
-        }
-    }
-    */
 
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " REQ " << request);
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
@@ -171,7 +156,6 @@ void UberJob::runUberJob() {
         LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " sending");
         json const response = client.readAsJson();
         LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " worker recv");
-
         if (0 != response.at("success").get<int>()) {
             transmitSuccess = true;
         } else {
@@ -181,10 +165,6 @@ void UberJob::runUberJob() {
         LOGS(_log, LOG_LVL_WARN, requestContext + " ujresponse failed, ex: " + ex.what());
         exceptionWhat = ex.what();
     }
-    auto endclient = CLOCK::now();                                       //&&&
-    std::chrono::duration<double> secsclient = endclient - startclient;  // &&&
-    histoRunUberJob.addEntry(endclient, secsclient.count());             //&&&
-    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoRunUberJob.getString(""));
     if (!transmitSuccess) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure, try to send jobs elsewhere");
         _unassignJobs();  // locks _jobsMtx
@@ -193,7 +173,6 @@ void UberJob::runUberJob() {
     } else {
         setStatusIfOk(qmeta::JobStatus::REQUEST, cName(__func__) + " transmitSuccess");  // locks _jobsMtx
     }
-
     return;
 }
 
@@ -248,7 +227,7 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
 }
 
 void UberJob::callMarkCompleteFunc(bool success) {
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " success=" << success);
+    LOGS(_log, LOG_LVL_DEBUG, "UberJob::callMarkCompleteFunc success=" << success);
 
     lock_guard<mutex> lck(_jobsMtx);
     // Need to set this uberJob's status, however exec->markCompleted will set

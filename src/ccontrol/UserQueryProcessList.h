@@ -110,7 +110,7 @@ private:
     std::string _getResultOrderBy() const { return _orderBy; }
 
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
-    CzarId const _czarId;  ///< Czar ID in QMeta database
+    CzarId const _czarId;
     QueryState _qState = UNKNOWN;
     std::shared_ptr<qmeta::MessageStore> _messageStore;
     std::string _resultTableName;
