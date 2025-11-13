@@ -57,6 +57,9 @@ CzarFamilyMap::Ptr CzarFamilyMap::create(std::shared_ptr<qmeta::QMeta> const& qm
             LOGS(_log, LOG_LVL_WARN, "Could not create CzarFamilyMap, sleep and retry " << exc.what());
         }
         if (newPtr == nullptr) {
+            // There's nothing special about 10s, just need to pause between reads to
+            // avoid wasting CPU time.
+            // TODO:DM-53239 - Changes to CSS may result in better options than just waiting.
             this_thread::sleep_for(10s);
         }
     }
@@ -66,8 +69,7 @@ CzarFamilyMap::Ptr CzarFamilyMap::create(std::shared_ptr<qmeta::QMeta> const& qm
 
 CzarFamilyMap::CzarFamilyMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(qmeta) {
     try {
-        auto mapsSet = _read();
-        if (!mapsSet) {
+        if (!_read()) {
             throw ChunkMapException(ERR_LOC, cName(__func__) + " maps were not set in constructor");
         }
     } catch (qmeta::QMetaError const& qExc) {

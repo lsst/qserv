@@ -105,7 +105,7 @@ public:
     static nlohmann::json filesToJson(std::vector<QueryId> const& queryIds, unsigned int maxFiles);
 
     /// The factory method for handling UberJob over http.
-    static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJob);
+    static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJobData);
 
     FileChannelShared() = delete;
     FileChannelShared(FileChannelShared const&) = delete;
@@ -159,7 +159,7 @@ public:
 
 private:
     /// Private constructor to protect shared pointer integrity.
-    FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJob);
+    FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData);
 
     /// @see wbase::SendChannel::kill
     /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.

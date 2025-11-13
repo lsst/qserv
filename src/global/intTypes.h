@@ -38,7 +38,7 @@ typedef std::vector<int32_t> Int32Vector;
 /// Typedef for Query ID in query metadata.
 typedef std::uint64_t QueryId;
 typedef std::int64_t JobId;
-typedef JobId UberJobId;  // These must be the same type.
+typedef std::int64_t UberJobId;
 typedef std::uint32_t CzarId;
 
 /// Class to provide a consistent format for QueryIds in the log file

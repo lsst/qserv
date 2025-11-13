@@ -36,8 +36,6 @@
 #include "czar/CzarRegistry.h"
 #include "qmeta/Exceptions.h"
 #include "util/Bug.h"
-#include "util/InstanceCount.h"  //&&&
-#include "util/Histogram.h"      //&&&
 #include "util/TimeUtils.h"
 
 using namespace std;

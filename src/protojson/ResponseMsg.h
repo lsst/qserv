@@ -51,7 +51,7 @@ class ResponseMsg {
 public:
     using Ptr = std::shared_ptr<ResponseMsg>;
 
-    ResponseMsg(bool success_, std::string const& errorType_ = std::string("none"),
+    ResponseMsg(bool success_, std::string const& errorType_ = "none",
                 std::string const& note_ = std::string());
 
     ResponseMsg() = delete;
@@ -60,7 +60,7 @@ public:
 
     bool equal(ResponseMsg const& other) const;
 
-    static Ptr create(bool success_, std::string const& errorType_ = std::string("none"),
+    static Ptr create(bool success_, std::string const& errorType_ = "none",
                       std::string const& note_ = std::string()) {
         return Ptr(new ResponseMsg(success_, errorType_, note_));
     }
@@ -68,7 +68,7 @@ public:
     /// This function creates ResponseMessage from respJson, if reasonable.
     static Ptr createFromJson(nlohmann::json const& respJson);
 
-    ~ResponseMsg() = default;
+    virtual ~ResponseMsg() = default;
 
     /// Action for worker to take if its message to the czar returned failed.
     /// In most cases, nothing needs to be done.
