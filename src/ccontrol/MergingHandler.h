@@ -118,7 +118,7 @@ private:
 
     /// Indicates merge state of the result table relating to the UberJob associated with
     /// instance of MergingHandler.
-    int _mergeState = PREMERGE;
+    MergeState _mergeState = PREMERGE;
     std::mutex _mergeStateMtx;  ///< Protectes _mergeState
 };
 

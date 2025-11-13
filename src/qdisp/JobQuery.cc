@@ -55,7 +55,6 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
 
 JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }
 
-
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel(bool superfluous) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
@@ -71,7 +70,6 @@ bool JobQuery::cancel(bool superfluous) {
             LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
             return false;
         }
-        executive->markCompleted(getJobId(), false);
         if (!superfluous) {
             exec->addMultiError(-1, context, util::ErrorCode::JOB_CANCEL);
         }

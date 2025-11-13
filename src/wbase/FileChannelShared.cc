@@ -253,9 +253,9 @@ json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned in
     return json::object({{"files", files}, {"num_selected", numSelected}, {"num_total", numTotal}});
 }
 
-FileChannelShared::Ptr FileChannelShared::create(std::shared_ptr<wbase::UberJobData> const& uberJob) {
+FileChannelShared::Ptr FileChannelShared::create(std::shared_ptr<wbase::UberJobData> const& uberJobData) {
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
-    return Ptr(new FileChannelShared(uberJob));
+    return Ptr(new FileChannelShared(uberJobData));
 }
 
 FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData)
@@ -316,7 +316,6 @@ bool FileChannelShared::isRowLimitComplete() const {
     lock_guard<mutex> const tMtxLock(_tMtx);
     return _rowLimitComplete;
 }
-
 
 void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {

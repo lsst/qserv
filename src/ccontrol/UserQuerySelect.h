@@ -184,8 +184,8 @@ private:
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
     std::shared_ptr<qmeta::QProgress> _queryProgress;
 
-    CzarId _czarId;                                               ///< Czar ID in QMeta database
-    QueryId _queryId = 0;                                         ///< Query ID in QMeta database
+    CzarId _czarId;
+    QueryId _queryId = 0;
     std::string _queryIdStr = QueryIdHelper::makeIdStr(0, true);  ///< Initialized to unknown
     bool _killed = false;
     std::mutex _killMutex;
