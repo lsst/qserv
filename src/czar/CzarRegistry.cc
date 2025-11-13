@@ -114,6 +114,7 @@ void CzarRegistry::_registryWorkerInfoLoop() {
     string const replicationAuthKey = _czarConfig->replicationAuthKey();
     uint64_t const czarStartTime = Czar::czarStartupTime;
     string const fqdn = util::getCurrentHostFqdnBlocking();
+
     vector<string> const headers;
     auto const method = http::Method::GET;
     string const url = "http://" + _czarConfig->replicationRegistryHost() + ":" +

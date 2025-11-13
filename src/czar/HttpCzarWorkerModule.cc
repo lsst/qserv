@@ -29,6 +29,7 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
+#include "protojson/ResponseMsg.h"
 #include "protojson/UberJobErrorMsg.h"
 #include "protojson/UberJobReadyMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
@@ -69,9 +70,9 @@ json HttpCzarWorkerModule::executeImpl(string const& subModuleName) {
     enforceCzarName(func);
     if (subModuleName == "QUERYJOB-ERROR")
         return _queryJobError();
-    else if (subModuleName == "QUERYJOB-READY")
+    else if (subModuleName == "QUERYJOB-READY") {
         return _queryJobReady();
-    else if (subModuleName == "WORKERCZARCOMISSUE")
+    } else if (subModuleName == "WORKERCZARCOMISSUE")
         return _workerCzarComIssue();
     throw invalid_argument(context() + func + " unsupported sub-module");
 }
@@ -101,12 +102,10 @@ json HttpCzarWorkerModule::_workerCzarComIssue() {
 }
 
 json HttpCzarWorkerModule::_handleJobError(string const& func) {
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError start " << body().objJson);
-
+    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError start");
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then kill the UberJob.
-    json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
         string const& repliInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
         string const& repliAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
@@ -131,14 +130,13 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
         }
 
         auto importRes = uj->workerError(jrMsg->getErrorCode(), jrMsg->getErrorMsg());
-        jsRet = importRes;
+        return importRes;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleJobError received " << iaEx.what() << " js=" << body().objJson);
-        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
+        protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
+        return respMsg.toJson();
     }
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError end");
-    return jsRet;
 }
 
 json HttpCzarWorkerModule::_handleJobReady(string const& func) {
@@ -147,7 +145,6 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then have the uberjob import the file.
-    json jsRet = {{"success", 1}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
         auto const& jsReq = body().objJson;
         auto jrMsg = protojson::UberJobReadyMsg::createFromJson(jsReq);
@@ -178,21 +175,18 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
 
         auto importRes =
                 uj->importResultFile(jrMsg->getFileUrl(), jrMsg->getRowCount(), jrMsg->getFileSize());
-        jsRet = importRes;
-
+        return importRes;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleJobReady received " << iaEx.what() << " js=" << body().objJson);
-        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
+        protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
+        return respMsg.toJson();
     }
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobReady end");
-    return jsRet;
 }
 
 json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
     LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleWorkerCzarComIssue start");
     // Parse and verify the json message and then deal with the problems.
-    json jsRet = {{"success", 0}, {"errortype", "unknown"}, {"note", "initialized"}};
     try {
         string const replicationInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
         string const replicationAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
@@ -215,16 +209,16 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
                 execPtr->killIncompleteUberJobsOnWorker(wId);
             }
         }
-        jsRet = wccIssue->responseToJson();
+        auto jsRet = wccIssue->responseToJson();
         LOGS(_log, LOG_LVL_TRACE, "HttpCzarWorkerModule::_handleWorkerCzarComIssue jsRet=" << jsRet.dump());
-
+        return jsRet;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleWorkerCzarComIssue received " << iaEx.what()
                                                                          << " js=" << body().objJson);
-        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", iaEx.what()}};
+        protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
+        return respMsg.toJson();
     }
-    return jsRet;
 }
 
 }  // namespace lsst::qserv::czar

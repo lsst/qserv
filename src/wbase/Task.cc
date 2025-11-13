@@ -38,6 +38,7 @@
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
 
+#include "../http/RequestBodyJSON.h"
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -45,7 +46,6 @@
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
-#include "http/RequestBodyJSON.h"
 #include "mysql/MySqlConfig.h"
 #include "protojson/UberJobMsg.h"
 #include "util/Bug.h"
@@ -180,7 +180,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
     QueryId qId = ujData->getQueryId();
     UberJobId ujId = ujData->getUberJobId();
-    CzarIdType czId = ujData->getCzarId();
+    CzarId czId = ujData->getCzarId();
 
     vector<Task::Ptr> vect;  // List of created tasks to be returned.
     wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
@@ -211,7 +211,6 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         std::string chunkQuerySpecDb = jobMsg->getChunkQuerySpecDb();
         int chunkId = jobMsg->getChunkId();
 
-        std::vector<int> chunkScanTableIndexes = jobMsg->getChunkScanTableIndexes();
         auto jobFragments = jobMsg->getJobFragments();
         int fragmentNumber = 0;
 
@@ -276,7 +275,7 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
     vector<Task::Ptr> vect;
     QueryId qId = ujData->getQueryId();
-    CzarIdType czId = ujData->getCzarId();
+    CzarId czId = ujData->getCzarId();
     string funcN(__func__);
     funcN += " QID=" + to_string(qId) + " czId=" + to_string(czId);
     protojson::JobSubQueryTempMap::Ptr jobSubQueryTempMap{protojson::JobSubQueryTempMap::create()};
@@ -297,7 +296,6 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::string chunkQuerySpecDb = jobMsg->getChunkQuerySpecDb();
         int chunkId = jobMsg->getChunkId();
 
-        std::vector<int> chunkScanTableIndexes = jobMsg->getChunkScanTableIndexes();
         auto jobFragments = jobMsg->getJobFragments();
         int fragmentNumber = 0;
 
