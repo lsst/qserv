@@ -51,7 +51,7 @@ namespace lsst::qserv::czar {
 /// When the data is changed, there is a timestamp that is updated, which
 /// will cause new maps to be made by this class.
 ///
-/// The maps generated should be treated as constant objects stored with
+/// The maps generated should be treated as immutable objects stored with
 /// shared pointers. As such, it should be possible for numerous threads
 /// to use each map simultaneously provided they have their own pointers
 /// to the maps.
@@ -132,10 +132,7 @@ private:
     CzarChunkMap::Ptr _getChunkMap(std::string const& familyName) const {
         std::lock_guard<std::mutex> familyLock(_familyMapMtx);
         auto iter = _familyMap->find(familyName);
-        if (iter == _familyMap->end()) {
-            return nullptr;
-        }
-        return iter->second;
+        return (iter == _familyMap->end()) ? nullptr : iter->second;
     }
 
     std::shared_ptr<qmeta::QMeta> _qmeta;  ///< Database connection to collect json worker list.

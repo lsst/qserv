@@ -92,8 +92,6 @@ public:
     bool hasParameter(Parameter p) const;
     DbTableSet const& getSubChunkTables() const { return _subChunkTables; }
 
-    std::string dump() const { return std::string("&&& NEED CODE"); }
-
 private:
     ParameterMap _subs;
     DbTableSet _subChunkTables;

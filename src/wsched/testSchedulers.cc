@@ -32,7 +32,6 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
-#include "proto/worker.pb.h"
 #include "protojson/ScanTableInfo.h"
 #include "util/Command.h"
 #include "util/EventThread.h"
@@ -982,10 +981,6 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
 
     bool const scanInteractiveF = false;
     shared_ptr<FileChannelShared> sc = nullptr;
-#if 0   // &&& fix and re-enable
-    LOGS(_log, LOG_LVL_DEBUG, "Test_case SlowTableHeapTest start");
-    auto queries = QueriesAndChunks::setupGlobal(chrono::seconds(1), chrono::seconds(300), maxBootedC,
-                                                 maxDarkTasksC, resetForTestingC);
     wsched::ChunkTasks::SlowTableHeap heap{};
     lsst::qserv::QueryId qIdInc = 1;
 

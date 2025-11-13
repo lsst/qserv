@@ -192,7 +192,7 @@ void ActiveWorker::_sendStatusMsg(protojson::WorkerContactInfo::Ptr const& wInf,
                 czar::Czar::getCzar()->killIncompleteUbjerJobsOn(wInf->wId);
             }
         } else {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure " << *respMsg);
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure:" << *respMsg);
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR, requestContext + " transmit failure, ex: " + ex.what());
