@@ -177,8 +177,7 @@ public:
     /// the method then the monitoring will be disabled.
     unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec->getVal(); }
 
-    /// Maximum number of time to try running a particular job before squashing
-    /// the entire user query.
+    /// Maximum number of attempts to run a given job before aborting the entire user query.
     unsigned int jobMaxAttempts() const { return _jobMaxAttempts->getVal(); }
 
     /// A worker is considered fully ALIVE if the last update from the worker has been

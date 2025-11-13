@@ -177,7 +177,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->czarId);
 
-    CzarId czarId = _czarConfig->id();
+    auto const czarId = _czarConfig->id();
     size_t const MB_SIZE_BYTES = 1024 * 1024;
     size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
     size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;

@@ -60,7 +60,6 @@ class QProgress;
 class QProgressHistory;
 }  // namespace lsst::qserv::qmeta
 
-
 namespace lsst::qserv::qproc {
 class QuerySession;
 }  // namespace lsst::qserv::qproc
