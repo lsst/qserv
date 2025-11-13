@@ -96,7 +96,8 @@ UberJobErrorMsg::UberJobErrorMsg(string const& replicationInstanceId, string con
           _errorCode(errorCode),
           _errorMsg(errorMsg) {
     if (_version != http::MetaModule::version) {
-        string eMsg = _cName(__func__) + " bad version " + to_string(_version);
+        string eMsg = _cName(__func__) + " bad version " + to_string(_version) +
+                      "expected=" + to_string(http::MetaModule::version);
         LOGS(_log, LOG_LVL_ERROR, eMsg);
         throw invalid_argument(eMsg);
     }

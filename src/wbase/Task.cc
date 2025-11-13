@@ -38,7 +38,6 @@
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
 
-#include "../http/RequestBodyJSON.h"
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -46,8 +45,8 @@
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
+#include "http/RequestBodyJSON.h"
 #include "mysql/MySqlConfig.h"
-#include "proto/worker.pb.h"
 #include "protojson/UberJobMsg.h"
 #include "util/Bug.h"
 #include "util/common.h"
@@ -176,7 +175,6 @@ Task::~Task() {}
 std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         std::shared_ptr<protojson::UberJobMsg> const& ujMsg, std::shared_ptr<UberJobData> const& ujData,
         std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
-        std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr, mysql::MySqlConfig const& mySqlConfig,
         std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
@@ -206,18 +204,16 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
     auto jobSubQueryTempMap = ujMsg->getJobSubQueryTempMap();
     auto jobDbTablesMap = ujMsg->getJobDbTableMap();
     auto jobMsgVect = ujMsg->getJobMsgVect();
-    int maxTableSizeMb = ujMsg->getMaxTableSizeMb();
-    auto scanInfo = ujMsg->getScanInfo();
 
     for (auto const& jobMsg : *jobMsgVect) {
         JobId jobId = jobMsg->getJobId();
         int attemptCount = jobMsg->getAttemptCount();
         std::string chunkQuerySpecDb = jobMsg->getChunkQuerySpecDb();
-        bool scanInteractive = jobMsg->getScanInteractive();
         int chunkId = jobMsg->getChunkId();
 
         auto jobFragments = jobMsg->getJobFragments();
         int fragmentNumber = 0;
+
         for (auto const& fMsg : *jobFragments) {
             // These need to be constructed for the fragment
             vector<string> fragSubQueries;
@@ -244,20 +240,17 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                 if (fragSubchunkIds.empty()) {
                     bool const noSubchunks = false;
                     int const subchunkId = -1;
-                    auto task = Task::Ptr(new Task(
-                            ujData, jobId, attemptCount, chunkId, fragmentNumber, templateId, noSubchunks,
-                            subchunkId, chunkQuerySpecDb, scanInfo, scanInteractive, maxTableSizeMb,
-                            fragSubTables, fragSubchunkIds, sendChannel, queryStats, resultsHttpPort));
-
+                    auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
+                                                   templateId, noSubchunks, subchunkId, chunkQuerySpecDb,
+                                                   fragSubTables, fragSubchunkIds, sendChannel, queryStats));
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
-                        auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
-                                                       templateId, hasSubchunks, subchunkId, chunkQuerySpecDb,
-                                                       scanInfo, scanInteractive, maxTableSizeMb,
-                                                       fragSubTables, fragSubchunkIds, sendChannel,
-                                                       queryStats, resultsHttpPort));
+                        auto task =
+                                Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
+                                                   templateId, hasSubchunks, subchunkId, chunkQuerySpecDb,
+                                                   fragSubTables, fragSubchunkIds, sendChannel, queryStats));
                         vect.push_back(task);
                     }
                 }
@@ -271,6 +264,7 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         taskPtr->setTaskQueryRunner(wdb::QueryRunner::newQueryRunner(taskPtr, chunkResourceMgr, mySqlConfig,
                                                                      sqlConnMgr, queriesAndChunks));
     }
+
     return vect;
 }
 
@@ -280,10 +274,8 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
         std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
     vector<Task::Ptr> vect;
-    QueryId qId = ujData->getQueryId();
-    CzarId czId = ujData->getCzarId();
-    string funcN(__func__);
-    funcN += " QID=" + to_string(qId) + " czId=" + to_string(czId);
+    auto const qId = ujData->getQueryId();
+    auto const czId = ujData->getCzarId();
     protojson::JobSubQueryTempMap::Ptr jobSubQueryTempMap{protojson::JobSubQueryTempMap::create()};
     protojson::JobDbTableMap::Ptr jobDbTablesMap{protojson::JobDbTableMap::create()};
     protojson::JobMsg::VectPtr jobMsgVect{new protojson::JobMsg::Vect()};

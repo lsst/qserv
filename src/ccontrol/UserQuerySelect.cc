@@ -311,8 +311,6 @@ void UserQuerySelect::submit() {
     exec->waitForAllJobsToStart();
 }
 
-util::HistogramRolling histoBuildAndS("&&&uj histoBuildAndS", {0.1, 1.0, 10.0, 100.0, 1000.0}, 1h, 10000);
-
 void UserQuerySelect::buildAndSendUberJobs() {
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_queryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
@@ -480,10 +478,6 @@ void UserQuerySelect::buildAndSendUberJobs() {
             wInfUJ->uberJobPtr = nullptr;
         }
     }
-    auto endassign = CLOCK::now();                                       //&&&
-    std::chrono::duration<double> secsassign = endassign - startassign;  // &&&
-    histoBuildAndS.addEntry(endassign, secsassign.count());              //&&&
-    LOGS(_log, LOG_LVL_INFO, "&&&uj histo " << histoBuildAndS.getString(""));
 
     if (!missingChunks.empty()) {
         string errStr = funcN + " a worker could not be found for these chunks ";
