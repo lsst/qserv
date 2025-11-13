@@ -234,7 +234,7 @@ UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, s
     _userQuerySharedResources->queryMetadata->cleanupQueriesAtStart(_userQuerySharedResources->czarId);
 
     // Add logging context with czar ID
-    CzarId czarId = _userQuerySharedResources->czarId;
+    auto const czarId = _userQuerySharedResources->czarId;
     LOG_MDC_INIT([czarId]() { LOG_MDC("CZID", std::to_string(czarId)); });
 
     // BOOST ASIO service is started to process asynchronous timer requests

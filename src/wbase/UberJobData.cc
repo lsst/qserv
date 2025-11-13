@@ -259,11 +259,11 @@ void UJTransmitCmd::action(util::CmdData* data) {
         if (respMsg->success) {
             transmitSuccess = true;
             string note = response.at("note");
-            if (note != "") {
+            if (note.empty()) {
                 LOGS(_log, LOG_LVL_INFO, response);
             }
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success == 0 " << response);
+            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success=0 " << response);
             respMsg->failedUpdateUberJobData(ujPtr);
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
