@@ -121,17 +121,16 @@ If a request succeeded, the System would respond with the following JSON object:
 
 .. code-block::
 
-    {   "locations" : [
-            {   "worker" :         <string>,
-                "host" :           <string>,
-                "host_name" :      <string>,
-                "port" :           <number>,
-                "http_host" :      <string>,
-                "http_host_name" : <string>,
-                "http_port" :      <number>
-            },
-            ...
-        ]
+    {   "location" : {
+            "worker" :         <string>,
+            "host" :           <string>,
+            "host_name" :      <string>,
+            "port" :           <number>,
+            "http_host" :      <string>,
+            "http_host_name" : <string>,
+            "http_port" :      <number>
+        },
+        ...
     }
 
 Where, the object represents a worker where the Ingest system requests the workflow to forward the chunk contributions.
@@ -176,7 +175,7 @@ The resulting object  has the following schema:
 
 .. code-block::
 
-    {   "locations" : [
+    {   "location" : [
             {   "chunk" :          <number>,
                 "worker" :         <string>,
                 "host" :           <string>,
