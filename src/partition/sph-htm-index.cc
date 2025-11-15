@@ -26,15 +26,14 @@
 #include <cstdio>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "boost/filesystem.hpp"
-#include "boost/make_shared.hpp"
 #include "boost/program_options.hpp"
-#include "boost/shared_ptr.hpp"
 
 #include "partition/CmdLineUtils.h"
 #include "partition/ConfigStore.h"
@@ -96,7 +95,7 @@ public:
     void reduce(RecordIter const begin, RecordIter const end);
     void finish();
 
-    boost::shared_ptr<HtmIndex> const result() { return _index; }
+    std::shared_ptr<HtmIndex> const result() { return _index; }
 
     static void defineOptions(po::options_description& opts);
 
@@ -107,7 +106,7 @@ private:
     int _idField;
     std::pair<int, int> _pos;
     int _level;
-    boost::shared_ptr<HtmIndex> _index;
+    std::shared_ptr<HtmIndex> _index;
     uint32_t _htmId;
     uint64_t _numRecords;
     uint32_t _numNodes;
@@ -121,7 +120,7 @@ Worker::Worker(ConfigStore const& config)
           _idField(-1),
           _pos(-1, -1),
           _level(config.get<int>("htm.level")),
-          _index(boost::make_shared<HtmIndex>(_level)),
+          _index(std::make_shared<HtmIndex>(_level)),
           _htmId(0),
           _numRecords(0),
           _numNodes(config.get<uint32_t>("out.num-nodes")),
@@ -249,7 +248,7 @@ int main(int argc, char const* const* argv) {
         part::ConfigStore config = part::parseCommandLine(options, argc, argv, help);
         part::makeOutputDirectory(config, true);
         part::HtmIndexJob job(config);
-        boost::shared_ptr<part::HtmIndex> index = job.run(part::makeInputLines(config));
+        std::shared_ptr<part::HtmIndex> index = job.run(part::makeInputLines(config));
         if (!index->empty()) {
             fs::path d(config.get<std::string>("out.dir"));
             index->write(d / "htm_index.bin", false);

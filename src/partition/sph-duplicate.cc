@@ -28,6 +28,7 @@
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -35,7 +36,6 @@
 
 #include "boost/filesystem.hpp"
 #include "boost/program_options.hpp"
-#include "boost/shared_ptr.hpp"
 
 #include "partition/Chunker.h"
 #include "partition/ChunkReducer.h"
@@ -58,7 +58,7 @@ class Duplicator {
 public:
     Duplicator() : _blockSize(0), _level(-1) {}
 
-    boost::shared_ptr<ChunkIndex> const run(ConfigStore const& config);
+    std::shared_ptr<ChunkIndex> const run(ConfigStore const& config);
 
 private:
     // A list of (HTM triangle, chunk ID) pairs.
@@ -70,9 +70,9 @@ private:
     InputLines const _makeInput() const;
 
     TargetMap _targets;
-    boost::shared_ptr<Chunker> _chunker;
-    boost::shared_ptr<HtmIndex> _partIndex;
-    boost::shared_ptr<HtmIndex> _index;
+    std::shared_ptr<Chunker> _chunker;
+    std::shared_ptr<HtmIndex> _partIndex;
+    std::shared_ptr<HtmIndex> _index;
     fs::path _partIndexDir;
     fs::path _indexDir;
     size_t _blockSize;
@@ -249,8 +249,8 @@ private:
     std::vector<ChunkLocation> _locations;
     fs::path _partIndexDir;
     fs::path _indexDir;
-    boost::shared_ptr<LessThanCounter> _partIdsLessThan;
-    boost::shared_ptr<LessThanCounter> _idsLessThan;
+    std::shared_ptr<LessThanCounter> _partIdsLessThan;
+    std::shared_ptr<LessThanCounter> _idsLessThan;
 };
 
 Worker::Worker(ConfigStore const& config)
@@ -525,13 +525,13 @@ void Worker::defineOptions(po::options_description& opts) {
 
 typedef Job<Worker> DuplicateJob;
 
-boost::shared_ptr<ChunkIndex> const Duplicator::run(ConfigStore const& config) {
+std::shared_ptr<ChunkIndex> const Duplicator::run(ConfigStore const& config) {
     // Initialize state.
-    boost::shared_ptr<Chunker> chunker(new Chunker(config));
+    std::shared_ptr<Chunker> chunker(new Chunker(config));
     std::vector<int32_t> chunks = chunksToDuplicate(*chunker, config);
     _chunker.swap(chunker);
     DuplicateJob job(config);
-    boost::shared_ptr<ChunkIndex> chunkIndex;
+    std::shared_ptr<ChunkIndex> chunkIndex;
     if (!config.has("id") && !config.has("part.id")) {
         throw std::runtime_error(
                 "One or both of the --id and --part.id "
@@ -575,7 +575,7 @@ boost::shared_ptr<ChunkIndex> const Duplicator::run(ConfigStore const& config) {
         chunks.pop_back();
         --n;
         if (n == 0 || chunks.empty()) {
-            boost::shared_ptr<ChunkIndex> c = job.run(_makeInput());
+            std::shared_ptr<ChunkIndex> c = job.run(_makeInput());
             if (c) {
                 if (chunkIndex) {
                     chunkIndex->merge(*c);
@@ -606,7 +606,7 @@ int main(int argc, char const* const* argv) {
         part::ensureOutputFieldExists(config, "part.chunk");
         part::ensureOutputFieldExists(config, "part.sub-chunk");
         part::makeOutputDirectory(config, true);
-        boost::shared_ptr<part::ChunkIndex> index = part::duplicator.run(config);
+        std::shared_ptr<part::ChunkIndex> index = part::duplicator.run(config);
         if (!index->empty()) {
             fs::path d(config.get<std::string>("out.dir"));
             fs::path f = config.get<std::string>("part.prefix") + "_index.bin";
