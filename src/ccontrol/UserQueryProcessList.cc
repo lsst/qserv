@@ -64,7 +64,7 @@ namespace lsst::qserv::ccontrol {
 // Constructor
 UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
                                            std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                           qmeta::CzarId czarId, std::string const& userQueryId,
+                                           CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
           _czarId(czarId),
@@ -91,7 +91,7 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
 }
 
 UserQueryProcessList::UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                           qmeta::CzarId czarId, std::string const& userQueryId,
+                                           CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
           _czarId(czarId),

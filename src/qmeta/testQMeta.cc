@@ -51,6 +51,7 @@
 
 using lsst::qserv::mysql::MySqlConfig;
 using namespace lsst::qserv::qmeta;
+using lsst::qserv::CzarId;
 using lsst::qserv::sql::SqlConnection;
 using lsst::qserv::sql::SqlConnectionFactory;
 using lsst::qserv::sql::SqlErrorObject;
