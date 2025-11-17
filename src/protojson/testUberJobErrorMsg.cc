@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
 
     string const workerIdStr("wrker72");
     string const czarName("cz4242");
-    lsst::qserv::CzarIdType const czarId = 745;
+    lsst::qserv::CzarId const czarId = 745;
     lsst::qserv::QueryId const queryId = 986532;
     lsst::qserv::UberJobId const uberJobId = 14578;
     string const errorMsg("something went wrong");

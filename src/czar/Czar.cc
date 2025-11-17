@@ -42,7 +42,7 @@
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
 #include "czar/ActiveWorker.h"
-#include "czar/CzarChunkMap.h"
+#include "czar/CzarFamilyMap.h"
 #include "czar/CzarErrors.h"
 #include "czar/CzarThreads.h"
 #include "czar/HttpSvc.h"
@@ -99,7 +99,7 @@ void Czar::_monitor() {
 
         /// Check database for changes in worker chunk assignments and aliveness
         try {
-            // TODO:UJ The read() is incredibly expensive until the database has
+            // TODO:DM-53239 The read() is incredibly expensive until the database has
             //         a "changed" field of some kind (preferably timestamp) to
             //         indicate the last time it changed.
             //         For Now, just do one read every few times through this loop.
@@ -148,8 +148,6 @@ void Czar::_monitor() {
         // a separate message (see WorkerCzarComIssue) saying it killed everything that this
         // czar gave it. Upon getting this message from a worker, this czar will reassign
         // everything it had sent to that worker.
-
-        // TODO:UJ How long should queryId's remain on this list?
     }
 }
 
@@ -179,7 +177,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->czarId);
 
-    CzarIdType czarId = _czarConfig->id();
+    auto const czarId = _czarConfig->id();
     size_t const MB_SIZE_BYTES = 1024 * 1024;
     size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
     size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;
@@ -202,9 +200,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
             LOGS(_log, LOG_LVL_WARN, ex.what());
         }
     }
-
-    // This will block until there is a successful read of the database tables.
-    _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
 
     // This will block until there is a successful read of the database tables.
     _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
