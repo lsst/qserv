@@ -64,7 +64,7 @@ public:
     WCzarInfo() = delete;
     ~WCzarInfo() = default;
 
-    static Ptr create(CzarIdType czarId_) { return Ptr(new WCzarInfo(czarId_)); }
+    static Ptr create(CzarId czarId_) { return Ptr(new WCzarInfo(czarId_)); }
 
     /// If there were communication issues, start a thread to send the WorkerCzarComIssue message.
     void sendWorkerCzarComIssueIfNeeded(std::shared_ptr<protojson::WorkerContactInfo> const& wInfo_,
@@ -81,10 +81,10 @@ public:
 
     std::shared_ptr<protojson::WorkerCzarComIssue> getWorkerCzarComIssue();
 
-    CzarIdType const czarId;
+    CzarId const czarId;
 
 private:
-    WCzarInfo(CzarIdType czarId_);
+    WCzarInfo(CzarId czarId_);
 
     void _sendMessage();
 
@@ -114,12 +114,12 @@ public:
     static Ptr create() { return Ptr(new WCzarInfoMap()); }
 
     /// Return the WCzarInfo ptr associated with czId, creating a new one if needed.
-    WCzarInfo::Ptr getWCzarInfo(CzarIdType czId);
+    WCzarInfo::Ptr getWCzarInfo(CzarId czId);
 
 private:
     WCzarInfoMap() = default;
 
-    std::map<CzarIdType, WCzarInfo::Ptr> _wczMap;
+    std::map<CzarId, WCzarInfo::Ptr> _wczMap;
 
     mutable std::mutex _wczMapMtx;
 };

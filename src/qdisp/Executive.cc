@@ -93,13 +93,14 @@ namespace lsst::qserv::qdisp {
 Executive::Executive(int secondsBetweenUpdates, shared_ptr<qmeta::MessageStore> const& ms,
                      util::QdispPool::Ptr const& qdispPool, shared_ptr<qmeta::QProgress> const& queryProgress,
                      shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
-                     shared_ptr<qproc::QuerySession> const& querySession)
+                     shared_ptr<qproc::QuerySession> const& querySession, unsigned int jobMaxAttempts)
         : _messageStore(ms),
           _qdispPool(qdispPool),
           _queryProgress(queryProgress),
           _queryProgressHistory(queryProgressHistory),
           _secondsBetweenQMetaUpdates(chrono::seconds(secondsBetweenUpdates)),
-          _querySession(querySession) {
+          _querySession(querySession),
+          _jobMaxAttempts(jobMaxAttempts) {
     _setupLimit();
     qdisp::CzarStats::get()->addQuery();
 }
@@ -132,8 +133,11 @@ Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::Messa
                                  shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService) {
     LOGS(_log, LOG_LVL_DEBUG, "Executive::" << __func__);
+
+    auto czarConfig = cconfig::CzarConfig::instance();
     Executive::Ptr ptr(new Executive(secsBetweenUpdates, ms, qdispPool, queryProgress, queryProgressHistory,
-                                     querySession));
+                                     querySession, czarConfig->jobMaxAttempts()));
+
     // Start the query progress monitoring timer (if enabled). The query status
     // will be sampled on each expiration event of the timer. Note that the timer
     // gets restarted automatically for as long as the context (the current
@@ -142,7 +146,7 @@ Executive::Ptr Executive::create(int secsBetweenUpdates, shared_ptr<qmeta::Messa
     // IMPORTANT: The weak pointer dependency (unlike the regular shared pointer)
     // is required here to allow destroying the Executive object without explicitly
     // stopping the timer.
-    auto const czarStatsUpdateIvalSec = cconfig::CzarConfig::instance()->czarStatsUpdateIvalSec();
+    auto const czarStatsUpdateIvalSec = czarConfig->czarStatsUpdateIvalSec();
     if (czarStatsUpdateIvalSec > 0) {
         // AsyncTimer has a 'self' keep alive in AsyncTimer::start() that keeps it safe when
         // this Executive is deleted.
@@ -315,7 +319,7 @@ string Executive::dumpUberJobCounts() const {
         }
     }
     {
-        lock_guard<recursive_mutex> jmLck(_jobMapMtx);
+        lock_guard jmLck(_jobMapMtx);
         os << " ujTotalJobs=" << totalJobs << " execJobs=" << _jobMap.size();
     }
     return os.str();
@@ -352,7 +356,7 @@ void Executive::addMultiError(int errorCode, std::string const& errorMsg, int er
 ///
 bool Executive::_addJobToMap(JobQuery::Ptr const& job) {
     auto entry = pair<int, JobQuery::Ptr>(job->getJobId(), job);
-    lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+    lock_guard lockJobMap(_jobMapMtx);
     bool res = _jobMap.insert(entry).second;
     _totalJobs = _jobMap.size();
     return res;
@@ -375,7 +379,7 @@ bool Executive::join() {
 
     int sCount = 0;
     {
-        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard lockJobMap(_jobMapMtx);
         sCount = count_if(_jobMap.begin(), _jobMap.end(), successF::func);
     }
     if (sCount == _requestCount) {
@@ -430,7 +434,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
 
         LOGS(_log, LOG_LVL_DEBUG, "Executive: error executing " << err);
         {
-            lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+            lock_guard lockJobMap(_jobMapMtx);
             auto job = _jobMap[jobId];
             string id = job->getIdStr() + "<>" + idStr;
 
@@ -456,7 +460,7 @@ void Executive::squash(string const& note) {
          "Executive::squash Trying to cancel all queries... qid=" << getId() << " " << note);
     deque<JobQuery::Ptr> jobsToCancel;
     {
-        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard lockJobMap(_jobMapMtx);
         for (auto const& jobEntry : _jobMap) {
             jobsToCancel.push_back(jobEntry.second);
         }
@@ -492,7 +496,7 @@ void Executive::_squashSuperfluous() {
     LOGS(_log, LOG_LVL_INFO, "Executive::squashSuperflous Trying to cancel incomplete jobs");
     deque<JobQuery::Ptr> jobsToCancel;
     {
-        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard lockJobMap(_jobMapMtx);
         for (auto const& jobEntry : _jobMap) {
             JobQuery::Ptr jq = jobEntry.second;
             // It's important that none of the cancelled queries
@@ -548,8 +552,13 @@ void Executive::killIncompleteUberJobsOnWorker(std::string const& workerId) {
     }
 
     for (auto const& uj : ujToCancel) {
-        uj->killUberJob();
-        uj->setStatusIfOk(qmeta::JobStatus::CANCEL, getIdStr() + " killIncomplete on worker=" + workerId);
+        if (uj->killUberJob()) {
+            uj->setStatusIfOk(qmeta::JobStatus::CANCEL, getIdStr() + " killIncomplete on worker=" + workerId);
+        } else {
+            // This should be very rare.
+            LOGS(_log, LOG_LVL_INFO,
+                 cName(__func__) << " UberJob could not be cancelled as it was already merging.");
+        }
     }
 }
 
@@ -561,7 +570,7 @@ int Executive::getNumInflight() const {
 string Executive::getProgressDesc() const {
     ostringstream os;
     {
-        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard lockJobMap(_jobMapMtx);
         auto first = true;
         for (auto entry : _jobMap) {
             JobQuery::Ptr job = entry.second;
@@ -670,7 +679,7 @@ void Executive::updateProxyMessages() {
     {
         // Add all messages to the message store. These will
         // be used to populate qservMeta.QMessages for this query.
-        lock_guard<recursive_mutex> lockJobMap(_jobMapMtx);
+        lock_guard lockJobMap(_jobMapMtx);
         for (auto const& entry : _jobMap) {
             JobQuery::Ptr const& job = entry.second;
             auto const& info = job->getStatus()->getInfo();
@@ -833,13 +842,10 @@ void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& f
     LOGS(_log, LOG_LVL_TRACE,
          cName(__func__) << "ujId=" << ujPtr->getUjId() << " success=" << flushStatus.success
                          << " contaminated=" << flushStatus.contaminated);
-    if (flushStatus.success) {
-        CzarStats::get()->addTotalRowsRecv(rowCount);
-        CzarStats::get()->addTotalBytesRecv(fileSize);
-    } else {
+    if (!flushStatus.success) {
         if (flushStatus.contaminated) {
             // This would probably indicate malformed file+rowCount or writing the result table failed.
-            // If any merging happened, the result table is ruined.
+            // If any merging happened, the result table (and entire user query) is ruined.
             LOGS(_log, LOG_LVL_ERROR,
                  cName(__func__) << "ujId=" << ujPtr->getUjId()
                                  << " flushHttp failed after merging, results ruined.");
@@ -850,7 +856,12 @@ void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& f
                  cName(__func__) << "ujId=" << ujPtr->getUjId() << " flushHttp failed, retrying Jobs.");
         }
         ujPtr->importResultError(flushStatus.contaminated, "mergeError", "merging failed");
+        return;
     }
+
+    // Success
+    CzarStats::get()->addTotalRowsRecv(rowCount);
+    CzarStats::get()->addTotalBytesRecv(fileSize);
 
     // At this point all data for this job have been read and merged
     bool const statusSet = ujPtr->importResultFinish();

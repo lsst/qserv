@@ -35,7 +35,6 @@
 // Qserv headers
 #include "global/intTypes.h"
 #include "http/Method.h"
-#include "qmeta/types.h"
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
 
@@ -72,7 +71,7 @@ public:
     UberJobData() = delete;
     UberJobData(UberJobData const&) = delete;
 
-    static Ptr create(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId,
+    static Ptr create(UberJobId uberJobId, std::string const& czarName, CzarId czarId,
                       std::string const& czarHost, int czarPort, uint64_t queryId, int rowLimit,
                       uint64_t maxTableSizeBytes, std::shared_ptr<protojson::ScanInfo> const& scanInfo,
                       bool scanInteractive, std::string const& workerId,
@@ -84,12 +83,11 @@ public:
     }
     /// Set file channel for this UberJob
     void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
-
     bool getScanInteractive() const { return _scanInteractive; }
     std::shared_ptr<protojson::ScanInfo> getScanInfo() const { return _scanInfo; }
 
     UberJobId getUberJobId() const { return _uberJobId; }
-    qmeta::CzarId getCzarId() const { return _czarId; }
+    CzarId getCzarId() const { return _czarId; }
     std::string getCzarHost() const { return _czarHost; }
     int getCzarPort() const { return _czarPort; }
     uint64_t getQueryId() const { return _queryId; }
@@ -126,7 +124,7 @@ public:
     std::string resultFileHttpUrl() const;
 
 private:
-    UberJobData(UberJobId uberJobId, std::string const& czarName, qmeta::CzarId czarId, std::string czarHost,
+    UberJobData(UberJobId uberJobId, std::string const& czarName, CzarId czarId, std::string czarHost,
                 int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,
                 std::shared_ptr<protojson::ScanInfo> const& scanInfo, bool scanInteractive,
                 std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
@@ -142,7 +140,7 @@ private:
 
     UberJobId const _uberJobId;
     std::string const _czarName;
-    qmeta::CzarId const _czarId;
+    CzarId const _czarId;
     std::string const _czarHost;
     int const _czarPort;
     QueryId const _queryId;
@@ -231,7 +229,7 @@ private:
     Ptr _selfPtr;  ///< So this object can put itself back on the queue and keep itself alive.
     std::shared_ptr<wcontrol::Foreman> const _foreman;
     std::weak_ptr<UberJobData> const _ujData;
-    CzarIdType const _czarId;
+    CzarId const _czarId;
     QueryId const _queryId;
     UberJobId const _uberJobId;
     http::Method const _method;

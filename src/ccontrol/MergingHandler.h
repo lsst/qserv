@@ -60,6 +60,9 @@ namespace lsst::qserv::ccontrol {
 class MergingHandler : public qdisp::ResponseHandler {
 public:
     typedef std::shared_ptr<MergingHandler> Ptr;
+
+    enum MergeState { PREMERGE, MERGING, CANCELLED };
+
     virtual ~MergingHandler();
 
     /// @param merger downstream merge acceptor
@@ -78,7 +81,8 @@ public:
     void errorFlush(std::string const& msg, int code) override;
 
     /// Stop an ongoing file merge, if possible.
-    void cancelFileMerge() override;
+    /// @return true if the merge was cancelled.
+    bool cancelFileMerge() override;
 
     /// Print a string representation of the receiver to an ostream
     std::ostream& print(std::ostream& os) const override;
@@ -90,6 +94,11 @@ private:
 
     /// Set error code and string.
     void _setError(int code, std::string const& msg, int errorState);
+
+    /// Return true if merging should be started and set _mergeState to MERGING.
+    /// This should only be called once after the file has been collected and
+    /// before merging with the result table starts.
+    bool _startMerge();
 
     // All instances of the HTTP client class are members of the same pool. This allows
     // connection reuse and a significant reduction of the kernel memory pressure.
@@ -106,6 +115,11 @@ private:
 
     std::weak_ptr<qdisp::Executive> _executive;    ///< Weak pointer to the executive for errors.
     std::weak_ptr<mysql::CsvMemDisk> _csvMemDisk;  ///< Weak pointer to cancel infile merge.
+
+    /// Indicates merge state of the result table relating to the UberJob associated with
+    /// instance of MergingHandler.
+    MergeState _mergeState = PREMERGE;
+    std::mutex _mergeStateMtx;  ///< Protectes _mergeState
 };
 
 }  // namespace lsst::qserv::ccontrol

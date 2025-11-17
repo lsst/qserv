@@ -50,7 +50,7 @@ public:
     UserQueryInfo(UserQueryInfo const&) = delete;
     UserQueryInfo& operator=(UserQueryInfo const&) = delete;
 
-    static Ptr create(QueryId qId, CzarIdType czarId) {
+    static Ptr create(QueryId qId, CzarId czarId) {
         return std::shared_ptr<UserQueryInfo>(new UserQueryInfo(qId, czarId));
     }
 
@@ -89,14 +89,13 @@ public:
 
     QueryId getQueryId() const { return _qId; }
 
-    CzarIdType getCzarId() const { return _czarId; }
+    CzarId getCzarId() const { return _czarId; }
 
 private:
-    UserQueryInfo(QueryId qId, CzarIdType czId);
+    UserQueryInfo(QueryId qId, CzarId czId);
 
-    util::InstanceCount const _icUqi{"UserQueryInfo"};
     QueryId const _qId;  ///< The User Query Id number.
-    CzarIdType const _czarId;
+    CzarId const _czarId;
 
     /// List of template strings. This is expected to be short, 1 or 2 entries.
     /// This must be a vector. New entries are always added to the end so as not

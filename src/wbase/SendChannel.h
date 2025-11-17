@@ -42,10 +42,6 @@ public:
 
     virtual ~SendChannel() {}
 
-    /// The following methods are used to send responses back to a request.
-    /// (see newNopChannel and newStringChannel).
-    virtual bool send(char const* buf, int bufLen) = 0;  // TODO:UJ remove + change unit tests
-
     /// Construct a new NopChannel that ignores everything it is asked to send
     static SendChannel::Ptr newNopChannel();
 

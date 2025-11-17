@@ -56,7 +56,7 @@ json CzarContactInfo::toJson() const {
 CzarContactInfo::Ptr CzarContactInfo::createFromJson(nlohmann::json const& czJson) {
     try {
         auto czName_ = http::RequestBodyJSON::required<string>(czJson, "name");
-        auto czId_ = http::RequestBodyJSON::required<CzarIdType>(czJson, "id");
+        auto czId_ = http::RequestBodyJSON::required<CzarId>(czJson, "id");
         auto czPort_ = http::RequestBodyJSON::required<int>(czJson, "management-port");
         auto czHostName_ = http::RequestBodyJSON::required<string>(czJson, "management-host-name");
         auto czStartupTime_ = http::RequestBodyJSON::required<uint64_t>(czJson, "czar-startup-time");
@@ -279,7 +279,7 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
         bool czarRestart = http::RequestBodyJSON::required<bool>(jsWorkerReq, "czarrestart");
         if (czarRestart) {
             auto restartCzarId =
-                    http::RequestBodyJSON::required<CzarIdType>(jsWorkerReq, "czarrestartcancelczid");
+                    http::RequestBodyJSON::required<CzarId>(jsWorkerReq, "czarrestartcancelczid");
             auto restartQueryId =
                     http::RequestBodyJSON::required<QueryId>(jsWorkerReq, "czarrestartcancelqid");
             wqsData->setCzarCancelAfterRestart(restartCzarId, restartQueryId);
@@ -372,11 +372,13 @@ json WorkerQueryStatusData::serializeResponseJson(uint64_t workerStartupTime) {
     // Go through the _qIdDoneKeepFiles, _qIdDoneDeleteFiles, and _qIdDeadUberJobs lists to build a
     // response. Nothing should be deleted and time is irrelevant for this, so maxLifetime is enormous
     // and any time could be used for last contact, but now() is easy.
-    // This is only called by the worker. As such nothing should be deleted here as the lifetime of
+    // This is only called by the worker. As such, nothing should be deleted here as the lifetime of
     // these elements is determined by the lifetime of the owning UserQueryInfo instance.
+    // See
     double maxLifetime = std::numeric_limits<double>::max();
     auto now = CLOCK::now();
-    json jsResp = {{"success", 1}, {"errortype", "none"}, {"note", ""}};
+    ResponseMsg respMsg(true);
+    auto jsResp = respMsg.toJson();
     jsResp["w-startup-time"] = workerStartupTime;
     addListsToJson(jsResp, now, maxLifetime);
     return jsResp;

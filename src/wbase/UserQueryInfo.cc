@@ -37,7 +37,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.wbase.UserQueryInfo");
 
 namespace lsst::qserv::wbase {
 
-UserQueryInfo::UserQueryInfo(QueryId qId, CzarIdType czarId) : _qId(qId), _czarId(czarId) {}
+UserQueryInfo::UserQueryInfo(QueryId qId, CzarId czarId) : _qId(qId), _czarId(czarId) {}
 
 size_t UserQueryInfo::addTemplate(std::string const& templateStr) {
     size_t j = 0;
