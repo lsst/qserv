@@ -27,7 +27,7 @@
 #include <memory>
 #include <string>
 
-#include "qmeta/types.h"
+#include "global/intTypes.h"
 #include "mysql/MySqlConfig.h"
 
 namespace lsst::qserv::ccontrol {
@@ -83,7 +83,7 @@ public:
     std::shared_ptr<qmeta::QProgressHistory> queryProgressHistory;
     std::shared_ptr<qmeta::QMetaSelect> qMetaSelect;
     std::shared_ptr<qproc::DatabaseModels> databaseModels;
-    qmeta::CzarId czarId;  ///< Czar ID in QMeta database
+    CzarId czarId;
     int const interactiveChunkLimit;
 
     /**

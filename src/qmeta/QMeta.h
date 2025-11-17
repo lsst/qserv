@@ -34,7 +34,6 @@
 #include "global/clock_defs.h"
 #include "global/intTypes.h"
 #include "qmeta/QInfo.h"
-#include "qmeta/types.h"
 
 namespace lsst::qserv::qdisp {
 class QueryMessage;
