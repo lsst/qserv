@@ -26,7 +26,6 @@
 #include "http/Auth.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
-#include "qmeta/types.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigWorker.h"
 #include "util/common.h"
@@ -151,7 +150,7 @@ vector<ConfigCzar> Registry::czars() const {
         } else {
             czar.name = czarName;
         }
-        czar.id = czarJson.at("id").get<qmeta::CzarId>();
+        czar.id = czarJson.at("id").get<CzarId>();
         czar.host.addr = czarJson.at("host-addr").get<string>();
         czar.host.name = czarJson.at("management-host-name").get<string>();
         czar.port = czarJson.at("management-port").get<uint16_t>();

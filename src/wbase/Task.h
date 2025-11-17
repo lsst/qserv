@@ -144,9 +144,6 @@ public:
 
     std::string cName(const char* func) const { return std::string("Task::") + func + " " + _idStr; }
 
-    // TODO:UJ too many parameters.
-    //  - fragmentNumber seems pointless
-    //  - hasSubchunks seems redundant.
     //  Hopefully, many are the same for all tasks and can be moved to ujData and userQueryInfo.
     //  Candidates: maxTableSizeMb, FileChannelShared, resultsHttpPort.
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
@@ -154,7 +151,6 @@ public:
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
          std::shared_ptr<FileChannelShared> const& sc,
          std::shared_ptr<wpublish::QueryStatistics> const& queryStats_);
-
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
     virtual ~Task();
@@ -338,6 +334,8 @@ private:
     std::atomic<bool> _safeToMoveRunning{false};  ///< false until done with waitForMemMan().
     std::shared_ptr<wdb::QueryRunner> _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
+    protojson::ScanInfo::Ptr _scanInfo;
+    bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
     bool _onInteractive{
             false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
 
