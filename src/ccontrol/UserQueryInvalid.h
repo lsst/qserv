@@ -33,7 +33,6 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "qmeta/MessageStore.h"
-#include "qmeta/types.h"
 
 // Forward decl
 

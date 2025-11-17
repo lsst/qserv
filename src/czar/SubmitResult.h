@@ -28,7 +28,6 @@
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "qmeta/types.h"
 
 namespace lsst::qserv::czar {
 
@@ -47,7 +46,7 @@ struct SubmitResult {
 
     // Populated by Czar::getQueryInfo only for queries which are still in flight
     std::string status;                ///< 'EXECUTING','COMPLETED','FAILED','FAILED_LR','ABORTED'
-    qmeta::CzarId czarId = 0;          ///< The identifier of the czar which is processing the query
+    CzarId czarId = 0;                 ///< The identifier of the czar which is processing the query
     std::string czarType;              ///< The type of the czar which is processing the query
     int totalChunks = 0;               ///< The total number of chunks required by the query
     int completedChunks = 0;           ///< The number of chunks that have been processed so far
