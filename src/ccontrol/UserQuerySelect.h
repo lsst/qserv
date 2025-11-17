@@ -43,7 +43,6 @@
 #include "ccontrol/UserQuery.h"
 #include "css/StripingParams.h"
 #include "qmeta/QInfo.h"
-#include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
 
 // Forward declarations
@@ -88,7 +87,7 @@ public:
                     std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                    std::shared_ptr<qmeta::QProgress> const& queryProgress, qmeta::CzarId czarId,
+                    std::shared_ptr<qmeta::QProgress> const& queryProgress, CzarId czarId,
                     std::string const& errorExtra, bool async, std::string const& resultDb,
                     int uberJobMaxChunks);
 
@@ -185,15 +184,15 @@ private:
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
     std::shared_ptr<qmeta::QProgress> _queryProgress;
 
-    qmeta::CzarId _czarId;                                        ///< Czar ID in QMeta database
-    QueryId _queryId = 0;                                         ///< Query ID in QMeta database
+    CzarId _czarId;
+    QueryId _queryId = 0;
     std::string _queryIdStr = QueryIdHelper::makeIdStr(0, true);  ///< Initialized to unknown
     bool _killed = false;
     std::mutex _killMutex;
     mutable std::string _errorExtra;  ///< Additional error information
     std::string _resultTable;         ///< Result table name
     std::string _resultLoc;           ///< Result location
-    std::string _resultDb;            ///< Result database TODO:UJ same as resultLoc??)
+    std::string _resultDb;            ///< Result database
     bool _async;                      ///< true for async query
 
     /// The maximum number of chunks allowed in an UberJob, set from config.

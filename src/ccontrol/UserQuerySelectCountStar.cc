@@ -57,7 +57,7 @@ UserQuerySelectCountStar::UserQuerySelectCountStar(std::string query,
                                                    std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                                    std::string const& userQueryId,
                                                    std::string const& rowsTable, std::string const& resultDb,
-                                                   std::string const& countSpelling, qmeta::CzarId czarId,
+                                                   std::string const& countSpelling, CzarId czarId,
                                                    bool async)
         : _qMetaSelect(qMetaSelect),
           _queryMetadata(queryMetadata),
