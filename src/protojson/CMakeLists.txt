@@ -1,6 +1,7 @@
 add_library(protojson SHARED)
 
 target_sources(protojson PRIVATE
+    ResponseMsg.cc
     ScanTableInfo.cc
     UberJobErrorMsg.cc
     UberJobReadyMsg.cc
