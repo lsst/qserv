@@ -35,7 +35,6 @@
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "qmeta/types.h"
 #include "wbase/SendChannel.h"
 
 // Forward declarations
@@ -105,14 +104,8 @@ public:
      */
     static nlohmann::json filesToJson(std::vector<QueryId> const& queryIds, unsigned int maxFiles);
 
-    /// The factory method for the channel class.
-    static Ptr create(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
-                      std::string const& workerId = std::string());
-
     /// The factory method for handling UberJob over http.
-    static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
-                      std::string const& czarHostName, int czarPort,
-                      std::string const& workerId);  // TODO:UJ delete all params except uberJob
+    static Ptr create(std::shared_ptr<wbase::UberJobData> const& uberJobData);
 
     FileChannelShared() = delete;
     FileChannelShared(FileChannelShared const&) = delete;
@@ -165,13 +158,8 @@ public:
     bool isRowLimitComplete() const;
 
 private:
-    /// TODO:UJ delete sendchannel version of constructor when possible.
-    FileChannelShared(std::shared_ptr<wbase::SendChannel> const& sendChannel, qmeta::CzarId czarId,
-                      std::string const& workerId);
-
     /// Private constructor to protect shared pointer integrity.
-    FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJob, qmeta::CzarId czarId,
-                      std::string const& czarHostName, int czarPort, std::string const& workerId);
+    FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData);
 
     /// @see wbase::SendChannel::kill
     /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
@@ -237,11 +225,7 @@ private:
     std::shared_ptr<wbase::SendChannel> const _sendChannel;  ///< Used to send info to czar.
     std::weak_ptr<UberJobData> _uberJobData;                 ///< Contains czar contact info.
 
-    UberJobId const _uberJobId;       ///< The UberJobId
-    qmeta::CzarId const _czarId;      ///< id of the czar that requested this task(s). TODO:UJ delete
-    std::string const _czarHostName;  ///< Name of the czar host. TODO:UJ delete
-    int const _czarPort;              ///< port for the czar. TODO:UJ delete
-    std::string const _workerId;      ///< The unique identifier of the worker. TODO:UJ delete
+    UberJobId const _uberJobId;  ///< The UberJobId
 
     /// streamMutex is used to protect _lastCount and messages that are sent
     /// using FileChannelShared.
