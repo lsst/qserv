@@ -43,7 +43,7 @@ namespace lsst::qserv::util {
 
 string const ResultFileName::fileExt = ".csv";
 
-ResultFileName::ResultFileName(qmeta::CzarId czarId, QueryId queryId, UberJobId ujId)
+ResultFileName::ResultFileName(CzarId czarId, QueryId queryId, UberJobId ujId)
         : _fileName(to_string(czarId) + splitToken() + to_string(queryId) + splitToken() + to_string(ujId) +
                     fileExt),
           _czarId(czarId),
