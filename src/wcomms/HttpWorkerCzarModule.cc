@@ -31,15 +31,13 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "http/Client.h"  // TODO:UJ will probably need to be removed
 #include "http/Exceptions.h"
 #include "http/MetaModule.h"
-#include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
+#include "http/RequestBodyJSON.h"
 #include "mysql/MySqlUtils.h"
 #include "protojson/UberJobMsg.h"
 #include "protojson/WorkerQueryStatusData.h"
-#include "qmeta/types.h"
 #include "util/Command.h"
 #include "util/Error.h"
 #include "util/MultiError.h"
@@ -69,7 +67,6 @@ namespace {
 // These markers if reported in the extended error response object of the failed
 // requests could be used by a caller for refining the completion status
 // of the corresponding Controller-side operation.
-// TODO:UJ Are these errors seem useful enought to be centralized ???
 json const extErrorInvalidParam = json::object({{"invalid_param", 1}});
 json const extErrorReplicaInUse = json::object({{"in_use", 1}});
 
@@ -159,12 +156,13 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         foremanPtr->getScheduler()->queTaskLoad(taskLoadCmd);
 
         string note = string("qId=") + to_string(ujQueryId) + " ujId=" + to_string(ujId);
-        jsRet = {{"success", 1}, {"errortype", "none"}, {"note", note}};
-        LOGS(_log, LOG_LVL_TRACE, "_handleQueryJob jsRet=" << jsRet);
+        protojson::ResponseMsg respMsg(true);
+        jsRet = respMsg.toJson();
     } catch (wbase::TaskException const& texp) {
         LOGS(_log, LOG_LVL_ERROR,
              "HttpWorkerCzarModule::_handleQueryJob wbase::TaskException received " << texp.what());
-        jsRet = {{"success", 0}, {"errortype", "parse"}, {"note", texp.what()}};
+        protojson::ResponseMsg respMsg(false, "parse", texp.what());
+        jsRet = respMsg.toJson();
     }
     return jsRet;
 }
@@ -184,8 +182,7 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
 
         // Find the entry for this queryId, create a new one if needed.
         userQueryInfo->addUberJob(ujData);
-        auto channelShared = wbase::FileChannelShared::create(ujData, ujCzInfo->czId, ujCzInfo->czHostName,
-                                                              ujCzInfo->czPort, targetWorkerId);
+        auto channelShared = wbase::FileChannelShared::create(ujData);
 
         ujData->setFileChannelShared(channelShared);
 
@@ -241,7 +238,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
 
     auto const czInfo = wqsData->getCzInfo();
     LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
-    CzarIdType czId = czInfo->czId;
+    CzarId const czId = czInfo->czId;
     wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
     wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);
     wCzarInfo->czarMsgReceived(CLOCK::now());
@@ -317,11 +314,10 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     }
 
     // Delete files that should be deleted
-    CzarIdType czarId = wqsData->getCzInfo()->czId;
+    auto const czIdToDelete = wqsData->getCzInfo()->czId;
     for (wbase::UserQueryInfo::Ptr uqiPtr : deleteFilesList) {
         if (uqiPtr == nullptr) continue;
-        QueryId qId = uqiPtr->getQueryId();
-        wbase::FileChannelShared::cleanUpResults(czarId, qId);
+        wbase::FileChannelShared::cleanUpResults(czIdToDelete, uqiPtr->getQueryId());
     }
     // Syntax errors in the message would throw invalid_argument, which is handled elsewhere.
 

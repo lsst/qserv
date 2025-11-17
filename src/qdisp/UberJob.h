@@ -24,9 +24,8 @@
 // System headers
 
 // Qserv headers
-#include "qmeta/types.h"
-#include "czar/CzarChunkMap.h"  // Need nested class. TODO:UJ Make non-nested?
-#include "czar/CzarRegistry.h"  // Need nested class. TODO:UJ Make non-nested?
+#include "czar/CzarChunkMap.h"  // Need nested class.
+#include "czar/CzarRegistry.h"  // Need nested class.
 #include "qdisp/Executive.h"
 #include "qmeta/JobStatus.h"
 
@@ -52,7 +51,7 @@ public:
 
     static Ptr create(std::shared_ptr<Executive> const& executive,
                       std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
-                      qmeta::CzarId czarId, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
+                      CzarId czarId);
 
     UberJob() = delete;
     UberJob(UberJob const&) = delete;
@@ -68,7 +67,10 @@ public:
     virtual void runUberJob();
 
     /// Kill this UberJob and unassign all Jobs so they can be used in a new UberJob if needed.
-    void killUberJob();
+    /// @return true if the UberJob results were stopped from merging. False means
+    ///         the results for this UberJob were already being merged or were merged before
+    ///         killUberJob was called.
+    bool killUberJob();
 
     QueryId getQueryId() const { return _queryId; }
     UberJobId getUjId() const { return _uberJobId; }
@@ -91,9 +93,6 @@ public:
 
     int getJobCount() const { return _jobs.size(); }
 
-    /// TODO:UJ may not need,
-    void prepScrubResults();
-
     /// Set the worker information needed to send messages to the worker believed to
     /// be responsible for the chunks handled in this UberJob.
     void setWorkerContactInfo(protojson::WorkerContactInfo::Ptr const& wContactInfo) {
@@ -101,9 +100,6 @@ public:
     }
 
     protojson::WorkerContactInfo::Ptr getWorkerContactInfo() { return _wContactInfo; }
-
-    /// Get the data for the worker that should handle this UberJob.
-    czar::CzarChunkMap::WorkerChunksData::Ptr getWorkerData() { return _workerData; }
 
     /// Queue the lambda function to collect and merge the results from the worker.
     /// @return a json message indicating success unless the query has been
@@ -120,7 +116,6 @@ public:
     bool importResultFinish();
 
     /// Import and error from trying to collect results.
-    /// TODO:UJ The strings for errorType should have a centralized location in the code - global or util
     nlohmann::json importResultError(bool shouldCancel, std::string const& errorType,
                                      std::string const& note);
 
@@ -130,8 +125,7 @@ public:
 
 protected:
     UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-            int queryId, int uberJobId, qmeta::CzarId czarId, int rowLimit,
-            czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData);
+            int queryId, int uberJobId, CzarId czarId, int rowLimit);
 
 private:
     /// Used to setup elements that can't be done in the constructor.
@@ -152,23 +146,19 @@ private:
     std::vector<std::shared_ptr<JobQuery>> _jobs;  ///< List of Jobs in this UberJob.
     mutable std::mutex _jobsMtx;                   ///< Protects _jobs, _jobStatus
     std::atomic<bool> _started{false};
-    qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};  // TODO:UJ Maybe the JobStatus class should be
-                                                               // changed to better represent UberJobs
+    qmeta::JobStatus::Ptr _jobStatus{new qmeta::JobStatus()};
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
     QueryId const _queryId;
     UberJobId const _uberJobId;
-    qmeta::CzarId const _czarId;
+    CzarId const _czarId;
     int const _rowLimit;  ///< Number of rows in the query LIMIT clause.
     uint64_t _resultFileSize = 0;
     std::string const _idStr;
 
-    // Map of workerData
-    czar::CzarChunkMap::WorkerChunksData::Ptr _workerData;  // TODO:UJ this may not be needed
-
     // Contact information for the target worker.
-    protojson::WorkerContactInfo::Ptr _wContactInfo;  // TODO:UJ Maybe change to ActiveWorker?
+    protojson::WorkerContactInfo::Ptr _wContactInfo;
 };
 
 }  // namespace lsst::qserv::qdisp

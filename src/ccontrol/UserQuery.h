@@ -39,7 +39,6 @@
 // Qserv headers
 #include "ccontrol/QueryState.h"
 #include "global/intTypes.h"
-#include "qmeta/types.h"
 
 // Forward decl
 namespace lsst::qserv::qmeta {
