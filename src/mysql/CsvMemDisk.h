@@ -83,7 +83,7 @@ public:
     friend class MemoryRaii;
 
     static void setup(std::size_t max, std::string const& directory, std::size_t minBytesInMem,
-                      std::size_t maxResultTableSizeBytes, CzarIdType czarId);
+                      std::size_t maxResultTableSizeBytes, CzarId czarId);
     static Ptr get() { return _globalMt; }
 
     /// Create a MemoryRaii instance to track `fileSize` bytes, and wait for free memory if `wait` is true.
@@ -97,11 +97,10 @@ public:
     std::size_t getMax() const { return _max; }
     std::string getDirectory() const { return _directory; }
     std::size_t getMinBytesInMem() const { return _minBytesInMem; }
-    CzarIdType getCzarId() const { return _czarId; }
+    CzarId getCzarId() const { return _czarId; }
 
 private:
-    TransferTracker(std::size_t max, std::string const& directory, std::size_t minBytesInMem,
-                    CzarIdType czarId)
+    TransferTracker(std::size_t max, std::string const& directory, std::size_t minBytesInMem, CzarId czarId)
             : _max(max), _directory(directory), _minBytesInMem(minBytesInMem), _czarId(czarId) {}
 
     /// This function only to be called via createRaii.
@@ -117,7 +116,7 @@ private:
     std::size_t const _max;
     std::string const _directory;
     std::size_t const _minBytesInMem;
-    CzarIdType const _czarId;
+    CzarId const _czarId;
 };
 
 /// Store transfer data in memory until too much memory is being used.
@@ -156,8 +155,13 @@ public:
     /// True if a file error happened before results would be contaminated.
     bool isFileError() const { return _fileError; }
 
-    /// Stop transferring data before if the query has been cancelled.
+    /// Stop transferring data if the query has been cancelled.
+    /// @return true if merging could be cancelled. If merging
+    ///         to the result table has started, it must finish
+    ///         or the table will be corrupted.
     void cancel() { _cancelled = true; }
+
+    bool isCancelled() const { return _cancelled; }
 
     /// Indicates there was a file system error and the file could not be opened.
     bool getContaminated() const { return _contaminated; }

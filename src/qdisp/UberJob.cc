@@ -58,25 +58,22 @@ namespace lsst::qserv::qdisp {
 
 UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
-                             qmeta::CzarId czarId,
-                             czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData) {
-    UberJob::Ptr uJob(new UberJob(executive, respHandler, queryId, uberJobId, czarId,
-                                  executive->getUjRowLimit(), workerData));
+                             CzarId czarId) {
+    auto uJob = UberJob::Ptr(
+            new UberJob(executive, respHandler, queryId, uberJobId, czarId, executive->getUjRowLimit()));
     uJob->_setup();
     return uJob;
 }
 
 UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-                 int queryId, int uberJobId, qmeta::CzarId czarId, int rowLimit,
-                 czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData)
+                 int queryId, int uberJobId, CzarId czarId, int rowLimit)
         : _executive(executive),
           _respHandler(respHandler),
           _queryId(queryId),
           _uberJobId(uberJobId),
           _czarId(czarId),
           _rowLimit(rowLimit),
-          _idStr("QID=" + to_string(_queryId) + "_ujId=" + to_string(uberJobId)),
-          _workerData(workerData) {
+          _idStr("QID=" + to_string(queryId) + "_ujId=" + to_string(uberJobId)) {
     LOGS(_log, LOG_LVL_TRACE, _idStr << " created");
 }
 
@@ -99,8 +96,8 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
         success = true;
     }
     if (!success) {
-        // TODO:UJ not really the right thing to do, but high visibility wanted for now.
-        throw util::Bug(ERR_LOC, string("job already in UberJob job=") + job->dump() + " uberJob=" + dump());
+        LOGS(_log, LOG_LVL_ERROR,
+             cName(__func__) << " job already in UberJob job=" << job->dump() << " uberJob=" + dump());
     }
     return success;
 }
@@ -177,14 +174,6 @@ void UberJob::runUberJob() {
         setStatusIfOk(qmeta::JobStatus::REQUEST, cName(__func__) + " transmitSuccess");  // locks _jobsMtx
     }
     return;
-}
-
-void UberJob::prepScrubResults() {
-    // TODO:UJ There's a good chance this will not be needed as incomplete files (partitions)
-    //    will not be merged so you don't have to worry about removing rows from incomplete
-    //    jobs or uberjobs from the result table.
-    throw util::Bug(ERR_LOC,
-                    "TODO:UJ If needed, should call prepScrubResults for all JobQueries in the UberJob ");
 }
 
 void UberJob::_unassignJobs() {
@@ -286,7 +275,6 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     }
 
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileSize);
-
     bool const statusSet = setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrl);
     if (!statusSet) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " setStatusFail could not set status to RESPONSE_READY");
@@ -318,8 +306,8 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     exec->queueFileCollect(cmd);
 
     // The file collection has been queued for later, let the worker know that it's okay so far.
-    json jsRet = {{"success", 1}, {"errortype", ""}, {"note", "queued for collection"}};
-    return jsRet;
+    protojson::ResponseMsg respMsg(true, "", "queued for collection");
+    return respMsg.toJson();
 }
 
 json UberJob::workerError(int errorCode, string const& errorMsg) {
@@ -350,7 +338,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
     // error that a worker could send back that may possibly be recoverable would
     // be a missing table error, which is not trivial to detect. A worker local
     // database error may also qualify.
-    // TODO:UJ see if recoverable errors can be detected on the workers, or
+    // TODO:DM-53238 If recoverable errors can be detected on the workers, or
     //   maybe allow a single retry before sending the error back to the user?
     bool recoverableError = false;
 
@@ -371,7 +359,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
 }
 
 json UberJob::importResultError(bool shouldCancel, string const& errorType, string const& note) {
-    json jsRet = {{"success", 0}, {"errortype", errorType}, {"note", note}};
+    protojson::ResponseMsg respMsg(false, errorType, note);
     // In all cases, the worker should delete the file as this czar will not ask for it.
 
     auto exec = _executive.lock();
@@ -398,7 +386,7 @@ json UberJob::importResultError(bool shouldCancel, string const& errorType, stri
              cName(__func__) << " already cancelled shouldCancel=" << shouldCancel
                              << " errorType=" << errorType << " " << note);
     }
-    return jsRet;
+    return respMsg.toJson();
 }
 
 bool UberJob::importResultFinish() {
@@ -422,26 +410,29 @@ nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& e
     // If this is called, the file has been collected and the worker should delete it
     //
     // Should this call markComplete for all jobs in the uberjob???
-    // TODO:UJ Only recoverable errors would be: communication failure, or missing table ???
+    // TODO:DM-53238 Only recoverable errors would be: communication failure, or missing table ???
     // Return a "success:1" json message to be sent to the worker.
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
-        return {{"success", 0}, {"errortype", "cancelled"}, {"note", "executive is null"}};
+        protojson::ResponseMsg respMsg(false, "cancelled", "executive is null");
+        return respMsg.toJson();
     }
 
-    json jsRet = {{"success", 1}, {"deletedata", deleteData}, {"errortype", ""}, {"note", ""}};
+    protojson::ResponseMsg respMsg(true);
+    json jsRet = respMsg.toJson();
+    jsRet["deletedata"] = deleteData;
     return jsRet;
 }
 
-void UberJob::killUberJob() {
+bool UberJob::killUberJob() {
     // Usually called when a worker has effectively died.
     LOGS(_log, LOG_LVL_WARN, cName(__func__) << " stopping this UberJob and re-assigning jobs.");
 
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled");
-        return;
+        return true;
     }
 
     if (exec->isRowLimitComplete()) {
@@ -449,8 +440,12 @@ void UberJob::killUberJob() {
         if ((dataIgnored - 1) % 1000 == 0) {
             LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ignoring, enough rows already.");
         }
-        return;
+        return true;
     }
+
+    // At this point the user query appears to be alive and needs more data.
+    // The reason to call this is that it is likely that a worker died and the
+    // jobs need to go to different workers to be run.
 
     // Put this UberJob on the list of UberJobs that the worker should drop.
     auto activeWorkerMap = czar::Czar::getCzar()->getActiveWorkerMap();
@@ -459,31 +454,20 @@ void UberJob::killUberJob() {
         activeWorker->addDeadUberJob(_queryId, _uberJobId);
     }
 
-    _unassignJobs();
+    // If there are any ongoing file merges, either the czar has managed to collect
+    // the result file from the worker and it will be merged or the czar will not be
+    // able to retrieve said file and this UberJob will be killed.
+
+    // This will only return false if merging the result file with the table has
+    // happened or is happening now (all required data for this UberJob is already on
+    // this czar.)
+    bool cancelledMerge = getRespHandler()->cancelFileMerge();
+    if (cancelledMerge) {
+        _unassignJobs();
+    }
     // Let Czar::_monitor reassign jobs - other UberJobs are probably being killed
     // so waiting probably gets a better distribution.
-
-    // If there are any ongoing file merges, they won't finish as the worker is dead.
-    // TODO:UJ - There is a chance this will ruin the result file, but it's either
-    //           that or eventually hang the czar. The way worker result files are read
-    //           and merged must be changed so the result file cannot be contaminated.
-    //           Options are read everything in the file before merging
-    //           - storing on disk, possibly slow
-    //           - storing in memory limiting the number of concurrent transfers to
-    //             avoid running out of memory
-    //           - writing to partitions, the max number of partitions is a tiny
-    //             fraction of the possible number of UberJobs, which will probably
-    //             make failure recovery very complicated and slow. At minimum, all
-    //             UberJobs writing to a partition should be running on the same
-    //             worker. If a worker fails, all the jobs for that worker need
-    //             to be sent to other workers. Making more partitions could break
-    //             the limit on the number of partions. Attaching them to existing
-    //             partitions runs the risk of another failure ruining a nearly
-    //             complete partition (cascading failures).
-    //
-    getRespHandler()->cancelFileMerge();
-
-    return;
+    return cancelledMerge;
 }
 
 std::ostream& UberJob::dumpOS(std::ostream& os) const {
