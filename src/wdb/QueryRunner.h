@@ -39,7 +39,6 @@
 // Qserv headers
 #include "mysql/MySqlConfig.h"
 #include "mysql/MySqlConnection.h"
-#include "qmeta/types.h"
 #include "util/MultiError.h"
 #include "wbase/Task.h"
 #include "wdb/ChunkResource.h"

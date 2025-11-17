@@ -102,11 +102,6 @@ public:
     /// @param errObj - is never set and should be removed. (Only likely error is database disconnect,
     ///                 which would be catastrophic)
     /// @return - Returns false when fewer than expected columns are found.
-    // TODO:UJ for most of these functions, calling extractFirstXColumns
-    //       directly may make more sense than calling extractFirst6Columns.
-    //       Not changing this now as it will make rebasing difficult.
-    // TODO:UJ - There may be a better way to do this with std::reference_wrapper
-    //           variadic function templates.
     bool extractFirstXColumns(std::vector<std::vector<std::string>*> const& vectorRef,
                               SqlErrorObject& sqlErr);
     bool extractFirstColumn(std::vector<std::string>& col1, SqlErrorObject& errObj);
