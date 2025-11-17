@@ -34,8 +34,8 @@
 #include <nlohmann/json.hpp>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "mysql/MySqlConfig.h"
-#include "qmeta/types.h"
 #include "util/ConfigStore.h"
 #include "util/ConfigValMap.h"
 
@@ -177,6 +177,9 @@ public:
     /// the method then the monitoring will be disabled.
     unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec->getVal(); }
 
+    /// Maximum number of attempts to run a given job before aborting the entire user query.
+    unsigned int jobMaxAttempts() const { return _jobMaxAttempts->getVal(); }
+
     /// A worker is considered fully ALIVE if the last update from the worker has been
     /// heard in less than _activeWorkerTimeoutAliveSecs seconds.
     int getActiveWorkerTimeoutAliveSecs() const { return _activeWorkerTimeoutAliveSecs->getVal(); }
@@ -230,14 +233,14 @@ public:
     std::string const& name() const { return _czarName; }
 
     /// @return The unique identifier of Czar.
-    qmeta::CzarId id() const { return _czarId; }
+    CzarId id() const { return _czarId; }
 
     /// Set a unique identifier of Czar.
     /// @note In the current implementation of Qserv a value of the identifier is not
     /// available at a time when the configuration is initialized. The identifier is generated
     /// when registering Czar by name in a special table of teh Qserv database.
     /// This logic should be fixed in some future version of Qserv.
-    void setId(qmeta::CzarId id);
+    void setId(CzarId id);
 
     /// @return The interval in seconds for cleaning up the in-progress queries in QMeta.
     unsigned int getInProgressCleanupIvalSec() const { return _inProgressCleanupIvalSec->getVal(); }
@@ -266,8 +269,7 @@ private:
     /// The unique identifier of the Czar instance, the real vale cannot be
     /// acquired until later. Using a crazy initial value in hopes of highlighting
     /// issues.
-    /// TODO: Is this really the right place for this? (previously undefined)
-    qmeta::CzarId _czarId = std::numeric_limits<qmeta::CzarId>::max();
+    CzarId _czarId = std::numeric_limits<CzarId>::max();
 
     nlohmann::json _jsonConfig;  ///< JSON-ified configuration
 
@@ -370,7 +372,6 @@ private:
     // UberJobs
     CVTIntPtr _uberJobMaxChunks =
             util::ConfigValTInt::create(_configValMap, "uberjob", "maxChunks", notReq, 10000);
-
     CVTIntPtr _qMetaSecsBetweenChunkCompletionUpdates = util::ConfigValTInt::create(
             _configValMap, "tuning", "qMetaSecsBetweenChunkCompletionUpdates", notReq, 60);
     CVTIntPtr _interactiveChunkLimit =
@@ -383,6 +384,8 @@ private:
             util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnCzarRestart", notReq, 1);
     CVTIntPtr _czarStatsUpdateIvalSec =
             util::ConfigValTInt::create(_configValMap, "tuning", "czarStatsUpdateIvalSec", notReq, 1);
+    CVTUIntPtr _jobMaxAttempts =
+            util::ConfigValTUInt::create(_configValMap, "tuning", "jobMaxAttempts", notReq, 5);
 
     // Replicator
     CVTStrPtr _replicationInstanceId =

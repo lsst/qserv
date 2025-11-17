@@ -38,7 +38,7 @@
 
 // Qserv headers
 #include "qmeta/QMeta.h"
-#include "czar/CzarChunkMap.h"
+#include "czar/CzarFamilyMap.h"
 
 namespace test = boost::test_tools;
 using namespace lsst::qserv;

@@ -31,7 +31,7 @@
 #include "nlohmann/json.hpp"
 
 // Qserv headers
-#include "qmeta/types.h"
+#include "global/intTypes.h"
 #include "wcomms/HttpModule.h"
 
 namespace lsst::qserv::protojson {

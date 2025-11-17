@@ -34,7 +34,6 @@
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "qmeta/types.h"
 
 // Forward declarations
 
@@ -79,7 +78,7 @@ public:
 
     /// This form of construction stores attributes of a file and generates
     /// the name of a file in a format specified in the class description section.
-    ResultFileName(qmeta::CzarId czarId, QueryId queryId, UberJobId ujId);
+    ResultFileName(CzarId czarId, QueryId queryId, UberJobId ujId);
 
     /// @param filePath The file to be evaluated.
     /// @throw std::invalid_argument If the file path did not match expectations.
@@ -92,7 +91,7 @@ public:
     /// @return The name of a file including its extension and excluding the optional base folder.
     std::string const& fileName() const { return _fileName; }
 
-    qmeta::CzarId czarId() const { return _czarId; }
+    CzarId czarId() const { return _czarId; }
     QueryId queryId() const { return _queryId; }
     UberJobId ujId() const { return _ujId; }
 
@@ -125,7 +124,7 @@ private:
     }
 
     std::string _fileName;
-    qmeta::CzarId _czarId = 0;
+    CzarId _czarId = 0;
     QueryId _queryId = 0;
     UberJobId _ujId = 0;
 
