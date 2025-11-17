@@ -181,15 +181,7 @@ nlohmann::json JobMsg::toJson() const {
                                     {"attemptCount", _attemptCount},
                                     {"querySpecDb", _chunkQuerySpecDb},
                                     {"chunkId", _chunkId},
-                                    {"chunkscantables_indexes", nlohmann::json::array()},
                                     {"queryFragments", json::array()}});
-
-    // These are indexes into _jobDbTablesMap, which is shared between all JobMsg in this UberJobMsg.
-    // TODO:UJ "chunkscantables_indexes" may be unused.
-    auto& jsqCstIndexes = jsJobMsg["chunkscantables_indexes"];
-    for (auto const& index : _chunkScanTableIndexes) {
-        jsqCstIndexes.push_back(index);
-    }
 
     auto& jsqFrags = jsJobMsg["queryFragments"];
     for (auto& jFrag : *_jobFragments) {
@@ -220,15 +212,12 @@ JobMsg::Ptr JobMsg::createFromJson(nlohmann::json const& ujJson,
 
     Ptr jMsgPtr = Ptr(
             new JobMsg(jobSubQueryTempMap, jobDbTablesMap, jobId, attemptCount, chunkQuerySpecDb, chunkId));
-    json jsChunkTblIndexes = http::RequestBodyJSON::required<json>(ujJson, "chunkscantables_indexes");
-    jMsgPtr->_chunkScanTableIndexes = jsChunkTblIndexes.get<std::vector<int>>();
     jMsgPtr->_jobFragments =
             JobFragment::createVectFromJson(jsQFrags, jMsgPtr->_jobSubQueryTempMap, jMsgPtr->_jobDbTablesMap);
     return jMsgPtr;
 }
 
 json JobSubQueryTempMap::toJson() const {
-    // std::map<int, std::string> _qTemplateMap;
     json jsSubQueryTemplateMap = {{"subquerytemplate_map", json::array()}};
     auto& jsSqtMap = jsSubQueryTemplateMap["subquerytemplate_map"];
     for (auto const& [key, templ] : _qTemplateMap) {

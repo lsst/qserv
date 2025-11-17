@@ -143,7 +143,7 @@ http::AuthContext CzarConfig::httpAuthContext() const {
                              _replicationAdminAuthKey->getVal());
 }
 
-void CzarConfig::setId(qmeta::CzarId id) {
+void CzarConfig::setId(CzarId id) {
     _czarId = id;
     // Update the relevant section of the JSON-ified configuration.
     _jsonConfig["actual"]["identity"]["id"] = std::to_string(_czarId);
