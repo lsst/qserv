@@ -25,10 +25,8 @@
 // System headers
 #include <limits>
 #include <fstream>
-#include <map>
 #include <set>
 #include <stdexcept>
-#include <vector>
 
 // Qserv headers
 #include "http/Exceptions.h"
@@ -144,8 +142,12 @@ HttpIngestChunksModule::HttpIngestChunksModule(Controller::Ptr const& controller
 json HttpIngestChunksModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "ADD-CHUNK")
         return _addChunk();
+    else if (subModuleName == "ADD-CHUNK-MULTI")
+        return _addChunkMulti();
     else if (subModuleName == "ADD-CHUNK-LIST")
         return _addChunks();
+    else if (subModuleName == "ADD-CHUNK-LIST-MULTI")
+        return _addChunksMulti();
     else if (subModuleName == "GET-CHUNK-LIST")
         return _getChunks();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
@@ -237,38 +239,83 @@ json HttpIngestChunksModule::_addChunk() {
 
             workerName = ::leastLoadedWorker(databaseServices, config->workers());
         }
-        _registerNewChunk(workerName, databaseInfo.name, chunk);
+        _registerNewReplica(workerName, databaseInfo.name, chunk);
+        ControllerEvent event;
+        event.status = "ADD CHUNK";
+        event.kvInfo.emplace_back("database", databaseInfo.name);
+        event.kvInfo.emplace_back("worker", workerName);
+        event.kvInfo.emplace_back("chunk", to_string(chunk));
+        logEvent(event);
     }
 
     // The sanity check, just to make sure we've found a worker
     if (workerName.empty()) {
         throw http::Error(__func__, "no suitable worker found");
     }
-    ControllerEvent event;
-    event.status = "ADD CHUNK";
-    event.kvInfo.emplace_back("database", databaseInfo.name);
-    event.kvInfo.emplace_back("worker", workerName);
-    event.kvInfo.emplace_back("chunk", to_string(chunk));
-    logEvent(event);
-
-    // Pull connection parameters of the loader for the worker
 
     auto const worker = config->worker(workerName);
 
-    json result;
-    result["location"]["worker"] = worker.name;
-    result["location"]["host"] = worker.loaderHost.addr;
-    result["location"]["host_name"] = worker.loaderHost.name;
-    result["location"]["port"] = worker.loaderPort;
-    result["location"]["http_host"] = worker.httpLoaderHost.addr;
-    result["location"]["http_host_name"] = worker.httpLoaderHost.name;
-    result["location"]["http_port"] = worker.httpLoaderPort;
+    json result = json::object();
+    result["location"] = json::object({{"chunk", chunk},
+                                       {"worker", worker.name},
+                                       {"host", worker.loaderHost.addr},
+                                       {"host_name", worker.loaderHost.name},
+                                       {"port", worker.loaderPort},
+                                       {"http_host", worker.httpLoaderHost.addr},
+                                       {"http_host_name", worker.httpLoaderHost.name},
+                                       {"http_port", worker.httpLoaderPort}});
+    return result;
+}
+
+json HttpIngestChunksModule::_addChunkMulti() {
+    debug(__func__);
+    checkApiVersion(__func__, 54);
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+
+    unsigned int const chunk = body().required<unsigned int>("chunk");
+    debug(__func__, "chunk=" + to_string(chunk));
+
+    auto const databaseInfo = getDatabaseInfo(__func__);
+    auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
+
+    ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
+                                              databaseFamilyInfo.numSubStripes);
+    if (not validator.valid(chunk)) {
+        throw http::Error(__func__, "this chunk number is not valid");
+    }
+
+    // This locks prevents other invocations of the method from making different
+    // decisions on a chunk placement.
+    replica::Lock lock(_ingestManagementMtx, "HttpIngestChunksModule::" + string(__func__));
+
+    // Preload the existing replicas (if any) for this chunk.
+    bool const enabledWorkersOnly = true;
+    bool const includeFileInfo = false;
+    vector<ReplicaInfo> existingReplicas;
+    databaseServices->findReplicas(existingReplicas, chunk, databaseInfo.name, enabledWorkersOnly,
+                                   includeFileInfo);
+
+    // The transient cache of replica disposition for workers. This will be used
+    // for optimizing the selection of workers for chunk placements. Otheriwise
+    // relatively expensive database queries will be needed for each chunk.
+    map<string, size_t> worker2replicasCache;
+
+    json result = json::object({{"locations", json::array()}});
+    auto const numReplicasRegistered =
+            _addChunk(worker2replicasCache, result["locations"], chunk, databaseInfo, existingReplicas);
+    ControllerEvent event;
+    event.status = "ADD CHUNKS";
+    event.kvInfo.emplace_back("database", databaseInfo.name);
+    event.kvInfo.emplace_back("num_replicas_registered", to_string(numReplicasRegistered));
+    logEvent(event);
     return result;
 }
 
 json HttpIngestChunksModule::_addChunks() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 54);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
@@ -293,18 +340,10 @@ json HttpIngestChunksModule::_addChunks() {
     // decisions on chunk placements.
     replica::Lock lock(_ingestManagementMtx, "HttpIngestChunksModule::" + string(__func__));
 
-    // Locate replicas (if any) for all chunks. Then regroup them into
-    // a dictionary in which all input chunk numbers are used as keys.
-    bool const enabledWorkersOnly = true;
-    bool const includeFileInfo = false;
-    vector<ReplicaInfo> replicas;
-    databaseServices->findReplicas(replicas, chunks, databaseInfo.name, enabledWorkersOnly, includeFileInfo);
-
-    map<unsigned int, vector<ReplicaInfo>> chunk2replicas;
-    for (auto&& replica : replicas) {
-        auto const chunk = replica.chunk();
-        chunk2replicas[chunk].push_back(move(replica));
-    }
+    // The transient cache of replica disposition for workers. This will be used
+    // for optimizing the selection of workers for chunk placements. Otherwise
+    // relatively expensive database queries will be needed for each chunk.
+    map<unsigned int, vector<ReplicaInfo>> chunks2replicas = _chunks2Replicas(chunks, databaseInfo);
 
     // (For each input chunk) decide on a worker where the chunk is best to be located.
     // If the chunk is already there then use it. Otherwise register an empty chunk
@@ -314,21 +353,18 @@ json HttpIngestChunksModule::_addChunks() {
     // newly ingested chunks won't have replicas. This will change later
     // when the Replication system will be enhanced to allow creating replicas
     // of chunks within UNPUBLISHED databases.
-
     bool const allDatabases = true;
     auto const databases = config->databases(databaseInfo.family, allDatabases);
-
     map<string, size_t> worker2replicasCache;
-
     map<unsigned int, string> chunk2worker;
+    size_t numReplicasRegistered = 0;
     for (auto const chunk : chunks) {
-        vector<ReplicaInfo> const& replicas = chunk2replicas[chunk];
-
-        if (replicas.size() > 1) {
+        vector<ReplicaInfo> const& existingReplicas = chunks2replicas.at(chunk);
+        if (existingReplicas.size() > 1) {
             throw http::Error(__func__, "chunk " + to_string(chunk) + " has too many replicas");
         }
-        if (replicas.size() == 1) {
-            chunk2worker[chunk] = replicas[0].worker();
+        if (existingReplicas.size() == 1) {
+            chunk2worker[chunk] = existingReplicas[0].worker();
         } else {
             // Search chunk in all databases of the same family to see
             // which workers may have replicas of the same chunk.
@@ -342,9 +378,10 @@ json HttpIngestChunksModule::_addChunks() {
             // algorithm uses and updates the transient replica disposition
             // cache to avoid making expensive queries against the persistent
             // store.
-
             set<string> candidateWorkers;
             for (auto&& database : databases) {
+                bool const enabledWorkersOnly = true;
+                bool const includeFileInfo = false;
                 vector<ReplicaInfo> replicas;
                 databaseServices->findReplicas(replicas, chunk, database, enabledWorkersOnly,
                                                includeFileInfo);
@@ -361,19 +398,17 @@ json HttpIngestChunksModule::_addChunks() {
                 // NOTE: a decision of which worker is 'least loaded' is based
                 // purely on the replica count, not on the amount of data residing
                 // in the workers databases.
-
                 chunk2worker[chunk] =
                         ::leastLoadedWorker(worker2replicasCache, databaseServices, candidateWorkers);
-
             } else {
                 // We got here because no database within the family has a chunk
                 // with this number. Hence we need to pick some least loaded worker
                 // among all known workers.
-
                 chunk2worker[chunk] =
                         ::leastLoadedWorker(worker2replicasCache, databaseServices, config->workers());
             }
-            _registerNewChunk(chunk2worker[chunk], databaseInfo.name, chunk);
+            _registerNewReplica(chunk2worker[chunk], databaseInfo.name, chunk);
+            numReplicasRegistered++;
         }
 
         // The sanity check, just to make sure we've found a worker
@@ -387,36 +422,163 @@ json HttpIngestChunksModule::_addChunks() {
     // This is done to avoid flooding the log with too many specific details on
     // the operation which (the details) could be found in the replica disposition
     // table.
-
     ControllerEvent event;
     event.status = "ADD CHUNKS";
     event.kvInfo.emplace_back("database", databaseInfo.name);
-    event.kvInfo.emplace_back("num_chunks", to_string(chunks.size()));
+    event.kvInfo.emplace_back("num_replicas_registered", to_string(numReplicasRegistered));
     logEvent(event);
 
     // Process the chunk-to-worker map into a result object to be
     // returned to a client.
-
-    json result;
-    result["location"] = json::array();
-
+    json result = json::object({{"locations", json::array()}});
     for (auto const chunk : chunks) {
-        // Pull connection parameters of the loader for the worker
         auto const worker = config->worker(chunk2worker[chunk]);
-
-        json workerResult;
-        workerResult["chunk"] = chunk;
-        workerResult["worker"] = worker.name;
-        workerResult["host"] = worker.loaderHost.addr;
-        workerResult["host_name"] = worker.loaderHost.name;
-        workerResult["port"] = worker.loaderPort;
-        workerResult["http_host"] = worker.httpLoaderHost.addr;
-        workerResult["http_host_name"] = worker.httpLoaderHost.name;
-        workerResult["http_port"] = worker.httpLoaderPort;
-
-        result["location"].push_back(workerResult);
+        result["locations"].push_back(json::object({
+                {"chunk", chunk},
+                {"worker", worker.name},
+                {"host", worker.loaderHost.addr},
+                {"host_name", worker.loaderHost.name},
+                {"port", worker.loaderPort},
+                {"http_host", worker.httpLoaderHost.addr},
+                {"http_host_name", worker.httpLoaderHost.name},
+                {"http_port", worker.httpLoaderPort},
+        }));
     }
     return result;
+}
+
+json HttpIngestChunksModule::_addChunksMulti() {
+    debug(__func__);
+    checkApiVersion(__func__, 54);
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+
+    auto const chunks = body().requiredColl<unsigned int>("chunks");
+    debug(__func__, "chunks.size()=" + chunks.size());
+
+    auto const databaseInfo = getDatabaseInfo(__func__);
+    auto const databaseFamilyInfo = config->databaseFamilyInfo(databaseInfo.family);
+
+    // Make sure chunk numbers are valid for the given
+    // partitioning scheme.
+    ChunkNumberQservValidator const validator(databaseFamilyInfo.numStripes,
+                                              databaseFamilyInfo.numSubStripes);
+    for (auto const chunk : chunks) {
+        if (not validator.valid(chunk)) {
+            throw http::Error(__func__, "chunk " + to_string(chunk) + " is not valid");
+        }
+    }
+
+    // This locks prevents other invocations of the method from making different
+    // decisions on a chunk placement.
+    replica::Lock lock(_ingestManagementMtx, "HttpIngestChunksModule::" + string(__func__));
+
+    // The transient cache of replica disposition for workers. This will be used
+    // for optimizing the selection of workers for chunk placements. Otherwise
+    // relatively expensive database queries will be needed for each chunk.
+    map<unsigned int, vector<ReplicaInfo>> chunks2replicas = _chunks2Replicas(chunks, databaseInfo);
+
+    // The transient cache of replica disposition for workers. This will be used
+    // for optimizing the selection of workers for chunk placements. Otheriwise
+    // relatively expensive database queries will be needed for each chunk.
+    map<string, size_t> worker2replicasCache;
+
+    json result = json::object({{"locations", json::array()}});
+    size_t numReplicasRegistered = 0;
+    for (auto const chunk : chunks) {
+        vector<ReplicaInfo> const& existingReplicas = chunks2replicas.at(chunk);
+        numReplicasRegistered +=
+                _addChunk(worker2replicasCache, result["locations"], chunk, databaseInfo, existingReplicas);
+    }
+    ControllerEvent event;
+    event.status = "ADD CHUNKS";
+    event.kvInfo.emplace_back("database", databaseInfo.name);
+    event.kvInfo.emplace_back("num_replicas_registered", to_string(numReplicasRegistered));
+    logEvent(event);
+    return result;
+}
+
+map<unsigned int, vector<ReplicaInfo>> HttpIngestChunksModule::_chunks2Replicas(
+        vector<unsigned int> const& chunks, DatabaseInfo const& databaseInfo) const {
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    bool const enabledWorkersOnly = true;
+    bool const includeFileInfo = false;
+    vector<ReplicaInfo> replicas;
+    databaseServices->findReplicas(replicas, chunks, databaseInfo.name, enabledWorkersOnly, includeFileInfo);
+    map<unsigned int, vector<ReplicaInfo>> chunks2replicas;
+    for (auto&& replica : replicas) {
+        chunks2replicas[replica.chunk()].push_back(replica);
+    }
+
+    // Create empty entries for chunks which don't have replicas.
+    for (auto const chunk : chunks) {
+        auto itr = chunks2replicas.find(chunk);
+        if (chunks2replicas.end() == itr) {
+            chunks2replicas[chunk] = vector<ReplicaInfo>();
+        }
+    }
+    return chunks2replicas;
+}
+
+size_t HttpIngestChunksModule::_addChunk(map<string, size_t>& worker2replicasCache, json& locations,
+                                         unsigned int const chunk, DatabaseInfo const& databaseInfo,
+                                         vector<ReplicaInfo> const& existingReplicas) const {
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+
+    size_t numReplicasRegistered = 0;
+
+    // Workers that currently host this chunk or are eligible to host it.
+    set<string> workerNames;
+
+    if (existingReplicas.size() > 0) {
+        for (auto const& replica : existingReplicas) {
+            workerNames.insert(replica.worker());
+        }
+    } else {
+        // Search chunk in all databases of the same family to see which workers may have replicas of
+        // the same chunk. The idea here is to ensure the 'chunk colocation' requirements are met, so
+        // that no unnecessary replica migration will be needed when the database is published.
+        bool const allDatabases = true;
+        for (auto&& database : config->databases(databaseInfo.family, allDatabases)) {
+            bool const enabledWorkersOnly = true;
+            bool const includeFileInfo = false;
+            vector<ReplicaInfo> replicas;
+            databaseServices->findReplicas(replicas, chunk, database, enabledWorkersOnly, includeFileInfo);
+            for (auto const& replica : replicas) {
+                workerNames.insert(replica.worker());
+            }
+        }
+        if (workerNames.empty()) {
+            // We got here because no database within the family has a chunk with this number.
+            // Hence we need to pick some least loaded worker among all known workers.
+            workerNames.insert(
+                    ::leastLoadedWorker(worker2replicasCache, databaseServices, config->workers()));
+        }
+
+        // At this state candidate workers are used for registering chunk replicas in a context
+        // of the current database.
+        for (auto&& workerName : workerNames) {
+            _registerNewReplica(workerName, databaseInfo.name, chunk);
+            ++numReplicasRegistered;
+        }
+    }
+    if (workerNames.empty()) {
+        throw http::Error(__func__, "no suitable workers found for chunk=" + to_string(chunk));
+    }
+    for (auto&& workerName : workerNames) {
+        auto const worker = config->worker(workerName);
+        locations.push_back(json::object({{"chunk", chunk},
+                                          {"worker", worker.name},
+                                          {"host", worker.loaderHost.addr},
+                                          {"host_name", worker.loaderHost.name},
+                                          {"port", worker.loaderPort},
+                                          {"http_host", worker.httpLoaderHost.addr},
+                                          {"http_host_name", worker.httpLoaderHost.name},
+                                          {"http_port", worker.httpLoaderPort}}));
+    }
+    return numReplicasRegistered;
 }
 
 json HttpIngestChunksModule::_getChunks() {
@@ -481,8 +643,8 @@ json HttpIngestChunksModule::_getChunks() {
     return result;
 }
 
-void HttpIngestChunksModule::_registerNewChunk(string const& worker, string const& database,
-                                               unsigned int chunk) const {
+void HttpIngestChunksModule::_registerNewReplica(string const& worker, string const& database,
+                                                 unsigned int chunk) const {
     auto const verifyTime = util::TimeUtils::now();
     ReplicaInfo const newReplica(ReplicaInfo::Status::COMPLETE, worker, database, chunk, verifyTime);
     controller()->serviceProvider()->databaseServices()->saveReplicaInfo(newReplica);
