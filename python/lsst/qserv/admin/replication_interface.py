@@ -330,8 +330,9 @@ class ReplicationInterface:
                 )
             ),
         )
+        loc = res["location"]
         return ChunkLocation(
-            res["chunk"], res["host"], str(res["port"]), res["http_host"], str(res["http_port"])
+            loc["chunk"], loc["host"], str(loc["port"]), loc["http_host"], str(loc["http_port"])
         )
 
     def ingest_chunk_configs(self, transaction_id: int, chunk_ids: list[int]) -> list[ChunkLocation]:
@@ -363,7 +364,7 @@ class ReplicationInterface:
             ChunkLocation(
                 loc["chunk"], loc["host"], str(loc["port"]), loc["http_host"], str(loc["http_port"])
             )
-            for loc in res["location"]
+            for loc in res["locations"]
         ]
 
     def ingest_regular_table(self, transaction_id: int) -> list[RegularLocation]:
