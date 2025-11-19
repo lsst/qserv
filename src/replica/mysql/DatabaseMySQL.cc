@@ -394,6 +394,13 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) +
                            ",maxRetriesOnDeadLock=" + to_string(maxRetriesOnDeadLock) + ")  ";
 
+    // For random delays in the range of [1, 1001] milliseconds between retries on deadlock.
+    // A specific choice of the range is not critical, but it should be large enough
+    // to allow competing threads to resolve the dispute before attempting making
+    // another retries.
+    // See: https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html
+    util::BlockPost delayBeforeNextRetry(1, 1001);
+
     try {
         unsigned int numRetriesOnDeadLock = 0;
         do {
@@ -412,6 +419,7 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
                 if (numRetriesOnDeadLock < maxRetriesOnDeadLock) {
                     LOGS(_log, LOG_LVL_DEBUG, context << "exception: " << ex.what());
                     ++numRetriesOnDeadLock;
+                    delayBeforeNextRetry.wait();
                 } else {
                     LOGS(_log, LOG_LVL_DEBUG,
                          context << "maximum number of retries " << maxRetriesOnDeadLock
