@@ -43,9 +43,48 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.UberJobReadyMsg");
 
 namespace lsst::qserv::protojson {
 
-string UberJobReadyMsg::_cName(const char* fName) const {
-    return string("UberJobReadyMsg::") + fName + " qId=" + to_string(_queryId) +
-           " ujId=" + to_string(_uberJobId);
+UberJobStatusMsg::UberJobStatusMsg(string const& replicationInstanceId, string const& replicationAuthKey,
+                                   unsigned int version, string const& workerId, string const& czarName,
+                                   CzarId czarId, QueryId queryId, UberJobId uberJobId)
+        : _replicationInstanceId(replicationInstanceId),
+          _replicationAuthKey(replicationAuthKey),
+          _version(version),
+          _workerId(workerId),
+          _czarName(czarName),
+          _czarId(czarId),
+          _queryId(queryId),
+          _uberJobId(uberJobId) {
+    if (_version != http::MetaModule::version) {
+        string eMsg = cName(__func__) + " UberJobStatusMsg constructor bad version " + to_string(_version);
+        LOGS(_log, LOG_LVL_ERROR, eMsg);
+        throw invalid_argument(eMsg);
+    }
+}
+
+bool UberJobStatusMsg::equalsBase(UberJobStatusMsg const& other) const {
+    return ((_replicationInstanceId == other._replicationInstanceId) &&
+            (_replicationAuthKey == other._replicationAuthKey) && (_czarId == other._czarId) &&
+            (_queryId == other._queryId) && (_uberJobId == other._uberJobId) &&
+            (_version == other._version) && (_workerId == other._workerId) && (_czarName == other._czarName));
+}
+
+std::ostream& UberJobStatusMsg::dumpOS(std::ostream& os) const {
+    os << "{UberJobStatusMsg:" << " QID=" << _queryId << "_ujId=" << _uberJobId << " czId=" << _czarId
+       << " czName=" << _czarName << " workerId=" << _workerId << " version=" << _version << "}";
+    return os;
+}
+
+std::string UberJobStatusMsg::dump() const {
+    std::ostringstream os;
+    dumpOS(os);
+    return os.str();
+}
+
+std::ostream& operator<<(std::ostream& os, UberJobStatusMsg const& ujMsg) { return ujMsg.dumpOS(os); }
+
+string UberJobReadyMsg::cName(const char* fName) const {
+    return string("UberJobReadyMsg::") + fName + " QID=" + to_string(_queryId) +
+           "_ujId=" + to_string(_uberJobId);
 }
 
 UberJobReadyMsg::Ptr UberJobReadyMsg::create(string const& replicationInstanceId,
@@ -56,6 +95,26 @@ UberJobReadyMsg::Ptr UberJobReadyMsg::create(string const& replicationInstanceId
     Ptr jrMsg = Ptr(new UberJobReadyMsg(replicationInstanceId, replicationAuthKey, version, workerIdStr,
                                         czarName, czarId, queryId, uberJobId, fileUrl, rowCount, fileSize));
     return jrMsg;
+}
+
+bool UberJobReadyMsg::equals(UberJobStatusMsg const& other) const {
+    try {
+        UberJobReadyMsg const& otherReady = dynamic_cast<UberJobReadyMsg const&>(other);
+        if ((_fileUrl == otherReady._fileUrl) && (_rowCount == otherReady._rowCount) &&
+            (_fileSize == otherReady._fileSize)) {
+            return equalsBase(other);
+        }
+    } catch (std::bad_cast& ex) {
+    }
+    // different type
+    return false;
+}
+
+std::ostream& UberJobReadyMsg::dumpOS(std::ostream& os) const {
+    os << "{UberJobReadyMsg:";
+    UberJobStatusMsg::dumpOS(os);
+    os << " fileUrl=" << _fileUrl << " rowCount=" << _rowCount << " fileSize=" << _fileSize << "}";
+    return os;
 }
 
 UberJobReadyMsg::Ptr UberJobReadyMsg::createFromJson(json const& jsWReq) {
@@ -85,25 +144,13 @@ UberJobReadyMsg::UberJobReadyMsg(string const& replicationInstanceId, string con
                                  unsigned int version, string const& workerId, string const& czarName,
                                  CzarId czarId, QueryId queryId, UberJobId uberJobId, string const& fileUrl,
                                  uint64_t rowCount, uint64_t fileSize)
-        : _replicationInstanceId(replicationInstanceId),
-          _replicationAuthKey(replicationAuthKey),
-          _version(version),
-          _workerId(workerId),
-          _czarName(czarName),
-          _czarId(czarId),
-          _queryId(queryId),
-          _uberJobId(uberJobId),
+        : UberJobStatusMsg(replicationInstanceId, replicationAuthKey, version, workerId, czarName, czarId,
+                           queryId, uberJobId),
           _fileUrl(fileUrl),
           _rowCount(rowCount),
-          _fileSize(fileSize) {
-    if (_version != http::MetaModule::version) {
-        string eMsg = _cName(__func__) + " bad version " + to_string(_version);
-        LOGS(_log, LOG_LVL_ERROR, eMsg);
-        throw invalid_argument(eMsg);
-    }
-}
+          _fileSize(fileSize) {}
 
-json UberJobReadyMsg::toJson() const {
+shared_ptr<json> UberJobReadyMsg::toJsonPtr() const {
     shared_ptr<json> jsJrReqPtr = make_shared<json>();
     json& jsJr = *jsJrReqPtr;
 
@@ -121,7 +168,7 @@ json UberJobReadyMsg::toJson() const {
     jsJr["fileUrl"] = _fileUrl;
     jsJr["rowCount"] = _rowCount;
     jsJr["fileSize"] = _fileSize;
-    return jsJr;
+    return jsJrReqPtr;
 }
 
 }  // namespace lsst::qserv::protojson

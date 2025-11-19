@@ -79,7 +79,9 @@ public:
     /// Check if the czar is still considered to be alive, or it timed out.
     bool checkAlive(TIMEPOINT tmMark);
 
-    std::shared_ptr<protojson::WorkerCzarComIssue> getWorkerCzarComIssue();
+    std::shared_ptr<protojson::WorkerCzarComIssue> getWorkerCzarComIssue() const {
+        return _workerCzarComIssue;
+    }
 
     CzarId const czarId;
 
