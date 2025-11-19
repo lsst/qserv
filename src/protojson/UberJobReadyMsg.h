@@ -39,11 +39,54 @@
 // This header declarations
 namespace lsst::qserv::protojson {
 
+class UberJobStatusMsg {
+public:
+    using Ptr = std::shared_ptr<UberJobStatusMsg>;
+    virtual std::string cName(const char* fName) const { return std::string("UberJobStatusMsg") + fName; }
+    UberJobStatusMsg() = delete;
+    UberJobStatusMsg(UberJobStatusMsg const&) = delete;
+    UberJobStatusMsg& operator=(UberJobStatusMsg const&) = delete;
+    virtual ~UberJobStatusMsg() = default;
+
+    virtual std::shared_ptr<nlohmann::json> toJsonPtr() const = 0;
+
+    virtual bool equals(UberJobStatusMsg const& other) const = 0;
+
+    std::string const& getWorkerId() const { return _workerId; }
+    std::string const& getCzarName() const { return _czarName; }
+    CzarId getCzarId() const { return _czarId; }
+    QueryId getQueryId() const { return _queryId; }
+    UberJobId getUberJobId() const { return _uberJobId; }
+
+    /// Returns a string for logging.
+    virtual std::ostream& dumpOS(std::ostream& os) const;
+    std::string dump() const;
+    friend std::ostream& operator<<(std::ostream& os, UberJobStatusMsg const& ujMsg);
+
+protected:
+    UberJobStatusMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
+                     unsigned int version, std::string const& workerId, std::string const& czarName,
+                     CzarId czarId, QueryId queryId, UberJobId uberJobId);
+    bool equalsBase(UberJobStatusMsg const& other) const;
+
+    std::string const _replicationInstanceId;
+    std::string const _replicationAuthKey;
+    unsigned int const _version;
+    std::string const _workerId;
+    std::string const _czarName;
+    CzarId const _czarId;
+    QueryId const _queryId;
+    UberJobId const _uberJobId;
+};
+
 /// This class handles the message used to inform the czar that a result file
 /// for an UberJob is ready.
-class UberJobReadyMsg {
+class UberJobReadyMsg : public UberJobStatusMsg {
 public:
     using Ptr = std::shared_ptr<UberJobReadyMsg>;
+
+    /// class name for log, fName is expected to be __func__.
+    std::string cName(const char* fName) const override;
 
     UberJobReadyMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
                     unsigned int version, std::string const& workerId, std::string const& czarName,
@@ -63,32 +106,20 @@ public:
     /// other parameters are used to verify the json message.
     static Ptr createFromJson(nlohmann::json const& czarJson);
 
-    ~UberJobReadyMsg() = default;
+    ~UberJobReadyMsg() override = default;
+
+    bool equals(UberJobStatusMsg const& other) const override;
 
     /// Return a json object with data allowing collection of UberJob result file.
-    nlohmann::json toJson() const;
+    std::shared_ptr<nlohmann::json> toJsonPtr() const override;
 
-    std::string const& getWorkerId() const { return _workerId; }
-    std::string const& getCzarName() const { return _czarName; }
-    CzarId getCzarId() const { return _czarId; }
-    QueryId getQueryId() const { return _queryId; }
-    UberJobId getUberJobId() const { return _uberJobId; }
+    std::ostream& dumpOS(std::ostream& os) const override;
+
     std::string const& getFileUrl() const { return _fileUrl; }
     uint64_t getRowCount() const { return _rowCount; }
     uint64_t getFileSize() const { return _fileSize; }
 
 private:
-    /// class name for log, fName is expected to be __func__.
-    std::string _cName(const char* fName) const;
-
-    std::string const _replicationInstanceId;
-    std::string const _replicationAuthKey;
-    unsigned int const _version;
-    std::string const _workerId;
-    std::string const _czarName;
-    CzarId const _czarId;
-    QueryId const _queryId;
-    UberJobId const _uberJobId;
     std::string const _fileUrl;
     uint64_t const _rowCount;
     uint64_t const _fileSize;

@@ -86,6 +86,7 @@ void WCzarInfo::sendWorkerCzarComIssueIfNeeded(protojson::WorkerContactInfo::Ptr
             auto sPtr = selfPtr.lock();
             if (sPtr == nullptr) {
                 LOGS(_log, LOG_LVL_WARN, "WCzarInfo::sendWorkerCzarComIssueIfNeeded thrdFunc sPtr was null");
+                return;
             }
             sPtr->_sendMessage();
         };
@@ -135,6 +136,7 @@ void WCzarInfo::_sendMessage() {
             if (needToClearThoughtCzarWasDead) {
                 _workerCzarComIssue->setThoughtCzarWasDead(false);
             }
+            _workerCzarComIssue->clearMapEntries(response);
         } else {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit " << *respMsg);
             // There's no point in re-sending as the czar got the message and didn't like
@@ -145,7 +147,7 @@ void WCzarInfo::_sendMessage() {
     }
 
     if (!transmitSuccess) {
-        // If this fails, wait for
+        // If transmit fails, the message will be resent
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failed to send message");
     }
 }
