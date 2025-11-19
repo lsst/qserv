@@ -34,17 +34,19 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "global/UberJobBase.h"
 #include "http/Method.h"
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
-
-#include "util/InstanceCount.h"
 
 namespace lsst::qserv {
 
 namespace protojson {
 class ScanInfo;
-}
+class UberJobErrorMsg;
+class UberJobReadyMsg;
+class UberJobStatusMsg;
+}  // namespace protojson
 
 namespace util {
 class MultiError;
@@ -62,7 +64,7 @@ class Task;
 
 /// This class tracks all Tasks associates with the UberJob on the worker
 /// and reports status to the czar.
-class UberJobData : public std::enable_shared_from_this<UberJobData> {
+class UberJobData : public UberJobBase {
 public:
     using Ptr = std::shared_ptr<UberJobData>;
 
@@ -70,6 +72,8 @@ public:
 
     UberJobData() = delete;
     UberJobData(UberJobData const&) = delete;
+
+    ~UberJobData() override = default;
 
     static Ptr create(UberJobId uberJobId, std::string const& czarName, CzarId czarId,
                       std::string const& czarHost, int czarPort, uint64_t queryId, int rowLimit,
@@ -103,11 +107,23 @@ public:
     /// Let the czar know the result is ready.
     void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize);
 
+    /// Build the UberJob result ready message.
+    std::shared_ptr<protojson::UberJobReadyMsg> responseFileReadyBuild(std::string const& httpFileUrl,
+                                                                       uint64_t rowCount, uint64_t fileSize,
+                                                                       std::string const& repliInstId,
+                                                                       std::string const& repliAuthKey);
+
     /// Let the Czar know there's been a problem.
     void responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl);
+    std::shared_ptr<protojson::UberJobErrorMsg> responseErrorBuild(util::MultiError& multiErr, int chunkId,
+                                                                   bool cancelled, int logLvl,
+                                                                   std::string const& repliInstId,
+                                                                   std::string const& repliAuthKey);
 
     std::string const& getIdStr() const { return _idStr; }
-    std::string cName(std::string const& funcName) { return "UberJobData::" + funcName + " " + getIdStr(); }
+    std::string cName(const char* funcN) const override {
+        return std::string("UberJobData::") + funcN + " " + getIdStr();
+    }
 
     bool getCancelled() const { return _cancelled; }
 
@@ -136,14 +152,11 @@ private:
     /// Queue the response to be sent to the originating czar.
     void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
                           std::string const& url_, std::string const& requestContext_,
-                          std::string const& requestStr_);
+                          std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg_);
 
-    UberJobId const _uberJobId;
     std::string const _czarName;
-    CzarId const _czarId;
     std::string const _czarHost;
     int const _czarPort;
-    QueryId const _queryId;
     int const _rowLimit;  ///< If > 0, only read this many rows before return the results.
     uint64_t const _maxTableSizeBytes;
     std::string const _workerId;
@@ -188,9 +201,10 @@ public:
 
     static Ptr create(std::shared_ptr<wcontrol::Foreman> const& foreman_, UberJobData::Ptr const& ujData_,
                       http::Method method_, std::vector<std::string> const& headers_, std::string const& url_,
-                      std::string const& requestContext_, std::string const& requestStr_) {
-        auto ptr = Ptr(
-                new UJTransmitCmd(foreman_, ujData_, method_, headers_, url_, requestContext_, requestStr_));
+                      std::string const& requestContext_,
+                      std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg_) {
+        auto ptr =
+                Ptr(new UJTransmitCmd(foreman_, ujData_, method_, headers_, url_, requestContext_, ujMsg_));
         ptr->_selfPtr = ptr;
         return ptr;
     }
@@ -203,17 +217,11 @@ public:
     /// Reset the self pointer so this object can be killed.
     void kill();
 
-    /// This function makes a duplicate of the required information for transmition to the czar
-    /// in a new object and then increments the attempt count, so it is not a true copy.
-    /// Priority commands cannot be resent as there's information in them about which queue
-    /// to modify, so a fresh object is needed to re-send. The message and target czar remain
-    /// unchanged except for the atttempt count.
-    Ptr duplicate();
-
 private:
     UJTransmitCmd(std::shared_ptr<wcontrol::Foreman> const& foreman_, UberJobData::Ptr const& ujData_,
                   http::Method method_, std::vector<std::string> const& headers_, std::string const& url_,
-                  std::string const& requestContext_, std::string const& requestStr_)
+                  std::string const& requestContext_,
+                  std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg_)
             : PriorityCommand(),
               _foreman(foreman_),
               _ujData(ujData_),
@@ -224,7 +232,7 @@ private:
               _headers(headers_),
               _url(url_),
               _requestContext(requestContext_),
-              _requestStr(requestStr_) {}
+              _ujMsg(ujMsg_) {}
 
     Ptr _selfPtr;  ///< So this object can put itself back on the queue and keep itself alive.
     std::shared_ptr<wcontrol::Foreman> const _foreman;
@@ -236,7 +244,7 @@ private:
     std::vector<std::string> const _headers;
     std::string const _url;
     std::string const _requestContext;
-    std::string const _requestStr;
+    std::shared_ptr<protojson::UberJobStatusMsg> _ujMsg;
     int _attemptCount = 0;  ///< How many attempts have been made to transmit this.
 };
 
