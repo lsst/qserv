@@ -51,10 +51,10 @@ public:
     CzarContactInfo& operator=(CzarContactInfo const&) = default;
 
     /// Return true is elements, other than czStartupTime, are the same.
-    bool compare(CzarContactInfo const& other) {
-        return (czName == other.czName && czId == other.czId && czPort == other.czPort &&
-                czHostName == other.czHostName);
-    }
+    bool compare(CzarContactInfo const& other) const;
+
+    bool operator==(CzarContactInfo const& other) const { return compare(other); }
+    bool operator!=(CzarContactInfo const& other) const { return !(*this == other); }
 
     static Ptr create(std::string const& czName_, CzarId czId_, int czPort_, std::string const& czHostName_,
                       uint64_t czStartupTime_) {
@@ -96,6 +96,10 @@ public:
                       int wPort_, TIMEPOINT updateTime_) {
         return Ptr(new WorkerContactInfo(wId_, wHost_, wManagementHost_, wPort_, updateTime_));
     }
+
+    /// Ignores _registryUpdateTime as that is not set to or from json.
+    bool operator==(WorkerContactInfo const& other) const;
+    bool operator!=(WorkerContactInfo const& other) const { return !(*this == other); }
 
     /// This function creates a WorkerQueryStatusData object from a registry json message,
     /// which is provided by the system registry.

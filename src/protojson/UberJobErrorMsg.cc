@@ -43,7 +43,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.UberJobErrorMsg");
 
 namespace lsst::qserv::protojson {
 
-string UberJobErrorMsg::_cName(const char* fName) const {
+string UberJobErrorMsg::cName(const char* fName) const {
     return string("UberJobErrorMsg::") + fName + " qId=" + to_string(_queryId) +
            " ujId=" + to_string(_uberJobId);
 }
@@ -81,30 +81,37 @@ UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWRe
     return nullptr;
 }
 
+bool UberJobErrorMsg::equals(UberJobStatusMsg const& other) const {
+    try {
+        UberJobErrorMsg const& otherError = dynamic_cast<UberJobErrorMsg const&>(other);
+        if ((_errorCode == otherError._errorCode) && (_errorMsg == otherError._errorMsg)) {
+            return equalsBase(other);
+        }
+    } catch (std::bad_cast& ex) {
+    }
+    // different type
+    return false;
+}
+
+std::ostream& UberJobErrorMsg::dumpOS(std::ostream& os) const {
+    os << "{UberJobErrorMsg:";
+    UberJobStatusMsg::dumpOS(os);
+    os << " errorCode=" << _errorCode << " errorMsg=" << _errorMsg << "}";
+    return os;
+}
+
 UberJobErrorMsg::UberJobErrorMsg(string const& replicationInstanceId, string const& replicationAuthKey,
                                  unsigned int version, string const& workerId, string const& czarName,
                                  CzarId czarId, QueryId queryId, UberJobId uberJobId, int errorCode,
                                  string const& errorMsg)
-        : _replicationInstanceId(replicationInstanceId),
-          _replicationAuthKey(replicationAuthKey),
-          _version(version),
-          _workerId(workerId),
-          _czarName(czarName),
-          _czarId(czarId),
-          _queryId(queryId),
-          _uberJobId(uberJobId),
+        : UberJobStatusMsg(replicationInstanceId, replicationAuthKey, version, workerId, czarName, czarId,
+                           queryId, uberJobId),
           _errorCode(errorCode),
-          _errorMsg(errorMsg) {
-    if (_version != http::MetaModule::version) {
-        string eMsg = _cName(__func__) + " bad version " + to_string(_version) +
-                      "expected=" + to_string(http::MetaModule::version);
-        LOGS(_log, LOG_LVL_ERROR, eMsg);
-        throw invalid_argument(eMsg);
-    }
-}
+          _errorMsg(errorMsg) {}
 
-json UberJobErrorMsg::toJson() const {
-    json jsJr;
+shared_ptr<json> UberJobErrorMsg::toJsonPtr() const {
+    shared_ptr<json> jsPtr = make_shared<json>();
+    json& jsJr = *jsPtr;
 
     // These need to match what http::BaseModule::enforceInstanceId()
     // and http::BaseModule::enforceAuthorization() are looking for.
@@ -119,7 +126,7 @@ json UberJobErrorMsg::toJson() const {
     jsJr["uberjobid"] = _uberJobId;
     jsJr["errorCode"] = _errorCode;
     jsJr["errorMsg"] = _errorMsg;
-    return jsJr;
+    return jsPtr;
 }
 
 }  // namespace lsst::qserv::protojson

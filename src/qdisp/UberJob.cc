@@ -66,14 +66,11 @@ UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
 }
 
 UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-                 int queryId, int uberJobId, CzarId czarId, int rowLimit)
-        : _executive(executive),
+                 QueryId queryId_, UberJobId uberJobId_, CzarId czarId_, int rowLimit)
+        : UberJobBase(queryId_, uberJobId_, czarId_),
+          _executive(executive),
           _respHandler(respHandler),
-          _queryId(queryId),
-          _uberJobId(uberJobId),
-          _czarId(czarId),
-          _rowLimit(rowLimit),
-          _idStr("QID=" + to_string(queryId) + "_ujId=" + to_string(uberJobId)) {
+          _rowLimit(rowLimit) {
     LOGS(_log, LOG_LVL_TRACE, _idStr << " created");
 }
 
@@ -84,7 +81,7 @@ UberJob::~UberJob() {
 }
 
 void UberJob::_setup() {
-    UberJob::Ptr ujPtr = shared_from_this();
+    UberJob::Ptr ujPtr = static_pointer_cast<UberJob>(shared_from_this());
     _respHandler->setUberJob(ujPtr);
 }
 
@@ -250,7 +247,8 @@ void UberJob::callMarkCompleteFunc(bool success) {
     _jobs.clear();
 }
 
-json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
+json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize,
+                               bool const retry) {
     LOGS(_log, LOG_LVL_DEBUG,
          cName(__func__) << " fileUrl=" << fileUrl << " rowCount=" << rowCount << " fileSize=" << fileSize);
 
@@ -278,10 +276,17 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
     bool const statusSet = setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrl);
     if (!statusSet) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " setStatusFail could not set status to RESPONSE_READY");
+        if (!retry) {
+            // This is a retry, subject to many awful race conditions due to not knowing if
+            // previous attempts worked. If a previous attempt worked, it should
+            // be allowed to continue.
+            protojson::ResponseMsg respMsg(false, "ignored", "ignored");
+            return respMsg.toJson();
+        }
         return importResultError(false, "setStatusFail", "could not set status to RESPONSE_READY");
     }
 
-    weak_ptr<UberJob> ujThis = weak_from_this();
+    weak_ptr<UberJob> ujThis = static_pointer_cast<UberJob>(shared_from_this());
 
     // fileCollectFunc will be put on the queue to run later.
     string const idStr = _idStr;
@@ -481,13 +486,5 @@ std::ostream& UberJob::dumpOS(std::ostream& os) const {
     os << "))";
     return os;
 }
-
-std::string UberJob::dump() const {
-    std::ostringstream os;
-    dumpOS(os);
-    return os.str();
-}
-
-std::ostream& operator<<(std::ostream& os, UberJob const& uj) { return uj.dumpOS(os); }
 
 }  // namespace lsst::qserv::qdisp
