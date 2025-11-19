@@ -6,6 +6,7 @@ target_sources(global PRIVATE
     ResourceUnit.cc
     sqltoken.cc
     stringUtil.cc
+    UberJobBase.cc
 )
 
 install(

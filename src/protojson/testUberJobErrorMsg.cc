@@ -62,21 +62,21 @@ bool parseSerializeReparseCheck(string const& jsStr, string const& note) {
     UberJobErrorMsg::Ptr jrm = UberJobErrorMsg::createFromJson(js, repliInstanceId, repliAuthKey);
     BOOST_REQUIRE(jrm != nullptr);
 
-    nlohmann::json jsJrm = jrm->toJson();
-    LOGS(_log, LOG_LVL_INFO, fName << " serialized jsJrm=" << jsJrm);
+    auto jsJrm = jrm->toJsonPtr();
+    LOGS(_log, LOG_LVL_INFO, fName << " serialized jsJrm=" << *jsJrm);
 
-    UberJobErrorMsg::Ptr jrmCreated = UberJobErrorMsg::createFromJson(jsJrm, repliInstanceId, repliAuthKey);
+    UberJobErrorMsg::Ptr jrmCreated = UberJobErrorMsg::createFromJson(*jsJrm, repliInstanceId, repliAuthKey);
     LOGS(_log, LOG_LVL_INFO, fName << " created");
-    nlohmann::json jsJrmCreated = jrmCreated->toJson();
+    auto jsJrmCreated = jrmCreated->toJsonPtr();
     LOGS(_log, LOG_LVL_INFO, fName << " created->serialized");
 
-    bool createdMatchesOriginal = jsJrm == jsJrmCreated;
+    bool createdMatchesOriginal = *jsJrm == *jsJrmCreated;
     if (createdMatchesOriginal) {
         LOGS(_log, LOG_LVL_INFO, fName << "created matches original");
     } else {
         LOGS(_log, LOG_LVL_ERROR, "jsJrm != jsJrmCreated");
-        LOGS(_log, LOG_LVL_ERROR, "jsJrm=" << jsJrm);
-        LOGS(_log, LOG_LVL_ERROR, "jsJrmCreated=" << jsJrmCreated);
+        LOGS(_log, LOG_LVL_ERROR, "jsJrm=" << *jsJrm);
+        LOGS(_log, LOG_LVL_ERROR, "jsJrmCreated=" << *jsJrmCreated);
     }
     BOOST_REQUIRE(createdMatchesOriginal);
     return createdMatchesOriginal;
@@ -96,8 +96,8 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     auto jrm = UberJobErrorMsg::create(repliInstanceId, repliAuthKey, version, workerIdStr, czarName, czarId,
                                        queryId, uberJobId, errorCode, errorMsg);
 
-    auto jsJrm = jrm->toJson();
-    string const strJrm = to_string(jsJrm);
+    auto jsJrm = jrm->toJsonPtr();
+    string const strJrm = to_string(*jsJrm);
     LOGS(_log, LOG_LVL_INFO, "stdJrm=" << strJrm);
 
     BOOST_REQUIRE(parseSerializeReparseCheck(strJrm, "A"));

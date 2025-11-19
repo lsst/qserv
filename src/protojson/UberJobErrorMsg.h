@@ -35,15 +35,18 @@
 #include "global/clock_defs.h"
 #include "global/intTypes.h"
 #include "protojson/WorkerQueryStatusData.h"
+#include "protojson/UberJobReadyMsg.h"
 
 // This header declarations
 namespace lsst::qserv::protojson {
 
 /// This class handles the message used to inform the czar that there has
 /// been a problem with an UberJob.
-class UberJobErrorMsg {
+class UberJobErrorMsg : public UberJobStatusMsg {
 public:
     using Ptr = std::shared_ptr<UberJobErrorMsg>;
+    /// class name for log, fName is expected to be __func__.
+    std::string cName(const char* fName) const override;
 
     UberJobErrorMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
                     unsigned int version, std::string const& workerId, std::string const& czarName,
@@ -66,29 +69,16 @@ public:
 
     ~UberJobErrorMsg() = default;
 
-    /// Return a json object with data allowing collection of UberJob result file.
-    nlohmann::json toJson() const;
+    bool equals(UberJobStatusMsg const& other) const override;
 
-    std::string const& getWorkerId() const { return _workerId; }
-    std::string const& getCzarName() const { return _czarName; }
-    CzarId getCzarId() const { return _czarId; }
-    QueryId getQueryId() const { return _queryId; }
-    UberJobId getUberJobId() const { return _uberJobId; }
+    /// Return a json object with data for collection of the UberJob result file.
+    std::shared_ptr<nlohmann::json> toJsonPtr() const override;
+    std::ostream& dumpOS(std::ostream& os) const override;
+
     std::string const& getErrorMsg() const { return _errorMsg; }
     uint getErrorCode() const { return _errorCode; }
 
 private:
-    /// class name for log, fName is expected to be __func__.
-    std::string _cName(const char* fName) const;
-
-    std::string const _replicationInstanceId;
-    std::string const _replicationAuthKey;
-    unsigned int const _version;
-    std::string const _workerId;
-    std::string const _czarName;
-    CzarId const _czarId;
-    QueryId const _queryId;
-    UberJobId const _uberJobId;
     int const _errorCode;
     std::string const _errorMsg;
 };
