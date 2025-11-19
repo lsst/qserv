@@ -31,6 +31,7 @@ FUNCTION(qana_tests)
             cconfig
             ccontrol
             czar
+            global
             parser
             qana
             qdisp

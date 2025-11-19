@@ -31,6 +31,14 @@ function(PROTOJSON_TESTS)
             global
             http
             protojson
+            mysql
+            sql
+            wbase
+            wconfig
+            wcontrol
+            wdb
+            wpublish
+            wsched
             Boost::unit_test_framework
             Threads::Threads
         )
