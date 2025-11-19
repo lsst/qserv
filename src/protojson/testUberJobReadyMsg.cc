@@ -62,21 +62,21 @@ bool parseSerializeReparseCheck(string const& jsStr, string const& note) {
     UberJobReadyMsg::Ptr jrm = UberJobReadyMsg::createFromJson(js);
     BOOST_REQUIRE(jrm != nullptr);
 
-    nlohmann::json jsJrm = jrm->toJson();
-    LOGS(_log, LOG_LVL_INFO, fName << " serialized jsJrm=" << jsJrm);
+    auto jsJrm = jrm->toJsonPtr();
+    LOGS(_log, LOG_LVL_INFO, fName << " serialized jsJrm=" << *jsJrm);
 
-    UberJobReadyMsg::Ptr jrmCreated = UberJobReadyMsg::createFromJson(jsJrm);
+    UberJobReadyMsg::Ptr jrmCreated = UberJobReadyMsg::createFromJson(*jsJrm);
     LOGS(_log, LOG_LVL_INFO, fName << " created");
-    nlohmann::json jsJrmCreated = jrmCreated->toJson();
+    auto jsJrmCreated = jrmCreated->toJsonPtr();
     LOGS(_log, LOG_LVL_INFO, fName << " created->serialized");
 
-    bool createdMatchesOriginal = jsJrm == jsJrmCreated;
+    bool createdMatchesOriginal = *jsJrm == *jsJrmCreated;
     if (createdMatchesOriginal) {
         LOGS(_log, LOG_LVL_INFO, fName << "created matches original");
     } else {
         LOGS(_log, LOG_LVL_ERROR, "jsJrm != jsJrmCreated");
-        LOGS(_log, LOG_LVL_ERROR, "jsJrm=" << jsJrm);
-        LOGS(_log, LOG_LVL_ERROR, "jsJrmCreated=" << jsJrmCreated);
+        LOGS(_log, LOG_LVL_ERROR, "jsJrm=" << *jsJrm);
+        LOGS(_log, LOG_LVL_ERROR, "jsJrmCreated=" << *jsJrmCreated);
     }
     BOOST_REQUIRE(createdMatchesOriginal);
     return createdMatchesOriginal;
@@ -97,8 +97,8 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     auto jrm = UberJobReadyMsg::create(repliInstanceId, repliAuthKey, version, workerIdStr, czarName, czarId,
                                        queryId, uberJobId, fileUrl, rowCount, fileSize);
 
-    auto jsJrm = jrm->toJson();
-    string const strJrm = to_string(jsJrm);
+    auto jsJrm = jrm->toJsonPtr();
+    string const strJrm = to_string(*jsJrm);
     LOGS(_log, LOG_LVL_INFO, "stdJrm=" << strJrm);
 
     BOOST_REQUIRE(parseSerializeReparseCheck(strJrm, "A"));

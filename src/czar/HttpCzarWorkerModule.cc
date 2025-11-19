@@ -102,34 +102,17 @@ json HttpCzarWorkerModule::_workerCzarComIssue() {
 }
 
 json HttpCzarWorkerModule::_handleJobError(string const& func) {
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleJobError start");
+    string const fName("HttpCzarWorkerModule::_handleJobError");
+    LOGS(_log, LOG_LVL_DEBUG, fName << " start");
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then kill the UberJob.
     try {
+        auto const& jsReq = body().objJson;
         string const& repliInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
         string const& repliAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
-        auto const& jsReq = body().objJson;
         auto jrMsg = protojson::UberJobErrorMsg::createFromJson(jsReq, repliInstanceId, repliAuthKey);
-
-        auto const queryId = jrMsg->getQueryId();
-        auto const czarId = jrMsg->getCzarId();
-        auto const uberJobId = jrMsg->getUberJobId();
-
-        // Find UberJob
-        qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
-        if (exec == nullptr) {
-            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobError No executive for qid=") +
-                                   to_string(queryId) + " czar=" + to_string(czarId));
-        }
-        qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
-        if (uj == nullptr) {
-            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobError No UberJob for qid=") +
-                                   to_string(queryId) + " ujId=" + to_string(uberJobId) +
-                                   " czar=" + to_string(czarId));
-        }
-
-        auto importRes = uj->workerError(jrMsg->getErrorCode(), jrMsg->getErrorMsg());
+        auto importRes = czar::Czar::getCzar()->handleUberJobErrorMsg(jrMsg, fName);
         return importRes;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
@@ -148,33 +131,7 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     try {
         auto const& jsReq = body().objJson;
         auto jrMsg = protojson::UberJobReadyMsg::createFromJson(jsReq);
-
-        // Find UberJob
-        auto queryId = jrMsg->getQueryId();
-        auto czarId = jrMsg->getCzarId();
-        auto uberJobId = jrMsg->getUberJobId();
-        qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
-        if (exec == nullptr) {
-            LOGS(_log, LOG_LVL_WARN,
-                 fName << " null exec QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
-            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
-                                   to_string(queryId) + " czar=" + to_string(czarId));
-        }
-
-        qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
-        if (uj == nullptr) {
-            LOGS(_log, LOG_LVL_WARN,
-                 fName << " null uj QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
-            throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
-                                   to_string(queryId) + " ujId=" + to_string(uberJobId) +
-                                   " czar=" + to_string(czarId));
-        }
-
-        uj->setResultFileSize(jrMsg->getFileSize());
-        exec->checkResultFileSize(jrMsg->getFileSize());
-
-        auto importRes =
-                uj->importResultFile(jrMsg->getFileUrl(), jrMsg->getRowCount(), jrMsg->getFileSize());
+        auto importRes = czar::Czar::getCzar()->handleUberJobReadyMsg(jrMsg, fName);
         return importRes;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
@@ -185,7 +142,8 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
 }
 
 json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
-    LOGS(_log, LOG_LVL_DEBUG, "HttpCzarWorkerModule::_handleWorkerCzarComIssue start");
+    string const fName("HttpCzarWorkerModule::_handleWorkerCzarComIssue");
+    LOGS(_log, LOG_LVL_DEBUG, fName << " start");
     // Parse and verify the json message and then deal with the problems.
     try {
         string const replicationInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
@@ -209,7 +167,27 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
                 execPtr->killIncompleteUberJobsOnWorker(wId);
             }
         }
+        // The response here includes the QueryId and UberJobId of all
+        // uberjobs in the original message. If the czar cannot handle
+        // one now, it won't be able to handle it later, so there's no
+        // point in the worker sending it again.
+        // Under normal circumstances, the czar should be able to
+        // find and handle all failed transmits. Anything it can't find should
+        // show up in completed query IDs, or failed uberJobs, and failing that
+        // it should be garbage collected.
         auto jsRet = wccIssue->responseToJson();
+        auto failedTransmits = wccIssue->takeFailedTransmitsMap();
+        for (auto& [key, elem] : *failedTransmits) {
+            protojson::UberJobStatusMsg::Ptr& statusMsg = elem;
+            auto rdyMsg = dynamic_pointer_cast<protojson::UberJobReadyMsg>(statusMsg);
+            if (rdyMsg != nullptr) {
+                bool const retry = true;
+                czar::Czar::getCzar()->handleUberJobReadyMsg(rdyMsg, fName, retry);
+            } else {
+                auto errMsg = dynamic_pointer_cast<protojson::UberJobErrorMsg>(statusMsg);
+                czar::Czar::getCzar()->handleUberJobErrorMsg(errMsg, fName);
+            }
+        }
         LOGS(_log, LOG_LVL_TRACE, "HttpCzarWorkerModule::_handleWorkerCzarComIssue jsRet=" << jsRet.dump());
         return jsRet;
     } catch (std::invalid_argument const& iaEx) {
