@@ -24,8 +24,9 @@
 // System headers
 
 // Qserv headers
-#include "czar/CzarChunkMap.h"  // Need nested class.
-#include "czar/CzarRegistry.h"  // Need nested class.
+#include "czar/CzarChunkMap.h"
+#include "czar/CzarRegistry.h"
+#include "global/UberJobBase.h"
 #include "qdisp/Executive.h"
 #include "qmeta/JobStatus.h"
 
@@ -45,7 +46,7 @@ class JobQuery;
 /// When this UberJobCompletes, all the Jobs it contains are registered as completed.
 /// If this UberJob fails, it will be destroyed, un-assigning all of its Jobs.
 /// Those Jobs will need to be reassigned to new UberJobs, or the query cancelled.
-class UberJob : public std::enable_shared_from_this<UberJob> {
+class UberJob : public UberJobBase {
 public:
     using Ptr = std::shared_ptr<UberJob>;
 
@@ -59,7 +60,9 @@ public:
 
     virtual ~UberJob();
 
-    std::string cName(const char* funcN) const { return std::string("UberJob::") + funcN + " " + getIdStr(); }
+    std::string cName(const char* funcN) const override {
+        return std::string("UberJob::") + funcN + " " + getIdStr();
+    }
 
     bool addJob(std::shared_ptr<JobQuery> const& job);
 
@@ -72,9 +75,6 @@ public:
     ///         killUberJob was called.
     bool killUberJob();
 
-    QueryId getQueryId() const { return _queryId; }
-    UberJobId getUjId() const { return _uberJobId; }
-    std::string const& getIdStr() const { return _idStr; }
     std::shared_ptr<ResponseHandler> getRespHandler() { return _respHandler; }
     std::shared_ptr<qmeta::JobStatus> getStatus() { return _jobStatus; }
 
@@ -102,9 +102,13 @@ public:
     protojson::WorkerContactInfo::Ptr getWorkerContactInfo() { return _wContactInfo; }
 
     /// Queue the lambda function to collect and merge the results from the worker.
+    /// @param retry - true indicates this is a retry of failed communication
+    ///            and should not be used to kill this UberJob due to an unexpected
+    ///            state.
     /// @return a json message indicating success unless the query has been
     ///         cancelled, limit row complete, or similar.
-    nlohmann::json importResultFile(std::string const& fileUrl, uint64_t rowCount, uint64_t fileSize);
+    nlohmann::json importResultFile(std::string const& fileUrl, uint64_t rowCount, uint64_t fileSize,
+                                    bool const retry = false);
 
     /// Handle an error from the worker.
     nlohmann::json workerError(int errorCode, std::string const& errorMsg);
@@ -119,13 +123,11 @@ public:
     nlohmann::json importResultError(bool shouldCancel, std::string const& errorType,
                                      std::string const& note);
 
-    std::ostream& dumpOS(std::ostream& os) const;
-    std::string dump() const;
-    friend std::ostream& operator<<(std::ostream& os, UberJob const& uj);
+    std::ostream& dumpOS(std::ostream& os) const override;
 
 protected:
     UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-            int queryId, int uberJobId, CzarId czarId, int rowLimit);
+            QueryId queryId_, UberJobId uberJobId_, CzarId czarId_, int rowLimit);
 
 private:
     /// Used to setup elements that can't be done in the constructor.
@@ -150,12 +152,8 @@ private:
 
     std::weak_ptr<Executive> _executive;
     std::shared_ptr<ResponseHandler> _respHandler;
-    QueryId const _queryId;
-    UberJobId const _uberJobId;
-    CzarId const _czarId;
     int const _rowLimit;  ///< Number of rows in the query LIMIT clause.
     uint64_t _resultFileSize = 0;
-    std::string const _idStr;
 
     // Contact information for the target worker.
     protojson::WorkerContactInfo::Ptr _wContactInfo;
