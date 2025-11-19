@@ -67,6 +67,11 @@ CzarContactInfo::Ptr CzarContactInfo::createFromJson(nlohmann::json const& czJso
     return nullptr;
 }
 
+bool CzarContactInfo::compare(CzarContactInfo const& other) const {
+    return (czName == other.czName && czId == other.czId && czPort == other.czPort &&
+            czHostName == other.czHostName);
+}
+
 std::string CzarContactInfo::dump() const {
     stringstream os;
     os << "czName=" << czName << " czId=" << czId << " czPort=" << czPort << " czHostName=" << czHostName
@@ -118,6 +123,11 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json co
         LOGS(_log, LOG_LVL_ERROR, string("CWorkerContactInfo::createJson invalid ") << exc.what());
     }
     return nullptr;
+}
+
+bool WorkerContactInfo::operator==(WorkerContactInfo const& other) const {
+    return ((wId == other.wId) && (_wHost == other._wHost) && (_wManagementHost == other._wManagementHost) &&
+            (_wPort == other._wPort) && (_wStartupTime == other._wStartupTime));
 }
 
 void WorkerContactInfo::setRegUpdateTime(TIMEPOINT updateTime) {

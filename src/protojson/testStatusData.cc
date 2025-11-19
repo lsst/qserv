@@ -28,10 +28,17 @@
 
 // Qserv headers
 #include "global/clock_defs.h"
+#include "global/intTypes.h"
 #include "lsst/log/Log.h"
 #include "protojson/ResponseMsg.h"
+#include "protojson/ScanTableInfo.h"
+#include "protojson/UberJobErrorMsg.h"
+#include "protojson/UberJobReadyMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
 #include "protojson/WorkerQueryStatusData.h"
+#include "util/Error.h"
+#include "util/MultiError.h"
+#include "wbase/UberJobData.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE RequestQuery
@@ -181,7 +188,110 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto jsIssueA1 = wccIssueA1->toJson();
     BOOST_REQUIRE(*jsIssueA == *jsIssueA1);
 
-    // TODO:DM-53242 list of failed messages.
+    // Test a list of failed messages.
+    string const czarHost = "czarHost";
+    int const czarPort = 234;
+    string const czarName = "czar1";
+    lsst::qserv::CzarId const czarId = 1;
+    string const workerId1 = "wrkr1";
+    int const resultPort = 436;
+    int const rowlimit = 0;
+    int const maxTableBytes = 1'000'000;
+
+    lsst::qserv::UberJobId const ujId1 = 1;
+    lsst::qserv::QueryId const qId1 = 722234;
+    bool const scaninteractive1 = true;
+    auto scanInfo1 = lsst::qserv::protojson::ScanInfo::create();
+    string const httpFileUrl1 = "http://test/ulr1/fn";
+    uint64_t const rowCount1 = 81;
+    uint64_t const fileSize1 = 1240;
+    auto ujData1 = lsst::qserv::wbase::UberJobData::create(
+            ujId1, czarName, czarId, czarHost, czarPort, qId1, rowlimit, maxTableBytes, scanInfo1,
+            scaninteractive1, workerId1, nullptr, replicationAuthKey, resultPort);
+    auto ujResponse1 = ujData1->responseFileReadyBuild(httpFileUrl1, rowCount1, fileSize1,
+                                                       replicationInstanceId, replicationAuthKey);
+    wccIssueA1->addFailedTransmit(qId1, ujId1, ujResponse1);
+
+    auto jsWcA1 = wccIssueA1->toJson();
+    // parse jsWcA1 and check if the answer is correct
+    auto wccIssueA1Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
+            *jsWcA1, replicationInstanceId, replicationAuthKey);
+    BOOST_REQUIRE(*wccIssueA1 == *wccIssueA1Out1);
+
+    lsst::qserv::QueryId const qId1a = qId1;
+    lsst::qserv::UberJobId const ujId1a = 9;
+    string const httpFileUrl1a = "http://test/ulr1/fna";
+    uint64_t const rowCount1a = 36;
+    uint64_t const fileSize1a = 12400;
+    auto ujData1a = lsst::qserv::wbase::UberJobData::create(
+            ujId1a, czarName, czarId, czarHost, czarPort, qId1, rowlimit, maxTableBytes, scanInfo1,
+            scaninteractive1, workerId1, nullptr, replicationAuthKey, resultPort);
+    auto ujResponse1a = ujData1->responseFileReadyBuild(httpFileUrl1a, rowCount1a, fileSize1a,
+                                                        replicationInstanceId, replicationAuthKey);
+    wccIssueA1->addFailedTransmit(qId1a, ujId1a, ujResponse1a);
+
+    auto jsWcA1a = wccIssueA1->toJson();
+    // parse jsWcA1a and check if the answer is correct
+    auto wccIssueA1aOut1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
+            *jsWcA1a, replicationInstanceId, replicationAuthKey);
+    BOOST_REQUIRE(*wccIssueA1 == *wccIssueA1aOut1);
+    BOOST_REQUIRE(*wccIssueA1 != *wccIssueA1Out1);
+
+    lsst::qserv::UberJobId const ujId2 = 333;
+    lsst::qserv::QueryId qId2 = 722237;
+    bool scaninteractive2 = false;
+    string const httpFileUrl2 = "http://test/ulr2/fn";
+    uint64_t const rowCount2 = 456;
+    uint64_t const fileSize2 = 424000;
+    auto scanInfo2 = lsst::qserv::protojson::ScanInfo::create();
+    auto ujData2 = lsst::qserv::wbase::UberJobData::create(
+            ujId2, czarName, czarId, czarHost, czarPort, qId2, rowlimit, maxTableBytes, scanInfo2,
+            scaninteractive2, workerId1, nullptr, replicationAuthKey, resultPort);
+    auto ujResponse2 = ujData2->responseFileReadyBuild(httpFileUrl2, rowCount2, fileSize2,
+                                                       replicationInstanceId, replicationAuthKey);
+    wccIssueA1->addFailedTransmit(qId2, ujId2, ujResponse2);
+
+    auto jsWcA2 = wccIssueA1->toJson();
+    // parse jsWcA2 and check if the answer is correct
+    auto wccIssueA2Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
+            *jsWcA2, replicationInstanceId, replicationAuthKey);
+    BOOST_REQUIRE(*wccIssueA1 == *wccIssueA2Out1);
+
+    lsst::qserv::UberJobId const ujId3 = 8;
+    lsst::qserv::QueryId qId3 = 722240;
+    int const chunkId3 = 471;
+    bool const cancelled3 = true;
+    lsst::qserv::util::MultiError multiErr;
+    lsst::qserv::util::Error err(105423, "Some random error.");
+    multiErr.push_back(err);
+    auto ujData3 = lsst::qserv::wbase::UberJobData::create(
+            ujId3, czarName, czarId, czarHost, czarPort, qId3, rowlimit, maxTableBytes, scanInfo2,
+            scaninteractive2, workerId1, nullptr, replicationAuthKey, resultPort);
+    auto ujResponse3 = ujData3->responseErrorBuild(multiErr, chunkId3, cancelled3, LOG_LVL_DEBUG,
+                                                   replicationInstanceId, replicationAuthKey);
+    wccIssueA1->addFailedTransmit(qId3, ujId3, ujResponse3);
+
+    auto jsWcA3 = wccIssueA1->toJson();
+    // parse jsWcA3 and check if the answer is correct
+    auto wccIssueA3Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
+            *jsWcA3, replicationInstanceId, replicationAuthKey);
+    BOOST_REQUIRE(*wccIssueA1 != *wccIssueA2Out1);
+    BOOST_REQUIRE(*wccIssueA1 == *wccIssueA3Out1);
+
+    LOGS(_log, LOG_LVL_DEBUG, "wccIssueA1=" << wccIssueA1->dump());
+    LOGS(_log, LOG_LVL_DEBUG, "wccIssueA3Out1=" << wccIssueA3Out1->dump());
+
+    // Create the response to jsWcA3.
+    auto jsRespA3Out1 = wccIssueA3Out1->responseToJson();
+    LOGS(_log, LOG_LVL_DEBUG, "jsRespA3Out1=" << jsRespA3Out1);
+
+    // Parse the response and remove the appropriate entries from wccIsueA1.
+    auto respMsg = lsst::qserv::protojson::ResponseMsg::createFromJson(jsRespA3Out1);
+    BOOST_REQUIRE(respMsg->success == true);
+    BOOST_REQUIRE(wccIssueA1->clearMapEntries(jsRespA3Out1) == 4);
+
+    auto ftMap = wccIssueA1->takeFailedTransmitsMap();
+    BOOST_REQUIRE(ftMap->size() == 0);
 }
 
 BOOST_AUTO_TEST_CASE(ResponseMsg) {
