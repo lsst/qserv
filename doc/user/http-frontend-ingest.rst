@@ -5,7 +5,11 @@ The User Table Ingest Interface
 
 The frontend provides a simple interface for ingesting and managing user-defined tables in Qserv. Key features and limitations include:
 
-- Supports creation and ingestion of simple (non-partitioned) tables only.
+- Supports creation and ingestion of the following table types:
+
+  - Fully-replicated (non-partitioned) tables
+  - Director (partitioned) tables (CSV option only)
+
 - Two options for ingesting table data are supported:
 
   - :ref:`http-frontend-ingest-json`: Both data and metadata are encapsulated into a single JSON object sent in the request body.
@@ -23,6 +27,8 @@ The frontend provides a simple interface for ingesting and managing user-defined
 - Schema and index definitions are sent to the frontend in the JSON format.
 - Clients can request optional indexes on ingested tables during the ingest process.
 - Only *synchronous* interface is currently supported.
+- The service automatically partitions (CSV) data of the director tables into ``chunks``  based on the default partitioning
+  scheme of the corresponding Qserv deployment and distributes them across the cluster.
 - User-defined tables are automatically created by the request processor within the user databases.
 
   - The service enforces a specific naming convention for user databases to avoid conflicts with production data products in Qserv.
@@ -128,6 +134,11 @@ Ingesting tables
 application/json
 ^^^^^^^^^^^^^^^^
 
+..  note::
+
+    This service can only be used for ingesting fully-replicated (non-partitioned) tables. For ingesting director (partitioned) tables,
+    please use the ``multipart/form-data`` service described in the following section.
+
 The following REST service implements the synchronous interface for ingesting a table into Qserv:
 
 .. list-table::
@@ -217,7 +228,7 @@ Here is an example of the simple table creation specification:
 
 .. code-block:: json
 
-    {   "version" :  39,
+    {   "version" :  54,
         "database" : "user_gapon",
         "table" :    "employee",
         "schema" : [
@@ -237,7 +248,7 @@ The description could be pushed to the service using:
 
     curl -k 'https://localhost:4041/ingest/data' -X POST \
          -H 'Content-Type: application/json' \
-         -d'{"version":39,"database":"user_gapon",..}'
+         -d'{"version":54,"database":"user_gapon",..}'
 
 If the request succeeds then the following table will be created:
 
@@ -257,7 +268,7 @@ includes an index specification:
 
 .. code-block:: json
 
-    {   "version" :  39,
+    {   "version" :  54,
         "database" : "user_gapon",
         "table" :    "employee",
         "schema" : [
@@ -302,6 +313,11 @@ multipart/form-data
 
 ..  warning::
 
+    - This service can be used for ingesting both fully-replicated (non-partitioned) tables and director (partitioned) tables.
+      There are 5 additional parameters that are required for ingesting director tables: ``is_partitioned``, ``is_director``,
+      ``id_col_name`` (the optional column), ``longitude_col_name`` and ``latitude_col_name``. These parameters are described later in the document.
+    - The service automatically partitions (CSV) data of the director tables into ``chunks``  based on the default partitioning
+      scheme of the corresponding Qserv deployment and distributes them across the cluster.
     - The order of parts in the request body is important. The service expects the table payload to be sent last.
       Otherwise, the service will fail to process the request.
     - The ``multipart/form-data`` header is not required when using ``curl`` to send the request. The service will
@@ -324,6 +340,49 @@ and files:
 
 ``table`` : *part*
   The required name of a table.
+
+``is_partitioned`` : *part* = ``0``
+  The optional parameter that indicates whether the table to be ingested is a partitioned table. Note that the director
+  table type is presently the only supported partitioned table type.
+  The default value assumes that the table is not partitioned.
+
+``is_director`` : *part* = ``0``
+  The optional parameter that indicates whether the table to be ingested is a director table; the default value
+  assumes that the table is not a director table. This parameter is required if the table is partitioned and will be
+  ignored otherwise.
+
+``id_col_name`` : *part* = ``""``
+  The optional parameter that specifies the name of the column to be used as the primary key (unique row identifier) for director tables.
+  This parameter is not required for the director tables. Hence for the users of this API there are two options:
+  
+  - If the column specified and if it's not empty then it must also be included in the table schema. It's recommended that the type
+    of the column is ``INT`` (32-bit) or ``BIGINT`` (64-bit), or unsigned variants of those types.
+    The data must also be provided for the column in the CSV file. Note that the values of the column must be unique across the entire table.
+  - Another possibility for the director tables is not to specify this parameter (or to set it to an empty string). In this case, the service will
+    automatically create an internal column ``qserv_id`` and populate it with unique values for each row. The type of the internal column will
+    be ``BIGINT UNSIGNED``. A sequence of the values will be generated starting from ``1``.
+
+  Regardless of which option is selected by a user, Qserv will create the unique index on the column in each chunk automatically.
+  The *director* index will also be created on the column.
+
+  Two examples of using this parameter are provided in the subsequent section of the document:
+
+  - :ref:`http-frontend-ingest-example-user-pk`
+  - :ref:`http-frontend-ingest-example-auto-pk`
+
+``longitude_col_name`` : *part* = ``""``
+  The optional parameter that specifies the name of the column to be used as the longitude (right ascension) coordinate for director tables.
+  This parameter is required if the table is a director table; it will be ignored otherwise. The column specified in this parameter must
+  be included in the table schema.
+  It's recommended that the type of the column is ``FLOAT`` (32-bit) or ``DOUBLE`` (64-bit).
+  Note that values of the longitude column are degrees, where the allowed range of (0,360] degrees is expected.
+
+``latitude_col_name`` : *part* = ``""``
+  The optional parameter that specifies the name of the column to be used as the latitude (declination) coordinate for director tables.
+  This parameter is required if the table is a director table; it will be ignored otherwise. The column specified in this parameter must
+  be included in the table schema.
+  It's recommended that the type of the column is ``FLOAT`` (32-bit) or ``DOUBLE`` (64-bit).
+  Note that values of the latitude column are degrees, where the allowed range of (-90,90) degrees is expected.
 
 ``fields_terminated_by`` : *part* = ``\t``
   The optional parameter of the desired CSV dialect: a character that separates fields in a row.
@@ -372,6 +431,9 @@ and files:
 A call to this service will block the client application for the time required to create
 a database (if it does not already exist), create a table, process and ingest the data, and perform
 additional steps (such as creating indexes). The request will fail if it exceeds the specified (or implied) timeout.
+
+Example: ingesting fully-replicated table
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Here is an example of the simple table creation specification, which also includes an index specification. The table schema
 is sent as a JSON file ``schema.json`` presented below:
@@ -433,10 +495,10 @@ Here is the complete Python code that does the same:
 
     database = "user_gapon"
     table = "employee"
-    url = "https://localhost:4041/ingest/csv?verion=39"
+    url = "https://localhost:4041/ingest/csv?version=54"
     encoder = MultipartEncoder(
         fields = {
-            "version": (None, "41"),
+            "version": (None, "54"),
             "database" : (None, database),
             "table": (None, table),
             "fields_terminated_by": (None, ","),
@@ -463,6 +525,145 @@ Here is the complete Python code that does the same:
 - The preferred method for passing the version number to the frontend is to include it in the query string of the request. 
   In case the version number is found both in the query string and the body of a request, the number found in the body
   will take precedence.
+
+.. _http-frontend-ingest-example-user-pk:
+
+Example: ingesting the director table with user-defined primary key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Here is an example of the table creation specification for a director table. The table schema is sent as a JSON file ``schema.json`` presented below:
+
+.. code-block:: json
+
+    [   { "name" : "id",     "type" : "INT" },
+        { "name" : "ra",     "type" : "DOUBLE" },
+        { "name" : "dec",    "type" : "DOUBLE" },
+        { "name" : "val",    "type" : "VARCHAR(32)" },
+        { "name" : "active", "type" : "BOOL" }
+    ]
+
+And the CSV file ``employee.csv`` containing the data to be ingested:
+
+.. code-block::
+
+   1,0.99845583493592,-34.236453785757455,Igor,1
+   2,23.45678901234567,0.67890123456789,John,0
+   3,89.56789012345678,56.78901234567890,Charlie,1
+   4,255.67890123456789,67.89012345678901,Jane,0
+
+The request could be pushed to the service using:
+
+.. code-block:: bash
+
+    curl -k 'https://localhost:4041/ingest/csv' \
+         -F 'database=user_gapon' \
+         -F 'table=employee' \
+         -F 'is_partitioned=1' \
+         -F 'is_director=1' \
+         -F 'id_col_name=id' \
+         -F 'longitude_col_name=ra' \
+         -F 'latitude_col_name=dec' \
+         -F 'fields_terminated_by=,' \
+         -F 'timeout=300' \
+         -F 'charset_name=utf8mb4' \
+         -F 'collation_name=utf8mb4_uca1400_ai_ci' \
+         -F 'schema=@/path/to/schema.json' \
+         -F 'indexes=@/path/to/indexes.json' \
+         -F 'rows=@/path/to/employee.csv'
+
+**Note**: The ``-k`` option is used to ignore SSL certificate verification.
+
+To get an idea of how the Python code for this request would look like, please refer to the previous example of ingesting a fully-replicated table.
+The only difference is that the parameters related to partitioning and director tables need to be added to the
+``fields`` dictionary passed to the ``MultipartEncoder`` class as shown below:
+
+.. code-block:: python
+
+    encoder = MultipartEncoder(
+        fields = {
+            "version": (None, "54"),
+            "database" : (None, database),
+            "table": (None, table),
+            "is_partitioned": (None, "1"),
+            "is_director": (None, "1"),
+            "id_col_name": (None, "id"),
+            "longitude_col_name": (None, "ra"),
+            "latitude_col_name": (None, "dec"),
+            "fields_terminated_by": (None, ","),
+            "timeout": (None, "300"),
+            "schema": ("schema.json", open("/path/to/schema.json", "rb"), "application/json"),
+            "indexes": ("indexes.json", open("/path/to/indexes.json", "rb"), "application/json"),
+            "rows": ("employee.csv", open("/path/to/employee.csv", "rb"), "text/csv"),
+        }
+    )
+
+.. _http-frontend-ingest-example-auto-pk:
+
+Example: ingesting the director table with the automatically generated primary key
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Here is an example of the table creation specification for a director table. The table schema is sent as a JSON file ``schema.json`` presented below:
+
+.. code-block:: json
+
+    [   { "name" : "ra",     "type" : "DOUBLE" },
+        { "name" : "dec",    "type" : "DOUBLE" },
+        { "name" : "val",    "type" : "VARCHAR(32)" },
+        { "name" : "active", "type" : "BOOL" }
+    ]
+
+And the CSV file ``employee.csv`` containing the data to be ingested:
+
+.. code-block::
+
+   0.99845583493592,-34.236453785757455,Igor,1
+   23.45678901234567,0.67890123456789,John,0
+   89.56789012345678,56.78901234567890,Charlie,1
+   255.67890123456789,67.89012345678901,Jane,0
+
+The request could be pushed to the service using:
+
+.. code-block:: bash
+
+    curl -k 'https://localhost:4041/ingest/csv' \
+         -F 'database=user_gapon' \
+         -F 'table=employee' \
+         -F 'is_partitioned=1' \
+         -F 'is_director=1' \
+         -F 'longitude_col_name=ra' \
+         -F 'latitude_col_name=dec' \
+         -F 'fields_terminated_by=,' \
+         -F 'timeout=300' \
+         -F 'charset_name=utf8mb4' \
+         -F 'collation_name=utf8mb4_uca1400_ai_ci' \
+         -F 'schema=@/path/to/schema.json' \
+         -F 'indexes=@/path/to/indexes.json' \
+         -F 'rows=@/path/to/employee.csv'
+
+**Note**: The ``-k`` option is used to ignore SSL certificate verification.
+
+To get an idea of how the Python code for this request would look like, please refer to the previous example of ingesting a fully-replicated table.
+The only difference is that the parameters related to partitioning and director tables need to be added to the
+``fields`` dictionary passed to the ``MultipartEncoder`` class as shown below:
+
+.. code-block:: python
+
+    encoder = MultipartEncoder(
+        fields = {
+            "version": (None, "54"),
+            "database" : (None, database),
+            "table": (None, table),
+            "is_partitioned": (None, "1"),
+            "is_director": (None, "1"),
+            "longitude_col_name": (None, "ra"),
+            "latitude_col_name": (None, "dec"),
+            "fields_terminated_by": (None, ","),
+            "timeout": (None, "300"),
+            "schema": ("schema.json", open("/path/to/schema.json", "rb"), "application/json"),
+            "indexes": ("indexes.json", open("/path/to/indexes.json", "rb"), "application/json"),
+            "rows": ("employee.csv", open("/path/to/employee.csv", "rb"), "text/csv"),
+        }
+    )
 
 .. _http-frontend-ingest-schema-spec:
 
@@ -573,7 +774,7 @@ For example:
 
     curl -k 'https://localhost:4041/ingest/table/user_gapon/employees' -X DELETE \
          -H 'Content-Type: application/json' \
-         -d'{"version":39}'
+         -d'{"version":54}'
 
 A few notes:
 
@@ -606,7 +807,7 @@ For example:
 
     curl -k 'https://localhost:4041/ingest/database/user_gapon' -X DELETE \
          -H 'Content-Type: application/json' \
-         -d'{"version":39}'
+         -d'{"version":54}'
 
 A few notes:
 
