@@ -26,10 +26,12 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "global/stringUtil.h"  // for qserv::stoui
 #include "http/Exceptions.h"
 #include "http/RequestBodyJSON.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigWorker.h"
+#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ChunkedTable.h"
@@ -37,37 +39,6 @@
 
 using namespace std;
 using json = nlohmann::json;
-using namespace lsst::qserv::replica;
-
-namespace {
-
-/**
- * Structure TableSpec represents a specification for a single table to
- * be exported.
- */
-struct TableSpec {
-    std::string tableName;     ///< The base name of a table to be exported.
-    bool partitioned = false;  ///< Is 'true' for the partitioned tables.
-    unsigned int chunk = 0;    ///< The chunk number (partitioned tables).
-    bool overlap = false;      ///< Is 'true' for the 'overlap' tables (partitioned tables).
-    ConfigHost workerHost;     ///< The host name and an IP address of a worker.
-    uint16_t workerPort = 0;   ///< The port number of the Export Service.
-
-    json toJson() const {
-        json spec;
-        spec["baseName"] = tableName;
-        spec["fullName"] = partitioned ? ChunkedTable(tableName, chunk, overlap).name() : tableName;
-        spec["partitioned"] = partitioned ? 1 : 0;
-        spec["chunk"] = chunk;
-        spec["overlap"] = overlap ? 1 : 0;
-        spec["worker_host"] = workerHost.addr;
-        spec["worker_host_name"] = workerHost.name;
-        spec["port"] = workerPort;
-        return spec;
-    }
-};
-
-}  // namespace
 
 namespace lsst::qserv::replica {
 
@@ -85,140 +56,179 @@ HttpExportModule::HttpExportModule(Controller::Ptr const& controller, string con
         : HttpModule(controller, taskName, processorConfig, req, resp) {}
 
 json HttpExportModule::executeImpl(string const& subModuleName) {
-    if (subModuleName == "TABLES") return _getTables();
+    if (subModuleName == "CONFIG-DATABASE") return _getDatabaseConfig();
+    if (subModuleName == "CONFIG-TABLE") return _getTableConfig();
+    if (subModuleName == "TABLE-LOCATIONS") return _getTableLocations();
     throw invalid_argument(context() + "::" + string(__func__) + "  unsupported sub-module: '" +
                            subModuleName + "'");
 }
 
-json HttpExportModule::_getTables() {
+json HttpExportModule::_getDatabaseConfig() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 53);
 
     auto const databaseName = params().at("database");
-    auto const tablesJson = body().requiredColl<json>("tables");
-
     debug(__func__, "database=" + databaseName);
-    debug(__func__, "tables.size()=" + to_string(tablesJson.size()));
+
+    auto const config = controller()->serviceProvider()->config();
+    auto const database = config->databaseInfo(databaseName);
+    if (!database.isPublished) {
+        throw http::Error(__func__, "database '" + database.name + "' is not PUBLISHED");
+    }
+    auto const family = config->databaseFamilyInfo(database.family);
+
+    // Note the version number of the API coresponds to the actual version of the database
+    // registration service that existed at a time this generator was written. It is not related
+    // to the version of the generator. The version number could be further adjusted
+    // by the ingest workflow if needed.
+    auto const result = json::object({{"version", 12},
+                                      {"database", database.name},
+                                      {"auto_build_secondary_index", 0},
+                                      {"num_stripes", family.numStripes},
+                                      {"num_sub_stripes", family.numSubStripes},
+                                      {"overlap", family.overlap}});
+    return json::object({{"config", result}});
+}
+
+json HttpExportModule::_getTableConfig() {
+    debug(__func__);
+    checkApiVersion(__func__, 53);
+
+    auto const databaseName = params().at("database");
+    auto const tableName = params().at("table");
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
 
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
-
-    // This operation will throw an exception if the database name is not valid
     auto const database = config->databaseInfo(databaseName);
-    if (not database.isPublished) {
+    if (!database.isPublished) {
         throw http::Error(__func__, "database '" + database.name + "' is not PUBLISHED");
     }
-
-    // Get a collection of known workers which are in the 'ENABLED' state
-    vector<ConfigWorker> allConfigWorkers;
-    for (auto&& worker : config->workers()) {
-        allConfigWorkers.push_back(config->worker(worker));
-    }
-    if (allConfigWorkers.empty()) {
-        throw http::Error(__func__, "no workers found in the Configuration of the system.");
+    auto const table = database.findTable(tableName);
+    if (!table.isPublished) {
+        throw http::Error(__func__, "table '" + tableName + "' of " + database.name + " is not PUBLISHED");
     }
 
-    /**
-     * The helper function is defined here to reduce code duplication along
-     * in the rest of the current method. The function will locate the first
-     * available (among 'ENABLED') worker hosting a replica of the specified
-     * chunk. The ConfigWorker object will be returned upon successful completion
-     * o f the function.
-     *
-     * @param chunk  The chunk number for
-     * @return The ConfigWorker for the found worker
-     * @throws invalid_argument in case if no replica was found for the specified
-     *   chunk. For the databases in the 'PUBLISHED' state it means that the chunk
-     *   doesn't exist.
-     */
-    auto const findWorkerForChunk = [&databaseServices, &config, &database](unsigned int chunk) {
-        bool const enabledWorkersOnly = true;
-        bool const includeFileInfo = false;
-        vector<ReplicaInfo> replicas;
-        databaseServices->findReplicas(replicas, chunk, database.name, enabledWorkersOnly, includeFileInfo);
-        if (replicas.empty()) {
-            throw invalid_argument("no replica found for chunk " + to_string(chunk) +
-                                   " in a scope of database '" + database.name + "'.");
+    // Note the version number of the API coresponds to the actual version of the table
+    // registration service that existed at a time this generator was written. It is not related
+    // to the version of the generator. The version number could be further adjusted
+    // by the ingest workflow if needed.
+    json result = json::object({{"version", 49},
+                                {"database", database.name},
+                                {"table", table.name},
+                                {"charset_name", table.charsetName},
+                                {"collation_name", table.collationName},
+                                {"is_partitioned", table.isPartitioned}});
+
+    // The optional attributes for the partitioned tables only.
+    if (table.isPartitioned) {
+        result["director_table"] = table.directorTable.tableName();
+        result["director_key"] = table.directorTable.primaryKeyColumn();
+        if (table.isDirector()) {
+            result["unique_primary_key"] = table.uniquePrimaryKey ? 1 : 0;
         }
-        return config->worker(replicas[0].worker());
+        if (table.isRefMatch()) {
+            result["director_table2"] = table.directorTable2.tableName();
+            result["director_key2"] = table.directorTable2.primaryKeyColumn();
+            result["ang_sep"] = table.angSep;
+            result["flag"] = table.flagColName;
+        }
+        result["latitude_key"] = table.latitudeColName;
+        result["longitude_key"] = table.longitudeColName;
+    }
+
+    // Extract schema from czar's MySQL database.
+    set<string> const columnsToExclude = {"qserv_trans_id"};
+    database::mysql::ConnectionHandler const h(qservMasterDbConnection(database.name));
+    result["schema"] =
+            database::mysql::tableSchemaForCreate(h.conn, database.name, table.name, columnsToExclude);
+
+    return json::object({{"config", result}});
+}
+
+json HttpExportModule::_getTableLocations() {
+    debug(__func__);
+    checkApiVersion(__func__, 53);
+
+    auto const databaseName = params().at("database");
+    auto const tableName = params().at("table");
+    debug(__func__, "database=" + databaseName);
+    debug(__func__, "table=" + tableName);
+
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    auto const config = controller()->serviceProvider()->config();
+    auto const database = config->databaseInfo(databaseName);
+    if (!database.isPublished) {
+        throw http::Error(__func__, "database '" + database.name + "' is not PUBLISHED");
+    }
+    auto const table = database.findTable(tableName);
+    if (!table.isPublished) {
+        throw http::Error(__func__, "table '" + tableName + "' of " + database.name + " is not PUBLISHED");
+    }
+    auto workerLocation = [&config](string const& workerName) -> json {
+        auto const worker = config->worker(workerName);
+        return json::object({{"worker", worker.name},
+                             {"host", worker.exporterHost.toJson()},
+                             {"port", worker.exporterPort}});
     };
+    if (table.isPartitioned) {
+        // The first step of the algorithm is to build a mapping from chunk numbers
+        // to locations (workers) hosting replicas of the specified table.
+        //
+        // Note that the first phase of the algorithm can be a bit slow since it
+        // needs to query the database for each chunk of the specified table. It may take
+        // many seconds (or a few minutes) to finish depending on the number of chunks
+        // in the table and on a performance of the underlying database server.
+        // Unfortunately there is no easy way to optimize this process in the current
+        // implementation of the Replication database Services (and the underlying schema)
+        json chunk2locations = json::object();
+        bool const enabledWorkersOnly = true;
+        vector<unsigned int> chunks;
+        databaseServices->findDatabaseChunks(chunks, database.name, enabledWorkersOnly);
+        for (auto const chunk : chunks) {
+            bool const includeFileInfo = true;  // to see the names of the base tables
+            vector<ReplicaInfo> replicas;
+            databaseServices->findReplicas(replicas, chunk, database.name, enabledWorkersOnly,
+                                           includeFileInfo);
+            for (auto const& replica : replicas) {
+                // Incomplete replicas are ignored since they may not have the full set
+                // of files for the specified table.
+                if (replica.status() != ReplicaInfo::Status::COMPLETE) continue;
 
-    // The following algorithm has two modes of operation, depending on the content
-    // of a collection of tables provided by a client. In either case, the algorithm
-    // will make the following decisions on which worker to report if a table has
-    // more than one replica. The choices are made based on a type of a table:
-    //
-    //   regular:     the first known worker since these tables are guaranteed to be
-    //                fully replicated in the 'PUBLISHED' catalogs.
-    //   partitioned: the first available replica.
-    //
-    // NOTE: The choice will be made among the so called 'ENABLED' workers.
-    //       See a definition of the worker status in a design documentation
-    //       of the Replication system.
-    //
-    // TODO: consider load balancing workers.
-    try {
-        json result;
-        result["location"] = json::array();
+                for (auto const& file : replica.fileInfo()) {
+                    // In the current implementation of Qserv, tables are allowed not to participate
+                    // in all partitions (chunks). Different tables of the same catalog may have
+                    // different spatial coverage.
+                    if (file.baseTable() != table.name) continue;
 
-        if (tablesJson.empty()) {
-            // Report locations for all regular tables in the database
-            for (auto&& tableName : database.regularTables()) {
-                TableSpec spec;
-                spec.tableName = tableName;
-                spec.workerHost = allConfigWorkers[0].exporterHost;
-                spec.workerPort = allConfigWorkers[0].exporterPort;
-                result["location"].push_back(spec.toJson());
-            }
-
-            // The rest is for the partitioned tables
-            bool const enabledWorkersOnly = true;
-            vector<unsigned int> chunks;
-            databaseServices->findDatabaseChunks(chunks, database.name, enabledWorkersOnly);
-            for (auto chunk : chunks) {
-                auto const workerInfo = findWorkerForChunk(chunk);
-
-                for (auto&& tableName : database.partitionedTables()) {
-                    TableSpec spec;
-
-                    // One entry for the main chunk table itself
-                    spec.tableName = tableName;
-                    spec.partitioned = true;
-                    spec.chunk = chunk;
-                    spec.overlap = false;
-                    spec.workerHost = workerInfo.exporterHost;
-                    spec.workerPort = workerInfo.exporterPort;
-                    result["location"].push_back(spec.toJson());
-
-                    // Another (slightly modified) entry for the 'overlap' chunk table
-                    spec.overlap = true;
-                    result["location"].push_back(spec.toJson());
+                    // Stop iterating here to prevent adding multiple entries (locations) of a chunk
+                    // for the same worker. Note that the JSON object doesn't allow numeric keys,
+                    // so we need to convert the chunk number to a string.
+                    chunk2locations[to_string(chunk)].push_back(workerLocation(replica.worker()));
+                    break;
                 }
             }
-        } else {
-            // Validate input collection of tables and produce an extended collection
-            // with table specifications to be returned back (to a caller).
+        }
 
-            for (auto&& tableJson : tablesJson) {
-                TableSpec spec;
-                spec.tableName = http::RequestBodyJSON::required<string>(tableJson, "table");
-                spec.partitioned = database.findTable(spec.tableName).isPartitioned;
-                if (spec.partitioned) {
-                    spec.overlap = http::RequestBodyJSON::required<unsigned int>(tableJson, "overlap");
-                    spec.chunk = http::RequestBodyJSON::required<unsigned int>(tableJson, "chunk");
-                }
-                ConfigWorker const worker =
-                        spec.partitioned ? findWorkerForChunk(spec.chunk) : allConfigWorkers[0];
-                spec.workerHost = worker.exporterHost;
-                spec.workerPort = worker.exporterPort;
-
-                result["location"].push_back(spec.toJson());
-            }
+        // The second step is to populate the result set.
+        json result = json::object({{"chunks", json::array()}});
+        for (auto const& item : chunk2locations.items()) {
+            result["chunks"].push_back(
+                    json::object({{"chunk", qserv::stoui(item.key())}, {"locations", item.value()}}));
         }
         return result;
-
-    } catch (invalid_argument const& ex) {
-        throw http::Error(__func__, ex.what());
+    } else {
+        json result = json::object({{"locations", json::array()}});
+        bool const isEnabled = true;
+        auto const workerNames = config->workers(isEnabled);
+        if (workerNames.empty()) {
+            throw http::Error(__func__, "no workers found in the Configuration of the system.");
+        }
+        for (auto const& workerName : workerNames) {
+            result["locations"].push_back(workerLocation(workerName));
+        }
+        return result;
     }
 }
 
