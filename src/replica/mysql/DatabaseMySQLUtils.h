@@ -135,6 +135,90 @@ std::string fs2obj(std::string const& fileSystemName);
  */
 bool isValidObjectName(std::string const& objectName);
 
+/**
+ * Extract the table schema from the information schema of the MySQL database.
+ * @param conn The MySQL connection for executing the query.
+ * @param databaseName The name of a database.
+ * @param tableName The name of a table.
+ * @return The JSON array with the following schema:
+ * @code
+ *  [
+ *    {"ORDINAL_POSITION":         <number>,
+ *     "COLUMN_NAME":              <string>,
+ *     "COLUMN_TYPE":              <string>,
+ *     "DATA_TYPE":                <string>,
+ *     "NUMERIC_PRECISION":        <string>|"",
+ *     "CHARACTER_MAXIMUM_LENGTH": <string>|"",
+ *     "IS_NULLABLE":              {"YES"|"NO"},
+ *     "COLUMN_DEFAULT":           <string>|"",
+ *     "COLUMN_COMMENT":           <string>|"",
+ *     "IS_GENERATED":             {"ALWAYS"|"NEVER"},
+ *     "GENERATION_EXPRESSION":    <string>|"">
+ *     "EXTRA":                    <string>|""
+ *    },
+ *    ...
+ *  ]
+ * @endcode
+ * @note
+ * - All but the "ORDINAL_POSITION" field are strings, including those which are numeric.
+ * - The numeric fields "NUMERIC_PRECISION", "CHARACTER_MAXIMUM_LENGTH"
+ *   and "COLUMN_DEFAULT" (for numeric columns) are converted to strings for
+ *   the sake of uniformity.
+ * - The NULL values are converted into empty strings.
+ * - The "ORDINAL_POSITION" field is 1-based.
+ * - The "IS_NULLABLE" field is either "YES" or "NO".
+ * - The "EXTRA" field contains additional information about the column, such as
+ *   "AUTO_INCREMENT", etc.
+ * - The rows are sorted by the "ORDINAL_POSITION" field in ascending order.
+ * @throws std::invalid_argument If the connectin pointer, or the database or the table name is empty.
+ * @throws mysql::Error on errors detected during query execution/processing.
+ */
+nlohmann::json tableSchemaDetailed(std::shared_ptr<Connection> const& conn, std::string const& databaseName,
+                                   std::string const& tableName);
+
+/**
+ * Extract the table schema from the information schema of the MySQL database and return
+ * it in the format suitable for the CREATE TABLE statement. Otherwise the method is the same as
+ * tableSchemaDetailed.
+ *
+ * The implementation of the generator is based on the syntax of the table creation
+ * command in the MySQL documentation:
+ * https://dev.mysql.com/doc/refman/8.4/en/create-table.html
+ *
+ * @param conn The MySQL connection for executing the query.
+ * @param databaseName The name of a database.
+ * @param tableName The name of a table.
+ * @param columnsToExclude The optional set of column names to be excluded from
+ *   the resulting schema.
+ * @return The JSON array with the following schema:
+ * @code
+ *  [
+ *    {"name": <string>, "type": <string>},
+ *    ...
+ *  ]
+ * @endcode
+ * For example:
+ * @code
+ *  [
+ *    {"name": "id", "type": "INT NOT NULL AUTO_INCREMENT"},
+ *    {"name": "name", "type": "VARCHAR(255) NOT NULL"},
+ *    {"name": "value", "type": "DOUBLE DEFAULT NULL"},
+ *    {"name": "mag", "type": "FLOAT GENERATED ALWAYS AS (scisql_nanojanskyToAbMag(`flux`)) VIRTUAL"},
+ *    ...
+ *  ]
+ * @endcode
+ * @note
+ * - The "name" field is the name of a column.
+ * - The "type" field is the column type as it should be used in the CREATE TABLE statement.
+ * - The data type part of the "type" field is in upper case (e.g. 'INT', 'INT UNSIGNED'. 'VARCHAR', etc).
+ * - The rows are sorted by the "ORDINAL_POSITION" field in ascending order.
+ * @throws std::invalid_argument If the connectin pointer, or the database or the table name is empty.
+ * @throws mysql::Error on errors detected during query execution/processing.
+ */
+nlohmann::json tableSchemaForCreate(std::shared_ptr<Connection> const& conn, std::string const& databaseName,
+                                    std::string const& tableName,
+                                    std::set<std::string> const& columnsToExclude = {});
+
 }  // namespace lsst::qserv::replica::database::mysql
 
 #endif  // LSST_QSERV_REPLICA_DATABASEMYSQLUTILS_H

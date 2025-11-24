@@ -97,8 +97,6 @@ function(CSSLoader,
           <th class="sticky">position</th>
           <th class="sticky">column</th>
           <th class="sticky">type</th>
-          <th class="sticky">is nullable</th>
-          <th class="sticky">default</th>
         </tr>
       </thead>
       <caption class="updating">Loading...</caption>
@@ -255,15 +253,14 @@ function(CSSLoader,
          */
         _display(columns) {
             let html = '';
+            let pos = 1;
             for (let i in columns) {
                 let coldef = columns[i];
                 html += `
 <tr>
-  <td scope="row"><pre>${coldef.ORDINAL_POSITION}</pre></td>
-  <th><pre>${coldef.COLUMN_NAME}</pre></th>
-  <td><pre>${coldef.COLUMN_TYPE.toUpperCase()}</pre></td>
-  <td><pre>${coldef.IS_NULLABLE}</pre></td>
-  <td><pre>${coldef.COLUMN_DEFAULT}</pre></td>
+  <td scope="row"><pre>${pos++}</pre></td>
+  <th><pre>${coldef.name}</pre></th>
+  <td><pre>${coldef.type}</pre></td>
 </tr>`;
             }
             this._table().children('tbody').html(html);
