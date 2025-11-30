@@ -11,6 +11,8 @@ target_sources(replica_worker PRIVATE
     WorkerDirectorIndexRequest.cc
     WorkerEchoHttpRequest.cc
     WorkerEchoRequest.cc
+    WorkerExporterHttpSvc.cc
+    WorkerExporterHttpSvcMod.cc
     WorkerFindAllRequest.cc
     WorkerFindAllReplicasHttpRequest.cc
     WorkerFindReplicaHttpRequest.cc
@@ -32,4 +34,5 @@ target_sources(replica_worker PRIVATE
 )
 target_link_libraries(replica_worker PUBLIC
     log
+    sphgeom
 )
