@@ -7,6 +7,8 @@ target_sources(replica_worker PRIVATE
     WorkerDeleteRequest.cc
     WorkerDirectorIndexRequest.cc
     WorkerEchoRequest.cc
+    WorkerExporterHttpSvc.cc
+    WorkerExporterHttpSvcMod.cc
     WorkerFindAllRequest.cc
     WorkerFindRequest.cc
     WorkerProcessor.cc
@@ -20,4 +22,5 @@ target_sources(replica_worker PRIVATE
 )
 target_link_libraries(replica_worker PUBLIC
     log
+    sphgeom
 )
