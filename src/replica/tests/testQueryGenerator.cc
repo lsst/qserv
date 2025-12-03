@@ -375,6 +375,7 @@ BOOST_AUTO_TEST_CASE(QueryGeneratorTest) {
             {"SELECT `col1`,`col2`", g.select("col1", "col2")},
             {"SELECT COUNT(*) AS `num`", g.select(g.as(Sql::COUNT_STAR, "num"))},
             {"SELECT `worker`,COUNT(*) AS `num`", g.select("worker", g.as(Sql::COUNT_STAR, "num"))},
+            {"SELECT `col1`,`col2`,`col3`", g.select(vector<string>{"col1", "col2", "col3"})},
 
             {" PARTITION (`p1`,`p2`)", g.inPartition(g.partId(1), g.partId(2))},
             {"SELECT `objectId`,`chunkId`,`subChunkId` FROM `Object_12345` PARTITION (`p12`)",

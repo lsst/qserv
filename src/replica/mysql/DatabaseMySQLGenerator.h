@@ -656,6 +656,8 @@ public:
         return sql;
     }
 
+    std::string packIds(std::vector<std::string> const& columns) const;
+
     /**
      * @brief Generate the optional "GROUP BY" clause.
      * Pack column names into a string which can be further used to form SQL clause
@@ -943,6 +945,8 @@ public:
     std::string select(Targs... Fargs) const {
         return "SELECT " + packIds(Fargs...);
     }
+
+    std::string select(std::vector<std::string> const& columns) const { return "SELECT " + packIds(columns); }
 
     template <typename... Targs>
     std::string inPartition(Targs... Fargs) const {
