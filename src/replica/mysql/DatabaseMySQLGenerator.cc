@@ -75,6 +75,15 @@ DoNotProcess QueryGenerator::val(vector<string> const& coll) const {
     return val(str);
 }
 
+string QueryGenerator::packIds(vector<string> const& columns) const {
+    string sql;
+    for (auto&& col : columns) {
+        if (!sql.empty()) sql += ",";
+        sql += id(col).str;
+    }
+    return sql;
+}
+
 string QueryGenerator::limit(unsigned int num, unsigned int offset) const {
     if (num == 0) return string();
     string str = " LIMIT " + to_string(num);
