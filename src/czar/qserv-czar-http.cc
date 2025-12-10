@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
     desc.add_options()("verbose,v", "Produce verbose output.");
     desc.add_options()("czar-name", po::value<string>()->default_value("http"),
                        "The name of this Czar frontend. Assign a unique name to each Czar.");
-    desc.add_options()("config", po::value<string>()->default_value("/config-etc/qserv-czar.cnf"),
+    desc.add_options()("config", po::value<string>()->default_value("/config-etc/qserv-czar.cfg"),
                        "The configuration file.");
     desc.add_options()("user", po::value<string>()->default_value(""),
                        "The login name of a user for connecting to the frontend.");
