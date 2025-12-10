@@ -326,6 +326,6 @@ option_log_cfg_file = partial(
     click.option,
     "--log-cfg-file",
     help="Path to the log4cxx config file.",
-    default="/config-etc/log/log.cnf",
+    default="/config-etc/log/log.cfg",
     show_default=True,
 )
