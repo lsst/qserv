@@ -76,15 +76,15 @@ _log = logging.getLogger(__name__)
 
 
 template_dir = "/usr/local/qserv/templates/"
-mysql_proxy_cfg_template = os.path.join(template_dir, "proxy/etc/my-proxy.cnf.jinja")
-czar_cfg_template = os.path.join(template_dir, "proxy/etc/qserv-czar.cnf.jinja")
-czar_http_cfg_template = os.path.join(template_dir, "http/etc/qserv-czar.cnf.jinja")
-worker_svc_cfg_template = os.path.join(template_dir, "worker-svc/etc/worker-svc.cf.jinja")
+mysql_proxy_cfg_template = os.path.join(template_dir, "proxy/etc/my-proxy.cfg.jinja")
+czar_cfg_template = os.path.join(template_dir, "proxy/etc/qserv-czar.cfg.jinja")
+czar_http_cfg_template = os.path.join(template_dir, "http/etc/qserv-czar.cfg.jinja")
+worker_svc_cfg_template = os.path.join(template_dir, "worker-svc/etc/worker-svc.cfg.jinja")
 
-mysql_proxy_cfg_path = "/config-etc/my-proxy.cnf"
-czar_cfg_path = "/config-etc/qserv-czar.cnf"
-czar_http_cfg_path = "/config-etc/qserv-czar.cnf"
-worker_svc_cfg_path = "/config-etc/worker-svc.cf"
+mysql_proxy_cfg_path = "/config-etc/my-proxy.cfg"
+czar_cfg_path = "/config-etc/qserv-czar.cfg"
+czar_http_cfg_path = "/config-etc/qserv-czar.cfg"
+worker_svc_cfg_path = "/config-etc/worker-svc.cfg"
 
 socket_option_help = f"""Accepts query key {
     click.style("socket", bold=True)
@@ -523,7 +523,7 @@ def delete_database(
     default="127.0.0.1:3306",
     show_default=True,
     help="This is the same as the proxy-backend-address option to mysql proxy. This value is substitued "
-    "into the proxy-backend-address parameter in 'my-proxy.cnf.jinja'.",
+    "into the proxy-backend-address parameter in 'my-proxy.cfg.jinja'.",
 )
 @click.option(
     "--proxy-cfg-file",
