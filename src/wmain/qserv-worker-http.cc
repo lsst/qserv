@@ -47,7 +47,7 @@ char const* const context = "[WORKER]";
 int main(int argc, char* argv[]) {
     po::options_description desc("", 120);
     desc.add_options()("help,h", "Print this help message and exit.");
-    desc.add_options()("config,c", po::value<string>()->default_value("/config-etc/qserv-worker.cnf"),
+    desc.add_options()("config,c", po::value<string>()->default_value("/config-etc/qserv-worker.cfg"),
                        "The configuration file.");
 
     po::variables_map vm;
