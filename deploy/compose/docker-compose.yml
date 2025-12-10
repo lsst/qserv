@@ -103,7 +103,7 @@ services:
           --repl-registry-host repl-registry
           --repl-registry-port 25082
           --results-dirname /qserv/data/results
-          --log-cfg-file=/config-etc/log/log-worker-svc.cnf
+          --log-cfg-file=/config-etc/log/log-worker-svc.cfg
         volumes:
             - type: volume
               source: volume_worker_0_results
@@ -125,7 +125,7 @@ services:
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-mariadb-0:3306/qservw_worker
           --repl-connection mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
-          --log-cfg-file=/config-etc/log/log-repl-worker.cnf
+          --log-cfg-file=/config-etc/log/log-repl-worker.cfg
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
@@ -176,7 +176,7 @@ services:
           --repl-registry-port 25082
           --results-dirname /qserv/data/results
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
-          --log-cfg-file=/config-etc/log/log-worker-svc.cnf
+          --log-cfg-file=/config-etc/log/log-worker-svc.cfg
         volumes:
             - type: volume
               source: volume_worker_1_results
@@ -199,7 +199,7 @@ services:
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-mariadb-1:3306/qservw_worker
           --repl-connection mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
-          --log-cfg-file=/config-etc/log/log-repl-worker.cnf
+          --log-cfg-file=/config-etc/log/log-repl-worker.cfg
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
@@ -250,7 +250,7 @@ services:
           --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
-          --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
+          --log-cfg-file=/config-etc/log/log-czar-proxy.cfg
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -299,7 +299,7 @@ services:
           --http-conn-pool-size 2
           --user qsmaster
           --password CHANGEME
-          --log-cfg-file=/config-etc/log/log-czar-proxy.cnf
+          --log-cfg-file=/config-etc/log/log-czar-proxy.cfg
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -346,7 +346,7 @@ services:
           --db-uri mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
           --qserv-czar-db=mysql://root:CHANGEME@czar-mariadb:3306/qservMeta
-          --log-cfg-file=/config-etc/log/log-repl-controller.cnf
+          --log-cfg-file=/config-etc/log/log-repl-controller.cfg
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
@@ -378,7 +378,7 @@ services:
           entrypoint --log-level DEBUG replication-registry
           --db-uri mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
           --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
-          --log-cfg-file=/config-etc/log/log-repl-registry.cnf
+          --log-cfg-file=/config-etc/log/log-repl-registry.cfg
           --
           --instance-id=qserv_proj
           --auth-key=replauthkey
