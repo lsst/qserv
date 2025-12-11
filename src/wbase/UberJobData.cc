@@ -89,9 +89,8 @@ void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const&
     _fileChannelShared = fileChannelShared;
 }
 
-void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize) {
-    LOGS(_log, LOG_LVL_INFO,
-         cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize);
+void UberJobData::responseFileReady(protojson::FileUrlInfo const& fileUrlInfo_) {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << fileUrlInfo_.dump());
 
     // Latch to prevent errors from being transmitted.
     // NOTE: Calls to responseError() and responseFileReady() are protected by the
@@ -108,9 +107,9 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
         LOGS(_log, LOG_LVL_ERROR,
              cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
     }
-    auto const& repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
-    auto const& repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
-    auto ujMsg = responseFileReadyBuild(httpFileUrl, rowCount, fileSize, repliInstId, repliAuthKey);
+    protojson::AuthContext authContext_(wconfig::WorkerConfig::instance()->replicationInstanceId(),
+                                        wconfig::WorkerConfig::instance()->replicationAuthKey());
+    auto ujMsg = responseFileReadyBuild(fileUrlInfo_, authContext_);
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};
@@ -119,11 +118,8 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
     _queueUJResponse(method, headers, url, requestContext, ujMsg);
 }
 
-shared_ptr<protojson::UberJobReadyMsg> UberJobData::responseFileReadyBuild(string const& httpFileUrl,
-                                                                           uint64_t rowCount,
-                                                                           uint64_t fileSize,
-                                                                           string const& repliInstId,
-                                                                           string const& repliAuthKey) {
+shared_ptr<protojson::UberJobReadyMsg> UberJobData::responseFileReadyBuild(
+        protojson::FileUrlInfo const& fileUrlInfo_, protojson::AuthContext const& authContext_) {
     string workerIdStr;
     if (_foreman != nullptr) {
         workerIdStr = _foreman->chunkInventory()->id();
@@ -134,9 +130,9 @@ shared_ptr<protojson::UberJobReadyMsg> UberJobData::responseFileReadyBuild(strin
     }
 
     unsigned int const version = http::MetaModule::version;
-    auto ujMsg = protojson::UberJobReadyMsg::create(repliInstId, repliAuthKey, version, workerIdStr,
-                                                    _czarName, _czarId, _queryId, _uberJobId, httpFileUrl,
-                                                    rowCount, fileSize);
+    auto ujMsg = protojson::UberJobReadyMsg::create(authContext_, version, workerIdStr, _czarName, _czarId,
+                                                    _queryId, _uberJobId, fileUrlInfo_);
+
     return ujMsg;
 }
 
@@ -151,10 +147,10 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
         return;
     }
 
-    auto repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
-    auto repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
+    protojson::AuthContext authContext_(wconfig::WorkerConfig::instance()->replicationInstanceId(),
+                                        wconfig::WorkerConfig::instance()->replicationAuthKey());
 
-    auto jrMsg = responseErrorBuild(multiErr, chunkId, cancelled, logLvl, repliInstId, repliAuthKey);
+    auto jrMsg = responseErrorBuild(multiErr, chunkId, cancelled, logLvl, authContext_);
 
     auto const method = http::Method::POST;
     vector<string> const headers = {"Content-Type: application/json"};
@@ -163,11 +159,9 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
     _queueUJResponse(method, headers, url, requestContext, jrMsg);
 }
 
-shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(util::MultiError& multiErr,
-                                                                       int chunkId, bool cancelled,
-                                                                       int logLvl,
-                                                                       std::string const& repliInstId,
-                                                                       std::string const& repliAuthKey) {
+shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(
+        util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl,
+        protojson::AuthContext const& authContext_) {
     string workerIdStr;
     if (_foreman != nullptr) {
         workerIdStr = _foreman->chunkInventory()->id();
@@ -191,9 +185,8 @@ shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(util::Mul
         LOGS(_log, logLvl, errorMsg);
     }
     unsigned int const version = http::MetaModule::version;
-    auto jrMsg =
-            protojson::UberJobErrorMsg::create(repliInstId, repliAuthKey, version, workerIdStr, _czarName,
-                                               _czarId, _queryId, _uberJobId, errorCode, errorMsg);
+    auto jrMsg = protojson::UberJobErrorMsg::create(authContext_, version, workerIdStr, _czarName, _czarId,
+                                                    _queryId, _uberJobId, errorCode, errorMsg);
     return jrMsg;
 }
 
@@ -277,8 +270,8 @@ void UJTransmitCmd::action(util::CmdData* data) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
         return;
     }
-    auto request = _ujMsg->toJsonPtr();
-    string const requestStr = request->dump();
+    auto request = _ujMsg->toJson();
+    string const requestStr = request.dump();
     http::Client client(_method, _url, requestStr, _headers);
     bool transmitSuccess = false;
     try {
@@ -300,7 +293,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " " << _requestContext << " failed, ex: " << ex.what());
     }
-
     if (!transmitSuccess) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " resending!");
         auto sPtr = _selfPtr;

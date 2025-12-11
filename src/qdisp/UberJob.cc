@@ -35,6 +35,7 @@
 #include "global/LogContext.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
+#include "protojson/UberJobReadyMsg.h"
 #include "protojson/UberJobMsg.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
@@ -94,7 +95,7 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
     }
     if (!success) {
         LOGS(_log, LOG_LVL_ERROR,
-             cName(__func__) << " job already in UberJob job=" << job->dump() << " uberJob=" + dump());
+             cName(__func__) << " job already in UberJob job=" << job->dump() << " uberJob=" << *this);
     }
     return success;
 }
@@ -247,10 +248,8 @@ void UberJob::callMarkCompleteFunc(bool success) {
     _jobs.clear();
 }
 
-json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize,
-                               bool const retry) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         cName(__func__) << " fileUrl=" << fileUrl << " rowCount=" << rowCount << " fileSize=" << fileSize);
+json UberJob::importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool const retry) {
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << fileUrlInfo_.dump());
 
     auto exec = _executive.lock();
     if (exec == nullptr) {
@@ -272,8 +271,9 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         return importResultError(false, "rowLimited", "Enough rows already");
     }
 
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileSize);
-    bool const statusSet = setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrl);
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileUrlInfo_.fileSize);
+    bool const statusSet =
+            setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrlInfo_.fileUrl);
     if (!statusSet) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " setStatusFail could not set status to RESPONSE_READY");
         if (!retry) {
@@ -290,21 +290,21 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
 
     // fileCollectFunc will be put on the queue to run later.
     string const idStr = _idStr;
-    auto fileCollectFunc = [ujThis, fileUrl, fileSize, rowCount, idStr](util::CmdData*) {
+    auto fileCollectFunc = [ujThis, fileUrlInfo_, idStr](util::CmdData*) {
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
-                 "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrl);
+                 "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrlInfo_.fileUrl);
             return;
         }
         auto exec = ujPtr->getExecutive();
         if (exec == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
-                 "UberJob::fileCollectFunction exec ptr is null " << idStr << " " << fileUrl);
+                 "UberJob::fileCollectFunction exec ptr is null " << idStr << " " << fileUrlInfo_.fileUrl);
             return;
         }
 
-        exec->collectFile(ujPtr, fileUrl, fileSize, rowCount, idStr);
+        exec->collectFile(ujPtr, fileUrlInfo_, idStr);
     };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(fileCollectFunc));
@@ -475,7 +475,7 @@ bool UberJob::killUberJob() {
     return cancelledMerge;
 }
 
-std::ostream& UberJob::dumpOS(std::ostream& os) const {
+std::ostream& UberJob::dump(std::ostream& os) const {
     os << "(jobs sz=" << _jobs.size() << "(";
     lock_guard<mutex> lockJobsMtx(_jobsMtx);
     for (auto const& job : _jobs) {
