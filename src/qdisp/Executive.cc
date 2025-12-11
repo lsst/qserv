@@ -61,6 +61,7 @@
 #include "czar/Czar.h"
 #include "global/LogContext.h"
 #include "global/ResourceUnit.h"
+#include "protojson/UberJobReadyMsg.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
 #include "qdisp/ResponseHandler.h"
@@ -831,14 +832,15 @@ shared_ptr<lock_guard<mutex>> Executive::getLimitSquashLock() {
     return ptr;
 }
 
-void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& fileUrl, uint64_t fileSize,
-                            uint64_t rowCount, std::string const& idStr) {
+void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+                            std::string const& idStr) {
     // Limit collecting LIMIT queries to one at a time, but only those.
     shared_ptr<lock_guard<mutex>> limitSquashL;
     if (_limitSquashApplies) {
         limitSquashL.reset(new lock_guard<mutex>(_mtxLimitSquash));
     }
-    MergeEndStatus flushStatus = ujPtr->getRespHandler()->flushHttp(fileUrl, fileSize);
+    MergeEndStatus flushStatus =
+            ujPtr->getRespHandler()->flushHttp(fileUrlInfo.fileUrl, fileUrlInfo.fileSize);
     LOGS(_log, LOG_LVL_TRACE,
          cName(__func__) << "ujId=" << ujPtr->getUjId() << " success=" << flushStatus.success
                          << " contaminated=" << flushStatus.contaminated);
@@ -860,8 +862,8 @@ void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& f
     }
 
     // Success
-    CzarStats::get()->addTotalRowsRecv(rowCount);
-    CzarStats::get()->addTotalBytesRecv(fileSize);
+    CzarStats::get()->addTotalRowsRecv(fileUrlInfo.rowCount);
+    CzarStats::get()->addTotalBytesRecv(fileUrlInfo.fileSize);
 
     // At this point all data for this job have been read and merged
     bool const statusSet = ujPtr->importResultFinish();
@@ -869,11 +871,11 @@ void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& f
         LOGS(_log, LOG_LVL_ERROR,
              cName(__func__) << "ujId=" << ujPtr->getUjId() << " failed to set status, squashing "
                              << getIdStr());
-        // Something has gone very wrong
+        // Something has gone very wrong, possibly merged same results twice.
         squash(cName(__func__) + " couldn't set UberJob status");
         return;
     }
-    addResultRows(rowCount);
+    addResultRows(fileUrlInfo.rowCount);
     checkLimitRowComplete();
 }
 

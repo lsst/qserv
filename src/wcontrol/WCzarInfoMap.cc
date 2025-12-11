@@ -56,8 +56,8 @@ namespace lsst::qserv::wcontrol {
 WCzarInfo::WCzarInfo(CzarId czarId_)
         : czarId(czarId_),
           _workerCzarComIssue(protojson::WorkerCzarComIssue::create(
-                  wconfig::WorkerConfig::instance()->replicationInstanceId(),
-                  wconfig::WorkerConfig::instance()->replicationAuthKey())) {}
+                  protojson::AuthContext(wconfig::WorkerConfig::instance()->replicationInstanceId(),
+                                         wconfig::WorkerConfig::instance()->replicationAuthKey()))) {}
 
 void WCzarInfo::czarMsgReceived(TIMEPOINT tm) {
     unique_lock<mutex> uniLock(_wciMtx);
@@ -119,10 +119,10 @@ void WCzarInfo::_sendMessage() {
     vector<string> const headers = {"Content-Type: application/json"};
     string const url =
             "http://" + czInfo->czHostName + ":" + to_string(czInfo->czPort) + "/workerczarcomissue";
-    auto jsReqPtr = _workerCzarComIssue->toJson();
+    auto jsReq = _workerCzarComIssue->toJson();
     uniLock.unlock();  // Must unlock before communication
 
-    auto requestStr = jsReqPtr->dump();
+    auto requestStr = jsReq.dump();
     http::Client client(method, url, requestStr, headers);
     bool transmitSuccess = false;
     try {
