@@ -42,6 +42,8 @@
 namespace lsst::qserv {
 
 namespace protojson {
+class AuthContext;
+class FileUrlInfo;
 class ScanInfo;
 class UberJobErrorMsg;
 class UberJobReadyMsg;
@@ -105,20 +107,17 @@ public:
     }
 
     /// Let the czar know the result is ready.
-    void responseFileReady(std::string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize);
+    void responseFileReady(protojson::FileUrlInfo const& fileUrlInfo_);
 
     /// Build the UberJob result ready message.
-    std::shared_ptr<protojson::UberJobReadyMsg> responseFileReadyBuild(std::string const& httpFileUrl,
-                                                                       uint64_t rowCount, uint64_t fileSize,
-                                                                       std::string const& repliInstId,
-                                                                       std::string const& repliAuthKey);
+    std::shared_ptr<protojson::UberJobReadyMsg> responseFileReadyBuild(
+            protojson::FileUrlInfo const& fileUrlInfo_, protojson::AuthContext const& authContext_);
 
     /// Let the Czar know there's been a problem.
     void responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl);
-    std::shared_ptr<protojson::UberJobErrorMsg> responseErrorBuild(util::MultiError& multiErr, int chunkId,
-                                                                   bool cancelled, int logLvl,
-                                                                   std::string const& repliInstId,
-                                                                   std::string const& repliAuthKey);
+    std::shared_ptr<protojson::UberJobErrorMsg> responseErrorBuild(
+            util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl,
+            protojson::AuthContext const& authContext_);
 
     std::string const& getIdStr() const { return _idStr; }
     std::string cName(const char* funcN) const override {

@@ -30,6 +30,10 @@
 #include "qdisp/Executive.h"
 #include "qmeta/JobStatus.h"
 
+namespace lsst::qserv::protojson {
+class FileUrlInfo;
+}
+
 namespace lsst::qserv::util {
 class QdispPool;
 }
@@ -107,8 +111,7 @@ public:
     ///            state.
     /// @return a json message indicating success unless the query has been
     ///         cancelled, limit row complete, or similar.
-    nlohmann::json importResultFile(std::string const& fileUrl, uint64_t rowCount, uint64_t fileSize,
-                                    bool const retry = false);
+    nlohmann::json importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool const retry = false);
 
     /// Handle an error from the worker.
     nlohmann::json workerError(int errorCode, std::string const& errorMsg);
@@ -123,7 +126,7 @@ public:
     nlohmann::json importResultError(bool shouldCancel, std::string const& errorType,
                                      std::string const& note);
 
-    std::ostream& dumpOS(std::ostream& os) const override;
+    std::ostream& dump(std::ostream& os) const override;
 
 protected:
     UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,

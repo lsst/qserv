@@ -701,9 +701,10 @@ void Czar::killIncompleteUbjerJobsOn(std::string const& restartedWorkerId) {
 
 nlohmann::json Czar::handleUberJobReadyMsg(std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg,
                                            string const& note, bool const retry) {
-    auto queryId = jrMsg->getQueryId();
-    auto czarId = jrMsg->getCzarId();
-    auto uberJobId = jrMsg->getUberJobId();
+    auto queryId = jrMsg->queryId;
+    auto czarId = jrMsg->czarId;
+    auto uberJobId = jrMsg->uberJobId;
+
     qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN,
@@ -720,20 +721,18 @@ nlohmann::json Czar::handleUberJobReadyMsg(std::shared_ptr<protojson::UberJobRea
                                to_string(queryId) + " ujId=" + to_string(uberJobId) +
                                " czar=" + to_string(czarId));
     }
+    uj->setResultFileSize(jrMsg->fileUrlInfo.fileSize);
+    exec->checkResultFileSize(jrMsg->fileUrlInfo.fileSize);
 
-    uj->setResultFileSize(jrMsg->getFileSize());
-    exec->checkResultFileSize(jrMsg->getFileSize());
-
-    auto importRes =
-            uj->importResultFile(jrMsg->getFileUrl(), jrMsg->getRowCount(), jrMsg->getFileSize(), retry);
+    auto importRes = uj->importResultFile(jrMsg->fileUrlInfo, retry);
     return importRes;
 }
 
 nlohmann::json Czar::handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg,
                                            string const& note) {
-    auto const queryId = jrMsg->getQueryId();
-    auto const czarId = jrMsg->getCzarId();
-    auto const uberJobId = jrMsg->getUberJobId();
+    auto queryId = jrMsg->queryId;
+    auto czarId = jrMsg->czarId;
+    auto uberJobId = jrMsg->uberJobId;
 
     // Find UberJob
     qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
@@ -747,7 +746,7 @@ nlohmann::json Czar::handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErr
                                " ujId=" + to_string(uberJobId) + " czar=" + to_string(czarId));
     }
 
-    auto importRes = uj->workerError(jrMsg->getErrorCode(), jrMsg->getErrorMsg());
+    auto importRes = uj->workerError(jrMsg->errorCode, jrMsg->errorMsg);
     return importRes;
 }
 
