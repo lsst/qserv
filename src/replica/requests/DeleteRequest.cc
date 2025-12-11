@@ -68,12 +68,14 @@ DeleteRequest::DeleteRequest(shared_ptr<Controller> const& controller, string co
                            ::disposeRequired),
           _database(database),
           _chunk(chunk),
-          _onFinish(onFinish) {
-    controller->serviceProvider()->config()->assertDatabaseIsValid(database);
-}
+          _onFinish(onFinish) {}
 
 void DeleteRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
+    // The delayed assertion is needed to prevent throwing exceptions from
+    // within constructors.
+    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.

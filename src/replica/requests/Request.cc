@@ -204,8 +204,17 @@ void Request::start(string const& jobId, unsigned int requestExpirationIvalSec) 
         _requestExpirationTimer.async_wait(bind(&Request::expired, shared_from_this(), _1));
     }
 
-    // Let a subclass to proceed with its own sequence of actions
-    startImpl(lock);
+    // Let a subclass to proceed with its own sequence of actions.
+    // Terminate the processing and notify the client if an exception is thrown.
+    try {
+        startImpl(lock);
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR,
+             context() << __func__ << "  caught exception: " << ex.what()
+                       << "  finishing the request with CLIENT_ERROR");
+        finish(lock, CLIENT_ERROR);
+        return;
+    }
 
     // Finalize state transition before saving the persistent state
     setState(lock, IN_PROGRESS);

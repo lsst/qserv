@@ -194,8 +194,19 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
             set<pair<unsigned int, string>> chunkAndWorker;
 
             // Locate all contributions into the table made at the given worker.
-            vector<TransactionContribInfo> const contribs =
-                    databaseServices->transactionContribs(transactionId(), directorTable(), workerName);
+            vector<TransactionContribInfo> contribs;
+            try {
+                contribs =
+                        databaseServices->transactionContribs(transactionId(), directorTable(), workerName);
+            } catch (exception const& ex) {
+                LOGS(_log, LOG_LVL_ERROR,
+                     context() << __func__ << "  failed to fetch transaction contributions for "
+                               << " transactionId: " << transactionId()
+                               << " directorTable: " << directorTable() << " workerName: " << workerName
+                               << "  exception: " << ex.what());
+                finish(lock, ExtendedState::FAILED);
+                return;
+            }
             for (auto&& contrib : contribs) {
                 chunkAndWorker.insert(make_pair(contrib.chunk, contrib.worker));
             }

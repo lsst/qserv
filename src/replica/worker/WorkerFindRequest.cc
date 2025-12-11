@@ -65,9 +65,7 @@ WorkerFindRequest::WorkerFindRequest(ServiceProvider::Ptr const& serviceProvider
                                      unsigned int requestExpirationIvalSec,
                                      ProtocolRequestFind const& request)
         : WorkerRequest(serviceProvider, worker, "FIND", id, priority, onExpired, requestExpirationIvalSec),
-          _request(request) {
-    serviceProvider->config()->assertDatabaseIsValid(request.database());
-}
+          _request(request) {}
 
 void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
@@ -82,6 +80,17 @@ bool WorkerFindRequest::execute() {
 
     replica::Lock lock(_mtx, context(__func__));
     checkIfCancelling(lock, __func__);
+
+    // The delayed assertion is needed to prevent throwing exceptions from
+    // the constructor. Fatal errors may terminate the process.
+    try {
+        _serviceProvider->config()->assertDatabaseIsValid(_request.database());
+    } catch (std::exception const& ex) {
+        WorkerRequest::ErrorContext errorContext;
+        errorContext = errorContext or reportErrorIf(true, ProtocolStatusExt::INVALID_PARAM, ex.what());
+        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
+        return true;
+    }
 
     // There are two modes of operation of the code which would depend
     // on a presence (or a lack of that) to calculate control/check sums

@@ -71,14 +71,16 @@ ReplicationRequest::ReplicationRequest(shared_ptr<Controller> const& controller,
           _chunk(chunk),
           _sourceWorkerName(sourceWorkerName),
           _onFinish(onFinish),
-          _replicaInfo() {
-    controller->serviceProvider()->config()->assertWorkerIsValid(sourceWorkerName);
-    controller->serviceProvider()->config()->assertWorkersAreDifferent(sourceWorkerName, workerName);
-    controller->serviceProvider()->config()->assertDatabaseIsValid(database);
-}
+          _replicaInfo() {}
 
 void ReplicationRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
+    // The delayed assertions are needed to prevent throwing exceptions from
+    // within constructors.
+    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
+    controller()->serviceProvider()->config()->assertWorkerIsValid(sourceWorkerName());
+    controller()->serviceProvider()->config()->assertWorkersAreDifferent(sourceWorkerName(), workerName());
 
     ConfigWorker const sourceConfigWorker =
             controller()->serviceProvider()->config()->worker(sourceWorkerName());

@@ -136,10 +136,10 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
             vector<ReplicaInfo> replicas;
             try {
                 databaseServices->findWorkerReplicas(replicas, worker, database);
-            } catch (exception const&) {
-                LOGS(_log, LOG_LVL_DEBUG,
+            } catch (exception const& ex) {
+                LOGS(_log, LOG_LVL_ERROR,
                      context() << __func__ << "  failed to pull replicas for worker: " << worker
-                               << ", database: " << database);
+                               << ", database: " << database << ", ex: " << ex.what());
 
                 finish(lock, ExtendedState::FAILED);
                 return;
