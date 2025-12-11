@@ -276,8 +276,15 @@ void VerifyJob::_onRequestFinish(FindRequest::Ptr const& request) {
             LOGS(_log, LOG_LVL_INFO, context() << "replica mismatch for self\n" << selfReplicaDiff);
         }
         vector<ReplicaInfo> otherReplicas;
-        controller()->serviceProvider()->databaseServices()->findReplicas(otherReplicas, oldReplica.chunk(),
-                                                                          oldReplica.database());
+        try {
+            controller()->serviceProvider()->databaseServices()->findReplicas(
+                    otherReplicas, oldReplica.chunk(), oldReplica.database());
+        } catch (exception const& ex) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 context() << "failed to fetch other replicas for database: " << oldReplica.database()
+                           << " chunk: " << oldReplica.chunk() << "  exception: " << ex.what());
+            finish(lock, ExtendedState::FAILED);
+        }
         for (auto&& replica : otherReplicas) {
             ReplicaDiff diff(request->responseData(), replica);
             if (not diff.isSelf()) {

@@ -69,14 +69,16 @@ FindAllRequest::FindAllRequest(shared_ptr<Controller> const& controller, string 
                            ::allowDuplicateNo, ::disposeRequired),
           _database(database),
           _saveReplicaInfo(saveReplicaInfo),
-          _onFinish(onFinish) {
-    controller->serviceProvider()->config()->assertDatabaseIsValid(database);
-}
+          _onFinish(onFinish) {}
 
 const ReplicaInfoCollection& FindAllRequest::responseData() const { return _replicaInfoCollection; }
 
 void FindAllRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
+
+    // The delayed assertion is needed to prevent throwing exceptions from
+    // within constructors.
+    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -175,11 +177,18 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
     }
     switch (message.status()) {
         case ProtocolStatus::SUCCESS:
-            if (saveReplicaInfo()) {
-                controller()->serviceProvider()->databaseServices()->saveReplicaInfoCollection(
-                        workerName(), database(), _replicaInfoCollection);
+            try {
+                if (saveReplicaInfo()) {
+                    controller()->serviceProvider()->databaseServices()->saveReplicaInfoCollection(
+                            workerName(), database(), _replicaInfoCollection);
+                }
+                finish(lock, SUCCESS);
+            } catch (std::exception const& ex) {
+                LOGS(_log, LOG_LVL_ERROR,
+                     context() << __func__
+                               << " failed to save replica info collection into a database: " << ex.what());
+                finish(lock, CLIENT_ERROR);
             }
-            finish(lock, SUCCESS);
             break;
         case ProtocolStatus::CREATED:
             keepTrackingOrFinish(lock, SERVER_CREATED);

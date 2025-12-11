@@ -71,9 +71,7 @@ FindRequest::FindRequest(shared_ptr<Controller> const& controller, string const&
           _database(database),
           _chunk(chunk),
           _computeCheckSum(computeCheckSum),
-          _onFinish(onFinish) {
-    controller->serviceProvider()->config()->assertDatabaseIsValid(database);
-}
+          _onFinish(onFinish) {}
 
 ReplicaInfo const& FindRequest::responseData() const { return _replicaInfo; }
 
@@ -82,6 +80,10 @@ void FindRequest::startImpl(replica::Lock const& lock) {
          context() << __func__ << " "
                    << " worker: " << workerName() << " database: " << database() << " chunk: " << chunk()
                    << " computeCheckSum: " << (computeCheckSum() ? "true" : "false"));
+
+    // The delayed assertion is needed to prevent throwing exceptions from
+    // within constructors.
+    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.

@@ -141,7 +141,16 @@ void SqlJob::startImpl(replica::Lock const& lock) {
 
     for (auto&& workerName : workerNames) {
         _resultData.resultSets[workerName] = list<SqlResultSet>();
-        auto const requests = launchRequests(lock, workerName, maxRequestsPerWorker);
+        list<SqlRequest::Ptr> requests;
+        try {
+            requests = launchRequests(lock, workerName, maxRequestsPerWorker);
+        } catch (std::exception const& ex) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 context() << "startImpl  failed to launch initial requests for worker " << workerName
+                           << "  exception: " << ex.what());
+            processResultAndFinish(lock, ExtendedState::FAILED);
+            return;
+        }
         _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     }
 
@@ -176,7 +185,19 @@ void SqlJob::onRequestFinish(SqlRequest::Ptr const& request) {
 
     // Try submitting a replacement request for the same worker. If none
     // would be launched then evaluate for the completion condition of the job.
-    auto const requests = launchRequests(lock, request->workerName());
+    list<SqlRequest::Ptr> requests;
+    try {
+        requests = launchRequests(lock, request->workerName());
+    } catch (std::exception const& ex) {
+        LOGS(_log, LOG_LVL_ERROR,
+             context() << "onRequestFinish  failed to launch a replacement request for worker "
+                       << request->workerName() << "  exception: " << ex.what());
+        processResultAndFinish(lock, ExtendedState::FAILED);
+        return;
+    }
+
+    // Insert new requests into the collection and check
+    // if we have reached the completion condition.
     auto itr = _requests.insert(_requests.cend(), requests.cbegin(), requests.cend());
     if (_requests.cend() == itr) {
         if (_requests.size() == _numFinished) {
