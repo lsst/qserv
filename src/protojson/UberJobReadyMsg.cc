@@ -42,66 +42,61 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.UberJobReadyMsg");
 }  // namespace
 
 namespace lsst::qserv::protojson {
-
-UberJobStatusMsg::UberJobStatusMsg(string const& replicationInstanceId, string const& replicationAuthKey,
-                                   unsigned int version, string const& workerId, string const& czarName,
-                                   CzarId czarId, QueryId queryId, UberJobId uberJobId)
-        : _replicationInstanceId(replicationInstanceId),
-          _replicationAuthKey(replicationAuthKey),
-          _version(version),
-          _workerId(workerId),
-          _czarName(czarName),
-          _czarId(czarId),
-          _queryId(queryId),
-          _uberJobId(uberJobId) {
-    if (_version != http::MetaModule::version) {
-        string eMsg = cName(__func__) + " UberJobStatusMsg constructor bad version " + to_string(_version);
+UberJobStatusMsg::UberJobStatusMsg(AuthContext const& authContext_, unsigned int version_,
+                                   string const& workerId_, string const& czarName_, CzarId czarId_,
+                                   QueryId queryId_, UberJobId uberJobId_)
+        : authContext(authContext_),
+          version(version_),
+          workerId(workerId_),
+          czarName(czarName_),
+          czarId(czarId_),
+          queryId(queryId_),
+          uberJobId(uberJobId_) {
+    if (version != http::MetaModule::version) {
+        string eMsg = cName(__func__) + " UberJobStatusMsg constructor bad version " + to_string(version);
         LOGS(_log, LOG_LVL_ERROR, eMsg);
         throw invalid_argument(eMsg);
     }
 }
 
 bool UberJobStatusMsg::equalsBase(UberJobStatusMsg const& other) const {
-    return ((_replicationInstanceId == other._replicationInstanceId) &&
-            (_replicationAuthKey == other._replicationAuthKey) && (_czarId == other._czarId) &&
-            (_queryId == other._queryId) && (_uberJobId == other._uberJobId) &&
-            (_version == other._version) && (_workerId == other._workerId) && (_czarName == other._czarName));
+    return ((authContext == other.authContext) && (queryId == other.queryId) &&
+            (uberJobId == other.uberJobId) && (version == other.version) && (workerId == other.workerId) &&
+            (czarName == other.czarName));
 }
 
-std::ostream& UberJobStatusMsg::dumpOS(std::ostream& os) const {
-    os << "{UberJobStatusMsg:" << " QID=" << _queryId << "_ujId=" << _uberJobId << " czId=" << _czarId
-       << " czName=" << _czarName << " workerId=" << _workerId << " version=" << _version << "}";
+std::ostream& UberJobStatusMsg::dump(std::ostream& os) const {
+    os << "{UberJobStatusMsg:" << " QID=" << queryId << "_ujId=" << uberJobId << " czId=" << czarId
+       << " czName=" << czarName << " workerId=" << workerId << " version=" << version << "}";
     return os;
 }
 
 std::string UberJobStatusMsg::dump() const {
     std::ostringstream os;
-    dumpOS(os);
+    dump(os);
     return os.str();
 }
 
-std::ostream& operator<<(std::ostream& os, UberJobStatusMsg const& ujMsg) { return ujMsg.dumpOS(os); }
+std::ostream& operator<<(std::ostream& os, UberJobStatusMsg const& ujMsg) { return ujMsg.dump(os); }
 
 string UberJobReadyMsg::cName(const char* fName) const {
-    return string("UberJobReadyMsg::") + fName + " QID=" + to_string(_queryId) +
-           "_ujId=" + to_string(_uberJobId);
+    return string("UberJobReadyMsg::") + fName + " QID=" + to_string(queryId) +
+           "_ujId=" + to_string(uberJobId);
 }
 
-UberJobReadyMsg::Ptr UberJobReadyMsg::create(string const& replicationInstanceId,
-                                             string const& replicationAuthKey, unsigned int version,
-                                             string const& workerIdStr, string const& czarName, CzarId czarId,
-                                             QueryId queryId, UberJobId uberJobId, string const& fileUrl,
-                                             uint64_t rowCount, uint64_t fileSize) {
-    Ptr jrMsg = Ptr(new UberJobReadyMsg(replicationInstanceId, replicationAuthKey, version, workerIdStr,
-                                        czarName, czarId, queryId, uberJobId, fileUrl, rowCount, fileSize));
+UberJobReadyMsg::Ptr UberJobReadyMsg::create(AuthContext const& authContext_, unsigned int version_,
+                                             string const& workerIdStr_, string const& czarName_,
+                                             CzarId czarId_, QueryId queryId_, UberJobId uberJobId_,
+                                             FileUrlInfo const& fileUrlInfo_) {
+    Ptr jrMsg = Ptr(new UberJobReadyMsg(authContext_, version_, workerIdStr_, czarName_, czarId_, queryId_,
+                                        uberJobId_, fileUrlInfo_));
     return jrMsg;
 }
 
 bool UberJobReadyMsg::equals(UberJobStatusMsg const& other) const {
     try {
         UberJobReadyMsg const& otherReady = dynamic_cast<UberJobReadyMsg const&>(other);
-        if ((_fileUrl == otherReady._fileUrl) && (_rowCount == otherReady._rowCount) &&
-            (_fileSize == otherReady._fileSize)) {
+        if (fileUrlInfo == otherReady.fileUrlInfo) {
             return equalsBase(other);
         }
     } catch (std::bad_cast& ex) {
@@ -110,10 +105,10 @@ bool UberJobReadyMsg::equals(UberJobStatusMsg const& other) const {
     return false;
 }
 
-std::ostream& UberJobReadyMsg::dumpOS(std::ostream& os) const {
+std::ostream& UberJobReadyMsg::dump(std::ostream& os) const {
     os << "{UberJobReadyMsg:";
-    UberJobStatusMsg::dumpOS(os);
-    os << " fileUrl=" << _fileUrl << " rowCount=" << _rowCount << " fileSize=" << _fileSize << "}";
+    UberJobStatusMsg::dump(os);
+    os << fileUrlInfo.dump() << "}";
     return os;
 }
 
@@ -122,17 +117,18 @@ UberJobReadyMsg::Ptr UberJobReadyMsg::createFromJson(json const& jsWReq) {
     LOGS(_log, LOG_LVL_DEBUG, fName);
     try {
         // If replication identifiers were wrong, it wouldn't have gotten this far.
-        Ptr jrMsg = Ptr(new UberJobReadyMsg(http::RequestBodyJSON::required<string>(jsWReq, "instance_id"),
-                                            http::RequestBodyJSON::required<string>(jsWReq, "auth_key"),
-                                            http::RequestBodyJSON::required<unsigned int>(jsWReq, "version"),
-                                            http::RequestBodyJSON::required<string>(jsWReq, "workerid"),
-                                            http::RequestBodyJSON::required<string>(jsWReq, "czar"),
-                                            http::RequestBodyJSON::required<CzarId>(jsWReq, "czarid"),
-                                            http::RequestBodyJSON::required<QueryId>(jsWReq, "queryid"),
-                                            http::RequestBodyJSON::required<UberJobId>(jsWReq, "uberjobid"),
-                                            http::RequestBodyJSON::required<string>(jsWReq, "fileUrl"),
-                                            http::RequestBodyJSON::required<uint64_t>(jsWReq, "rowCount"),
-                                            http::RequestBodyJSON::required<uint64_t>(jsWReq, "fileSize")));
+        AuthContext authContext_(http::RequestBodyJSON::required<string>(jsWReq, "instance_id"),
+                                 http::RequestBodyJSON::required<string>(jsWReq, "auth_key"));
+        FileUrlInfo fileUrlInfo_(http::RequestBodyJSON::required<string>(jsWReq, "fileUrl"),
+                                 http::RequestBodyJSON::required<uint64_t>(jsWReq, "rowCount"),
+                                 http::RequestBodyJSON::required<uint64_t>(jsWReq, "fileSize"));
+        Ptr jrMsg = Ptr(new UberJobReadyMsg(
+                authContext_, http::RequestBodyJSON::required<unsigned int>(jsWReq, "version"),
+                http::RequestBodyJSON::required<string>(jsWReq, "workerid"),
+                http::RequestBodyJSON::required<string>(jsWReq, "czar"),
+                http::RequestBodyJSON::required<CzarId>(jsWReq, "czarid"),
+                http::RequestBodyJSON::required<QueryId>(jsWReq, "queryid"),
+                http::RequestBodyJSON::required<UberJobId>(jsWReq, "uberjobid"), fileUrlInfo_));
         return jrMsg;
     } catch (invalid_argument const& exc) {
         LOGS(_log, LOG_LVL_ERROR, string("UberJobReadyMsg::createJson invalid ") << exc.what());
@@ -140,35 +136,35 @@ UberJobReadyMsg::Ptr UberJobReadyMsg::createFromJson(json const& jsWReq) {
     return nullptr;
 }
 
-UberJobReadyMsg::UberJobReadyMsg(string const& replicationInstanceId, string const& replicationAuthKey,
-                                 unsigned int version, string const& workerId, string const& czarName,
-                                 CzarId czarId, QueryId queryId, UberJobId uberJobId, string const& fileUrl,
-                                 uint64_t rowCount, uint64_t fileSize)
-        : UberJobStatusMsg(replicationInstanceId, replicationAuthKey, version, workerId, czarName, czarId,
-                           queryId, uberJobId),
-          _fileUrl(fileUrl),
-          _rowCount(rowCount),
-          _fileSize(fileSize) {}
+UberJobReadyMsg::UberJobReadyMsg(AuthContext const& authContext_, unsigned int version_,
+                                 string const& workerId_, string const& czarName_, CzarId czarId_,
+                                 QueryId queryId_, UberJobId uberJobId_, FileUrlInfo const& fileUrlInfo_)
+        : UberJobStatusMsg(authContext_, version_, workerId_, czarName_, czarId_, queryId_, uberJobId_),
+          fileUrlInfo(fileUrlInfo_) {}
 
-shared_ptr<json> UberJobReadyMsg::toJsonPtr() const {
-    shared_ptr<json> jsJrReqPtr = make_shared<json>();
-    json& jsJr = *jsJrReqPtr;
+json UberJobReadyMsg::toJson() const {
+    json jsJr;
 
     // These need to match what http::BaseModule::enforceInstanceId()
     // and http::BaseModule::enforceAuthorization() are looking for.
-    jsJr["instance_id"] = _replicationInstanceId;
-    jsJr["auth_key"] = _replicationAuthKey;
-    jsJr["version"] = _version;
+    jsJr["instance_id"] = authContext.replicationInstanceId;
+    jsJr["auth_key"] = authContext.replicationAuthKey;
+    jsJr["version"] = version;
 
-    jsJr["workerid"] = _workerId;
-    jsJr["czar"] = _czarName;
-    jsJr["czarid"] = _czarId;
-    jsJr["queryid"] = _queryId;
-    jsJr["uberjobid"] = _uberJobId;
-    jsJr["fileUrl"] = _fileUrl;
-    jsJr["rowCount"] = _rowCount;
-    jsJr["fileSize"] = _fileSize;
-    return jsJrReqPtr;
+    jsJr["workerid"] = workerId;
+    jsJr["czar"] = czarName;
+    jsJr["czarid"] = czarId;
+    jsJr["queryid"] = queryId;
+    jsJr["uberjobid"] = uberJobId;
+    jsJr["fileUrl"] = fileUrlInfo.fileUrl;
+    jsJr["rowCount"] = fileUrlInfo.rowCount;
+    jsJr["fileSize"] = fileUrlInfo.fileSize;
+    return jsJr;
+}
+
+std::string FileUrlInfo::dump() const {
+    return std::string("{fileUrl=") + fileUrl + " rowCount=" + std::to_string(rowCount) +
+           " fileSize=" + std::to_string(fileSize) + "}";
 }
 
 }  // namespace lsst::qserv::protojson

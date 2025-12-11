@@ -47,18 +47,17 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.WorkerCzarComIssue");
 
 namespace lsst::qserv::protojson {
 
-shared_ptr<json> WorkerCzarComIssue::toJson() {
-    shared_ptr<json> jsCzarReqPtr = make_shared<json>();
-    json& jsCzarR = *jsCzarReqPtr;
+json WorkerCzarComIssue::toJson() {
+    json jsCzarR;
     lock_guard _lgWciMtx(_wciMtx);
     if (_wInfo == nullptr || _czInfo == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _wInfo or _czInfo was null");
-        return jsCzarReqPtr;
+        return jsCzarR;
     }
 
     jsCzarR["version"] = http::MetaModule::version;
-    jsCzarR["instance_id"] = _replicationInstanceId;
-    jsCzarR["auth_key"] = _replicationAuthKey;
+    jsCzarR["instance_id"] = _authContext.replicationInstanceId;
+    jsCzarR["auth_key"] = _authContext.replicationAuthKey;
     jsCzarR["czarinfo"] = _czInfo->toJson();
     jsCzarR["czar"] = _czInfo->czName;
     jsCzarR["workerinfo"] = _wInfo->toJson();
@@ -74,18 +73,17 @@ shared_ptr<json> WorkerCzarComIssue::toJson() {
         QueryId qId = key.first;
         UberJobId ujId = key.second;
         UberJobStatusMsg::Ptr ujMsg = iter->second;
-        auto const resp = ujMsg->toJsonPtr();
-        json jsF = json{{"qId", qId}, {"ujId", ujId}, {"failed", *resp}};
+        auto const resp = ujMsg->toJson();
+        json jsF = json{{"qId", qId}, {"ujId", ujId}, {"failed", resp}};
         jsFts.push_back(jsF);
         ++iter;
     }
 
-    return jsCzarReqPtr;
+    return jsCzarR;
 }
 
 WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const& jsCzarReq,
-                                                           std::string const& replicationInstanceId_,
-                                                           std::string const& replicationAuthKey_) {
+                                                           AuthContext const& authContext_) {
     string const fName("WorkerCzarComIssue::createFromJson");
     LOGS(_log, LOG_LVL_DEBUG, fName);
     try {
@@ -100,7 +98,7 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
         if (czInfo_ == nullptr || wInfo_ == nullptr) {
             LOGS(_log, LOG_LVL_ERROR, fName << " or worker info could not be parsed in " << jsCzarReq);
         }
-        auto wccIssue = create(replicationInstanceId_, replicationAuthKey_);
+        auto wccIssue = create(authContext_);
         wccIssue->setContactInfo(wInfo_, czInfo_);
         wccIssue->_thoughtCzarWasDead =
                 http::RequestBodyJSON::required<bool>(jsCzarReq, "thoughtczarwasdead");
@@ -121,11 +119,9 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
                 if (isReadyMsg) {
                     ujMsg = UberJobReadyMsg::createFromJson(jsFt);
                 } else {
-                    ujMsg = UberJobErrorMsg::createFromJson(jsFt, replicationInstanceId_,
-                                                            replicationAuthKey_);
+                    ujMsg = UberJobErrorMsg::createFromJson(jsFt);
                 }
                 wccIssue->addFailedTransmit(qId, ujId, ujMsg);
-
             } catch (std::invalid_argument const& ex) {
                 // skip to next element
                 LOGS(_log, LOG_LVL_WARN, fName << " failed to read failedTransmit:" << jsElem);
@@ -139,9 +135,7 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
 }
 
 bool WorkerCzarComIssue::operator==(WorkerCzarComIssue const& other) const {
-    if ((*_wInfo != *other._wInfo) || (*_czInfo != *other._czInfo) ||
-        (_replicationInstanceId != other._replicationInstanceId) ||
-        (_replicationAuthKey != other._replicationAuthKey) ||
+    if ((*_wInfo != *other._wInfo) || (*_czInfo != *other._czInfo) || (_authContext != other._authContext) ||
         (_thoughtCzarWasDead != other._thoughtCzarWasDead)) {
         return false;
     }

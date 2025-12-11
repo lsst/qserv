@@ -229,12 +229,11 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     json jsRet;
     auto now = CLOCK::now();
     auto const workerConfig = wconfig::WorkerConfig::instance();
-    auto const replicationInstanceId = workerConfig->replicationInstanceId();
-    auto const replicationAuthKey = workerConfig->replicationAuthKey();
+    protojson::AuthContext authContext(workerConfig->replicationInstanceId(),
+                                       workerConfig->replicationAuthKey());
 
     auto const& jsReq = body().objJson;
-    auto wqsData = protojson::WorkerQueryStatusData::createFromJson(jsReq, replicationInstanceId,
-                                                                    replicationAuthKey, now);
+    auto wqsData = protojson::WorkerQueryStatusData::createFromJson(jsReq, authContext, now);
 
     auto const czInfo = wqsData->getCzInfo();
     LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
