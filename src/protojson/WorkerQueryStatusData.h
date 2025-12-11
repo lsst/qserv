@@ -40,6 +40,23 @@
 // This header declarations
 namespace lsst::qserv::protojson {
 
+class AuthContext {
+public:
+    AuthContext() = default;
+    AuthContext(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_)
+            : replicationInstanceId(replicationInstanceId_), replicationAuthKey(replicationAuthKey_) {}
+    ~AuthContext() = default;
+
+    bool operator==(AuthContext const& other) const {
+        return (replicationInstanceId == other.replicationInstanceId) &&
+               (replicationAuthKey == other.replicationAuthKey);
+    }
+    bool operator!=(AuthContext const& other) const { return !(*this == other); }
+
+    std::string replicationInstanceId;
+    std::string replicationAuthKey;
+};
+
 /// This class just contains the czar id and network contact information.
 class CzarContactInfo : public std::enable_shared_from_this<CzarContactInfo> {
 public:
@@ -243,14 +260,14 @@ public:
     std::string cName(const char* fName) { return std::string("WorkerQueryStatusData::") + fName; }
 
     static Ptr create(WorkerContactInfo::Ptr const& wInfo_, CzarContactInfo::Ptr const& czInfo_,
-                      std::string const& replicationInstanceId_, std::string const& replicationAuthKey_) {
-        return Ptr(new WorkerQueryStatusData(wInfo_, czInfo_, replicationInstanceId_, replicationAuthKey_));
+                      AuthContext const& authContext_) {
+        return Ptr(new WorkerQueryStatusData(wInfo_, czInfo_, authContext_));
     }
 
     /// This function creates a WorkerQueryStatusData object from the worker json `czarJson`, the
     /// other parameters are used to verify the json message.
-    static Ptr createFromJson(nlohmann::json const& czarJson, std::string const& replicationInstanceId_,
-                              std::string const& replicationAuthKey_, TIMEPOINT updateTm);
+    static Ptr createFromJson(nlohmann::json const& czarJson, AuthContext const& authContext_,
+                              TIMEPOINT updateTm_);
 
     ~WorkerQueryStatusData() = default;
 
@@ -362,18 +379,14 @@ public:
 
 private:
     WorkerQueryStatusData(WorkerContactInfo::Ptr const& wInfo_, CzarContactInfo::Ptr const& czInfo_,
-                          std::string const& replicationInstanceId_, std::string const& replicationAuthKey_)
-            : _wInfo(wInfo_),
-              _czInfo(czInfo_),
-              _replicationInstanceId(replicationInstanceId_),
-              _replicationAuthKey(replicationAuthKey_) {}
+                          AuthContext const& authContext_)
+            : _wInfo(wInfo_), _czInfo(czInfo_), _authContext(authContext_) {}
 
     WorkerContactInfo::Ptr _wInfo;       ///< Information needed to contact the worker.
     CzarContactInfo::Ptr const _czInfo;  ///< Information needed to contact the czar.
     mutable MUTEX _infoMtx;              ///< protects _wInfo
 
-    std::string const _replicationInstanceId;  ///< Used for message verification.
-    std::string const _replicationAuthKey;     ///< Used for message verification.
+    AuthContext const _authContext;  ///< Used for message verification.
 
     /// _infoMtx must be locked before calling.
     std::string _dump() const;

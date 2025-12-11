@@ -110,8 +110,8 @@ void CzarRegistry::_registryUpdateLoop() {
 
 void CzarRegistry::_registryWorkerInfoLoop() {
     // Get worker information from the registry
-    string const replicationInstanceId = _czarConfig->replicationInstanceId();
-    string const replicationAuthKey = _czarConfig->replicationAuthKey();
+    protojson::AuthContext const authContext(_czarConfig->replicationInstanceId(),
+                                             _czarConfig->replicationAuthKey());
     uint64_t const czarStartTime = Czar::czarStartupTime;
     string const fqdn = util::getCurrentHostFqdnBlocking();
 
@@ -141,8 +141,7 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                     if (wMap != nullptr) {
                         _contactMap = wMap;
                         _latestMapUpdate = CLOCK::now();
-                        _activeWorkerMap->updateMap(*_contactMap, czInfo, replicationInstanceId,
-                                                    replicationAuthKey);
+                        _activeWorkerMap->updateMap(*_contactMap, czInfo, authContext);
                     }
                 }
             }
