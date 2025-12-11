@@ -52,7 +52,7 @@ public:
     CzarId getCzarId() const { return _czarId; }
     std::string const& getIdStr() const { return _idStr; }
 
-    virtual std::ostream& dumpOS(std::ostream& os) const;
+    virtual std::ostream& dump(std::ostream& os) const;
     std::string dump() const;
     friend std::ostream& operator<<(std::ostream& os, UberJobBase const& uj);
 
