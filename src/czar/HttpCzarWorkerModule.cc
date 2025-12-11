@@ -109,9 +109,7 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
     // Parse and verify the json message and then kill the UberJob.
     try {
         auto const& jsReq = body().objJson;
-        string const& repliInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
-        string const& repliAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
-        auto jrMsg = protojson::UberJobErrorMsg::createFromJson(jsReq, repliInstanceId, repliAuthKey);
+        auto jrMsg = protojson::UberJobErrorMsg::createFromJson(jsReq);
         auto importRes = czar::Czar::getCzar()->handleUberJobErrorMsg(jrMsg, fName);
         return importRes;
     } catch (std::invalid_argument const& iaEx) {
@@ -146,11 +144,10 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
     LOGS(_log, LOG_LVL_DEBUG, fName << " start");
     // Parse and verify the json message and then deal with the problems.
     try {
-        string const replicationInstanceId = cconfig::CzarConfig::instance()->replicationInstanceId();
-        string const replicationAuthKey = cconfig::CzarConfig::instance()->replicationAuthKey();
+        protojson::AuthContext const authC(cconfig::CzarConfig::instance()->replicationInstanceId(),
+                                           cconfig::CzarConfig::instance()->replicationAuthKey());
         auto const& jsReq = body().objJson;
-        auto wccIssue = protojson::WorkerCzarComIssue::createFromJson(jsReq, replicationInstanceId,
-                                                                      replicationAuthKey);
+        auto wccIssue = protojson::WorkerCzarComIssue::createFromJson(jsReq, authC);
 
         auto wId = wccIssue->getWorkerInfo()->wId;
         if (wccIssue->getThoughtCzarWasDead()) {
@@ -182,9 +179,11 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
             auto rdyMsg = dynamic_pointer_cast<protojson::UberJobReadyMsg>(statusMsg);
             if (rdyMsg != nullptr) {
                 bool const retry = true;
+                // Put the file on a queue to be collected later.
                 czar::Czar::getCzar()->handleUberJobReadyMsg(rdyMsg, fName, retry);
             } else {
                 auto errMsg = dynamic_pointer_cast<protojson::UberJobErrorMsg>(statusMsg);
+                // Kill the UberJob or user query depending on the error.
                 czar::Czar::getCzar()->handleUberJobErrorMsg(errMsg, fName);
             }
         }
