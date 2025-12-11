@@ -36,17 +36,17 @@ using namespace std;
 
 namespace lsst::qserv {
 
-std::ostream& UberJobBase::dumpOS(std::ostream& os) const {
+std::ostream& UberJobBase::dump(std::ostream& os) const {
     os << _idStr;
     return os;
 }
 
 std::string UberJobBase::dump() const {
     std::ostringstream os;
-    dumpOS(os);
+    dump(os);
     return os.str();
 }
 
-std::ostream& operator<<(std::ostream& os, UberJobBase const& uj) { return uj.dumpOS(os); }
+std::ostream& operator<<(std::ostream& os, UberJobBase const& uj) { return uj.dump(os); }
 
 }  // namespace lsst::qserv

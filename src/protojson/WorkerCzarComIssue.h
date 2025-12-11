@@ -75,12 +75,9 @@ public:
 
     std::string cName(const char* funcN) const { return std::string("WorkerCzarComIssue") + funcN; }
 
-    static Ptr create(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_) {
-        return Ptr(new WorkerCzarComIssue(replicationInstanceId_, replicationAuthKey_));
-    }
+    static Ptr create(AuthContext const& authContext_) { return Ptr(new WorkerCzarComIssue(authContext_)); }
 
-    static Ptr createFromJson(nlohmann::json const& workerJson, std::string const& replicationInstanceId_,
-                              std::string const& replicationAuthKey_);
+    static Ptr createFromJson(nlohmann::json const& workerJson, AuthContext const& authContext_);
 
     void setThoughtCzarWasDead(bool wasDead) {
         std::lock_guard lg(_wciMtx);
@@ -119,7 +116,7 @@ public:
                            std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg);
 
     /// Return a json version of the contents of this class.
-    std::shared_ptr<nlohmann::json> toJson();
+    nlohmann::json toJson();
 
     /// Return a json object indicating the status of the message for the
     /// original requester.
@@ -131,8 +128,7 @@ public:
     std::string dump() const;
 
 private:
-    WorkerCzarComIssue(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_)
-            : _replicationInstanceId(replicationInstanceId_), _replicationAuthKey(replicationAuthKey_) {}
+    WorkerCzarComIssue(AuthContext const& authContext_) : _authContext(authContext_) {}
 
     /// The `request` may indicate success or failure
     void _addFailedTransmit(QueryId qId, UberJobId ujId,
@@ -146,8 +142,7 @@ private:
 
     WorkerContactInfo::Ptr _wInfo;
     CzarContactInfo::Ptr _czInfo;
-    std::string const _replicationInstanceId;  ///< Used for message verification.
-    std::string const _replicationAuthKey;     ///< Used for message verification.
+    AuthContext _authContext;
 
     /// Set to by the worker true if the czar was considered dead, and reset to false
     /// after the czar has acknowledged successful reception of this message.

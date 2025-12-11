@@ -46,8 +46,7 @@ using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::protojson;
 
-string const repliInstanceId = "repliInstId";
-string const repliAuthKey = "repliIAuthKey";
+AuthContext const authContext_("repliInstId", "repliIAuthKey");
 unsigned int const version = lsst::qserv::http::MetaModule::version;
 
 BOOST_AUTO_TEST_SUITE(Suite)
@@ -59,24 +58,24 @@ bool parseSerializeReparseCheck(string const& jsStr, string const& note) {
     nlohmann::json js = nlohmann::json::parse(jsStr);
     LOGS(_log, LOG_LVL_INFO, fName << " parse 1");
 
-    UberJobErrorMsg::Ptr jrm = UberJobErrorMsg::createFromJson(js, repliInstanceId, repliAuthKey);
+    UberJobErrorMsg::Ptr jrm = UberJobErrorMsg::createFromJson(js);
     BOOST_REQUIRE(jrm != nullptr);
 
-    auto jsJrm = jrm->toJsonPtr();
-    LOGS(_log, LOG_LVL_INFO, fName << " serialized jsJrm=" << *jsJrm);
+    auto jsJrm = jrm->toJson();
+    LOGS(_log, LOG_LVL_INFO, fName << " serialized jsJrm=" << jsJrm);
 
-    UberJobErrorMsg::Ptr jrmCreated = UberJobErrorMsg::createFromJson(*jsJrm, repliInstanceId, repliAuthKey);
+    UberJobErrorMsg::Ptr jrmCreated = UberJobErrorMsg::createFromJson(jsJrm);
     LOGS(_log, LOG_LVL_INFO, fName << " created");
-    auto jsJrmCreated = jrmCreated->toJsonPtr();
+    auto jsJrmCreated = jrmCreated->toJson();
     LOGS(_log, LOG_LVL_INFO, fName << " created->serialized");
 
-    bool createdMatchesOriginal = *jsJrm == *jsJrmCreated;
+    bool createdMatchesOriginal = jsJrm == jsJrmCreated;
     if (createdMatchesOriginal) {
         LOGS(_log, LOG_LVL_INFO, fName << "created matches original");
     } else {
         LOGS(_log, LOG_LVL_ERROR, "jsJrm != jsJrmCreated");
-        LOGS(_log, LOG_LVL_ERROR, "jsJrm=" << *jsJrm);
-        LOGS(_log, LOG_LVL_ERROR, "jsJrmCreated=" << *jsJrmCreated);
+        LOGS(_log, LOG_LVL_ERROR, "jsJrm=" << jsJrm);
+        LOGS(_log, LOG_LVL_ERROR, "jsJrmCreated=" << jsJrmCreated);
     }
     BOOST_REQUIRE(createdMatchesOriginal);
     return createdMatchesOriginal;
@@ -93,11 +92,11 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     string const errorMsg("something went wrong");
     int const errorCode = -3;
 
-    auto jrm = UberJobErrorMsg::create(repliInstanceId, repliAuthKey, version, workerIdStr, czarName, czarId,
-                                       queryId, uberJobId, errorCode, errorMsg);
+    auto jrm = UberJobErrorMsg::create(authContext_, version, workerIdStr, czarName, czarId, queryId,
+                                       uberJobId, errorCode, errorMsg);
 
-    auto jsJrm = jrm->toJsonPtr();
-    string const strJrm = to_string(*jsJrm);
+    auto jsJrm = jrm->toJson();
+    string const strJrm = to_string(jsJrm);
     LOGS(_log, LOG_LVL_INFO, "stdJrm=" << strJrm);
 
     BOOST_REQUIRE(parseSerializeReparseCheck(strJrm, "A"));
