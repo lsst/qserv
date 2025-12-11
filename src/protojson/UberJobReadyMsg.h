@@ -39,6 +39,11 @@
 // This header declarations
 namespace lsst::qserv::protojson {
 
+/// Base class for returning UberJob results on the worker back to the czar.
+/// If the worker successful collected results for the UberJob, it sends back
+/// an UberJobReadyMsg with information needed to collect the result file.
+/// If it failed, it send back an UberJobErrorMsg with information about the
+/// error.
 class UberJobStatusMsg {
 public:
     using Ptr = std::shared_ptr<UberJobStatusMsg>;
@@ -48,35 +53,46 @@ public:
     UberJobStatusMsg& operator=(UberJobStatusMsg const&) = delete;
     virtual ~UberJobStatusMsg() = default;
 
-    virtual std::shared_ptr<nlohmann::json> toJsonPtr() const = 0;
+    virtual nlohmann::json toJson() const = 0;
 
     virtual bool equals(UberJobStatusMsg const& other) const = 0;
 
-    std::string const& getWorkerId() const { return _workerId; }
-    std::string const& getCzarName() const { return _czarName; }
-    CzarId getCzarId() const { return _czarId; }
-    QueryId getQueryId() const { return _queryId; }
-    UberJobId getUberJobId() const { return _uberJobId; }
-
     /// Returns a string for logging.
-    virtual std::ostream& dumpOS(std::ostream& os) const;
+    virtual std::ostream& dump(std::ostream& os) const;
     std::string dump() const;
     friend std::ostream& operator<<(std::ostream& os, UberJobStatusMsg const& ujMsg);
 
-protected:
-    UberJobStatusMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
-                     unsigned int version, std::string const& workerId, std::string const& czarName,
-                     CzarId czarId, QueryId queryId, UberJobId uberJobId);
-    bool equalsBase(UberJobStatusMsg const& other) const;
+    AuthContext const authContext;
+    unsigned int const version;
+    std::string const workerId;
+    std::string const czarName;
+    CzarId const czarId;
+    QueryId const queryId;
+    UberJobId const uberJobId;
 
-    std::string const _replicationInstanceId;
-    std::string const _replicationAuthKey;
-    unsigned int const _version;
-    std::string const _workerId;
-    std::string const _czarName;
-    CzarId const _czarId;
-    QueryId const _queryId;
-    UberJobId const _uberJobId;
+protected:
+    UberJobStatusMsg(AuthContext const& authContext_, unsigned int version_, std::string const& workerId_,
+                     std::string const& czarName_, CzarId czarId_, QueryId queryId_, UberJobId uberJobId_);
+    bool equalsBase(UberJobStatusMsg const& other) const;
+};
+
+/// This class stores some information about the result file to be collected by the czar.
+class FileUrlInfo {
+public:
+    FileUrlInfo() = default;
+    FileUrlInfo(std::string const& fileUrl_, uint64_t rowCount_, uint64_t fileSize_)
+            : fileUrl(fileUrl_), rowCount(rowCount_), fileSize(fileSize_) {}
+    ~FileUrlInfo() = default;
+
+    bool operator==(FileUrlInfo const& other) const {
+        return (fileUrl == other.fileUrl && rowCount == other.rowCount && fileSize == other.fileSize);
+    }
+
+    std::string dump() const;
+
+    std::string fileUrl;
+    uint64_t rowCount = 0;
+    uint64_t fileSize = 0;
 };
 
 /// This class handles the message used to inform the czar that a result file
@@ -88,19 +104,13 @@ public:
     /// class name for log, fName is expected to be __func__.
     std::string cName(const char* fName) const override;
 
-    UberJobReadyMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
-                    unsigned int version, std::string const& workerId, std::string const& czarName,
-                    CzarId czarId, QueryId queryId, UberJobId uberJobId, std::string const& fileUrl,
-                    uint64_t rowCount, uint64_t fileSize);
-
     UberJobReadyMsg() = delete;
     UberJobReadyMsg(UberJobReadyMsg const&) = delete;
     UberJobReadyMsg& operator=(UberJobReadyMsg const&) = delete;
 
-    static Ptr create(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
-                      unsigned int version, std::string const& workerIdStr, std::string const& czarName,
-                      CzarId czarId, QueryId queryId, UberJobId uberJobId, std::string const& fileUrl,
-                      uint64_t rowCount, uint64_t fileSize);
+    static Ptr create(AuthContext const& authContext_, unsigned int version_, std::string const& workerIdStr_,
+                      std::string const& czarName_, CzarId czarId_, QueryId queryId_, UberJobId uberJobId_,
+                      FileUrlInfo const& fileUrlInfo_);
 
     /// This function creates a UberJobReadyMsg object from the worker json `czarJson`, the
     /// other parameters are used to verify the json message.
@@ -111,18 +121,16 @@ public:
     bool equals(UberJobStatusMsg const& other) const override;
 
     /// Return a json object with data allowing collection of UberJob result file.
-    std::shared_ptr<nlohmann::json> toJsonPtr() const override;
+    nlohmann::json toJson() const override;
 
-    std::ostream& dumpOS(std::ostream& os) const override;
+    std::ostream& dump(std::ostream& os) const override;
 
-    std::string const& getFileUrl() const { return _fileUrl; }
-    uint64_t getRowCount() const { return _rowCount; }
-    uint64_t getFileSize() const { return _fileSize; }
+    FileUrlInfo const fileUrlInfo;
 
 private:
-    std::string const _fileUrl;
-    uint64_t const _rowCount;
-    uint64_t const _fileSize;
+    UberJobReadyMsg(AuthContext const& authContext_, unsigned int version_, std::string const& workerId_,
+                    std::string const& czarName_, CzarId czarId_, QueryId queryId_, UberJobId uberJobId_,
+                    FileUrlInfo const& fileUrlInfo_);
 };
 
 }  // namespace lsst::qserv::protojson

@@ -55,8 +55,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.testStatusData");
 BOOST_AUTO_TEST_SUITE(Suite)
 
 BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
-    string const replicationInstanceId = "repliInstId";
-    string const replicationAuthKey = "repliIAuthKey";
+    lsst::qserv::protojson::AuthContext authContext_("repliInstId", "repliIAuthKey");
 
     uint64_t cxrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 5s);
     uint64_t wkrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 10s);
@@ -90,15 +89,15 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     BOOST_REQUIRE(workerA->isSameContactInfo(*workerA1));
 
     // WorkerQueryStatusData
-    auto wqsdA = lsst::qserv::protojson::WorkerQueryStatusData::create(workerA, czarA, replicationInstanceId,
-                                                                       replicationAuthKey);
+    auto wqsdA = lsst::qserv::protojson::WorkerQueryStatusData::create(workerA, czarA, authContext_);
 
     double maxLifetime = 300.0;
     auto jsDataA = wqsdA->toJson(maxLifetime);
 
     // Check that empty lists work.
-    auto wqsdA1 = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
-            *jsDataA, replicationInstanceId, replicationAuthKey, start1Sec);
+    auto wqsdA1 =
+            lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(*jsDataA, authContext_, start1Sec);
+
     auto jsDataA1 = wqsdA1->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsDataA1);
 
@@ -120,8 +119,8 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     jsDataA = wqsdA->toJson(maxLifetime);
 
     auto start5Sec = start + 5s;
-    auto workerAFromJson = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
-            *jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
+    auto workerAFromJson =
+            lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(*jsDataA, authContext_, start5Sec);
     auto jsWorkerAFromJson = workerAFromJson->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
 
@@ -132,8 +131,8 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     jsDataA = wqsdA->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA != *jsWorkerAFromJson);
 
-    workerAFromJson = lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(
-            *jsDataA, replicationInstanceId, replicationAuthKey, start5Sec);
+    workerAFromJson =
+            lsst::qserv::protojson::WorkerQueryStatusData::createFromJson(*jsDataA, authContext_, start5Sec);
     jsWorkerAFromJson = workerAFromJson->toJson(maxLifetime);
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
 
@@ -155,8 +154,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
 }
 
 BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
-    string const replicationInstanceId = "repliInstId";
-    string const replicationAuthKey = "repliIAuthKey";
+    lsst::qserv::protojson::AuthContext authContext_("repliInstId", "repliIAuthKey");
 
     uint64_t cxrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 5s);
 
@@ -174,8 +172,7 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto jsWorkerA = workerA->toJson();
 
     // WorkerCzarComIssue
-    auto wccIssueA =
-            lsst::qserv::protojson::WorkerCzarComIssue::create(replicationInstanceId, replicationAuthKey);
+    auto wccIssueA = lsst::qserv::protojson::WorkerCzarComIssue::create(authContext_);
     wccIssueA->setContactInfo(workerA, czarA);
     BOOST_REQUIRE(wccIssueA->needToSend() == false);
     wccIssueA->setThoughtCzarWasDead(true);
@@ -183,10 +180,9 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
 
     auto jsIssueA = wccIssueA->toJson();
 
-    auto wccIssueA1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
-            *jsIssueA, replicationInstanceId, replicationAuthKey);
+    auto wccIssueA1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(jsIssueA, authContext_);
     auto jsIssueA1 = wccIssueA1->toJson();
-    BOOST_REQUIRE(*jsIssueA == *jsIssueA1);
+    BOOST_REQUIRE(jsIssueA == jsIssueA1);
 
     // Test a list of failed messages.
     string const czarHost = "czarHost";
@@ -202,59 +198,49 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     lsst::qserv::QueryId const qId1 = 722234;
     bool const scaninteractive1 = true;
     auto scanInfo1 = lsst::qserv::protojson::ScanInfo::create();
-    string const httpFileUrl1 = "http://test/ulr1/fn";
     uint64_t const rowCount1 = 81;
     uint64_t const fileSize1 = 1240;
+    FileUrlInfo fileInf1("http://test/ulr1/fn", rowCount1, fileSize1);
     auto ujData1 = lsst::qserv::wbase::UberJobData::create(
             ujId1, czarName, czarId, czarHost, czarPort, qId1, rowlimit, maxTableBytes, scanInfo1,
-            scaninteractive1, workerId1, nullptr, replicationAuthKey, resultPort);
-    auto ujResponse1 = ujData1->responseFileReadyBuild(httpFileUrl1, rowCount1, fileSize1,
-                                                       replicationInstanceId, replicationAuthKey);
+            scaninteractive1, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+    auto ujResponse1 = ujData1->responseFileReadyBuild(fileInf1, authContext_);
     wccIssueA1->addFailedTransmit(qId1, ujId1, ujResponse1);
 
     auto jsWcA1 = wccIssueA1->toJson();
     // parse jsWcA1 and check if the answer is correct
-    auto wccIssueA1Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
-            *jsWcA1, replicationInstanceId, replicationAuthKey);
+    auto wccIssueA1Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(jsWcA1, authContext_);
     BOOST_REQUIRE(*wccIssueA1 == *wccIssueA1Out1);
 
     lsst::qserv::QueryId const qId1a = qId1;
     lsst::qserv::UberJobId const ujId1a = 9;
-    string const httpFileUrl1a = "http://test/ulr1/fna";
-    uint64_t const rowCount1a = 36;
-    uint64_t const fileSize1a = 12400;
+    lsst::qserv::protojson::FileUrlInfo fileInf1a("http://test/ulr1/fna", 36, 12400);
     auto ujData1a = lsst::qserv::wbase::UberJobData::create(
             ujId1a, czarName, czarId, czarHost, czarPort, qId1, rowlimit, maxTableBytes, scanInfo1,
-            scaninteractive1, workerId1, nullptr, replicationAuthKey, resultPort);
-    auto ujResponse1a = ujData1->responseFileReadyBuild(httpFileUrl1a, rowCount1a, fileSize1a,
-                                                        replicationInstanceId, replicationAuthKey);
+            scaninteractive1, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+    auto ujResponse1a = ujData1->responseFileReadyBuild(fileInf1a, authContext_);
     wccIssueA1->addFailedTransmit(qId1a, ujId1a, ujResponse1a);
 
     auto jsWcA1a = wccIssueA1->toJson();
     // parse jsWcA1a and check if the answer is correct
-    auto wccIssueA1aOut1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
-            *jsWcA1a, replicationInstanceId, replicationAuthKey);
+    auto wccIssueA1aOut1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(jsWcA1a, authContext_);
     BOOST_REQUIRE(*wccIssueA1 == *wccIssueA1aOut1);
     BOOST_REQUIRE(*wccIssueA1 != *wccIssueA1Out1);
 
     lsst::qserv::UberJobId const ujId2 = 333;
     lsst::qserv::QueryId qId2 = 722237;
     bool scaninteractive2 = false;
-    string const httpFileUrl2 = "http://test/ulr2/fn";
-    uint64_t const rowCount2 = 456;
-    uint64_t const fileSize2 = 424000;
+    lsst::qserv::protojson::FileUrlInfo fileInf2("http://test/ulr2/fn", 456, 424000);
     auto scanInfo2 = lsst::qserv::protojson::ScanInfo::create();
     auto ujData2 = lsst::qserv::wbase::UberJobData::create(
             ujId2, czarName, czarId, czarHost, czarPort, qId2, rowlimit, maxTableBytes, scanInfo2,
-            scaninteractive2, workerId1, nullptr, replicationAuthKey, resultPort);
-    auto ujResponse2 = ujData2->responseFileReadyBuild(httpFileUrl2, rowCount2, fileSize2,
-                                                       replicationInstanceId, replicationAuthKey);
+            scaninteractive2, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+    auto ujResponse2 = ujData2->responseFileReadyBuild(fileInf2, authContext_);
     wccIssueA1->addFailedTransmit(qId2, ujId2, ujResponse2);
 
     auto jsWcA2 = wccIssueA1->toJson();
     // parse jsWcA2 and check if the answer is correct
-    auto wccIssueA2Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
-            *jsWcA2, replicationInstanceId, replicationAuthKey);
+    auto wccIssueA2Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(jsWcA2, authContext_);
     BOOST_REQUIRE(*wccIssueA1 == *wccIssueA2Out1);
 
     lsst::qserv::UberJobId const ujId3 = 8;
@@ -266,15 +252,14 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     multiErr.push_back(err);
     auto ujData3 = lsst::qserv::wbase::UberJobData::create(
             ujId3, czarName, czarId, czarHost, czarPort, qId3, rowlimit, maxTableBytes, scanInfo2,
-            scaninteractive2, workerId1, nullptr, replicationAuthKey, resultPort);
-    auto ujResponse3 = ujData3->responseErrorBuild(multiErr, chunkId3, cancelled3, LOG_LVL_DEBUG,
-                                                   replicationInstanceId, replicationAuthKey);
+            scaninteractive2, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+    auto ujResponse3 =
+            ujData3->responseErrorBuild(multiErr, chunkId3, cancelled3, LOG_LVL_DEBUG, authContext_);
     wccIssueA1->addFailedTransmit(qId3, ujId3, ujResponse3);
 
     auto jsWcA3 = wccIssueA1->toJson();
     // parse jsWcA3 and check if the answer is correct
-    auto wccIssueA3Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(
-            *jsWcA3, replicationInstanceId, replicationAuthKey);
+    auto wccIssueA3Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(jsWcA3, authContext_);
     BOOST_REQUIRE(*wccIssueA1 != *wccIssueA2Out1);
     BOOST_REQUIRE(*wccIssueA1 == *wccIssueA3Out1);
 

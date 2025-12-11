@@ -93,9 +93,9 @@ public:
     static std::string getStateStr(State st);
 
     static Ptr create(protojson::WorkerContactInfo::Ptr const& wInfo,
-                      protojson::CzarContactInfo::Ptr const& czInfo, std::string const& replicationInstanceId,
-                      std::string const& replicationAuthKey) {
-        return Ptr(new ActiveWorker(wInfo, czInfo, replicationInstanceId, replicationAuthKey));
+                      protojson::CzarContactInfo::Ptr const& czInfo,
+                      protojson::AuthContext const& authContext_) {
+        return Ptr(new ActiveWorker(wInfo, czInfo, authContext_));
     }
 
     /// This function should only be called before the _monitor thread is started
@@ -152,10 +152,8 @@ public:
 
 private:
     ActiveWorker(protojson::WorkerContactInfo::Ptr const& wInfo,
-                 protojson::CzarContactInfo::Ptr const& czInfo, std::string const& replicationInstanceId,
-                 std::string const& replicationAuthKey)
-            : _wqsData(protojson::WorkerQueryStatusData::create(wInfo, czInfo, replicationInstanceId,
-                                                                replicationAuthKey)) {
+                 protojson::CzarContactInfo::Ptr const& czInfo, protojson::AuthContext const& authContext_)
+            : _wqsData(protojson::WorkerQueryStatusData::create(wInfo, czInfo, authContext_)) {
         if (_wqsData == nullptr) {
             throw util::Bug(ERR_LOC, "ActiveWorker _wqsData null");
         }
@@ -206,8 +204,7 @@ public:
     /// Use information gathered from the registry to update the map. The registry
     /// contains last contact time (used for determining aliveness) and worker contact information.
     void updateMap(protojson::WorkerContactInfo::WCMap const& wcMap,
-                   protojson::CzarContactInfo::Ptr const& czInfo, std::string const& replicationInstanceId,
-                   std::string const& replicationAuthKey);
+                   protojson::CzarContactInfo::Ptr const& czInfo, protojson::AuthContext const& authContext_);
 
     /// If this is to be called, it must be called before Czar::_monitor is started:
     /// It tells the workers all queries from `czId` with QueryIds less than `lastQId`
