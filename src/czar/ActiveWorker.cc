@@ -281,14 +281,13 @@ ActiveWorkerMap::ActiveWorkerMap(std::shared_ptr<cconfig::CzarConfig> const& cza
 
 void ActiveWorkerMap::updateMap(protojson::WorkerContactInfo::WCMap const& wcMap,
                                 protojson::CzarContactInfo::Ptr const& czInfo,
-                                std::string const& replicationInstanceId,
-                                std::string const& replicationAuthKey) {
+                                protojson::AuthContext const& authContext_) {
     // Go through wcMap, update existing entries in _awMap, create new entries for those that don't exist,
     lock_guard<mutex> awLg(_awMapMtx);
     for (auto const& [wcKey, wcVal] : wcMap) {
         auto iter = _awMap.find(wcKey);
         if (iter == _awMap.end()) {
-            auto newAW = ActiveWorker::create(wcVal, czInfo, replicationInstanceId, replicationAuthKey);
+            auto newAW = ActiveWorker::create(wcVal, czInfo, authContext_);
             LOGS(_log, LOG_LVL_INFO,
                  cName(__func__) << " ActiveWorker created for " << wcKey << " " << newAW->dump());
             _awMap[wcKey] = newAW;
