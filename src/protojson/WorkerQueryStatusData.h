@@ -40,6 +40,23 @@
 // This header declarations
 namespace lsst::qserv::protojson {
 
+class AuthContext {
+public:
+    AuthContext() = default;
+    AuthContext(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_)
+            : replicationInstanceId(replicationInstanceId_), replicationAuthKey(replicationAuthKey_) {}
+    ~AuthContext() = default;
+
+    bool operator==(AuthContext const& other) const {
+        return (replicationInstanceId == other.replicationInstanceId) &&
+               (replicationAuthKey == other.replicationAuthKey);
+    }
+    bool operator!=(AuthContext const& other) const { return !(*this == other); }
+
+    std::string replicationInstanceId;
+    std::string replicationAuthKey;
+};
+
 /// This class just contains the czar id and network contact information.
 class CzarContactInfo : public std::enable_shared_from_this<CzarContactInfo> {
 public:
@@ -51,10 +68,10 @@ public:
     CzarContactInfo& operator=(CzarContactInfo const&) = default;
 
     /// Return true is elements, other than czStartupTime, are the same.
-    bool compare(CzarContactInfo const& other) {
-        return (czName == other.czName && czId == other.czId && czPort == other.czPort &&
-                czHostName == other.czHostName);
-    }
+    bool compare(CzarContactInfo const& other) const;
+
+    bool operator==(CzarContactInfo const& other) const { return compare(other); }
+    bool operator!=(CzarContactInfo const& other) const { return !(*this == other); }
 
     static Ptr create(std::string const& czName_, CzarId czId_, int czPort_, std::string const& czHostName_,
                       uint64_t czStartupTime_) {
@@ -96,6 +113,10 @@ public:
                       int wPort_, TIMEPOINT updateTime_) {
         return Ptr(new WorkerContactInfo(wId_, wHost_, wManagementHost_, wPort_, updateTime_));
     }
+
+    /// Ignores _registryUpdateTime as that is not set to or from json.
+    bool operator==(WorkerContactInfo const& other) const;
+    bool operator!=(WorkerContactInfo const& other) const { return !(*this == other); }
 
     /// This function creates a WorkerQueryStatusData object from a registry json message,
     /// which is provided by the system registry.
@@ -239,14 +260,14 @@ public:
     std::string cName(const char* fName) { return std::string("WorkerQueryStatusData::") + fName; }
 
     static Ptr create(WorkerContactInfo::Ptr const& wInfo_, CzarContactInfo::Ptr const& czInfo_,
-                      std::string const& replicationInstanceId_, std::string const& replicationAuthKey_) {
-        return Ptr(new WorkerQueryStatusData(wInfo_, czInfo_, replicationInstanceId_, replicationAuthKey_));
+                      AuthContext const& authContext_) {
+        return Ptr(new WorkerQueryStatusData(wInfo_, czInfo_, authContext_));
     }
 
     /// This function creates a WorkerQueryStatusData object from the worker json `czarJson`, the
     /// other parameters are used to verify the json message.
-    static Ptr createFromJson(nlohmann::json const& czarJson, std::string const& replicationInstanceId_,
-                              std::string const& replicationAuthKey_, TIMEPOINT updateTm);
+    static Ptr createFromJson(nlohmann::json const& czarJson, AuthContext const& authContext_,
+                              TIMEPOINT updateTm_);
 
     ~WorkerQueryStatusData() = default;
 
@@ -358,18 +379,14 @@ public:
 
 private:
     WorkerQueryStatusData(WorkerContactInfo::Ptr const& wInfo_, CzarContactInfo::Ptr const& czInfo_,
-                          std::string const& replicationInstanceId_, std::string const& replicationAuthKey_)
-            : _wInfo(wInfo_),
-              _czInfo(czInfo_),
-              _replicationInstanceId(replicationInstanceId_),
-              _replicationAuthKey(replicationAuthKey_) {}
+                          AuthContext const& authContext_)
+            : _wInfo(wInfo_), _czInfo(czInfo_), _authContext(authContext_) {}
 
     WorkerContactInfo::Ptr _wInfo;       ///< Information needed to contact the worker.
     CzarContactInfo::Ptr const _czInfo;  ///< Information needed to contact the czar.
     mutable MUTEX _infoMtx;              ///< protects _wInfo
 
-    std::string const _replicationInstanceId;  ///< Used for message verification.
-    std::string const _replicationAuthKey;     ///< Used for message verification.
+    AuthContext const _authContext;  ///< Used for message verification.
 
     /// _infoMtx must be locked before calling.
     std::string _dump() const;

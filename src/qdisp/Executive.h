@@ -54,6 +54,10 @@ namespace lsst::qserv::ccontrol {
 class UserQuerySelect;
 }
 
+namespace lsst::qserv::protojson {
+class FileUrlInfo;
+}
+
 namespace lsst::qserv::qmeta {
 class MessageStore;
 class QProgress;
@@ -226,8 +230,8 @@ public:
     /// Returns a pointer to a lock on _mtxLimitSquash.
     std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();
 
-    void collectFile(std::shared_ptr<UberJob> ujPtr, std::string const& fileUrl, uint64_t fileSize,
-                     uint64_t rowCount, std::string const& idStr);
+    void collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+                     std::string const& idStr);
 
     /// Return true if the result size limit has been exceeded.
     bool resultSizeLimitExceeded() const { return _resultFileSizeExceeded; }

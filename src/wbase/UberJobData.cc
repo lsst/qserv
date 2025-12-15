@@ -39,6 +39,7 @@
 #include "http/RequestQuery.h"
 #include "protojson/UberJobErrorMsg.h"
 #include "protojson/UberJobReadyMsg.h"
+#include "protojson/WorkerCzarComIssue.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
 #include "util/ResultFileName.h"
@@ -67,12 +68,10 @@ UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, CzarI
                          bool scanInteractive, std::string const& workerId,
                          std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
                          uint16_t resultsHttpPort)
-        : _uberJobId(uberJobId),
+        : UberJobBase(queryId, uberJobId, czarId),
           _czarName(czarName),
-          _czarId(czarId),
           _czarHost(czarHost),
           _czarPort(czarPort),
-          _queryId(queryId),
           _rowLimit(rowLimit),
           _maxTableSizeBytes(maxTableSizeBytes),
           _workerId(workerId),
@@ -90,9 +89,8 @@ void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const&
     _fileChannelShared = fileChannelShared;
 }
 
-void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount, uint64_t fileSize) {
-    LOGS(_log, LOG_LVL_INFO,
-         cName(__func__) << " httpFileUrl=" << httpFileUrl << " rows=" << rowCount << " fSize=" << fileSize);
+void UberJobData::responseFileReady(protojson::FileUrlInfo const& fileUrlInfo_) {
+    LOGS(_log, LOG_LVL_INFO, cName(__func__) << fileUrlInfo_.dump());
 
     // Latch to prevent errors from being transmitted.
     // NOTE: Calls to responseError() and responseFileReady() are protected by the
@@ -109,6 +107,19 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
         LOGS(_log, LOG_LVL_ERROR,
              cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
     }
+    protojson::AuthContext authContext_(wconfig::WorkerConfig::instance()->replicationInstanceId(),
+                                        wconfig::WorkerConfig::instance()->replicationAuthKey());
+    auto ujMsg = responseFileReadyBuild(fileUrlInfo_, authContext_);
+
+    auto const method = http::Method::POST;
+    vector<string> const headers = {"Content-Type: application/json"};
+    string const url = "http://" + _czarHost + ":" + to_string(_czarPort) + "/queryjob-ready";
+    string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
+    _queueUJResponse(method, headers, url, requestContext, ujMsg);
+}
+
+shared_ptr<protojson::UberJobReadyMsg> UberJobData::responseFileReadyBuild(
+        protojson::FileUrlInfo const& fileUrlInfo_, protojson::AuthContext const& authContext_) {
     string workerIdStr;
     if (_foreman != nullptr) {
         workerIdStr = _foreman->chunkInventory()->id();
@@ -118,20 +129,11 @@ void UberJobData::responseFileReady(string const& httpFileUrl, uint64_t rowCount
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
-    auto const& repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
-    auto const& repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
     unsigned int const version = http::MetaModule::version;
-    auto jrMsg = protojson::UberJobReadyMsg::create(repliInstId, repliAuthKey, version, workerIdStr,
-                                                    _czarName, _czarId, _queryId, _uberJobId, httpFileUrl,
-                                                    rowCount, fileSize);
-    json request = jrMsg->toJson();
+    auto ujMsg = protojson::UberJobReadyMsg::create(authContext_, version, workerIdStr, _czarName, _czarId,
+                                                    _queryId, _uberJobId, fileUrlInfo_);
 
-    auto const method = http::Method::POST;
-    vector<string> const headers = {"Content-Type: application/json"};
-    string const url = "http://" + _czarHost + ":" + to_string(_czarPort) + "/queryjob-ready";
-    string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
-    string const requestStr = request.dump();
-    _queueUJResponse(method, headers, url, requestContext, requestStr);
+    return ujMsg;
 }
 
 void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl) {
@@ -144,6 +146,31 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
         LOGS(_log, logLvl, cName(__func__) << " Already sending a different message.");
         return;
     }
+
+    protojson::AuthContext authContext_(wconfig::WorkerConfig::instance()->replicationInstanceId(),
+                                        wconfig::WorkerConfig::instance()->replicationAuthKey());
+
+    auto jrMsg = responseErrorBuild(multiErr, chunkId, cancelled, logLvl, authContext_);
+
+    auto const method = http::Method::POST;
+    vector<string> const headers = {"Content-Type: application/json"};
+    string const url = "http://" + _czarHost + ":" + to_string(_czarPort) + "/queryjob-error";
+    string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
+    _queueUJResponse(method, headers, url, requestContext, jrMsg);
+}
+
+shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(
+        util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl,
+        protojson::AuthContext const& authContext_) {
+    string workerIdStr;
+    if (_foreman != nullptr) {
+        workerIdStr = _foreman->chunkInventory()->id();
+    } else {
+        workerIdStr = "dummyWorkerIdStr";
+        LOGS(_log, LOG_LVL_INFO,
+             cName(__func__) << " _foreman was null, which should only happen in unit tests");
+    }
+
     string errorMsg;
     int errorCode = 0;
     if (!multiErr.empty()) {
@@ -157,34 +184,26 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
         errorMsg = cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ": " + errorMsg;
         LOGS(_log, logLvl, errorMsg);
     }
-
-    string const workerIdStr = _foreman->chunkInventory()->id();
-    auto repliInstId = wconfig::WorkerConfig::instance()->replicationInstanceId();
-    auto repliAuthKey = wconfig::WorkerConfig::instance()->replicationAuthKey();
     unsigned int const version = http::MetaModule::version;
-    auto jrMsg =
-            protojson::UberJobErrorMsg::create(repliInstId, repliAuthKey, version, workerIdStr, _czarName,
-                                               _czarId, _queryId, _uberJobId, errorCode, errorMsg);
-    json request = jrMsg->toJson();
-
-    auto const method = http::Method::POST;
-    vector<string> const headers = {"Content-Type: application/json"};
-    string const url = "http://" + _czarHost + ":" + to_string(_czarPort) + "/queryjob-error";
-    string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
-    string const requestStr = request.dump();
-    _queueUJResponse(method, headers, url, requestContext, requestStr);
+    auto jrMsg = protojson::UberJobErrorMsg::create(authContext_, version, workerIdStr, _czarName, _czarId,
+                                                    _queryId, _uberJobId, errorCode, errorMsg);
+    return jrMsg;
 }
 
-void UberJobData::_queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
-                                   std::string const& url_, std::string const& requestContext_,
-                                   std::string const& requestStr_) {
+void UberJobData::_queueUJResponse(http::Method method_, vector<string> const& headers_, string const& url_,
+                                   string const& requestContext_,
+                                   shared_ptr<protojson::UberJobStatusMsg> const& ujMsg_) {
     util::QdispPool::Ptr wPool;
     if (_foreman != nullptr) {
         wPool = _foreman->getWPool();
     }
 
-    auto cmdTransmit = UJTransmitCmd::create(_foreman, shared_from_this(), method_, headers_, url_,
-                                             requestContext_, requestStr_);
+    auto thisPtr = static_pointer_cast<UberJobData>(shared_from_this());
+    if (thisPtr == nullptr) {
+        throw util::Bug(ERR_LOC, "Bad thisPtr in UberJobData::_queueUJResponse");
+    }
+    auto cmdTransmit =
+            UJTransmitCmd::create(_foreman, thisPtr, method_, headers_, url_, requestContext_, ujMsg_);
     if (wPool == nullptr) {
         // No thread pool. Run the command now. This should only happen in unit tests.
         cmdTransmit->action(nullptr);
@@ -251,7 +270,9 @@ void UJTransmitCmd::action(util::CmdData* data) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
         return;
     }
-    http::Client client(_method, _url, _requestStr, _headers);
+    auto request = _ujMsg->toJson();
+    string const requestStr = request.dump();
+    http::Client client(_method, _url, requestStr, _headers);
     bool transmitSuccess = false;
     try {
         json const response = client.readAsJson();
@@ -272,7 +293,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " " << _requestContext << " failed, ex: " << ex.what());
     }
-
     if (!transmitSuccess) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " resending!");
         auto sPtr = _selfPtr;
@@ -283,27 +303,12 @@ void UJTransmitCmd::action(util::CmdData* data) {
             auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
             // This will check if the czar is believed to be alive and try the queue the query to be tried
             // again at a lower priority. It it thinks the czar is dead, it will throw it away.
-            // TODO:DM-53242 I have my doubts about this as a reconnected czar may go down in flames
-            //         as it is hit with thousands of these. The priority queue in the wPool should
-            //         help limit these to sane amounts, but the alternate plan below is probably safer.
-            //         Alternate plan, set a flag in the status message response (WorkerQueryStatusData)
-            //         indicates some messages failed. When the czar sees the flag, it'll request a
-            //         message from the worker that contains all of the failed transmit data and handle
-            //         that. All of these failed transmits should fit in a single message.
             if (wCzInfo->checkAlive(CLOCK::now())) {
-                auto wPool = _foreman->getWPool();
-                if (wPool != nullptr) {
-                    Ptr replacement = duplicate();
-                    if (replacement != nullptr) {
-                        wPool->queCmd(replacement, 2);
-                    } else {
-                        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " replacement was null");
-                    }
-                } else {
-                    // No thread pool, should only be possible in unit tests.
-                    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " no wPool");
-                    return;
-                }
+                auto wcComIssue = wCzInfo->getWorkerCzarComIssue();
+                // nullptr should be impossible
+                // Add this failed transmit to the list so the czar will try to
+                // handle it when it gets the WorkerCzarComIssue message.
+                wcComIssue->addFailedTransmit(_queryId, _uberJobId, _ujMsg);
             }
         } else {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _selfPtr was null, assuming job killed.");
@@ -318,17 +323,6 @@ void UJTransmitCmd::kill() {
     if (sPtr == nullptr) {
         return;
     }
-}
-
-UJTransmitCmd::Ptr UJTransmitCmd::duplicate() {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));
-    auto ujD = _ujData.lock();
-    if (ujD == nullptr) {
-        return nullptr;
-    }
-    Ptr newPtr = create(_foreman, ujD, _method, _headers, _url, _requestContext, _requestStr);
-    newPtr->_attemptCount = _attemptCount;
-    return newPtr;
 }
 
 }  // namespace lsst::qserv::wbase
