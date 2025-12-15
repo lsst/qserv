@@ -56,8 +56,8 @@ namespace lsst::qserv::wcontrol {
 WCzarInfo::WCzarInfo(CzarId czarId_)
         : czarId(czarId_),
           _workerCzarComIssue(protojson::WorkerCzarComIssue::create(
-                  wconfig::WorkerConfig::instance()->replicationInstanceId(),
-                  wconfig::WorkerConfig::instance()->replicationAuthKey())) {}
+                  protojson::AuthContext(wconfig::WorkerConfig::instance()->replicationInstanceId(),
+                                         wconfig::WorkerConfig::instance()->replicationAuthKey()))) {}
 
 void WCzarInfo::czarMsgReceived(TIMEPOINT tm) {
     unique_lock<mutex> uniLock(_wciMtx);
@@ -86,6 +86,7 @@ void WCzarInfo::sendWorkerCzarComIssueIfNeeded(protojson::WorkerContactInfo::Ptr
             auto sPtr = selfPtr.lock();
             if (sPtr == nullptr) {
                 LOGS(_log, LOG_LVL_WARN, "WCzarInfo::sendWorkerCzarComIssueIfNeeded thrdFunc sPtr was null");
+                return;
             }
             sPtr->_sendMessage();
         };
@@ -118,10 +119,10 @@ void WCzarInfo::_sendMessage() {
     vector<string> const headers = {"Content-Type: application/json"};
     string const url =
             "http://" + czInfo->czHostName + ":" + to_string(czInfo->czPort) + "/workerczarcomissue";
-    auto jsReqPtr = _workerCzarComIssue->toJson();
+    auto jsReq = _workerCzarComIssue->toJson();
     uniLock.unlock();  // Must unlock before communication
 
-    auto requestStr = jsReqPtr->dump();
+    auto requestStr = jsReq.dump();
     http::Client client(method, url, requestStr, headers);
     bool transmitSuccess = false;
     try {
@@ -135,6 +136,7 @@ void WCzarInfo::_sendMessage() {
             if (needToClearThoughtCzarWasDead) {
                 _workerCzarComIssue->setThoughtCzarWasDead(false);
             }
+            _workerCzarComIssue->clearMapEntries(response);
         } else {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit " << *respMsg);
             // There's no point in re-sending as the czar got the message and didn't like
@@ -145,7 +147,7 @@ void WCzarInfo::_sendMessage() {
     }
 
     if (!transmitSuccess) {
-        // If this fails, wait for
+        // If transmit fails, the message will be resent
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failed to send message");
     }
 }
