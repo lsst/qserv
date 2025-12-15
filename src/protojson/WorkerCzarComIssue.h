@@ -37,21 +37,33 @@
 // This header declarations
 namespace lsst::qserv::protojson {
 
+class UberJobStatusMsg;
+
+typedef std::shared_ptr<UberJobStatusMsg> FailedTransmitType;
+typedef std::map<std::pair<QueryId, UberJobId>, FailedTransmitType> FailedTransmitsMap;
+
 /// This class is used to send/receive a message from the worker to a specific
-/// czar when there has been a communication issue with the worker sending UberJob
-/// file ready messages. If there have been timeouts, the worker will send this
-/// message to the czar immediately after the worker receives a
-/// WorkerQueryStatusData message from the czar (indicating that communication
-/// is now possible).
+/// czar. It is used when there has been a communication issue with the worker
+/// sending UberJob file ready messages. If there have been timeouts, the worker
+/// will send this message to the czar immediately after the worker receives a
+/// WorkerQueryStatusData message from the czar. Receiving that message indicates
+/// that czar is once again capable of communicating.
+///
 /// If communication with the czar has failed for a long time, the worker
 /// will set "_thoughtCzarWasDead" and delete all incomplete work associated
 /// with that czar. Result files will remain until garbage cleanup or the czar
 /// calls for their removal.
-/// TODO:DM-53242  UberJob complete messages that failed to be sent to the czar
-///                will be added to this message. (uberjob file response)
-/// Upon successful completion, the worker will clear all values set by the
-/// the czar.
-/// Currently, this message is expected to only be needed rarely.
+///
+/// UberJob file ready messages that failed to be sent to the czar will be
+/// added to this message via the `_failtedTransmit` map. The czar response to
+/// this will include a list of QueryId + UberJobId values, which will be
+/// cleared from `_failtedTransmit`.
+///
+/// Since QueryId + UberJobId is unique, the czar ignores all calls after the
+/// first one to collect the worker's file, but attempts are made to minimize
+/// duplicate calls.
+///
+/// This message is expected to rarely be needed.
 class WorkerCzarComIssue {
 public:
     using Ptr = std::shared_ptr<WorkerCzarComIssue>;
@@ -59,27 +71,27 @@ public:
     WorkerCzarComIssue() = delete;
     ~WorkerCzarComIssue() = default;
 
+    bool operator==(WorkerCzarComIssue const& other) const;
+
     std::string cName(const char* funcN) const { return std::string("WorkerCzarComIssue") + funcN; }
 
-    static Ptr create(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_) {
-        return Ptr(new WorkerCzarComIssue(replicationInstanceId_, replicationAuthKey_));
-    }
+    static Ptr create(AuthContext const& authContext_) { return Ptr(new WorkerCzarComIssue(authContext_)); }
 
-    static Ptr createFromJson(nlohmann::json const& workerJson, std::string const& replicationInstanceId_,
-                              std::string const& replicationAuthKey_);
+    static Ptr createFromJson(nlohmann::json const& workerJson, AuthContext const& authContext_);
 
     void setThoughtCzarWasDead(bool wasDead) {
         std::lock_guard lg(_wciMtx);
         _thoughtCzarWasDead = wasDead;
     }
 
+    size_t clearMapEntries(nlohmann::json const& response);
+
     bool getThoughtCzarWasDead() const { return _thoughtCzarWasDead; }
 
     /// Return true if there is a reason this WorkerCzarComIssue should be sent to this czar.
     bool needToSend() const {
         std::lock_guard lg(_wciMtx);
-        // TODO:DM-53242 if list of failed transmits not empty.
-        return _thoughtCzarWasDead;
+        return (_thoughtCzarWasDead || _failedTransmits->size() > 0);
     }
 
     /// Set the contact information for the appropriate czar and worker.
@@ -99,29 +111,45 @@ public:
         return _wInfo;
     }
 
+    /// The `request` may indicate success or failure
+    void addFailedTransmit(QueryId qId, UberJobId ujId,
+                           std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg);
+
     /// Return a json version of the contents of this class.
-    std::shared_ptr<nlohmann::json> toJson() const;
+    nlohmann::json toJson();
 
     /// Return a json object indicating the status of the message for the
     /// original requester.
     nlohmann::json responseToJson() const;
 
+    /// Take the failedTransmitsMap and make an empty one to take its place.
+    std::shared_ptr<FailedTransmitsMap> takeFailedTransmitsMap();
+
     std::string dump() const;
 
 private:
-    WorkerCzarComIssue(std::string const& replicationInstanceId_, std::string const& replicationAuthKey_)
-            : _replicationInstanceId(replicationInstanceId_), _replicationAuthKey(replicationAuthKey_) {}
+    WorkerCzarComIssue(AuthContext const& authContext_) : _authContext(authContext_) {}
+
+    /// The `request` may indicate success or failure
+    void _addFailedTransmit(QueryId qId, UberJobId ujId,
+                            std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg);
+
+    /// Return a json object indicating the status of the message for the
+    /// original requester.
+    nlohmann::json _responseToJson() const;
 
     std::string _dump() const;
 
     WorkerContactInfo::Ptr _wInfo;
     CzarContactInfo::Ptr _czInfo;
-    std::string const _replicationInstanceId;  ///< Used for message verification.
-    std::string const _replicationAuthKey;     ///< Used for message verification.
+    AuthContext _authContext;
 
     /// Set to by the worker true if the czar was considered dead, and reset to false
     /// after the czar has acknowledged successful reception of this message.
     bool _thoughtCzarWasDead = false;
+
+    /// Map of failed transmits using QueryId + UberJobId for the key
+    std::shared_ptr<FailedTransmitsMap> _failedTransmits{new FailedTransmitsMap};
 
     mutable MUTEX _wciMtx;  ///< protects all members.
 };

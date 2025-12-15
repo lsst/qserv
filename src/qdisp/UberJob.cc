@@ -35,6 +35,7 @@
 #include "global/LogContext.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
+#include "protojson/UberJobReadyMsg.h"
 #include "protojson/UberJobMsg.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/JobQuery.h"
@@ -66,14 +67,11 @@ UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
 }
 
 UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-                 int queryId, int uberJobId, CzarId czarId, int rowLimit)
-        : _executive(executive),
+                 QueryId queryId_, UberJobId uberJobId_, CzarId czarId_, int rowLimit)
+        : UberJobBase(queryId_, uberJobId_, czarId_),
+          _executive(executive),
           _respHandler(respHandler),
-          _queryId(queryId),
-          _uberJobId(uberJobId),
-          _czarId(czarId),
-          _rowLimit(rowLimit),
-          _idStr("QID=" + to_string(queryId) + "_ujId=" + to_string(uberJobId)) {
+          _rowLimit(rowLimit) {
     LOGS(_log, LOG_LVL_TRACE, _idStr << " created");
 }
 
@@ -84,7 +82,7 @@ UberJob::~UberJob() {
 }
 
 void UberJob::_setup() {
-    UberJob::Ptr ujPtr = shared_from_this();
+    UberJob::Ptr ujPtr = static_pointer_cast<UberJob>(shared_from_this());
     _respHandler->setUberJob(ujPtr);
 }
 
@@ -97,7 +95,7 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
     }
     if (!success) {
         LOGS(_log, LOG_LVL_ERROR,
-             cName(__func__) << " job already in UberJob job=" << job->dump() << " uberJob=" + dump());
+             cName(__func__) << " job already in UberJob job=" << job->dump() << " uberJob=" << *this);
     }
     return success;
 }
@@ -250,9 +248,8 @@ void UberJob::callMarkCompleteFunc(bool success) {
     _jobs.clear();
 }
 
-json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_t fileSize) {
-    LOGS(_log, LOG_LVL_DEBUG,
-         cName(__func__) << " fileUrl=" << fileUrl << " rowCount=" << rowCount << " fileSize=" << fileSize);
+json UberJob::importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool const retry) {
+    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << fileUrlInfo_.dump());
 
     auto exec = _executive.lock();
     if (exec == nullptr) {
@@ -274,32 +271,40 @@ json UberJob::importResultFile(string const& fileUrl, uint64_t rowCount, uint64_
         return importResultError(false, "rowLimited", "Enough rows already");
     }
 
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileSize);
-    bool const statusSet = setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrl);
+    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileUrlInfo_.fileSize);
+    bool const statusSet =
+            setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrlInfo_.fileUrl);
     if (!statusSet) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " setStatusFail could not set status to RESPONSE_READY");
+        if (!retry) {
+            // This is a retry, subject to many awful race conditions due to not knowing if
+            // previous attempts worked. If a previous attempt worked, it should
+            // be allowed to continue.
+            protojson::ResponseMsg respMsg(false, "ignored", "ignored");
+            return respMsg.toJson();
+        }
         return importResultError(false, "setStatusFail", "could not set status to RESPONSE_READY");
     }
 
-    weak_ptr<UberJob> ujThis = weak_from_this();
+    weak_ptr<UberJob> ujThis = static_pointer_cast<UberJob>(shared_from_this());
 
     // fileCollectFunc will be put on the queue to run later.
     string const idStr = _idStr;
-    auto fileCollectFunc = [ujThis, fileUrl, fileSize, rowCount, idStr](util::CmdData*) {
+    auto fileCollectFunc = [ujThis, fileUrlInfo_, idStr](util::CmdData*) {
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
-                 "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrl);
+                 "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrlInfo_.fileUrl);
             return;
         }
         auto exec = ujPtr->getExecutive();
         if (exec == nullptr) {
             LOGS(_log, LOG_LVL_DEBUG,
-                 "UberJob::fileCollectFunction exec ptr is null " << idStr << " " << fileUrl);
+                 "UberJob::fileCollectFunction exec ptr is null " << idStr << " " << fileUrlInfo_.fileUrl);
             return;
         }
 
-        exec->collectFile(ujPtr, fileUrl, fileSize, rowCount, idStr);
+        exec->collectFile(ujPtr, fileUrlInfo_, idStr);
     };
 
     auto cmd = util::PriorityCommand::Ptr(new util::PriorityCommand(fileCollectFunc));
@@ -470,7 +475,7 @@ bool UberJob::killUberJob() {
     return cancelledMerge;
 }
 
-std::ostream& UberJob::dumpOS(std::ostream& os) const {
+std::ostream& UberJob::dump(std::ostream& os) const {
     os << "(jobs sz=" << _jobs.size() << "(";
     lock_guard<mutex> lockJobsMtx(_jobsMtx);
     for (auto const& job : _jobs) {
@@ -481,13 +486,5 @@ std::ostream& UberJob::dumpOS(std::ostream& os) const {
     os << "))";
     return os;
 }
-
-std::string UberJob::dump() const {
-    std::ostringstream os;
-    dumpOS(os);
-    return os.str();
-}
-
-std::ostream& operator<<(std::ostream& os, UberJob const& uj) { return uj.dumpOS(os); }
 
 }  // namespace lsst::qserv::qdisp

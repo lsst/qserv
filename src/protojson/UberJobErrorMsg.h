@@ -35,62 +35,45 @@
 #include "global/clock_defs.h"
 #include "global/intTypes.h"
 #include "protojson/WorkerQueryStatusData.h"
+#include "protojson/UberJobReadyMsg.h"
 
 // This header declarations
 namespace lsst::qserv::protojson {
 
 /// This class handles the message used to inform the czar that there has
 /// been a problem with an UberJob.
-class UberJobErrorMsg {
+class UberJobErrorMsg : public UberJobStatusMsg {
 public:
     using Ptr = std::shared_ptr<UberJobErrorMsg>;
-
-    UberJobErrorMsg(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
-                    unsigned int version, std::string const& workerId, std::string const& czarName,
-                    CzarId czarId, QueryId queryId, UberJobId uberJobId, int errorCode,
-                    std::string const& errorMsg);
+    /// class name for log, fName is expected to be __func__.
+    std::string cName(const char* fName) const override;
 
     UberJobErrorMsg() = delete;
     UberJobErrorMsg(UberJobErrorMsg const&) = delete;
     UberJobErrorMsg& operator=(UberJobErrorMsg const&) = delete;
 
-    static Ptr create(std::string const& replicationInstanceId, std::string const& replicationAuthKey,
-                      unsigned int version, std::string const& workerIdStr, std::string const& czarName,
-                      CzarId czarId, QueryId queryId, UberJobId uberJobId, int errorCode,
-                      std::string const& errorMsg);
+    static Ptr create(AuthContext const& authContext_, unsigned int version_, std::string const& workerIdStr_,
+                      std::string const& czarName_, CzarId czarId_, QueryId queryId_, UberJobId uberJobId_,
+                      int errorCode_, std::string const& errorMsg_);
 
-    /// This function creates a UberJobErrorMsg object from the worker json `czarJson`, the
-    /// other parameters are used to verify the json message.
-    static Ptr createFromJson(nlohmann::json const& czarJson, std::string const& replicationInstanceId,
-                              std::string const& replicationAuthKey);
+    /// This function creates a UberJobErrorMsg object from the worker json `czarJson`.
+    static Ptr createFromJson(nlohmann::json const& czarJson);
 
     ~UberJobErrorMsg() = default;
 
-    /// Return a json object with data allowing collection of UberJob result file.
-    nlohmann::json toJson() const;
+    bool equals(UberJobStatusMsg const& other) const override;
 
-    std::string const& getWorkerId() const { return _workerId; }
-    std::string const& getCzarName() const { return _czarName; }
-    CzarId getCzarId() const { return _czarId; }
-    QueryId getQueryId() const { return _queryId; }
-    UberJobId getUberJobId() const { return _uberJobId; }
-    std::string const& getErrorMsg() const { return _errorMsg; }
-    uint getErrorCode() const { return _errorCode; }
+    /// Return a json object with data for collection of the UberJob result file.
+    nlohmann::json toJson() const override;
+    std::ostream& dump(std::ostream& os) const override;
+
+    int const errorCode;
+    std::string const errorMsg;
 
 private:
-    /// class name for log, fName is expected to be __func__.
-    std::string _cName(const char* fName) const;
-
-    std::string const _replicationInstanceId;
-    std::string const _replicationAuthKey;
-    unsigned int const _version;
-    std::string const _workerId;
-    std::string const _czarName;
-    CzarId const _czarId;
-    QueryId const _queryId;
-    UberJobId const _uberJobId;
-    int const _errorCode;
-    std::string const _errorMsg;
+    UberJobErrorMsg(AuthContext const& authContext_, unsigned int version, std::string const& workerId,
+                    std::string const& czarName, CzarId czarId, QueryId queryId, UberJobId uberJobId,
+                    int errorCode, std::string const& errorMsg);
 };
 
 }  // namespace lsst::qserv::protojson
