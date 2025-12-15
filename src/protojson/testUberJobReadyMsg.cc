@@ -46,8 +46,7 @@ using namespace std;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::protojson;
 
-string const repliInstanceId = "repliInstId";
-string const repliAuthKey = "repliIAuthKey";
+AuthContext const authContext_("repliInstId", "repliIAuthKey");
 unsigned int const version = lsst::qserv::http::MetaModule::version;
 
 BOOST_AUTO_TEST_SUITE(Suite)
@@ -62,12 +61,12 @@ bool parseSerializeReparseCheck(string const& jsStr, string const& note) {
     UberJobReadyMsg::Ptr jrm = UberJobReadyMsg::createFromJson(js);
     BOOST_REQUIRE(jrm != nullptr);
 
-    nlohmann::json jsJrm = jrm->toJson();
+    auto jsJrm = jrm->toJson();
     LOGS(_log, LOG_LVL_INFO, fName << " serialized jsJrm=" << jsJrm);
 
     UberJobReadyMsg::Ptr jrmCreated = UberJobReadyMsg::createFromJson(jsJrm);
     LOGS(_log, LOG_LVL_INFO, fName << " created");
-    nlohmann::json jsJrmCreated = jrmCreated->toJson();
+    auto jsJrmCreated = jrmCreated->toJson();
     LOGS(_log, LOG_LVL_INFO, fName << " created->serialized");
 
     bool createdMatchesOriginal = jsJrm == jsJrmCreated;
@@ -90,12 +89,12 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     lsst::qserv::CzarId const czarId = 745;
     lsst::qserv::QueryId const queryId = 986532;
     lsst::qserv::UberJobId const uberJobId = 14578;
-    string const fileUrl("ht.qwrk/some/dir/fil.txt");
     uint64_t const rowCount = 391;
     uint64_t const fileSize = 5623;
+    FileUrlInfo fileUrlInfo_("ht.qwrk/some/dir/fil.txt", rowCount, fileSize);
 
-    auto jrm = UberJobReadyMsg::create(repliInstanceId, repliAuthKey, version, workerIdStr, czarName, czarId,
-                                       queryId, uberJobId, fileUrl, rowCount, fileSize);
+    auto jrm = UberJobReadyMsg::create(authContext_, version, workerIdStr, czarName, czarId, queryId,
+                                       uberJobId, fileUrlInfo_);
 
     auto jsJrm = jrm->toJson();
     string const strJrm = to_string(jsJrm);

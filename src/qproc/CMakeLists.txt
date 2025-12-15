@@ -26,6 +26,7 @@ FUNCTION(qproc_tests)
             cconfig
             ccontrol
             czar
+            global
             parser
             qana
             qdisp
