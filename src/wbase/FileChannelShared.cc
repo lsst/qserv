@@ -35,6 +35,7 @@
 // Qserv headers
 #include "global/LogContext.h"
 #include "mysql/MySqlUtils.h"
+#include "protojson/UberJobReadyMsg.h"
 #include "wbase/Task.h"
 #include "wbase/UberJobData.h"
 #include "wconfig/WorkerConfig.h"
@@ -536,7 +537,7 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     string httpFileUrl = task->getUberJobData()->resultFileHttpUrl();
     auto ujd = _uberJobData.lock();
     if (ujd != nullptr) {
-        ujd->responseFileReady(httpFileUrl, _rowcount, _transmitsize);
+        ujd->responseFileReady(protojson::FileUrlInfo(httpFileUrl, _rowcount, _transmitsize));
     }
     return true;
 }
