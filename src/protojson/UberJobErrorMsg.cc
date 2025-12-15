@@ -43,29 +43,27 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.UberJobErrorMsg");
 
 namespace lsst::qserv::protojson {
 
-string UberJobErrorMsg::_cName(const char* fName) const {
-    return string("UberJobErrorMsg::") + fName + " qId=" + to_string(_queryId) +
-           " ujId=" + to_string(_uberJobId);
+string UberJobErrorMsg::cName(const char* fName) const {
+    return string("UberJobErrorMsg::") + fName + " qId=" + to_string(queryId) +
+           " ujId=" + to_string(uberJobId);
 }
 
-UberJobErrorMsg::Ptr UberJobErrorMsg::create(string const& replicationInstanceId,
-                                             string const& replicationAuthKey, unsigned int version,
-                                             string const& workerIdStr, string const& czarName, CzarId czarId,
-                                             QueryId queryId, UberJobId uberJobId, int errorCode,
-                                             string const& errorMsg) {
-    Ptr jrMsg = Ptr(new UberJobErrorMsg(replicationInstanceId, replicationAuthKey, version, workerIdStr,
-                                        czarName, czarId, queryId, uberJobId, errorCode, errorMsg));
+UberJobErrorMsg::Ptr UberJobErrorMsg::create(AuthContext const& authContext_, unsigned int version_,
+                                             string const& workerIdStr_, string const& czarName_,
+                                             CzarId czarId_, QueryId queryId_, UberJobId uberJobId_,
+                                             int errorCode_, string const& errorMsg_) {
+    Ptr jrMsg = Ptr(new UberJobErrorMsg(authContext_, version_, workerIdStr_, czarName_, czarId_, queryId_,
+                                        uberJobId_, errorCode_, errorMsg_));
     return jrMsg;
 }
 
-UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWReq,
-                                                     string const& replicationInstanceId,
-                                                     string const& replicationAuthKey) {
+UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWReq) {
     string const fName("UberJobErrorMsg::createFromJson");
     LOGS(_log, LOG_LVL_DEBUG, fName);
     try {
-        Ptr jrMsg = Ptr(new UberJobErrorMsg(http::RequestBodyJSON::required<string>(jsWReq, "instance_id"),
-                                            http::RequestBodyJSON::required<string>(jsWReq, "auth_key"),
+        AuthContext const authContext_(http::RequestBodyJSON::required<string>(jsWReq, "instance_id"),
+                                       http::RequestBodyJSON::required<string>(jsWReq, "auth_key"));
+        Ptr jrMsg = Ptr(new UberJobErrorMsg(authContext_,
                                             http::RequestBodyJSON::required<unsigned int>(jsWReq, "version"),
                                             http::RequestBodyJSON::required<string>(jsWReq, "workerid"),
                                             http::RequestBodyJSON::required<string>(jsWReq, "czar"),
@@ -81,44 +79,49 @@ UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWRe
     return nullptr;
 }
 
-UberJobErrorMsg::UberJobErrorMsg(string const& replicationInstanceId, string const& replicationAuthKey,
-                                 unsigned int version, string const& workerId, string const& czarName,
-                                 CzarId czarId, QueryId queryId, UberJobId uberJobId, int errorCode,
-                                 string const& errorMsg)
-        : _replicationInstanceId(replicationInstanceId),
-          _replicationAuthKey(replicationAuthKey),
-          _version(version),
-          _workerId(workerId),
-          _czarName(czarName),
-          _czarId(czarId),
-          _queryId(queryId),
-          _uberJobId(uberJobId),
-          _errorCode(errorCode),
-          _errorMsg(errorMsg) {
-    if (_version != http::MetaModule::version) {
-        string eMsg = _cName(__func__) + " bad version " + to_string(_version) +
-                      "expected=" + to_string(http::MetaModule::version);
-        LOGS(_log, LOG_LVL_ERROR, eMsg);
-        throw invalid_argument(eMsg);
+bool UberJobErrorMsg::equals(UberJobStatusMsg const& other) const {
+    try {
+        UberJobErrorMsg const& otherError = dynamic_cast<UberJobErrorMsg const&>(other);
+        if ((errorCode == otherError.errorCode) && (errorMsg == otherError.errorMsg)) {
+            return equalsBase(other);
+        }
+    } catch (std::bad_cast& ex) {
     }
+    // different type
+    return false;
 }
+
+std::ostream& UberJobErrorMsg::dump(std::ostream& os) const {
+    os << "{UberJobErrorMsg:";
+    UberJobStatusMsg::dump(os);
+    os << " errorCode=" << errorCode << " errorMsg=" << errorMsg << "}";
+    return os;
+}
+
+UberJobErrorMsg::UberJobErrorMsg(AuthContext const& authContext_, unsigned int version_,
+                                 string const& workerId_, string const& czarName_, CzarId czarId_,
+                                 QueryId queryId_, UberJobId uberJobId_, int errorCode_,
+                                 string const& errorMsg_)
+        : UberJobStatusMsg(authContext_, version_, workerId_, czarName_, czarId_, queryId_, uberJobId_),
+          errorCode(errorCode_),
+          errorMsg(errorMsg_) {}
 
 json UberJobErrorMsg::toJson() const {
     json jsJr;
 
     // These need to match what http::BaseModule::enforceInstanceId()
     // and http::BaseModule::enforceAuthorization() are looking for.
-    jsJr["instance_id"] = _replicationInstanceId;
-    jsJr["auth_key"] = _replicationAuthKey;
-    jsJr["version"] = _version;
+    jsJr["instance_id"] = authContext.replicationInstanceId;
+    jsJr["auth_key"] = authContext.replicationAuthKey;
+    jsJr["version"] = version;
 
-    jsJr["workerid"] = _workerId;
-    jsJr["czar"] = _czarName;
-    jsJr["czarid"] = _czarId;
-    jsJr["queryid"] = _queryId;
-    jsJr["uberjobid"] = _uberJobId;
-    jsJr["errorCode"] = _errorCode;
-    jsJr["errorMsg"] = _errorMsg;
+    jsJr["workerid"] = workerId;
+    jsJr["czar"] = czarName;
+    jsJr["czarid"] = czarId;
+    jsJr["queryid"] = queryId;
+    jsJr["uberjobid"] = uberJobId;
+    jsJr["errorCode"] = errorCode;
+    jsJr["errorMsg"] = errorMsg;
     return jsJr;
 }
 

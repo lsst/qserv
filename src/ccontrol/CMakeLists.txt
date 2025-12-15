@@ -26,6 +26,7 @@ target_link_libraries(ccontrol PUBLIC
     boost_regex
     cconfig
     css
+    global
     log
     parser
     sphgeom
@@ -35,9 +36,6 @@ install(
 	TARGETS ccontrol
 )
 
-install(
-    TARGETS ccontrol
-)
 
 FUNCTION(ccontrol_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
@@ -46,6 +44,7 @@ FUNCTION(ccontrol_tests)
             cconfig
             ccontrol
             czar
+            global
             parser
             qana
             qdisp
