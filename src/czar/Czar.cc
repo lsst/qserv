@@ -54,6 +54,8 @@
 #include "http/MetaModule.h"
 #include "http/Method.h"
 #include "mysql/CsvMemDisk.h"
+#include "protojson/UberJobErrorMsg.h"
+#include "protojson/UberJobReadyMsg.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/Executive.h"
 #include "qproc/DatabaseModels.h"
@@ -695,6 +697,57 @@ void Czar::killIncompleteUbjerJobsOn(std::string const& restartedWorkerId) {
             exec->killIncompleteUberJobsOnWorker(restartedWorkerId);
         }
     }
+}
+
+nlohmann::json Czar::handleUberJobReadyMsg(std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg,
+                                           string const& note, bool const retry) {
+    auto queryId = jrMsg->queryId;
+    auto czarId = jrMsg->czarId;
+    auto uberJobId = jrMsg->uberJobId;
+
+    qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
+    if (exec == nullptr) {
+        LOGS(_log, LOG_LVL_WARN,
+             note << " null exec QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
+        throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
+                               to_string(queryId) + " czar=" + to_string(czarId));
+    }
+
+    qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
+    if (uj == nullptr) {
+        LOGS(_log, LOG_LVL_WARN,
+             note << " null uj QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
+        throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
+                               to_string(queryId) + " ujId=" + to_string(uberJobId) +
+                               " czar=" + to_string(czarId));
+    }
+    uj->setResultFileSize(jrMsg->fileUrlInfo.fileSize);
+    exec->checkResultFileSize(jrMsg->fileUrlInfo.fileSize);
+
+    auto importRes = uj->importResultFile(jrMsg->fileUrlInfo, retry);
+    return importRes;
+}
+
+nlohmann::json Czar::handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg,
+                                           string const& note) {
+    auto queryId = jrMsg->queryId;
+    auto czarId = jrMsg->czarId;
+    auto uberJobId = jrMsg->uberJobId;
+
+    // Find UberJob
+    qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
+    if (exec == nullptr) {
+        throw invalid_argument(note + " No executive for qid=" + to_string(queryId) +
+                               " czar=" + to_string(czarId));
+    }
+    qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
+    if (uj == nullptr) {
+        throw invalid_argument(note + " No UberJob for qid=" + to_string(queryId) +
+                               " ujId=" + to_string(uberJobId) + " czar=" + to_string(czarId));
+    }
+
+    auto importRes = uj->workerError(jrMsg->errorCode, jrMsg->errorMsg);
+    return importRes;
 }
 
 }  // namespace lsst::qserv::czar
