@@ -25,6 +25,7 @@ target_link_libraries(testQDisp
     cconfig
     ccontrol
     czar
+    global
     mysql
     parser
     qana

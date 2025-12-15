@@ -67,6 +67,11 @@ CzarContactInfo::Ptr CzarContactInfo::createFromJson(nlohmann::json const& czJso
     return nullptr;
 }
 
+bool CzarContactInfo::compare(CzarContactInfo const& other) const {
+    return (czName == other.czName && czId == other.czId && czPort == other.czPort &&
+            czHostName == other.czHostName);
+}
+
 std::string CzarContactInfo::dump() const {
     stringstream os;
     os << "czName=" << czName << " czId=" << czId << " czPort=" << czPort << " czHostName=" << czHostName
@@ -120,6 +125,11 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json co
     return nullptr;
 }
 
+bool WorkerContactInfo::operator==(WorkerContactInfo const& other) const {
+    return ((wId == other.wId) && (_wHost == other._wHost) && (_wManagementHost == other._wManagementHost) &&
+            (_wPort == other._wPort) && (_wStartupTime == other._wStartupTime));
+}
+
 void WorkerContactInfo::setRegUpdateTime(TIMEPOINT updateTime) {
     std::lock_guard lg(_rMtx);
     _regUpdateTime = updateTime;
@@ -146,8 +156,8 @@ shared_ptr<json> WorkerQueryStatusData::toJson(double maxLifetime) {
     shared_ptr<json> jsWorkerReqPtr = make_shared<json>();
     json& jsWorkerR = *jsWorkerReqPtr;
     jsWorkerR["version"] = http::MetaModule::version;
-    jsWorkerR["instance_id"] = _replicationInstanceId;
-    jsWorkerR["auth_key"] = _replicationAuthKey;
+    jsWorkerR["instance_id"] = _authContext.replicationInstanceId;
+    jsWorkerR["auth_key"] = _authContext.replicationAuthKey;
     jsWorkerR["czarinfo"] = _czInfo->toJson();
     {
         lock_guard lgI(_infoMtx);
@@ -255,9 +265,8 @@ void WorkerQueryStatusData::addListsToJson(json& jsWR, TIMEPOINT tmMark, double 
 }
 
 WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json const& jsWorkerReq,
-                                                                 std::string const& replicationInstanceId_,
-                                                                 std::string const& replicationAuthKey_,
-                                                                 TIMEPOINT updateTm) {
+                                                                 AuthContext const& authContext_,
+                                                                 TIMEPOINT updateTm_) {
     try {
         if (jsWorkerReq["version"] != http::MetaModule::version) {
             LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson bad version");
@@ -265,16 +274,16 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
         }
 
         auto czInfo_ = CzarContactInfo::createFromJson(jsWorkerReq["czarinfo"]);
-        auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsWorkerReq["workerinfo"], updateTm);
+        auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsWorkerReq["workerinfo"], updateTm_);
         if (czInfo_ == nullptr || wInfo_ == nullptr) {
             LOGS(_log, LOG_LVL_ERROR,
                  "WorkerQueryStatusData::createJson czar or worker info could not be parsed in "
                          << jsWorkerReq);
             return nullptr;
         }
-        auto wqsData =
-                WorkerQueryStatusData::create(wInfo_, czInfo_, replicationInstanceId_, replicationAuthKey_);
-        wqsData->parseLists(jsWorkerReq, updateTm);
+
+        auto wqsData = WorkerQueryStatusData::create(wInfo_, czInfo_, authContext_);
+        wqsData->parseLists(jsWorkerReq, updateTm_);
 
         bool czarRestart = http::RequestBodyJSON::required<bool>(jsWorkerReq, "czarrestart");
         if (czarRestart) {
