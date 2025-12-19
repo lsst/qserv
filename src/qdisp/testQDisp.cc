@@ -87,7 +87,6 @@ public:
     MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) override {
         return MergeEndStatus(true);
     }
-    void flushHttpError(int errorCode, std::string const& errorMsg, int status) override {}
     void errorFlush(std::string const& msg, int code) override {};
     bool cancelFileMerge() override { return cancelFileMergeRet; };
 
@@ -113,10 +112,11 @@ public:
     using PtrUT = std::shared_ptr<UberJobUT>;
 
     UberJobUT(std::shared_ptr<Executive> const& executive,
-              std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId, CzarId czarId,
-              int rowLimit, czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData,
-              TestInfo::Ptr const& testInfo_)
-            : UberJob(executive, respHandler, queryId, uberJobId, czarId, rowLimit), testInfo(testInfo_) {}
+              std::shared_ptr<ResponseHandler> const& respHandler, int uberJobId, CzarId czarId,
+              protojson::WorkerContactInfo::Ptr const& workerContactInfo, TIMEPOINT familyMapTimestamp,
+              czar::CzarChunkMap::WorkerChunksData::Ptr const& workerData, TestInfo::Ptr const& testInfo_)
+            : UberJob(executive, respHandler, uberJobId, czarId, workerContactInfo, familyMapTimestamp),
+              testInfo(testInfo_) {}
 
     void runUberJob() override {
         LOGS(_log, LOG_LVL_INFO, "runUberJob() chunkId=" << chunkId);
@@ -146,18 +146,23 @@ public:
                 shared_ptr<qproc::QuerySession> const& querySession, TestInfo::Ptr const& testInfo_)
             : Executive(qmetaTimeBetweenUpdates, ms, qdispPool, qProgress, queryProgressHistory, querySession,
                         5 /* jobMaxAttempts */),
-              testInfo(testInfo_) {}
+              testInfo(testInfo_) {
+        workerContactInfo =
+                protojson::WorkerContactInfo::create("wrkId", "10.0.0.1", "hosty", 3456, CLOCK::now());
+    }
 
     void assignJobsToUberJobs() override {
         vector<qdisp::UberJob::Ptr> ujVect;
+        TIMEPOINT familyMapTimestamp = CLOCK::now();
 
         // Make an UberJobUnitTest for each job
         qdisp::Executive::ChunkIdJobMapType unassignedChunks = unassignedChunksInQuery();
         for (auto const& [chunkId, jqPtr] : unassignedChunks) {
             auto exec = shared_from_this();
             PtrUT execUT = dynamic_pointer_cast<ExecutiveUT>(exec);
-            auto uJob = UberJobUT::PtrUT(new UberJobUT(execUT, testInfo, getId(), ujId++, czarId, rowLimit,
-                                                       targetWorker, testInfo));
+            auto uJob = UberJobUT::PtrUT(new UberJobUT(execUT, testInfo, ujId++, czarId, workerContactInfo,
+                                                       familyMapTimestamp, targetWorker, testInfo));
+
             uJob->chunkId = chunkId;
             uJob->addJob(jqPtr);
             ujVect.push_back(uJob);
@@ -175,6 +180,7 @@ public:
     czar::CzarChunkMap::WorkerChunksData::Ptr targetWorker = nullptr;
 
     TestInfo::Ptr testInfo;
+    protojson::WorkerContactInfo::Ptr workerContactInfo;
 };
 
 }  // namespace lsst::qserv::qdisp

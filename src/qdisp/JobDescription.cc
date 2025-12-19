@@ -70,9 +70,9 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
             LOGS(_log, LOG_LVL_ERROR,
                  cName(__func__) << " attempts(" << _attemptCount << ") > maxAttempts(" << maxAttempts
                                  << ") cancelling");
-            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR,
+            exec->addMultiError(util::Error::RETRY_FAILS, util::Error::NONE,
                                 "max attempts reached " + to_string(_attemptCount) + " " + _qIdStr,
-                                util::ErrorCode::INTERNAL);
+                                util::Error::INTERNAL);
             exec->squash(string("incrAttemptCount ") + to_string(_attemptCount));
             return false;
         }

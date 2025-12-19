@@ -110,7 +110,9 @@ public:
     ChunkIdJobMapType unassignedChunksInQuery();
 
     /// Find the UberJob with `ujId`.
-    std::shared_ptr<UberJob> findUberJob(UberJobId ujId);
+    std::shared_ptr<UberJob> findUberJob(UberJobId ujId) const;
+
+    std::shared_ptr<JobQuery> findJob(int jobId) const;
 
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
@@ -193,7 +195,8 @@ public:
     int getTotalJobs() { return _totalJobs; }
 
     /// Add an error code and message that may be displayed to the user.
-    void addMultiError(int errorCode, std::string const& errorMsg, int errState);
+    void addMultiError(int errorCode, int subError, std::string const& errorMsg, int errState);
+    void addMultiError(util::MultiError const& multiErr, int errorState);
 
     std::string dumpUberJobCounts() const;
 
@@ -355,7 +358,6 @@ private:
     protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
 
     std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
-    std::atomic<uint64_t> _jobCancelCount{0};       ///< Total number of JOB_CANCEL messages received.
 
     /// This mutex is used to limit collecting result files to one at a time
     /// but only when the executive will squash the query when the limit is reached.

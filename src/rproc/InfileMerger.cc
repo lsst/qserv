@@ -85,7 +85,7 @@ std::string getTimeStampId() {
     struct timeval now;
     int rc = gettimeofday(&now, nullptr);
     if (rc != 0) {
-        throw util::Error(util::ErrorCode::INTERNAL, "Failed to get timestamp.");
+        throw util::Error(util::Error::INTERNAL, util::Error::NONE, "Failed to get timestamp.");
     }
     std::ostringstream s;
     s << (now.tv_sec % 10000) << now.tv_usec;
@@ -136,7 +136,8 @@ InfileMerger::InfileMerger(rproc::InfileMergerConfig const& c,
           _maxResultTableSizeBytes(cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES) {
     _fixupTargetName();
     if (!_setupConnectionMyIsam()) {
-        throw util::Error(util::ErrorCode::MYSQLCONNECT, "InfileMerger mysql connect failure.");
+        throw util::Error(util::Error::MYSQLCONNECT, util::Error::NONE,
+                          "InfileMerger mysql connect failure.");
     }
 
     // The DEBUG level is good here since this report will be made onces per query,
@@ -224,7 +225,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
                          " is too large at " + to_string(tResultSize) + " bytes, max allowed size is " +
                          to_string(_maxResultTableSizeBytes) + " bytes";
             LOGS(_log, LOG_LVL_ERROR, str);
-            _error = util::Error(-1, str, -1);
+            _error = util::Error(util::Error::CZAR_RESULT_TOO_LARGE, util::Error::NONE, str);
             return false;
         }
     } else {
@@ -345,13 +346,14 @@ bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::
     bool ok = _databaseModels->applySql(query, results, getSchemaErrObj);
     if (not ok) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
-        _error = util::Error(util::ErrorCode::INTERNAL, "Failed to get schema: " + getSchemaErrObj.errMsg());
+        _error = util::Error(util::Error::RESULT_SCHEMA, util::Error::NONE,
+                             "Failed to get schema: " + getSchemaErrObj.errMsg());
         return false;
     }
     sql::SqlErrorObject errObj;
     if (errObj.isSet()) {
         LOGS(_log, LOG_LVL_ERROR, "Failed to extract schema from result: " << errObj.errMsg());
-        _error = util::Error(util::ErrorCode::INTERNAL,
+        _error = util::Error(util::Error::RESULT_SCHEMA, util::Error::NONE,
                              "Failed to extract schema from result: " + errObj.errMsg());
         return false;
     }
@@ -368,7 +370,7 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
     std::string const createStmt = sql::formCreateTable(_mergeTable, schema) + " ENGINE=MyISAM";
     LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
-        _error = util::Error(util::ErrorCode::CREATE_TABLE,
+        _error = util::Error(util::Error::RESULT_CREATETABLE, util::Error::NONE,
                              "Error creating table:" + _mergeTable + ": " + _error.getMsg());
         _isFinished = true;  // Cannot continue.
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
@@ -407,8 +409,8 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& resul
         return false;
     }
     if (not _sqlConn->runQuery(sql, results, errObj)) {
-        _error = util::Error(errObj.errNo(), "Error applying sql: " + errObj.printErrMsg(),
-                             util::ErrorCode::MYSQLEXEC);
+        _error = util::Error(util::Error::RESULT_SQL, errObj.errNo(),
+                             "Error applying sql: " + errObj.printErrMsg());
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
         return false;
     }
@@ -420,8 +422,8 @@ bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
     if (_sqlConn == nullptr) {
         _sqlConn = sql::SqlConnectionFactory::make(_config.mySqlConfig);
         if (not _sqlConn->connectToDb(errObj)) {
-            _error = util::Error(errObj.errNo(), "Error connecting to db: " + errObj.printErrMsg(),
-                                 util::ErrorCode::MYSQLCONNECT);
+            _error = util::Error(util::Error::RESULT_CONNECT, errObj.errNo(),
+                                 "Error connecting to db: " + errObj.printErrMsg());
             _sqlConn.reset();
             LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
             return false;

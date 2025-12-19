@@ -36,6 +36,7 @@
 #include "global/intTypes.h"
 #include "protojson/WorkerQueryStatusData.h"
 #include "protojson/UberJobReadyMsg.h"
+#include "util/MultiError.h"
 
 // This header declarations
 namespace lsst::qserv::protojson {
@@ -54,10 +55,11 @@ public:
 
     static Ptr create(AuthContext const& authContext_, unsigned int version_, std::string const& workerIdStr_,
                       std::string const& czarName_, CzarId czarId_, QueryId queryId_, UberJobId uberJobId_,
-                      int errorCode_, std::string const& errorMsg_);
+                      util::MultiError const& multiErr_);
 
     /// This function creates a UberJobErrorMsg object from the worker json `czarJson`.
     static Ptr createFromJson(nlohmann::json const& czarJson);
+    static util::MultiError multiErrorFromJson(nlohmann::json const& czarJson);
 
     ~UberJobErrorMsg() = default;
 
@@ -67,13 +69,12 @@ public:
     nlohmann::json toJson() const override;
     std::ostream& dump(std::ostream& os) const override;
 
-    int const errorCode;
-    std::string const errorMsg;
+    util::MultiError multiError;
 
 private:
-    UberJobErrorMsg(AuthContext const& authContext_, unsigned int version, std::string const& workerId,
-                    std::string const& czarName, CzarId czarId, QueryId queryId, UberJobId uberJobId,
-                    int errorCode, std::string const& errorMsg);
+    UberJobErrorMsg(AuthContext const& authContext_, unsigned int version_, std::string const& workerId_,
+                    std::string const& czarName_, CzarId czarId_, QueryId queryId_, UberJobId uberJobId_,
+                    util::MultiError const& multiErr_);
 };
 
 }  // namespace lsst::qserv::protojson
