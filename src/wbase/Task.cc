@@ -382,8 +382,9 @@ void Task::action(util::CmdData* data) {
         // harmless.
         util::MultiError multiErr;
         bool logLvl = (_logLvlET != LOG_LVL_TRACE);
-        util::Error err(_chunkId, string("UberJob run error ") + errStr, util::ErrorCode::NONE, logLvl);
-        multiErr.push_back(err);
+        string const strMsg = string("UberJob run error chunk=" + to_string(_chunkId) + ":" + ":" + errStr);
+        util::Error err(util::Error::WORKER_QUERY, util::Error::NONE, strMsg, logLvl);
+        multiErr.insert(err);
         _ujData->responseError(multiErr, -1, false, _logLvlET);
     }
 }

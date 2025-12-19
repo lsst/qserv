@@ -29,6 +29,7 @@
 #include "global/UberJobBase.h"
 #include "qdisp/Executive.h"
 #include "qmeta/JobStatus.h"
+#include "util/MultiError.h"
 
 namespace lsst::qserv::protojson {
 class FileUrlInfo;
@@ -55,8 +56,9 @@ public:
     using Ptr = std::shared_ptr<UberJob>;
 
     static Ptr create(std::shared_ptr<Executive> const& executive,
-                      std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
-                      CzarId czarId);
+                      std::shared_ptr<ResponseHandler> const& respHandler, int uberJobId, CzarId czarId,
+                      std::shared_ptr<protojson::WorkerContactInfo> const& workerContactInfo,
+                      TIMEPOINT familyMapTimestamp);
 
     UberJob() = delete;
     UberJob(UberJob const&) = delete;
@@ -114,7 +116,7 @@ public:
     nlohmann::json importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool const retry = false);
 
     /// Handle an error from the worker.
-    nlohmann::json workerError(int errorCode, std::string const& errorMsg);
+    nlohmann::json workerError(util::MultiError const& multiErr_);
 
     void setResultFileSize(uint64_t fileSize) { _resultFileSize = fileSize; }
     uint64_t getResultFileSize() { return _resultFileSize; }
@@ -130,7 +132,9 @@ public:
 
 protected:
     UberJob(std::shared_ptr<Executive> const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-            QueryId queryId_, UberJobId uberJobId_, CzarId czarId_, int rowLimit);
+            UberJobId uberJobId_, CzarId czarId_,
+            std::shared_ptr<protojson::WorkerContactInfo> const& workerContactInfo,
+            TIMEPOINT familyMapTimestamp);
 
 private:
     /// Used to setup elements that can't be done in the constructor.
@@ -158,8 +162,11 @@ private:
     int const _rowLimit;  ///< Number of rows in the query LIMIT clause.
     uint64_t _resultFileSize = 0;
 
-    // Contact information for the target worker.
+    /// Contact information for the target worker.
     protojson::WorkerContactInfo::Ptr _wContactInfo;
+
+    /// Timestamp of the family map used to create this UberJob.
+    TIMEPOINT _familyMapTimestamp;
 };
 
 }  // namespace lsst::qserv::qdisp
