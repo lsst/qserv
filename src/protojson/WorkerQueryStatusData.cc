@@ -87,8 +87,8 @@ json WorkerContactInfo::toJson() const {
 json WorkerContactInfo::_toJson() const {
     json jsWorker;
     jsWorker["id"] = wId;
-    jsWorker["host"] = _wHost;
-    jsWorker["management-host-name"] = _wManagementHost;
+    jsWorker["host"] = _wHostAddr;
+    jsWorker["management-host-name"] = _wHostName;
     jsWorker["management-port"] = _wPort;
     jsWorker["w-startup-time"] = _wStartupTime;
     return jsWorker;
@@ -126,7 +126,7 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json co
 }
 
 bool WorkerContactInfo::operator==(WorkerContactInfo const& other) const {
-    return ((wId == other.wId) && (_wHost == other._wHost) && (_wManagementHost == other._wManagementHost) &&
+    return ((wId == other.wId) && (_wHostAddr == other._wHostAddr) && (_wHostName == other._wHostName) &&
             (_wPort == other._wPort) && (_wStartupTime == other._wStartupTime));
 }
 
@@ -144,7 +144,7 @@ string WorkerContactInfo::dump() const {
 string WorkerContactInfo::_dump() const {
     stringstream os;
     os << "workerContactInfo{"
-       << "id=" << wId << " host=" << _wHost << " mgHost=" << _wManagementHost << " port=" << _wPort
+       << "id=" << wId << " hostAddr=" << _wHostAddr << " hostName=" << _wHostName << " port=" << _wPort
        << " update=" << util::TimeUtils::timePointToDateTimeString(_regUpdateTime) << "}";
     return os.str();
 }

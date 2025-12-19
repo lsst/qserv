@@ -171,22 +171,17 @@ shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
-    string errorMsg;
-    int errorCode = 0;
-    if (!multiErr.empty()) {
-        errorMsg = multiErr.toOneLineString();
-        errorCode = multiErr.firstErrorCode();
-    } else if (cancelled) {
-        errorMsg = "cancelled";
-        errorCode = -1;
+    if (cancelled) {
+        util::Error err(util::Error::CANCEL, util::Error::NONE, "cancelled");
+        multiErr.insert(err);
     }
-    if (!errorMsg.empty() or (errorCode != 0)) {
-        errorMsg = cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ": " + errorMsg;
-        LOGS(_log, logLvl, errorMsg);
-    }
+    LOGS(_log, logLvl,
+         cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ":" +
+                 multiErr.toOneLineString());
     unsigned int const version = http::MetaModule::version;
     auto jrMsg = protojson::UberJobErrorMsg::create(authContext_, version, workerIdStr, _czarName, _czarId,
-                                                    _queryId, _uberJobId, errorCode, errorMsg);
+                                                    _queryId, _uberJobId, multiErr);
+
     return jrMsg;
 }
 

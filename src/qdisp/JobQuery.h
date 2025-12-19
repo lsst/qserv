@@ -93,6 +93,15 @@ public:
     /// @return true if job is unassigned.
     bool unassignFromUberJob(UberJobId ujId);
 
+    /// The query wasn't found on the `worker` using the FamilyMap from `familyMapTime`
+    void avoidWorker(std::shared_ptr<protojson::WorkerContactInfo> const& workerContactInfo,
+                     TIMEPOINT familyMapTime);
+
+    /// Return true if the worker was previously missing this chunk and using the same map.
+    /// This function will remove dead worker entries.
+    bool isWorkerInAvoidMap(std::shared_ptr<protojson::WorkerContactInfo> const& workerContactInfo,
+                            TIMEPOINT familyMapTime);
+
     std::ostream& dumpOS(std::ostream& os) const;
     std::string dump() const;
     friend std::ostream& operator<<(std::ostream& os, JobQuery const& jq);
@@ -136,6 +145,9 @@ protected:
 
     // Cancellation
     std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.
+
+    typedef std::pair<std::weak_ptr<protojson::WorkerContactInfo>, TIMEPOINT> WorkerAvoidType;
+    std::map<std::string, WorkerAvoidType> _workerAvoidMap;
 
     /// The UberJobId that this job is assigned to. Values less than zero
     /// indicate this job is unassigned. To prevent race conditions,

@@ -109,9 +109,9 @@ public:
     using WCMap = std::unordered_map<std::string, Ptr>;
     using WCMapPtr = std::shared_ptr<WCMap>;
 
-    static Ptr create(std::string const& wId_, std::string const& wHost_, std::string const& wManagementHost_,
+    static Ptr create(std::string const& wId_, std::string const& wHostAddr_, std::string const& wHostName_,
                       int wPort_, TIMEPOINT updateTime_) {
-        return Ptr(new WorkerContactInfo(wId_, wHost_, wManagementHost_, wPort_, updateTime_));
+        return Ptr(new WorkerContactInfo(wId_, wHostAddr_, wHostName_, wPort_, updateTime_));
     }
 
     /// Ignores _registryUpdateTime as that is not set to or from json.
@@ -132,14 +132,14 @@ public:
 
     std::string const wId;  ///< key, this is the one thing that cannot change.
 
-    std::string getWHost() const {
+    std::string getWHostAddr() const {
         std::lock_guard lg(_rMtx);
-        return _wHost;
+        return _wHostAddr;
     }
 
-    std::string getWManagementHost() const {
+    std::string getWHostName() const {
         std::lock_guard lg(_rMtx);
-        return _wManagementHost;
+        return _wHostName;
     }
 
     int getWPort() const {
@@ -149,10 +149,10 @@ public:
 
     /// Change host and port info to those provided in `other`.
     void changeBaseInfo(WorkerContactInfo const& other) {
-        auto [oWId, oWHost, oWManagementHost, oWPort] = other.getAll();
+        auto [oWId, oWHostAddr, oWHostName, oWPort] = other.getAll();
         std::lock_guard lg(_rMtx);
-        _wHost = oWHost;
-        _wManagementHost = oWManagementHost;
+        _wHostAddr = oWHostAddr;
+        _wHostName = oWHostName;
         _wPort = oWPort;
     }
 
@@ -162,14 +162,14 @@ public:
     /// @return _wPort - worker port
     std::tuple<std::string, std::string, std::string, int> getAll() const {
         std::lock_guard lg(_rMtx);
-        return {wId, _wHost, _wManagementHost, _wPort};
+        return {wId, _wHostAddr, _wHostName, _wPort};
     }
 
     /// Return true if communication related items are the same.
     bool isSameContactInfo(WorkerContactInfo const& other) const {
         auto [oWId, oWHost, oWManagementHost, oWPort] = other.getAll();
         std::lock_guard lg(_rMtx);
-        return (wId == oWId && _wHost == oWHost && _wManagementHost == oWManagementHost && _wPort == oWPort);
+        return (wId == oWId && _wHostAddr == oWHost && _wHostName == oWManagementHost && _wPort == oWPort);
     }
 
     void setRegUpdateTime(TIMEPOINT updateTime);
@@ -215,9 +215,9 @@ public:
     std::string dump() const;
 
 private:
-    WorkerContactInfo(std::string const& wId_, std::string const& wHost_, std::string const& wManagementHost_,
+    WorkerContactInfo(std::string const& wId_, std::string const& wHost_, std::string const& wHostName_,
                       int wPort_, TIMEPOINT updateTime_)
-            : wId(wId_), _wHost(wHost_), _wManagementHost(wManagementHost_), _wPort(wPort_) {
+            : wId(wId_), _wHostAddr(wHost_), _wHostName(wHostName_), _wPort(wPort_) {
         setRegUpdateTime(updateTime_);
     }
 
@@ -227,9 +227,9 @@ private:
     // _rMtx must be locked before calling
     nlohmann::json _toJson() const;
 
-    std::string _wHost;            ///< "host-addr" entry.
-    std::string _wManagementHost;  ///< "management-host-name" entry.
-    int _wPort;                    ///< "management-port" entry.
+    std::string _wHostAddr;  ///< "host-addr" entry (like 10.0.0.1)
+    std::string _wHostName;  ///< "management-host-name" entry (FQDN like blah.edu)
+    int _wPort;              ///< "management-port" entry.
 
     /// Last time the registry heard from this worker. The ActiveWorker class
     /// will use this to determine the worker's state (alive/dead).
