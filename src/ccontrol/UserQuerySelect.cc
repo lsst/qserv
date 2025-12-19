@@ -311,6 +311,20 @@ void UserQuerySelect::submit() {
     exec->waitForAllJobsToStart();
 }
 
+bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWorker,
+                     protojson::WorkerContactInfo::WCMapPtr const& wContactMap,
+                     qdisp::JobQuery::Ptr const& jqPtr,
+                     std::shared_ptr<czar::CzarFamilyMap> const& czFamilyMap) {
+    protojson::WorkerContactInfo::Ptr targetWorkerInfo;
+    auto targetWorkerIter = wContactMap->find(targetWorker->getWorkerId());
+    if (targetWorkerIter != wContactMap->end()) targetWorkerInfo = targetWorkerIter->second;
+    bool avoidWorker = false;
+    if (targetWorkerInfo != nullptr) {
+        avoidWorker = jqPtr->isWorkerInAvoidMap(targetWorkerInfo, czFamilyMap->getLastUpdateTime());
+    }
+    return avoidWorker;
+}
+
 void UserQuerySelect::buildAndSendUberJobs() {
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_queryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
@@ -353,6 +367,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     auto czFamilyMap = czarPtr->getCzarFamilyMap();
     auto czChunkMap = czFamilyMap->getChunkMap(_queryDbName);
     auto czRegistry = czarPtr->getCzarRegistry();
+    // wContactMap is constant and safe to access without mutex lock.
     auto const wContactMap = czRegistry->waitForWorkerContactMap();
 
     if (czChunkMap == nullptr) {
@@ -418,7 +433,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         czar::CzarChunkMap::ChunkData::Ptr chunkData = iter->second;
         auto targetWorker = chunkData->getPrimaryScanWorker().lock();
-        if (targetWorker == nullptr || targetWorker->isDead()) {
+        bool avoidWorker = avoidThisWorker(targetWorker, wContactMap, jqPtr, czFamilyMap);
+        if (targetWorker == nullptr || targetWorker->isDead() || avoidWorker) {
             LOGS(_log, LOG_LVL_WARN,
                  funcN << " No primary scan worker for chunk=" + chunkData->dump()
                        << ((targetWorker == nullptr) ? " targ was null" : " targ was dead"));
@@ -429,11 +445,14 @@ void UserQuerySelect::buildAndSendUberJobs() {
                  ++wIter) {
                 auto maybeTarg = wIter->second.lock();
                 if (maybeTarg != nullptr && !maybeTarg->isDead()) {
-                    targetWorker = maybeTarg;
-                    found = true;
-                    LOGS(_log, LOG_LVL_WARN,
-                         funcN << " Alternate worker=" << targetWorker->getWorkerId()
-                               << " found for chunk=" << chunkData->dump());
+                    avoidWorker = avoidThisWorker(maybeTarg, wContactMap, jqPtr, czFamilyMap);
+                    if (!avoidWorker) {
+                        targetWorker = maybeTarg;
+                        found = true;
+                        LOGS(_log, LOG_LVL_WARN,
+                             funcN << " Alternate worker=" << targetWorker->getWorkerId()
+                                   << " found for chunk=" << chunkData->dump());
+                    }
                 }
             }
             if (!found) {
@@ -459,11 +478,13 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
 
         if (wInfUJ->uberJobPtr == nullptr) {
+            // Create a new UberJob for this worker.
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
             auto respHandler =
                     ccontrol::MergingHandler::Ptr(new ccontrol::MergingHandler(_infileMerger, exec));
-            auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _czarId);
+            auto uJob = qdisp::UberJob::create(exec, respHandler, ujId, _czarId, wInfUJ->wInf,
+                                               czFamilyMap->getLastUpdateTime());
             uJob->setWorkerContactInfo(wInfUJ->wInf);
             wInfUJ->uberJobPtr = uJob;
         };

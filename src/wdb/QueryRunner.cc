@@ -111,8 +111,9 @@ bool QueryRunner::_initConnection() {
 
     if (not _mysqlConn->connect()) {
         LOGS(_log, LOG_LVL_ERROR, "Unable to connect to MySQL: " << localMySqlConfig);
-        util::Error error(-1, "Unable to connect to MySQL; " + localMySqlConfig.toString());
-        _multiError.push_back(error);
+        util::Error error(util::Error::WORKER_SQL_CONNECT, util::Error::NONE,
+                          "Unable to connect to MySQL; " + localMySqlConfig.toString());
+        _multiError.insert(error);
         return false;
     }
     _task->setMySqlThreadId(_mysqlConn->threadId());
@@ -253,8 +254,9 @@ bool QueryRunner::_dispatchChannel() {
         }
     } catch (sql::SqlErrorObject const& e) {
         LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg() << " " << _task->getIdStr());
-        util::Error worker_err(e.errNo(), e.errMsg());
-        _multiError.push_back(worker_err);
+        util::Error worker_err(util::Error::WORKER_SQL, e.errNo(), {_task->getChunkId()}, {_task->getJobId()},
+                               e.errMsg());
+        _multiError.insert(worker_err);
         erred = true;
     }
 
