@@ -200,7 +200,7 @@ void Executive::setQueryId(QueryId id) {
     }
 }
 
-UberJob::Ptr Executive::findUberJob(UberJobId ujId) {
+UberJob::Ptr Executive::findUberJob(UberJobId ujId) const {
     lock_guard<mutex> lgMap(_uberJobsMapMtx);
     auto iter = _uberJobsMap.find(ujId);
     if (iter == _uberJobsMap.end()) {
@@ -333,20 +333,20 @@ void Executive::assignJobsToUberJobs() {
     }
 }
 
-void Executive::addMultiError(int errorCode, std::string const& errorMsg, int errorState) {
-    util::Error err(errorCode, errorMsg, errorState);
-
-    // Thousands of JOB_CANCEL errors are received and only the first one is of any value.
-    if (errorState == util::ErrorCode::JOB_CANCEL) {
-        if (++_jobCancelCount > 1) {
-            LOGS(_log, LOG_LVL_INFO,
-                 " ignoring JOB_CANCEL already " << _jobCancelCount << " received " << errorMsg);
-            return;
-        }
-    }
+void Executive::addMultiError(int errorCode, int subError, std::string const& errorMsg, int errorState) {
+    util::Error err(errorCode, subError, errorMsg, errorState);
     {
         lock_guard<mutex> lock(_errorsMutex);
-        _multiError.push_back(err);
+        _multiError.insert(err);
+        LOGS(_log, LOG_LVL_DEBUG,
+             cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
+    }
+}
+
+void Executive::addMultiError(util::MultiError const& multiErr, int errorState) {
+    {
+        lock_guard<mutex> lock(_errorsMutex);
+        _multiError.merge(multiErr);
         LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
     }
@@ -405,7 +405,6 @@ bool Executive::join() {
 }
 
 void Executive::markCompleted(JobId jobId, bool success) {
-    string errStr;
     util::Error err;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
     LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
@@ -429,7 +428,6 @@ void Executive::markCompleted(JobId jobId, bool success) {
 
         {
             lock_guard<mutex> lock(_errorsMutex);
-            errStr = _multiError.firstErrorStr();
             err = _multiError.firstError();
         }
 
@@ -446,8 +444,15 @@ void Executive::markCompleted(JobId jobId, bool success) {
     }
     _unTrack(jobId);
     if (!success && !isRowLimitComplete()) {
-        squash("markComplete error " + errStr);  // ask to squash
+        squash("markComplete error " + err.dump());  // ask to squash
     }
+}
+
+std::shared_ptr<JobQuery> Executive::findJob(int jobId) const {
+    lock_guard lockJobMap(_jobMapMtx);
+    auto iter = _jobMap.find(jobId);
+    if (iter == _jobMap.end()) return nullptr;
+    return iter->second;
 }
 
 void Executive::squash(string const& note) {
@@ -700,8 +705,8 @@ void Executive::updateProxyMessages() {
         // the _messageStore. This will be passed to the proxy for the user, if
         // there's an error.
         if (not _multiError.empty()) {
-            _messageStore->addErrorMessage("MULTIERROR", _multiError.toString());
-            LOGS(_log, LOG_LVL_INFO, "MULTIERROR:" << _multiError.toString());
+            _messageStore->addErrorMessage("EXECERROR", _multiError.toString());
+            LOGS(_log, LOG_LVL_INFO, "EXECERROR:" << _multiError.toString());
         }
     }
 }
@@ -818,9 +823,9 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
              cName(__func__) << "recheck total=" << total << " max=" << maxResultTableSizeBytes);
         if (total > maxResultTableSizeBytes) {
             LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
-            util::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
+            util::Error err(util::Error::CZAR_RESULT_TOO_LARGE, util::Error::NONE,
                             "Incomplete result already too large " + to_string(total));
-            _multiError.push_back(err);
+            _multiError.insert(err);
             _resultFileSizeExceeded = true;
             squash("czar, file too large");
         }
