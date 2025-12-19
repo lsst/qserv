@@ -38,9 +38,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Error");
 
 namespace lsst::qserv::util {
 
-Error::Error(int code, std::string const& msg, int status, bool logLvlErr)
-        : _code(code), _msg(msg), _status(status) {
-    if (_code != ErrorCode::NONE || _msg != "" || _status != ErrorCode::NONE) {
+Error::Error(int code, std::string const& msg, bool logLvlErr) : _code(code), _msg(msg) {
+    if (_code != ErrorCode::NONE || _msg != "") {
         // Flushing output as it is likely that this exception will not be caught.
         int logLvl = (logLvlErr) ? LOG_LVL_ERROR : LOG_LVL_TRACE;
         LOGS(_log, logLvl, "Error " << *this << std::endl);
@@ -54,7 +53,7 @@ Error::Error(int code, std::string const& msg, int status, bool logLvlErr)
  * @return an output stream
  */
 std::ostream& operator<<(std::ostream& out, Error const& error) {
-    out << "[" << error._code << "] " << error._msg;
+    out << "[count=" << error._count << "][code=" << error._code << "] " << error._msg;
     return out;
 }
 

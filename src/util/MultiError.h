@@ -35,6 +35,7 @@
 
 // System headers
 #include <exception>
+#include <map>
 #include <ostream>
 #include <vector>
 
@@ -50,15 +51,13 @@ namespace lsst::qserv::util {
  * util::Error operator << is used for output.
  *
  */
-class MultiError : public std::exception {
+class MultiError {
 public:
-    /** Return a string representation of the object
-     *
-     * Can be used in the log
-     *
-     * @return a string representation of the object
-     */
-    std::string toString() const;
+    MultiError() = default;
+
+    virtual ~MultiError() = default;
+
+    bool operator==(MultiError const& other) const = default;
 
     /** Return a minimalistic string representation of the object
      *
@@ -82,7 +81,22 @@ public:
 
     util::Error firstError() const;
 
-    virtual ~MultiError() throw() {}
+    bool empty() const;
+
+    std::vector<Error>::size_type size() const;
+
+    std::vector<Error> getVector() const;
+
+    void insert(Error const& val);  //&&& rename
+    void merge(MultiError const& other);
+
+    /** Return a string representation of the object
+     *
+     * Can be used in the log
+     *
+     * @return a string representation of the object
+     */
+    std::string toString() const;
 
     /** Overload output operator for this class
      *
@@ -92,14 +106,8 @@ public:
      */
     friend std::ostream& operator<<(std::ostream& out, MultiError const& multiError);
 
-    bool empty() const;
-
-    std::vector<Error>::size_type size() const;
-
-    void push_back(const std::vector<Error>::value_type& val);
-
 private:
-    std::vector<Error> _errorVector;
+    std::map<int, Error> _errorMap;
 };
 
 }  // namespace lsst::qserv::util

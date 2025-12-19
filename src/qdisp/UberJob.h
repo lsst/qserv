@@ -29,6 +29,7 @@
 #include "global/UberJobBase.h"
 #include "qdisp/Executive.h"
 #include "qmeta/JobStatus.h"
+#include "util/MultiError.h"
 
 namespace lsst::qserv::protojson {
 class FileUrlInfo;
@@ -114,7 +115,7 @@ public:
     nlohmann::json importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool const retry = false);
 
     /// Handle an error from the worker.
-    nlohmann::json workerError(int errorCode, std::string const& errorMsg);
+    nlohmann::json workerError(util::MultiError const& multiErr_);
 
     void setResultFileSize(uint64_t fileSize) { _resultFileSize = fileSize; }
     uint64_t getResultFileSize() { return _resultFileSize; }

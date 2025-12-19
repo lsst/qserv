@@ -337,7 +337,7 @@ void Executive::addMultiError(int errorCode, std::string const& errorMsg, int er
     util::Error err(errorCode, errorMsg, errorState);
 
     // Thousands of JOB_CANCEL errors are received and only the first one is of any value.
-    if (errorState == util::ErrorCode::JOB_CANCEL) {
+    if (errorState == util::ErrorCode::JOB_CANCEL) {  //&&& probably not needed anymore
         if (++_jobCancelCount > 1) {
             LOGS(_log, LOG_LVL_INFO,
                  " ignoring JOB_CANCEL already " << _jobCancelCount << " received " << errorMsg);
@@ -346,7 +346,24 @@ void Executive::addMultiError(int errorCode, std::string const& errorMsg, int er
     }
     {
         lock_guard<mutex> lock(_errorsMutex);
-        _multiError.push_back(err);
+        _multiError.insert(err);
+        LOGS(_log, LOG_LVL_DEBUG,
+             cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
+    }
+}
+
+void Executive::addMultiError(util::MultiError const& multiErr, int errorState) {
+    // Thousands of JOB_CANCEL errors are received and only the first one is of any value.
+    if (errorState == util::ErrorCode::JOB_CANCEL) {  //&&& probably not needed anymore
+        if (++_jobCancelCount > 1) {
+            LOGS(_log, LOG_LVL_INFO,
+                 " ignoring JOB_CANCEL already " << _jobCancelCount << " received " << multiErr);
+            return;
+        }
+    }
+    {
+        lock_guard<mutex> lock(_errorsMutex);
+        _multiError.merge(multiErr);
         LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) + " multiError:" << _multiError.size() << ":" << _multiError);
     }
@@ -820,7 +837,7 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
             LOGS(_log, LOG_LVL_ERROR, "Executive: requesting squash, result file size too large " << total);
             util::Error err(util::ErrorCode::CZAR_RESULT_TOO_LARGE,
                             "Incomplete result already too large " + to_string(total));
-            _multiError.push_back(err);
+            _multiError.insert(err);
             _resultFileSizeExceeded = true;
             squash("czar, file too large");
         }

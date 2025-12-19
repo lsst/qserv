@@ -92,7 +92,7 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
             boost::format err_msg = boost::format(ERR_MSG) % key % os.str();
 
             util::Error error(util::ErrorCode::DUPLICATE_SELECT_EXPR, err_msg.str());
-            multiError.push_back(error);
+            multiError.insert(error);
         }
     }
 

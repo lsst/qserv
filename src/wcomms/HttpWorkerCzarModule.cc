@@ -212,7 +212,7 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
         // Send a message back saying this UberJobFailed
         util::MultiError multiErr;
         util::Error err(-1, string("UberJob parse error ") + texp.what());
-        multiErr.push_back(err);
+        multiErr.insert(err);
         ujData->responseError(multiErr, -1, false, LOG_LVL_ERROR);
     }
 }

@@ -80,7 +80,7 @@ std::string build_exception_msg(std::string n, std::string name, std::string pos
     boost::format dupl_err_msg = boost::format(DuplSelectExprPlugin::ERR_MSG) % name % pos;
 
     Error error(ErrorCode::DUPLICATE_SELECT_EXPR, dupl_err_msg.str());
-    multiError.push_back(error);
+    multiError.insert(error);
     std::string err_msg =
             "AnalysisError:" + DuplSelectExprPlugin::EXCEPTION_MSG + multiError.toOneLineString();
     return err_msg;

@@ -69,19 +69,18 @@ struct ErrorCode {
     };
 };
 
-/** @brief Store a Qserv error
- *
- * To be used with util::MultiError
- *
- */
+/// Store a Qserv error
+/// To be used with util::MultiError
+/// TODO:&&& add qCode (qserv error number) and subCode (for things like mysql errors)
+///          this should avoid overlaps and help in sorting errors to display to the user.
 class Error {
 public:
-    explicit Error(int code, std::string const& msg = "", int status = ErrorCode::NONE,
-                   bool logLvLErr = true);
+    explicit Error(int code, std::string const& msg = "", bool logLvLErr = true);
 
     Error() = default;
     Error(Error const&) = default;
     Error& operator=(Error const&) = default;
+    bool operator==(Error const& other) const = default;
 
     /** Overload output operator for current class
      *
@@ -95,8 +94,6 @@ public:
 
     const std::string& getMsg() const { return _msg; }
 
-    int getStatus() const { return _status; }
-
     /** Check if current Object contains an actual error
      *
      *  By convention, code==util::ErrorCode::NONE
@@ -106,10 +103,13 @@ public:
      */
     bool isNone() { return (_code == util::ErrorCode::NONE); }
 
+    void incrCount(int val = 1) { _count += val; }
+    int getCount() const { return _count; }
+
 private:
     int _code = ErrorCode::NONE;
     std::string _msg;
-    int _status = ErrorCode::NONE;
+    int _count = 1;
 };
 
 }  // namespace lsst::qserv::util

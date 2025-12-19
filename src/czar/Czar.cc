@@ -746,7 +746,8 @@ nlohmann::json Czar::handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErr
                                " ujId=" + to_string(uberJobId) + " czar=" + to_string(czarId));
     }
 
-    auto importRes = uj->workerError(jrMsg->errorCode, jrMsg->errorMsg);
+    // auto importRes = uj->workerError(jrMsg->errorCode, jrMsg->errorMsg);
+    auto importRes = uj->workerError(jrMsg->multiError);
     return importRes;
 }
 
