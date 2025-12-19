@@ -89,11 +89,11 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     lsst::qserv::CzarId const czarId = 745;
     lsst::qserv::QueryId const queryId = 986532;
     lsst::qserv::UberJobId const uberJobId = 14578;
-    string const errorMsg("something went wrong");
-    int const errorCode = -3;
-
+    lsst::qserv::util::Error err(-3, 8, {3, 5, 11}, {1, 2, 3}, "something went wrong", 1);
+    lsst::qserv::util::MultiError multiE;
+    multiE.insert(err);
     auto jrm = UberJobErrorMsg::create(authContext_, version, workerIdStr, czarName, czarId, queryId,
-                                       uberJobId, errorCode, errorMsg);
+                                       uberJobId, multiE);
 
     auto jsJrm = jrm->toJson();
     string const strJrm = to_string(jsJrm);
