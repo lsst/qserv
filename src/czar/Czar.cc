@@ -282,7 +282,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setReplicationHttpPort(port);
 
     // Start special threads.
-    startRegistryUpdate(_czarConfig);
     startGarbageCollect(_czarConfig);
     startGarbageCollectAsync(_czarConfig);
     startGarbageCollectInProgress(_czarConfig, _uqFactory->userQuerySharedResources()->czarId,
@@ -778,7 +777,7 @@ nlohmann::json Czar::handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErr
                                " ujId=" + to_string(uberJobId) + " czar=" + to_string(czarId));
     }
 
-    auto importRes = uj->workerError(jrMsg->errorCode, jrMsg->errorMsg);
+    auto importRes = uj->workerError(jrMsg->multiError);
     return importRes;
 }
 

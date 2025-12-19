@@ -62,12 +62,12 @@ BOOST_AUTO_TEST_CASE(MonoError) {
     test::output_test_stream output;
     util::MultiError multiError;
 
-    std::string expected_err_msg = "[1] Stupid error message";
+    std::string expected_err_msg = "[count=1][code=1] Stupid error message";
 
     int errCode = 1;
     std::string errMsg = "Stupid error message";
-    util::Error error(errCode, errMsg);
-    multiError.push_back(error);
+    util::Error error(errCode, util::Error::NONE, errMsg);
+    multiError.insert(error);
 
     output << multiError;
     std::cout << multiError;
@@ -82,16 +82,16 @@ BOOST_AUTO_TEST_CASE(MultiError) {
     util::MultiError multiError;
 
     std::string expected_err_msg =
-            "[10] Error code is: 10\n"
-            "[11] Error code is: 11\n"
-            "[12] Error code is: 12";
+            "[count=1][code=10] Error code is: 10\n"
+            "[count=1][code=11] Error code is: 11\n"
+            "[count=1][code=12] Error code is: 12";
 
     for (int errCode = 10; errCode < 13; errCode = errCode + 1) {
         std::stringstream ss;
         ss << "Error code is: " << errCode;
         std::string errMsg = ss.str();
-        util::Error error(errCode, errMsg);
-        multiError.push_back(error);
+        util::Error error(errCode, util::Error::NONE, errMsg);
+        multiError.insert(error);
     }
 
     output << multiError;
@@ -99,19 +99,28 @@ BOOST_AUTO_TEST_CASE(MultiError) {
     BOOST_CHECK(output.is_equal(expected_err_msg));
 }
 
-/** @test
- * Throw a MultiError object containing one error
- */
-BOOST_AUTO_TEST_CASE(ThrowMultiError) {
-    util::MultiError multiError;
-    int errCode = 5;
-    std::string errMsg = "Error stack thrown";
-    util::Error error(errCode, errMsg);
-    multiError.push_back(error);
+BOOST_AUTO_TEST_CASE(MultiErrorEqual) {
+    test::output_test_stream output;
+    util::MultiError multiErrorA;
+    util::MultiError multiErrorB;
+    util::MultiError multiErrorC;
 
-    BOOST_REQUIRE_THROW(_throw_it(multiError), std::exception);
+    BOOST_REQUIRE(multiErrorA == multiErrorB);
+    BOOST_REQUIRE(multiErrorA == multiErrorC);
+
+    util::Error err1(34, util::Error::NONE, "test rando");
+    util::Error err2(-1, 25, "cancel blah");
+    multiErrorA.insert(err1);
+    BOOST_REQUIRE(multiErrorA != multiErrorB);
+    multiErrorB.insert(err2);
+    BOOST_REQUIRE(multiErrorA != multiErrorB);
+    multiErrorB.insert(err1);
+    BOOST_REQUIRE(multiErrorA != multiErrorB);
+    multiErrorC.insert(err1);
+    BOOST_REQUIRE(multiErrorA == multiErrorC);
+    multiErrorA.insert(err2);
+    BOOST_REQUIRE(multiErrorA == multiErrorB);
+    BOOST_REQUIRE(multiErrorA != multiErrorC);
 }
-
-BOOST_AUTO_TEST_CASE(Exception) { std::string out; }
 
 BOOST_AUTO_TEST_SUITE_END()

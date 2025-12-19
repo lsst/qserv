@@ -71,7 +71,8 @@ bool JobQuery::cancel(bool superfluous) {
             return false;
         }
         if (!superfluous) {
-            exec->addMultiError(-1, context, util::ErrorCode::JOB_CANCEL);
+            exec->addMultiError(util::Error::CANCEL, util::Error::JOB_CANCEL, context,
+                                util::Error::JOB_CANCEL);
         }
         exec->markCompleted(getJobId(), false);
         return true;
@@ -123,6 +124,32 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
 
     auto exec = _executive.lock();
     // Do not increase the attempt count as it should have been increased when the job was started.
+    return true;
+}
+
+void JobQuery::avoidWorker(protojson::WorkerContactInfo::Ptr const& workerContactInfo,
+                           TIMEPOINT familyMapTime) {
+    VMUTEX_NOT_HELD(_jqMtx);
+    lock_guard lock(_jqMtx);
+    _workerAvoidMap[workerContactInfo->wId] = make_pair(workerContactInfo, familyMapTime);
+}
+
+bool JobQuery::isWorkerInAvoidMap(protojson::WorkerContactInfo::Ptr const& workerContactInfo,
+                                  TIMEPOINT familyMapTime) {
+    if (workerContactInfo == nullptr) return false;
+    VMUTEX_NOT_HELD(_jqMtx);
+    lock_guard lock(_jqMtx);
+    auto iter = _workerAvoidMap.find(workerContactInfo->wId);
+    if (iter == _workerAvoidMap.end()) return false;
+    if (iter->second.second < familyMapTime) {
+        _workerAvoidMap.erase(iter);
+        return false;
+    }
+    auto wci = iter->second.first.lock();
+    if (wci == nullptr || wci->wId != workerContactInfo->wId) {
+        _workerAvoidMap.erase(iter);
+        return false;
+    }
     return true;
 }
 
