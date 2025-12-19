@@ -211,8 +211,9 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
              "HttpWorkerCzarModule::_buildTasks wbase::TaskException received " << texp.what());
         // Send a message back saying this UberJobFailed
         util::MultiError multiErr;
-        util::Error err(-1, string("UberJob parse error ") + texp.what());
-        multiErr.push_back(err);
+        util::Error err(util::Error::WORKER_CZAR_COM, util::Error::NONE,
+                        string("UberJob parse error ") + texp.what());
+        multiErr.insert(err);
         ujData->responseError(multiErr, -1, false, LOG_LVL_ERROR);
     }
 }
