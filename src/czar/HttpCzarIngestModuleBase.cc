@@ -308,6 +308,7 @@ void HttpCzarIngestModuleBase::_countRows(string const& func, string const& data
 }
 
 string HttpCzarIngestModuleBase::_controller() {
+    lock_guard<mutex> lock(_mtx);
     if (_controllerBaseUrl.empty()) {
         auto const response = _requestRegistry(http::Method::GET, "/services");
         for (auto const& [id, controller] : response.at("services").at("controllers").items()) {
@@ -323,6 +324,7 @@ string HttpCzarIngestModuleBase::_controller() {
 }
 
 string HttpCzarIngestModuleBase::_worker(string const& workerId) {
+    lock_guard<mutex> lock(_mtx);
     if (_workerBaseUrls.empty()) {
         auto const response = _requestRegistry(http::Method::GET, "/services");
         for (auto const& [id, worker] : response.at("services").at("workers").items()) {

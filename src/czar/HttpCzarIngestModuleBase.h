@@ -26,6 +26,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <string>
 #include <vector>
@@ -345,11 +346,16 @@ private:
     /// Base URL for communications with the Registry server.
     std::string const _registryBaseUrl;
 
-    // Parameters set upon the request processing.
+    /// The default timeout for processing requests can be changed by a subclass
+    /// before sending requests to servers.
+    unsigned int _timeoutSec = 300;
 
-    unsigned int _timeoutSec = 300;  ///< The default timeout for requests.
-    std::string _controllerBaseUrl;  ///< The cached URL for the Controller's REST service.
-    std::map<std::string, std::string> _workerBaseUrls;  ///< The cached URLs for workers' REST services.
+    /// The cached values of the base URLs for the Controller and workers.
+    /// The values are filled on demand by the methods _controller() and _worker()
+    /// the first time they are called.
+    std::string _controllerBaseUrl;                      ///< The URL for the Controller's REST service.
+    std::map<std::string, std::string> _workerBaseUrls;  ///< The URLs for workers' REST services.
+    std::mutex _mtx;                                     ///< Mutex to protect access to the cached URLs.
 };
 
 }  // namespace lsst::qserv::czar
