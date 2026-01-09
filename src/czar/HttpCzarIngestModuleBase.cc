@@ -279,7 +279,7 @@ string HttpCzarIngestModuleBase::_controller() {
         auto const response = _requestRegistry(http::Method::GET, "/services");
         for (auto const& [id, controller] : response.at("services").at("controllers").items()) {
             if (id == "master") {
-                _controllerBaseUrl = "http://" + controller.at("host-addr").get<string>() + ":" +
+                _controllerBaseUrl = "http://" + controller.at("host-name").get<string>() + ":" +
                                      to_string(controller.at("port").get<uint16_t>());
                 return _controllerBaseUrl;
             }
@@ -294,8 +294,8 @@ string HttpCzarIngestModuleBase::_worker(string const& workerId) {
         auto const response = _requestRegistry(http::Method::GET, "/services");
         for (auto const& [id, worker] : response.at("services").at("workers").items()) {
             auto const replicationWorker = worker.at("replication");
-            _workerBaseUrls[id] = "http://" + replicationWorker.at("host-addr").get<string>() + ":" +
-                                  to_string(replicationWorker.at("http-loader-port").get<uint16_t>());
+            _workerBaseUrls[id] = "http://" + replicationWorker.at("http-loader-host-name").get<string>() +
+                                  ":" + to_string(replicationWorker.at("http-loader-port").get<uint16_t>());
         }
     }
     if (_workerBaseUrls.count(workerId) == 0) {
