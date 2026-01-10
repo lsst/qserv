@@ -243,11 +243,11 @@ void MessengerConnector::_resolve(replica::Lock const& lock) {
     // in the resolver or subsequent connection attempts will trigger the standard
     // recovery sequence that begins with a timeout and a subsequent restart.
     ConfigWorker const worker = _config->worker(_workerName);
-    if (worker.svcHost.addr.empty() || (worker.svcPort == 0)) {
+    if (worker.svcHost.name.empty() || (worker.svcPort == 0)) {
         LOGS(_log, LOG_LVL_WARN,
              _context() << __func__ << "  no connection info available for worker=" << _workerName);
     }
-    boost::asio::ip::tcp::resolver::query query(worker.svcHost.addr, to_string(worker.svcPort));
+    boost::asio::ip::tcp::resolver::query query(worker.svcHost.name, to_string(worker.svcPort));
     _resolver.async_resolve(query, bind(&MessengerConnector::_resolved, shared_from_this(), _1, _2));
     _state = STATE_CONNECTING;
 }

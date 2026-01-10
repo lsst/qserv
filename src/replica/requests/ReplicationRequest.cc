@@ -102,7 +102,7 @@ void ReplicationRequest::startImpl(replica::Lock const& lock) {
     message.set_database(database());
     message.set_chunk(chunk());
     message.set_worker(sourceWorkerName());
-    message.set_worker_host(sourceConfigWorker.fsHost.addr);
+    message.set_worker_host(sourceConfigWorker.fsHost.name);
     message.set_worker_port(sourceConfigWorker.fsPort);
     message.set_worker_data_dir(sourceConfigWorker.dataDir);
     buffer()->serialize(message);

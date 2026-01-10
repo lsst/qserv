@@ -81,13 +81,13 @@ void ConfigAppBase::dumpWorkersAsTable(string const& indent, string const& capti
         isEnabled.push_back(worker.isEnabled ? "yes" : "no");
         isReadOnly.push_back(worker.isReadOnly ? "yes" : "no");
         dataDir.push_back(worker.dataDir);
-        svcHostPort.push_back(worker.svcHost.addr + ":" + to_string(worker.svcPort));
-        fsHostPort.push_back(worker.fsHost.addr + ":" + to_string(worker.fsPort));
-        loaderHostPort.push_back(worker.loaderHost.addr + ":" + to_string(worker.loaderPort));
+        svcHostPort.push_back(worker.svcHost.name + ":" + to_string(worker.svcPort));
+        fsHostPort.push_back(worker.fsHost.name + ":" + to_string(worker.fsPort));
+        loaderHostPort.push_back(worker.loaderHost.name + ":" + to_string(worker.loaderPort));
         loaderTmpDir.push_back(worker.loaderTmpDir);
-        exporterHostPort.push_back(worker.exporterHost.addr + ":" + to_string(worker.exporterPort));
+        exporterHostPort.push_back(worker.exporterHost.name + ":" + to_string(worker.exporterPort));
         exporterTmpDir.push_back(worker.exporterTmpDir);
-        httpLoaderHostPort.push_back(worker.httpLoaderHost.addr + ":" + to_string(worker.httpLoaderPort));
+        httpLoaderHostPort.push_back(worker.httpLoaderHost.name + ":" + to_string(worker.httpLoaderPort));
         httpLoaderTmpDir.push_back(worker.httpLoaderTmpDir);
     }
 
