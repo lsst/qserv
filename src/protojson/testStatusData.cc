@@ -78,10 +78,10 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     BOOST_REQUIRE(!czarA->compare(*czarC));
 
     auto start = lsst::qserv::CLOCK::now();
-    auto workerA = WorkerContactInfo::create("sd_workerA", "host_w1", "mgmhost_a", 3421, start);
+    auto workerA = WorkerContactInfo::create("sd_workerA", "mgmhost_a", 3421, start);
 
-    auto workerB = WorkerContactInfo::create("sd_workerB", "host_w2", "mgmhost_a", 3421, start);
-    auto workerC = WorkerContactInfo::create("sd_workerC", "host_w3", "mgmhost_b", 3422, start);
+    auto workerB = WorkerContactInfo::create("sd_workerB", "mgmhost_a", 3421, start);
+    auto workerC = WorkerContactInfo::create("sd_workerC", "mgmhost_b", 3422, start);
 
     auto jsWorkerA = workerA->toJson();
     auto start1Sec = start + 1s;
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto czarAJs = czarA->toJson();
 
     auto start = lsst::qserv::CLOCK::now();
-    auto workerA = WorkerContactInfo::create("sd_workerA", "host_w1", "mgmhost_a", 3421, start);
+    auto workerA = WorkerContactInfo::create("sd_workerA", "mgmhost_a", 3421, start);
     auto jsWorkerA = workerA->toJson();
 
     // WorkerCzarComIssue
