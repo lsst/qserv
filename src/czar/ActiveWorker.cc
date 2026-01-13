@@ -163,8 +163,8 @@ void ActiveWorker::_sendStatusMsg(protojson::WorkerContactInfo::Ptr const& wInf,
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " wInfo was null.");
         return;
     }
-    auto [ciwId, ciwHost, ciwManag, ciwPort] = wInf->getAll();
-    string const url = "http://" + ciwHost + ":" + to_string(ciwPort) + "/querystatus";
+    auto [ciwId, ciwHostName, ciwPort] = wInf->getAll();
+    string const url = "http://" + ciwHostName + ":" + to_string(ciwPort) + "/querystatus";
     vector<string> const headers = {"Content-Type: application/json"};
     auto const& czarConfig = cconfig::CzarConfig::instance();
 
