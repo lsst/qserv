@@ -113,8 +113,8 @@ void UberJob::runUberJob() {
 
     // Send the uberjob to the worker
     auto const method = http::Method::POST;
-    auto [ciwId, ciwHost, ciwManagment, ciwPort] = _wContactInfo->getAll();
-    string const url = "http://" + ciwHost + ":" + to_string(ciwPort) + "/queryjob";
+    auto [ciwId, ciwHostName, ciwPort] = _wContactInfo->getAll();
+    string const url = "http://" + ciwHostName + ":" + to_string(ciwPort) + "/queryjob";
     vector<string> const headers = {"Content-Type: application/json"};
     auto const& czarConfig = cconfig::CzarConfig::instance();
 
@@ -336,7 +336,7 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
         return _workerErrorFinish(keepData, "none", "rowLimitComplete");
     }
 
-    string const eMsg = "host:" + _wContactInfo->getWHost() + " " + errorMsg;
+    string const eMsg = "wmanagmenthost:" + _wContactInfo->getWManagementHost() + " " + errorMsg;
     exec->addMultiError(errorCode, eMsg, util::ErrorCode::WORKER_ERROR);
 
     // Currently there are no detectable recoverable errors from workers. The only
