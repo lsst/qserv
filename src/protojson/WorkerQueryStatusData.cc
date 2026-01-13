@@ -87,8 +87,8 @@ json WorkerContactInfo::toJson() const {
 json WorkerContactInfo::_toJson() const {
     json jsWorker;
     jsWorker["id"] = wId;
-    jsWorker["host"] = _wHost;
-    jsWorker["management-host-name"] = _wManagementHost;
+    jsWorker["host-addr"] = _wHostAddrUnreliable;
+    jsWorker["management-host-name"] = _wHostName;
     jsWorker["management-port"] = _wPort;
     jsWorker["w-startup-time"] = _wStartupTime;
     return jsWorker;
@@ -97,13 +97,13 @@ json WorkerContactInfo::_toJson() const {
 WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonRegistry(string const& wId_,
                                                                  nlohmann::json const& regJson) {
     try {
-        auto wHost_ = http::RequestBodyJSON::required<string>(regJson, "host-addr");
-        auto wManagementHost_ = http::RequestBodyJSON::required<string>(regJson, "host-name");
+        auto wHostAddr_ = http::RequestBodyJSON::required<string>(regJson, "host-addr");
+        auto wHostName_ = http::RequestBodyJSON::required<string>(regJson, "host-name");
         auto wPort_ = http::RequestBodyJSON::required<int>(regJson, "management-port");
         auto updateTimeInt = http::RequestBodyJSON::required<uint64_t>(regJson, "update-time-ms");
         TIMEPOINT updateTime_ = TIMEPOINT(chrono::milliseconds(updateTimeInt));
 
-        return create(wId_, wHost_, wManagementHost_, wPort_, updateTime_);
+        return create(wId_, wHostAddr_, wHostName_, wPort_, updateTime_);
     } catch (invalid_argument const& exc) {
         LOGS(_log, LOG_LVL_ERROR, string("CWorkerContactInfo::createJson invalid ") << exc.what());
     }
@@ -114,11 +114,11 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json co
                                                                TIMEPOINT updateTime_) {
     try {
         auto wId_ = http::RequestBodyJSON::required<string>(wJson, "id");
-        auto wHost_ = http::RequestBodyJSON::required<string>(wJson, "host");
-        auto wManagementHost_ = http::RequestBodyJSON::required<string>(wJson, "management-host-name");
+        auto wHostAddr_ = http::RequestBodyJSON::required<string>(wJson, "host-addr");
+        auto wHostName_ = http::RequestBodyJSON::required<string>(wJson, "management-host-name");
         auto wPort_ = http::RequestBodyJSON::required<int>(wJson, "management-port");
 
-        return create(wId_, wHost_, wManagementHost_, wPort_, updateTime_);
+        return create(wId_, wHostAddr_, wHostName_, wPort_, updateTime_);
     } catch (invalid_argument const& exc) {
         LOGS(_log, LOG_LVL_ERROR, string("CWorkerContactInfo::createJson invalid ") << exc.what());
     }
@@ -126,8 +126,9 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json co
 }
 
 bool WorkerContactInfo::operator==(WorkerContactInfo const& other) const {
-    return ((wId == other.wId) && (_wHost == other._wHost) && (_wManagementHost == other._wManagementHost) &&
-            (_wPort == other._wPort) && (_wStartupTime == other._wStartupTime));
+    return ((wId == other.wId) && (_wHostAddrUnreliable == other._wHostAddrUnreliable) &&
+            (_wHostName == other._wHostName) && (_wPort == other._wPort) &&
+            (_wStartupTime == other._wStartupTime));
 }
 
 void WorkerContactInfo::setRegUpdateTime(TIMEPOINT updateTime) {
@@ -144,7 +145,7 @@ string WorkerContactInfo::dump() const {
 string WorkerContactInfo::_dump() const {
     stringstream os;
     os << "workerContactInfo{"
-       << "id=" << wId << " host=" << _wHost << " mgHost=" << _wManagementHost << " port=" << _wPort
+       << "id=" << wId << " host=" << _wHostAddrUnreliable << " mgHost=" << _wHostName << " port=" << _wPort
        << " update=" << util::TimeUtils::timePointToDateTimeString(_regUpdateTime) << "}";
     return os.str();
 }
