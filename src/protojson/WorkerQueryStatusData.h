@@ -109,9 +109,9 @@ public:
     using WCMap = std::unordered_map<std::string, Ptr>;
     using WCMapPtr = std::shared_ptr<WCMap>;
 
-    static Ptr create(std::string const& wId_, std::string const& wHost_, std::string const& wHostName_,
-                      int wPort_, TIMEPOINT updateTime_) {
-        return Ptr(new WorkerContactInfo(wId_, wHost_, wHostName_, wPort_, updateTime_));
+    static Ptr create(std::string const& wId_, std::string const& wHostName_, int wPort_,
+                      TIMEPOINT updateTime_) {
+        return Ptr(new WorkerContactInfo(wId_, wHostName_, wPort_, updateTime_));
     }
 
     /// Ignores _registryUpdateTime as that is not set to or from json.
@@ -132,13 +132,6 @@ public:
 
     std::string const wId;  ///< key, this is the one thing that cannot change.
 
-    /// Return the host name, which is not reliable for kubernetes communication.
-    /// Use _wManagementHost() instead.
-    std::string getWHostAddrUnreliable() const {
-        std::lock_guard lg(_rMtx);
-        return _wHostAddrUnreliable;
-    }
-
     std::string getWManagementHost() const {
         std::lock_guard lg(_rMtx);
         return _wHostName;
@@ -152,7 +145,6 @@ public:
     /// Change host and port info to those provided in `other`.
     void changeBaseInfo(WorkerContactInfo const& other) {
         std::scoped_lock sLock(_rMtx, other._rMtx);
-        _wHostAddrUnreliable = other._wHostAddrUnreliable;
         _wHostName = other._wHostName;
         _wPort = other._wPort;
     }
@@ -168,8 +160,7 @@ public:
     /// Return true if communication related items are the same.
     bool isSameContactInfo(WorkerContactInfo const& other) const {
         std::scoped_lock sLock(_rMtx, other._rMtx);  // This should avoid possible deadlocks.
-        return (wId == other.wId && _wHostAddrUnreliable == other._wHostAddrUnreliable &&
-                _wHostName == other._wHostName && _wPort == other._wPort);
+        return (wId == other.wId && _wHostName == other._wHostName && _wPort == other._wPort);
     }
 
     void setRegUpdateTime(TIMEPOINT updateTime);
@@ -215,9 +206,9 @@ public:
     std::string dump() const;
 
 private:
-    WorkerContactInfo(std::string const& wId_, std::string const& wHost_, std::string const& wHostName_,
-                      int wPort_, TIMEPOINT updateTime_)
-            : wId(wId_), _wHostAddrUnreliable(wHost_), _wHostName(wHostName_), _wPort(wPort_) {
+    WorkerContactInfo(std::string const& wId_, std::string const& wHostName_, int wPort_,
+                      TIMEPOINT updateTime_)
+            : wId(wId_), _wHostName(wHostName_), _wPort(wPort_) {
         setRegUpdateTime(updateTime_);
     }
 
@@ -227,11 +218,10 @@ private:
     // _rMtx must be locked before calling
     nlohmann::json _toJson() const;
 
-    /// "host-addr" entry, (such as 10.0.0.1) this is unreliable in kubernetes communications.
-    /// _wHostName should be used to identify the host.
-    std::string _wHostAddrUnreliable;
-    std::string _wHostName;  ///< "management-host-name" entry, as per DNS
-    int _wPort;              ///< "management-port" entry.
+    /// "management-host-name" entry, name, not a series of numbers like (10.0.0.1) as
+    /// kubernetes doesn't use the numbers reliably.
+    std::string _wHostName;
+    int _wPort;  ///< "management-port" entry.
 
     /// Last time the registry heard from this worker. The ActiveWorker class
     /// will use this to determine the worker's state (alive/dead).
