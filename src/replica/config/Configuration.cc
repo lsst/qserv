@@ -776,8 +776,8 @@ ConfigCzar Configuration::updateCzar(ConfigCzar const& czar) {
     throw invalid_argument(_context(__func__) + " unknown Czar '" + czar.name + "'.");
 }
 
-map<qmeta::CzarId, string> Configuration::czarIds() const {
-    map<qmeta::CzarId, string> ids;
+map<CzarId, string> Configuration::czarIds() const {
+    map<CzarId, string> ids;
     replica::Lock const lock(_mtx, _context(__func__));
     for (auto&& [name, czar] : _czars) {
         ids[czar.id] = name;

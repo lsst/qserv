@@ -40,7 +40,6 @@
 #include "mysql/MySqlConfig.h"
 #include "qmeta/UserTables.h"
 #include "qmeta/UserTableIngestRequest.h"
-#include "qmeta/types.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigDatabase.h"
 #include "replica/jobs/QservStatusJob.h"
@@ -130,7 +129,7 @@ void extractQInfo(Connection::Ptr const& conn, json& result) {
  * Such explicit conversion is required because the JSON library doesn't support
  * numeric keys in the JSON objects. The keys have to be turned into strings.
  */
-json czarIdsToJson(map<qmeta::CzarId, string> const& ids) {
+json czarIdsToJson(map<CzarId, string> const& ids) {
     json result = json::object();
     for (auto&& [id, name] : ids) {
         result[to_string(id)] = name;
@@ -413,10 +412,10 @@ wbase::TaskSelector HttpQservMonitorModule::_translateTaskSelector(string const&
         }
     }
     selector.maxTasks = query().optionalUInt("max_tasks", 0);
-    debug(func, "include_tasks=" + replica::bool2str(selector.includeTasks));
-    debug(func, "query_ids=" + util::String::toString(selector.queryIds));
-    debug(func, "task_states=" + util::String::toString(selector.taskStates));
-    debug(func, "max_tasks=" + to_string(selector.maxTasks));
+    trace(func, "include_tasks=" + replica::bool2str(selector.includeTasks) +
+                        " query_ids=" + util::String::toString(selector.queryIds) +
+                        " task_states=" + util::String::toString(selector.taskStates) +
+                        " max_tasks=" + to_string(selector.maxTasks));
     return selector;
 }
 
@@ -669,7 +668,7 @@ json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
             ::parseFieldIntoJson<string>(__func__, row, "samplingTime", resultRow);
             ::parseFieldIntoJson<long>(__func__, row, "samplingTime_sec", resultRow);
             ::parseFieldIntoJson<string>(__func__, row, "query", resultRow);
-            ::parseFieldIntoJson<qmeta::CzarId>(__func__, row, "czarId", resultRow);
+            ::parseFieldIntoJson<CzarId>(__func__, row, "czarId", resultRow);
             ::parseFieldIntoJson<string>(__func__, row, "qType", resultRow);
 
             // Optionally, add the name of corresponding worker scheduler
@@ -702,7 +701,7 @@ json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string cons
         while (conn->next(row)) {
             json resultRow;
             ::parseFieldIntoJson<QueryId>(__func__, row, "queryId", resultRow);
-            ::parseFieldIntoJson<qmeta::CzarId>(__func__, row, "czarId", resultRow);
+            ::parseFieldIntoJson<CzarId>(__func__, row, "czarId", resultRow);
             ::parseFieldIntoJson<string>(__func__, row, "qType", resultRow);
             ::parseFieldIntoJson<int>(__func__, row, "czarId", resultRow);
             ::parseFieldIntoJson<string>(__func__, row, "user", resultRow);

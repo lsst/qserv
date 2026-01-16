@@ -56,10 +56,9 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "global/intTypes.h"
-#include "mysql/CsvBuffer.h"
-#include "proto/ProtoImporter.h"
-#include "proto/worker.pb.h"
+#include "mysql/CsvMemDisk.h"
 #include "qdisp/CzarStats.h"
+#include "qdisp/UberJob.h"
 #include "qproc/DatabaseModels.h"
 #include "query/ColumnRef.h"
 #include "query/SelectStmt.h"
@@ -159,24 +158,18 @@ void InfileMerger::_setQueryIdStr(std::string const& qIdStr) {
     _queryIdStrSet = true;
 }
 
-void InfileMerger::mergeCompleteFor(int jobId) {
-    std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-    _totalResultSize += _perJobResultSize[jobId];
-}
-
-bool InfileMerger::merge(proto::ResponseSummary const& resp,
-                         std::shared_ptr<mysql::CsvStream> const& csvStream) {
-    int const jobId = resp.jobid();
-    std::string queryIdJobStr = QueryIdHelper::makeIdStr(resp.queryid(), jobId);
+bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSize,
+                             std::shared_ptr<mysql::CsvMemDisk> const& csvMemDisk) {
+    std::string queryIdJobStr = uberJob->getIdStr();
     if (!_queryIdStrSet) {
-        _setQueryIdStr(QueryIdHelper::makeIdStr(resp.queryid()));
+        _setQueryIdStr(QueryIdHelper::makeIdStr(uberJob->getQueryId()));
     }
 
     TimeCountTracker<double>::CALLBACKFUNC cbf = [](TIMEPOINT start, TIMEPOINT end, double bytes,
                                                     bool success) {
         if (!success) return;
         if (std::chrono::duration<double> const seconds = end - start; seconds.count() > 0) {
-            qdisp::CzarStats::get()->addXRootDSSIRecvRate(bytes / seconds.count());
+            qdisp::CzarStats::get()->addDataRecvRate(bytes / seconds.count());
         }
     };
     auto tct = make_shared<TimeCountTracker<double>>(cbf);
@@ -185,46 +178,59 @@ bool InfileMerger::merge(proto::ResponseSummary const& resp,
     // Add columns to rows in virtFile.
     util::Timer virtFileT;
     virtFileT.start();
-    auto const csvBuffer = mysql::newCsvStreamBuffer(csvStream);
+    auto const csvBuffer = mysql::newCsvMemDiskBuffer(csvMemDisk);
     std::string const virtFile = _infileMgr.prepareSrc(csvBuffer);
     std::string const infileStatement = sql::formLoadInfile(_mergeTable, virtFile);
     virtFileT.stop();
 
-    size_t tResultSize;
-    {
-        std::lock_guard<std::mutex> resultSzLock(_mtxResultSizeMtx);
-        _perJobResultSize[jobId] += resp.transmitsize();
-        tResultSize = _totalResultSize + _perJobResultSize[jobId];
-    }
-    if (tResultSize > _maxResultTableSizeBytes) {
-        std::ostringstream os;
-        os << queryIdJobStr << " cancelling the query, queryResult table " << _mergeTable
-           << " is too large at " << tResultSize << " bytes, max allowed size is " << _maxResultTableSizeBytes
-           << " bytes";
-        LOGS(_log, LOG_LVL_ERROR, os.str());
-        _error = util::Error(-1, os.str(), -1);
-        _resultSizeLimitExceeded.store(true);
-        return false;
-    }
-
-    tct->addToValue(resp.transmitsize());
+    tct->addToValue(fileSize);
     tct->setSuccess();
-    tct.reset();  // stop transmit recieve timer before merging happens.
+    tct.reset();  // stop transmit receive timer before merging happens.
 
     // Stop here (if requested) after collecting stats on the amount of data collected
     // from workers.
-    if (_config.debugNoMerge) return true;
+    if (_config.debugNoMerge) {
+        return true;
+    }
+
+    // Need to block here to make sure the result able needs these rows or not.
+    lock_guard lgFinal(_finalMergeMtx);
+    // Don't merge if the query got cancelled.
+    auto executive = uberJob->getExecutive();
+    if (executive == nullptr || executive->getCancelled() || executive->isRowLimitComplete()) {
+        return true;
+    }
+
+    if (csvMemDisk->isFileError()) {
+        // The file couldn't be opened for writing, so giving up
+        // now should keep the result table from getting contaminated.
+        return false;
+    }
 
     auto start = std::chrono::system_clock::now();
-    ret = _applyMysqlMyIsam(infileStatement, resp.transmitsize());
+    // The following will call some version of CsvStream::pop() at least once.
+    ret = _applyMysqlMyIsam(infileStatement, fileSize);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
-    if (not ret) {
+    if (ret) {
+        lock_guard<mutex> resultSzLock(_mtxResultSizeMtx);
+        _totalResultSize += fileSize;
+        size_t tResultSize = _totalResultSize;
+        /// Check file size here to see if it has gotten too large, this will probably only trip in LIMIT
+        /// queries.
+        if (tResultSize > _maxResultTableSizeBytes) {
+            string str = queryIdJobStr + " cancelling the query, queryResult table " + _mergeTable +
+                         " is too large at " + to_string(tResultSize) + " bytes, max allowed size is " +
+                         to_string(_maxResultTableSizeBytes) + " bytes";
+            LOGS(_log, LOG_LVL_ERROR, str);
+            _error = util::Error(-1, str, -1);
+            return false;
+        }
+    } else {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
-
+    LOGS(_log, LOG_LVL_TRACE, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
     return ret;
 }
 
@@ -269,6 +275,7 @@ size_t InfileMerger::getTotalResultSize() const { return _totalResultSize; }
 bool InfileMerger::finalize(size_t& collectedBytes, int64_t& rowCount) {
     bool finalizeOk = true;
     collectedBytes = _totalResultSize;
+    lock_guard lgFinal(_finalMergeMtx);  // block on other merges
     // TODO: Should check for error condition before continuing.
     if (_isFinished) {
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");

@@ -1,5 +1,4 @@
 add_library(qana SHARED)
-add_dependencies(qana proto)
 
 target_sources(qana PRIVATE
     AggregatePlugin.cc
@@ -32,6 +31,7 @@ FUNCTION(qana_tests)
             cconfig
             ccontrol
             czar
+            global
             parser
             qana
             qdisp
@@ -40,7 +40,6 @@ FUNCTION(qana_tests)
             css
             qmeta
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )

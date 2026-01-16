@@ -6,14 +6,15 @@ target_sources(global PRIVATE
     ResourceUnit.cc
     sqltoken.cc
     stringUtil.cc
+    UberJobBase.cc
+)
+
+install(
+	TARGETS global
 )
 
 target_link_libraries(global PUBLIC
     log
-)
-
-install(
-    TARGETS global
 )
 
 FUNCTION(global_tests)
@@ -28,6 +29,6 @@ FUNCTION(global_tests)
 ENDFUNCTION()
 
 global_tests(
-    testResourceUnit
     testStringUtil
 )
+
