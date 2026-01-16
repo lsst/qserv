@@ -160,7 +160,7 @@ RUN cd /tmp \
 RUN cd /tmp \
     && git clone --recurse-submodules https://github.com/aws/aws-sdk-cpp \
     && cd aws-sdk-cpp \
-    && git checkout tags/1.11.505 \
+    && git checkout tags/1.11.729 \
     && mkdir build \
     && cd build \
     && cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=/usr/local -DBUILD_ONLY="s3" -DUSE_TLS_V1_3=on -DCPP_STANDARD=17 \
