@@ -121,8 +121,64 @@ If a request succeeded, the System would respond with the following JSON object:
 
 .. code-block::
 
+    {   "location" : {
+            "chunk" :          <number>,
+            "worker" :         <string>,
+            "host" :           <string>,
+            "host_name" :      <string>,
+            "port" :           <number>,
+            "http_host" :      <string>,
+            "http_host_name" : <string>,
+            "http_port" :      <number>
+        },
+        ...
+    }
+
+Where, the object represents a worker where the Ingest system requests the workflow to forward the chunk contributions.
+See an explanation of the attributes in:
+
+- :ref:`table-location-connect-params`
+
+
+.. _table-location-chunks-one-multi:
+
+Single chunk allocation (all replicas of a chunk)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following service is meant to be used for allocating/locating (potentially) multiple replicas of a single chunk-multi:
+
+..  list-table::
+    :widths: 10 90
+    :header-rows: 0
+
+    * - ``POST``
+      - ``/ingest/chunk-multi``
+
+Where the request object has the following schema, in which a client would have to provide the name of a database:
+
+.. code-block::
+
+    {   "database" : <string>,
+        "chunk" :    <number>
+    }
+
+The service also supports an alternative method accepting a transaction identifier (transactions are always associated with the corresponding databases):
+
+.. code-block::
+
+    {   "transaction_id" : <number>,
+        "chunk" :          <number>
+    }
+
+**Note** the difference in the object schema - unlike the single-chunk allocator, this one expects an array of chunk numbers.
+
+If a request succeeded, the System would respond with the following JSON object:
+
+.. code-block::
+
     {   "locations" : [
-            {   "worker" :         <string>,
+            {   "chunk" :          <number>,
+                "worker" :         <string>,
                 "host" :           <string>,
                 "host_name" :      <string>,
                 "port" :           <number>,
@@ -134,10 +190,11 @@ If a request succeeded, the System would respond with the following JSON object:
         ]
     }
 
-Where, the object represents a worker where the Ingest system requests the workflow to forward the chunk contributions.
+Where, each object in the array represents a particular worker where the corresponding replica of the chunk is located.
 See an explanation of the attributes in:
 
 - :ref:`table-location-connect-params`
+
 
 .. _table-location-chunks-many:
 
@@ -161,7 +218,7 @@ Where the request object has the following schema, in which a client would have 
         "chunks" :   [<number>, <number>, ... <number>]
     }
 
-Like the above-explained case of the single chunk allocation service, this one also supports an alternative method accepting
+Like the above-explained case of other chunk allocation service, this one also supports an alternative method accepting
 a transaction identifier (transactions are always associated with the corresponding databases):
 
 .. code-block::
@@ -193,6 +250,66 @@ The resulting object  has the following schema:
 Where, each object in the array represents a particular worker. See an explanation of the attributes in:
 
 - :ref:`table-location-connect-params`
+
+
+
+.. _table-location-chunks-many-multi:
+
+Multiple chunks allocation (all replicas of each chunk)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For allocating/locating all available replicas of each chunk in the requested collectionone would have to use the following service:
+
+..  list-table::
+    :widths: 10 90
+    :header-rows: 0
+
+    * - ``POST``
+      - ``/ingest/chunks-multi``
+
+Where the request object has the following schema, in which a client would have to provide the name of a database:
+
+.. code-block::
+
+    {   "database" : <string>,
+        "chunks" :   [<number>, <number>, ... <number>]
+    }
+
+Like the above-explained case of other chunk allocation services, this one also supports an alternative method accepting
+a transaction identifier (transactions are always associated with the corresponding databases):
+
+.. code-block::
+
+    {   "transaction_id" : <number>,
+        "chunks" :        [<number>, <number>, ... <number>]
+    }
+
+**Note** the difference in the object schema - unlike the single-chunk allocator, this one expects an array of chunk numbers, where
+each chunk may have multiple replicas. In the later case the service will return multiple entries for the same chunk number.
+
+The resulting object  has the following schema:
+
+.. code-block::
+
+    {   "locations" : [
+            {   "chunk" :          <number>,
+                "worker" :         <string>,
+                "host" :           <string>,
+                "host_name" :      <string>,
+                "port" :           <number>,
+                "http_host" :      <string>,
+                "http_host_name" : <string>,
+                "http_port" :      <number>
+            },
+            ...
+        ]
+    }
+
+Where, each object in the array represents a particular worker. See an explanation of the attributes in:
+
+- :ref:`table-location-connect-params`
+
+
 
 .. _table-location-connect-params:
 

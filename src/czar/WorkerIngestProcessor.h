@@ -67,10 +67,10 @@ private:
 };
 
 /**
- * A structure for storing the worker ingest result.
+ * A structure for storing the error for a worker ingest request.
  */
 struct Result {
-    std::string worker;
+    std::string requestKey;
     std::string error;
 };
 using ResultQueue = Queue<Result>;
