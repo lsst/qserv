@@ -12,7 +12,6 @@ target_link_libraries(replica PUBLIC
     replica_apps
     replica_config
     replica_contr
-    replica_export
     replica_ingest
     replica_jobs
     replica_mysql
@@ -114,7 +113,6 @@ replica_tests(
 add_subdirectory(apps)
 add_subdirectory(config)
 add_subdirectory(contr)
-add_subdirectory(export)
 add_subdirectory(ingest)
 add_subdirectory(jobs)
 add_subdirectory(mysql)

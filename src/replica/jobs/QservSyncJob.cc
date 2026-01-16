@@ -211,8 +211,8 @@ void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reque
     }
 
     LOGS(_log, LOG_LVL_DEBUG,
-         context() << __func__ << "  worker=" << request->workerName() << " _numLaunched=" << _numLaunched
-                   << " _numFinished=" << _numFinished << " _numSuccess=" << _numSuccess);
+         context() << __func__ << "  id=" << id() << " worker=" << request->workerName() << " _numLaunched="
+                   << _numLaunched << " _numFinished=" << _numFinished << " _numSuccess=" << _numSuccess);
 
     if (_numFinished == _numLaunched) {
         finish(lock, _numSuccess == _numLaunched ? ExtendedState::SUCCESS : ExtendedState::FAILED);

@@ -1402,7 +1402,7 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     logJobFinishedEvent(QservSyncJob::typeName(), qservSyncJob, database.family);
 
     if (qservSyncJob->extendedState() != Job::SUCCESS) {
-        throw http::Error(__func__, "Qserv synchronization failed");
+        throw http::Error(__func__, "Qserv synchronization failed, job id: " + qservSyncJob->id());
     }
 }
 

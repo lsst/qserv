@@ -61,8 +61,14 @@ protected:
      * @param authContext  An authorization context for operations which require extra security.
      * @param req  The HTTP request.
      * @param resp  The HTTP response channel.
+     * @param sendCustomResponse  If 'true' then the module is expected to send responses
+     *   on its own via the 'resp' parameter. If 'false' (the default) then the module
+     *   will use the standard response sending mechanism provided by the base class Module.
+     *   Note that the standard response sending mechanism uses the 'resp' parameter as well
+     *   to send the JSON responses.
      */
-    ChttpModule(http::AuthContext const& authContext, httplib::Request const& req, httplib::Response& resp);
+    ChttpModule(http::AuthContext const& authContext, httplib::Request const& req, httplib::Response& resp,
+                bool sendCustomResponse = false);
 
     httplib::Request const& req() { return _req; }
     httplib::Response& resp() { return _resp; }
@@ -77,6 +83,7 @@ protected:
 private:
     httplib::Request const& _req;
     httplib::Response& _resp;
+    bool const _sendCustomResponse = false;
 };
 
 }  // namespace lsst::qserv::http

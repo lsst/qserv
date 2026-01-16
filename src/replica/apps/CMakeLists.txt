@@ -20,7 +20,6 @@ target_sources(replica_apps PRIVATE
     DatabaseTestApp.cc
     DeleteWorkerApp.cc
     DirectorIndexApp.cc
-    FileExportApp.cc
     FileIngestApp.cc
     FileReadApp.cc
     FileServerApp.cc

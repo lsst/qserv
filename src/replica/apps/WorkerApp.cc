@@ -30,7 +30,6 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
-#include "replica/export/ExportServer.h"
 #include "replica/ingest/IngestHttpSvc.h"
 #include "replica/ingest/IngestSvc.h"
 #include "replica/mysql/DatabaseMySQL.h"
@@ -39,7 +38,8 @@
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/FileUtils.h"
 #include "replica/worker/FileServer.h"
-#include "replica/worker/WorkerProcessor.h"
+#include "replica/worker/WorkerExporterHttpSvc.h"
+#include "replica/worker/WorkerHttpSvc.h"
 #include "replica/worker/WorkerServer.h"
 
 // LSST headers
@@ -113,6 +113,9 @@ int WorkerApp::runImpl() {
     auto const reqProcSvr = WorkerServer::create(serviceProvider(), worker);
     thread reqProcSvrThread([reqProcSvr]() { reqProcSvr->run(); });
 
+    auto const reqProcHttpSvr = WorkerHttpSvc::create(serviceProvider(), worker);
+    thread reqProcHttpSvrThread([reqProcHttpSvr]() { reqProcHttpSvr->run(); });
+
     auto const fileSvr = FileServer::create(serviceProvider(), worker);
     thread fileSvrThread([fileSvr]() { fileSvr->run(); });
 
@@ -122,8 +125,8 @@ int WorkerApp::runImpl() {
     auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), worker);
     thread ingestHttpSvrThread([ingestHttpSvr]() { ingestHttpSvr->run(); });
 
-    auto const exportSvr = ExportServer::create(serviceProvider(), worker);
-    thread exportSvrThread([exportSvr]() { exportSvr->run(); });
+    auto const exportHttpSvr = WorkerExporterHttpSvc::create(serviceProvider(), worker);
+    thread exportHttpSvrThread([exportHttpSvr]() { exportHttpSvr->run(); });
 
     // Keep sending periodic 'heartbeats' to the Registry service to report
     // a configuration and a status of the current worker.
@@ -147,7 +150,7 @@ int WorkerApp::runImpl() {
     fileSvrThread.join();
     ingestSvrThread.join();
     ingestHttpSvrThread.join();
-    exportSvrThread.join();
+    exportHttpSvrThread.join();
 
     return 0;
 }

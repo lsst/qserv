@@ -43,6 +43,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
@@ -394,6 +395,13 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
                            "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) +
                            ",maxRetriesOnDeadLock=" + to_string(maxRetriesOnDeadLock) + ")  ";
 
+    // For random delays in the range of [1, 1001] milliseconds between retries on deadlock.
+    // A specific choice of the range is not critical, but it should be large enough
+    // to allow competing threads to resolve the dispute before attempting making
+    // another retries.
+    // See: https://dev.mysql.com/doc/refman/8.0/en/innodb-deadlocks.html
+    util::BlockPost delayBeforeNextRetry(1, 1001);
+
     try {
         unsigned int numRetriesOnDeadLock = 0;
         do {
@@ -412,6 +420,7 @@ Connection::Ptr Connection::executeInOwnTransaction(function<void(Ptr)> const& s
                 if (numRetriesOnDeadLock < maxRetriesOnDeadLock) {
                     LOGS(_log, LOG_LVL_DEBUG, context << "exception: " << ex.what());
                     ++numRetriesOnDeadLock;
+                    delayBeforeNextRetry.wait();
                 } else {
                     LOGS(_log, LOG_LVL_DEBUG,
                          context << "maximum number of retries " << maxRetriesOnDeadLock
@@ -493,6 +502,30 @@ void Connection::exportField(ProtocolResponseSqlField* ptr, size_t idx) const {
     ptr->set_flags(field.flags);
     ptr->set_decimals(field.decimals);
     ptr->set_type(field.type);
+}
+
+json Connection::fieldsToJson() const {
+    _assertQueryContext();
+
+    json result;
+    for (size_t i = 0; i < _numFields; ++i) {
+        auto&& field = _fields[i];
+        json f;
+        f["name"] = field.name;
+        f["org_name"] = field.org_name;
+        f["table"] = field.table;
+        f["org_table"] = field.org_table;
+        f["db"] = field.db;
+        f["catalog"] = field.catalog;
+        f["def"] = field.def;
+        f["length"] = field.length;
+        f["max_length"] = field.max_length;
+        f["flags"] = field.flags;
+        f["decimals"] = field.decimals;
+        f["type"] = field.type;
+        result.push_back(move(f));
+    }
+    return result;
 }
 
 bool Connection::next(Row& row) {

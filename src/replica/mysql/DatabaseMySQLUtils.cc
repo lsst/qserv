@@ -24,8 +24,11 @@
 #include "replica/mysql/DatabaseMySQLUtils.h"
 
 // Qserv headers
+
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/mysql/DatabaseMySQLGenerator.h"
 #include "replica/mysql/DatabaseMySQLExceptions.h"
+#include "util/String.h"
 
 // System headers
 #include <cctype>
@@ -154,6 +157,92 @@ bool isValidObjectName(std::string const& objectName) {
         return false;
     }
     return true;
+}
+
+json tableSchemaDetailed(shared_ptr<Connection> const& conn, string const& databaseName,
+                         string const& tableName) {
+    if (!conn) throw invalid_argument("Connection pointer is null");
+    if (databaseName.empty()) throw invalid_argument("Database name is empty");
+    if (tableName.empty()) throw invalid_argument("Table name is empty");
+    QueryGenerator const g(conn);
+    string const query = g.select(Sql::STAR) + g.from(g.id("information_schema", "columns")) +
+                         g.where(g.eq("TABLE_SCHEMA", databaseName), g.eq("TABLE_NAME", tableName)) +
+                         g.orderBy(make_pair("ORDINAL_POSITION", "ASC"));
+    json result = json::array();
+    conn->executeInOwnTransaction([&query, &result](decltype(conn) const& conn) {
+        conn->execute(query);
+        Row row;
+        while (conn->next(row)) {
+            size_t precision;
+            bool const hasPrecision = row.get("NUMERIC_PRECISION", precision);
+            size_t charMaxLength;
+            bool const hasCharMaxLength = row.get("CHARACTER_MAXIMUM_LENGTH", charMaxLength);
+            result.push_back(json::object(
+                    {{"ORDINAL_POSITION", row.getAs<size_t>("ORDINAL_POSITION")},
+                     {"COLUMN_NAME", row.getAs<string>("COLUMN_NAME")},
+                     {"COLUMN_TYPE", row.getAs<string>("COLUMN_TYPE")},
+                     {"DATA_TYPE", row.getAs<string>("DATA_TYPE")},
+                     {"NUMERIC_PRECISION", hasPrecision ? to_string(precision) : ""},
+                     {"CHARACTER_MAXIMUM_LENGTH", hasCharMaxLength ? to_string(charMaxLength) : ""},
+                     {"IS_NULLABLE", row.getAs<string>("IS_NULLABLE")},
+                     {"COLUMN_DEFAULT", row.getAs<string>("COLUMN_DEFAULT", "")},
+                     {"COLUMN_COMMENT", row.getAs<string>("COLUMN_COMMENT")},
+                     {"IS_GENERATED", row.getAs<string>("IS_GENERATED")},
+                     {"GENERATION_EXPRESSION", row.getAs<string>("GENERATION_EXPRESSION", "")},
+                     {"EXTRA", row.getAs<string>("EXTRA")}}));
+        }
+    });
+    return result;
+}
+
+json tableSchemaForCreate(shared_ptr<Connection> const& conn, string const& databaseName,
+                          string const& tableName, set<string> const& columnsToExclude) {
+    json tableSchema = tableSchemaDetailed(conn, databaseName, tableName);
+    json result = json::array();
+    for (auto const& column : tableSchema) {
+        string const columnName = column["COLUMN_NAME"].get<string>();
+        if (columnsToExclude.find(columnName) != columnsToExclude.end()) {
+            continue;
+        }
+        string columnType = util::String::toUpper(column["COLUMN_TYPE"].get<string>());
+        bool const isGenerated = column["IS_GENERATED"].get<string>() != "NEVER";
+        if (isGenerated) {
+            columnType += " GENERATED ALWAYS AS (" + column["GENERATION_EXPRESSION"].get<string>() + ")";
+            bool const isVirtual = column["EXTRA"].get<string>().find("VIRTUAL") != string::npos;
+            bool const isStored = column["EXTRA"].get<string>().find("STORED") != string::npos;
+            if (isVirtual) {
+                columnType += " VIRTUAL";
+            } else if (isStored) {
+                columnType += " STORED";
+            } else {
+                throw logic_error("Unexpected generation type for column " + columnName);
+            }
+        }
+        bool const isNullable = column["IS_NULLABLE"].get<string>() == "YES";
+        if (!isNullable) {
+            columnType += " NOT NULL";
+        }
+        if (!isGenerated) {
+            string const columnDefault = column["COLUMN_DEFAULT"].get<string>();
+            if (!columnDefault.empty()) {
+                columnType += " DEFAULT " + columnDefault;
+            }
+            bool const isAutoIncrement = column["EXTRA"].get<string>().find("AUTO_INCREMENT") != string::npos;
+            if (isAutoIncrement) {
+                columnType += " AUTO_INCREMENT";
+            }
+        }
+        bool const isUniqueKey = column["EXTRA"].get<string>().find("UNIQUE") != string::npos;
+        if (isUniqueKey) {
+            columnType += " UNIQUE KEY";
+        }
+        bool const isPrimaryKey = column["EXTRA"].get<string>().find("PRIMARY") != string::npos;
+        if (isPrimaryKey) {
+            columnType += " PRIMARY KEY";
+        }
+        result.push_back(json::object({{"name", columnName}, {"type", columnType}}));
+    }
+    return result;
 }
 
 }  // namespace lsst::qserv::replica::database::mysql

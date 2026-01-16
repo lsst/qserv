@@ -48,6 +48,7 @@ function(CZAR_UTILS)
             global
             mysql
             parser
+            partition
             qana
             qdisp
             qproc

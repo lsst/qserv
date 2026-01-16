@@ -1133,6 +1133,7 @@ def run_http_ingest(
         If `True` then keep the results of the test, otherwise delete them.
     """
 
+    # Schema, indexes and rows to ingest into the fully-replicated tables.
     schema = [
         {"name": "id", "type": "INT"},
         {"name": "val", "type": "VARCHAR(32)"},
@@ -1317,6 +1318,65 @@ def run_http_ingest(
         )
         return False
 
+    # Create the director table in a separate database and ingest data using the CSV option.
+    # Then query the table.
+    #
+    # IMPORTANT: The director table must be created in a separate database because of
+    # a known problem with the current implementation of Qserv's CSS. The CSS does not
+    # get updated if there is more than one partitioned table in the database and the
+    # table ingests are interleaved with querying the previously ingested tables.
+    # In this case, the CSS transient cache gets out of sync with the actual state of
+    # the database. Normally, this is not a problem for the large-scale production databases
+    # because the cache would get reset by simply restarting Qserv czars.
+    schema_dir = [
+        {"name": "id", "type": "INT"},
+        {"name": "ra", "type": "DOUBLE"},
+        {"name": "dec", "type": "DOUBLE"},
+        {"name": "val", "type": "VARCHAR(32)"},
+        {"name": "active", "type": "BOOL"},
+    ]
+    indexes_dir = indexes
+    rows_dir = [
+        ["1", "2.99845583493592", "-34.236453785757455", "Andy", "1"],
+        ["2", "23.45678901234567", "1.67890123456789", "Bob", "0"],
+        ["3", "255.56789012345678", "56.78901234567890", "Charlie", "1"],
+    ]
+    database_dir = "user_test-db-dir"
+    table_csv_dir = "csv-director-table"
+    is_director = True
+    id_col_name = "id"
+    longitude_col_name = "ra"
+    latitude_col_name = "dec"
+    try:
+        _http_ingest_data_csv(
+            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir, rows_dir, timeout,
+            charset, collation, is_director, id_col_name, longitude_col_name, latitude_col_name
+        )
+    except Exception as e:
+        _log.error(
+            "Failed to ingest data into table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
+        )
+        return False
+    try:
+        _http_query_table(http_frontend_uri, user, password, database_dir, table_csv_dir, rows)
+    except Exception as e:
+        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_dir, database_dir, e)
+
+    # Cleanup the tables and the database in two separate steps unless the user
+    # requested to keep the results.
+    if not keep_results:
+        for table in [table_csv_dir,]:
+            try:
+                _http_delete_table(http_frontend_uri, user, password, database_dir, table)
+            except Exception as e:
+                _log.error("Failed to delete table: %s from user database: %s, error: %s", table, database_dir, e)
+                return False
+        try:
+            _http_delete_database(http_frontend_uri, user, password, database_dir)
+        except Exception as e:
+            _log.error("Failed to delete user database: %s, error: %s", database_dir, e)
+            return False
+
     return True
 
 
@@ -1456,6 +1516,10 @@ def _http_ingest_data_csv(
     timeout: int,
     charset: str | None = None,
     collation: str | None = None,
+    is_director: bool = False,
+    id_col_name: str | None = None,
+    longitude_col_name: str | None = None,
+    latitude_col_name: str | None = None,
 ) -> None:
     """Create the table and ingest the data into the table.
 
@@ -1485,6 +1549,17 @@ def _http_ingest_data_csv(
     collation : `str`, optional
         The collation to use for the table. If not provided, the default
         collation will be used.
+    is_director : `bool`, optional
+        If `True` then the table is a director table.
+    id_col_name : `str`, optional
+        The name of the column to use as the director id column. Required if
+        `is_director` is `True`.
+    longitude_col_name : `str`, optional
+        The name of the column to use as the director longitude column. Required
+        if `is_director` is `True`.
+    latitude_col_name : `str`, optional
+        The name of the column to use as the director latitude column. Required
+        if `is_director` is `True`.
     """
     _log.debug("Ingesting CSV data into table: %s of user database: %s", table, database)
     base_dir = "/tmp"
@@ -1504,17 +1579,35 @@ def _http_ingest_data_csv(
         for row in rows:
             csv_writer.writerow(row)
 
-    encoder = MultipartEncoder(
-        fields={
-            "database": (None, database),
-            "table": (None, table),
-            "fields_terminated_by": (None, ","),
-            "timeout": (None, str(timeout)),
-            "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
-            "indexes": (indexes_file, open(indexes_file_path, "rb"), "application/json"),
-            "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),
-        }
-    )
+    if is_director:
+        encoder = MultipartEncoder(
+            fields={
+                "database": (None, database),
+                "table": (None, table),
+                "is_partitioned": (None, "true"),
+                "is_director": (None, "true"),
+                "id_col_name": (None, id_col_name),
+                "longitude_col_name": (None, longitude_col_name),
+                "latitude_col_name": (None, latitude_col_name),
+                "fields_terminated_by": (None, ","),
+                "timeout": (None, str(timeout)),
+                "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
+                "indexes": (indexes_file, open(indexes_file_path, "rb"), "application/json"),
+                "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),
+            }
+        )
+    else:
+        encoder = MultipartEncoder(
+            fields={
+                "database": (None, database),
+                "table": (None, table),
+                "fields_terminated_by": (None, ","),
+                "timeout": (None, str(timeout)),
+                "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
+                "indexes": (indexes_file, open(indexes_file_path, "rb"), "application/json"),
+                "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),
+            }
+        )
     url = str(urljoin(http_frontend_uri, f"/ingest/csv?version={repl_api_version}"))
     req = requests.post(
         url,
