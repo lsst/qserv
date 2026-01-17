@@ -55,6 +55,15 @@ namespace lsst::qserv::util {
  */
 std::string get_current_host_fqdn(bool all = false);
 
+/**
+ * Resolve the host name to its IP address string.
+ *
+ * @param hostName The host name to convert.
+ * @return The IP address string.
+ * @throws std::runtime_error on failure.
+ */
+std::string hostNameToAddr(std::string const& hostName);
+
 template <class Map>
 typename Map::mapped_type const& getFromMap(Map const& m, typename Map::key_type const& key,
                                             typename Map::mapped_type const& defValue) {
