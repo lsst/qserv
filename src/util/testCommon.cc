@@ -97,4 +97,102 @@ BOOST_AUTO_TEST_CASE(prettyPrint) {
     BOOST_CHECK(strBuf3.compare(expectedList3) == 0);
 }
 
+/** @test
+ * Test get_current_host_fqdn function for getting the current host's FQDN
+ */
+BOOST_AUTO_TEST_CASE(getCurrentHostFqdn) {
+    // Test basic functionality - should return a non-empty string
+    std::string fqdn;
+    BOOST_CHECK_NO_THROW(fqdn = util::get_current_host_fqdn());
+    LOGS_DEBUG("Current host FQDN: " << fqdn);
+    BOOST_CHECK(!fqdn.empty());
+
+    // FQDN should contain at least some alphanumeric characters
+    bool hasAlphaNum = false;
+    for (char c : fqdn) {
+        if (std::isalnum(c)) {
+            hasAlphaNum = true;
+            break;
+        }
+    }
+    BOOST_CHECK(hasAlphaNum);
+
+    // Test with all=false (default) - should return single FQDN
+    std::string fqdnSingle;
+    BOOST_CHECK_NO_THROW(fqdnSingle = util::get_current_host_fqdn(false));
+    LOGS_DEBUG("Current host FQDN (single): " << fqdnSingle);
+    BOOST_CHECK(!fqdnSingle.empty());
+    // Single mode should not contain commas (no multiple FQDNs)
+    BOOST_CHECK(fqdnSingle.find(',') == std::string::npos);
+
+    // Test with all=true - may return multiple comma-separated FQDNs
+    std::string fqdnAll;
+    BOOST_CHECK_NO_THROW(fqdnAll = util::get_current_host_fqdn(true));
+    LOGS_DEBUG("Current host FQDN (all): " << fqdnAll);
+    BOOST_CHECK(!fqdnAll.empty());
+
+    // The first FQDN in "all" mode should match the single mode result
+    // (or be a prefix if single mode result is truncated)
+    std::string firstFqdnFromAll = fqdnAll;
+    size_t commaPos = fqdnAll.find(',');
+    if (commaPos != std::string::npos) {
+        firstFqdnFromAll = fqdnAll.substr(0, commaPos);
+        LOGS_DEBUG("Multiple FQDNs found, first one: " << firstFqdnFromAll);
+    }
+    // Both should return the same first FQDN
+    BOOST_CHECK(fqdnSingle == firstFqdnFromAll);
+
+    // Verify the result can be used with hostNameToAddr (should resolve)
+    std::string addr;
+    try {
+        BOOST_CHECK_NO_THROW(addr = util::hostNameToAddr(fqdnSingle));
+        LOGS_DEBUG("FQDN '" << fqdnSingle << "' resolved to: " << addr);
+        BOOST_CHECK(!addr.empty());
+    } catch (std::runtime_error const& e) {
+        // Some systems may have DNS issues, log but don't fail the test
+        LOGS_INFO("Could not resolve FQDN '" << fqdnSingle << "': " << e.what());
+    }
+}
+
+/** @test
+ * Test hostNameToAddr function for resolving hostnames to IP addresses
+ */
+BOOST_AUTO_TEST_CASE(hostNameToAddr) {
+    // Test with localhost - should always resolve
+    std::string localhostAddr;
+    BOOST_CHECK_NO_THROW(localhostAddr = util::hostNameToAddr("localhost"));
+    LOGS_DEBUG("localhost resolved to: " << localhostAddr);
+    // localhost should resolve to either IPv4 loopback or IPv6 loopback
+    BOOST_CHECK(localhostAddr == "127.0.0.1" || localhostAddr == "::1");
+
+    // Test with IPv4 loopback address (should work as hostname input)
+    std::string loopbackAddr;
+    BOOST_CHECK_NO_THROW(loopbackAddr = util::hostNameToAddr("127.0.0.1"));
+    LOGS_DEBUG("127.0.0.1 resolved to: " << loopbackAddr);
+    BOOST_CHECK(loopbackAddr == "127.0.0.1");
+
+    // Test with well-known public DNS name (if network is available)
+    // Using google.com as it's highly available
+    try {
+        std::string googleAddr = util::hostNameToAddr("google.com");
+        LOGS_DEBUG("google.com resolved to: " << googleAddr);
+        // Should get a valid IP address (either IPv4 or IPv6)
+        BOOST_CHECK(!googleAddr.empty());
+        // Check that it contains either dots (IPv4) or colons (IPv6)
+        bool isValidFormat =
+                (googleAddr.find('.') != std::string::npos) || (googleAddr.find(':') != std::string::npos);
+        BOOST_CHECK(isValidFormat);
+    } catch (std::runtime_error const& e) {
+        // Network might not be available, log and skip this test
+        LOGS_INFO("Skipping google.com test - network may not be available: " << e.what());
+    }
+
+    // Test with invalid hostname - should throw
+    BOOST_CHECK_THROW(util::hostNameToAddr("this-hostname-should-not-exist-12345.invalid"),
+                      std::runtime_error);
+
+    // Test with empty string - should throw
+    BOOST_CHECK_THROW(util::hostNameToAddr(""), std::runtime_error);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
