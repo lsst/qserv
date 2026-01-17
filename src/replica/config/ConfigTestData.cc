@@ -159,7 +159,8 @@ json ConfigTestData::data() {
                                     {"http-loader-port", 53004},
                                     {"http-loader-tmp-dir", "/tmp/http/A"}});
         worker["qserv-worker"]["host"] = json::object({{"addr", "127.0.0.1"}, {"name", "host-A"}});
-        worker["qserv-worker"]["port"] = 53004;
+        worker["qserv-worker"]["management-port"] = 53004;
+        worker["qserv-worker"]["data-port"] = 53005;
         obj["workers"].push_back(worker);
     }
     {
@@ -176,7 +177,8 @@ json ConfigTestData::data() {
                                     {"exporter-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}},
                                     {"http-loader-host", {{"addr", "168.1.1.1"}, {"name", "host-B"}}}});
         worker["qserv-worker"]["host"] = json::object({{"addr", "168.1.1.1"}, {"name", "host-B"}});
-        worker["qserv-worker"]["port"] = 53004;
+        worker["qserv-worker"]["management-port"] = 53004;
+        worker["qserv-worker"]["data-port"] = 53005;
         obj["workers"].push_back(worker);
     }
     {
@@ -192,7 +194,8 @@ json ConfigTestData::data() {
                                     {"exporter-host", {{"addr", "168.1.1.4"}, {"name", "host-C4"}}},
                                     {"http-loader-host", {{"addr", "168.1.1.5"}, {"name", "host-C5"}}}});
         worker["qserv-worker"]["host"] = json::object({{"addr", "168.1.1.6"}, {"name", "host-C6"}});
-        worker["qserv-worker"]["port"] = 53005;
+        worker["qserv-worker"]["management-port"] = 53004;
+        worker["qserv-worker"]["data-port"] = 53005;
         obj["workers"].push_back(worker);
     }
     obj["database_families"] = json::array();

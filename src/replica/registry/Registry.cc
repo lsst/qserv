@@ -101,7 +101,8 @@ vector<ConfigWorker> Registry::workers() const {
             json const& qservWorker = workerJson.at("qserv");
             worker.qservWorker.host.addr = qservWorker.at("host-addr").get<string>();
             worker.qservWorker.host.name = qservWorker.at("host-name").get<string>();
-            worker.qservWorker.port = qservWorker.at("management-port").get<uint16_t>();
+            worker.qservWorker.managementPort = qservWorker.at("management-port").get<uint16_t>();
+            worker.qservWorker.dataPort = qservWorker.at("data-port").get<uint16_t>();
         }
         coll.push_back(std::move(worker));
     }
