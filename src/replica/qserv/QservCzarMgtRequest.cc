@@ -41,7 +41,7 @@ http::AsyncReq::GetHostPort QservCzarMgtRequest::getHostPortTracker() const {
     return [config = serviceProvider()->config(),
             czarName = _czarName](http::AsyncReq::HostPort const&) -> http::AsyncReq::HostPort {
         auto const czar = config->czar(czarName);
-        return http::AsyncReq::HostPort{czar.host.name, czar.port};
+        return http::AsyncReq::HostPort{czar.host.addr, czar.port};
     };
 }
 
