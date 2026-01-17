@@ -79,7 +79,7 @@ void registryUpdate(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
                                         {{"name", czarConfig->name()},
                                          {"id", czarConfig->id()},
                                          {"management-port", czarConfig->replicationHttpPort()},
-                                         {"management-host-name", util::get_current_host_fqdn()}}}});
+                                         {"host-name", util::get_current_host_fqdn()}}}});
     string const requestContext = "'" + http::method2string(method) + "' request to '" + url + "'";
     http::Client client(method, url, request.dump(), headers);
     while (true) {

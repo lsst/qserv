@@ -122,7 +122,7 @@ void registryUpdateLoop(string const& id) {
                                        {"worker",
                                         {{"name", id},
                                          {"management-port", workerConfig->replicationHttpPort()},
-                                         {"management-host-name", util::get_current_host_fqdn()}}}});
+                                         {"host-name", util::get_current_host_fqdn()}}}});
     string const requestContext =
             "SsiService: '" + http::method2string(method) + "' request to '" + url + "'";
     http::Client client(method, url, request.dump(), headers);
