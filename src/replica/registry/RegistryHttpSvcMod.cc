@@ -27,6 +27,7 @@
 #include "http/Auth.h"
 #include "qhttp/Request.h"
 #include "replica/registry/RegistryServices.h"
+#include "util/common.h"
 #include "util/TimeUtils.h"
 
 // System headers
@@ -102,25 +103,29 @@ json RegistryHttpSvcMod::executeImpl(string const& subModuleName) {
 }
 
 json RegistryHttpSvcMod::_getServices() const {
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 52);
     return json::object({{"services", _services.toJson()}});
 }
 
 json RegistryHttpSvcMod::_addWorker(string const& kind) {
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 52);
     json const worker = body().required<json>("worker");
     string const name = worker.at("name").get<string>();
-    string const hostAddr = ::senderIpAddr(req());
+    string const hostName = worker.at("host-name").get<string>();
+    string const hostAddr = util::hostNameToAddr(hostName);
+    string const hostAddrPeer = ::senderIpAddr(req());
     uint64_t const updateTimeMs = util::TimeUtils::now();
 
     debug(__func__, "[" + kind + "] name:           " + name);
+    debug(__func__, "[" + kind + "] host-name:      " + hostName);
     debug(__func__, "[" + kind + "] host-addr:      " + hostAddr);
+    debug(__func__, "[" + kind + "] host-addr-peer: " + hostAddrPeer);
     debug(__func__, "[" + kind + "] update-time-ms: " + to_string(updateTimeMs));
-
     // Prepare the payload to be merged into the worker registration entry.
     // Note that the merged payload is cleaned from any security-related contents.
-    json workerEntry =
-            json::object({{kind, json::object({{"host-addr", hostAddr}, {"update-time-ms", updateTimeMs}})}});
+    json workerEntry = json::object({{kind, json::object({{"host-addr", hostAddr},
+                                                          {"host-addr-peer", hostAddrPeer},
+                                                          {"update-time-ms", updateTimeMs}})}});
     for (auto&& [key, val] : worker.items()) {
         if (!::isSecurityContextKey(key)) workerEntry[kind][key] = val;
     }
@@ -129,7 +134,7 @@ json RegistryHttpSvcMod::_addWorker(string const& kind) {
 }
 
 json RegistryHttpSvcMod::_deleteWorker() {
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 52);
     string const name = params().at("name");
     debug(__func__, " name: " + name);
     _services.removeWorker(name);
@@ -137,19 +142,24 @@ json RegistryHttpSvcMod::_deleteWorker() {
 }
 
 json RegistryHttpSvcMod::_addCzar() {
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 52);
     json const czar = body().required<json>("czar");
     string const name = czar.at("name");
-    string const hostAddr = ::senderIpAddr(req());
+    string const hostName = czar.at("host-name").get<string>();
+    string const hostAddr = util::hostNameToAddr(hostName);
+    string const hostAddrPeer = ::senderIpAddr(req());
     uint64_t const updateTimeMs = util::TimeUtils::now();
 
     debug(__func__, "name:           " + name);
+    debug(__func__, "host-name:      " + hostName);
     debug(__func__, "host-addr:      " + hostAddr);
+    debug(__func__, "host-addr-peer: " + hostAddrPeer);
     debug(__func__, "update-time-ms: " + to_string(updateTimeMs));
 
     // Prepare the payload to be merged into the czar registration entry.
     // Note that the merged payload is cleaned from any security-related contents.
-    json czarEntry = json::object({{"host-addr", hostAddr}, {"update-time-ms", updateTimeMs}});
+    json czarEntry = json::object(
+            {{"host-addr", hostAddr}, {"host-addr-peer", hostAddrPeer}, {"update-time-ms", updateTimeMs}});
     for (auto&& [key, val] : czar.items()) {
         if (!::isSecurityContextKey(key)) czarEntry[key] = val;
     }
@@ -158,7 +168,7 @@ json RegistryHttpSvcMod::_addCzar() {
 }
 
 json RegistryHttpSvcMod::_deleteCzar() {
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 52);
     string const name = params().at("name");
     debug(__func__, " name: " + name);
     _services.removeCzar(name);
@@ -166,19 +176,24 @@ json RegistryHttpSvcMod::_deleteCzar() {
 }
 
 json RegistryHttpSvcMod::_addController() {
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 52);
     json const controller = body().required<json>("controller");
     string const name = controller.at("name");
-    string const hostAddr = ::senderIpAddr(req());
+    string const hostName = controller.at("host-name").get<string>();
+    string const hostAddr = util::hostNameToAddr(hostName);
+    string const hostAddrPeer = ::senderIpAddr(req());
     uint64_t const updateTimeMs = util::TimeUtils::now();
 
     debug(__func__, "name:           " + name);
+    debug(__func__, "host-name:      " + hostName);
     debug(__func__, "host-addr:      " + hostAddr);
+    debug(__func__, "host-addr-peer: " + hostAddrPeer);
     debug(__func__, "update-time-ms: " + to_string(updateTimeMs));
 
     // Prepare the payload to be merged into the Controller registration entry.
     // Note that the merged payload is cleaned from any security-related contents.
-    json controllerEntry = json::object({{"host-addr", hostAddr}, {"update-time-ms", updateTimeMs}});
+    json controllerEntry = json::object(
+            {{"host-addr", hostAddr}, {"host-addr-peer", hostAddrPeer}, {"update-time-ms", updateTimeMs}});
     for (auto&& [key, val] : controller.items()) {
         if (!::isSecurityContextKey(key)) controllerEntry[key] = val;
     }
@@ -187,7 +202,7 @@ json RegistryHttpSvcMod::_addController() {
 }
 
 json RegistryHttpSvcMod::_deleteController() {
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 52);
     string const name = params().at("name");
     debug(__func__, " name: " + name);
     _services.removeController(name);
