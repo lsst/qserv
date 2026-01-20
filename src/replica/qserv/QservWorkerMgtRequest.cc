@@ -42,7 +42,7 @@ http::AsyncReq::GetHostPort QservWorkerMgtRequest::getHostPortTracker() const {
     return [config = serviceProvider()->config(),
             workerName = _workerName](http::AsyncReq::HostPort const&) -> http::AsyncReq::HostPort {
         auto const worker = config->worker(workerName);
-        return http::AsyncReq::HostPort{worker.qservWorker.host.name, worker.qservWorker.port};
+        return http::AsyncReq::HostPort{worker.qservWorker.host.addr, worker.qservWorker.managementPort};
     };
 }
 

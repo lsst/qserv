@@ -41,8 +41,9 @@ namespace lsst::qserv::replica {
  */
 class ConfigQservWorker {
 public:
-    ConfigHost host;    // The host name (and IP address) of the worker's management service
-    uint16_t port = 0;  // The port number of the worker's management service
+    ConfigHost host;              // The host name (and IP address) of the Qserv worker service
+    uint16_t managementPort = 0;  // The port number of the worker's management service
+    uint16_t dataPort = 0;        // The port number of the worker's data service
 
     /// @return JSON representation of the object
     nlohmann::json toJson() const;

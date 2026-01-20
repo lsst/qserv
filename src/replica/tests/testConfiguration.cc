@@ -490,7 +490,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK_EQUAL(workerB.exporterHost, hostB);
     BOOST_CHECK_EQUAL(workerB.httpLoaderHost, hostB);
     BOOST_CHECK_EQUAL(workerB.qservWorker.host, hostB);
-    BOOST_CHECK_EQUAL(workerB.qservWorker.port, 53004U);
+    BOOST_CHECK_EQUAL(workerB.qservWorker.managementPort, 53004U);
+    BOOST_CHECK_EQUAL(workerB.qservWorker.dataPort, 53005U);
 
     ConfigWorker workerC;
     BOOST_REQUIRE_NO_THROW(workerC = config->worker("worker-C"));
@@ -502,7 +503,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK_EQUAL(workerC.exporterHost, ConfigHost({"168.1.1.4", "host-C4"}));
     BOOST_CHECK_EQUAL(workerC.httpLoaderHost, ConfigHost({"168.1.1.5", "host-C5"}));
     BOOST_CHECK_EQUAL(workerC.qservWorker.host, ConfigHost({"168.1.1.6", "host-C6"}));
-    BOOST_CHECK_EQUAL(workerC.qservWorker.port, 53005U);
+    BOOST_CHECK_EQUAL(workerC.qservWorker.managementPort, 53004U);
+    BOOST_CHECK_EQUAL(workerC.qservWorker.dataPort, 53005U);
 
     // Adding a new worker with well formed and unique parameters.
     ConfigWorker workerD;

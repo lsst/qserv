@@ -37,12 +37,13 @@ namespace lsst::qserv::replica {
 json ConfigQservWorker::toJson() const {
     json infoJson = json::object();
     infoJson["host"] = host.toJson();
-    infoJson["port"] = port;
+    infoJson["management-port"] = managementPort;
+    infoJson["data-port"] = dataPort;
     return infoJson;
 }
 
 bool ConfigQservWorker::operator==(ConfigQservWorker const& other) const {
-    return (host == other.host) && (port == other.port);
+    return (host == other.host) && (managementPort == other.managementPort) && (dataPort == other.dataPort);
 }
 
 ConfigWorker::ConfigWorker(json const& obj) {
@@ -76,7 +77,8 @@ ConfigWorker::ConfigWorker(json const& obj) {
         parseOptional<string>(httpLoaderTmpDir, obj, "http-loader-tmp-dir");
         parseRequired<string>(qservWorker.host.addr, obj.at("qserv-worker").at("host"), "addr");
         parseRequired<string>(qservWorker.host.name, obj.at("qserv-worker").at("host"), "name");
-        parseOptional<uint16_t>(qservWorker.port, obj.at("qserv-worker"), "port");
+        parseOptional<uint16_t>(qservWorker.managementPort, obj.at("qserv-worker"), "management-port");
+        parseOptional<uint16_t>(qservWorker.dataPort, obj.at("qserv-worker"), "data-port");
     } catch (exception const& ex) {
         throw invalid_argument(context + "the JSON object is not valid, ex: " + string(ex.what()));
     }

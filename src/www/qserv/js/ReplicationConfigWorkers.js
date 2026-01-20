@@ -156,7 +156,7 @@ function(CSSLoader,
                         "cssClass": "bg-white"
                     },
                     {   "name":     "Exporter",
-                        "protocol": "binary",
+                        "protocol": "http",
                         "port":     worker['exporter-port'],
                         "ip":       worker['exporter-host']['addr'],
                         "dns":      worker['exporter-host']['name'],
@@ -178,10 +178,17 @@ function(CSSLoader,
                     },
                     {   "name":     "Qserv Worker Manager",
                         "protocol": "http",
-                        "port":     worker['qserv-worker']['port'],
+                        "port":     worker['qserv-worker']['management-port'],
                         "ip":       worker['qserv-worker']['host']['addr'],
                         "dns":      worker['qserv-worker']['host']['name'],
                         "cssClass": "bg-info"
+                    },
+                    {   "name":     "Qserv Worker Data",
+                        "protocol": "binary",
+                        "port":     worker['qserv-worker']['data-port'],
+                        "ip":       worker['qserv-worker']['host']['addr'],
+                        "dns":      worker['qserv-worker']['host']['name'],
+                        "cssClass": "bg-white"
                     }
                 ];
                 html += `

@@ -105,12 +105,14 @@ std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(mysql::MySqlConfig 
  * This function will keep periodically updating worker's info in the Replication
  * System's Registry.
  * @param id The unique identifier of a worker to be registered.
+ * @param dataPort The port number of the HTTP server of the worker for handling
+ *   result file retrieval/deletion requests.
  * @note The thread will terminate the process if the registraton request to the Registry
  * was explicitly denied by the service. This means the application may be misconfigured.
  * Transient communication errors when attempting to connect or send requests to
  * the Registry will be posted into the log stream and ignored.
  */
-void registryUpdateLoop(string const& id) {
+void registryUpdateLoop(string const& id, uint16_t const dataPort) {
     auto const workerConfig = wconfig::WorkerConfig::instance();
     auto const method = http::Method::POST;
     string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
@@ -122,7 +124,8 @@ void registryUpdateLoop(string const& id) {
                                        {"worker",
                                         {{"name", id},
                                          {"management-port", workerConfig->replicationHttpPort()},
-                                         {"management-host-name", util::get_current_host_fqdn()}}}});
+                                         {"data-port", dataPort},
+                                         {"host-name", util::get_current_host_fqdn()}}}});
     string const requestContext =
             "SsiService: '" + http::method2string(method) + "' request to '" + url + "'";
     http::Client client(method, url, request.dump(), headers);
@@ -248,7 +251,7 @@ SsiService::SsiService(XrdSsiLogger* log) {
 
     // Begin periodically updating worker's status in the Replication System's registry
     // in the detached thread. This will continue before the application gets terminated.
-    thread registryUpdateThread(::registryUpdateLoop, _foreman->chunkInventory()->id());
+    thread registryUpdateThread(::registryUpdateLoop, _foreman->chunkInventory()->id(), _foreman->httpPort());
     registryUpdateThread.detach();
 }
 
