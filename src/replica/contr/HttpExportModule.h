@@ -46,11 +46,10 @@ public:
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   TABLES  Return service locations for one or many tables of any type
-     *           in a scope of the specified database. If the input collection
-     *           of tables in the  request is empty then locations of all tables
-     *           and unique chunks of the partitioned tables (including 'overlap '
-     *           tables will be returned.
+     *  CONFIG-DATABASE  Return configuration for the specified database.
+     *  CONFIG-TABLE     Return configuration for the specified table.
+     *  TABLE-LOCATIONS  Return service locations for the specified table.
+
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -73,8 +72,9 @@ private:
                      HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                      qhttp::Response::Ptr const& resp);
 
-    /// @return Service locations for table(s).
-    nlohmann::json _getTables();
+    nlohmann::json _getDatabaseConfig();
+    nlohmann::json _getTableConfig();
+    nlohmann::json _getTableLocations();
 };
 
 }  // namespace lsst::qserv::replica

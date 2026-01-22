@@ -485,11 +485,22 @@ void HttpProcessor::registerServices() {
                                                                   self->_processorConfig, req, resp, "BUILD",
                                                                   http::AuthType::REQUIRED);
                              });
-    httpServer()->addHandler("GET", "/export/tables/:database",
+    httpServer()->addHandler("GET", "/export/config/:database",
                              [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                                  HttpExportModule::process(self->controller(), self->name(),
-                                                           self->_processorConfig, req, resp, "TABLES",
-                                                           http::AuthType::REQUIRED);
+                                                           self->_processorConfig, req, resp,
+                                                           "CONFIG-DATABASE");
+                             });
+    httpServer()->addHandler("GET", "/export/config/:database/:table",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpExportModule::process(self->controller(), self->name(),
+                                                           self->_processorConfig, req, resp, "CONFIG-TABLE");
+                             });
+    httpServer()->addHandler("GET", "/export/locations/:database/:table",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpExportModule::process(self->controller(), self->name(),
+                                                           self->_processorConfig, req, resp,
+                                                           "TABLE-LOCATIONS");
                              });
 
     // Pass-through for the static content

@@ -36,8 +36,8 @@ using namespace std;
 namespace lsst::qserv::http {
 
 ChttpModule::ChttpModule(http::AuthContext const& authContext, httplib::Request const& req,
-                         httplib::Response& resp)
-        : Module(authContext), _req(req), _resp(resp) {}
+                         httplib::Response& resp, bool sendCustomResponse)
+        : Module(authContext), _req(req), _resp(resp), _sendCustomResponse(sendCustomResponse) {}
 
 string ChttpModule::method() const { return _req.method; }
 
@@ -68,6 +68,10 @@ void ChttpModule::getRequestBody(string& content, string const& requiredContentT
 }
 
 void ChttpModule::sendResponse(string const& content, string const& contentType) {
+    if (_sendCustomResponse) {
+        // The module is expected to send responses on its own.
+        return;
+    }
     _resp.set_content(content, contentType);
 }
 

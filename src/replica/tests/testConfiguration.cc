@@ -163,13 +163,14 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 5);
     BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1024);
     BOOST_CHECK(config->get<size_t>("worker", "num-loader-processing-threads") == 6);
-    BOOST_CHECK(config->get<size_t>("worker", "num-exporter-processing-threads") == 7);
+    BOOST_CHECK(config->get<size_t>("worker", "exporter-threads") == 7);
     BOOST_CHECK(config->get<size_t>("worker", "num-http-loader-processing-threads") == 8);
     BOOST_CHECK(config->get<size_t>("worker", "num-async-loader-processing-threads") == 9);
     BOOST_CHECK(config->get<size_t>("worker", "async-loader-auto-resume") == 0);
     BOOST_CHECK(config->get<size_t>("worker", "async-loader-cleanup-on-resume") == 0);
     BOOST_CHECK(config->get<unsigned int>("worker", "http-max-listen-conn") == 512);
     BOOST_CHECK(config->get<size_t>("worker", "http-max-queued-requests") == 1024);
+    BOOST_CHECK(config->get<size_t>("worker", "exporter-max-queued-requests") == 4096);
     BOOST_CHECK(config->get<unsigned int>("worker", "loader-max-warnings") == 2);
     BOOST_CHECK(config->get<string>("worker", "ingest-charset-name") == "latin1");
     BOOST_CHECK(config->get<unsigned int>("worker", "ingest-num-retries") == 1);
@@ -343,10 +344,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-loader-processing-threads", 7));
     BOOST_CHECK(config->get<size_t>("worker", "num-loader-processing-threads") == 7);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-exporter-processing-threads", 0),
-                      std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-exporter-processing-threads", 8));
-    BOOST_CHECK(config->get<size_t>("worker", "num-exporter-processing-threads") == 8);
+    BOOST_CHECK_THROW(config->set<size_t>("worker", "exporter-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "exporter-threads", 8));
+    BOOST_CHECK(config->get<size_t>("worker", "exporter-threads") == 8);
 
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-http-loader-processing-threads", 0),
                       std::invalid_argument);
@@ -377,6 +377,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("worker", "http-max-queued-requests") == 2048);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "http-max-queued-requests", 0));
     BOOST_CHECK(config->get<size_t>("worker", "http-max-queued-requests") == 0);
+
+    BOOST_CHECK(config->get<size_t>("worker", "exporter-max-queued-requests") == 4096);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "exporter-max-queued-requests", 8192));
+    BOOST_CHECK(config->get<size_t>("worker", "exporter-max-queued-requests") == 8192);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "exporter-max-queued-requests", 0));
+    BOOST_CHECK(config->get<size_t>("worker", "exporter-max-queued-requests") == 0);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "loader-max-warnings", 100));

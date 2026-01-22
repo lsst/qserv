@@ -35,6 +35,8 @@
 #include "replica/config/Configuration.h"
 #include "replica/jobs/SqlAlterTablesJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
+#include "replica/mysql/DatabaseMySQLGenerator.h"
+#include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/requests/SqlResultSet.h"
 
 using namespace std;
@@ -80,46 +82,15 @@ json HttpSqlSchemaModule::_getTableSchema() {
     auto const database = config->databaseInfo(databaseName);
     auto const table = database.findTable(tableName);
 
-    json schemaJson;
+    json schemaJson = json::array();
     if (database.isPublished) {
         // Extract schema from czar's MySQL database.
         ConnectionHandler const h(qservMasterDbConnection(database.name));
-        QueryGenerator const g(h.conn);
-        string const query = g.select(Sql::STAR) + g.from(g.id("information_schema", "columns")) +
-                             g.where(g.eq("TABLE_SCHEMA", database.name), g.eq("TABLE_NAME", table.name));
-        h.conn->executeInOwnTransaction([&query, &schemaJson](decltype(h.conn) const& conn) {
-            conn->execute(query);
-            Row row;
-            while (conn->next(row)) {
-                size_t precision;
-                bool const hasPrecision = row.get("NUMERIC_PRECISION", precision);
-                size_t charMaxLength;
-                bool const hasCharMaxLength = row.get("CHARACTER_MAXIMUM_LENGTH", charMaxLength);
-                schemaJson.push_back(json::object(
-                        {{"ORDINAL_POSITION", row.getAs<size_t>("ORDINAL_POSITION")},
-                         {"COLUMN_NAME", row.getAs<string>("COLUMN_NAME")},
-                         {"COLUMN_TYPE", row.getAs<string>("COLUMN_TYPE")},
-                         {"DATA_TYPE", row.getAs<string>("DATA_TYPE")},
-                         {"NUMERIC_PRECISION", hasPrecision ? to_string(precision) : "NULL"},
-                         {"CHARACTER_MAXIMUM_LENGTH", hasCharMaxLength ? to_string(charMaxLength) : "NULL"},
-                         {"IS_NULLABLE", row.getAs<string>("IS_NULLABLE")},
-                         {"COLUMN_DEFAULT", row.getAs<string>("COLUMN_DEFAULT", "NULL")},
-                         {"COLUMN_COMMENT", row.getAs<string>("COLUMN_COMMENT")}}));
-            }
-        });
+        schemaJson = tableSchemaForCreate(h.conn, database.name, table.name);
     } else {
         // Pull schema info from the Replication/Ingest system's database.
-        size_t ordinalPosition = 1;
         for (auto const& column : table.columns) {
-            schemaJson.push_back(json::object({{"ORDINAL_POSITION", ordinalPosition++},
-                                               {"COLUMN_NAME", column.name},
-                                               {"COLUMN_TYPE", column.type},
-                                               {"DATA_TYPE", string()},
-                                               {"NUMERIC_PRECISION", string()},
-                                               {"CHARACTER_MAXIMUM_LENGTH", string()},
-                                               {"IS_NULLABLE", string()},
-                                               {"COLUMN_DEFAULT", string()},
-                                               {"COLUMN_COMMENT", string()}}));
+            schemaJson.push_back(json::object({{"name", column.name}, {"type", column.type}}));
         }
     }
     json result;

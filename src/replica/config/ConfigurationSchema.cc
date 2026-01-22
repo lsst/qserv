@@ -305,11 +305,11 @@ json const ConfigurationSchema::_schemaJson = json::object(
             {{"description",
               "The number of request processing threads in each Replication worker's ingest service."},
              {"default", num_threads}}},
-           {"num-exporter-processing-threads",
+           {"exporter-threads",
             {{"description",
-              "The number of request processing threads in each Replication worker's data exporting "
+              "The number of threads in each HTTP server frontend of Replication worker's data export "
               "service."},
-             {"default", num_threads}}},
+             {"default", min(8, num_threads)}}},
            {"num-http-loader-processing-threads",
             {{"description",
               "The number of request processing threads in each Replication worker's HTTP-based ingest "
@@ -355,6 +355,14 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " the default value unless there are specific reasons to change it."},
              {"empty-allowed", 1},
              {"default", 0}}},
+           {"exporter-max-queued-requests",
+            {{"description",
+              "The maximum number of pending requests, i.e. requests accept()ed by"
+              " the listener but still waiting to be routed by the HTTP-based Worker data export server."
+              " If set to 0 then no specific limit will be enforced. It's recommented to keep"
+              " the default value unless there are specific reasons to change it."},
+             {"empty-allowed", 1},
+             {"default", 0}}},
            {"svc-port",
             {{"description", "The port number for the worker's replication service."}, {"default", 25000}}},
            {"fs-port",
@@ -382,10 +390,11 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " MySQL database."},
              {"default", "/qserv/data/ingest"}}},
            {"exporter-port",
-            {{"description", "The port number for the worker's table export service."}, {"default", 25003}}},
+            {{"description", "The port number for the worker's HTTP-based table export service."},
+             {"default", 25003}}},
            {"exporter-tmp-dir",
             {{"description",
-              "A location for temporary files stored by the worker's table"
+              "A location for temporary files stored by the worker's HTTP-based table"
               " export service before returning them a client."},
              {"default", "/qserv/data/export"}}},
            {"http-loader-port",
