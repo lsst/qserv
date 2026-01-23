@@ -27,8 +27,6 @@
 #include <stdexcept>
 #include <string>
 
-#include "boost/make_shared.hpp"
-
 #include "partition/ConfigStore.h"
 
 namespace fs = boost::filesystem;
@@ -37,7 +35,7 @@ namespace po = boost::program_options;
 namespace lsst::partition {
 
 ChunkReducer::ChunkReducer(ConfigStore const& config)
-        : _index(boost::make_shared<ChunkIndex>()),
+        : _index(std::make_shared<ChunkIndex>()),
           _chunkId(-1),
           _numNodes(config.get<uint32_t>("out.num-nodes")),
           _prefix(config.get<std::string>("part.prefix").c_str()),  // defend against GCC PR21334

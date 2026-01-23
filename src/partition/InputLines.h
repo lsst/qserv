@@ -25,13 +25,13 @@
 /// \file
 /// \brief A class for reading lines from a set of text files in parallel.
 
+#include <memory>
 #include <sys/types.h>
 #include <stdint.h>
 #include <utility>
 #include <vector>
 
 #include "boost/filesystem.hpp"
-#include "boost/shared_ptr.hpp"
 
 // Qserv headers
 #include "partition/ParquetInterface.h"
@@ -97,7 +97,7 @@ public:
 private:
     class Impl;
 
-    boost::shared_ptr<Impl> _impl;
+    std::shared_ptr<Impl> _impl;
 };
 
 }  // namespace lsst::partition

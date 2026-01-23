@@ -13,6 +13,8 @@ target_sources(partition PRIVATE
     InputLines.cc
     ObjectIndex.cc
     ParquetInterface.cc
+    PartitionTool.cc
+    PartitionMatchesTool.cc
 )
 
 target_link_libraries(partition PUBLIC

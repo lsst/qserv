@@ -23,10 +23,10 @@
 #ifndef LSST_PARTITION_CHUNKREDUCER_H
 #define LSST_PARTITION_CHUNKREDUCER_H
 
+#include <memory>
 #include <stdint.h>
 
 #include "boost/filesystem/path.hpp"
-#include "boost/shared_ptr.hpp"
 
 #include "Chunker.h"
 #include "ChunkIndex.h"
@@ -57,12 +57,12 @@ public:
     void reduce(RecordIter const begin, RecordIter const end);
     void finish();
 
-    boost::shared_ptr<ChunkIndex> const result() { return _index; }
+    std::shared_ptr<ChunkIndex> const result() { return _index; }
 
 private:
     void _makeFilePaths(int32_t chunkId);
 
-    boost::shared_ptr<ChunkIndex> _index;
+    std::shared_ptr<ChunkIndex> _index;
     int32_t _chunkId;
     uint32_t _numNodes;
     std::string _prefix;

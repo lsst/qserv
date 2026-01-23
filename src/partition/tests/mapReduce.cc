@@ -20,6 +20,7 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
+#include <memory>
 #include <stdio.h>
 #include <string.h>
 
@@ -36,7 +37,7 @@ namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 namespace csv = lsst::partition::csv;
 
-using boost::shared_ptr;
+using std::shared_ptr;
 using std::string;
 
 using lsst::partition::BufferedAppender;

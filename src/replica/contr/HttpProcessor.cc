@@ -458,11 +458,23 @@ void HttpProcessor::registerServices() {
                 HttpIngestChunksModule::process(self->controller(), self->name(), self->_processorConfig, req,
                                                 resp, "ADD-CHUNK", http::AuthType::REQUIRED);
             });
+    httpServer()->addHandler("POST", "/ingest/chunk-multi",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpIngestChunksModule::process(self->controller(), self->name(),
+                                                                 self->_processorConfig, req, resp,
+                                                                 "ADD-CHUNK-MULTI", http::AuthType::REQUIRED);
+                             });
     httpServer()->addHandler(
             "POST", "/ingest/chunks", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                 HttpIngestChunksModule::process(self->controller(), self->name(), self->_processorConfig, req,
                                                 resp, "ADD-CHUNK-LIST", http::AuthType::REQUIRED);
             });
+    httpServer()->addHandler("POST", "/ingest/chunks-multi",
+                             [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
+                                 HttpIngestChunksModule::process(
+                                         self->controller(), self->name(), self->_processorConfig, req, resp,
+                                         "ADD-CHUNK-LIST-MULTI", http::AuthType::REQUIRED);
+                             });
     httpServer()->addHandler(
             "GET", "/ingest/chunks", [self](qhttp::Request::Ptr const req, qhttp::Response::Ptr const resp) {
                 HttpIngestChunksModule::process(self->controller(), self->name(), self->_processorConfig, req,

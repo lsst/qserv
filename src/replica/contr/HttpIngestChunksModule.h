@@ -22,8 +22,10 @@
 #define LSST_QSERV_HTTPINGESTCHUNKSMODULE_H
 
 // System headers
+#include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Third party headers
 #include "nlohmann/json.hpp"
@@ -32,6 +34,12 @@
 #include "replica/contr/HttpModule.h"
 #include "replica/util/Common.h"
 #include "replica/util/Mutex.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class DatabaseInfo;
+class ReplicaInfo;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -48,9 +56,13 @@ public:
     /**
      * Supported values for parameter 'subModuleName':
      *
-     *   ADD-CHUNK      for registering (or requesting a status of) of a new chunk
-     *   ADD-CHUNK-LIST for registering (or requesting a status of) of many new chunks
-     *   GET-CHUNK-LIST return the chunk allocation map for a database
+     *   ADD-CHUNK              - for registering (or requesting a status of) of a new chunk
+     *   ADD-CHUNK-MULTI        - for registering (or requesting a status of) of a new chunk
+     *                            at (possibly) multiple workers
+     *   ADD-CHUNK-LIST         - for registering (or requesting a status of) of many new chunks
+     *   ADD-CHUNK-LIST-MULTI   - for registering (or requesting a status of) of many new chunks
+     *                            at (possibly) multiple workers for each chunk
+     *   GET-CHUNK-LIST         - return the chunk allocation map for a database
      *
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
@@ -75,20 +87,59 @@ private:
 
     /**
      * Register (if it's not register yet) a chunk for ingest.
-     * Return connection parameters to an end-point service where chunk
-     * data will need to be ingested.
+     * @return connection parameters to an end-point service where chunk data will need to be ingested.
      */
     nlohmann::json _addChunk();
 
     /**
+     * Register (if it's not register yet) a chunk for ingest at (possibly) multiple workers.
+     * @return connection parameters to an end-point service where chunk data will need to be ingested.
+     */
+    nlohmann::json _addChunkMulti();
+
+    /**
      * Register (if it's not register yet) a list of chunks for ingest.
-     * Return connection parameters to an end-point services (may differ
-     * from chunk to chunk) where data of each chunk will need to be ingested.
+     * @return connection parameters to an end-point services (may differ
+     *  from chunk to chunk) where data of each chunk will need to be ingested.
      */
     nlohmann::json _addChunks();
 
     /**
-     * Register new chunk in a collection of known replicas.
+     * Register (if it's not register yet) a list of chunks for ingest at (possibly) multiple workers.
+     * @return connection parameters to an end-point services (may differ
+     *  from chunk to chunk) where data of each chunk will need to be ingested.
+     */
+    nlohmann::json _addChunksMulti();
+
+    /**
+     * @param chunks A list of chunk numbers to be inspected.
+     * @param databaseInfo The database the chunks belong to.
+     * @return A chunk allocation map for a database.
+     * @note The output collection is guaranteed to have entries for input chunks including
+     *   those that are not registered yet.
+     */
+    std::map<unsigned int, std::vector<ReplicaInfo>> _chunks2Replicas(std::vector<unsigned int> const& chunks,
+                                                                      DatabaseInfo const& databaseInfo) const;
+
+    /**
+     * Figure out and fill a chunks allocation map for a database. This method is used
+     * in implementations of the above-defined methods _addChunkMulti and _addChunksMulti.
+     * @param worker2replicasCache A transient cache of replica disposition for workers. This will
+     *  be used for optimizing the selection of workers for chunk placements. Otheriwise relatively
+     *  expensive database queries will be needed for each chunk.
+     * @param locations A JSON array to be filled with the chunk allocation map.
+     * @param chunk The number of a chunk to be registered.
+     * @param databaseInfo The database the chunk belongs to.
+     * @param existingReplicas The list of existing replicas for the chunk in the given database.
+     *  This is used to optimize the selection of workers for chunk placements.
+     * @return The number of new replicas registered for the chunk.
+     */
+    size_t _addChunk(std::map<std::string, size_t>& worker2replicasCache, nlohmann::json& locations,
+                     unsigned int const chunk, DatabaseInfo const& databaseInfo,
+                     std::vector<ReplicaInfo> const& existingReplicas) const;
+
+    /**
+     * Register new replica of a chunk.
      *
      * @note In the current version of the operation, the chunk will be registered
      *   with status COMPLETE. This decision will be reconsidered later after
@@ -100,7 +151,8 @@ private:
      * @param database  The name of the database the chunk belongs to.
      * @param chunk     The number of a chunk to be registered.
      */
-    void _registerNewChunk(std::string const& worker, std::string const& database, unsigned int chunk) const;
+    void _registerNewReplica(std::string const& worker, std::string const& database,
+                             unsigned int chunk) const;
 
     /**
      * Return a chunks allocation map for a database.

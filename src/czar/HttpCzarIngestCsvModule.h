@@ -23,8 +23,10 @@
 
 // System headers
 #include <fstream>
+#include <list>
 #include <map>
 #include <string>
+#include <vector>
 
 // Third party headers
 #include "boost/asio.hpp"
@@ -32,17 +34,20 @@
 
 // Qserv headers
 #include "czar/HttpCzarIngestModuleBase.h"
+#include "czar/WorkerIngestProcessor.h"
 #include "http/FileUploadModule.h"
+#include "qmeta/UserTableIngestRequest.h"
 
 // Forward declarations
 
-namespace lsst::qserv::czar::ingest {
-class Processor;
-}  // namespace lsst::qserv::czar::ingest
-
 namespace lsst::qserv::http {
 class ClientConnPool;
+class ClientMimeEntry;
 }  // namespace lsst::qserv::http
+
+namespace lsst::qserv::qmeta {
+class UserTables;
+}  // namespace lsst::qserv::qmeta
 
 namespace httplib {
 class ContentReader;
@@ -55,7 +60,7 @@ namespace lsst::qserv::czar {
 
 /**
  * Class HttpCzarIngestCsvModule implements a handler for processing requests for ingesting
- * user-generated data prodicts via the HTTP-based frontend. The requests are expected to
+ * user-generated data products via the HTTP-based frontend. The requests are expected to
  * contain CSV data, JSON schema and the relevant parameters in the multipart/form-data body of
  * the request.
  */
@@ -90,34 +95,57 @@ private:
                             std::shared_ptr<http::ClientConnPool> const& clientConnPool,
                             std::shared_ptr<ingest::Processor> const& workerIngestProcessor);
 
-    /// Ingest the table data into the Qserv and the Replication/Ingest system in a conetxt of
-    /// the given transaction.
+    nlohmann::json _ingestDirectorTable();
+    void _injectIdColValues();
+    void _createChunksDir();
+    void _getFileSize();
+    void _partitionTableData();
+    std::map<std::string, std::string> _pushChunksToWorkers(
+            std::uint32_t transactionId,
+            std::map<std::int32_t, std::vector<std::string>> const& chunk2workerIds);
+
+    nlohmann::json _ingestFullyReplicatedTable();
     std::map<std::string, std::string> _pushDataToWorkers(std::uint32_t transactionId);
 
+    void _pushFileToWorker(std::string const& chunkFilePath, std::string const& workerId,
+                           std::int32_t chunkId = 0, bool overlap = false);
+
+    std::list<http::ClientMimeEntry> _createMimeData(std::string const& filePath, std::int32_t chunkId,
+                                                     bool overlap) const;
+    void _reportCompletedRequest(std::string const& func);
+    nlohmann::json _reportFailedRequest(std::string const& func, std::string const& operation,
+                                        std::string const& errorMessage,
+                                        nlohmann::json const& errorExt = nlohmann::json());
+
     // Input parameters
-
-    /// The context string for posting messages into the logging stream.
-    std::string const _context;
-
-    /// The temporary directory for storing the uploaded files.
-    std::string const _tmpDir;
+    std::string const _context;  ///< The context for posting messages into the logging stream.
+    std::string const _tmpDir;   ///< The temporary directory for storing the uploaded files.
 
     /// The HTTP connection pool for communications with workers.
-    std::shared_ptr<http::ClientConnPool> const _clientConnPool;
+    std::shared_ptr<http::ClientConnPool> const _clientConnPool;  ///< Provided via c-tor parameter.
 
-    /// The ingest processor for uploading data to workers.
-    std::shared_ptr<ingest::Processor> const _workerIngestProcessor;
+    // The que-based ingest processor for uploading data to workers and a queue for
+    // accumulating the results.
+    std::shared_ptr<ingest::Processor> const _workerIngestProcessor;  ///< Provided via c-tor parameter.
+    std::shared_ptr<ingest::ResultQueue> const _resultQueue;          ///< Constructed locally.
 
-    // The following parameters are used to store the uploaded files.
-    std::string _name;         ///< The name of a file entry that is open ("rows", "schema" or "indexes").
-    std::string _csvFileName;  ///< The name of the CSV file in the temporary directory.
-    std::ofstream _csvFile;    ///< The output stream for the CSV file.
-    std::string _schema;       ///< The schema payload before parsing it into the JSON object.
-    std::string _indexes;      ///< The indexes payload before parsing it into the JSON object.
+    // The following parameters are used to store the uploaded files found the body of a request.
+    std::string _name;            ///< The name of a file entry that is open ("rows", "schema" or "indexes").
+    std::string _csvFilePath;     ///< The absolute path of the CSV file in the temporary directory.
+    std::string _csvExtFilePath;  ///< The absolute path of the extended CSV file (if any).
+    std::ofstream _csvFile;       ///< The output stream for the CSV file.
+    std::string _schema;          ///< The schema payload before parsing it into the JSON object.
+    std::string _indexes;         ///< The indexes payload before parsing it into the JSON object.
 
     // The following parameters are parsed from the request body.
     std::string _databaseName;
     std::string _tableName;
+    bool _isPartitioned = false;
+    bool _isDirector = false;
+    bool _injectIdCol = false;      ///< A flag indicating whether to inject an ID (PK) column.
+    std::string _idColName;         ///< The name of the ID (PK) column for partitioned tables.
+    std::string _longitudeColName;  ///< Right ascension column name for partitioned tables.
+    std::string _latitudeColName;   ///< Declination column name for partitioned tables.
     std::string _charsetName;
     std::string _collationName;
     std::string _fieldsTerminatedBy;
@@ -125,11 +153,21 @@ private:
     std::string _fieldsEscapedBy;
     std::string _linesTerminatedBy;
 
+    // These parameters are used to store and update the state of the ingest request in the QMeta database.
+    std::shared_ptr<qmeta::UserTables> _userTables;  ///< The reference to the UserTables database interface.
+    qmeta::UserTableIngestRequest _request;          ///< The ingest request registered in the QMeta database.
+
+    // These parameters are used when the input file is partitioned.
+    std::string _chunksDirName;                     ///< The name of the directory for the chunk files.
+    std::set<int32_t> _chunkIds;                    ///< The unique identifiers of the chunks.
+    std::map<int32_t, std::string> _chunkTables;    ///< The names of the chunk tables.
+    std::map<int32_t, std::string> _overlapTables;  ///< The names of the overlap tables.
+
     // Ingest statistics
     std::uint32_t _transactionId = 0;  ///< The transaction ID assigned by the Replication/Ingest system.
-    std::atomic<std::uint32_t> _numChunks{0};  ///< The total number of chunks ingested.
-    std::atomic<std::uint64_t> _numRows{0};    ///< The total number of rows ingested.
-    std::atomic<std::uint64_t> _numBytes{0};   ///< The number of bytes found in the input data file/stream.
+    std::uint64_t _numBytes = 0;       ///< The number of bytes in the input data file/stream.
+    std::uint32_t _numChunks = 0;      ///< The total number of chunks ingested.
+    std::atomic<std::uint64_t> _numRows{0};  ///< The total number of rows in the input data file/stream.
 };
 
 }  // namespace lsst::qserv::czar

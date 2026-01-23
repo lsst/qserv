@@ -26,20 +26,19 @@
 #ifndef LSST_PARTITION_MAPREDUCE_H
 #define LSST_PARTITION_MAPREDUCE_H
 
-#include <sys/types.h>
-#include <stdint.h>
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
-#include <algorithm>
+#include <memory>
+#include <sys/types.h>
 #include <stdexcept>
+#include <stdint.h>
 #include <vector>
 
 #include "boost/filesystem.hpp"
-#include "boost/make_shared.hpp"
 #include "boost/program_options.hpp"
 #include "boost/ref.hpp"
 #include "boost/scoped_array.hpp"
-#include "boost/shared_ptr.hpp"
 #include "boost/thread.hpp"
 
 #include "partition/ConfigStore.h"
@@ -271,7 +270,7 @@ void Silo<K>::_grow() {
 /// After all input has been read, mapped and reduced, each worker
 /// is asked for a result via:
 ///
-///     boost::shared_ptr<Result> const result();
+///     std::shared_ptr<Result> const result();
 ///
 /// The `Result` type must provide the following method:
 ///
@@ -305,7 +304,7 @@ namespace detail {
 /// Comparator for shared pointers to `Silo`s.
 template <typename K>
 struct SiloPtrCmp {
-    bool operator()(boost::shared_ptr<Silo<K> > const &s, boost::shared_ptr<Silo<K> > const &t) const {
+    bool operator()(std::shared_ptr<Silo<K> > const &s, std::shared_ptr<Silo<K> > const &t) const {
         return *s < *t;
     }
 };
@@ -357,7 +356,7 @@ private:
     typedef detail::SortedRecordRange<Key> SortedRecordRange;
     typedef typename SortedRecordRange::RecordIter RecordIter;
     typedef partition::Silo<Key> Silo;
-    typedef boost::shared_ptr<Silo> SiloPtr;
+    typedef std::shared_ptr<Silo> SiloPtr;
     typedef detail::SiloPtrCmp<Key> SiloPtrCmp;
     typedef typename std::vector<SiloPtr>::const_iterator SiloPtrIter;
 
@@ -440,7 +439,7 @@ void JobBase<DerivedT, WorkerT>::run(InputLines input) {
     std::vector<SiloPtr> silos;
     silos.reserve(_numWorkers);
     for (uint32_t i = 0; i < _numWorkers; ++i) {
-        silos.push_back(boost::make_shared<Silo>());
+        silos.push_back(std::make_shared<Silo>());
     }
     _silos.swap(silos);
     _input = input;
@@ -504,8 +503,8 @@ void JobBase<DerivedT, WorkerT>::defineOptions(boost::program_options::options_d
 template <typename DerivedT, typename WorkerT>
 void JobBase<DerivedT, WorkerT>::_work() {
     // Pre-allocate disk read buffer.
-    boost::shared_ptr<char> buffer(static_cast<char *>(std::malloc(_input.getMinimumBufferCapacity())),
-                                   std::free);
+    std::shared_ptr<char> buffer(static_cast<char *>(std::malloc(_input.getMinimumBufferCapacity())),
+                                 std::free);
     if (!buffer) {
         throw std::bad_alloc();
     }
@@ -652,7 +651,7 @@ class JobImpl : private JobBase<JobImpl<WorkerT, ResultT>, WorkerT> {
     typedef JobBase<JobImpl<WorkerT, ResultT>, WorkerT> Base;
 
     void _storeResult(WorkerT &w) {
-        boost::shared_ptr<ResultT> r = w.result();
+        std::shared_ptr<ResultT> r = w.result();
         if (!_result) {
             _result = r;
         } else if (r) {
@@ -660,7 +659,7 @@ class JobImpl : private JobBase<JobImpl<WorkerT, ResultT>, WorkerT> {
         }
     }
 
-    boost::shared_ptr<ResultT> _result;
+    std::shared_ptr<ResultT> _result;
 
     // Allow JobBase to call _storeResult.
     friend class JobBase<JobImpl<WorkerT, ResultT>, WorkerT>;
@@ -668,14 +667,14 @@ class JobImpl : private JobBase<JobImpl<WorkerT, ResultT>, WorkerT> {
 public:
     explicit JobImpl(ConfigStore const &config) : Base(config) {}
 
-    boost::shared_ptr<ResultT> const run(InputLines input) {
+    std::shared_ptr<ResultT> const run(InputLines input) {
         try {
             Base::run(input);
         } catch (...) {
             _result.reset();
             throw;
         }
-        boost::shared_ptr<ResultT> r;
+        std::shared_ptr<ResultT> r;
         r.swap(_result);
         return r;
     }
@@ -711,7 +710,7 @@ public:
 ///
 /// Otherwise, it is:
 ///
-///     boost::shared_ptr<typename WorkerT::Result> const run(InputLines input);
+///     std::shared_ptr<typename WorkerT::Result> const run(InputLines input);
 ///
 /// Multiple calls to `run` with different inputs are perfectly legal, and `run`
 /// provides the strong exception safety guarantee, at least as far as in-memory
