@@ -8,9 +8,7 @@ target_link_libraries(wconfig PUBLIC
     log
 )
 
-install(
-    TARGETS wconfig
-)
+install(TARGETS wconfig)
 
 add_executable(testSanityCheck testSanityCheck.cc)
 
@@ -20,4 +18,3 @@ target_link_libraries(testSanityCheck
 )
 
 add_test(NAME testSanityCheck COMMAND testSanityCheck)
-

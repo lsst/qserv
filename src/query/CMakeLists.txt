@@ -44,9 +44,7 @@ target_link_libraries(query PUBLIC
     sphgeom
 )
 
-install(
-    TARGETS query
-)
+install(TARGETS query)
 
 FUNCTION(query_tests)
     FOREACH(TEST IN ITEMS ${ARGV})

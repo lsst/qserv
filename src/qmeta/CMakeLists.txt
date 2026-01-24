@@ -19,7 +19,7 @@ target_link_libraries(qmeta PUBLIC
     http
     mysql
     log
-    util 
+    util
 )
 
 install(TARGETS qmeta)
