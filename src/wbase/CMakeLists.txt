@@ -9,12 +9,9 @@ target_sources(wbase PRIVATE
     UserQueryInfo.cc
 )
 
-install(
-    TARGETS wbase
-)
-
-
 target_link_libraries(wbase PUBLIC
     boost_regex
     log
 )
+
+install(TARGETS wbase)

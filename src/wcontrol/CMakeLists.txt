@@ -8,10 +8,7 @@ target_sources(wcontrol PRIVATE
     WCzarInfoMap.cc
 )
 
-install(
-    TARGETS wcontrol
-)
-
+install(TARGETS wcontrol)
 
 target_link_libraries(wcontrol PUBLIC
     log
