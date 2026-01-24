@@ -325,7 +325,12 @@ def enter_worker_svc(
     targs["db_socket"] = url.query.get("socket", "")
 
     save_template_cfg(targs)
-    save_template_cfg({"mysqld_user_qserv_password": mysqld_user_qserv_password})
+    save_template_cfg(
+        {
+            "mysqld_user_qserv_password": mysqld_user_qserv_password,
+            "worker_name": "",
+        }
+    )
 
     smig_worker(db_admin_uri, update=False)
 
@@ -443,7 +448,7 @@ def enter_proxy(
         The admin URI to the proxy's database.
     proxy_backend_address : `str`
         A colon-separated ip address and port number (e.g. "127.0.0.1:3306")
-        substituted into my-proxy.cnf.jinja, used by mysql proxy.
+        substituted into my-proxy.cfg.jinja, used by mysql proxy.
     proxy_cfg_file : `str`
         Path to the mysql proxy config file.
     proxy_cfg_path : `str`
