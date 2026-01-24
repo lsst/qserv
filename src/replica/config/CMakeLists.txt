@@ -1,4 +1,5 @@
 add_library(replica_config OBJECT)
+
 target_sources(replica_config PRIVATE
     ConfigCzar.cc
     ConfigDatabase.cc
@@ -12,6 +13,7 @@ target_sources(replica_config PRIVATE
     Configuration.cc
     ConfigurationSchema.cc
 )
+
 target_link_libraries(replica_config PUBLIC
     log
     sphgeom
