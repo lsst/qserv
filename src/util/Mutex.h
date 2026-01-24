@@ -33,6 +33,7 @@
 #include "util/Bug.h"
 
 #ifdef MUTEX_UNITTEST
+#undef USING_VMUTEX
 #define USING_VMUTEX 1
 #else
 #define USING_VMUTEX 0

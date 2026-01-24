@@ -10,7 +10,4 @@ target_link_libraries(rproc PUBLIC
     log
 )
 
-
-install(
-    TARGETS rproc
-)
+install(TARGETS rproc)
