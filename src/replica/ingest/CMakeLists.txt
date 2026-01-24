@@ -1,5 +1,7 @@
 add_library(replica_ingest OBJECT)
+
 add_dependencies(replica_ingest replica_proto)
+
 target_sources(replica_ingest PRIVATE
     IngestClient.cc
     IngestDataHttpSvcMod.cc
@@ -17,6 +19,7 @@ target_sources(replica_ingest PRIVATE
     IngestUtils.cc
     TransactionContrib.cc
 )
+
 target_link_libraries(replica_ingest PUBLIC
     log
 )

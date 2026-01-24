@@ -51,7 +51,7 @@ positional parameter to the script. Database connection can be specified in
 couple different ways:
 - as a sqlalchemy-style URL using -c option: `-c mysql://user:pass@host:port/dbName`
 - as a reference to a configuration section in some INI file:
-  `-f etc/qserv-czar.cnf -s css`.
+  `-f etc/qserv-czar.cfg -s css`.
 
 Latter case can be used when database connection parameters are stores in
 existing configuration files (e.g. files in existing qserv installation),

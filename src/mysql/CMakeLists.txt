@@ -16,9 +16,7 @@ target_link_libraries(mysql PUBLIC
     util
 )
 
-install(
-    TARGETS mysql
-)
+install(TARGETS mysql)
 
 add_executable(testLocalInfile testLocalInfile.cc)
 
