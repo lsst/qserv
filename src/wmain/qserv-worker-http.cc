@@ -47,10 +47,8 @@ char const* const context = "[WORKER]";
 int main(int argc, char* argv[]) {
     po::options_description desc("", 120);
     desc.add_options()("help,h", "Print this help message and exit.");
-    desc.add_options()("verbose,v", "Produce verbose output.");
-    desc.add_options()("config,c", po::value<string>()->default_value("/config-etc/qserv-worker.cnf"),
+    desc.add_options()("config,c", po::value<string>()->default_value("/config-etc/qserv-worker.cfg"),
                        "The configuration file.");
-    desc.add_options()("name,n", po::value<string>()->default_value("worker"), "Worker name.");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, const_cast<char**>(argv), desc), vm);
@@ -58,10 +56,6 @@ int main(int argc, char* argv[]) {
 
     string const configFilePath = vm["config"].as<string>();
 
-    bool const verbose = vm.count("verbose") > 0;
-    if (verbose) {
-        cout << ::context << " Configuration file: " << configFilePath << "\n" << endl;
-    }
     try {
         cout << ::context << " Starting worker\n"
              << " Configuration file: " << configFilePath << "\n"
@@ -78,5 +72,6 @@ int main(int argc, char* argv[]) {
         cerr << ::context << " The application failed, exception: " << ex.what() << endl;
         return 1;
     }
+
     return 0;
 }

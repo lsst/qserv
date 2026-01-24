@@ -1,5 +1,7 @@
 add_library(replica_util OBJECT)
+
 add_dependencies(replica_util replica_proto)
+
 target_sources(replica_util PRIVATE
     ChttpSvc.cc
     ChunkNumber.cc
@@ -16,6 +18,7 @@ target_sources(replica_util PRIVATE
     SqlSchemaUtils.cc
     SuccessRateGenerator.cc
 )
+
 target_link_libraries(replica_util PUBLIC
     log
     sphgeom

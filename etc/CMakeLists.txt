@@ -1,5 +1,5 @@
 install(FILES
     integration_tests.yaml
-    log.cnf
+    log.cfg
     DESTINATION etc
 )

@@ -1,4 +1,5 @@
 add_library(replica_contr OBJECT)
+
 target_sources(replica_contr PRIVATE
     Controller.cc
     DeleteWorkerTask.cc
@@ -26,6 +27,7 @@ target_sources(replica_contr PRIVATE
     ReplicationTask.cc
     Task.cc
 )
+
 target_link_libraries(replica_contr PUBLIC
     log
     sphgeom
