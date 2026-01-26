@@ -545,6 +545,23 @@ private:
      */
     void _assertQueryContext() const;
 
+    /**
+     * Reset the connection. Optionally close the connection if requested.
+     *
+     * The method is called during destroying the object or after a successful allocation
+     * or removal of a connection from the pool. One of the actions performed by the method is to call
+     * the MySQL function mysql_reset_connection() to ensure that the MySQL connection is in
+     * a clean state. Note that the MySQL connection won't be closed and reopened (unless it's
+     * requested), and reauthentication won't be done again. For details see:
+     * https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html
+     *
+     * @param closeConnection if 'true' then the MySQL connection will be closed. The destructor
+     *  of the class is the only place where this option is presently used.
+     */
+    void _reset(bool closeConnection = false);
+
+    friend class ConnectionPool;  // To allow access to the method _reset()
+
     static std::atomic<size_t>
             _nextId;   // The next available connector identifier in the generator's sequence
     size_t const _id;  // Unique identifier of this connector
