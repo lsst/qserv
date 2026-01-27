@@ -28,12 +28,10 @@
 
 // System headers
 #include <cstdint>
-#include <map>
 #include <memory>
 
 // Qserv headers
 #include "replica/util/Common.h"
-#include "replica/util/Mutex.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
@@ -104,12 +102,6 @@ private:
 
     std::string _context(std::string const& func = std::string()) const;
 
-    // Methods _add and _remove are used by the request classes to register and unregister
-    // themselves in the Controller's registry.
-    friend class Request;
-    void _add(std::shared_ptr<Request> const& request);
-    void _remove(std::shared_ptr<Request> const& request);
-
     // Input parameters
     std::shared_ptr<ServiceProvider> const _serviceProvider;
 
@@ -119,13 +111,6 @@ private:
     /// The number of milliseconds since UNIX Epoch when an instance of
     /// the Controller was created.
     uint64_t const _startTime;
-
-    /// For enforcing thread safety of the class's public API
-    /// and internal operations.
-    mutable replica::Mutex _mtx;
-
-    /// The registry of the requests
-    std::map<std::string, std::shared_ptr<Request>> _registry;
 };
 
 }  // namespace lsst::qserv::replica

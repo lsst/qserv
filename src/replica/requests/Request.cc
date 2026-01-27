@@ -218,10 +218,6 @@ void Request::start(string const& jobId, unsigned int requestExpirationIvalSec) 
 
     // Finalize state transition before saving the persistent state
     setState(lock, IN_PROGRESS);
-
-    // Register the request with the controller. The request will be unregistered
-    // when the request is finished.
-    _controller->_add(shared_from_this());
 }
 
 void Request::wait() {
@@ -289,10 +285,6 @@ void Request::finish(replica::Lock const& lock, ExtendedState extendedState) {
     // Set new state to make sure all event handlers will recognize
     // this scenario and avoid making any modifications to the request's state.
     setState(lock, FINISHED, extendedState);
-
-    // Unregister the request from the controller. Note that the request gest removed
-    // from the controller's list of active requests only if the request is finished.
-    _controller->_remove(shared_from_this());
 
     // Stop the timer if the one is still running
     _requestExpirationTimer.cancel();
