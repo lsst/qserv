@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -44,7 +44,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -71,7 +71,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -81,7 +81,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -129,7 +129,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -139,7 +139,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -170,7 +170,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -180,7 +180,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -222,7 +222,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -237,7 +237,7 @@ jobs:
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -270,85 +270,65 @@ jobs:
 
       - name: Run integration tests of ingesting user tables via the HTTP frontend
         run: |
-            ./bin/qserv --log-level DEBUG itest-http-ingest \
-            --qserv-image ${{ needs.image-names.outputs.qserv-image }}
+          ./bin/qserv --log-level DEBUG itest-http-ingest \
+          --qserv-image ${{ needs.image-names.outputs.qserv-image }}
 
       - name: Check Qserv containers
-        if: always()
         run: docker ps -a
 
       - name: Replication Controller Log
-        if: always()
         run: docker logs ${USER}-repl-controller-1
 
       - name: Replication Registry Log
-        if: always()
         run: docker logs ${USER}-repl-registry-1
 
       - name: Replication Database Log
-        if: always()
         run: docker logs ${USER}-repl-mariadb-1
 
       - name: Replication Worker 0 Log
-        if: always()
         run: docker logs ${USER}-repl-worker-0-1
 
       - name: Replication Worker 1 Log
-        if: always()
         run: docker logs ${USER}-repl-worker-1-1
 
       - name: Czar MySQL Proxy Log
-        if: always()
         run: docker logs ${USER}-czar-proxy-1
 
       - name: Czar HTTP Frontend Log
-        if: always()
         run: docker logs ${USER}-czar-http-1
 
       - name: Czar CMSD Log
-        if: always()
         run: docker logs ${USER}-czar-cmsd-1
 
       - name: Czar XROOTD Log
-        if: always()
         run: docker logs ${USER}-czar-xrootd-1
 
       - name: Czar MariaDB Log
-        if: always()
         run: docker logs ${USER}-czar-mariadb-1
 
       - name: Qzerv Worker 0 CMSD Log
-        if: always()
         run: docker logs ${USER}-worker-cmsd-0-1
 
       - name: Qzerv Worker 0 XROOTD Log
-        if: always()
         run: docker logs ${USER}-worker-xrootd-0-1
 
       - name: Qzerv Worker 0 MariaDB Log
-        if: always()
         run: docker logs ${USER}-worker-mariadb-0-1
 
       - name: Qzerv Worker 1 CMSD Log
-        if: always()
         run: docker logs ${USER}-worker-cmsd-1-1
 
       - name: Qzerv Worker 1 XROOTD Log
-        if: always()
         run: docker logs ${USER}-worker-xrootd-1-1
 
       - name: Qzerv Worker 1 MariaDB Log
-        if: always()
         run: docker logs ${USER}-worker-mariadb-1-1
 
       - name: Remove integration test volumes
-        run: |
-          ./bin/qserv --log-level DEBUG itest-rm
+        run: ./bin/qserv --log-level DEBUG itest-rm
 
       - name: Shut down qserv
-        run: |
-          ./bin/qserv --log-level DEBUG down \
-          -v
+        run: ./bin/qserv --log-level DEBUG down -v
 
   notify-on-fail:
     name: Notify Slack if fail on main
