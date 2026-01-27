@@ -90,15 +90,8 @@ Connection::Connection(ConnectionParams const& connectionParams, unsigned int co
 }
 
 Connection::~Connection() {
-    if (nullptr != _res) mysql_free_result(_res);
-    if (nullptr != _mysql) {
-        // Resetting the connection would release all table locks, roll back any
-        // outstanding transactions, etc. See details at:
-        // https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html
-        // Ignore the status code returned by the method.
-        mysql_reset_connection(_mysql);
-        mysql_close(_mysql);
-    }
+    bool const closeConnection = true;
+    _reset(closeConnection);
     LOGS(_log, LOG_LVL_TRACE, "Connection[" + to_string(_id) + "]  destructed");
 }
 
@@ -513,7 +506,6 @@ bool Connection::next(Row& row) {
     if (not _row) {
         // Just no more rows is no specific error reported
         if (0 == mysql_errno(_mysql)) return false;
-
         _processLastError(context + "mysql_fetch_row failed, query: '" + _lastQuery + "'");
     }
     size_t const* lengths = mysql_fetch_lengths(_res);
@@ -714,6 +706,36 @@ void Connection::_assertTransaction(bool inTransaction) const {
     }
 }
 
+void Connection::_reset(bool closeConnection) {
+    string const context = "Connection[" + to_string(_id) + "]::" + string(__func__) +
+                           "(_inTransaction=" + to_string(_inTransaction ? 1 : 0) + ")  ";
+
+    LOGS(_log, LOG_LVL_TRACE, context);
+
+    if (_mysql == nullptr) return;
+
+    // Reset the object state
+    _inTransaction = false;
+    _lastQuery.clear();
+
+    if (_res) mysql_free_result(_res);
+    _res = nullptr;
+    _fields = nullptr;
+    _numFields = 0;
+
+    _columnNames.clear();
+    _name2index.clear();
+
+    // Make the best attempt to reset the connection to a clean state.
+    if (0 != mysql_reset_connection(_mysql)) {
+        LOGS(_log, LOG_LVL_WARN, context + "mysql_reset_connection() failed");
+    }
+    if (closeConnection) {
+        mysql_close(_mysql);
+        _mysql = nullptr;
+    }
+}
+
 ConnectionPool::Ptr ConnectionPool::create(ConnectionParams const& params, size_t maxConnections) {
     return Ptr(new ConnectionPool(params, maxConnections));
 }
@@ -752,6 +774,9 @@ Connection::Ptr ConnectionPool::allocate() {
     _availableConnections.pop_front();
     _usedConnections.push_back(conn);
 
+    bool const closeConnection = false;
+    conn->_reset(closeConnection);
+
     return conn;
 }
 
@@ -776,6 +801,9 @@ void ConnectionPool::release(Connection::Ptr const& conn) {
         throw logic_error(context + "inappropriate use of the method");
     }
     _availableConnections.push_back(conn);
+
+    bool const closeConnection = false;
+    conn->_reset(closeConnection);
 
     // Notify one client (if any) waiting for a service
 

@@ -180,14 +180,4 @@ void Controller::verifyFolders(bool createMissingFolders) const {
     FileUtils::verifyFolders("CONTROLLER", folders, createMissingFolders);
 }
 
-void Controller::_add(std::shared_ptr<Request> const& request) {
-    replica::Lock lock(_mtx, _context(__func__));
-    _registry[request->id()] = request;
-}
-
-void Controller::_remove(std::shared_ptr<Request> const& request) {
-    replica::Lock lock(_mtx, _context(__func__));
-    _registry.erase(request->id());
-}
-
 }  // namespace lsst::qserv::replica
