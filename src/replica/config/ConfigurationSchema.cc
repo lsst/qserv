@@ -72,7 +72,7 @@ json const ConfigurationSchema::_schemaJson = json::object(
         {{"common",
           {{"request-buf-size-bytes",
             {{"description", "The default buffer size for network communications. Must be greater than 0."},
-             {"default", 131072}}},
+             {"default", 4096}}},
            {"request-retry-interval-sec",
             {{"description", "The default retry timeout for network communications. Must be greater than 0."},
              {"default", 1}}}}},
