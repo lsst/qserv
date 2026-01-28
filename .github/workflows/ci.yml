@@ -91,6 +91,13 @@ jobs:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Rebuild and push build image if needed
         id: rebuild
         run: |
@@ -149,6 +156,13 @@ jobs:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Rebuild and push if needed
         id: rebuild
         run: |
@@ -193,6 +207,13 @@ jobs:
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare user build image
         run: |
@@ -246,6 +267,13 @@ jobs:
         with:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Launch qserv
         run: |
