@@ -349,18 +349,3 @@ jobs:
         run: |
           ./bin/qserv --log-level DEBUG down \
           -v
-
-  notify-on-fail:
-    name: Notify Slack if fail on main
-    runs-on: ubuntu-22.04
-    needs: [compose-integration-tests]
-    if: github.ref == 'refs/heads/main' && failure()
-    steps:
-      - name: Notify
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          channel_id: G2JPZ3GC8  # this is the channel id of the dm_db_team room
-          status: FAILED
-          color: danger
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.QSERV_GHA_BUILD_NOTIFICATIONS }}
