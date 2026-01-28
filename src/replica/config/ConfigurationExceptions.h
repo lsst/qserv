@@ -73,6 +73,63 @@ public:
     using ConfigError::ConfigError;
 };
 
+/**
+ * The class ConfigUnknownDatabaseFamily represents exceptions thrown when
+ * a database family is not known to the configuration.
+ */
+class ConfigUnknownDatabaseFamily : public ConfigError {
+public:
+    std::string const familyName;
+    explicit ConfigUnknownDatabaseFamily(std::string const& msg, std::string const& familyName_)
+            : ConfigError(msg), familyName(familyName_) {}
+};
+
+/**
+ * The class ConfigUnknownDatabase represents exceptions thrown when
+ * a database is not known to the configuration.
+ */
+class ConfigUnknownDatabase : public ConfigError {
+public:
+    std::string const databaseName;
+    explicit ConfigUnknownDatabase(std::string const& msg, std::string const& databaseName_)
+            : ConfigError(msg), databaseName(databaseName_) {}
+};
+
+/**
+ * The class ConfigUnknownTable represents exceptions thrown when
+ * a table is not known to the configuration.
+ */
+class ConfigUnknownTable : public ConfigError {
+public:
+    std::string const databaseName;
+    std::string const tableName;
+    explicit ConfigUnknownTable(std::string const& msg, std::string const& databaseName_,
+                                std::string const& tableName_)
+            : ConfigError(msg), databaseName(databaseName_), tableName(tableName_) {}
+};
+
+/**
+ * The class ConfigUnknownWorker represents exceptions thrown when
+ * a worker is not known to the configuration.
+ */
+class ConfigUnknownWorker : public ConfigError {
+public:
+    std::string const workerName;
+    explicit ConfigUnknownWorker(std::string const& msg, std::string const& workerName_)
+            : ConfigError(msg), workerName(workerName_) {}
+};
+
+/**
+ * The class ConfigUnknownCzar represents exceptions thrown when
+ * a czar is not known to the configuration.
+ */
+class ConfigUnknownCzar : public ConfigError {
+public:
+    std::string const czarName;
+    explicit ConfigUnknownCzar(std::string const& msg, std::string const& czarName_)
+            : ConfigError(msg), czarName(czarName_) {}
+};
+
 }  // namespace lsst::qserv::replica
 
 #endif  // LSST_QSERV_REPLICA_CONFIGURATIONEXCEPTIONS_H

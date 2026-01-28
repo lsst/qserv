@@ -45,6 +45,17 @@ using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 namespace util = lsst::qserv::util;
 
+#define _THROW_IF_EMPTY(param)                                                                               \
+    if ((param).empty()) {                                                                                   \
+        throw invalid_argument("Configuration::" + string(__func__) + "  empty " #param " is not allowed."); \
+    }
+
+#define _THROW_IF_ZERO(param)                                              \
+    if ((param) == 0) {                                                    \
+        throw invalid_argument("Configuration::" + string(__func__) +      \
+                               "  0 value in " #param " is not allowed."); \
+    }
+
 namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Configuration");
@@ -80,9 +91,7 @@ replica::Mutex Configuration::_classMtx;
 // ---------------
 
 void Configuration::setQservCzarDbUrl(string const& url) {
-    if (url.empty()) {
-        throw invalid_argument("Configuration::" + string(__func__) + "  empty string is not allowed.");
-    }
+    _THROW_IF_EMPTY(url);
     replica::Lock const lock(_classMtx, _context(__func__));
     _qservCzarDbUrl = url;
 }
@@ -98,9 +107,7 @@ database::mysql::ConnectionParams Configuration::qservCzarDbParams(string const&
 }
 
 void Configuration::setQservWorkerDbUrl(string const& url) {
-    if (url.empty()) {
-        throw invalid_argument("Configuration::" + string(__func__) + "  empty string is not allowed.");
-    }
+    _THROW_IF_EMPTY(url);
     replica::Lock const lock(_classMtx, _context(__func__));
     _qservWorkerDbUrl = url;
 }
@@ -126,10 +133,8 @@ bool Configuration::databaseAllowReconnect() {
 }
 
 void Configuration::setDatabaseConnectTimeoutSec(unsigned int value) {
+    _THROW_IF_ZERO(value);
     replica::Lock const lock(_classMtx, _context(__func__));
-    if (0 == value) {
-        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
-    }
     _databaseConnectTimeoutSec = value;
 }
 
@@ -139,10 +144,8 @@ unsigned int Configuration::databaseConnectTimeoutSec() {
 }
 
 void Configuration::setDatabaseMaxReconnects(unsigned int value) {
+    _THROW_IF_ZERO(value);
     replica::Lock const lock(_classMtx, _context(__func__));
-    if (0 == value) {
-        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
-    }
     _databaseMaxReconnects = value;
 }
 
@@ -152,10 +155,8 @@ unsigned int Configuration::databaseMaxReconnects() {
 }
 
 void Configuration::setDatabaseTransactionTimeoutSec(unsigned int value) {
+    _THROW_IF_ZERO(value);
     replica::Lock const lock(_classMtx, _context(__func__));
-    if (0 == value) {
-        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
-    }
     _databaseTransactionTimeoutSec = value;
 }
 
@@ -180,10 +181,8 @@ unsigned int Configuration::schemaUpgradeWaitTimeoutSec() {
 }
 
 void Configuration::setSchemaUpgradeWaitTimeoutSec(unsigned int value) {
+    _THROW_IF_ZERO(value);
     replica::Lock const lock(_classMtx, _context(__func__));
-    if (0 == value) {
-        throw invalid_argument("Configuration::" + string(__func__) + "  0 is not allowed.");
-    }
     _schemaUpgradeWaitTimeoutSec = value;
 }
 
@@ -412,21 +411,22 @@ vector<string> Configuration::databaseFamilies() const {
 }
 
 bool Configuration::isKnownDatabaseFamily(string const& familyName) const {
+    _THROW_IF_EMPTY(familyName);
     replica::Lock const lock(_mtx, _context(__func__));
-    if (familyName.empty()) throw invalid_argument(_context(__func__) + " the family name is empty.");
     return _databaseFamilies.count(familyName) != 0;
 }
 
 DatabaseFamilyInfo Configuration::databaseFamilyInfo(string const& familyName) const {
+    _THROW_IF_EMPTY(familyName);
     replica::Lock const lock(_mtx, _context(__func__));
     return _databaseFamilyInfo(lock, familyName);
 }
 
 DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& family) {
+    _THROW_IF_EMPTY(family.name);
     replica::Lock const lock(_mtx, _context(__func__));
-    if (family.name.empty()) throw invalid_argument(_context(__func__) + " the family name is empty.");
     if (_databaseFamilies.find(family.name) != _databaseFamilies.end()) {
-        throw invalid_argument(_context(__func__) + " the family '" + family.name + "' already exists.");
+        throw logic_error(_context(__func__) + " the family '" + family.name + "' already exists.");
     }
     string errors;
     if (family.replicationLevel == 0) errors += " replicationLevel(0)";
@@ -445,6 +445,7 @@ DatabaseFamilyInfo Configuration::addDatabaseFamily(DatabaseFamilyInfo const& fa
 }
 
 void Configuration::deleteDatabaseFamily(string const& familyName, bool force) {
+    _THROW_IF_EMPTY(familyName);
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
     vector<string> databasesToBeRemoved;
@@ -475,12 +476,14 @@ void Configuration::deleteDatabaseFamily(string const& familyName, bool force) {
 }
 
 size_t Configuration::replicationLevel(string const& familyName) const {
+    _THROW_IF_EMPTY(familyName);
     replica::Lock const lock(_mtx, _context(__func__));
     return _databaseFamilyInfo(lock, familyName).replicationLevel;
 }
 
 size_t Configuration::effectiveReplicationLevel(string const& familyName, size_t desiredReplicationLevel,
                                                 bool workerIsEnabled, bool workerIsReadOnly) const {
+    _THROW_IF_EMPTY(familyName);
     // IMPORTANT: Obtain a value of the hard limit before acquiring the lock
     // on the mutex in order to avoid a deadlock.
     size_t const hardLimit = this->get<size_t>("controller", "max-repl-level");
@@ -493,11 +496,10 @@ size_t Configuration::effectiveReplicationLevel(string const& familyName, size_t
 }
 
 void Configuration::setReplicationLevel(string const& familyName, size_t newReplicationLevel) {
+    _THROW_IF_EMPTY(familyName);
+    _THROW_IF_ZERO(newReplicationLevel);
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseFamilyInfo& family = _databaseFamilyInfo(lock, familyName);
-    if (newReplicationLevel == 0) {
-        throw invalid_argument(_context(__func__) + " replication level must be greater than 0.");
-    }
     if (_updatePersistentState(lock)) {
         string const query =
                 _g.update("config_database_family", make_pair("min_replication_level", newReplicationLevel)) +
@@ -511,9 +513,8 @@ void Configuration::setReplicationLevel(string const& familyName, size_t newRepl
 vector<string> Configuration::databases(string const& familyName, bool allDatabases, bool isPublished) const {
     replica::Lock const lock(_mtx, _context(__func__));
     if (!familyName.empty()) {
-        if (_databaseFamilies.find(familyName) == _databaseFamilies.cend()) {
-            throw invalid_argument(_context(__func__) + " no such family '" + familyName + "'.");
-        }
+        // The family must be known if specified. The method will throw otherwise.
+        _databaseFamilyInfo(lock, familyName);
     }
     vector<string> names;
     for (auto&& [name, database] : _databases) {
@@ -530,13 +531,14 @@ vector<string> Configuration::databases(string const& familyName, bool allDataba
 
 void Configuration::assertDatabaseIsValid(string const& databaseName) {
     if (!isKnownDatabase(databaseName)) {
-        throw invalid_argument(_context(__func__) + " database name is not valid: " + databaseName);
+        throw ConfigUnknownDatabase(_context(__func__) + " database name is not valid: " + databaseName,
+                                    databaseName);
     }
 }
 
 bool Configuration::isKnownDatabase(string const& databaseName) const {
+    _THROW_IF_EMPTY(databaseName);
     replica::Lock const lock(_mtx, _context(__func__));
-    if (databaseName.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
     return _databases.count(databaseName) != 0;
 }
 
@@ -545,14 +547,13 @@ DatabaseInfo Configuration::databaseInfo(string const& databaseName) const {
     return _databaseInfo(lock, databaseName);
 }
 
-DatabaseInfo Configuration::addDatabase(string const& databaseName, std::string const& familyName) {
+DatabaseInfo Configuration::addDatabase(string const& databaseName, string const& familyName) {
+    _THROW_IF_EMPTY(databaseName);
+    _THROW_IF_EMPTY(familyName);
     replica::Lock const lock(_mtx, _context(__func__));
-    if (databaseName.empty()) {
-        throw invalid_argument(_context(__func__) + " the database name can't be empty.");
-    }
     auto itr = _databases.find(databaseName);
     if (itr != _databases.end()) {
-        throw invalid_argument(_context(__func__) + " the database '" + databaseName + "' already exists.");
+        throw logic_error(_context(__func__) + " the database '" + databaseName + "' already exists.");
     }
     // This will throw an exception if the family isn't valid
     _databaseFamilyInfo(lock, familyName);
@@ -571,18 +572,21 @@ DatabaseInfo Configuration::addDatabase(string const& databaseName, std::string 
 }
 
 DatabaseInfo Configuration::publishDatabase(string const& databaseName) {
+    _THROW_IF_EMPTY(databaseName);
     replica::Lock const lock(_mtx, _context(__func__));
     bool const publish = true;
     return _publishDatabase(lock, databaseName, publish);
 }
 
 DatabaseInfo Configuration::unPublishDatabase(string const& databaseName) {
+    _THROW_IF_EMPTY(databaseName);
     replica::Lock const lock(_mtx, _context(__func__));
     bool const publish = false;
     return _publishDatabase(lock, databaseName, publish);
 }
 
 void Configuration::deleteDatabase(string const& databaseName) {
+    _THROW_IF_EMPTY(databaseName);
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& database = _databaseInfo(lock, databaseName);
     if (_updatePersistentState(lock)) {
@@ -594,11 +598,12 @@ void Configuration::deleteDatabase(string const& databaseName) {
 }
 
 DatabaseInfo Configuration::addTable(TableInfo const& table_) {
+    _THROW_IF_EMPTY(table_.database);
+    _THROW_IF_EMPTY(table_.name);
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& database = _databaseInfo(lock, table_.database);
     if (database.isPublished) {
-        throw invalid_argument(_context(__func__) +
-                               " adding tables to the published databases isn't allowed.");
+        throw logic_error(_context(__func__) + " adding tables to the published databases isn't allowed.");
     }
 
     // Make sure the input is sanitized & validated before attempting to register
@@ -634,6 +639,8 @@ DatabaseInfo Configuration::addTable(TableInfo const& table_) {
 }
 
 DatabaseInfo Configuration::deleteTable(string const& databaseName, string const& tableName) {
+    _THROW_IF_EMPTY(databaseName);
+    _THROW_IF_EMPTY(tableName);
     replica::Lock const lock(_mtx, _context(__func__));
     DatabaseInfo& database = _databaseInfo(lock, databaseName);
     database.removeTable(tableName);
@@ -648,7 +655,8 @@ DatabaseInfo Configuration::deleteTable(string const& databaseName, string const
 
 void Configuration::assertWorkerIsValid(string const& workerName) {
     if (!isKnownWorker(workerName)) {
-        throw invalid_argument(_context(__func__) + " worker name is not valid: " + workerName);
+        throw ConfigUnknownWorker(_context(__func__) + " worker name is not valid: " + workerName,
+                                  workerName);
     }
 }
 
@@ -656,33 +664,37 @@ void Configuration::assertWorkersAreDifferent(string const& workerOneName, strin
     assertWorkerIsValid(workerOneName);
     assertWorkerIsValid(workerTwoName);
     if (workerOneName == workerTwoName) {
-        throw invalid_argument(_context(__func__) + " worker names are the same: " + workerOneName);
+        throw logic_error(_context(__func__) + " worker names are the same: " + workerOneName);
     }
 }
 
 bool Configuration::isKnownWorker(string const& workerName) const {
+    _THROW_IF_EMPTY(workerName);
     replica::Lock const lock(_mtx, _context(__func__));
     return _workers.count(workerName) != 0;
 }
 
 ConfigWorker Configuration::worker(string const& workerName) const {
+    _THROW_IF_EMPTY(workerName);
     replica::Lock const lock(_mtx, _context(__func__));
     auto const itr = _workers.find(workerName);
     if (itr != _workers.cend()) return itr->second;
-    throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
+    throw ConfigUnknownWorker(_context(__func__) + " unknown worker '" + workerName + "'.", workerName);
 }
 
 ConfigWorker Configuration::addWorker(ConfigWorker const& worker) {
+    _THROW_IF_EMPTY(worker.name);
     replica::Lock const lock(_mtx, _context(__func__));
     if (_workers.find(worker.name) == _workers.cend()) return _updateWorker(lock, worker);
-    throw invalid_argument(_context(__func__) + " worker '" + worker.name + "' already exists.");
+    throw logic_error(_context(__func__) + " worker '" + worker.name + "' already exists.");
 }
 
 void Configuration::deleteWorker(string const& workerName) {
+    _THROW_IF_EMPTY(workerName);
     replica::Lock const lock(_mtx, _context(__func__));
     auto itr = _workers.find(workerName);
     if (itr == _workers.end()) {
-        throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
+        throw ConfigUnknownWorker(_context(__func__) + " unknown worker '" + workerName + "'.", workerName);
     }
     if (_updatePersistentState(lock)) {
         string const query = _g.delete_("config_worker") + _g.where(_g.eq("name", workerName));
@@ -693,10 +705,11 @@ void Configuration::deleteWorker(string const& workerName) {
 }
 
 ConfigWorker Configuration::disableWorker(string const& workerName) {
+    _THROW_IF_EMPTY(workerName);
     replica::Lock const lock(_mtx, _context(__func__));
     auto itr = _workers.find(workerName);
     if (itr == _workers.end()) {
-        throw invalid_argument(_context(__func__) + " unknown worker '" + workerName + "'.");
+        throw ConfigUnknownWorker(_context(__func__) + " unknown worker '" + workerName + "'.", workerName);
     }
     ConfigWorker& worker = itr->second;
     if (worker.isEnabled) {
@@ -712,9 +725,10 @@ ConfigWorker Configuration::disableWorker(string const& workerName) {
 }
 
 ConfigWorker Configuration::updateWorker(ConfigWorker const& worker) {
+    _THROW_IF_EMPTY(worker.name);
     replica::Lock const lock(_mtx, _context(__func__));
     if (_workers.find(worker.name) != _workers.end()) return _updateWorker(lock, worker);
-    throw invalid_argument(_context(__func__) + " unknown worker '" + worker.name + "'.");
+    throw ConfigUnknownWorker(_context(__func__) + " unknown worker '" + worker.name + "'.", worker.name);
 }
 
 vector<std::string> Configuration::allCzars() const {
@@ -732,48 +746,47 @@ size_t Configuration::numCzars() const {
 }
 
 bool Configuration::isKnownCzar(string const& czarName) const {
+    _THROW_IF_EMPTY(czarName);
     replica::Lock const lock(_mtx, _context(__func__));
     return _czars.count(czarName) != 0;
 }
 
 ConfigCzar Configuration::czar(string const& czarName) const {
+    _THROW_IF_EMPTY(czarName);
     replica::Lock const lock(_mtx, _context(__func__));
     auto const itr = _czars.find(czarName);
     if (itr != _czars.cend()) return itr->second;
-    throw invalid_argument(_context(__func__) + " unknown Czar '" + czarName + "'.");
+    throw ConfigUnknownCzar(_context(__func__) + " unknown Czar '" + czarName + "'.", czarName);
 }
 
 ConfigCzar Configuration::addCzar(ConfigCzar const& czar) {
+    _THROW_IF_EMPTY(czar.name);
     replica::Lock const lock(_mtx, _context(__func__));
-    if (czar.name.empty()) {
-        throw invalid_argument(_context(__func__) + " Czar name was not provided.");
-    }
     if (_czars.find(czar.name) == _czars.cend()) {
         _czars[czar.name] = czar;
         return czar;
     }
-    throw invalid_argument(_context(__func__) + " Czar '" + czar.name + "' already exists.");
+    throw logic_error(_context(__func__) + " Czar '" + czar.name + "' already exists.");
 }
 
 void Configuration::deleteCzar(string const& czarName) {
+    _THROW_IF_EMPTY(czarName);
     replica::Lock const lock(_mtx, _context(__func__));
     auto itr = _czars.find(czarName);
     if (itr == _czars.end()) {
-        throw invalid_argument(_context(__func__) + " unknown Czar '" + czarName + "'.");
+        throw ConfigUnknownCzar(_context(__func__) + " unknown Czar '" + czarName + "'.", czarName);
     }
     _czars.erase(itr);
 }
 
 ConfigCzar Configuration::updateCzar(ConfigCzar const& czar) {
+    _THROW_IF_EMPTY(czar.name);
     replica::Lock const lock(_mtx, _context(__func__));
     if (_czars.find(czar.name) != _czars.end()) {
-        if (czar.name.empty()) {
-            throw invalid_argument(_context(__func__) + " Czar name was not provided.");
-        }
         _czars[czar.name] = czar;
         return czar;
     }
-    throw invalid_argument(_context(__func__) + " unknown Czar '" + czar.name + "'.");
+    throw ConfigUnknownCzar(_context(__func__) + " unknown Czar '" + czar.name + "'.", czar.name);
 }
 
 map<qmeta::CzarId, string> Configuration::czarIds() const {
@@ -827,9 +840,7 @@ json& Configuration::_get(replica::Lock const& lock, string const& category, str
 }
 
 ConfigWorker Configuration::_updateWorker(replica::Lock const& lock, ConfigWorker const& worker) {
-    if (worker.name.empty()) {
-        throw invalid_argument(_context(__func__) + " worker name can't be empty.");
-    }
+    _THROW_IF_EMPTY(worker.name);
 
     // Update a subset of parameters in the persistent state.
     bool const update = _workers.count(worker.name) != 0;
@@ -852,18 +863,19 @@ ConfigWorker Configuration::_updateWorker(replica::Lock const& lock, ConfigWorke
 }
 
 DatabaseFamilyInfo& Configuration::_databaseFamilyInfo(replica::Lock const& lock, string const& familyName) {
-    if (familyName.empty())
-        throw invalid_argument(_context(__func__) + " the database family name is empty.");
+    _THROW_IF_EMPTY(familyName);
     auto const itr = _databaseFamilies.find(familyName);
     if (itr != _databaseFamilies.cend()) return itr->second;
-    throw invalid_argument(_context(__func__) + " no such database family '" + familyName + "'.");
+    throw ConfigUnknownDatabaseFamily(_context(__func__) + " no such database family '" + familyName + "'.",
+                                      familyName);
 }
 
 DatabaseInfo& Configuration::_databaseInfo(replica::Lock const& lock, string const& databaseName) {
-    if (databaseName.empty()) throw invalid_argument(_context(__func__) + " the database name is empty.");
+    _THROW_IF_EMPTY(databaseName);
     auto const itr = _databases.find(databaseName);
     if (itr != _databases.cend()) return itr->second;
-    throw invalid_argument(_context(__func__) + " no such database '" + databaseName + "'.");
+    throw ConfigUnknownDatabase(_context(__func__) + " no such database '" + databaseName + "'.",
+                                databaseName);
 }
 
 DatabaseInfo& Configuration::_publishDatabase(replica::Lock const& lock, string const& databaseName,
