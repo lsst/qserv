@@ -192,4 +192,14 @@ void HttpCzarSvc::_registerHandlers() {
     });
 }
 
+string HttpCzarConfig::dump() const {
+    stringstream os;
+    os << "HttpCzarConfig{port=" << port << " numThreads=" << numThreads
+       << " numWorkerIngestThreads=" << numWorkerIngestThreads << " sslCertFile = ** sslPrivateKeyFile = **"
+       << " tmpDir=" << tmpDir << " maxQueuedRequests=" << maxQueuedRequests
+       << " clientConnPoolSize=" << clientConnPoolSize << " numBoostAsioThreads=" << numBoostAsioThreads
+       << "}";
+    return os.str();
+};
+
 }  // namespace lsst::qserv::czar

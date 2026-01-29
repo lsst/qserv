@@ -42,6 +42,15 @@ public:
     /// parsed body of the request
     nlohmann::json objJson = nlohmann::json::object();
 
+    RequestBodyJSON() = default;
+    RequestBodyJSON(RequestBodyJSON const&) = default;
+    RequestBodyJSON& operator=(RequestBodyJSON const&) = default;
+
+    ~RequestBodyJSON() = default;
+
+    /// Make a new RequestBody based on `js`
+    RequestBodyJSON(nlohmann::json const& js) : objJson(js) {}
+
     /**
      * Check if the specified parameter is present in the input JSON object.
      * @param obj  JSON object to be inspected.
@@ -73,8 +82,11 @@ public:
             throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
                                         "<T>[static] parameter 'obj' is not a valid JSON object");
         }
-        if (obj.find(name) != obj.end()) return obj[name];
-        throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
+
+        if (auto const iter = obj.find(name); iter != obj.end()) {
+            return *iter;
+        }
+        throw std::invalid_argument("RequestBody::" + std::string(__func__) +
                                     "<T>[static] required parameter " + name +
                                     " is missing in the request body");
     }

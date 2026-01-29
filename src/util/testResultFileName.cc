@@ -31,7 +31,6 @@
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "qmeta/types.h"
 #include "util/ResultFileName.h"
 
 // Boost unit test header
@@ -49,24 +48,19 @@ BOOST_AUTO_TEST_SUITE(Suite)
 BOOST_AUTO_TEST_CASE(ResultFileNameTest) {
     LOGS_INFO("ResultFileNameTest");
 
-    lsst::qserv::qmeta::CzarId const czarId = 1;
+    lsst::qserv::CzarId const czarId = 1;
     lsst::qserv::QueryId const queryId = 2;
-    uint32_t const jobId = 3;
-    uint32_t const chunkId = 4;
-    uint32_t const attemptCount = 5;
+    lsst::qserv::UberJobId const ujId = 3;
 
     std::string const name2parse = std::to_string(czarId) + "-" + std::to_string(queryId) + "-" +
-                                   std::to_string(jobId) + "-" + std::to_string(chunkId) + "-" +
-                                   std::to_string(attemptCount) + lsst::qserv::util::ResultFileName::fileExt;
+                                   std::to_string(ujId) + lsst::qserv::util::ResultFileName::fileExt;
 
     BOOST_CHECK_NO_THROW({
         lsst::qserv::util::ResultFileName const file(name2parse);
         BOOST_CHECK_EQUAL(file.fileName(), name2parse);
         BOOST_CHECK_EQUAL(file.czarId(), czarId);
         BOOST_CHECK_EQUAL(file.queryId(), queryId);
-        BOOST_CHECK_EQUAL(file.jobId(), jobId);
-        BOOST_CHECK_EQUAL(file.chunkId(), chunkId);
-        BOOST_CHECK_EQUAL(file.attemptCount(), attemptCount);
+        BOOST_CHECK_EQUAL(file.ujId(), ujId);
     });
 
     BOOST_CHECK_NO_THROW({
@@ -74,9 +68,7 @@ BOOST_AUTO_TEST_CASE(ResultFileNameTest) {
         BOOST_CHECK_EQUAL(file.fileName(), name2parse);
         BOOST_CHECK_EQUAL(file.czarId(), czarId);
         BOOST_CHECK_EQUAL(file.queryId(), queryId);
-        BOOST_CHECK_EQUAL(file.jobId(), jobId);
-        BOOST_CHECK_EQUAL(file.chunkId(), chunkId);
-        BOOST_CHECK_EQUAL(file.attemptCount(), attemptCount);
+        BOOST_CHECK_EQUAL(file.ujId(), ujId);
     });
 
     BOOST_CHECK_NO_THROW({
@@ -84,27 +76,22 @@ BOOST_AUTO_TEST_CASE(ResultFileNameTest) {
         BOOST_CHECK_EQUAL(file.fileName(), name2parse);
         BOOST_CHECK_EQUAL(file.czarId(), czarId);
         BOOST_CHECK_EQUAL(file.queryId(), queryId);
-        BOOST_CHECK_EQUAL(file.jobId(), jobId);
-        BOOST_CHECK_EQUAL(file.chunkId(), chunkId);
-        BOOST_CHECK_EQUAL(file.attemptCount(), attemptCount);
+        BOOST_CHECK_EQUAL(file.ujId(), ujId);
     });
 
     BOOST_CHECK_NO_THROW({
-        lsst::qserv::util::ResultFileName const file(czarId, queryId, jobId, chunkId, attemptCount);
+        lsst::qserv::util::ResultFileName const file(czarId, queryId, ujId);
         BOOST_CHECK_EQUAL(file.fileName(), name2parse);
         BOOST_CHECK_EQUAL(file.czarId(), czarId);
         BOOST_CHECK_EQUAL(file.queryId(), queryId);
-        BOOST_CHECK_EQUAL(file.jobId(), jobId);
-        BOOST_CHECK_EQUAL(file.chunkId(), chunkId);
-        BOOST_CHECK_EQUAL(file.attemptCount(), attemptCount);
+        BOOST_CHECK_EQUAL(file.ujId(), ujId);
     });
 
     BOOST_CHECK_THROW(
-            { lsst::qserv::util::ResultFileName const file(std::string("1-2-3-4")); }, std::invalid_argument);
+            { lsst::qserv::util::ResultFileName const file(std::string("1-2")); }, std::invalid_argument);
 
     BOOST_CHECK_THROW(
-            { lsst::qserv::util::ResultFileName const file(std::string("a-2-3-4-5")); },
-            std::invalid_argument);
+            { lsst::qserv::util::ResultFileName const file(std::string("a-2-3-4")); }, std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
