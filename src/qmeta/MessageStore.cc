@@ -87,4 +87,14 @@ int MessageStore::messageCount(int code) const {
     return count;
 }
 
+string MessageStore::dump() const {
+    stringstream os;
+    os << "MessageStore[count=" << _queryMessages.size();
+    for (auto const& msg : _queryMessages) {
+        os << "{" << msg.dump() << "}\n";
+    }
+    os << "]";
+    return os.str();
+}
+
 }  // namespace lsst::qserv::qmeta

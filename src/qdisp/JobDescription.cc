@@ -71,17 +71,11 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
                  cName(__func__) << " attempts(" << _attemptCount << ") > maxAttempts(" << maxAttempts
                                  << ") cancelling");
             exec->addMultiError(util::Error::RETRY_FAILS, util::Error::NONE,
-                                "max attempts reached " + to_string(_attemptCount) + " " + _qIdStr,
-                                util::Error::INTERNAL);
+                                "max attempts for chunk reached " + to_string(_attemptCount) + " " + _qIdStr,
+                                true);
             exec->squash(string("incrAttemptCount ") + to_string(_attemptCount));
             return false;
         }
-    }
-    if (_attemptCount >= MAX_JOB_ATTEMPTS) {
-        LOGS(_log, LOG_LVL_ERROR,
-             cName(__func__) << " attemptCount greater than max number of retries " << _attemptCount
-                             << " max=" << MAX_JOB_ATTEMPTS);
-        return false;
     }
     return true;
 }

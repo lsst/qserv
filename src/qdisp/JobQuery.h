@@ -63,7 +63,12 @@ public:
     JobDescription::Ptr getDescription() { return _jobDescription; }
     qmeta::JobStatus::Ptr getStatus() { return _jobStatus; }
 
-    bool cancel(bool superfluous = false);
+    /// Cancel this job.
+    /// @param superfluous - true means this job is part of a LIMIT query
+    ///            and the result of this job isn't needed to satisfy the LIMIT.
+    /// @param logLvlErr - put this in the log at log level ERROR when true.
+    ///            There can be 100K+ of these, making the log hard to read.
+    bool cancel(bool superfluous = false, bool logLvlErr = true);
     bool isQueryCancelled();
 
     std::shared_ptr<Executive> getExecutive() { return _executive.lock(); }

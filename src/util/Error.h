@@ -63,7 +63,7 @@ public:
         UNKNOWN_TABLE = 1051,      // usually associated with ALTER and DROP
         NONEXISTANT_TABLE = 1146,  // usually associated with SELECT, INSERT
         // Qserv errors begin
-        SQL_SYNTAX_ERR = 5000,  // Should avoid conflicts with MariaDB errors.
+        QSERV_ERR = 5000,  // Should avoid conflicts with MariaDB errors.
         // Query plugin errors:
         DUPLICATE_SELECT_EXPR,
         // InfileMerger errors:
@@ -102,7 +102,7 @@ public:
 
     Error(int code, int subCode, std::string const& msg = "", bool logLvlErr = true);
     Error(int code, int subCode, std::set<int> const& chunkIds, std::set<int> const& jobIds,
-          std::string const& msg = "", bool logLvlErr = true);
+          std::string const& msg, bool logLvlErr = true);
 
     Error() = default;
     Error(Error const&) = default;

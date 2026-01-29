@@ -583,7 +583,8 @@ QueryState UserQuerySelect::join() {
     } else {
         auto const status = resultSizeLimitExceeded ? qmeta::QInfo::FAILED_LR : qmeta::QInfo::FAILED;
         _qMetaUpdateStatus(status, collectedRows, collectedBytes, finalRows);
-        LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!) QID=" << getQueryId());
+        LOGS(_log, LOG_LVL_ERROR,
+             "Joined everything (failure!) QID=" << getQueryId() << " status=" << status);
         state = ERROR;
     }
     auto const czarConfig = cconfig::CzarConfig::instance();
@@ -858,7 +859,7 @@ void UserQuerySelect::_qMetaUpdateMessages() {
     try {
         _queryMetadata->addQueryMessages(_queryId, msgStore);
     } catch (qmeta::SqlError const& ex) {
-        LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
     }
 }
 
