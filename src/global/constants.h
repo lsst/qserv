@@ -48,15 +48,6 @@ const char SUBCHUNK_TAG[] = "%S\007S%";
 /// when generating concrete query text from a template.
 const char CHUNK_TAG[] = "%C\007C%";
 
-/**
- * The absolute maximum number of job attempts. The number
- * of attempts before cancelling a query can (and probably should)
- * be smaller than this.
- * This is value is used for encoding jobId and attemptCount.
- * For readability values should be 10, 100, 1000, etc.
- */
-const int MAX_JOB_ATTEMPTS = 100;
-
 /// Used for undefined variable which should contain positive integer
 const int NOTSET = -1;
 
