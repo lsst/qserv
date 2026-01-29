@@ -32,6 +32,7 @@
 #include "global/clock_defs.h"
 #include "http/MetaModule.h"
 #include "lsst/log/Log.h"
+#include "protojson/PwHideJson.h"
 #include "protojson/UberJobErrorMsg.h"
 
 // Boost unit test header
@@ -89,9 +90,11 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     lsst::qserv::CzarId const czarId = 745;
     lsst::qserv::QueryId const queryId = 986532;
     lsst::qserv::UberJobId const uberJobId = 14578;
-    lsst::qserv::util::Error err(-3, 8, {3, 5, 11}, {1, 2, 3}, "something went wrong", 1);
+    lsst::qserv::util::Error err1(-3, 8, {3, 5, 11}, {1, 2, 3}, "something went wrong", true);
+    lsst::qserv::util::Error err2(7, 13, "oops another", true);
     lsst::qserv::util::MultiError multiE;
-    multiE.insert(err);
+    multiE.insert(err1);
+    multiE.insert(err2);
     auto jrm = UberJobErrorMsg::create(authContext_, version, workerIdStr, czarName, czarId, queryId,
                                        uberJobId, multiE);
 
@@ -100,6 +103,21 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     LOGS(_log, LOG_LVL_INFO, "stdJrm=" << strJrm);
 
     BOOST_REQUIRE(parseSerializeReparseCheck(strJrm, "A"));
+}
+
+BOOST_AUTO_TEST_CASE(PwHideJson) {
+    LOGS(_log, LOG_LVL_INFO, "testPwHideJson start");
+
+    nlohmann::json tst1({{"a", 36}, {"pw", {5, 8, 9}}, {"auth_key", "jsonauth"}, {"password", 7}});
+    std::cout << "tst1=" << tst1 << endl;
+    nlohmann::json expected1({{"a", 36}, {"pw", "-"}, {"auth_key", "-"}, {"password", "-"}});
+    std::cout << "expected1=" << expected1 << endl;
+
+    lsst::qserv::protojson::PwHideJson pwHide;
+    auto out1 = pwHide.hide(tst1);
+    std::cout << "out1=" << out1 << endl;
+
+    BOOST_REQUIRE(out1 == expected1);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

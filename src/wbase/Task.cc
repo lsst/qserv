@@ -366,23 +366,23 @@ void Task::action(util::CmdData* data) {
     // Get a local copy for safety.
     auto qr = _taskQueryRunner;
     bool success = false;
-    string errStr;
+    string errStr = getUberJobData()->getWorkerId() + " ";
     try {
-        success = qr->runQuery();
+        success = qr->runQuery(errStr);
     } catch (UnsupportedError const& e) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " runQuery threw UnsupportedError " << e.what() << tIdStr);
-        errStr = e.what();
+        errStr += string(" threw:") + e.what();
     }
     if (not success) {
         LOGS(_log, _logLvlET, "runQuery failed " << tIdStr);
         if (not getSendChannel()->kill("Task::action")) {
             LOGS(_log, _logLvlWT, "runQuery sendChannel already killed " << tIdStr);
         }
-        // Send a message back saying this UberJobFailed, redundant error messages should be
-        // harmless.
+        // This is what gets sent if a more specific error has not been sent already.
         util::MultiError multiErr;
         bool logLvl = (_logLvlET != LOG_LVL_TRACE);
-        string const strMsg = string("UberJob run error chunk=" + to_string(_chunkId) + ":" + ":" + errStr);
+        string strMsg = string("worker run error chunk=" + to_string(_chunkId) + ":" + errStr);
+        strMsg += " worker=" + getUberJobData()->getWorkerId();
         util::Error err(util::Error::WORKER_QUERY, util::Error::NONE, strMsg, logLvl);
         multiErr.insert(err);
         _ujData->responseError(multiErr, -1, false, _logLvlET);
