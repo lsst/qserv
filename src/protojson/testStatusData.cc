@@ -248,8 +248,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     int const chunkId3 = 471;
     bool const cancelled3 = true;
     lsst::qserv::util::MultiError multiErr;
-    lsst::qserv::util::Error err(105423, "Some random error.");
-    multiErr.push_back(err);
+    lsst::qserv::util::Error err(105423, 3, "Some random error.");
+    multiErr.insert(err);
     auto ujData3 = lsst::qserv::wbase::UberJobData::create(
             ujId3, czarName, czarId, czarHost, czarPort, qId3, rowlimit, maxTableBytes, scanInfo2,
             scaninteractive2, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
@@ -260,15 +260,14 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto jsWcA3 = wccIssueA1->toJson();
     // parse jsWcA3 and check if the answer is correct
     auto wccIssueA3Out1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(jsWcA3, authContext_);
+    LOGS(_log, LOG_LVL_INFO, "wccIssueA1=" << wccIssueA1->dump());
+    LOGS(_log, LOG_LVL_INFO, "wccIssueA3Out1=" << wccIssueA3Out1->dump());
     BOOST_REQUIRE(*wccIssueA1 != *wccIssueA2Out1);
     BOOST_REQUIRE(*wccIssueA1 == *wccIssueA3Out1);
 
-    LOGS(_log, LOG_LVL_DEBUG, "wccIssueA1=" << wccIssueA1->dump());
-    LOGS(_log, LOG_LVL_DEBUG, "wccIssueA3Out1=" << wccIssueA3Out1->dump());
-
     // Create the response to jsWcA3.
     auto jsRespA3Out1 = wccIssueA3Out1->responseToJson();
-    LOGS(_log, LOG_LVL_DEBUG, "jsRespA3Out1=" << jsRespA3Out1);
+    LOGS(_log, LOG_LVL_INFO, "jsRespA3Out1=" << jsRespA3Out1);
 
     // Parse the response and remove the appropriate entries from wccIsueA1.
     auto respMsg = lsst::qserv::protojson::ResponseMsg::createFromJson(jsRespA3Out1);
