@@ -191,7 +191,7 @@ void UberJob::_unassignJobs() {
         if (!job->unassignFromUberJob(getUjId())) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not unassign job=" << jid << " cancelling");
             exec->addMultiError(util::Error::INTERNAL, util::Error::RETRY_UNASSIGN,
-                                "unable to unassign " + jid, util::Error::INTERNAL);
+                                "unable to unassign " + jid, true);
             exec->squash("_unassignJobs failure");
             return;
         }
@@ -221,9 +221,9 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
         return false;
     }
 
-    _jobStatus->updateInfo(getIdStr(), newState, msg);
+    _jobStatus->updateInfo(getIdStr(), newState, msg, 0, "", MSG_INFO);
     for (auto&& jq : _jobs) {
-        jq->getStatus()->updateInfo(jq->getIdStr(), newState, msg);
+        jq->getStatus()->updateInfo(jq->getIdStr(), newState, msg, 0, "", MSG_INFO);
     }
     return true;
 }
@@ -234,15 +234,16 @@ void UberJob::callMarkCompleteFunc(bool success) {
     lock_guard<mutex> lck(_jobsMtx);
     // Need to set this uberJob's status, however exec->markCompleted will set
     // the status for each job when it is called.
-    string source = string("UberJob_") + (success ? "SUCCESS" : "FAILED");
-    _jobStatus->updateInfo(getIdStr(), qmeta::JobStatus::COMPLETE, source);
+    // "COMPLETE" and "CANCEL" are used by QmetaMysql to reduce the rows used in qmeta.
+    string source = (success ? "COMPLETE" : "CANCEL");
+    _jobStatus->updateInfo(getIdStr(), qmeta::JobStatus::COMPLETE, source, 0, "", MSG_INFO);
     for (auto&& job : _jobs) {
         string idStr = job->getIdStr();
         if (success) {
-            job->getStatus()->updateInfo(idStr, qmeta::JobStatus::COMPLETE, source);
+            job->getStatus()->updateInfo(idStr, qmeta::JobStatus::COMPLETE, source, 0, "", MSG_INFO);
         } else {
             job->getStatus()->updateInfoNoErrorOverwrite(idStr, qmeta::JobStatus::RESULT_ERROR, source,
-                                                         util::Error::INTERNAL, "UberJob_failure");
+                                                         util::Error::INTERNAL, "UberJob_failure", MSG_ERROR);
         }
         auto exec = _executive.lock();
         exec->markCompleted(job->getJobId(), success);
@@ -340,7 +341,7 @@ json UberJob::workerError(util::MultiError const& multiErr_) {
         return _workerErrorFinish(keepData, "none", "rowLimitComplete");
     }
 
-    exec->addMultiError(multiErr_, util::Error::WORKER_ERROR);
+    exec->addMultiError(multiErr_);
     string mErrMsg = multiErr_.toOneLineString();
 
     // Is this a missing table error? It may be recoverable.
@@ -350,7 +351,7 @@ json UberJob::workerError(util::MultiError const& multiErr_) {
     set<int> missingTableJobs;
     for (auto const& err : errVect) {
         switch (err.getCode()) {
-            case util::Error::SQL_SYNTAX_ERR: {
+            case util::Error::WORKER_SQL: {
                 int subErr = err.getSubCode();
                 if (subErr == util::Error::UNKNOWN_TABLE || subErr == util::Error::NONEXISTANT_TABLE) {
                     missingTable = true;
@@ -362,6 +363,7 @@ json UberJob::workerError(util::MultiError const& multiErr_) {
                 break;
             }
             default:
+                LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " other err code=" << err.getCode());
                 otherErrors = true;
         }
     }
@@ -380,8 +382,7 @@ json UberJob::workerError(util::MultiError const& multiErr_) {
         _unassignJobs();
     } else {
         // Get the error message to the user and kill the user query.
-        int errState = util::Error::MYSQLEXEC;
-        exec->addMultiError(multiErr_, errState);
+        exec->addMultiError(multiErr_);
         exec->squash(string("UberJob::workerError ") + mErrMsg);
     }
 
