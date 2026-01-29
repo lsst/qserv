@@ -78,7 +78,6 @@ BOOST_AUTO_TEST_CASE(MonoError) {
  * Print a MultiError object containing several errors
  */
 BOOST_AUTO_TEST_CASE(MultiError) {
-    test::output_test_stream output;
     util::MultiError multiError;
 
     std::string expected_err_msg =
@@ -94,9 +93,16 @@ BOOST_AUTO_TEST_CASE(MultiError) {
         multiError.insert(error);
     }
 
+    test::output_test_stream output;
     output << multiError;
-    std::cout << multiError;
+    std::cout << "a=" << multiError << std::endl;
     BOOST_CHECK(output.is_equal(expected_err_msg));
+
+    util::MultiError multiErrB(multiError);
+    test::output_test_stream outputB;
+    outputB << multiErrB;
+    std::cout << "b=" << multiErrB << std::endl;
+    BOOST_CHECK(outputB.is_equal(expected_err_msg));
 }
 
 BOOST_AUTO_TEST_CASE(MultiErrorEqual) {

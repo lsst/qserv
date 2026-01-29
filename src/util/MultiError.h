@@ -53,6 +53,7 @@ namespace lsst::qserv::util {
 class MultiError {
 public:
     MultiError() = default;
+    MultiError(MultiError const& multiErr) = default;
 
     virtual ~MultiError() = default;
 
