@@ -333,8 +333,8 @@ void Executive::assignJobsToUberJobs() {
     }
 }
 
-void Executive::addMultiError(int errorCode, int subError, std::string const& errorMsg, int errorState) {
-    util::Error err(errorCode, subError, errorMsg, errorState);
+void Executive::addMultiError(int errorCode, int subError, std::string const& errorMsg, bool logLvlErr) {
+    util::Error err(errorCode, subError, errorMsg, logLvlErr);
     {
         lock_guard<mutex> lock(_errorsMutex);
         _multiError.insert(err);
@@ -343,7 +343,7 @@ void Executive::addMultiError(int errorCode, int subError, std::string const& er
     }
 }
 
-void Executive::addMultiError(util::MultiError const& multiErr, int errorState) {
+void Executive::addMultiError(util::MultiError const& multiErr) {
     {
         lock_guard<mutex> lock(_errorsMutex);
         _multiError.merge(multiErr);
@@ -406,8 +406,9 @@ bool Executive::join() {
 
 void Executive::markCompleted(JobId jobId, bool success) {
     util::Error err;
+    string errStr;
     string idStr = QueryIdHelper::makeIdStr(_id, jobId);
-    LOGS(_log, LOG_LVL_DEBUG, "Executive::markCompleted " << success);
+    LOGS(_log, LOG_LVL_TRACE, "Executive::markCompleted " << success);
     if (!success && !isRowLimitComplete()) {
         {
             lock_guard<mutex> lock(_incompleteJobsMutex);
@@ -429,6 +430,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
         {
             lock_guard<mutex> lock(_errorsMutex);
             err = _multiError.firstError();
+            errStr = _multiError.toOneLineString();
         }
 
         LOGS(_log, LOG_LVL_DEBUG, "Executive: error executing " << err);
@@ -439,7 +441,7 @@ void Executive::markCompleted(JobId jobId, bool success) {
 
             // Don't overwrite existing error states.
             job->getStatus()->updateInfoNoErrorOverwrite(id, qmeta::JobStatus::RESULT_ERROR, "EXECFAIL",
-                                                         err.getCode(), err.getMsg());
+                                                         err.getCode(), errStr, MSG_ERROR);
         }
     }
     _unTrack(jobId);
@@ -473,10 +475,13 @@ void Executive::squash(string const& note) {
     }
 
     int cancelCount = 0;
+    bool const superfluous = false;
+    bool const logLvlErr = false;
     for (auto const& job : jobsToCancel) {
-        job->cancel();
+        job->cancel(superfluous, logLvlErr);
         ++cancelCount;
     }
+    LOGS(_log, LOG_LVL_ERROR, "Executive::squash cancelled " << cancelCount << " jobs");
 
     // Send a message to all workers saying this czarId + queryId is cancelled.
     // The workers will just mark all associated tasks as cancelled, and that should be it.
@@ -515,10 +520,13 @@ void Executive::_squashSuperfluous() {
     }
 
     int cancelCount = 0;
+    bool const superfluous = true;
+    bool const logLvlErr = false;
     for (auto const& job : jobsToCancel) {
-        job->cancel(true);
+        job->cancel(superfluous, logLvlErr);
         ++cancelCount;
     }
+    LOGS(_log, LOG_LVL_ERROR, "Executive::squashSuperfluous cancelled " << cancelCount << " jobs");
 
     bool const keepResults = false;
     sendWorkersEndMsg(keepResults);
@@ -705,8 +713,9 @@ void Executive::updateProxyMessages() {
         // the _messageStore. This will be passed to the proxy for the user, if
         // there's an error.
         if (not _multiError.empty()) {
-            _messageStore->addErrorMessage("EXECERROR", _multiError.toString());
-            LOGS(_log, LOG_LVL_INFO, "EXECERROR:" << _multiError.toString());
+            // "MULTIERROR" indicates these should be sent to the proxy as error messages.
+            _messageStore->addErrorMessage("MULTIERROR", _multiError.toString());
+            LOGS(_log, LOG_LVL_INFO, "MULTIERROR:" << _multiError.toString());
         }
     }
 }
