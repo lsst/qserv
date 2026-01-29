@@ -195,8 +195,8 @@ public:
     int getTotalJobs() { return _totalJobs; }
 
     /// Add an error code and message that may be displayed to the user.
-    void addMultiError(int errorCode, int subError, std::string const& errorMsg, int errState);
-    void addMultiError(util::MultiError const& multiErr, int errorState);
+    void addMultiError(int errorCode, int subError, std::string const& errorMsg, bool logLvlErr = true);
+    void addMultiError(util::MultiError const& multiErr);
 
     std::string dumpUberJobCounts() const;
 
