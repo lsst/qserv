@@ -113,8 +113,8 @@ public:
      * @brief Locate the immutable table descriptor.
      * @param tableName The name of the table.
      * @return The table descriptor
-     * @throws std::invalid_argument If the name is empty or no table for
-     *   the specified name was found.
+     * @throws std::invalid_argument If the name is empty.
+     * @throws ConfigUnknownTable If no table for the specified name was found.
      */
     TableInfo const& findTable(std::string const& tableName) const;
 
@@ -122,8 +122,8 @@ public:
      * @brief Locate the mutable table descriptor.
      * @param tableName The name of the table.
      * @return The table descriptor
-     * @throws std::invalid_argument If the name is empty or no table for
-     *   the specified name was found.
+     * @throws std::invalid_argument If the name is empty.
+     * @throws ConfigUnknownTable If no table for the specified name was found.
      */
     TableInfo& findTable(std::string const& tableName) {
         return const_cast<TableInfo&>(const_cast<DatabaseInfo const*>(this)->findTable(tableName));

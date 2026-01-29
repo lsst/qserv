@@ -435,6 +435,8 @@ enum ProtocolStatusExt {
     FOREIGN_INSTANCE = 32;      // detected a request from a Controller serving an unrelated Qserv
     DUPLICATE_KEY = 33;         // duplicate key found when creating an index or altering a table schema
     CANT_DROP_KEY = 34;         // can't drop a field or a key which doesn't exist
+    CONFIG_NO_SUCH_DB = 35;     // a database mentioned in the worker request was not found at the worker's configuration
+    CONFIG_NO_SUCH_TABLE = 36;  // a table mentioned in the worker request was not found at the worker's configuration
 }
 
 message ProtocolFileInfo {

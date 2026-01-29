@@ -418,8 +418,8 @@ public:
     /**
      * @param familyName The name of a family.
      * @return The database family description.
-     * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
-     *   if the specified entry was not found in the configuration.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw ConfigUnknownDatabaseFamily if the specified entry was not found in the configuration.
      */
     DatabaseFamilyInfo databaseFamilyInfo(std::string const& familyName) const;
 
@@ -429,8 +429,8 @@ public:
      * @return A description of the newly created database family.
      * @throw std::invalid_argument If the empty string passed as a value of the parameter,
      *   or if the input descriptor has incorrect parameters (empty name,
-     *   0 values of the numbers of stripes or sub-stripes, or 0 value of the replication level), or
-     *   if the specified entry already exists in the configuration.
+     *   0 values of the numbers of stripes or sub-stripes, or 0 value of the replication level).
+     * @throw std::logic_error If the specified entry already exists in the configuration.
      */
     DatabaseFamilyInfo addDatabaseFamily(DatabaseFamilyInfo const& family);
 
@@ -508,8 +508,7 @@ public:
      *   to 'false' to narrow a collection of databases returned by the method.
      * @return The names of known databases. A result of the method may be
      *   limited to a subset of databases belonging to the specified family.
-     * @throw std::invalid_argument If the specified family (unless the empty string is passed
-     *   into the method) was not found in the configuration.
+     * @throw ConfigUnknownDatabaseFamily If the specified family (if provided) was not found.
      */
     std::vector<std::string> databases(std::string const& familyName = std::string(),
                                        bool allDatabases = false, bool isPublished = true) const;
@@ -517,21 +516,23 @@ public:
     /**
      * Make sure this database is known in the configuration
      * @param databaseName The name of a database.
-     * @throws std::invalid_argument if the database is unknown
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw ConfigUnknownDatabase if the database is unknown.
      */
     void assertDatabaseIsValid(std::string const& databaseName);
 
     /**
      * @param databaseName The name of a database.
      * @return 'true' if the specified database is known in the Configuration.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
      */
     bool isKnownDatabase(std::string const& databaseName) const;
 
     /**
      * @param databaseName The name of a database.
      * @return A database descriptor.
-     * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
-     *   if the specified entry was not found in the configuration.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw ConfigUnknownDatabase if the database is unknown.
      */
     DatabaseInfo databaseInfo(std::string const& databaseName) const;
 
@@ -541,8 +542,8 @@ public:
      * @param databaseName The name of a database to be created.
      * @param familyName The name of a family the database will join.
      * @return A database descriptor of the newly created database.
-     * @throw std::invalid_argument If the name of a family or other required parameters
-     *   are the empty strings, or if the specified entry already exists in the configuration.
+     * @throw std::invalid_argument If either name is empty.
+     * @throw std::logic_error If the specified entry already exists in the configuration.
      */
     DatabaseInfo addDatabase(std::string const& databaseName, std::string const& familyName);
 
@@ -561,17 +562,17 @@ public:
      * Change database status to be un-published.
      * @param databaseName The name of a database.
      * @return An updated database descriptor.
-     * @throw std::invalid_argument If the empty string passed as a value of the parameter, or
-     *   if no such database exists in the configuration.
-     *  @throw std::logic_error If the database is not yet published.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw std::logic_error If the database is not yet published.
+     * @throws ConfigUnknownDatabase if the database is unknown.
      */
     DatabaseInfo unPublishDatabase(std::string const& databaseName);
 
     /**
      * Delete an existing database.
      * @param databaseName The name of a database to be deleted.
-     * @throw std::invalid_argument If the specified database doesn't exist, or
-     *   if an empty string is passed as a parameter of the method.
+     * @throw std::invalid_argument If the empty string is passed as a parameter of the method.
+     * @throws ConfigUnknownDatabase if the database is unknown.
      */
     void deleteDatabase(std::string const& databaseName);
 
@@ -583,6 +584,8 @@ public:
      * @return A database descriptor of the updated database.
      * @throw std::invalid_argument If the attributes of the table aren't complete,
      *   or if there are any ambiguity in the values of the attributes.
+     * @throws ConfigUnknownDatabase if the database is unknown.
+     * @throws std::logic_error If the database is published.
      */
     DatabaseInfo addTable(TableInfo const& table_);
 
@@ -590,16 +593,17 @@ public:
      * Delete an existing table.
      * @param databaseName The name of an existing database hosting the table.
      * @param tableName The name of an existing table to be deleted.
-     * @throw std::invalid_argument If the specified database doesn't exists, or
-     *   if the table doesn't exist, or if either of those parameters are
-     *   the empty strings.
+     * @throw std::invalid_argument If either parameter is the empty string.
+     * @throws ConfigUnknownDatabase if the database is unknown.
+     * @throws ConfigUnknownTable if the table is unknown.
      */
     DatabaseInfo deleteTable(std::string const& databaseName, std::string const& tableName);
 
     /**
      * Make sure this worker is known in the configuration
      * @param workerName The name of a worker.
-     * @throws std::invalid_argument if the worker is unknown
+     * @throw std::invalid_argument If the empty string is passed as a parameter of the method.
+     * @throws ConfigUnknownWorker if the worker is unknown.
      */
     void assertWorkerIsValid(std::string const& workerName);
 
@@ -607,8 +611,9 @@ public:
      * Make sure workers are not known in the configuration and they're different.
      * @param workerOneName The name of the first worker in the comparison.
      * @param workerTwoName The name of the second worker in the comparison.
-     * @throws std::invalid_argument If either worker is unknown, or if the workers
-     *   are the same.
+     * @throws std::invalid_argument If either worker name is empty.
+     * @throw std::logic_error If the workers names are the same.
+     * @throws ConfigUnknownWorker if either worker is unknown.
      */
     void assertWorkersAreDifferent(std::string const& workerOneName, std::string const& workerTwoName);
 
@@ -621,8 +626,8 @@ public:
     /**
      * @param workerName The name of a worker.
      * @return A worker descriptor.
-     * @throw std::invalid_argument If the specified worker was not found in
-     *   the configuration.
+     * @throw std::invalid_argument If either worker name is empty.
+     * @throws ConfigUnknownWorker if the worker is unknown.
      */
     ConfigWorker worker(std::string const& workerName) const;
 
@@ -630,16 +635,16 @@ public:
      * Register a new worker in the Configuration.
      * @param worker The worker description.
      * @return A worker descriptor.
-     * @throw std::invalid_argument If the specified worker already exists in
-     *   the configuration.
+     * @throw std::invalid_argument If either worker name is empty.
+     * @throw std::logic_error If the specified worker already exists in the configuration.
      */
     ConfigWorker addWorker(ConfigWorker const& worker);
 
     /**
      * Completely remove the specified worker from the Configuration.
      * @param workerName The name of a worker affected by the operation.
-     * @throw std::invalid_argument If the specified worker was not found in
-     *   the configuration.
+     * @throw std::invalid_argument If either worker name is empty.
+     * @throws ConfigUnknownWorker if the worker is unknown.
      */
     void deleteWorker(std::string const& workerName);
 
@@ -647,8 +652,8 @@ public:
      * Disable the specified worker in the Configuration to exclude it from using
      * in any subsequent replication operations.
      * @param workerName The name of a worker affected by the operation.
-     * @throw std::invalid_argument If the specified worker was not found in
-     *   the configuration.
+     * @throw std::invalid_argument If either worker name is empty.
+     * @throws ConfigUnknownWorker if the worker is unknown.
      */
     ConfigWorker disableWorker(std::string const& workerName);
 
@@ -657,8 +662,8 @@ public:
      * the persistent back-end as well (if any is associated with the Configuration object).
      * @param worker The modified worker descriptor.
      * @return An updated worker descriptor.
-     * @throw std::invalid_argument If the specified worker was not found in
-     *   the configuration.
+     * @throw std::invalid_argument If either worker name is empty.
+     * @throws ConfigUnknownWorker if the worker is unknown.
      */
     ConfigWorker updateWorker(ConfigWorker const& worker);
 
@@ -671,14 +676,15 @@ public:
     /**
      * @param czarName The name of a Czar.
      * @return 'true' if the specified Czar is known to the configuration.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
      */
     bool isKnownCzar(std::string const& czarName) const;
 
     /**
      * @param czarName The name of a Czar.
      * @return A Czar descriptor.
-     * @throw std::invalid_argument If the specified Czar was not found in
-     *   the configuration.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw ConfigUnknownCzar if the specified Czar was not found in the configuration.
      */
     ConfigCzar czar(std::string const& czarName) const;
 
@@ -686,16 +692,16 @@ public:
      * Register a new Czar in the Configuration.
      * @param czar The Czar description.
      * @return A Czar descriptor.
-     * @throw std::invalid_argument If the specified Czar already exists in
-     *   the configuration, or if the name of the Czar was not provided.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw std::logic_error If the specified Czar already exists in the configuration.
      */
     ConfigCzar addCzar(ConfigCzar const& czar);
 
     /**
      * Completely remove the specified Czar from the Configuration.
      * @param czarName The name of a Czar.
-     * @throw std::invalid_argument If the specified Czar was not found in
-     *   the configuration.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw ConfigUnknownCzar if the specified Czar was not found in the configuration.
      */
     void deleteCzar(std::string const& czarName);
 
@@ -703,8 +709,8 @@ public:
      * Update parameters of an existing Czar in the transient store.
      * @param czar The modified Czar descriptor.
      * @return An updated Czar descriptor.
-     * @throw std::invalid_argument If the specified Czar was not found in
-     *   the configuration.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw ConfigUnknownCzar if the specified Czar was not found in the configuration.
      */
     ConfigCzar updateCzar(ConfigCzar const& czar);
 
@@ -797,7 +803,8 @@ private:
     /**
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return A family descriptor.
-     * @throws std::invalid_argument If the name is empty or if no such entry exists.
+     * @throws std::invalid_argument If the name is empty.
+     * @throw ConfigUnknownDatabaseFamily If no such entry exists.
      */
     DatabaseFamilyInfo& _databaseFamilyInfo(replica::Lock const& lock, std::string const& familyName);
 
@@ -809,7 +816,8 @@ private:
     /**
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @return A database descriptor.
-     * @throws std::invalid_argument If the name is empty or if no such entry exists.
+     * @throws std::invalid_argument If the name is empty.
+     * @throw ConfigUnknownDatabase If no such entry exists.
      */
     DatabaseInfo& _databaseInfo(replica::Lock const& lock, std::string const& databaseName);
 

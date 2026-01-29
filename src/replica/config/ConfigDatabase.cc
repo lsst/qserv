@@ -30,6 +30,7 @@
 // Qserv headers
 #include "global/constants.h"
 #include "replica/config/ConfigDatabaseFamily.h"
+#include "replica/config/ConfigurationExceptions.h"
 #include "replica/util/Performance.h"
 #include "util/TimeUtils.h"
 
@@ -173,10 +174,13 @@ vector<string> DatabaseInfo::refMatchTables() const {
 bool DatabaseInfo::tableExists(string const& tableName) const { return _tables.count(tableName) != 0; }
 
 TableInfo const& DatabaseInfo::findTable(std::string const& tableName) const {
+    if (tableName.empty())
+        throw invalid_argument("DatabaseInfo::" + string(__func__) + " the table name is empty.");
     auto itr = _tables.find(tableName);
     if (itr != _tables.end()) return itr->second;
-    throw invalid_argument("DatabaseInfo::" + string(__func__) + " no such table '" + tableName +
-                           "' found in the database '" + this->name + "'.");
+    throw ConfigUnknownTable("DatabaseInfo::" + string(__func__) + " no such table '" + tableName +
+                                     "' found in the database '" + this->name + "'.",
+                             this->name, tableName);
 }
 
 TableInfo DatabaseInfo::addTable(map<string, DatabaseInfo> const& databases, TableInfo const& table_,
@@ -411,8 +415,9 @@ void DatabaseInfo::removeTable(string const& tableName) {
     if (tableName.empty()) throw invalid_argument(context + "the table name can't be empty.");
     auto thisTableItr = _tables.find(tableName);
     if (thisTableItr == _tables.end()) {
-        throw invalid_argument(context + "no such table '" + tableName + "' in the database '" + this->name +
-                               "'.");
+        throw ConfigUnknownTable(
+                context + "no such table '" + tableName + "' in the database '" + this->name + "'.",
+                this->name, tableName);
     }
     TableInfo& thisTableInfo = thisTableItr->second;
     if (thisTableInfo.isDirector()) {

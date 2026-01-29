@@ -173,6 +173,18 @@ public:
      */
     void dispose() noexcept;
 
+    /**
+     * This method is used to forcefully set the status of the request by WorkerProcessorThread
+     * in case of exceptions escaping from method 'execute'.
+     *
+     * @param status primary status to be set
+     * @param extendedStatus secondary status to be set
+     */
+    void setStatus(ProtocolStatus status, ProtocolStatusExt extendedStatus = ProtocolStatusExt::NONE) {
+        replica::Lock const lock(_mtx, context(__func__));
+        setStatus(lock, status, extendedStatus);
+    }
+
     /// @return the context string
     std::string context(std::string const& func = std::string()) const {
         return id() + "  " + type() + "  " + status2string(status()) + "  " + func;

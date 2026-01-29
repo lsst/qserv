@@ -464,6 +464,26 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
     for (auto&& name : vector<string>({"worker-A", "worker-B", "worker-C"})) {
         BOOST_CHECK(config->isKnownWorker(name));
     }
+
+    // Incorrect worker names.
+    BOOST_CHECK_THROW(config->isKnownWorker(""), std::invalid_argument);
+    BOOST_CHECK(!config->isKnownWorker("worker-X"));
+    BOOST_CHECK_THROW(config->worker(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->worker("worker-X"), ConfigUnknownWorker);
+    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("", "worker-A"), std::invalid_argument);
+    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-A", ""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-A", "worker-A"), std::logic_error);
+    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-A", "worker-X"), ConfigUnknownWorker);
+    BOOST_CHECK_THROW(config->assertWorkersAreDifferent("worker-X", "worker-A"), ConfigUnknownWorker);
+    BOOST_CHECK_THROW(config->deleteWorker(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteWorker("worker-X"), ConfigUnknownWorker);
+    BOOST_CHECK_THROW(config->disableWorker(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->disableWorker("worker-X"), ConfigUnknownWorker);
+    ConfigWorker unknownWorker;
+    unknownWorker.name = "";
+    BOOST_CHECK_THROW(config->updateWorker(unknownWorker), std::invalid_argument);
+    unknownWorker.name = "worker-X";
+    BOOST_CHECK_THROW(config->updateWorker(unknownWorker), ConfigUnknownWorker);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
@@ -519,11 +539,13 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     workerD.isReadOnly = true;
 
     BOOST_REQUIRE_NO_THROW(config->addWorker(workerD));
-    BOOST_CHECK_THROW(config->addWorker(workerD), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(workerD = config->worker("worker-D"));
     BOOST_CHECK(workerD.name == "worker-D");
     BOOST_CHECK(workerD.isEnabled);
     BOOST_CHECK(workerD.isReadOnly);
+
+    // Adding the same worker again should fail.
+    BOOST_CHECK_THROW(config->addWorker(workerD), std::logic_error);
 
     // Adding a new worker with incomplete set of specs. The only required
     // attribute is the name of the worker.
@@ -538,7 +560,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     // Deleting workers.
     BOOST_REQUIRE_NO_THROW(config->deleteWorker("worker-C"));
     BOOST_CHECK(!config->isKnownWorker("worker-C"));
-    BOOST_CHECK_THROW(config->deleteWorker("worker-C"), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteWorker("worker-C"), ConfigUnknownWorker);
 
     // Updating worker's status.
     ConfigWorker disabledWorker;
@@ -624,6 +646,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
     BOOST_CHECK(newFamilyAdded.numSubStripes == 302);
     BOOST_CHECK(abs(newFamilyAdded.overlap - 0.001) <= numeric_limits<double>::epsilon());
 
+    // Adding duplicate families is not allowed.
+    BOOST_REQUIRE_THROW(config->addDatabaseFamily(newFamily), std::logic_error);
+
     // Modify the replication level
     BOOST_REQUIRE_THROW(config->setReplicationLevel("", 5), std::invalid_argument);
     BOOST_REQUIRE_THROW(config->setReplicationLevel(newFamilyAdded.name, 0), std::invalid_argument);
@@ -646,7 +671,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
 
     // Deleting non-existing families.
     BOOST_REQUIRE_THROW(config->deleteDatabaseFamily(""), std::invalid_argument);
-    BOOST_REQUIRE_THROW(config->deleteDatabaseFamily("non-existing"), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->deleteDatabaseFamily("non-existing"), ConfigUnknownDatabaseFamily);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestReadingDatabases) {
@@ -700,8 +725,20 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingDatabases) {
     BOOST_CHECK(databases8.size() == 3);
     BOOST_CHECK(databases8 == vector<string>({"db4", "db5", "db6"}));
     for (auto&& name : vector<string>({"db1", "db2", "db3", "db4", "db5", "db6"})) {
+        BOOST_REQUIRE_NO_THROW(config->isKnownDatabase(name));
         BOOST_CHECK(config->isKnownDatabase(name));
     }
+
+    // Incorrect parameters for database selectors.
+    BOOST_REQUIRE_THROW(config->isKnownDatabase(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->assertDatabaseIsValid(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->assertDatabaseIsValid("non-existing"), ConfigUnknownDatabase);
+    BOOST_REQUIRE_THROW(config->databaseInfo(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->databaseInfo("non-existing"), ConfigUnknownDatabase);
+    BOOST_REQUIRE_THROW(config->unPublishDatabase(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->unPublishDatabase("non-existing"), ConfigUnknownDatabase);
+    BOOST_REQUIRE_THROW(config->deleteDatabase(""), std::invalid_argument);
+    BOOST_REQUIRE_THROW(config->deleteDatabase("non-existing"), ConfigUnknownDatabase);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
@@ -1269,13 +1306,16 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
         BOOST_CHECK(database.directorTables().empty());
         BOOST_CHECK(database.refMatchTables().empty());
         BOOST_CHECK(database.regularTables().empty());
-        BOOST_CHECK_THROW(database.findTable("NonExistingTable"), std::invalid_argument);
-        BOOST_CHECK_THROW(config->addDatabase(databaseName, familyName), std::invalid_argument);
+        BOOST_CHECK_THROW(database.findTable(""), std::invalid_argument);
+        BOOST_CHECK_THROW(database.findTable("NonExistingTable"), ConfigUnknownTable);
+
+        // Adding duplicate databases is not allowed.
+        BOOST_CHECK_THROW(config->addDatabase(databaseName, familyName), std::logic_error);
     }
     BOOST_CHECK_THROW(config->addDatabase("", ""), std::invalid_argument);
     BOOST_CHECK_THROW(config->addDatabase("", "unknown"), std::invalid_argument);
     BOOST_CHECK_THROW(config->addDatabase("another", ""), std::invalid_argument);
-    BOOST_CHECK_THROW(config->addDatabase("another", "unknown"), std::invalid_argument);
+    BOOST_CHECK_THROW(config->addDatabase("another", "unknown"), ConfigUnknownDatabaseFamily);
     {
         SqlColDef const emptyColumn;
         BOOST_CHECK(emptyColumn.name.empty());
@@ -1404,6 +1444,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
         BOOST_CHECK(config->databaseInfo("new").tableExists(inTable.name));
     }
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T3"));
+
+    // Incorrect parameters for database selectors.
+    BOOST_CHECK_THROW(config->deleteTable("", ""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteTable("new", ""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteTable("Non-existing", "T1"), ConfigUnknownDatabase);
+    BOOST_CHECK_THROW(config->deleteTable("new", "Non-existing"), ConfigUnknownTable);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
@@ -1415,6 +1461,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
         BOOST_CHECK(database.family == "test");
         BOOST_CHECK(database.isPublished == true);
         BOOST_CHECK(database.tables().size() == 2);
+
+        // Databases cannot be published twice.
         BOOST_CHECK_THROW(database = config->publishDatabase("new"), std::logic_error);
     }
 
@@ -1422,7 +1470,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
     TableInfo inTable;
     inTable.name = "T4";
     inTable.database = "new";
-    BOOST_CHECK_THROW(config->addTable(inTable), std::invalid_argument);
+    BOOST_CHECK_THROW(config->addTable(inTable), std::logic_error);
 
     // Deleting director tables which may still have dependent ones is not allowed
     BOOST_CHECK_THROW(config->deleteTable("new", "T1"), std::invalid_argument);
@@ -1439,6 +1487,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestUnPublishingDatabases) {
         BOOST_CHECK(database.name == "new");
         BOOST_CHECK(database.family == "test");
         BOOST_CHECK(!database.isPublished);
+
+        // Databases cannot be unpublished twice.
         BOOST_CHECK_THROW(database = config->unPublishDatabase("new"), std::logic_error);
     }
 
@@ -1452,7 +1502,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestUnPublishingDatabases) {
 BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingDatabases) {
     LOGS_INFO("Testing deleting databases");
     BOOST_REQUIRE_NO_THROW(config->deleteDatabase("new"));
-    BOOST_CHECK_THROW(config->deleteDatabase("new"), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteDatabase("new"), ConfigUnknownDatabase);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingFamilies) {
@@ -1503,6 +1553,12 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzars) {
     for (auto&& name : vector<string>({"default"})) {
         BOOST_CHECK(config->isKnownCzar(name));
     }
+
+    // Test for incorrect Czar names.
+    BOOST_CHECK_THROW(config->isKnownCzar(""), std::invalid_argument);
+    BOOST_CHECK(!config->isKnownCzar("non-existing"));
+    BOOST_CHECK_THROW(config->czar(""), std::invalid_argument);
+    BOOST_CHECK_THROW(config->czar("non-existing"), ConfigUnknownCzar);
 }
 
 BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
@@ -1518,6 +1574,11 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     BOOST_CHECK_EQUAL(czarDefault.id, 123);
     BOOST_CHECK_EQUAL(czarDefault.host, hostA);
     BOOST_CHECK_EQUAL(czarDefault.port, 59001U);
+
+    // Adding a new Czar with missing mandatory name parameter.
+    ConfigCzar czarIncorrect;
+    czarIncorrect.name = "";
+    BOOST_CHECK_THROW(config->addCzar(czarIncorrect), std::invalid_argument);
 
     // Adding a new Czar with well formed and unique parameters.
     ConfigHost const hostB({"192.10.10.12", "host-B"});
@@ -1535,7 +1596,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     BOOST_CHECK_EQUAL(czarSecond.port, 59002U);
     BOOST_CHECK_EQUAL(config->numCzars(), 2U);
 
-    BOOST_CHECK_THROW(config->addCzar(czarSecond), std::invalid_argument);
+    // Adding a duplicate Czar is not allowed.
+    BOOST_CHECK_THROW(config->addCzar(czarSecond), std::logic_error);
     BOOST_CHECK_EQUAL(config->numCzars(), 2U);
 
     // Adding a new Czar with incomplete set of specs. The only required
@@ -1553,7 +1615,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     // Make sure the following attempt is blocked and it has no side effects.
     ConfigCzar czarUnknown;
     czarUnknown.name = "unknown";
-    BOOST_CHECK_THROW(config->updateCzar(czarUnknown), std::invalid_argument);
+    BOOST_CHECK_THROW(config->updateCzar(czarUnknown), ConfigUnknownCzar);
     BOOST_CHECK_EQUAL(config->numCzars(), 3U);
 
     // Updating an existing Czar
@@ -1573,11 +1635,13 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
     BOOST_CHECK_EQUAL(config->numCzars(), 3U);
 
     // Deleting Czars.
+    BOOST_CHECK_THROW(config->deleteCzar(""), std::invalid_argument);
+
     BOOST_REQUIRE_NO_THROW(config->deleteCzar("second"));
     BOOST_CHECK(!config->isKnownCzar("second"));
 
     BOOST_CHECK_EQUAL(config->numCzars(), 2U);
-    BOOST_CHECK_THROW(config->deleteCzar("second"), std::invalid_argument);
+    BOOST_CHECK_THROW(config->deleteCzar("second"), ConfigUnknownCzar);
     BOOST_CHECK_EQUAL(config->numCzars(), 2U);
 }
 

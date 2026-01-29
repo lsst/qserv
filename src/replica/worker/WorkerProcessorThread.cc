@@ -26,6 +26,8 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/config/ConfigurationExceptions.h"
+#include "replica/proto/protocol.pb.h"
 #include "replica/worker/WorkerProcessor.h"
 #include "replica/worker/WorkerRequest.h"
 
@@ -88,6 +90,26 @@ void WorkerProcessorThread::run() {
                          self->context() << "cancel processing"
                                          << "  id: " << request->id());
                     self->_processor->_processingFinished(request);
+                } catch (ConfigUnknownDatabase const& ex) {
+                    LOGS(_log, LOG_LVL_ERROR,
+                         self->context() << "failed processing"
+                                         << "  id: " << request->id() << "  database: " << ex.databaseName
+                                         << " was not found in the configuration");
+                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::CONFIG_NO_SUCH_DB);
+                    finished = true;
+                } catch (ConfigUnknownTable const& ex) {
+                    LOGS(_log, LOG_LVL_ERROR,
+                         self->context() << "failed processing"
+                                         << "  id: " << request->id() << "  table: " << ex.databaseName << "."
+                                         << ex.tableName << " was not found in the configuration");
+                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::CONFIG_NO_SUCH_TABLE);
+                    finished = true;
+                } catch (std::exception const& ex) {
+                    LOGS(_log, LOG_LVL_ERROR,
+                         self->context() << "failed processing"
+                                         << "  id: " << request->id() << "  exception: " << ex.what());
+                    request->setStatus(ProtocolStatus::FAILED, ProtocolStatusExt::OTHER_EXCEPTION);
+                    finished = true;
                 }
                 if (finished) {
                     LOGS(_log, LOG_LVL_DEBUG,
