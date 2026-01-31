@@ -375,7 +375,7 @@ def build_image(
     options: list[str] | None = None,
     dockerfile: str | None = None,
 ) -> None:
-    """Build the qserv lite-build image.
+    """Build the qserv build image.
 
     Parameters
     ----------
