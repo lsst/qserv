@@ -109,13 +109,7 @@ DirectorIndexRequest::~DirectorIndexRequest() {
 
 DirectorIndexRequestInfo const& DirectorIndexRequest::responseData() const { return _responseData; }
 
-void DirectorIndexRequest::startImpl(replica::Lock const& lock) {
-    // The delayed assertion is needed to prevent throwing exceptions from
-    // within constructors.
-    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
-
-    _sendInitialRequest(lock);
-}
+void DirectorIndexRequest::startImpl(replica::Lock const& lock) { _sendInitialRequest(lock); }
 
 void DirectorIndexRequest::_sendInitialRequest(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,

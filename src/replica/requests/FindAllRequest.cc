@@ -76,10 +76,6 @@ const ReplicaInfoCollection& FindAllRequest::responseData() const { return _repl
 void FindAllRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
-    // The delayed assertion is needed to prevent throwing exceptions from
-    // within constructors.
-    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
-
     // Serialize the Request message header and the request itself into
     // the network buffer.
     buffer()->resize();
