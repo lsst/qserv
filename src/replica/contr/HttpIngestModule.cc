@@ -1377,7 +1377,8 @@ void HttpIngestModule::_consolidateDirectorIndex(DatabaseInfo const& database,
 }
 
 void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers) const {
-    debug(__func__);
+    string const context = "database=" + database.name;
+    debug(__func__, context);
 
     bool const saveReplicaInfo = true;
     string const noParentJobId;
@@ -1390,7 +1391,10 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     logJobFinishedEvent(FindAllJob::typeName(), findAlljob, database.family);
 
     if (findAlljob->extendedState() != Job::SUCCESS) {
-        throw http::Error(__func__, "replica lookup stage failed");
+        string const msg = "replica lookup stage failed, job: " + findAlljob->id() +
+                           ", state: " + Job::state2string(findAlljob->state(), findAlljob->extendedState());
+        debug(__func__, context + "  " + msg);
+        throw http::Error(__func__, msg);
     }
 
     bool const force = false;
@@ -1402,7 +1406,10 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
     logJobFinishedEvent(QservSyncJob::typeName(), qservSyncJob, database.family);
 
     if (qservSyncJob->extendedState() != Job::SUCCESS) {
-        throw http::Error(__func__, "Qserv synchronization failed");
+        string const msg = "Qserv synchronization stage failed, job: " + qservSyncJob->id() + ", state: " +
+                           Job::state2string(qservSyncJob->state(), qservSyncJob->extendedState());
+        debug(__func__, context + "  " + msg);
+        throw http::Error(__func__, msg);
     }
 }
 

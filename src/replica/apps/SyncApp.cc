@@ -58,10 +58,8 @@ SyncApp::Ptr SyncApp::create(int argc, char* argv[]) { return Ptr(new SyncApp(ar
 SyncApp::SyncApp(int argc, char* argv[])
         : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
                       ::enableServiceProvider) {
-    // Configure the command line parser
-
-    parser().required("database-family", "The name of a database family", _databaseFamily)
-            .flag("force",
+    parser().required("database-family", "The name of a database family", _databaseFamily);
+    parser().flag("force",
                   "Force the Qerv workers to proceed with requested chunk updates regardless of the chunk"
                   " usage status.",
                   _force);

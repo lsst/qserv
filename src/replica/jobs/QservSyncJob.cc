@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/config/ConfigurationExceptions.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -129,6 +130,11 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
             vector<ReplicaInfo> replicas;
             try {
                 databaseServices->findWorkerReplicas(replicas, worker, database);
+            } catch (ConfigUnknownDatabase const& ex) {
+                LOGS(_log, LOG_LVL_WARN,
+                     context() << __func__ << "  ignoring deleted database: " << database
+                               << " for worker: " << worker);
+                continue;
             } catch (exception const& ex) {
                 LOGS(_log, LOG_LVL_ERROR,
                      context() << __func__ << "  failed to pull replicas for worker: " << worker

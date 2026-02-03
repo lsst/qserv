@@ -249,7 +249,6 @@ protected:
      * @see QservSyncJob
      */
     void sync(unsigned int qservSyncTimeoutSec, bool forceQservSync = false);
-
     /**
      * Track the completion of all jobs. Also monitor the task cancellation
      * condition while tracking the jobs. When such condition will be seen
