@@ -43,7 +43,6 @@
 #include "qmeta/types.h"
 #include "util/MultiError.h"
 #include "wbase/Task.h"
-#include "wdb/ChunkResource.h"
 
 namespace lsst::qserv::wcontrol {
 class SqlConnMgr;
@@ -61,8 +60,8 @@ class QueryRunner : public wbase::TaskQueryRunner, public std::enable_shared_fro
 public:
     using Ptr = std::shared_ptr<QueryRunner>;
     static QueryRunner::Ptr newQueryRunner(
-            wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
-            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
+            wbase::Task::Ptr const& task, mysql::MySqlConfig const& mySqlConfig,
+            std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
             std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
     // Having more than one copy of this would making tracking its progress difficult.
     QueryRunner(QueryRunner const&) = delete;
@@ -80,8 +79,7 @@ public:
     void cancel() override;
 
 protected:
-    QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                mysql::MySqlConfig const& mySqlConfig,
+    QueryRunner(wbase::Task::Ptr const& task, mysql::MySqlConfig const& mySqlConfig,
                 std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                 std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
 
@@ -95,7 +93,6 @@ private:
     wbase::Task::Ptr const _task;  ///< Actual task
 
     /// Resource reservation
-    ChunkResourceMgr::Ptr _chunkResourceMgr;
     std::atomic<bool> _cancelled{false};
     mysql::MySqlConfig const _mySqlConfig;
     std::unique_ptr<mysql::MySqlConnection> _mysqlConn;
