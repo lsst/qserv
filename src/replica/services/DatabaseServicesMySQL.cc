@@ -348,7 +348,6 @@ void DatabaseServicesMySQL::saveReplicaInfoCollection(string const& workerName, 
     LOGS(_log, LOG_LVL_DEBUG, context);
 
     _configuration->assertWorkerIsValid(workerName);
-    _configuration->assertDatabaseIsValid(databaseName);
 
     unsigned int maxReconnects = 0;  // pull the default value from the Configuration
     unsigned int timeoutSec = 0;     // pull the default value from the Configuration
@@ -492,7 +491,6 @@ void DatabaseServicesMySQL::_deleteReplicaInfoImpl(replica::Lock const& lock, st
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " ";
 
     _configuration->assertWorkerIsValid(workerName);
-    _configuration->assertDatabaseIsValid(databaseName);
     string const query =
             _g.delete_("replica") +
             _g.where(_g.eq("worker", workerName), _g.eq("database", databaseName), _g.eq("chunk", chunk));
@@ -531,8 +529,6 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, unsigned
                            "  database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertDatabaseIsValid(databaseName);
-
     replica::Lock lock(_mtx, context);
     try {
         string const query =
@@ -554,8 +550,6 @@ void DatabaseServicesMySQL::findReplicas(vector<ReplicaInfo>& replicas, vector<u
     string const context = "DatabaseServicesMySQL::" + string(__func__) +
                            " chunks.size()=" + to_string(chunks.size()) + "  database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    _configuration->assertDatabaseIsValid(databaseName);
 
     // The trivial optimization for the trivial input
     if (chunks.empty()) {
@@ -619,7 +613,6 @@ uint64_t DatabaseServicesMySQL::numWorkerReplicas(string const& workerName, stri
             auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
             query += _g.where(_g.in("database", databases), _g.eq("worker", workerName));
         } else {
-            _configuration->assertDatabaseIsValid(databaseName);
             query += _g.where(_g.eq("database", databaseName), _g.eq("worker", workerName));
         }
         _conn->executeInOwnTransaction(
@@ -649,7 +642,6 @@ void DatabaseServicesMySQL::_findWorkerReplicasImpl(replica::Lock const& lock, v
         auto const databases = _configuration->databases(noSpecificFamily, allDatabases, isPublished);
         query += _g.where(_g.in("database", databases), _g.eq("worker", workerName));
     } else {
-        _configuration->assertDatabaseIsValid(databaseName);
         query += _g.where(_g.eq("database", databaseName), _g.eq("worker", workerName));
     }
     _findReplicasImpl(lock, replicas, query, includeFileInfo);
@@ -689,8 +681,6 @@ void DatabaseServicesMySQL::findDatabaseReplicas(vector<ReplicaInfo>& replicas, 
                            " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertDatabaseIsValid(databaseName);
-
     replica::Lock lock(_mtx, context);
     try {
         string const query =
@@ -711,8 +701,6 @@ void DatabaseServicesMySQL::findDatabaseChunks(vector<unsigned int>& chunks, str
     string const context = "DatabaseServicesMySQL::" + string(__func__) + "  database=" + databaseName +
                            " enabledWorkersOnly=" + bool2str(enabledWorkersOnly) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    _configuration->assertDatabaseIsValid(databaseName);
 
     replica::Lock lock(_mtx, context);
     try {
@@ -736,8 +724,6 @@ map<unsigned int, size_t> DatabaseServicesMySQL::actualReplicationLevel(
         string const& databaseName, vector<string> const& workersToExclude) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    _configuration->assertDatabaseIsValid(databaseName);
 
     replica::Lock lock(_mtx, context);
     try {
@@ -778,8 +764,6 @@ size_t DatabaseServicesMySQL::numOrphanChunks(string const& databaseName,
                                               vector<string> const& uniqueOnWorkers) {
     string const context = "DatabaseServicesMySQL::" + string(__func__) + " database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    _configuration->assertDatabaseIsValid(databaseName);
 
     replica::Lock lock(_mtx, context);
     try {
@@ -1321,7 +1305,6 @@ vector<TransactionInfo> DatabaseServicesMySQL::transactions(
         set<TransactionInfo::State> const& stateSelector) {
     string const context = _context(__func__) + "databaseName=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-    _configuration->assertDatabaseIsValid(databaseName);
     string const predicate = _g.packConds(databaseName.empty() ? "" : _g.eq("database", databaseName),
                                           _g.in("state", TransactionInfo::toStrings(stateSelector)));
     replica::Lock lock(_mtx, context);
@@ -1343,8 +1326,6 @@ TransactionInfo DatabaseServicesMySQL::createTransaction(string const& databaseN
                                                          json const& transactionContext) {
     string const context = _context(__func__) + "database=" + databaseName + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    _configuration->assertDatabaseIsValid(databaseName);
 
     if (!transactionContext.is_object())
         throw invalid_argument(context +
@@ -1659,7 +1640,6 @@ vector<TransactionContribInfo> DatabaseServicesMySQL::transactionContribs(
                            " worker=" + workerName + " " +
                            " typeSelector=" + TransactionContribInfo::typeSelector2str(typeSelector) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context);
-    _configuration->assertDatabaseIsValid(databaseName);
     string const predicate =
             _g.packConds(_g.eq("database", databaseName), tableName.empty() ? "" : _g.eq("table", tableName),
                          workerName.empty() ? "" : _g.eq("worker", workerName),
@@ -2011,8 +1991,6 @@ DatabaseIngestParam DatabaseServicesMySQL::ingestParam(string const& databaseNam
             _context(__func__) + "database=" + databaseName + " category=" + category + " param=" + param;
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertDatabaseIsValid(databaseName);
-
     if (category.empty()) throw invalid_argument(context + "category can't be empty");
     if (param.empty()) throw invalid_argument(param + "category can't be empty");
 
@@ -2040,8 +2018,6 @@ vector<DatabaseIngestParam> DatabaseServicesMySQL::ingestParams(string const& da
     string const context = _context(__func__) + "database=" + databaseName + " category=" + category;
     LOGS(_log, LOG_LVL_DEBUG, context);
 
-    _configuration->assertDatabaseIsValid(databaseName);
-
     vector<DatabaseIngestParam> collection;
     replica::Lock lock(_mtx, context);
     try {
@@ -2062,8 +2038,6 @@ void DatabaseServicesMySQL::saveIngestParam(string const& databaseName, string c
     string const context =
             _context(__func__) + "database=" + databaseName + " category=" + category + " param=" + param;
     LOGS(_log, LOG_LVL_DEBUG, context);
-
-    _configuration->assertDatabaseIsValid(databaseName);
 
     if (category.empty()) throw invalid_argument(context + "category can't be empty");
     if (param.empty()) throw invalid_argument(context + "param can't be empty");
