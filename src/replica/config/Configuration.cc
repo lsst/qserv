@@ -410,6 +410,13 @@ vector<string> Configuration::databaseFamilies() const {
     return names;
 }
 
+void Configuration::assertDatabaseFamilyIsValid(string const& familyName) const {
+    if (!isKnownDatabaseFamily(familyName)) {
+        throw ConfigUnknownDatabaseFamily(_context(__func__) + " the family '" + familyName + "' is unknown.",
+                                          familyName);
+    }
+}
+
 bool Configuration::isKnownDatabaseFamily(string const& familyName) const {
     _THROW_IF_EMPTY(familyName);
     replica::Lock const lock(_mtx, _context(__func__));
