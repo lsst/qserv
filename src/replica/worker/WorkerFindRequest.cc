@@ -28,6 +28,7 @@
 #include "boost/filesystem.hpp"
 
 // Qserv headers
+#include "replica/config/ConfigDatabase.h"
 #include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
@@ -78,19 +79,11 @@ void WorkerFindRequest::setInfo(ProtocolResponseFind& response) const {
 bool WorkerFindRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  database: " << database() << "  chunk: " << chunk());
 
+    // The method will throw ConfigUnknownDatabase if the database is invalid.
+    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
+
     replica::Lock lock(_mtx, context(__func__));
     checkIfCancelling(lock, __func__);
-
-    // The delayed assertion is needed to prevent throwing exceptions from
-    // the constructor. Fatal errors may terminate the process.
-    try {
-        _serviceProvider->config()->assertDatabaseIsValid(_request.database());
-    } catch (std::exception const& ex) {
-        WorkerRequest::ErrorContext errorContext;
-        errorContext = errorContext or reportErrorIf(true, ProtocolStatusExt::INVALID_PARAM, ex.what());
-        setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
-        return true;
-    }
 
     // There are two modes of operation of the code which would depend
     // on a presence (or a lack of that) to calculate control/check sums
@@ -106,12 +99,8 @@ bool WorkerFindRequest::execute() {
     // code duplication.
     WorkerRequest::ErrorContext errorContext;
     boost::system::error_code ec;
-    if (not computeCheckSum() or not _csComputeEnginePtr) {
-        auto const config = _serviceProvider->config();
-        DatabaseInfo const databaseInfo = config->databaseInfo(database());
-
+    if (!computeCheckSum() || !_csComputeEnginePtr) {
         // Check if the data directory exists and it can be read
-
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
         // This operation is needed to support on-the-fly creation of the missing databases
@@ -120,11 +109,11 @@ bool WorkerFindRequest::execute() {
         // is when a worker was down for a prolonged period of time and during that time
         // new databases were added to the cluster. In both cases the Replication system will
         // expect the worker to have all databases which are known to the Controller.
-        if (config->get<unsigned int>("worker", "create-databases-on-scan")) {
+        if (_serviceProvider->config()->get<unsigned int>("worker", "create-databases-on-scan")) {
             WorkerUtils::createMissingDatabase(context(__func__), database());
         }
-        fs::path const dataDir =
-                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
+        fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
+                                 database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext = errorContext or
                        reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,
@@ -232,8 +221,7 @@ bool WorkerFindRequest::execute() {
                 return true;
             }
 
-            // Fnalize the operation
-            DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
+            // Finalize the operation
             ReplicaInfo::Status status = ReplicaInfo::Status::NOT_FOUND;
             if (fileInfoCollection.size())
                 status = FileUtils::partitionedFiles(databaseInfo, chunk()).size() == fileNames.size()

@@ -27,12 +27,12 @@
 #include <ctime>
 #include <map>
 #include <string>
+#include <vector>
 
 // Third party headers
 #include "boost/filesystem.hpp"
 
 // Qserv headers
-#include "replica/config/Configuration.h"
 #include "replica/util/ReplicaInfo.h"
 #include "replica/worker/WorkerRequest.h"
 
@@ -151,15 +151,13 @@ private:
     /// The cached connection parameters for the source worker (for error reporting and debugging).
     std::string const _sourceWorkerHostPort;
 
-    /// Cached descriptor of the database obtained from the Configuration
-    DatabaseInfo const _databaseInfo;
-
     /// The flag indicating if the initialization phase of the operation
     /// has already completed
     bool _initialized;
 
-    /// Short names of files to be copied
-    std::vector<std::string> const _files;
+    /// Cached collection of the short names of files to be copied. The collection
+    /// is populated during the initialization phase in the method execute().
+    std::vector<std::string> _files;
 
     /// The iterator pointing to the currently processed file.
     /// If it's set to _files.end() then it means the operation
