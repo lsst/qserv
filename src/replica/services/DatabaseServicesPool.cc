@@ -124,10 +124,10 @@ void DatabaseServicesPool::saveReplicaInfo(ReplicaInfo const& info) {
     service()->saveReplicaInfo(info);
 }
 
-void DatabaseServicesPool::saveReplicaInfoCollection(string const& workerName, string const& database,
+void DatabaseServicesPool::saveReplicaInfoCollection(string const& workerName, string const& databaseName,
                                                      ReplicaInfoCollection const& newReplicaInfoCollection) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->saveReplicaInfoCollection(workerName, database, newReplicaInfoCollection);
+    service()->saveReplicaInfoCollection(workerName, databaseName, newReplicaInfoCollection);
 }
 
 void DatabaseServicesPool::findOldestReplicas(vector<ReplicaInfo>& replicas, size_t maxReplicas,
@@ -137,60 +137,62 @@ void DatabaseServicesPool::findOldestReplicas(vector<ReplicaInfo>& replicas, siz
 }
 
 void DatabaseServicesPool::findReplicas(vector<ReplicaInfo>& replicas, unsigned int chunk,
-                                        string const& database, bool enabledWorkersOnly,
+                                        string const& databaseName, bool enabledWorkersOnly,
                                         bool includeFileInfo) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->findReplicas(replicas, chunk, database, enabledWorkersOnly, includeFileInfo);
+    service()->findReplicas(replicas, chunk, databaseName, enabledWorkersOnly, includeFileInfo);
 }
 
 void DatabaseServicesPool::findReplicas(vector<ReplicaInfo>& replicas, vector<unsigned int> const& chunks,
-                                        string const& database, bool enabledWorkersOnly,
+                                        string const& databaseName, bool enabledWorkersOnly,
                                         bool includeFileInfo) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->findReplicas(replicas, chunks, database, enabledWorkersOnly, includeFileInfo);
+    service()->findReplicas(replicas, chunks, databaseName, enabledWorkersOnly, includeFileInfo);
 }
 
 void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas, string const& workerName,
-                                              string const& database, bool allDatabases, bool isPublished,
+                                              string const& databaseName, bool allDatabases, bool isPublished,
                                               bool includeFileInfo) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->findWorkerReplicas(replicas, workerName, database, allDatabases, isPublished, includeFileInfo);
+    service()->findWorkerReplicas(replicas, workerName, databaseName, allDatabases, isPublished,
+                                  includeFileInfo);
 }
 
-uint64_t DatabaseServicesPool::numWorkerReplicas(string const& workerName, string const& database,
+uint64_t DatabaseServicesPool::numWorkerReplicas(string const& workerName, string const& databaseName,
                                                  bool allDatabases, bool isPublished) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->numWorkerReplicas(workerName, database, allDatabases, isPublished);
+    return service()->numWorkerReplicas(workerName, databaseName, allDatabases, isPublished);
 }
 
 void DatabaseServicesPool::findWorkerReplicas(vector<ReplicaInfo>& replicas, unsigned int chunk,
-                                              string const& workerName, string const& databaseFamily,
+                                              string const& workerName, string const& familyName,
                                               bool allDatabases, bool isPublished) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->findWorkerReplicas(replicas, chunk, workerName, databaseFamily, allDatabases, isPublished);
+    service()->findWorkerReplicas(replicas, chunk, workerName, familyName, allDatabases, isPublished);
 }
 
-void DatabaseServicesPool::findDatabaseReplicas(vector<ReplicaInfo>& replicas, string const& database,
+void DatabaseServicesPool::findDatabaseReplicas(vector<ReplicaInfo>& replicas, string const& databaseName,
                                                 bool enabledWorkersOnly) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->findDatabaseReplicas(replicas, database, enabledWorkersOnly);
+    service()->findDatabaseReplicas(replicas, databaseName, enabledWorkersOnly);
 }
 
-void DatabaseServicesPool::findDatabaseChunks(vector<unsigned int>& chunks, string const& database,
+void DatabaseServicesPool::findDatabaseChunks(vector<unsigned int>& chunks, string const& databaseName,
                                               bool enabledWorkersOnly) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->findDatabaseChunks(chunks, database, enabledWorkersOnly);
+    service()->findDatabaseChunks(chunks, databaseName, enabledWorkersOnly);
 }
 
 map<unsigned int, size_t> DatabaseServicesPool::actualReplicationLevel(
-        string const& database, vector<string> const& workersToExclude) {
+        string const& databaseName, vector<string> const& workersToExclude) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->actualReplicationLevel(database, workersToExclude);
+    return service()->actualReplicationLevel(databaseName, workersToExclude);
 }
 
-size_t DatabaseServicesPool::numOrphanChunks(string const& database, vector<string> const& uniqueOnWorkers) {
+size_t DatabaseServicesPool::numOrphanChunks(string const& databaseName,
+                                             vector<string> const& uniqueOnWorkers) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->numOrphanChunks(database, uniqueOnWorkers);
+    return service()->numOrphanChunks(databaseName, uniqueOnWorkers);
 }
 
 void DatabaseServicesPool::logControllerEvent(ControllerEvent const& event) {
@@ -295,23 +297,23 @@ TransactionContribInfo DatabaseServicesPool::transactionContrib(unsigned int id,
 }
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
-        TransactionId transactionId, string const& table, string const& workerName,
+        TransactionId transactionId, string const& tableName, string const& workerName,
         set<TransactionContribInfo::Status> const& statusSelector,
         TransactionContribInfo::TypeSelector typeSelector, int chunkSelector, bool includeExtensions,
         bool includeWarnings, bool includeRetries, size_t minRetries, size_t minWarnings, size_t maxEntries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(transactionId, table, workerName, statusSelector, typeSelector,
+    return service()->transactionContribs(transactionId, tableName, workerName, statusSelector, typeSelector,
                                           chunkSelector, includeExtensions, includeWarnings, includeRetries,
                                           minRetries, minWarnings, maxEntries);
 }
 
 vector<TransactionContribInfo> DatabaseServicesPool::transactionContribs(
-        string const& database, string const& table, string const& workerName,
+        string const& databaseName, string const& tableName, string const& workerName,
         set<TransactionContribInfo::Status> const& statusSelector,
         TransactionContribInfo::TypeSelector typeSelector, bool includeExtensions, bool includeWarnings,
         bool includeRetries, size_t minRetries, size_t minWarnings, size_t maxEntries) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->transactionContribs(database, table, workerName, statusSelector, typeSelector,
+    return service()->transactionContribs(databaseName, tableName, workerName, statusSelector, typeSelector,
                                           includeExtensions, includeWarnings, includeRetries, minRetries,
                                           minWarnings, maxEntries);
 }
@@ -333,28 +335,28 @@ TransactionContribInfo DatabaseServicesPool::saveLastTransactionContribRetry(
     return service()->saveLastTransactionContribRetry(info);
 }
 
-DatabaseIngestParam DatabaseServicesPool::ingestParam(string const& database, string const& category,
+DatabaseIngestParam DatabaseServicesPool::ingestParam(string const& databaseName, string const& category,
                                                       string const& param) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->ingestParam(database, category, param);
+    return service()->ingestParam(databaseName, category, param);
 }
 
-vector<DatabaseIngestParam> DatabaseServicesPool::ingestParams(string const& database,
+vector<DatabaseIngestParam> DatabaseServicesPool::ingestParams(string const& databaseName,
                                                                string const& category) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->ingestParams(database, category);
+    return service()->ingestParams(databaseName, category);
 }
 
-void DatabaseServicesPool::saveIngestParam(string const& database, string const& category,
+void DatabaseServicesPool::saveIngestParam(string const& databaseName, string const& category,
                                            string const& param, string const& value) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    service()->saveIngestParam(database, category, param, value);
+    service()->saveIngestParam(databaseName, category, param, value);
 }
 
-TableRowStats DatabaseServicesPool::tableRowStats(string const& database, string const& table,
+TableRowStats DatabaseServicesPool::tableRowStats(string const& databaseName, string const& tableName,
                                                   TransactionId transactionId) {
     ServiceAllocator service(shared_from_base<DatabaseServicesPool>());
-    return service()->tableRowStats(database, table, transactionId);
+    return service()->tableRowStats(databaseName, tableName, transactionId);
 }
 
 void DatabaseServicesPool::saveTableRowStats(TableRowStats const& stats) {

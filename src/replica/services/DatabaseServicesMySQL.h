@@ -81,39 +81,38 @@ public:
 
     void saveReplicaInfo(ReplicaInfo const& info) final;
 
-    void saveReplicaInfoCollection(std::string const& workerName, std::string const& database,
+    void saveReplicaInfoCollection(std::string const& workerName, std::string const& databaseName,
                                    ReplicaInfoCollection const& newReplicaInfoCollection) final;
 
     void findOldestReplicas(std::vector<ReplicaInfo>& replicas, size_t maxReplicas, bool enabledWorkersOnly,
                             bool allDatabases, bool isPublished) final;
 
-    void findReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk, std::string const& database,
+    void findReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk, std::string const& databaseName,
                       bool enabledWorkersOnly, bool includeFileInfo) final;
 
     void findReplicas(std::vector<ReplicaInfo>& replicas, std::vector<unsigned int> const& chunks,
-                      std::string const& database, bool enabledWorkersOnly, bool includeFileInfo) final;
-
+                      std::string const& databaseName, bool enabledWorkersOnly, bool includeFileInfo) final;
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, std::string const& workerName,
-                            std::string const& database, bool allDatabases, bool isPublished,
+                            std::string const& databaseName, bool allDatabases, bool isPublished,
                             bool includeFileInfo) final;
 
-    uint64_t numWorkerReplicas(std::string const& workerName, std::string const& database, bool allDatabases,
-                               bool isPublished) final;
+    uint64_t numWorkerReplicas(std::string const& workerName, std::string const& databaseName,
+                               bool allDatabases, bool isPublished) final;
 
     void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk,
-                            std::string const& workerName, std::string const& databaseFamily,
-                            bool allDatabases, bool isPublished) final;
+                            std::string const& workerName, std::string const& familyName, bool allDatabases,
+                            bool isPublished) final;
 
-    void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas, std::string const& database,
+    void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas, std::string const& databaseName,
                               bool enabledWorkersOnly) final;
 
-    void findDatabaseChunks(std::vector<unsigned int>& chunks, std::string const& database,
+    void findDatabaseChunks(std::vector<unsigned int>& chunks, std::string const& databaseName,
                             bool enabledWorkersOnly) final;
 
     std::map<unsigned int, size_t> actualReplicationLevel(
-            std::string const& database, std::vector<std::string> const& workersToExclude) final;
+            std::string const& databaseName, std::vector<std::string> const& workersToExclude) final;
 
-    size_t numOrphanChunks(std::string const& database,
+    size_t numOrphanChunks(std::string const& databaseName,
                            std::vector<std::string> const& uniqueOnWorkers) final;
 
     void logControllerEvent(ControllerEvent const& event) final;
@@ -169,7 +168,7 @@ public:
                                               bool includeRetries = false) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
-            TransactionId transactionId, std::string const& table, std::string const& workerName,
+            TransactionId transactionId, std::string const& tableName, std::string const& workerName,
             std::set<TransactionContribInfo::Status> const& statusSelector = {},
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
@@ -178,7 +177,7 @@ public:
             size_t maxEntries = 0) final;
 
     std::vector<TransactionContribInfo> transactionContribs(
-            std::string const& database, std::string const& table, std::string const& workerName,
+            std::string const& databaseName, std::string const& tableName, std::string const& workerName,
             std::set<TransactionContribInfo::Status> const& statusSelector = {},
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
@@ -194,16 +193,16 @@ public:
 
     TransactionContribInfo saveLastTransactionContribRetry(TransactionContribInfo const& info) final;
 
-    DatabaseIngestParam ingestParam(std::string const& database, std::string const& category,
+    DatabaseIngestParam ingestParam(std::string const& databaseName, std::string const& category,
                                     std::string const& param) final;
 
-    std::vector<DatabaseIngestParam> ingestParams(std::string const& database,
+    std::vector<DatabaseIngestParam> ingestParams(std::string const& databaseName,
                                                   std::string const& category = std::string()) final;
 
-    void saveIngestParam(std::string const& database, std::string const& category, std::string const& param,
-                         std::string const& value) final;
+    void saveIngestParam(std::string const& databaseName, std::string const& category,
+                         std::string const& param, std::string const& value) final;
 
-    TableRowStats tableRowStats(std::string const& database, std::string const& table,
+    TableRowStats tableRowStats(std::string const& databaseName, std::string const& tableName,
                                 TransactionId transactionId = 0) final;
 
     void saveTableRowStats(TableRowStats const& stats) final;
@@ -224,21 +223,21 @@ private:
      *   calling this method
      * @param replicas collection of replicas found upon a successful completion
      * @param workerName worker name (as per the request)
-     * @param database (optional) database name (as per the request)
+     * @param databaseName (optional) database name (as per the request)
      * @param allDatabases (optional) flag which if set to 'true' will include
      *   into the search all known database entries regardless of their PUBLISHED
      *   status. Otherwise a subset of databases as determined by the second flag
      *   'isPublished' will get assumed. Note, this flag is used only if a value
-     *   of parameter 'database' is empty.
+     *   of parameter 'databaseName' is empty.
      * @param isPublished (optional) flag which is used if flag 'all' is set
      *   to 'false' to narrow a collection of databases included into the search.
      * @param includeFileInfo if set to 'true' then file info will also be added
      *   to each replica
      */
     void _findWorkerReplicasImpl(replica::Lock const& lock, std::vector<ReplicaInfo>& replicas,
-                                 std::string const& workerName, std::string const& database = std::string(),
-                                 bool allDatabases = false, bool isPublished = true,
-                                 bool includeFileInfo = true);
+                                 std::string const& workerName,
+                                 std::string const& databaseName = std::string(), bool allDatabases = false,
+                                 bool isPublished = true, bool includeFileInfo = true);
 
     /**
      * Actual implementation of the replica update algorithm.
@@ -254,12 +253,12 @@ private:
      *
      * @param lock a lock on DatabaseServicesMySQL::_mtx must be acquired
      *   before calling this method
-     * @param workerName worker name (as per the request)
-     * @param database database name (as per the request)
+     * @param workerName the worker name (as per the request)
+     * @param databaseName the database name (as per the request)
      * @param newReplicaInfoCollection collection of new replicas
      */
     void _saveReplicaInfoCollectionImpl(replica::Lock const& lock, std::string const& workerName,
-                                        std::string const& database,
+                                        std::string const& databaseName,
                                         ReplicaInfoCollection const& newReplicaInfoCollection);
 
     /**
@@ -267,12 +266,12 @@ private:
      *
      * @param lock a lock on DatabaseServicesMySQL::_mtx must be acquired before
      *   calling this method
-     * @param workerName worker name
-     * @param database database name
+     * @param workerName the worker name
+     * @param databaseName the database name
      * @param chunk the chunk whose replicas will be removed
      */
     void _deleteReplicaInfoImpl(replica::Lock const& lock, std::string const& workerName,
-                                std::string const& database, unsigned int chunk);
+                                std::string const& databaseName, unsigned int chunk);
     /**
      * Fetch replicas satisfying the specified query
      *
@@ -362,17 +361,8 @@ private:
     std::vector<DatabaseIngestParam> _ingestParamsImpl(replica::Lock const& lock,
                                                        std::string const& predicate);
 
-    TableRowStats _tableRowStats(replica::Lock const& lock, std::string const& database,
-                                 std::string const& table, TransactionId transactionId);
-
-    /*
-     * The assert methods below will ensure that the specified entries exist
-     * in the Configuration. The methods will throw std::invalid_argument if
-     * the name of the entry is empty, or if it refers to non-existing entry.
-     */
-    void _assertDatabaseFamilyIsValid(std::string const& context, std::string const& familyName) const;
-    void _assertDatabaseIsValid(std::string const& context, std::string const& databaseName) const;
-    void _assertWorkerIsValid(std::string const& context, std::string const& workerName) const;
+    TableRowStats _tableRowStats(replica::Lock const& lock, std::string const& databaseName,
+                                 std::string const& tableName, TransactionId transactionId);
 
     // Input parameters
 
