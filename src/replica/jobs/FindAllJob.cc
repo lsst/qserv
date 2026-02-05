@@ -59,14 +59,11 @@ FindAllJob::FindAllJob(string const& databaseFamily, bool saveReplicaInfo, bool 
           _databaseFamily(databaseFamily),
           _saveReplicaInfo(saveReplicaInfo),
           _allWorkers(allWorkers),
-          _onFinish(onFinish),
-          _databases(controller->serviceProvider()->config()->databases(databaseFamily)) {}
+          _onFinish(onFinish) {}
 
 FindAllJobResult const& FindAllJob::getReplicaData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (state() == State::FINISHED) return _replicaData;
-
     throw logic_error("FindAllJob::" + string(__func__) +
                       "  the method can't be called while the job hasn't finished");
 }
@@ -80,16 +77,12 @@ list<pair<string, string>> FindAllJob::extendedPersistentState() const {
 }
 
 list<pair<string, string>> FindAllJob::persistentLogData() const {
-    list<pair<string, string>> result;
-
-    auto&& replicaData = getReplicaData();
-
     // Report workers failed to respond to the requests
-
-    for (auto&& workerInfo : replicaData.workers) {
+    list<pair<string, string>> result;
+    for (auto&& workerInfo : getReplicaData().workers) {
         auto&& workerName = workerInfo.first;
         bool const responded = workerInfo.second;
-        if (not responded) {
+        if (!responded) {
             result.emplace_back("failed-qserv-worker", workerName);
         }
     }
@@ -105,22 +98,20 @@ list<pair<string, string>> FindAllJob::persistentLogData() const {
     //
     //   good-replicas:
     //     the number of "good" replicas
-
     map<string, map<string, size_t>> workerCategoryCounter;
-
-    for (auto&& infoCollection : replicaData.replicas) {
+    for (auto&& infoCollection : getReplicaData().replicas) {
         for (auto&& info : infoCollection) {
             workerCategoryCounter[info.worker()]["chunks"]++;
         }
     }
-    for (auto&& chunkItr : replicaData.isColocated) {
+    for (auto&& chunkItr : getReplicaData().isColocated) {
         for (auto&& workerItr : chunkItr.second) {
             auto&& worker = workerItr.first;
             bool const isCollocated = workerItr.second;
             if (isCollocated) workerCategoryCounter[worker]["collocated-replicas"]++;
         }
     }
-    for (auto&& chunkItr : replicaData.isGood) {
+    for (auto&& chunkItr : getReplicaData().isGood) {
         for (auto&& workerItr : chunkItr.second) {
             auto&& workerName = workerItr.first;
             bool const isGood = workerItr.second;
@@ -144,11 +135,12 @@ list<pair<string, string>> FindAllJob::persistentLogData() const {
 void FindAllJob::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
 
+    auto const databases = controller()->serviceProvider()->config()->databases(databaseFamily());
     auto const workerNames = allWorkers() ? controller()->serviceProvider()->config()->allWorkers()
                                           : controller()->serviceProvider()->config()->workers();
     for (auto&& workerName : workerNames) {
         _replicaData.workers[workerName] = false;
-        for (auto&& database : _databases) {
+        for (auto&& database : databases) {
             _workerDatabaseSuccess[workerName][database] = false;
             _requests.push_back(FindAllRequest::createAndStart(
                     controller(), workerName, database, saveReplicaInfo(),
@@ -164,7 +156,6 @@ void FindAllJob::startImpl(replica::Lock const& lock) {
 
     // In case if no workers or database are present in the Configuration
     // at this time.
-
     if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
 }
 
@@ -184,7 +175,6 @@ void FindAllJob::cancelImpl(replica::Lock const& lock) {
         }
     }
     _requests.clear();
-
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess = 0;
@@ -201,9 +191,7 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
                    << " state=" << request->state2string());
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + "" + string(__func__) + "[" + request->id() + "]");
-
     if (state() == State::FINISHED) return;
 
     // Update counters and object state if needed.
@@ -218,7 +206,6 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
         }
         _workerDatabaseSuccess[request->workerName()][request->database()] = true;
     }
-
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  database=" << request->database() << " worker=" << request->workerName()
                    << " _numLaunched=" << _numLaunched << " _numFinished=" << _numFinished
@@ -226,10 +213,8 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
 
     // Recompute the final state if this was the last request
     // before finalizing the object state and notifying clients.
-
     if (_numFinished == _numLaunched) {
         // Compute the final state of the workers participated in the operation
-
         for (auto const& workerEntry : _workerDatabaseSuccess) {
             auto const& workerName = workerEntry.first;
             _replicaData.workers[workerName] = true;
@@ -243,7 +228,6 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
         }
 
         // Databases participating in a chunk
-
         for (auto chunk : _replicaData.chunks.chunkNumbers()) {
             for (auto&& database : _replicaData.chunks.chunk(chunk).databaseNames()) {
                 _replicaData.databases[chunk].push_back(database);
@@ -251,10 +235,8 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
         }
 
         // Workers hosting complete chunks
-
         for (auto chunk : _replicaData.chunks.chunkNumbers()) {
             auto chunkMap = _replicaData.chunks.chunk(chunk);
-
             for (auto&& database : chunkMap.databaseNames()) {
                 auto databaseMap = chunkMap.database(database);
 
@@ -271,7 +253,6 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
         //
         // ATTENTION: this algorithm won't consider the actual status of
         //            chunk replicas (if they're complete, corrupts, etc.).
-
         for (auto chunk : _replicaData.chunks.chunkNumbers()) {
             auto chunkMap = _replicaData.chunks.chunk(chunk);
 
@@ -281,12 +262,9 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             //
             // NOTE: Single-database chunks are always collocated. Note that
             //       the loop over databases below has exactly one iteration.
-
             map<string, size_t> worker2numDatabases;
-
             for (auto&& database : chunkMap.databaseNames()) {
                 auto databaseMap = chunkMap.database(database);
-
                 for (auto&& workerName : databaseMap.workerNames()) {
                     worker2numDatabases[workerName]++;
                 }
@@ -296,21 +274,17 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
             // against the number of all databases participated within
             // the chunk and decide for which of those workers the 'colocation'
             // requirement is met.
-
             for (auto&& entry : worker2numDatabases) {
                 string const& workerName = entry.first;
                 size_t const numDatabases = entry.second;
-
                 _replicaData.isColocated[chunk][workerName] =
                         _replicaData.databases[chunk].size() == numDatabases;
             }
         }
 
         // Compute the 'goodness' status of each chunk
-
         for (auto&& chunk2workers : _replicaData.isColocated) {
             unsigned int const chunk = chunk2workers.first;
-
             for (auto&& worker2collocated : chunk2workers.second) {
                 string const& workerName = worker2collocated.first;
                 bool const isColocated = worker2collocated.second;
@@ -321,14 +295,11 @@ void FindAllJob::_onRequestFinish(FindAllRequest::Ptr const& request) {
                 //
                 // NOTE: watch for a little optimization if the replica is not
                 //       collocated.
-
                 bool isGood = isColocated;
                 if (isGood) {
                     auto chunkMap = _replicaData.chunks.chunk(chunk);
-
                     for (auto&& database : chunkMap.databaseNames()) {
                         auto databaseMap = chunkMap.database(database);
-
                         for (auto&& thisWorker : databaseMap.workerNames()) {
                             if (workerName == thisWorker) {
                                 ReplicaInfo const& replica = databaseMap.worker(thisWorker);

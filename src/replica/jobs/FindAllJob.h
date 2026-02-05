@@ -98,10 +98,7 @@ struct FindAllJobResult {
  */
 class FindAllJob : public Job {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<FindAllJob> Ptr;
-
-    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
@@ -112,35 +109,18 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily
-     *   name of a database family
-     *
-     * @param saveReplicaInfo
-     *   save replica info in a database
-     *
-     * @param allWorkers
-     *   engage all known workers regardless of their status
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   an identifier of a parent job
-     *
-     * @param onFinish
-     *   callback function to be called upon a completion of the job
-     *
-     * @param priority
-     *   priority level of the job
-     *
-     * @return
-     *   pointer to the created object
+     * @param databaseFamily The name of a database family.
+     * @param saveReplicaInfo Save replica info in a database.
+     * @param allWorkers Engage all known workers regardless of their status.
+     * @param controller An instance of the controller for launching requests.
+     * @param parentJobId An identifier of a parent job.
+     * @param onFinish Callback function to be called upon a completion of the job.
+     * @param priority Priority level of the job.
+     * @return A pointer to the created object.
      */
     static Ptr create(std::string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
                       Controller::Ptr const& controller, std::string const& parentJobId,
                       CallbackType const& onFinish, int priority);
-
-    // Default construction and copy semantics are prohibited
 
     FindAllJob() = delete;
     FindAllJob(FindAllJob const&) = delete;
@@ -160,51 +140,33 @@ public:
     /**
      * Return the result of the operation.
      *
-     * @note
-     *   The method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
-     *
-     * @note
-     *   The result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
-     *
-     * @return
-     *   The data structure to be filled upon the completion of the job.
-     *
-     * @throws std::logic_error
-     *   if the job isn't finished at the time when the method was called
+     * @note The method should be invoked only after the job has finished (primary
+     *  status is set to Job::Status::FINISHED). Otherwise exception
+     *  std::logic_error will be thrown
+     * @note The result will be extracted from requests which have successfully
+     *  finished. Please, verify the primary and extended status of the object
+     *  to ensure that all requests have finished.
+     * @return The data structure to be filled upon the completion of the job.
+     * @throws std::logic_error If the job isn't finished at the time when the method was called.
      */
     FindAllJobResult const& getReplicaData() const;
 
-    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
     std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
     void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
     void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see FindAllJob::create()
     FindAllJob(std::string const& databaseFamily, bool saveReplicaInfo, bool allWorkers,
                Controller::Ptr const& controller, std::string const& parentJobId,
                CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.
-     *
-     * @param request
-     *   a pointer to a request
+     * @param request A pointer to a request.
      */
     void _onRequestFinish(FindAllRequest::Ptr const& request);
 
@@ -214,9 +176,6 @@ private:
     bool const _saveReplicaInfo;
     bool const _allWorkers;
     CallbackType _onFinish;  /// @note is reset when the job finishes
-
-    /// Members of the family pulled from Configuration
-    std::vector<std::string> const _databases;
 
     /// A collection of requests implementing the operation
     std::list<FindAllRequest::Ptr> _requests;

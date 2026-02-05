@@ -107,8 +107,8 @@ function(CSSLoader,
     <table class="table table-sm table-hover table-bordered" id="fwk-ingest-user-tables">
       <thead class="thead-light">
         <tr>
-          <th class="center-aligned"><i class="bi bi-info-circle-fill"></i></th>
-          <th class="center-aligned"><i class="bi bi-bar-chart-steps"></i></th>
+          <th class="sticky center-aligned"><i class="bi bi-info-circle-fill"></i></th>
+          <th class="sticky center-aligned"><i class="bi bi-bar-chart-steps"></i></th>
           <th class="sticky right-aligned">Id</th>
           <th class="sticky right-aligned"><elem style="color:red;">&darr;</elem></th>
           <th class="sticky right-aligned">Started</th>

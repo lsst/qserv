@@ -105,10 +105,12 @@ private:
      *
      * @param conn a reference to the database connector is needed to process
      *   arguments to meet requirements of the database query processing engine.
+     * @param primaryKeyColumn  the name of the primary key column of the director table
      * @return a query as per the input request
      * @throws std::invalid_argument if the input parameters are not supported
      */
-    std::string _query(std::shared_ptr<database::mysql::Connection> const& conn) const;
+    std::string _query(std::shared_ptr<database::mysql::Connection> const& conn,
+                       std::string const& primaryKeyColumn) const;
 
     /**
      * Read the content of the file into memory starting from the given offset.
@@ -120,7 +122,7 @@ private:
      */
     ProtocolStatusExt _readFile(size_t offset);
 
-    /// Get rid of the temporary file if it's still tehre.
+    /// Get rid of the temporary file if it's still there.
     void _removeFile() const;
 
     ConnectionPoolPtr const _connectionPool;

@@ -258,8 +258,8 @@ json TableRowStatsEntry::toJson() const {
                          {"update_time", updateTime}});
 }
 
-TableRowStats::TableRowStats(string const& database_, string const& table_)
-        : database(database_), table(table_) {}
+TableRowStats::TableRowStats(string const& databaseName, string const& tableName)
+        : database(databaseName), table(tableName) {}
 
 json TableRowStats::toJson() const {
     json result = json::object({{"database", database}, {"table", table}, {"entries", json::array()}});

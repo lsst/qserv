@@ -33,6 +33,8 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "replica/config/ConfigDatabase.h"
+#include "replica/config/ConfigTable.h"
 #include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
@@ -95,22 +97,39 @@ void WorkerDirectorIndexRequest::setInfo(ProtocolResponseDirectorIndex& response
 bool WorkerDirectorIndexRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__));
 
+    // This method will throw ConfigUnknownDatabase if the database is invalid.
+    DatabaseInfo const database = serviceProvider()->config()->databaseInfo(_request.database());
+
+    // This method will throw ConfigUnknownTable if the table is invalid.
+    TableInfo const table = database.findTable(_request.director_table());
+
+    // Validate that the table is indeed a "director" table.
+    if (!table.isDirector()) {
+        throw invalid_argument("table '" + table.name + "' is not been configured as director in database '" +
+                               database.name + "'");
+    }
+    if (table.directorTable.primaryKeyColumn().empty()) {
+        throw invalid_argument("director table '" + table.name +
+                               "' has not been properly configured in database '" + database.name + "'");
+    }
+    if (table.columns.empty()) {
+        throw invalid_argument("no schema found for director table '" + table.name + "' of database '" +
+                               database.name + "'");
+    }
+
     replica::Lock lock(_mtx, context(__func__));
     checkIfCancelling(lock, __func__);
 
     try {
         // The table will be scanned only when the offset is set to 0.
         if (_request.offset() == 0) {
-            auto const config = serviceProvider()->config();
-            auto const database = config->databaseInfo(_request.database());
-
             // Create a folder (if it still doesn't exist) where the temporary files will be placed
             // NOTE: this folder is supposed to be seen by the worker's MySQL/MariaDB server, and it
             // must be write-enabled for an account under which the service is run.
             boost::system::error_code ec;
             fs::create_directory(fs::path(_tmpDirName), ec);
             if (ec.value() != 0) {
-                _error = "failed to create folder '" + _tmpDirName;
+                _error = "failed to create folder '" + _tmpDirName + "'";
                 LOGS(_log, LOG_LVL_ERROR, context(__func__) << "  " << _error);
                 setStatus(lock, ProtocolStatus::FAILED, ProtocolStatusExt::FOLDER_CREATE);
             }
@@ -125,8 +144,11 @@ bool WorkerDirectorIndexRequest::execute() {
             ConnectionHandler const h(_connectionPool);
 
             // A scope of the query depends on parameters of the request
-            h.conn->executeInOwnTransaction([self = shared_from_base<WorkerDirectorIndexRequest>()](
-                                                    auto conn) { conn->execute(self->_query(conn)); });
+            h.conn->executeInOwnTransaction(
+                    [self = shared_from_base<WorkerDirectorIndexRequest>(),
+                     primaryKeyColumn = table.directorTable.primaryKeyColumn()](auto conn) {
+                        conn->execute(self->_query(conn, primaryKeyColumn));
+                    });
         }
         if (auto const status = _readFile(_request.offset()); status != ProtocolStatusExt::NONE) {
             setStatus(lock, ProtocolStatus::FAILED, status);
@@ -165,61 +187,22 @@ bool WorkerDirectorIndexRequest::execute() {
     return true;
 }
 
-string WorkerDirectorIndexRequest::_query(Connection::Ptr const& conn) const {
-    auto const config = serviceProvider()->config();
-    auto const database = config->databaseInfo(_request.database());
-    auto const table = database.findTable(_request.director_table());
-
-    if (!table.isDirector()) {
-        throw invalid_argument("table '" + table.name + "' is not been configured as director in database '" +
-                               database.name + "'");
-    }
-    if (table.directorTable.primaryKeyColumn().empty()) {
-        throw invalid_argument("director table '" + table.name +
-                               "' has not been properly configured in database '" + database.name + "'");
-    }
-    if (table.columns.empty()) {
-        throw invalid_argument("no schema found for director table '" + table.name + "' of database '" +
-                               database.name + "'");
-    }
-
-    // Find types required by the "director" index table's columns
-
-    string const qservTransId = _request.has_transactions() ? "qserv_trans_id" : string();
-    string qservTransIdType;
-    string primaryKeyColumnType;
-    string subChunkIdColNameType;
-
-    for (auto&& column : table.columns) {
-        if (!qservTransId.empty() && column.name == qservTransId)
-            qservTransIdType = column.type;
-        else if (column.name == table.directorTable.primaryKeyColumn())
-            primaryKeyColumnType = column.type;
-        else if (column.name == lsst::qserv::SUB_CHUNK_COLUMN)
-            subChunkIdColNameType = column.type;
-    }
-    if ((!qservTransId.empty() && qservTransIdType.empty()) || primaryKeyColumnType.empty() or
-        subChunkIdColNameType.empty()) {
-        throw invalid_argument(
-                "column definitions for the Object identifier or sub-chunk identifier"
-                " columns are missing in the director table schema for table '" +
-                table.name + "' of database '" + database.name + "'");
-    }
-
-    // NOTE: injecting the chunk number into each row of the result set because
+string WorkerDirectorIndexRequest::_query(Connection::Ptr const& conn, string const& primaryKeyColumn) const {
+    // IMPORTANT: injecting the chunk number into each row of the result set because
     // the chunk-id column is optional.
     QueryGenerator const g(conn);
     DoNotProcess const chunk = g.val(_request.chunk());
-    SqlId const sqlTableId = g.id(database.name, table.name + "_" + to_string(_request.chunk()));
+    SqlId const sqlTableId =
+            g.id(_request.database(), _request.director_table() + "_" + to_string(_request.chunk()));
     string query;
-    if (qservTransId.empty()) {
-        query = g.select(table.directorTable.primaryKeyColumn(), chunk, lsst::qserv::SUB_CHUNK_COLUMN) +
-                g.from(sqlTableId) + g.orderBy(make_pair(table.directorTable.primaryKeyColumn(), ""));
-    } else {
-        query = g.select(qservTransId, table.directorTable.primaryKeyColumn(), chunk,
-                         lsst::qserv::SUB_CHUNK_COLUMN) +
+    if (_request.has_transactions()) {
+        string const qservTransId = "qserv_trans_id";
+        query = g.select(qservTransId, primaryKeyColumn, chunk, lsst::qserv::SUB_CHUNK_COLUMN) +
                 g.from(sqlTableId) + g.inPartition(g.partId(_request.transaction_id())) +
-                g.orderBy(make_pair(qservTransId, ""), make_pair(table.directorTable.primaryKeyColumn(), ""));
+                g.orderBy(make_pair(qservTransId, ""), make_pair(primaryKeyColumn, ""));
+    } else {
+        query = g.select(primaryKeyColumn, chunk, lsst::qserv::SUB_CHUNK_COLUMN) + g.from(sqlTableId) +
+                g.orderBy(make_pair(primaryKeyColumn, ""));
     }
     return query + g.intoOutfile(_fileName);
 }

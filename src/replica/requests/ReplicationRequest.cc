@@ -78,7 +78,6 @@ void ReplicationRequest::startImpl(replica::Lock const& lock) {
 
     // The delayed assertions are needed to prevent throwing exceptions from
     // within constructors.
-    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
     controller()->serviceProvider()->config()->assertWorkerIsValid(sourceWorkerName());
     controller()->serviceProvider()->config()->assertWorkersAreDifferent(sourceWorkerName(), workerName());
 

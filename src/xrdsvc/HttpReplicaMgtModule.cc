@@ -330,16 +330,30 @@ void HttpReplicaMgtModule::_modifyChunk(string const& func, int chunk, string co
         // copy of the inventory. After that modify both (persistent and
         // transient) inventories.
         if (Direction::ADD == direction) {
-            _clusterManager->Added(resource.data());
-            if (_dataContext) _providerServer->GetChunkInventory().add(database, chunk);
-            foreman()->chunkInventory()->add(database, chunk, foreman()->mySqlConfig());
+            try {
+                // The first operation to add the chunk to the persistent inventory
+                // may fail if the database doesn't exist. Should this happen, the remaining
+                // steps will be skipped and the database will be ignored with a warn message logged
+                // and reported back to a caller.
+                foreman()->chunkInventory()->add(database, chunk, foreman()->mySqlConfig());
+                if (_dataContext) _providerServer->GetChunkInventory().add(database, chunk);
+                _clusterManager->Added(resource.data());
+            } catch (wpublish::InvalidParamError const& ex) {
+                // This optimisation is to avoid flooding logs with repetitive warnings
+                // about the same non-existing database in case if many chunks are being
+                // added into it. It also prevent ssending duplicate warnings about
+                // the same non-existing database back to a caller in the "warnings" section
+                // of the response object.
+                bool const inserted = _missingDatabaseNames.insert(database).second;
+                if (inserted) {
+                    warn(func, "database doesn't exist (will be ignored): " + database);
+                }
+            }
         } else {
             _clusterManager->Removed(resource.data());
             if (_dataContext) _providerServer->GetChunkInventory().remove(database, chunk);
             foreman()->chunkInventory()->remove(database, chunk, foreman()->mySqlConfig());
         }
-    } catch (wpublish::InvalidParamError const& ex) {
-        throw http::Error(func, "invalid parameter, ex: " + string(ex.what()), ::extErrorInvalidParam);
     } catch (wpublish::QueryError const& ex) {
         throw http::Error(func, "persistent " + operation + " failed, ex: " + string(ex.what()));
     } catch (exception const& ex) {

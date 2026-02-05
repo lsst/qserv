@@ -154,7 +154,7 @@ public:
      * @code
      * Though, in general this would work, the above shown dereferencing is not recommended.
      *
-     * @param database The name of a named mutex.
+     * @param name The name of a named mutex.
      * @return A smart pointer to a mutex for the name.
      * @throw std::invalid_argument If the name is empty.
      */

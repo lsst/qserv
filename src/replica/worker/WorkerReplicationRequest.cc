@@ -28,6 +28,7 @@
 #include <stdexcept>
 
 // Qserv headers
+#include "replica/config/ConfigDatabase.h"
 #include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
@@ -70,29 +71,10 @@ WorkerReplicationRequest::WorkerReplicationRequest(ServiceProvider::Ptr const& s
                         requestExpirationIvalSec),
           _request(request),
           _sourceWorkerHostPort(request.worker_host() + ":" + to_string(request.worker_port())),
-          _databaseInfo(_serviceProvider->config()->databaseInfo(request.database())),
           _initialized(false),
-          _files(FileUtils::partitionedFiles(_databaseInfo, request.chunk())),
           _tmpFilePtr(nullptr),
           _buf(0),
-          _bufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")) {
-    string const context = "WorkerReplicationRequest::" + string(__func__) + " ";
-
-    if (worker == request.worker()) {
-        throw invalid_argument(context + "workers are the same in the request.");
-    }
-    if (request.worker_host().empty()) {
-        throw invalid_argument(context + "the DNS name or an IP address of the worker not provided.");
-    }
-    if (request.worker_port() > std::numeric_limits<uint16_t>::max()) {
-        throw overflow_error(context + "the port number " + to_string(request.worker_port()) +
-                             " is not in the valid range of 0.." +
-                             to_string(std::numeric_limits<uint16_t>::max()));
-    }
-    if (request.worker_data_dir().empty()) {
-        throw invalid_argument(context + "the data path name at the remote worker not provided.");
-    }
-}
+          _bufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")) {}
 
 WorkerReplicationRequest::~WorkerReplicationRequest() {
     replica::Lock lock(_mtx, context(__func__));
@@ -111,6 +93,23 @@ bool WorkerReplicationRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG,
          context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort()
                            << "  database: " << database() << "  chunk: " << chunk());
+
+    // Validate parameters of the request
+    if (worker() == sourceWorker()) {
+        throw invalid_argument(context(__func__) + "workers are the same in the request.");
+    }
+    if (sourceWorkerHost().empty()) {
+        throw invalid_argument(context(__func__) +
+                               "the DNS name or an IP address of the worker not provided.");
+    }
+    if (_request.worker_port() > std::numeric_limits<uint16_t>::max()) {
+        throw overflow_error(context(__func__) + "the port number " + to_string(_request.worker_port()) +
+                             " is not in the valid range of 0.." +
+                             to_string(std::numeric_limits<uint16_t>::max()));
+    }
+    if (sourceWorkerDataDir().empty()) {
+        throw invalid_argument(context(__func__) + "the data path name at the remote worker not provided.");
+    }
 
     replica::Lock lock(_mtx, context(__func__));
     checkIfCancelling(lock, __func__);
@@ -138,12 +137,17 @@ bool WorkerReplicationRequest::execute() {
     //       Initialization phase (runs only once)       //
     ///////////////////////////////////////////////////////
 
-    if (not _initialized) {
+    if (!_initialized) {
         _initialized = true;
 
-        auto const config = serviceProvider()->config();
-        fs::path const outDir =
-                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
+        // The method will throw ConfigUnknownDatabase if the database is invalid.
+        DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(_request.database());
+
+        // Cache the collection of short names of files to be copied.
+        _files = FileUtils::partitionedFiles(databaseInfo, _request.chunk());
+
+        fs::path const outDir = fs::path(serviceProvider()->config()->get<string>("worker", "data-dir")) /
+                                database::mysql::obj2fs(_request.database());
 
         vector<fs::path> tmpFiles;
         vector<fs::path> outFiles;
@@ -178,12 +182,12 @@ bool WorkerReplicationRequest::execute() {
             for (auto&& file : _files) {
                 // Open the file on the remote server in the no-content-read mode
                 FileClient::Ptr inFilePtr = FileClient::stat(_serviceProvider, sourceWorkerHost(),
-                                                             sourceWorkerPort(), _databaseInfo.name, file);
+                                                             sourceWorkerPort(), _request.database(), file);
                 errorContext =
                         errorContext or
                         reportErrorIf(not inFilePtr, ProtocolStatusExt::FILE_ROPEN,
                                       "failed to open input file on remote worker: " + sourceWorker() + " (" +
-                                              sourceWorkerHostPort() + "), database: " + _databaseInfo.name +
+                                              sourceWorkerHostPort() + "), database: " + _request.database() +
                                               ", file: " + file);
                 if (errorContext.failed) {
                     setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
@@ -322,7 +326,7 @@ bool WorkerReplicationRequest::execute() {
                     errorContext or
                     reportErrorIf(true, ProtocolStatusExt::FILE_READ,
                                   "failed to read input file from remote worker: " + sourceWorker() + " (" +
-                                          sourceWorkerHostPort() + "), database: " + _databaseInfo.name +
+                                          sourceWorkerHostPort() + "), database: " + _request.database() +
                                           ", file: " + *_fileItr);
         }
 
@@ -333,7 +337,7 @@ bool WorkerReplicationRequest::execute() {
                 reportErrorIf(_file2descr[*_fileItr].inSizeBytes != _file2descr[*_fileItr].outSizeBytes,
                               ProtocolStatusExt::FILE_READ,
                               "short read of the input file from remote worker: " + sourceWorker() + " (" +
-                                      sourceWorkerHostPort() + "), database: " + _databaseInfo.name +
+                                      sourceWorkerHostPort() + "), database: " + _request.database() +
                                       ", file: " + *_fileItr);
         if (errorContext.failed) {
             setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
@@ -367,17 +371,17 @@ bool WorkerReplicationRequest::execute() {
 bool WorkerReplicationRequest::_openFiles(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG,
          context(__func__) << "  sourceWorkerHostPort: " << sourceWorkerHostPort() << "  database: "
-                           << database() << "  chunk: " << chunk() << "  file: " << *_fileItr);
+                           << _request.database() << "  chunk: " << chunk() << "  file: " << *_fileItr);
 
     WorkerRequest::ErrorContext errorContext;
 
     // Open the input file on the remote server
     _inFilePtr = FileClient::open(_serviceProvider, sourceWorkerHost(), sourceWorkerPort(),
-                                  _databaseInfo.name, *_fileItr);
+                                  _request.database(), *_fileItr);
     errorContext = errorContext or
                    reportErrorIf(not _inFilePtr, ProtocolStatusExt::FILE_ROPEN,
                                  "failed to open input file on remote worker: " + sourceWorker() + " (" +
-                                         sourceWorkerHostPort() + "), database: " + _databaseInfo.name +
+                                         sourceWorkerHostPort() + "), database: " + _request.database() +
                                          ", file: " + *_fileItr);
     if (errorContext.failed) {
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);

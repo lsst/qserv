@@ -81,11 +81,12 @@ void WorkerDeleteRequest::setInfo(ProtocolResponseDelete& response) const {
 bool WorkerDeleteRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, context(__func__) << "  db: " << database() << "  chunk: " << chunk());
 
+    // The method will throw ConfigUnknownDatabase if the database is invalid.
+    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(database());
+
     replica::Lock lock(_mtx, context(__func__));
     checkIfCancelling(lock, __func__);
 
-    auto const config = _serviceProvider->config();
-    DatabaseInfo const databaseInfo = config->databaseInfo(database());
     vector<string> const files = FileUtils::partitionedFiles(databaseInfo, chunk());
 
     // The data folder will be locked while performing the operation
@@ -94,8 +95,8 @@ bool WorkerDeleteRequest::execute() {
     boost::system::error_code ec;
     {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
-        fs::path const dataDir =
-                fs::path(config->get<string>("worker", "data-dir")) / database::mysql::obj2fs(database());
+        fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
+                                 database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext = errorContext or
                        reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,

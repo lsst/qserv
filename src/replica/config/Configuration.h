@@ -410,9 +410,19 @@ public:
     /// @return names of known database families
     std::vector<std::string> databaseFamilies() const;
 
-    /// @param familyName The name of a family.
-    /// @return 'true' if the specified database family is known to the configuration.
-    /// @throw std::invalid_argument If the empty string passed as a value of the parameter.
+    /**
+     * Make sure this database is known in the configuration
+     * @param familyName The name of a database family.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     * @throw ConfigUnknownDatabaseFamily if the database family is unknown.
+     */
+    void assertDatabaseFamilyIsValid(std::string const& familyName) const;
+
+    /**
+     * @param familyName The name of a family.
+     * @return 'true' if the specified database family is known to the configuration.
+     * @throw std::invalid_argument If the empty string passed as a value of the parameter.
+     */
     bool isKnownDatabaseFamily(std::string const& familyName) const;
 
     /**

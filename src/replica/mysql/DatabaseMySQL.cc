@@ -242,6 +242,9 @@ void Connection::_processLastError(string const& context, bool instantAutoReconn
         case ER_LOCK_DEADLOCK:
             throw ER_LOCK_DEADLOCK_(msg);
 
+        case ER_NO_REFERENCED_ROW_2:
+            throw ER_NO_REFERENCED_ROW_2_(msg);
+
         case ER_ABORTING_CONNECTION:
         case ER_NEW_ABORTING_CONNECTION:
         case ER_CONNECTION_ALREADY_EXISTS:  // MariaDB specific internal error

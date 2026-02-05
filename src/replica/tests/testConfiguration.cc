@@ -1512,12 +1512,14 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingFamilies) {
     // the 'force' option is used.
     BOOST_CHECK_THROW(config->deleteDatabaseFamily("production"), ConfigNotEmpty);
     BOOST_CHECK(config->isKnownDatabaseFamily("production"));
+    BOOST_REQUIRE_NO_THROW(config->assertDatabaseFamilyIsValid("production"));
     BOOST_CHECK(config->isKnownDatabase("db1"));
     BOOST_CHECK(config->isKnownDatabase("db2"));
     BOOST_CHECK(config->isKnownDatabase("db3"));
     bool const force = true;
     BOOST_REQUIRE_NO_THROW(config->deleteDatabaseFamily("production", force));
     BOOST_CHECK(!config->isKnownDatabaseFamily("production"));
+    BOOST_CHECK_THROW(config->assertDatabaseFamilyIsValid("production"), ConfigUnknownDatabaseFamily);
     BOOST_CHECK(!config->isKnownDatabase("db1"));
     BOOST_CHECK(!config->isKnownDatabase("db2"));
     BOOST_CHECK(!config->isKnownDatabase("db3"));

@@ -354,7 +354,7 @@ public:
     std::string table;     /// The base name of a table.
     std::list<TableRowStatsEntry> entries;
 
-    TableRowStats(std::string const& database_, std::string const& table_);
+    TableRowStats(std::string const& databaseName, std::string const& tableName);
 
     TableRowStats() = default;
     TableRowStats(TableRowStats const&) = default;
@@ -488,11 +488,11 @@ public:
      * - existing replicas will be updated in the database
      *
      * @param workerName the name of a worker (as per the request)
-     * @param database the name of a database (as per the request)
+     * @param databaseName the name of a database (as per the request)
      * @param infoCollection a collection of replicas
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void saveReplicaInfoCollection(std::string const& workerName, std::string const& database,
+    virtual void saveReplicaInfoCollection(std::string const& workerName, std::string const& databaseName,
                                            ReplicaInfoCollection const& infoCollection) = 0;
 
     /**
@@ -526,7 +526,7 @@ public:
      *
      * @param replicas a collection of replicas (if any found)
      * @param chunk a chunk whose replicas will be looked for
-     * @param database the name of a database limiting a scope of the lookup operation
+     * @param databaseName the name of a database limiting a scope of the lookup operation
      * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
      * @param includeFileInfo a flag will instructs the method wether to provide
@@ -535,7 +535,7 @@ public:
      * @throw std::invalid_argument if the database is unknown or empty
      */
     virtual void findReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk,
-                              std::string const& database, bool enabledWorkersOnly = true,
+                              std::string const& databaseName, bool enabledWorkersOnly = true,
                               bool includeFileInfo = true) = 0;
 
     /**
@@ -547,7 +547,7 @@ public:
      *
      * @param replicas a collection of replicas (if any found)
      * @param chunks a collection chunk numbers whose replicas will be looked for
-     * @param database the name of a database limiting a scope of the lookup operation
+     * @param databaseName the name of a database limiting a scope of the lookup operation
      * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
      * @param includeFileInfo a flag will instructs the method wether to provide
@@ -556,7 +556,7 @@ public:
      * @throw std::invalid_argument if the database is unknown or empty
      */
     virtual void findReplicas(std::vector<ReplicaInfo>& replicas, std::vector<unsigned int> const& chunks,
-                              std::string const& database, bool enabledWorkersOnly = true,
+                              std::string const& databaseName, bool enabledWorkersOnly = true,
                               bool includeFileInfo = true) = 0;
 
     /**
@@ -568,13 +568,13 @@ public:
      *
      * @param replicas a collection of replicas (if any found)
      * @param workerName the name of a worker
-     * @param database (optional)the name of a database
+     * @param databaseName (optional)the name of a database
      * @param allDatabases (optional) a flag which if set to 'true' will include
      *   into the search all known database entries regardless of their PUBLISHED
      *   status. Otherwise a subset of databases as determined by the second flag
      *   'isPublished' will get assumed. Note that this flag is used only if no
      *   specific database name is provided as a value of the previous parameter
-     *   'database'.
+     *   'databaseName'.
      * @param isPublished (optional) a flag which is used if flag 'all' is set to
      *   'false' to narrow a collection of databases included into the search.
      * @param includeFileInfo a flag will instructs the method wether to provide
@@ -584,8 +584,9 @@ public:
      *   or if the database family is unknown (if provided)
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, std::string const& workerName,
-                                    std::string const& database = std::string(), bool allDatabases = false,
-                                    bool isPublished = true, bool includeFileInfo = true) = 0;
+                                    std::string const& databaseName = std::string(),
+                                    bool allDatabases = false, bool isPublished = true,
+                                    bool includeFileInfo = true) = 0;
 
     /**
      * Find the number of replicas for the specified worker and a database (or all
@@ -595,13 +596,13 @@ public:
      *   passed into the method should be made if the operation fails.
      *
      * @param workerName the name of a worker
-     * @param database (optional) the name of a database
+     * @param databaseName (optional) the name of a database
      * @param allDatabases (optional) a flag which if set to 'true' will include
      *   into the search all known database entries regardless of their PUBLISHED
      *   status. Otherwise a subset of databases as determined by the second flag
      *   'isPublished' will get assumed. Note that this flag is used only if
      *   no specific database name is provided as a value of the previous parameter
-     *   'database'.
+     *   'databaseName'.
      * @param isPublished (optional) a flag which is used if flag 'all' is set to 'false'
      *   to narrow a collection of databases included into the search.
      *
@@ -611,8 +612,8 @@ public:
      *   or if the database family is unknown (if provided)
      */
     virtual uint64_t numWorkerReplicas(std::string const& workerName,
-                                       std::string const& database = std::string(), bool allDatabases = false,
-                                       bool isPublished = true) = 0;
+                                       std::string const& databaseName = std::string(),
+                                       bool allDatabases = false, bool isPublished = true) = 0;
 
     /**
      * Find all replicas for the specified chunk on a worker.
@@ -623,7 +624,7 @@ public:
      * @param replicas a collection of replicas (if any found)
      * @param chunk a chunk whose replicas will be looked for at the worker
      * @param workerName the name of a worker
-     * @param databaseFamily (optional) the name of a database family
+     * @param familyName (optional) the name of a database family
      * @param allDatabases (optional) a flag which if set to 'true' will include
      *   into the search all known database entries regardless of their PUBLISHED
      *   status. Otherwise a subset of databases as determined by the second flag
@@ -637,8 +638,8 @@ public:
      */
     virtual void findWorkerReplicas(std::vector<ReplicaInfo>& replicas, unsigned int chunk,
                                     std::string const& workerName,
-                                    std::string const& databaseFamily = std::string(),
-                                    bool allDatabases = false, bool isPublished = true) = 0;
+                                    std::string const& familyName = std::string(), bool allDatabases = false,
+                                    bool isPublished = true) = 0;
 
     /**
      * Find all replicas for the specified the database.
@@ -647,13 +648,13 @@ public:
      *   passed into the method should be made if the operation fails.
      *
      * @param replicas a collection of replicas (if any found)
-     * @param database the name of a database limiting a scope of the lookup operation
+     * @param databaseName the name of a database limiting a scope of the lookup operation
      * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
      *
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas, std::string const& database,
+    virtual void findDatabaseReplicas(std::vector<ReplicaInfo>& replicas, std::string const& databaseName,
                                       bool enabledWorkersOnly = true) = 0;
 
     /**
@@ -663,20 +664,20 @@ public:
      *   passed into the method should be made if the operation fails.
      *
      * @param chunks a collection of chunk numbers (if any found)
-     * @param database the name of a database limiting a scope of the lookup operation
+     * @param databaseName the name of a database limiting a scope of the lookup operation
      * @param enabledWorkersOnly (optional) if set to 'true' then only consider known
      *   workers which are enabled in the Configuration
      *
      * @throw std::invalid_argument if the database is unknown or empty
      */
-    virtual void findDatabaseChunks(std::vector<unsigned int>& chunks, std::string const& database,
+    virtual void findDatabaseChunks(std::vector<unsigned int>& chunks, std::string const& databaseName,
                                     bool enabledWorkersOnly = true) = 0;
 
     /**
      * @note the so called 'overflow' chunks will be implicitly excluded
      *   from the report.
      *
-     * @param database the name of a database
+     * @param databaseName the name of a database
      * @param workersToExclude a collection of workers to be excluded from
      *   the consideration. If the empty collection is passed as a value of
      *   the parameter then ALL known (regardless of their 'read-only or
@@ -691,14 +692,14 @@ public:
      *   in the optional collection was not found in the configuration.
      */
     virtual std::map<unsigned int, size_t> actualReplicationLevel(
-            std::string const& database,
+            std::string const& databaseName,
             std::vector<std::string> const& workersToExclude = std::vector<std::string>()) = 0;
 
     /**
      * Locate so called 'orphan' chunks which only exist on a specific set of
      * workers which are supposed to be offline (or in some other unusable state).
      *
-     * @param database the name of a database
+     * @param databaseName the name of a database
      * @param uniqueOnWorkers a collection of workers where to look for the chunks
      *   in question
      *
@@ -707,10 +708,10 @@ public:
      *   which is not in this collection. The method will always return 0 if
      *   the collection of workers passed into the method is empty.
      *
-     * @throw std::invalid_argument if the specified database or any of the workers
+     * @throw std::invalid_argument if the specified databaseName or any of the workers
      *   in the collection was not found in the configuration.
      */
-    virtual size_t numOrphanChunks(std::string const& database,
+    virtual size_t numOrphanChunks(std::string const& databaseName,
                                    std::vector<std::string> const& uniqueOnWorkers) = 0;
 
     /**
@@ -972,7 +973,7 @@ public:
             size_t maxEntries = 0) = 0;
 
     /// @return contributions into super-transactions for the given selectors
-    /// @param database the name of a database
+    /// @param databaseName the name of a database
     /// @param table the base name of a table (all tables if empty)
     /// @param workerName the name of a worker (all workers if empty)
     /// @param statusSelector (optional) the desired status of the contributions (all statuses if empty)
@@ -988,7 +989,7 @@ public:
     /// limit if 0)
     /// @param maxEntries (optional) the maximum number of contributions to be reported (no limit if 0).
     virtual std::vector<TransactionContribInfo> transactionContribs(
-            std::string const& database, std::string const& table, std::string const& workerName,
+            std::string const& databaseName, std::string const& table, std::string const& workerName,
             std::set<TransactionContribInfo::Status> const& statusSelector = {},
             TransactionContribInfo::TypeSelector typeSelector =
                     TransactionContribInfo::TypeSelector::SYNC_OR_ASYNC,
@@ -1092,30 +1093,30 @@ public:
 
     /// @return A descriptor of the parameter
     /// @throws DatabaseServicesNotFound If no such parameter found.
-    virtual DatabaseIngestParam ingestParam(std::string const& database, std::string const& category,
+    virtual DatabaseIngestParam ingestParam(std::string const& databaseName, std::string const& category,
                                             std::string const& param) = 0;
 
     /**
      * Find parameters in scope of database and (optionally) a category.
      *
-     * @param database The name of a database.
+     * @param databaseName The name of a database.
      * @param category (optional) The name of a parameter's category. If the name is empty
      *   then parameters from all categories will be returned.
      *
      * @return A collection the parameter descriptors.
      */
-    virtual std::vector<DatabaseIngestParam> ingestParams(std::string const& database,
+    virtual std::vector<DatabaseIngestParam> ingestParams(std::string const& databaseName,
                                                           std::string const& category = std::string()) = 0;
 
     /**
      * Save or update a value of a parameter.
      *
-     * @param database The name of a database.
+     * @param databaseName The name of a database.
      * @param category The name of a parameter's category.
      * @param param The name of the parameter to be saved.
      * @param value A value of the parameter.
      */
-    virtual void saveIngestParam(std::string const& database, std::string const& category,
+    virtual void saveIngestParam(std::string const& databaseName, std::string const& category,
                                  std::string const& param, std::string const& value) = 0;
 
     /**
@@ -1129,13 +1130,13 @@ public:
 
     /**
      * Retrieve statistics for a table.
-     * @param database The name of a database.
-     * @param table The name of a table.
+     * @param databaseName The name of a database.
+     * @param tableName The name of a table.
      * @param transactionId The optional identifier of a transaction.
      *   If the default value is used then entries across all transactions
      *   will be reported.
      */
-    virtual TableRowStats tableRowStats(std::string const& database, std::string const& table,
+    virtual TableRowStats tableRowStats(std::string const& databaseName, std::string const& tableName,
                                         TransactionId transactionId = 0) = 0;
 
     /**

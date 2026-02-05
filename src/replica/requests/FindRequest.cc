@@ -81,10 +81,6 @@ void FindRequest::startImpl(replica::Lock const& lock) {
                    << " worker: " << workerName() << " database: " << database() << " chunk: " << chunk()
                    << " computeCheckSum: " << (computeCheckSum() ? "true" : "false"));
 
-    // The delayed assertion is needed to prevent throwing exceptions from
-    // within constructors.
-    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
-
     // Serialize the Request message header and the request itself into
     // the network buffer.
     buffer()->resize();

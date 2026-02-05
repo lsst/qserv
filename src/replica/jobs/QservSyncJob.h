@@ -58,17 +58,13 @@ struct QservSyncJobResult {
  * system. The job will contact all workers. And the scope of the job is
  * is limited to a database family.
  *
- * @note
- *    The current implementation of the job's algorithm assumes
- *   that the latest state of replicas is already recorded in the Replication
- *   System's database.
+ * @note The current implementation of the job's algorithm assumes
+ *  that the latest state of replicas is already recorded in the Replication
+ *  System's database.
  */
 class QservSyncJob : public Job {
 public:
-    /// The pointer type for instances of the class
     typedef std::shared_ptr<QservSyncJob> Ptr;
-
-    /// The function type for notifications on the completion of the request
     typedef std::function<void(Ptr)> CallbackType;
 
     /// @return the unique name distinguishing this class from other types of jobs
@@ -79,40 +75,23 @@ public:
      * and memory management of instances created otherwise (as values or via
      * low-level pointers).
      *
-     * @param databaseFamily
-     *   name of a database family
-     *
-     * @param requestExpirationIvalSec
-     *   override the default value of the corresponding parameter from
-     *   the Configuration.
-     *
-     * @param force
-     *   proceed with the operation even if some replicas affected by
-     *   the operation are in use.
-     *
-     * @param controller
-     *   for launching requests
-     *
-     * @param parentJobId
-     *   (optional) identifier of a parent job
-     *
-     * @param onFinish
-     *   (optional) callback function to be called upon a completion of the job
-     *
-     * @param priority
-     *   (optional) priority level of the jobs. Note that the priority system is
-     *   not presently used in communications with Qserv workers over the XROOTD/SSI
-     *   protocol. This parameter is present here only for the sake of compatibility
-     *   with other job types.
-     *
-     * @return
-     *   pointer to the created object
+     * @param databaseFamily the name of a database family
+     * @param requestExpirationIvalSec override the default value of the corresponding parameter
+     *  from the Configuration.
+     * @param force proceed with the operation even if some replicas affected by
+     *  the operation are in use.
+     * @param controller for launching requests
+     * @param parentJobId (optional) identifier of a parent job
+     * @param onFinish (optional) callback function to be called upon a completion of the job
+     * @param priority (optional) priority level of the jobs. Note that the priority system is
+     *  not presently used in communications with Qserv workers over the XROOTD/SSI
+     *  protocol. This parameter is present here only for the sake of compatibility
+     *  with other job types.
+     * @return a pointer to the created object
      */
     static Ptr create(std::string const& databaseFamily, unsigned int requestExpirationIvalSec, bool force,
                       Controller::Ptr const& controller, std::string const& parentJobId = std::string(),
                       CallbackType const& onFinish = nullptr, int priority = PRIORITY_NORMAL);
-
-    // Default construction and copy semantics are prohibited
 
     QservSyncJob() = delete;
     QservSyncJob(QservSyncJob const&) = delete;
@@ -129,51 +108,33 @@ public:
     /**
      * Return the result of the operation.
      *
-     * @note
-     *   The method should be invoked only after the job has finished (primary
-     *   status is set to Job::Status::FINISHED). Otherwise exception
-     *   std::logic_error will be thrown
-     *
-     * @note
-     *   The result will be extracted from requests which have successfully
-     *   finished. Please, verify the primary and extended status of the object
-     *   to ensure that all requests have finished.
-     *
-     * @return
-     *   the data structure to be filled upon the completion of the job.
-     *
-     * @throw std::logic_error
-     *   if the job didn't finished at a time when the method was called
+     * @note The method should be invoked only after the job has finished (primary
+     *  status is set to Job::Status::FINISHED). Otherwise exception
+     *  std::logic_error will be thrown
+     * @note The result will be extracted from requests which have successfully
+     *  finished. Please, verify the primary and extended status of the object
+     *  to ensure that all requests have finished.
+     * @return the data structure to be filled upon the completion of the job.
+     * @throw std::logic_error if the job didn't finished at a time when the method was called
      */
     QservSyncJobResult const& getReplicaData() const;
 
-    /// @see Job::extendedPersistentState()
     std::list<std::pair<std::string, std::string>> extendedPersistentState() const final;
-
-    /// @see Job::persistentLogData()
     std::list<std::pair<std::string, std::string>> persistentLogData() const final;
 
 protected:
-    /// @see Job::startImpl()
     void startImpl(replica::Lock const& lock) final;
-
-    /// @see Job::cancelImpl()
     void cancelImpl(replica::Lock const& lock) final;
-
-    /// @see Job::notify()
     void notify(replica::Lock const& lock) final;
 
 private:
-    /// @see QservSyncJob::create()
     QservSyncJob(std::string const& databaseFamily, unsigned int requestExpirationIvalSec, bool force,
                  Controller::Ptr const& controller, std::string const& parentJobId,
                  CallbackType const& onFinish, int priority);
 
     /**
      * The callback function to be invoked on a completion of each request.
-     *
-     * @param request
-     *   a pointer to a request
+     * @param request a pointer to a request
      */
     void _onRequestFinish(SetReplicasQservMgtRequest::Ptr const& request);
 
@@ -182,7 +143,7 @@ private:
     std::string const _databaseFamily;
     unsigned int const _requestExpirationIvalSec;
     bool const _force;
-    CallbackType _onFinish;  /// @note is reset when the job finishes
+    CallbackType _onFinish;  ///< is reset when the job finishes
 
     /// A collection of requests implementing the operation
     std::list<SetReplicasQservMgtRequest::Ptr> _requests;

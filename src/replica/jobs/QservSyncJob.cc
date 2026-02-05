@@ -28,6 +28,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/config/ConfigurationExceptions.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -66,12 +67,9 @@ QservSyncJob::QservSyncJob(string const& databaseFamily, unsigned int requestExp
 
 QservSyncJobResult const& QservSyncJob::getReplicaData() const {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
     if (state() == State::FINISHED) return _replicaData;
-
     throw logic_error("QservSyncJob::" + string(__func__) +
-                      "  the method can't be called while "
-                      "the job hasn't finished");
+                      "  the method can't be called while the job hasn't finished");
 }
 
 list<pair<string, string>> QservSyncJob::extendedPersistentState() const {
@@ -91,22 +89,18 @@ list<pair<string, string>> QservSyncJob::persistentLogData() const {
 
         // Report workers failed to respond to the synchronization requests
         // and ignore them in the subsequent replica comparison report.
-
         bool const responded = workerInfo.second;
-        if (not responded) {
+        if (!responded) {
             result.emplace_back("failed-qserv-worker", worker);
             continue;
         }
 
         // Find and report (if any) differences between the known replica disposition
         // and the one reported by workers.
-
         auto&& prevReplicas = replicaData.prevReplicas.at(worker);
         auto&& newReplicas = replicaData.newReplicas.at(worker);
-
         QservReplicaCollection inPrevReplicasOnly;
         QservReplicaCollection inNewReplicasOnly;
-
         if (diff2(prevReplicas, newReplicas, inPrevReplicasOnly, inNewReplicasOnly)) {
             auto const val = "worker=" + worker +
                              " removed-replicas=" + to_string(inPrevReplicasOnly.size()) +
@@ -136,6 +130,11 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
             vector<ReplicaInfo> replicas;
             try {
                 databaseServices->findWorkerReplicas(replicas, worker, database);
+            } catch (ConfigUnknownDatabase const& ex) {
+                LOGS(_log, LOG_LVL_WARN,
+                     context() << __func__ << "  ignoring deleted database: " << database
+                               << " for worker: " << worker);
+                continue;
             } catch (exception const& ex) {
                 LOGS(_log, LOG_LVL_ERROR,
                      context() << __func__ << "  failed to pull replicas for worker: " << worker
@@ -154,7 +153,6 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
     }
 
     // Submit requests to the workers
-
     for (auto&& worker : controller()->serviceProvider()->config()->workers()) {
         _requests.push_back(qservMgtServices->setReplicas(
                 worker, *(worker2newReplicas[worker]), databases, force(), id(), /* jobId */
@@ -163,10 +161,10 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
         _numLaunched++;
     }
 
-    // In case if no workers or database are present in the Configuration
-    // at this time.
-
-    if (not _numLaunched) finish(lock, ExtendedState::SUCCESS);
+    // In case if no workers or database are present in the Configuration at this time.
+    if (!_numLaunched) {
+        finish(lock, ExtendedState::SUCCESS);
+    }
 }
 
 void QservSyncJob::cancelImpl(replica::Lock const& lock) {
@@ -176,7 +174,6 @@ void QservSyncJob::cancelImpl(replica::Lock const& lock) {
         ptr->cancel();
     }
     _requests.clear();
-
     _numLaunched = 0;
     _numFinished = 0;
     _numSuccess = 0;
@@ -193,13 +190,10 @@ void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reque
                    << " state=" << request->state2string());
 
     if (state() == State::FINISHED) return;
-
     replica::Lock lock(_mtx, context() + __func__);
-
     if (state() == State::FINISHED) return;
 
     // Update counters and object state if needed.
-
     _numFinished++;
     if (request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS) {
         _numSuccess++;
@@ -209,7 +203,6 @@ void QservSyncJob::_onRequestFinish(SetReplicasQservMgtRequest::Ptr const& reque
     } else {
         _replicaData.workers[request->workerName()] = false;
     }
-
     LOGS(_log, LOG_LVL_DEBUG,
          context() << __func__ << "  worker=" << request->workerName() << " _numLaunched=" << _numLaunched
                    << " _numFinished=" << _numFinished << " _numSuccess=" << _numSuccess);

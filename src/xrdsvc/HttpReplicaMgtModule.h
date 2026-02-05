@@ -184,6 +184,11 @@ private:
      */
     void _modifyChunk(std::string const& func, int chunk, std::string const& database, Direction direction);
 
+    /// A cache of the database names which were mentioned in a request but are missing in
+    /// the persistent inventory. Used to optimize reporting in the method _modifyChunk
+    /// when attempting to add replicas into non-existing databases.
+    std::set<std::string> _missingDatabaseNames;
+
     // XROOTD/SSI service context.
 
     xrdsvc::SsiProviderServer* _providerServer = nullptr;

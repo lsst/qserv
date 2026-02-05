@@ -99,15 +99,11 @@ void ServiceProvider::run() {
     replica::Lock lock(_mtx, _context() + __func__);
 
     // Check if the service is still not running
-
     if (not _threads.empty()) return;
 
     // Initialize BOOST ASIO services
-
     _work.reset(new boost::asio::io_service::work(_io_service));
-
     auto self = shared_from_this();
-
     _threads.clear();
     for (size_t i = 0; i < config()->get<size_t>("controller", "num-threads"); ++i) {
         _threads.push_back(make_unique<thread>([self]() {
@@ -121,7 +117,6 @@ void ServiceProvider::run() {
 
 bool ServiceProvider::isRunning() const {
     replica::Lock lock(_mtx, _context() + __func__);
-
     return not _threads.empty();
 }
 
@@ -131,11 +126,9 @@ void ServiceProvider::stop() {
     replica::Lock lock(_mtx, _context() + __func__);
 
     // Check if the service is already stopped
-
     if (_threads.empty()) return;
 
     // These steps will cancel all outstanding requests to workers (if any)
-
     if (_messenger != nullptr) _messenger->stop();
 
     // Destroying this object will let the I/O service to (eventually) finish
@@ -143,21 +136,17 @@ void ServiceProvider::stop() {
     // is no need to stop the service explicitly (which is not a good idea anyway
     // because there may be outstanding synchronous requests, in which case the service
     // would get into an unpredictable state.)
-
     _work.reset();
 
     // At this point all outstanding requests should finish and all threads
     // should stop as well.
-
     for (auto&& t : _threads) {
         t->join();
     }
 
     // Always do so in order to put service into a clean state. This will prepare
     // it for further usage.
-
     _io_service.reset();
-
     _threads.clear();
 }
 

@@ -32,6 +32,7 @@
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/contr/Controller.h"
+#include "replica/mysql/DatabaseMySQLExceptions.h"
 #include "replica/requests/Messenger.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -75,10 +76,6 @@ const ReplicaInfoCollection& FindAllRequest::responseData() const { return _repl
 
 void FindAllRequest::startImpl(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-
-    // The delayed assertion is needed to prevent throwing exceptions from
-    // within constructors.
-    controller()->serviceProvider()->config()->assertDatabaseIsValid(database());
 
     // Serialize the Request message header and the request itself into
     // the network buffer.
@@ -183,6 +180,21 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
                             workerName(), database(), _replicaInfoCollection);
                 }
                 finish(lock, SUCCESS);
+            } catch (database::mysql::ER_NO_REFERENCED_ROW_2_ const& ex) {
+                // If the database was already removed from the configuration this error
+                // should be ignored as the intent of the request has been achieved.
+                if (!controller()->serviceProvider()->config()->isKnownDatabase(database())) {
+                    LOGS(_log, LOG_LVL_WARN,
+                         context() << __func__ << " database '" << database()
+                                   << "' is no longer valid per the configuration - "
+                                      "the replica info saving will be skipped");
+                    finish(lock, SUCCESS);
+                } else {
+                    LOGS(_log, LOG_LVL_ERROR,
+                         context() << __func__ << " failed to save replica info collection into a database: "
+                                   << ex.what());
+                    finish(lock, CLIENT_ERROR);
+                }
             } catch (std::exception const& ex) {
                 LOGS(_log, LOG_LVL_ERROR,
                      context() << __func__
@@ -206,7 +218,18 @@ void FindAllRequest::_analyze(bool success, ProtocolResponseFindAll const& messa
             finish(lock, SERVER_BAD);
             break;
         case ProtocolStatus::FAILED:
-            finish(lock, SERVER_ERROR);
+            if (!controller()->serviceProvider()->config()->isKnownDatabase(database())) {
+                LOGS(_log, LOG_LVL_WARN,
+                     context() << __func__ << " database '" << database()
+                               << "' is no longer valid per the configuration - "
+                                  "the replica info saving will be skipped");
+                // Make sure to reset the extended server status before finishing the request
+                // with SUCCESS.
+                setExtendedServerStatus(lock, ProtocolStatusExt::NONE);
+                finish(lock, SUCCESS);
+            } else {
+                finish(lock, SERVER_ERROR);
+            }
             break;
         case ProtocolStatus::CANCELLED:
             finish(lock, SERVER_CANCELLED);

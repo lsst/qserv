@@ -221,6 +221,17 @@ public:
 };
 
 /**
+ * Thrown on foreign key constraint violations. MySQL reports this error when you try to add
+ * a row but there is no parent row, and a foreign key constraint fails. Add the parent row first.
+ * This exception may also indicate the normal scenario when a parent row was deleted on purpose.
+ * In this cases, the application shoiuld catch this exception and handle it appropriately.
+ */
+class ER_NO_REFERENCED_ROW_2_ : public Error {
+public:
+    using Error::Error;
+};
+
+/**
  * Instances of this exception class are thrown on failed attempts
  * to interpret the contents of the result set.
  */
