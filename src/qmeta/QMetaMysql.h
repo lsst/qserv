@@ -270,7 +270,6 @@ private:
      * Read the last update time of the chunk map.
      * @param A lock acquired on the mutex _dbMutex.
      * @return The update time
-     * @throw EmptyTableError If the corrresponding table is epty
      * @throw SqlError For any SQL-specific error
      * @throw ConsistencyError For any problem met when parsing or interpreting results read
      *   from the table.
