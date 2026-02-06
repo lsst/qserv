@@ -326,12 +326,13 @@ void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared
              __func__ << " already enough rows, this call likely a side effect" << task->getIdStr());
         return;
     }
-    // Delete the result file as nobody will come looking for it.
-    _kill(tMtxLock, " buildAndTransmitError");
+
     auto ujd = _uberJobData.lock();
     if (ujd != nullptr) {
         ujd->responseError(multiErr, task->getChunkId(), cancelled, task->getLvlET());
     }
+    // Flag the result as dead after sending the error to avoid races on queries with missing tables.
+    _kill(tMtxLock, " buildAndTransmitError");
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,
@@ -383,7 +384,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
             string const err = "The result set size " + to_string(_bytesWritten) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
                                " bytes, task: " + task->getIdStr();
-            multiErr.push_back(util::Error(util::ErrorCode::WORKER_RESULT_TOO_LARGE, err));
+            multiErr.insert(util::Error(util::Error::WORKER_RESULT_TOO_LARGE, util::Error::NONE, err));
             LOGS(_log, LOG_LVL_ERROR, err);
             erred = true;
             return erred;
