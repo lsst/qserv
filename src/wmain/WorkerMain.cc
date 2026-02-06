@@ -121,12 +121,8 @@ std::shared_ptr<WorkerMain> WorkerMain::get() {
 }
 
 WorkerMain::WorkerMain() {
-    auto const mySqlConfig = wconfig::WorkerConfig::instance()->getMySqlConfig();
-    if (not mysql::MySqlConnection::checkConnection(mySqlConfig)) {
-        LOGS(_log, LOG_LVL_FATAL, "Unable to connect to MySQL using configuration:" << mySqlConfig);
-        throw wconfig::WorkerConfigError("Unable to connect to MySQL");
-    }
     auto const workerConfig = wconfig::WorkerConfig::instance();
+    auto const mySqlConfig = workerConfig->getMySqlConfig();
 
     // Set thread pool size.
     unsigned int poolSize = ranges::max({wsched::BlendScheduler::getMinPoolSize(),

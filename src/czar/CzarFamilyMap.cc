@@ -47,36 +47,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarFamilyMap");
 namespace lsst::qserv::czar {
 
 CzarFamilyMap::Ptr CzarFamilyMap::create(std::shared_ptr<qmeta::QMeta> const& qmeta) {
-    // There's nothing the czar can do until with user queries until there's been at least
-    // one successful read of the database family tables, as the czar doesn't know where to find anything.
-    Ptr newPtr = nullptr;
-    while (newPtr == nullptr) {
-        try {
-            newPtr = Ptr(new CzarFamilyMap(qmeta));
-        } catch (ChunkMapException const& exc) {
-            LOGS(_log, LOG_LVL_WARN, "Could not create CzarFamilyMap, sleep and retry " << exc.what());
-        }
-        if (newPtr == nullptr) {
-            // There's nothing special about 10s, just need to pause between reads to
-            // avoid wasting CPU time.
-            // TODO:DM-53239 - Changes to CSS may result in better options than just waiting.
-            this_thread::sleep_for(10s);
-        }
-    }
-
-    return newPtr;
+    return Ptr(new CzarFamilyMap(qmeta));
 }
 
-CzarFamilyMap::CzarFamilyMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(qmeta) {
-    try {
-        if (!_read()) {
-            throw ChunkMapException(ERR_LOC, cName(__func__) + " maps were not set in constructor");
-        }
-    } catch (qmeta::QMetaError const& qExc) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not read DB " << qExc.what());
-        throw ChunkMapException(ERR_LOC, cName(__func__) + " constructor failed read " + qExc.what());
-    }
-}
+CzarFamilyMap::CzarFamilyMap(std::shared_ptr<qmeta::QMeta> const& qmeta) : _qmeta(qmeta) {}
 
 bool CzarFamilyMap::read() {
     bool mapsSet = false;
