@@ -1,0 +1,74 @@
+{{- if (include "qserv.enable" . | fromYaml).registry -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "qserv.name" . }}-registry
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "qserv.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: registry
+  template:
+    metadata:
+      labels:
+        {{- include "qserv.labels" . | nindent 8 }}
+        app.kubernetes.io/component: registry
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: qserv.lsst.io/tier
+                    operator: In
+                    values: [ utility ]
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+      containers:
+        - name: registry
+          image: {{ .Values.qservImageName | quote }}
+          imagePullPolicy: {{ .Values.qservImagePullPolicy | quote }}
+          ports:
+            - name: http
+              containerPort: 25082
+          env:
+            - name: LSST_LOG_CONFIG
+              value: /config/log-repl-registry.cfg
+            - name: LD_PRELOAD
+              value: libjemalloc.so.2
+          command: ["tini", "--", "bash", "-c"]
+          args:
+            - >
+              exec qserv-replica-registry
+              --config=mysql://qsreplica:$(cat /secrets/mariadb-qsreplica-password)@qserv-repl-0.qserv-repl/qservReplica
+              --registry-port=25082
+              --instance-id={{ .Release.Name }}
+              --auth-key="$(cat /secrets/auth-key)"
+              --admin-auth-key="$(cat /secrets/admin-auth-key)"
+              --debug
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: secrets
+              mountPath: /secrets
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: registry-config
+        - name: secrets
+          secret:
+            secretName: repl-secrets
+{{- end }}
