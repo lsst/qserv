@@ -1,8 +1,0 @@
-log4j.rootLogger=DEBUG, CONSOLE
-#log4j.rootLogger=WARN, CONSOLE
-log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender
-log4j.appender.CONSOLE.layout=org.apache.log4j.PatternLayout
-log4j.appender.CONSOLE.layout.ConversionPattern=%d{yyyy-MM-ddTHH:mm:ss.SSSZ}  LWP %-5X{LWP} %-5p  %m%n
-
-log4j.logger.lsst.qserv.xrdssi.msgs=WARN
-#log4j.logger.lsst.qserv.xrdssi.msgs=DEBUG

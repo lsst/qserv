@@ -30,11 +30,19 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <unistd.h>
 
 // Third-party headers
 #include "boost/asio.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 using namespace std;
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.common");
+}
 
 namespace lsst::qserv::util {
 

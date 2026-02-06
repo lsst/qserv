@@ -34,12 +34,10 @@
 
 // Forward decl
 namespace lsst::qserv {
-namespace qdisp {
-class MessageStore;
-}
 namespace qmeta {
+class MessageStore;
 class QMetaSelect;
-}
+}  // namespace qmeta
 namespace query {
 class SelectStmt;
 }
@@ -56,8 +54,8 @@ public:
     UserQuerySelectCountStar(std::string query, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
                              std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                              std::string const& userQueryId, std::string const& rowsTable,
-                             std::string const& resultDb, std::string const& countSpelling,
-                             qmeta::CzarId czarId, bool async);
+                             std::string const& resultDb, std::string const& countSpelling, CzarId czarId,
+                             bool async);
 
     virtual ~UserQuerySelectCountStar() {}
 
@@ -79,7 +77,7 @@ public:
     void discard() override {}
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
+    std::shared_ptr<qmeta::MessageStore> getMessageStore() override { return _messageStore; }
 
     /// This method should disappear when we start supporting results
     /// in locations other than MySQL tables. We'll switch to getResultLocation()
@@ -118,7 +116,7 @@ private:
 
     std::shared_ptr<qmeta::QMetaSelect> _qMetaSelect;
     std::shared_ptr<qmeta::QMeta> const& _queryMetadata;
-    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::shared_ptr<qmeta::MessageStore> _messageStore;
     std::string _resultTable;
     std::string _resultLoc;  ///< Result location
     std::string _userQueryId;
@@ -126,7 +124,7 @@ private:
     std::string _resultDb;
     std::string _countSpelling;  // keeps track of how "COUNT" is spelled, for the result query.
     std::string _query;          // The original query text (without SUBMIT if async)
-    qmeta::CzarId _czarId;
+    CzarId _czarId;
     QueryId _queryId;
     /// QueryId in a standard string form, initially set to unknown.
     std::string _queryIdStr{QueryIdHelper::makeIdStr(0, true)};
