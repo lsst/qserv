@@ -203,7 +203,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
         }
     }
 
-    // This will block until there is a successful read of the database tables.
     _czarFamilyMap = CzarFamilyMap::create(_uqFactory->userQuerySharedResources()->queryMetadata);
 
     int qPoolSize = _czarConfig->getQdispPoolSize();
