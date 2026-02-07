@@ -24,11 +24,10 @@
 
 // System headers
 #include <algorithm>
+#include <filesystem>
 #include <set>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <system_error>
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -44,11 +43,12 @@
 #include "partition/PartitionTool.h"
 #include "qmeta/UserTables.h"
 #include "qhttp/Status.h"
+#include "util/String.h"
 
 using namespace std;
 namespace asio = boost::asio;
 namespace cconfig = lsst::qserv::cconfig;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 namespace http = lsst::qserv::http;
 using json = nlohmann::json;
 
@@ -145,14 +145,14 @@ HttpCzarIngestCsvModule::~HttpCzarIngestCsvModule() {
         return;
     }
     if (!_csvFilePath.empty()) {
-        boost::system::error_code ec;
+        std::error_code ec;
         fs::remove(_csvFilePath, ec);
         if (ec.value() != 0) {
             warn(__func__, "failed to delete the data file " + _csvFilePath + ", error: " + ec.message());
         }
     }
     if (!_csvExtFilePath.empty()) {
-        boost::system::error_code ec;
+        std::error_code ec;
         fs::remove(_csvExtFilePath, ec);
         if (ec.value() != 0) {
             warn(__func__,
@@ -160,7 +160,7 @@ HttpCzarIngestCsvModule::~HttpCzarIngestCsvModule() {
         }
     }
     if (_isPartitioned && !_chunksDirName.empty()) {
-        boost::system::error_code ec;
+        std::error_code ec;
         fs::remove_all(_chunksDirName, ec);
         if (ec.value() != 0) {
             warn(__func__,
@@ -178,11 +178,7 @@ void HttpCzarIngestCsvModule::onStartOfFile(string const& name, string const& fi
         if (!_csvFilePath.empty()) {
             throw http::Error(__func__, "the data file is already uploaded");
         }
-        boost::system::error_code ec;
-        fs::path const uniqueFileName = fs::unique_path("http-ingest-%%%%-%%%%-%%%%-%%%%.csv", ec);
-        if (ec.value() != 0) {
-            throw http::Error(__func__, "failed to generate a unique file name, error: " + ec.message());
-        }
+        fs::path const uniqueFileName = util::String::translateModel("http-ingest-%%%%-%%%%-%%%%-%%%%.csv");
         _csvFilePath = _tmpDir + "/" + uniqueFileName.string();
         _csvFile.open(_csvFilePath, ios::binary);
         if (!_csvFile.is_open()) {
@@ -459,7 +455,7 @@ void HttpCzarIngestCsvModule::_injectIdColValues() {
 }
 
 void HttpCzarIngestCsvModule::_createChunksDir() {
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::create_directories(_chunksDirName, ec);
     if (ec.value() != 0) {
         json const errorExt = _reportFailedRequest(
@@ -471,7 +467,7 @@ void HttpCzarIngestCsvModule::_createChunksDir() {
 }
 
 void HttpCzarIngestCsvModule::_getFileSize() {
-    boost::system::error_code ec;
+    std::error_code ec;
     _numBytes = fs::file_size(_csvFilePath, ec);
     if (ec.value() != 0) {
         json const errorExt = _reportFailedRequest(

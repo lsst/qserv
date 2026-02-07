@@ -193,8 +193,10 @@ public:
 
     /**
      * Generate a unique name based on the input model. The model is expected
-     * to contain '%' characters which will be replaced with random digits to make
-     * the file name unique.
+     * to contain '%' characters which will be replaced with random hexadecimals (lower
+     * case) characters to make the file name unique.
+     * @note This method is the functional replacement for boost::filesystem::unique_path which
+     *  is not available in std::filesystem.
      * @param model - the model for the name generation
      * @return a unique name generated from the input model
      */

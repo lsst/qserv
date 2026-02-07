@@ -236,12 +236,12 @@ string String::fromBase64(string const& str) {
 string String::translateModel(string const& model) {
     unsigned seed = chrono::system_clock::now().time_since_epoch().count();
     mt19937 engine(seed);
-    uniform_int_distribution<int> dist(0, 9);
+    uniform_int_distribution<int> dist(0, 15);
     string result;
     for (char c : model) {
         if (c == '%') {
             int const num = dist(engine);
-            result += to_string(num);
+            result += ::hexCharsLC[num];
         } else {
             result += c;
         }
