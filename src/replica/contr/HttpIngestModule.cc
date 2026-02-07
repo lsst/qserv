@@ -32,7 +32,6 @@
 #include <vector>
 
 // Third party headers
-#include "boost/filesystem.hpp"
 #include "boost/algorithm/string.hpp"
 
 // Qserv headers
@@ -66,7 +65,6 @@
 using namespace std;
 using json = nlohmann::json;
 using namespace lsst::qserv::replica;
-namespace fs = boost::filesystem;
 
 namespace {
 

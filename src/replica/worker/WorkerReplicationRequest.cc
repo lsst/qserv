@@ -26,6 +26,7 @@
 #include <cerrno>
 #include <cstring>
 #include <stdexcept>
+#include <system_error>
 
 // Qserv headers
 #include "replica/config/ConfigDatabase.h"
@@ -40,7 +41,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -170,7 +171,7 @@ bool WorkerReplicationRequest::execute() {
 
         // Check input files, check and sanitize the destination folder
 
-        boost::system::error_code ec;
+        std::error_code ec;
         {
             replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
 
@@ -214,7 +215,7 @@ bool WorkerReplicationRequest::execute() {
             for (auto&& file : outFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext = errorContext or
-                               reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
+                               reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FILE_STAT,
                                              "failed to check the status of output file: " + file.string()) or
                                reportErrorIf(fs::exists(stat), ProtocolStatusExt::FILE_EXISTS,
                                              "the output file already exists: " + file.string());
@@ -226,7 +227,7 @@ bool WorkerReplicationRequest::execute() {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext =
                         errorContext or
-                        reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
+                        reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FILE_STAT,
                                       "failed to check the status of temporary file: " + file.string());
                 if (fs::exists(stat)) {
                     fs::remove(file, ec);
@@ -423,7 +424,7 @@ bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
     //            remove empty files. Not sure if this should be treated
     //            in a special way?
     WorkerRequest::ErrorContext errorContext;
-    boost::system::error_code ec;
+    std::error_code ec;
     for (auto&& file : _files) {
         fs::path const tmpFile = _file2descr[file].tmpFile;
         fs::path const outFile = _file2descr[file].outFile;
@@ -431,7 +432,7 @@ bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
         fs::rename(tmpFile, outFile, ec);
         errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_RENAME,
                                                      "failed to rename file: " + tmpFile.string());
-        fs::last_write_time(outFile, _file2descr[file].mtime, ec);
+        fs::last_write_time(outFile, fs::file_time_type(std::chrono::seconds(_file2descr[file].mtime)), ec);
         errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
                                                      "failed to change 'mtime' of file: " + tmpFile.string());
     }

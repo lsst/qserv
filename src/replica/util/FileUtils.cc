@@ -27,22 +27,22 @@
 #include <cerrno>
 #include <cstring>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <system_error>
 #include <sys/types.h>
 #include <pwd.h>
 #include <unistd.h>
 
-// Third party headers
-#include "boost/filesystem.hpp"
-
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
+#include "util/String.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -87,8 +87,6 @@ namespace lsst::qserv::replica {
 ///////////////////////////
 //    class FileUtils    //
 ///////////////////////////
-
-mutex FileUtils::_tmpFileMtx;
 
 vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo, unsigned int chunk) {
     vector<string> result;
@@ -193,51 +191,41 @@ string FileUtils::createTemporaryFile(string const& baseDir, string const& fileP
                                       string const& fileSuffix, unsigned int maxRetries) {
     string const context = "FileUtils::" + string(__func__) + "  ";
 
-    if (model.empty()) {
-        throw invalid_argument(context + "model can't be empty.");
-    }
+    if (model.empty()) throw invalid_argument(context + "model can't be empty.");
+    if (maxRetries < 1) throw invalid_argument(context + "maxRetries can't be less than 1.");
 
     string const pattern = filePrefix + model + fileSuffix;
     if (pattern.size() > maxFileNameLength) {
-        throw range_error(context + "file name length " + to_string(pattern.size()) + " exceeds a limit of " +
-                          to_string(maxFileNameLength) + " characters.");
+        throw range_error(context + "file name length " + to_string(pattern.size()) + " for the pattern '" +
+                          pattern + "' exceeds a limit of " + to_string(maxFileNameLength) + " characters.");
     }
-    if (maxRetries < 1) {
-        throw invalid_argument(context + "maxRetries can't be less than 1.");
-    }
-
-    boost::system::error_code errCode;
 
     unsigned int numRetriesLeft = maxRetries;
     while (numRetriesLeft-- > 0) {
         // Generate a unique file path
-        fs::path const uniqueFileName = fs::unique_path(pattern, errCode);
-        if (errCode.value() != 0) {
-            throw runtime_error(context + "failed to generate a unique name for model: '" + model +
-                                "', error: " + errCode.message());
-        }
-        string const filePath = baseDir + (baseDir.empty() ? "" : "/") + uniqueFileName.string();
+        string const uniqueFilePath = baseDir + (baseDir.empty() ? "" : "/") + filePrefix +
+                                      util::String::translateModel(model) + fileSuffix;
 
         // Locate the file and make another retry if the file already exists.
-        // Grab a lock to ensure the file check and file creation sequence
-        // is atomic for the current process.
-
-        lock_guard<mutex> lock(_tmpFileMtx);
-
-        fs::file_status const stat = fs::status(filePath, errCode);
-        if (stat.type() == fs::status_error) {
-            throw runtime_error(context + "failed to check a status of the temporary file: '" + filePath +
-                                "', error: " + errCode.message());
+        std::error_code ec;
+        fs::file_status const stat = fs::status(uniqueFilePath, ec);
+        if (stat.type() == fs::file_type::none) {
+            throw runtime_error(context + "failed to check a status of the temporary file: '" +
+                                uniqueFilePath + "', code: " + to_string(ec.value()) +
+                                ", error: " + ec.message());
         }
-        if (fs::exists(stat)) continue;
 
-        // Create the file
-        ofstream file(filePath, ofstream::out);
-        if (not file.is_open()) {
-            throw runtime_error(context + "failed to create the temporary file: " + filePath);
+        // Create the file if it doesn't exist. If it does then make another retry to generate
+        // a unique file name.
+        if (!fs::exists(stat)) {
+            ofstream file(uniqueFilePath, ofstream::out);
+            if (!file.is_open()) {
+                throw runtime_error(context + "failed to create the temporary file: " + uniqueFilePath +
+                                    ", error: '" + strerror(errno) + "', errno: " + to_string(errno) + ")");
+            }
+            file.close();
+            return uniqueFilePath;
         }
-        file.close();
-        return filePath;
     }
     throw runtime_error("exceeded the maximum number of retries: " + to_string(maxRetries) +
                         " to create a temporary file for pattern: '" + pattern + "'.");
@@ -254,7 +242,7 @@ void FileUtils::verifyFolders(string const& requestorContext, vector<string> con
         if (!path.is_absolute()) {
             throw invalid_argument(context + " non-absolute path '" + folder + "' found in the collection.");
         }
-        boost::system::error_code ec;
+        std::error_code ec;
         if (createMissingFolders) {
             if (fs::exists(path, ec)) {
                 bool const isDirectory = fs::is_directory(path, ec);

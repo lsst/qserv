@@ -23,9 +23,8 @@
 #include "replica/worker/WorkerFindRequest.h"
 
 // System headers
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <filesystem>
+#include <system_error>
 
 // Qserv headers
 #include "replica/config/ConfigDatabase.h"
@@ -40,7 +39,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -98,7 +97,7 @@ bool WorkerFindRequest::execute() {
     // Both methods are combined within the same code block to avoid
     // code duplication.
     WorkerRequest::ErrorContext errorContext;
-    boost::system::error_code ec;
+    std::error_code ec;
     if (!computeCheckSum() || !_csComputeEnginePtr) {
         // Check if the data directory exists and it can be read
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
@@ -116,7 +115,7 @@ bool WorkerFindRequest::execute() {
                                  database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext = errorContext or
-                       reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,
+                       reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
                                      "failed to check the status of directory: " + dataDir.string()) or
                        reportErrorIf(not fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
                                      "the directory does not exists: " + dataDir.string());
@@ -144,7 +143,7 @@ bool WorkerFindRequest::execute() {
             fs::path const path = dataDir / file;
             fs::file_status const stat = fs::status(path, ec);
             errorContext = errorContext or
-                           reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FILE_STAT,
+                           reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FILE_STAT,
                                          "failed to check the status of file: " + path.string());
             if (fs::exists(stat)) {
                 if (not computeCheckSum()) {
@@ -154,7 +153,7 @@ bool WorkerFindRequest::execute() {
                     errorContext =
                             errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
                                                           "failed to read file size: " + path.string());
-                    const time_t mtime = fs::last_write_time(path, ec);
+                    const time_t mtime = fs::last_write_time(path, ec).time_since_epoch().count();
                     errorContext =
                             errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
                                                           "failed to read file mtime: " + path.string());
@@ -206,7 +205,7 @@ bool WorkerFindRequest::execute() {
             for (auto&& file : fileNames) {
                 const fs::path path(file);
                 uint64_t const size = _csComputeEnginePtr->bytes(file);
-                time_t const mtime = fs::last_write_time(path, ec);
+                time_t const mtime = fs::last_write_time(path, ec).time_since_epoch().count();
                 errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
                                                              "failed to read file mtime: " + path.string());
                 fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({

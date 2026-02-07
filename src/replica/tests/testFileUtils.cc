@@ -24,28 +24,29 @@
 
 // Qserv headers
 #include "replica/util/FileUtils.h"
+#include "util/String.h"
 
 // System headers
 #include <iostream>
+#include <filesystem>
 #include <fstream>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <system_error>
 
 // Boost unit test header
 #define BOOST_TEST_MODULE FileUtils
 #include <boost/test/unit_test.hpp>
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 namespace test = boost::test_tools;
 using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 
 bool fileExistsAndEmpty(string const& filePath) {
-    boost::system::error_code errCode;
+    std::error_code errCode;
     const bool result = fs::exists(filePath, errCode);
     if (errCode.value() != 0) {
         throw runtime_error(string(__func__) + "failed to obtain a status of the temporary file: '" +
@@ -68,7 +69,7 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
     string model;
     string suffix;
 
-    boost::system::error_code errCode;
+    std::error_code errCode;
 
     // NOTE: exceptions within \BOOST_REQUIRE_NO_THROW are intercepted
     // to improve the reporting of failures.
@@ -174,19 +175,15 @@ BOOST_AUTO_TEST_CASE(FileUtils_verifyFolders) {
     bool success = false;
 
     while (numRetriesLeft-- > 0) {
-        boost::system::error_code ec;
+        std::error_code ec;
 
         // Generate a unique path for the folder to be tested/created
-        fs::path const uniqueFolderPath = fs::unique_path(pattern, ec);
-        if (ec.value() != 0) {
-            throw runtime_error("Failed to generate a unique name for pattern: '" + pattern +
-                                "', error: " + ec.message());
-        }
+        fs::path const uniqueFolderPath = util::String::translateModel(pattern);
 
         // Make sure the folder (or a file) doesn't exist. Otherwise make another
         // attempt.
         fs::file_status const stat = fs::status(uniqueFolderPath, ec);
-        if (stat.type() == fs::status_error) {
+        if (stat.type() == fs::file_type::none) {
             throw runtime_error("Failed to check a status of the temporary folder: '" +
                                 uniqueFolderPath.string() + "', error: " + ec.message());
         }

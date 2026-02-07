@@ -25,6 +25,7 @@
 // System headers
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <streambuf>
 #include <iomanip>
@@ -32,9 +33,7 @@
 #include <limits>
 #include <regex>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <system_error>
 
 // Qserv headers
 #include "http/Auth.h"
@@ -43,7 +42,7 @@
 
 using namespace std;
 using namespace nlohmann;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -352,12 +351,13 @@ void FileIngestApp::_ingest(FileIngestSpec const& file) const {
     if (file.inFileName.empty()) {
         throw invalid_argument(context + "the filename is empty");
     }
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::file_status const status = fs::status(fs::path(file.inFileName), ec);
-    if (ec.value() != 0) {
-        throw runtime_error(context + "file doesn't exist: " + file.inFileName);
+    if (status.type() == fs::file_type::none) {
+        throw runtime_error(context + "failed to check status of file: " + file.inFileName +
+                            ", code: " + to_string(ec.value()) + ", error: " + ec.message());
     }
-    if (!fs::is_regular(status)) {
+    if (!fs::is_regular_file(status)) {
         throw runtime_error(context + "not a regular file: " + file.inFileName);
     }
 

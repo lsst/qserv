@@ -47,15 +47,16 @@
 #include "replica/services/ServiceProvider.h"
 
 // System headers
+#include <filesystem>
 #include <stdexcept>
+#include <system_error>
 
 // Third party headers
-#include "boost/filesystem.hpp"
 #include "nlohmann/json.hpp"
 
 using namespace nlohmann;
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 string const taskName = "HTTP-PROCESSOR";
@@ -518,7 +519,7 @@ void HttpProcessor::registerServices() {
     // Pass-through for the static content
     if (!self->_processorConfig.httpRoot.empty()) {
         string const context_ = context() + " " + string(__func__) + " ";
-        boost::system::error_code ec;
+        std::error_code ec;
         fs::path const p(self->_processorConfig.httpRoot);
         bool const isDirectory = fs::is_directory(p, ec);
         if (ec.value() != 0) {

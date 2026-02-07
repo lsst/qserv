@@ -190,6 +190,15 @@ public:
      * @throw std::range_error For non-base64 characters in the input.
      */
     static std::string fromBase64(std::string const& str);
+
+    /**
+     * Generate a unique name based on the input model. The model is expected
+     * to contain '%' characters which will be replaced with random digits to make
+     * the file name unique.
+     * @param model - the model for the name generation
+     * @return a unique name generated from the input model
+     */
+    static std::string translateModel(std::string const& model);
 };
 
 }  // namespace lsst::qserv::util

@@ -24,10 +24,9 @@
 
 // System headers
 #include <algorithm>
+#include <filesystem>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <system_error>
 
 // Qserv headers
 #include "replica/ingest/IngestRequest.h"
@@ -40,7 +39,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.IngestRequestMgr");
@@ -101,7 +100,7 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
         // run of the unfinished requests. Requests that are eligible to be resumed will
         // open new empty files as they will be being processed.
         if (cleanupOnResume && !contrib.tmpFile.empty()) {
-            boost::system::error_code ec;
+            std::error_code ec;
             fs::remove(contrib.tmpFile, ec);
             if (ec.value() != 0) {
                 LOGS(_log, LOG_LVL_WARN,

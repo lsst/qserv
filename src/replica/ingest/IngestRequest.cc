@@ -26,11 +26,12 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
+#include <system_error>
 #include <thread>
 
 // Third party headers
-#include "boost/filesystem.hpp"
 #include "nlohmann/json.hpp"
 
 // Qserv headers
@@ -40,7 +41,7 @@
 #include "replica/services/ServiceProvider.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
@@ -63,7 +64,7 @@ public:
     ~TemporaryCertFileRAII() {
         // Make the best effort to delete the file. Ignore any errors.
         if (!_fileName.empty()) {
-            boost::system::error_code ec;
+            std::error_code ec;
             fs::remove(fs::path(_fileName), ec);
         }
     }

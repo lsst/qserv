@@ -24,10 +24,8 @@
 
 // System headers
 #include <cstring>
+#include <filesystem>
 #include <fstream>
-
-// Third party headers
-#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
@@ -37,7 +35,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -209,8 +207,9 @@ void IngestClient::_connectImpl() {
     string const host = boost::asio::ip::host_name(ec);
     _assertErrorCode(ec, __func__, "get the name of the local host");
 
-    fs::path const inputFilePathAbsolute = fs::canonical(fs::path(_inputFilePath), ec);
-    _assertErrorCode(ec, __func__, "absolute file path");
+    std::error_code fs_ec;
+    fs::path const inputFilePathAbsolute = fs::canonical(fs::path(_inputFilePath), fs_ec);
+    _assertErrorCode(fs_ec, __func__, "absolute file path");
 
     // Make the handshake with the server and wait for the reply.
     ProtocolIngestHandshakeRequest request;
@@ -272,10 +271,12 @@ void IngestClient::_readResponse(ProtocolIngestResponse& response) {
 void IngestClient::_assertErrorCode(boost::system::error_code const& ec, string const& func,
                                     string const& msg) {
     LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    if (ec.value() != 0) _abort(func, msg + ", error: " + ec.message());
+}
 
-    if (ec.value() != 0) {
-        _abort(func, msg + ", error: " + ec.message());
-    }
+void IngestClient::_assertErrorCode(std::error_code const& ec, string const& func, string const& msg) {
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__));
+    if (ec.value() != 0) _abort(func, msg + ", error: " + ec.message());
 }
 
 void IngestClient::_abort(string const& func, string const& error) {

@@ -26,7 +26,6 @@
 #include <cstdint>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -180,10 +179,6 @@ public:
      */
     static void verifyFolders(std::string const& requestorContext, std::vector<std::string> const& folders,
                               bool createMissingFolders = false);
-
-private:
-    /// For thread synchronization of the temporary file creation
-    static std::mutex _tmpFileMtx;
 };
 
 /**
