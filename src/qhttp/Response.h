@@ -25,7 +25,9 @@
 
 // System headers
 #include <atomic>
+#include <fstream>
 #include <functional>
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -33,7 +35,6 @@
 
 // Third-party headers
 #include "boost/asio.hpp"
-#include "boost/filesystem.hpp"
 
 // Local headers
 #include "qhttp/Status.h"
@@ -53,7 +54,7 @@ public:
 
     void send(std::string const& content, std::string const& contentType = "text/html");
     void sendStatus(Status status);
-    void sendFile(boost::filesystem::path const& path);
+    void sendFile(std::filesystem::path const& path);
 
     //----- Response status code and additional headers may also be set with these members, and will be
     //      included/observed by the send methods above (sendStatus and sendFile will override status set

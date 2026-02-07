@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <chrono>
 #include <fstream>
+#include <filesystem>
 #include <getopt.h>
 #include <set>
 #include <sstream>
@@ -36,7 +37,6 @@
 
 #include "boost/asio.hpp"
 #include "boost/algorithm/string/join.hpp"
-#include "boost/filesystem.hpp"
 #include "boost/format.hpp"
 #include "boost/range/adaptors.hpp"
 #include "curl/curl.h"
@@ -50,7 +50,7 @@
 
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 

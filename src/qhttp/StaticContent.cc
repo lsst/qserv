@@ -23,8 +23,11 @@
 // Class header
 #include "qhttp/StaticContent.h"
 
+// System headers
+#include <filesystem>
+#include <system_error>
+
 // Third-party headers
-#include "boost/filesystem.hpp"
 #include "boost/algorithm/string.hpp"
 
 // Local headers
@@ -32,8 +35,7 @@
 #include "qhttp/LogHelpers.h"
 #include "qhttp/Status.h"
 
-namespace errc = boost::system::errc;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qhttp");
@@ -47,8 +49,8 @@ void StaticContent::add(Server& server, std::string const& pattern, std::string 
     try {
         rootPath = fs::canonical(rootDirectory);  // may throw fs::filesystem_error
         if (!fs::is_directory(rootPath)) {
-            throw fs::filesystem_error("boost::filesystem::is_directory", rootDirectory,
-                                       errc::make_error_code(errc::not_a_directory));
+            throw fs::filesystem_error("std::filesystem::is_directory", rootDirectory,
+                                       std::make_error_code(std::errc::not_a_directory));
         }
     }
 
