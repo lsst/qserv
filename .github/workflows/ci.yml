@@ -43,6 +43,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install click pyyaml requests
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.1
+
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -105,6 +108,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install click pyyaml requests
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.1
+
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -119,31 +125,25 @@ jobs:
       - name: Rebuild and push build base image if needed
         id: rebuild
         run: |
-          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
-            echo "Build image already on docker hub; skipping..."
+          if [[ $(./bin/qserv --log-level DEBUG image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
+            echo "Build image already in registry; skipping..."
             echo "build-rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./bin/qserv --log-level DEBUG build-build-image --push-image \
             --build-image ${{ needs.image-names.outputs.build-image }}
             echo "build-rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
       - name: Rebuild and push run base image if needed
         run: |
-          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.run-base-image }}) == "True" ]]; then
-            echo "Run base image already on docker hub; skipping..."
+          if [[ $(./bin/qserv --log-level DEBUG image-exists ${{ needs.image-names.outputs.run-base-image }}) == "True" ]]; then
+            echo "Run base image already in registry; skipping..."
             echo "run-base-rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./bin/qserv --log-level DEBUG build-run-base-image --push-image \
             --run-base-image ${{ needs.image-names.outputs.run-base-image }}
             echo "run-base-rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
   update-mariadb-image:
     name: Update MariaDB image
@@ -163,6 +163,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install click pyyaml requests
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.1
+
       - name: Checkout code
         uses: actions/checkout@v6
         with:
@@ -177,16 +180,13 @@ jobs:
       - name: Rebuild and push mariadb image if needed
         id: rebuild
         run: |
-          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
-            echo "MariaDB image already on docker hub; skipping..."
+          if [[ $(./bin/qserv --log-level DEBUG image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
+            echo "MariaDB image already in registry; skipping..."
             echo "rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./bin/qserv --log-level DEBUG build-mariadb-image --push-image --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
             echo "rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
   update-run-image:
     name: Update Qserv image
@@ -203,6 +203,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
+
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.1
 
       - name: Checkout code
         uses: actions/checkout@v6
@@ -236,9 +239,6 @@ jobs:
           --push-image \
           --clang-format CHECK \
           -j2
-        env:
-          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
   compose-integration-tests:
     name: Integration tests (compose)

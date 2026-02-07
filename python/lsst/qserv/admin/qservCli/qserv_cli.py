@@ -47,8 +47,6 @@ from ..cli.options import (
 from . import images, launch
 from .opt import (
     env_build_image,
-    env_dh_token,
-    env_dh_user,
     env_gh_event_name,
     env_gh_head_ref,
     env_gh_ref,
@@ -120,7 +118,7 @@ help_order = [
     "run-build",
     "run-debug",
     "entrypoint-help",
-    "dh-image-exists",
+    "image-exists",
 ]
 
 
@@ -382,9 +380,10 @@ def build_mariadb_image(
 @option_run_base_image(help=env_run_base_image.help("The name of the run base image to create."))
 @option_mariadb_image(help=env_mariadb_image.help("The name of the mariadb image to create."))
 @option_push_image(
-    help="Push base images to dockerhub if they do not exist. Requires login to dockerhub first."
+    help="Push base images to the associated registry if they do not exist. Requires login to the registry "
+    "first."
 )
-@option_pull_image(help="Pull images from dockerhub if they exist.")
+@option_pull_image(help="Pull images from the associated registry if they exist.")
 @option_qserv_root()
 @option_dry()
 def build_images(
@@ -903,28 +902,14 @@ def entrypoint_help(
 
 
 @qserv.command(
-    help="""Check if an image is in dockerhub.
+    help="""Check if an image is in its associated registry.
 
     IMAGE is the image name + tag.
 
     Mostly this is useful for CI, so base image builds can be skipped for
-    base images that are already already on dockerhub.
-
-    Dockerhub credentials must be provided in the environment variables
-    QSERV_DH_USER and QSERV_DH_TOKEN.
+    images that are already already in their associated registry.
     """
 )
 @click.argument("IMAGE")
-def dh_image_exists(image: str) -> None:
-    user = env_dh_user.val()
-    token = env_dh_token.val()
-    if not (user and token):
-        click.echo("QSERV_DH_USER and QSERV_DH_TOKEN must be set to use this command.")
-        return
-    click.echo(
-        images.dh_image_exists(
-            image,
-            user,
-            token,
-        )
-    )
+def image_exists(image: str) -> None:
+    click.echo(images.image_exists(image))
