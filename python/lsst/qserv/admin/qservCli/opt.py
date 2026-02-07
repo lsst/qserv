@@ -228,15 +228,15 @@ class ImageName:
             The image name
         """
         if self.image == "qserv":
-            return "qserv/lite-qserv"
+            return "ghcr.io/lsst/qserv"
         if self.image == "run-base":
-            return "qserv/lite-run-base"
+            return "ghcr.io/lsst/qserv-run-base"
         if self.image == "mariadb":
-            return "qserv/lite-mariadb"
+            return "ghcr.io/lsst/qserv-mariadb"
         if self.image == "build-base":
-            return "qserv/lite-build"
+            return "ghcr.io/lsst/qserv-build-base"
         if self.image == "build-user":
-            return f"qserv/lite-build-{getpass.getuser()}"
+            return f"ghcr.io/lsst/qserv-build-{getpass.getuser()}"
         raise RuntimeError(f"Invalid image type: {self.image}")
 
     @property

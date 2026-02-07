@@ -12,7 +12,7 @@
 # account in the image. Values can be provided via the -e option to `docker run`.
 #-------------------------------------------------------------------------------------------------------------
 
-ARG QSERV_BUILD_BASE=qserv/lite-build:latest
+ARG QSERV_BUILD_BASE=ghcr.io/lsst/qserv-build-base:latest
 FROM ${QSERV_BUILD_BASE} AS qserv-build-user
 
 ARG USER
