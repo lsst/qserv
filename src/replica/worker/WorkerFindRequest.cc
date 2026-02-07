@@ -114,11 +114,13 @@ bool WorkerFindRequest::execute() {
         fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
                                  database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
-        errorContext = errorContext or
-                       reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
-                                     "failed to check the status of directory: " + dataDir.string()) or
-                       reportErrorIf(not fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
-                                     "the directory does not exists: " + dataDir.string());
+        errorContext =
+                errorContext ||
+                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
+                              "failed to check the status of directory: " + dataDir.string() +
+                                      ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
+                reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
+                              "the directory does not exists: " + dataDir.string());
         if (errorContext.failed) {
             setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
             return true;
@@ -134,7 +136,6 @@ bool WorkerFindRequest::execute() {
         //
         // - assume the successful completion otherwise and adjust the replica
         //   information record accordingly, depending on the findings.
-
         ReplicaInfo::FileInfoCollection
                 fileInfoCollection;  // file info if not using the incremental processing
         vector<string> files;        // file paths registered for the incremental processing
@@ -142,21 +143,24 @@ bool WorkerFindRequest::execute() {
         for (auto&& file : FileUtils::partitionedFiles(databaseInfo, chunk())) {
             fs::path const path = dataDir / file;
             fs::file_status const stat = fs::status(path, ec);
-            errorContext = errorContext or
+            errorContext = errorContext ||
                            reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FILE_STAT,
-                                         "failed to check the status of file: " + path.string());
+                                         "failed to check the status of file: " + path.string() + ", code: " +
+                                                 to_string(ec.value()) + ", error: " + ec.message());
             if (fs::exists(stat)) {
                 if (not computeCheckSum()) {
                     // Get file size & mtime right away
 
                     uint64_t const size = fs::file_size(path, ec);
-                    errorContext =
-                            errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
-                                                          "failed to read file size: " + path.string());
+                    errorContext = errorContext ||
+                                   reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
+                                                 "failed to read file size: " + path.string() + ", code: " +
+                                                         to_string(ec.value()) + ", error: " + ec.message());
                     const time_t mtime = fs::last_write_time(path, ec).time_since_epoch().count();
-                    errorContext =
-                            errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                                          "failed to read file mtime: " + path.string());
+                    errorContext = errorContext ||
+                                   reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
+                                                 "failed to read file mtime: " + path.string() + ", code: " +
+                                                         to_string(ec.value()) + ", error: " + ec.message());
                     fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
                             file, size, mtime, "", /* cs */
                             0,                     /* beginTransferTime */
@@ -206,8 +210,10 @@ bool WorkerFindRequest::execute() {
                 const fs::path path(file);
                 uint64_t const size = _csComputeEnginePtr->bytes(file);
                 time_t const mtime = fs::last_write_time(path, ec).time_since_epoch().count();
-                errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                                             "failed to read file mtime: " + path.string());
+                errorContext = errorContext || reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
+                                                             "failed to read file mtime: " + path.string() +
+                                                                     ", code: " + to_string(ec.value()) +
+                                                                     ", error: " + ec.message());
                 fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
                         path.filename().string(), size, mtime, to_string(_csComputeEnginePtr->cs(file)),
                         0,   /* beginTransferTime */
@@ -234,7 +240,7 @@ bool WorkerFindRequest::execute() {
         }
     } catch (exception const& ex) {
         WorkerRequest::ErrorContext errorContext;
-        errorContext = errorContext or reportErrorIf(true, ProtocolStatusExt::FILE_READ, ex.what());
+        errorContext = errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_READ, ex.what());
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
     }
 

@@ -51,9 +51,7 @@ vector<string> const extensions{"frm", "MYD", "MYI"};
 
 /**
  * Evaluate if an input string corresponds to a valid file extension
- *
  * @param str - the candidate string to be tested
- *
  * @return 'true' if this is a valid file extension
  */
 bool isValidExtention(string const& str) {
@@ -63,10 +61,8 @@ bool isValidExtention(string const& str) {
 /**
  * Evaluate if an input string corresponds to a valid partitioned table
  * or its variant.
- *
  * @param str          - the candidate string to be tested
  * @param databaseInfo - database specification
- *
  * @return 'true' if this is a valid table name
  */
 bool isValidPartitionedTable(string const& str, DatabaseInfo const& databaseInfo) {
@@ -83,10 +79,6 @@ size_t const maxFileNameLength = 255;
 }  // namespace
 
 namespace lsst::qserv::replica {
-
-///////////////////////////
-//    class FileUtils    //
-///////////////////////////
 
 vector<string> FileUtils::partitionedFiles(DatabaseInfo const& databaseInfo, unsigned int chunk) {
     vector<string> result;
@@ -276,10 +268,6 @@ void FileUtils::verifyFolders(string const& requestorContext, vector<string> con
     }
 }
 
-/////////////////////////////////////
-//    class FileCsComputeEngine    //
-/////////////////////////////////////
-
 FileCsComputeEngine::FileCsComputeEngine(string const& fileName, size_t recordSizeBytes)
         : _fileName(fileName), _recordSizeBytes(recordSizeBytes), _fp(0), _buf(0), _bytes(0), _cs(0) {
     if (_fileName.empty()) {
@@ -337,12 +325,6 @@ bool FileCsComputeEngine::execute() {
 
     return true;
 }
-
-//////////////////////////////////////////
-//    class MultiFileCsComputeEngine    //
-//////////////////////////////////////////
-
-MultiFileCsComputeEngine::~MultiFileCsComputeEngine() {}
 
 MultiFileCsComputeEngine::MultiFileCsComputeEngine(vector<string> const& fileNames, size_t recordSizeBytes)
         : _fileNames(fileNames), _recordSizeBytes(recordSizeBytes) {

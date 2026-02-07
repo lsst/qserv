@@ -185,8 +185,8 @@ bool WorkerReplicationRequest::execute() {
                 FileClient::Ptr inFilePtr = FileClient::stat(_serviceProvider, sourceWorkerHost(),
                                                              sourceWorkerPort(), _request.database(), file);
                 errorContext =
-                        errorContext or
-                        reportErrorIf(not inFilePtr, ProtocolStatusExt::FILE_ROPEN,
+                        errorContext ||
+                        reportErrorIf(!inFilePtr, ProtocolStatusExt::FILE_ROPEN,
                                       "failed to open input file on remote worker: " + sourceWorker() + " (" +
                                               sourceWorkerHostPort() + "), database: " + _request.database() +
                                               ", file: " + file);
@@ -204,19 +204,22 @@ bool WorkerReplicationRequest::execute() {
 
             bool const outDirExists = fs::exists(outDir, ec);
             errorContext =
-                    errorContext or
+                    errorContext ||
                     reportErrorIf(ec.value() != 0, ProtocolStatusExt::FOLDER_STAT,
-                                  "failed to check the status of output directory: " + outDir.string()) or
-                    reportErrorIf(not outDirExists, ProtocolStatusExt::NO_FOLDER,
+                                  "failed to check the status of output directory: " + outDir.string() +
+                                          ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
+                    reportErrorIf(!outDirExists, ProtocolStatusExt::NO_FOLDER,
                                   "the output directory doesn't exist: " + outDir.string());
 
             // The files with canonical(!) names should NOT exist at the destination
             // folder.
             for (auto&& file : outFiles) {
                 fs::file_status const stat = fs::status(file, ec);
-                errorContext = errorContext or
+                errorContext = errorContext ||
                                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FILE_STAT,
-                                             "failed to check the status of output file: " + file.string()) or
+                                             "failed to check the status of output file: " + file.string() +
+                                                     ", code: " + to_string(ec.value()) +
+                                                     ", error: " + ec.message()) ||
                                reportErrorIf(fs::exists(stat), ProtocolStatusExt::FILE_EXISTS,
                                              "the output file already exists: " + file.string());
             }
@@ -226,14 +229,18 @@ bool WorkerReplicationRequest::execute() {
             for (auto&& file : tmpFiles) {
                 fs::file_status const stat = fs::status(file, ec);
                 errorContext =
-                        errorContext or
+                        errorContext ||
                         reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FILE_STAT,
-                                      "failed to check the status of temporary file: " + file.string());
+                                      "failed to check the status of temporary file: " + file.string() +
+                                              ", code: " + to_string(ec.value()) +
+                                              ", error: " + ec.message());
                 if (fs::exists(stat)) {
                     fs::remove(file, ec);
-                    errorContext = errorContext or
+                    errorContext = errorContext ||
                                    reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_DELETE,
-                                                 "failed to remove temporary file: " + file.string());
+                                                 "failed to remove temporary file: " + file.string() +
+                                                         ", code: " + to_string(ec.value()) +
+                                                         ", error: " + ec.message());
                 }
             }
 
@@ -243,12 +250,14 @@ bool WorkerReplicationRequest::execute() {
             // NOTE: this operation runs after cleaning up temporary files
             fs::space_info const space = fs::space(outDir, ec);
             errorContext =
-                    errorContext or
-                    reportErrorIf(
-                            ec.value() != 0, ProtocolStatusExt::SPACE_REQ,
-                            "failed to obtaine space information at output folder: " + outDir.string()) or
+                    errorContext ||
+                    reportErrorIf(ec.value() != 0, ProtocolStatusExt::SPACE_REQ,
+                                  "failed to obtaine space information at output folder: " + outDir.string() +
+                                          ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
                     reportErrorIf(space.available < totalBytes, ProtocolStatusExt::NO_SPACE,
-                                  "not enough free space availble at output folder: " + outDir.string());
+                                  "not enough free space availble at output folder: " + outDir.string() +
+                                          ", required: " + to_string(totalBytes) +
+                                          " bytes, available: " + to_string(space.available) + " bytes");
 
             // Pre-create temporary files with the final size to assert disk space
             // availability before filling these files with the actual payload.
@@ -257,10 +266,11 @@ bool WorkerReplicationRequest::execute() {
 
                 // Create a file of size 0
                 FILE* tmpFilePtr = fopen(tmpFile.string().c_str(), "wb");
-                errorContext = errorContext or
-                               reportErrorIf(not tmpFilePtr, ProtocolStatusExt::FILE_CREATE,
-                                             "failed to open/create temporary file: " + tmpFile.string() +
-                                                     ", error: " + strerror(errno));
+                errorContext =
+                        errorContext ||
+                        reportErrorIf(!tmpFilePtr, ProtocolStatusExt::FILE_CREATE,
+                                      "failed to open/create temporary file: " + tmpFile.string() +
+                                              ", errno: " + to_string(errno) + ", error: " + strerror(errno));
                 if (tmpFilePtr) {
                     fflush(tmpFilePtr);
                     fclose(tmpFilePtr);
@@ -268,9 +278,12 @@ bool WorkerReplicationRequest::execute() {
 
                 // Resize the file (will be filled with \0)
                 fs::resize_file(tmpFile, file2size[file], ec);
-                errorContext = errorContext or
+                errorContext = errorContext ||
                                reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_RESIZE,
-                                             "failed to resize the temporary file: " + tmpFile.string());
+                                             "failed to resize the temporary file: " + tmpFile.string() +
+                                                     " to the size: " + to_string(file2size[file]) +
+                                                     ", code: " + to_string(ec.value()) +
+                                                     ", error: " + ec.message());
             }
         }
         if (errorContext.failed) {
@@ -280,14 +293,14 @@ bool WorkerReplicationRequest::execute() {
 
         // Allocate the record buffer
         _buf = new uint8_t[_bufSize];
-        if (not _buf) {
+        if (!_buf) {
             throw runtime_error("WorkerReplicationRequest::" + string(__func__) +
                                 "  buffer allocation failed");
         }
 
         // Setup the iterator for the name of the very first file to be copied
         _fileItr = _files.begin();
-        if (not _openFiles(lock)) return true;
+        if (!_openFiles(lock)) return true;
     }
 
     // Copy the next record from the currently open remote file
@@ -317,14 +330,15 @@ bool WorkerReplicationRequest::execute() {
                     // Keep copying the same file
                     return false;
                 }
-                errorContext = errorContext or reportErrorIf(true, ProtocolStatusExt::FILE_WRITE,
+                errorContext = errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_WRITE,
                                                              "failed to write into temporary file: " +
                                                                      _file2descr[*_fileItr].tmpFile.string() +
+                                                                     ", errno: " + to_string(errno) +
                                                                      ", error: " + strerror(errno));
             }
         } catch (FileClientError const& ex) {
             errorContext =
-                    errorContext or
+                    errorContext ||
                     reportErrorIf(true, ProtocolStatusExt::FILE_READ,
                                   "failed to read input file from remote worker: " + sourceWorker() + " (" +
                                           sourceWorkerHostPort() + "), database: " + _request.database() +
@@ -334,7 +348,7 @@ bool WorkerReplicationRequest::execute() {
         // Make sure the number of bytes copied from the remote server
         // matches expectations.
         errorContext =
-                errorContext or
+                errorContext ||
                 reportErrorIf(_file2descr[*_fileItr].inSizeBytes != _file2descr[*_fileItr].outSizeBytes,
                               ProtocolStatusExt::FILE_READ,
                               "short read of the input file from remote worker: " + sourceWorker() + " (" +
@@ -358,7 +372,7 @@ bool WorkerReplicationRequest::execute() {
         // Move the iterator to the name of the next file to be copied
         ++_fileItr;
         if (_files.end() != _fileItr) {
-            if (not _openFiles(lock)) {
+            if (!_openFiles(lock)) {
                 _releaseResources(lock);
                 return true;
             }
@@ -379,8 +393,8 @@ bool WorkerReplicationRequest::_openFiles(replica::Lock const& lock) {
     // Open the input file on the remote server
     _inFilePtr = FileClient::open(_serviceProvider, sourceWorkerHost(), sourceWorkerPort(),
                                   _request.database(), *_fileItr);
-    errorContext = errorContext or
-                   reportErrorIf(not _inFilePtr, ProtocolStatusExt::FILE_ROPEN,
+    errorContext = errorContext ||
+                   reportErrorIf(!_inFilePtr, ProtocolStatusExt::FILE_ROPEN,
                                  "failed to open input file on remote worker: " + sourceWorker() + " (" +
                                          sourceWorkerHostPort() + "), database: " + _request.database() +
                                          ", file: " + *_fileItr);
@@ -394,9 +408,10 @@ bool WorkerReplicationRequest::_openFiles(replica::Lock const& lock) {
     fs::path const tmpFile = _file2descr[*_fileItr].tmpFile;
 
     _tmpFilePtr = fopen(tmpFile.string().c_str(), "wb");
-    errorContext = errorContext or reportErrorIf(not _tmpFilePtr, ProtocolStatusExt::FILE_OPEN,
-                                                 "failed to open temporary file: " + tmpFile.string() +
-                                                         ", error: " + strerror(errno));
+    errorContext = errorContext ||
+                   reportErrorIf(!_tmpFilePtr, ProtocolStatusExt::FILE_OPEN,
+                                 "failed to open temporary file: " + tmpFile.string() +
+                                         ", errno: " + to_string(errno) + ", error: " + strerror(errno));
     if (errorContext.failed) {
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
         return false;
@@ -428,13 +443,17 @@ bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
     for (auto&& file : _files) {
         fs::path const tmpFile = _file2descr[file].tmpFile;
         fs::path const outFile = _file2descr[file].outFile;
-
         fs::rename(tmpFile, outFile, ec);
-        errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_RENAME,
-                                                     "failed to rename file: " + tmpFile.string());
+        errorContext =
+                errorContext ||
+                reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_RENAME,
+                              "failed to rename file: " + tmpFile.string() + " into " + outFile.string() +
+                                      ", code: " + to_string(ec.value()) + ", error: " + ec.message());
         fs::last_write_time(outFile, fs::file_time_type(std::chrono::seconds(_file2descr[file].mtime)), ec);
-        errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                                     "failed to change 'mtime' of file: " + tmpFile.string());
+        errorContext = errorContext ||
+                       reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
+                                     "failed to change 'mtime' of file: " + tmpFile.string() +
+                                             ", code: " + to_string(ec.value()) + ", error: " + ec.message());
     }
     if (errorContext.failed) {
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);
