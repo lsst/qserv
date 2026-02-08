@@ -14,3 +14,5 @@ The internal REST API of Qserv
 
    introduction
    repl-registry
+   repl-worker
+   TODO
