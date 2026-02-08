@@ -25,11 +25,11 @@
 // System headers
 #include <algorithm>
 #include <cerrno>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <system_error>
 
 // Qserv headers
 #include "global/constants.h"
@@ -45,7 +45,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -126,7 +126,7 @@ bool WorkerDirectorIndexRequest::execute() {
             // Create a folder (if it still doesn't exist) where the temporary files will be placed
             // NOTE: this folder is supposed to be seen by the worker's MySQL/MariaDB server, and it
             // must be write-enabled for an account under which the service is run.
-            boost::system::error_code ec;
+            std::error_code ec;
             fs::create_directory(fs::path(_tmpDirName), ec);
             if (ec.value() != 0) {
                 _error = "failed to create folder '" + _tmpDirName + "'";
@@ -219,7 +219,7 @@ ProtocolStatusExt WorkerDirectorIndexRequest::_readFile(size_t offset) {
     }
 
     // Get the file size.
-    boost::system::error_code ec;
+    std::error_code ec;
     _fileSizeBytes = fs::file_size(_fileName, ec);
     if (ec.value() != 0) {
         _error = "failed to get file size '" + _fileName + "'";
@@ -269,7 +269,7 @@ void WorkerDirectorIndexRequest::_removeFile() const {
     // Make the best attempt to get rid of the temporary file. Ignore any errors
     // for now. Just report them. Note that 'remove_all' won't complain if the file
     // didn't exist.
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::remove_all(fs::path(_fileName), ec);
     if (ec.value() != 0) {
         LOGS(_log, LOG_LVL_WARN, context(__func__) << " failed to remove the temporary file '" << _fileName);

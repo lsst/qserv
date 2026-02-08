@@ -23,10 +23,9 @@
 #include "replica/worker/WorkerFindAllRequest.h"
 
 // System headers
+#include <filesystem>
 #include <map>
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <system_error>
 
 // Qserv headers
 #include "replica/config/Configuration.h"
@@ -40,7 +39,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -92,7 +91,7 @@ bool WorkerFindAllRequest::execute() {
     // Scan the data directory to find all files which match the expected pattern(s)
     // and group them by their chunk number
     WorkerRequest::ErrorContext errorContext;
-    boost::system::error_code ec;
+    std::error_code ec;
 
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
@@ -110,13 +109,15 @@ bool WorkerFindAllRequest::execute() {
         fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
                                  database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
-        errorContext = errorContext or
-                       reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,
-                                     "failed to check the status of directory: " + dataDir.string()) or
-                       reportErrorIf(not fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
-                                     "the directory does not exists: " + dataDir.string());
+        errorContext =
+                errorContext ||
+                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
+                              "failed to check the status of directory: " + dataDir.string() +
+                                      ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
+                reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
+                              "the directory does not exists: " + dataDir.string());
         try {
-            for (fs::directory_entry& entry : fs::directory_iterator(dataDir)) {
+            for (fs::directory_entry const& entry : fs::directory_iterator(dataDir)) {
                 tuple<string, unsigned int, string> parsed;
                 if (FileUtils::parsePartitionedFile(parsed, entry.path().filename().string(), databaseInfo)) {
                     LOGS(_log, LOG_LVL_DEBUG,
@@ -125,14 +126,17 @@ bool WorkerFindAllRequest::execute() {
                                            << "  chunk: " << get<1>(parsed) << "  ext: " << get<2>(parsed));
 
                     uint64_t const size = fs::file_size(entry.path(), ec);
-                    errorContext = errorContext or
+                    errorContext = errorContext ||
                                    reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
-                                                 "failed to read file size: " + entry.path().string());
+                                                 "failed to read file size: " + entry.path().string() +
+                                                         ", code: " + to_string(ec.value()) +
+                                                         ", error: " + ec.message());
 
-                    time_t const mtime = fs::last_write_time(entry.path(), ec);
-                    errorContext = errorContext or
+                    time_t const mtime = fs::last_write_time(entry.path(), ec).time_since_epoch().count();
+                    errorContext = errorContext ||
                                    reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                                 "failed to read file mtime: " + entry.path().string());
+                                                 "failed to read file mtime: " + entry.path().string() +
+                                                         ", error: " + ec.message());
 
                     unsigned const chunk = get<1>(parsed);
                     chunk2fileInfoCollection[chunk].emplace_back(ReplicaInfo::FileInfo({
@@ -145,7 +149,7 @@ bool WorkerFindAllRequest::execute() {
                 }
             }
         } catch (fs::filesystem_error const& ex) {
-            errorContext = errorContext or reportErrorIf(true, ProtocolStatusExt::FOLDER_READ,
+            errorContext = errorContext || reportErrorIf(true, ProtocolStatusExt::FOLDER_READ,
                                                          "failed to read the directory: " + dataDir.string() +
                                                                  ", error: " + string(ex.what()));
         }

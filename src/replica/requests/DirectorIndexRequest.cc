@@ -23,13 +23,14 @@
 #include "replica/requests/DirectorIndexRequest.h"
 
 // System headers
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <stdexcept>
+#include <system_error>
 
 // Third party headers
 #include "boost/date_time/posix_time/posix_time.hpp"
-#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "replica/config/Configuration.h"
@@ -44,7 +45,7 @@
 
 using namespace std;
 using namespace std::placeholders;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.DirectorIndexRequest");
@@ -98,7 +99,7 @@ DirectorIndexRequest::~DirectorIndexRequest() {
     }
     // Make the best attempt to get rid of the temporary file. Ignore any errors
     // for now. Just report them.
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::remove(fs::path(_responseData.fileName), ec);
     if (ec.value() != 0) {
         LOGS(_log, LOG_LVL_WARN,

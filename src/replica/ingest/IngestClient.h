@@ -26,6 +26,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 
 // Third party headers
 #include "boost/asio.hpp"
@@ -181,6 +182,9 @@ private:
      */
     void _assertErrorCode(boost::system::error_code const& ec, std::string const& func,
                           std::string const& msg);
+
+    /// Overloaded version of the method for std::error_code
+    void _assertErrorCode(std::error_code const& ec, std::string const& func, std::string const& msg);
 
     /**
      * Unconditionally abort the operation by shutting down and closing

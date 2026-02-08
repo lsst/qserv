@@ -25,12 +25,10 @@
 #include <cstdio>
 #include <cstdint>
 #include <ctime>
+#include <filesystem>
 #include <map>
 #include <string>
 #include <vector>
-
-// Third party headers
-#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "replica/util/ReplicaInfo.h"
@@ -187,11 +185,11 @@ private:
         uint64_t cs = 0;
 
         /// The absolute path of a temporary file at a local directory.
-        boost::filesystem::path tmpFile;
+        std::filesystem::path tmpFile;
 
         /// The final (canonic) file name the temporary file will be renamed as
         /// upon a successful completion of the operation.
-        boost::filesystem::path outFile;
+        std::filesystem::path outFile;
 
         /// When the file transfer started
         uint64_t beginTransferTime = 0;

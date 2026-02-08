@@ -23,13 +23,14 @@
 #include "replica/worker/WorkerExporterHttpSvcMod.h"
 
 // System headers
+#include <filesystem>
 #include <fstream>
-#include <stdexcept>
 #include <set>
+#include <stdexcept>
+#include <system_error>
 #include <vector>
 
 // Third-party headers
-#include "boost/filesystem.hpp"
 #include <httplib.h>
 
 // Qserv header
@@ -51,7 +52,7 @@
 
 using namespace std;
 using json = nlohmann::json;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 bool const sendCustomResponse = true;
@@ -250,7 +251,7 @@ void WorkerExporterHttpSvcMod::_createTemporaryFile(string const& func) {
     } catch (exception const& ex) {
         throw http::Error(func, "failed to create the temporary file '" + _filePath + "', ex: " + ex.what());
     }
-    boost::system::error_code ec;
+    std::error_code ec;
     fs::remove(fs::path(_filePath), ec);
     if (ec.value() != 0) {
         throw http::Error(func, "failed to remove the temporary file '" + _filePath +
@@ -295,7 +296,7 @@ void WorkerExporterHttpSvcMod::_dumpTableIntoFile(string const& func) {
 
 void WorkerExporterHttpSvcMod::_sendFileInResponse(string const& func) {
     // Get file size
-    boost::system::error_code ec;
+    std::error_code ec;
     auto const fileSize = fs::file_size(fs::path(_filePath), ec);
     if (ec.value() != 0) {
         throw http::Error(func, "failed to get the size of the temporary file '" + _filePath +
@@ -339,7 +340,7 @@ void WorkerExporterHttpSvcMod::_sendFileInResponse(string const& func) {
             // or when an error has occurred.
             [filePtr, filePath = _filePath](bool success) {
                 filePtr->close();
-                boost::system::error_code ec;
+                std::error_code ec;
                 fs::remove(fs::path(filePath), ec);
             });
 }

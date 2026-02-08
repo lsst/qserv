@@ -27,14 +27,13 @@
 #include <cerrno>
 #include <cstring>
 #include <ctime>
+#include <filesystem>
 #include <functional>
 #include <mutex>
 #include <sstream>
 #include <stdexcept>
+#include <system_error>
 #include <thread>
-
-// Third party headers
-#include "boost/filesystem.hpp"
 
 // Qserv headers
 #include "global/constants.h"
@@ -51,7 +50,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -360,7 +359,7 @@ void IngestFileSvc::closeFile() {
     LOGS(_log, LOG_LVL_DEBUG, context_);
     if (_file.is_open()) {
         _file.close();
-        boost::system::error_code ec;
+        std::error_code ec;
         fs::remove(_fileName, ec);
         if (ec.value() != 0) {
             LOGS(_log, LOG_LVL_WARN,

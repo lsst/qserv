@@ -12,7 +12,6 @@ target_sources(qhttp PRIVATE
 
 target_link_libraries(qhttp PUBLIC
     log
-    Boost::filesystem
     Boost::regex
     Boost::system
 )

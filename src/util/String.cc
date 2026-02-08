@@ -27,7 +27,9 @@
 // System headers
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <functional>
+#include <random>
 #include <stdexcept>
 
 // Third party headers
@@ -229,6 +231,22 @@ string String::fromBase64(string const& str) {
         throw range_error(CONTEXT_(__func__) + "failed to decode base64 string: " + ex.what());
     }
     return decoded;
+}
+
+string String::translateModel(string const& model) {
+    unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+    mt19937 engine(seed);
+    uniform_int_distribution<int> dist(0, 15);
+    string result;
+    for (char c : model) {
+        if (c == '%') {
+            int const num = dist(engine);
+            result += ::hexCharsLC[num];
+        } else {
+            result += c;
+        }
+    }
+    return result;
 }
 
 }  // namespace lsst::qserv::util

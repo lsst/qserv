@@ -33,7 +33,6 @@ target_link_libraries(replica PUBLIC
     sphgeom
     partition
     protobuf
-    boost_filesystem
     boost_system
     log
     pthread

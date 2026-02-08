@@ -23,9 +23,8 @@
 #include "replica/worker/WorkerDeleteRequest.h"
 
 // System headers
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <filesystem>
+#include <system_error>
 
 // Qserv headers
 #include "replica/config/Configuration.h"
@@ -38,7 +37,7 @@
 #include "lsst/log/Log.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 namespace {
 
@@ -92,21 +91,23 @@ bool WorkerDeleteRequest::execute() {
     // The data folder will be locked while performing the operation
     int numFilesDeleted = 0;
     WorkerRequest::ErrorContext errorContext;
-    boost::system::error_code ec;
+    std::error_code ec;
     {
         replica::Lock dataFolderLock(_mtxDataFolderOperations, context(__func__));
         fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
                                  database::mysql::obj2fs(database());
         fs::file_status const stat = fs::status(dataDir, ec);
-        errorContext = errorContext or
-                       reportErrorIf(stat.type() == fs::status_error, ProtocolStatusExt::FOLDER_STAT,
-                                     "failed to check the status of directory: " + dataDir.string()) or
-                       reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
-                                     "the directory does not exists: " + dataDir.string());
+        errorContext =
+                errorContext ||
+                reportErrorIf(stat.type() == fs::file_type::none, ProtocolStatusExt::FOLDER_STAT,
+                              "failed to check the status of directory: " + dataDir.string() +
+                                      ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
+                reportErrorIf(!fs::exists(stat), ProtocolStatusExt::NO_FOLDER,
+                              "the directory does not exists: " + dataDir.string());
         for (const auto& name : files) {
             const fs::path file = dataDir / fs::path(name);
             if (fs::remove(file, ec)) ++numFilesDeleted;
-            errorContext = errorContext or reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_DELETE,
+            errorContext = errorContext || reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_DELETE,
                                                          "failed to delete file: " + file.string());
         }
     }

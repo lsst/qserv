@@ -28,13 +28,13 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "replica/util/FileUtils.h"
 #include "replica/util/SqlSchemaUtils.h"
+#include "util/String.h"
 
 // System headers
+#include <filesystem>
 #include <fstream>
-
-// Third party headers
-#include "boost/filesystem.hpp"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE SqlSchemaUtils
@@ -42,13 +42,15 @@
 
 using namespace std;
 namespace test = boost::test_tools;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using namespace lsst::qserv::replica;
+namespace util = lsst::qserv::util;
 
 namespace {
 string makeTempFileName(string const& baseFolder = "/tmp", string const& prefix = "SqlSchemaUtils-",
                         string const& suffix = "columns") {
-    auto const p = fs::path(baseFolder) / fs::unique_path(prefix + "%%%%_%%%%_%%%%_%%%%." + suffix);
+    auto const p =
+            fs::path(baseFolder) / (prefix + util::String::translateModel("%%%%_%%%%_%%%%_%%%%.") + suffix);
     return p.string();
 }
 }  // namespace

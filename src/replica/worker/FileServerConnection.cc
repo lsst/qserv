@@ -26,11 +26,10 @@
 #include <cerrno>
 #include <cstring>
 #include <ctime>
+#include <filesystem>
 #include <functional>
 #include <stdexcept>
-
-// Third party headers
-#include "boost/filesystem.hpp"
+#include <system_error>
 
 // Qserv headers
 #include "replica/config/Configuration.h"
@@ -42,7 +41,7 @@
 
 using namespace std;
 using namespace std::placeholders;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using namespace lsst::qserv::replica;
 
 namespace {
@@ -153,15 +152,15 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
     if (::isErrorCode(ec, __func__)) return;
 
     // Now read the body of the request
-
     ProtocolFileRequest request;
     if (!::readMessage(_socket, _bufferPtr, _bufferPtr->parseLength(), request)) return;
 
     LOGS(_log, LOG_LVL_INFO,
          context << __func__ << "  <OPEN> database: " << request.database() << ", file: " << request.file());
 
-    // Find a file requested by a client
-
+    // Find a file requested by a client and check its status. If the file is available then open it
+    // for reading if the client requested the content of the file. The file will be streamed back
+    // to the client in the response handler
     bool available = false;
     bool foreignInstance = false;
     uint64_t size = 0;
@@ -179,28 +178,32 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
             foreignInstance = true;
             break;
         }
-        boost::system::error_code ec;
+        std::error_code fs_ec;
         fs::path const file = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
                               database::mysql::obj2fs(request.database()) / request.file();
-        fs::file_status const stat = fs::status(file, ec);
-        if (stat.type() == fs::status_error) {
+        fs::file_status const stat = fs::status(file, fs_ec);
+        if (stat.type() == fs::file_type::none) {
             LOGS(_log, LOG_LVL_ERROR,
-                 context << __func__ << "  failed to check the status of file: " << file);
+                 context << __func__ << "  failed to check the status of file: " << file
+                         << ", code: " << to_string(fs_ec.value()) << ", error: " << fs_ec.message());
             break;
         }
-        if (not fs::exists(stat)) {
+        if (!fs::exists(stat)) {
             LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  file does not exist: " << file);
             break;
         }
-
-        size = fs::file_size(file, ec);
-        if (ec.value() != 0) {
-            LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  failed to get the file size of: " << file);
+        size = fs::file_size(file, fs_ec);
+        if (fs_ec.value() != 0) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 context << __func__ << "  failed to get the file size of: " << file
+                         << ", code: " << to_string(fs_ec.value()) << ", error: " << fs_ec.message());
             break;
         }
-        mtime = fs::last_write_time(file, ec);
-        if (ec.value() != 0) {
-            LOGS(_log, LOG_LVL_ERROR, context << __func__ << "  failed to get file mtime of: " << file);
+        mtime = fs::last_write_time(file, fs_ec).time_since_epoch().count();
+        if (fs_ec.value() != 0) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 context << __func__ << "  failed to get file mtime of: " << file
+                         << ", code: " << to_string(fs_ec.value()) << ", error: " << fs_ec.message());
             break;
         }
 
@@ -210,9 +213,10 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
         _fileName = file.string();
         if (request.send_content()) {
             _filePtr = fopen(file.string().c_str(), "rb");
-            if (not _filePtr) {
+            if (!_filePtr) {
                 LOGS(_log, LOG_LVL_ERROR,
-                     context << __func__ << "  file open error: " << strerror(errno) << ", file: " << file);
+                     context << __func__ << "  failed to open the file: " << file << ", errno: " << errno
+                             << ", error: " << strerror(errno));
                 break;
             }
         }
@@ -221,7 +225,6 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
     } while (false);
 
     // Serialize the response into the buffer and send it back to a caller
-
     ProtocolFileResponse response;
     response.set_available(available);
     response.set_size(size);

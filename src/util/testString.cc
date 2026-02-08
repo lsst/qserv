@@ -472,4 +472,27 @@ BOOST_AUTO_TEST_CASE(FromBase64Test) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(TranslateModelTest) {
+    LOGS_INFO("TranslateModelTest test begins");
+
+    std::string const empty;
+    BOOST_CHECK_EQUAL(util::String::translateModel(empty), empty);
+
+    std::string const trivialModel = "file.txt";
+    BOOST_CHECK_EQUAL(util::String::translateModel(trivialModel), trivialModel);
+
+    std::string const model = "file_%%%%.txt";
+    std::string const result = util::String::translateModel(model);
+    BOOST_CHECK_EQUAL(result.size(), model.size());
+    for (size_t i = 0; i < model.size(); ++i) {
+        if (model[i] == '%') {
+            char const c = result[i];
+            bool const isHex = ((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'f'));
+            BOOST_CHECK(isHex);
+        } else {
+            BOOST_CHECK_EQUAL(result[i], model[i]);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

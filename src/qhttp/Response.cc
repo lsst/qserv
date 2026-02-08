@@ -35,8 +35,6 @@
 
 // Third-party headers
 #include "boost/asio.hpp"
-#include "boost/filesystem.hpp"
-#include "boost/filesystem/fstream.hpp"
 #include "boost/system/error_code.hpp"
 
 // Local headers
@@ -45,7 +43,7 @@
 
 namespace asio = boost::asio;
 namespace ip = boost::asio::ip;
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 using namespace lsst::qserv::qhttp;
 
 namespace {
