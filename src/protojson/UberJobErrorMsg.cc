@@ -51,9 +51,9 @@ string UberJobErrorMsg::cName(const char* fName) const {
 UberJobErrorMsg::Ptr UberJobErrorMsg::create(AuthContext const& authContext_, unsigned int version_,
                                              string const& workerIdStr_, string const& czarName_,
                                              CzarId czarId_, QueryId queryId_, UberJobId uberJobId_,
-                                             int errorCode_, string const& errorMsg_) {
+                                             util::MultiError const& multiErr_) {
     Ptr jrMsg = Ptr(new UberJobErrorMsg(authContext_, version_, workerIdStr_, czarName_, czarId_, queryId_,
-                                        uberJobId_, errorCode_, errorMsg_));
+                                        uberJobId_, multiErr_));
     return jrMsg;
 }
 
@@ -63,15 +63,16 @@ UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWRe
     try {
         AuthContext const authContext_(http::RequestBodyJSON::required<string>(jsWReq, "instance_id"),
                                        http::RequestBodyJSON::required<string>(jsWReq, "auth_key"));
-        Ptr jrMsg = Ptr(new UberJobErrorMsg(authContext_,
-                                            http::RequestBodyJSON::required<unsigned int>(jsWReq, "version"),
-                                            http::RequestBodyJSON::required<string>(jsWReq, "workerid"),
-                                            http::RequestBodyJSON::required<string>(jsWReq, "czar"),
-                                            http::RequestBodyJSON::required<CzarId>(jsWReq, "czarid"),
-                                            http::RequestBodyJSON::required<QueryId>(jsWReq, "queryid"),
-                                            http::RequestBodyJSON::required<UberJobId>(jsWReq, "uberjobid"),
-                                            http::RequestBodyJSON::required<int>(jsWReq, "errorCode"),
-                                            http::RequestBodyJSON::required<string>(jsWReq, "errorMsg")));
+
+        util::MultiError multiErr_ = multiErrorFromJson(jsWReq["multiError"]);
+
+        Ptr jrMsg = Ptr(new UberJobErrorMsg(
+                authContext_, http::RequestBodyJSON::required<unsigned int>(jsWReq, "version"),
+                http::RequestBodyJSON::required<string>(jsWReq, "workerid"),
+                http::RequestBodyJSON::required<string>(jsWReq, "czar"),
+                http::RequestBodyJSON::required<CzarId>(jsWReq, "czarid"),
+                http::RequestBodyJSON::required<QueryId>(jsWReq, "queryid"),
+                http::RequestBodyJSON::required<UberJobId>(jsWReq, "uberjobid"), multiErr_));
         return jrMsg;
     } catch (invalid_argument const& exc) {
         LOGS(_log, LOG_LVL_ERROR, string("UberJobErrorMsg::createJson invalid ") << exc.what());
@@ -79,10 +80,36 @@ UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWRe
     return nullptr;
 }
 
+util::MultiError UberJobErrorMsg::multiErrorFromJson(nlohmann::json const& jsMErr) {
+    util::MultiError multiErr_;
+    if (!jsMErr.is_array()) {
+        throw std::invalid_argument("UberJobErrorMsg::multiErrorFromJson MultiError is not a json::array");
+    }
+    // Fill in multiErr_ with the values in jsMErr
+    for (auto const& jsElem : jsMErr) {
+        try {
+            auto const errCode = http::RequestBodyJSON::required<int>(jsElem, "eCode");
+            auto const subCode = http::RequestBodyJSON::required<int>(jsElem, "subCode");
+            auto const count = http::RequestBodyJSON::required<int>(jsElem, "count");
+            auto const eMsg = http::RequestBodyJSON::required<string>(jsElem, "eMsg");
+            auto const& chunkIdsArray = jsElem["chunkIds"];
+            set<int> chunkIds(chunkIdsArray.begin(), chunkIdsArray.end());
+            auto const& jobIdsArray = jsElem["jobIds"];
+            set<int> jobIds(jobIdsArray.begin(), jobIdsArray.end());
+            util::Error err(errCode, subCode, chunkIds, jobIds, eMsg, count);
+            multiErr_.insert(err);
+        } catch (invalid_argument const& ex) {
+            // skip to next element
+            LOGS(_log, LOG_LVL_WARN, "UberJobErrorMsg::multiErrorFromJson failed to read Error:" << jsElem);
+        }
+    }
+    return multiErr_;
+}
+
 bool UberJobErrorMsg::equals(UberJobStatusMsg const& other) const {
     try {
         UberJobErrorMsg const& otherError = dynamic_cast<UberJobErrorMsg const&>(other);
-        if ((errorCode == otherError.errorCode) && (errorMsg == otherError.errorMsg)) {
+        if (multiError == otherError.multiError) {
             return equalsBase(other);
         }
     } catch (std::bad_cast& ex) {
@@ -94,17 +121,15 @@ bool UberJobErrorMsg::equals(UberJobStatusMsg const& other) const {
 std::ostream& UberJobErrorMsg::dump(std::ostream& os) const {
     os << "{UberJobErrorMsg:";
     UberJobStatusMsg::dump(os);
-    os << " errorCode=" << errorCode << " errorMsg=" << errorMsg << "}";
+    os << " multiError=" << multiError << "}";
     return os;
 }
 
 UberJobErrorMsg::UberJobErrorMsg(AuthContext const& authContext_, unsigned int version_,
                                  string const& workerId_, string const& czarName_, CzarId czarId_,
-                                 QueryId queryId_, UberJobId uberJobId_, int errorCode_,
-                                 string const& errorMsg_)
+                                 QueryId queryId_, UberJobId uberJobId_, util::MultiError const& multiErr_)
         : UberJobStatusMsg(authContext_, version_, workerId_, czarName_, czarId_, queryId_, uberJobId_),
-          errorCode(errorCode_),
-          errorMsg(errorMsg_) {}
+          multiError(multiErr_) {}
 
 json UberJobErrorMsg::toJson() const {
     json jsJr;
@@ -120,8 +145,18 @@ json UberJobErrorMsg::toJson() const {
     jsJr["czarid"] = czarId;
     jsJr["queryid"] = queryId;
     jsJr["uberjobid"] = uberJobId;
-    jsJr["errorCode"] = errorCode;
-    jsJr["errorMsg"] = errorMsg;
+    jsJr["multiError"] = json::array();
+    auto& jsMultiE = jsJr["multiError"];
+    auto errVect = multiError.getVector();
+    for (auto const& err : errVect) {
+        jsMultiE.push_back(json::object({{"count", err.getCount()},
+                                         {"eCode", err.getCode()},
+                                         {"subCode", err.getSubCode()},
+                                         {"eMsg", err.getMsg()},
+                                         {"chunkIds", err.getChunkIdsVect()},
+                                         {"jobIds", err.getJobIdsVect()}}));
+    }
+
     return jsJr;
 }
 
