@@ -29,6 +29,7 @@
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
+#include "protojson/PwHideJson.h"
 #include "protojson/ResponseMsg.h"
 #include "protojson/UberJobErrorMsg.h"
 #include "protojson/UberJobReadyMsg.h"
@@ -80,7 +81,6 @@ json HttpCzarWorkerModule::executeImpl(string const& subModuleName) {
 json HttpCzarWorkerModule::_queryJobError() {
     debug(__func__);
     checkApiVersion(__func__, 34);
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << " queryJobError json=" << body().objJson);
     auto ret = _handleJobError(__func__);
     return json::object();
 }
@@ -88,7 +88,6 @@ json HttpCzarWorkerModule::_queryJobError() {
 json HttpCzarWorkerModule::_queryJobReady() {
     debug(__func__);
     checkApiVersion(__func__, 34);
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << " queryJobReady json=" << body().objJson);
     auto ret = _handleJobReady(__func__);
     return ret;
 }
@@ -96,7 +95,6 @@ json HttpCzarWorkerModule::_queryJobReady() {
 json HttpCzarWorkerModule::_workerCzarComIssue() {
     debug(__func__);
     checkApiVersion(__func__, 34);
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << " workerczarcomissue json=" << body().objJson);
     auto ret = _handleWorkerCzarComIssue(__func__);
     return ret;
 }
@@ -114,7 +112,8 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
         return importRes;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
-             "HttpCzarWorkerModule::_handleJobError received " << iaEx.what() << " js=" << body().objJson);
+             "HttpCzarWorkerModule::_handleJobError received "
+                     << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
         return respMsg.toJson();
     }
@@ -133,7 +132,8 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
         return importRes;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
-             "HttpCzarWorkerModule::_handleJobReady received " << iaEx.what() << " js=" << body().objJson);
+             "HttpCzarWorkerModule::_handleJobReady received "
+                     << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
         return respMsg.toJson();
     }
@@ -191,8 +191,8 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
         return jsRet;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
-             "HttpCzarWorkerModule::_handleWorkerCzarComIssue received " << iaEx.what()
-                                                                         << " js=" << body().objJson);
+             "HttpCzarWorkerModule::_handleWorkerCzarComIssue received "
+                     << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
         return respMsg.toJson();
     }

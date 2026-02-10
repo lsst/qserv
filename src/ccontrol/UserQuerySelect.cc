@@ -311,6 +311,16 @@ void UserQuerySelect::submit() {
     exec->waitForAllJobsToStart();
 }
 
+bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWorker,
+                     protojson::WorkerContactInfo::WCMapPtr const& wContactMap,
+                     qdisp::JobQuery::Ptr const& jqPtr,
+                     std::shared_ptr<czar::CzarFamilyMap> const& czFamilyMap) {
+    auto iter = wContactMap->find(targetWorker->getWorkerId());
+    if (iter == wContactMap->end()) return false;
+    auto const wInfo = iter->second;
+    return wInfo == nullptr || jqPtr->isWorkerInAvoidMap(wInfo, czFamilyMap->getLastUpdateTime());
+}
+
 void UserQuerySelect::buildAndSendUberJobs() {
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_queryId));
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
@@ -353,6 +363,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     auto czFamilyMap = czarPtr->getCzarFamilyMap();
     auto czChunkMap = czFamilyMap->getChunkMap(_queryDbName);
     auto czRegistry = czarPtr->getCzarRegistry();
+    // wContactMap is constant and safe to access without mutex lock.
     auto const wContactMap = czRegistry->waitForWorkerContactMap();
 
     if (czChunkMap == nullptr) {
@@ -418,7 +429,8 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
         czar::CzarChunkMap::ChunkData::Ptr chunkData = iter->second;
         auto targetWorker = chunkData->getPrimaryScanWorker().lock();
-        if (targetWorker == nullptr || targetWorker->isDead()) {
+        bool avoidWorker = avoidThisWorker(targetWorker, wContactMap, jqPtr, czFamilyMap);
+        if (targetWorker == nullptr || targetWorker->isDead() || avoidWorker) {
             LOGS(_log, LOG_LVL_WARN,
                  funcN << " No primary scan worker for chunk=" + chunkData->dump()
                        << ((targetWorker == nullptr) ? " targ was null" : " targ was dead"));
@@ -429,11 +441,14 @@ void UserQuerySelect::buildAndSendUberJobs() {
                  ++wIter) {
                 auto maybeTarg = wIter->second.lock();
                 if (maybeTarg != nullptr && !maybeTarg->isDead()) {
-                    targetWorker = maybeTarg;
-                    found = true;
-                    LOGS(_log, LOG_LVL_WARN,
-                         funcN << " Alternate worker=" << targetWorker->getWorkerId()
-                               << " found for chunk=" << chunkData->dump());
+                    avoidWorker = avoidThisWorker(maybeTarg, wContactMap, jqPtr, czFamilyMap);
+                    if (!avoidWorker) {
+                        targetWorker = maybeTarg;
+                        found = true;
+                        LOGS(_log, LOG_LVL_WARN,
+                             funcN << " Alternate worker=" << targetWorker->getWorkerId()
+                                   << " found for chunk=" << chunkData->dump());
+                    }
                 }
             }
             if (!found) {
@@ -459,11 +474,13 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
 
         if (wInfUJ->uberJobPtr == nullptr) {
+            // Create a new UberJob for this worker.
             auto ujId = _uberJobIdSeq++;  // keep ujId consistent
             string uberResultName = _ttn->make(ujId);
             auto respHandler =
                     ccontrol::MergingHandler::Ptr(new ccontrol::MergingHandler(_infileMerger, exec));
-            auto uJob = qdisp::UberJob::create(exec, respHandler, exec->getId(), ujId, _czarId);
+            auto uJob = qdisp::UberJob::create(exec, respHandler, ujId, _czarId, wInfUJ->wInf,
+                                               czFamilyMap->getLastUpdateTime());
             uJob->setWorkerContactInfo(wInfUJ->wInf);
             wInfUJ->uberJobPtr = uJob;
         };
@@ -562,7 +579,8 @@ QueryState UserQuerySelect::join() {
     } else {
         auto const status = resultSizeLimitExceeded ? qmeta::QInfo::FAILED_LR : qmeta::QInfo::FAILED;
         _qMetaUpdateStatus(status, collectedRows, collectedBytes, finalRows);
-        LOGS(_log, LOG_LVL_ERROR, "Joined everything (failure!) QID=" << getQueryId());
+        LOGS(_log, LOG_LVL_ERROR,
+             "Joined everything (failure!) QID=" << getQueryId() << " status=" << status);
         state = ERROR;
     }
     auto const czarConfig = cconfig::CzarConfig::instance();
@@ -837,7 +855,7 @@ void UserQuerySelect::_qMetaUpdateMessages() {
     try {
         _queryMetadata->addQueryMessages(_queryId, msgStore);
     } catch (qmeta::SqlError const& ex) {
-        LOGS(_log, LOG_LVL_WARN, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
+        LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
     }
 }
 

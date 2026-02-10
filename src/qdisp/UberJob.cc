@@ -58,20 +58,24 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qdisp.UberJob");
 namespace lsst::qserv::qdisp {
 
 UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
-                             std::shared_ptr<ResponseHandler> const& respHandler, int queryId, int uberJobId,
-                             CzarId czarId) {
+                             std::shared_ptr<ResponseHandler> const& respHandler, int uberJobId,
+                             CzarId czarId, protojson::WorkerContactInfo::Ptr const& workerContactInfo,
+                             TIMEPOINT familyMapTimestamp) {
     auto uJob = UberJob::Ptr(
-            new UberJob(executive, respHandler, queryId, uberJobId, czarId, executive->getUjRowLimit()));
+            new UberJob(executive, respHandler, uberJobId, czarId, workerContactInfo, familyMapTimestamp));
+
     uJob->_setup();
     return uJob;
 }
 
 UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandler> const& respHandler,
-                 QueryId queryId_, UberJobId uberJobId_, CzarId czarId_, int rowLimit)
-        : UberJobBase(queryId_, uberJobId_, czarId_),
+                 UberJobId uberJobId_, CzarId czarId_,
+                 protojson::WorkerContactInfo::Ptr const& workerContactInfo, TIMEPOINT familyMapTimestamp_)
+        : UberJobBase(executive->getId(), uberJobId_, czarId_),
           _executive(executive),
           _respHandler(respHandler),
-          _rowLimit(rowLimit) {
+          _rowLimit(executive->getUjRowLimit()),
+          _familyMapTimestamp(familyMapTimestamp_) {
     LOGS(_log, LOG_LVL_TRACE, _idStr << " created");
 }
 
@@ -186,8 +190,8 @@ void UberJob::_unassignJobs() {
         string jid = job->getIdStr();
         if (!job->unassignFromUberJob(getUjId())) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not unassign job=" << jid << " cancelling");
-            exec->addMultiError(qmeta::JobStatus::RETRY_ERROR, "unable to re-assign " + jid,
-                                util::ErrorCode::INTERNAL);
+            exec->addMultiError(util::Error::INTERNAL, util::Error::RETRY_UNASSIGN,
+                                "unable to unassign " + jid, true);
             exec->squash("_unassignJobs failure");
             return;
         }
@@ -217,9 +221,9 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
         return false;
     }
 
-    _jobStatus->updateInfo(getIdStr(), newState, msg);
+    _jobStatus->updateInfo(getIdStr(), newState, msg, 0, "", MSG_INFO);
     for (auto&& jq : _jobs) {
-        jq->getStatus()->updateInfo(jq->getIdStr(), newState, msg);
+        jq->getStatus()->updateInfo(jq->getIdStr(), newState, msg, 0, "", MSG_INFO);
     }
     return true;
 }
@@ -230,15 +234,16 @@ void UberJob::callMarkCompleteFunc(bool success) {
     lock_guard<mutex> lck(_jobsMtx);
     // Need to set this uberJob's status, however exec->markCompleted will set
     // the status for each job when it is called.
-    string source = string("UberJob_") + (success ? "SUCCESS" : "FAILED");
-    _jobStatus->updateInfo(getIdStr(), qmeta::JobStatus::COMPLETE, source);
+    // "COMPLETE" and "CANCEL" are used by QmetaMysql to reduce the rows used in qmeta.
+    string const source = success ? "COMPLETE" : "CANCEL";
+    _jobStatus->updateInfo(getIdStr(), qmeta::JobStatus::COMPLETE, source, 0, "", MSG_INFO);
     for (auto&& job : _jobs) {
         string idStr = job->getIdStr();
         if (success) {
-            job->getStatus()->updateInfo(idStr, qmeta::JobStatus::COMPLETE, source);
+            job->getStatus()->updateInfo(idStr, qmeta::JobStatus::COMPLETE, source, 0, "", MSG_INFO);
         } else {
             job->getStatus()->updateInfoNoErrorOverwrite(idStr, qmeta::JobStatus::RESULT_ERROR, source,
-                                                         util::ErrorCode::INTERNAL, "UberJob_failure");
+                                                         util::Error::INTERNAL, "UberJob_failure", MSG_ERROR);
         }
         auto exec = _executive.lock();
         exec->markCompleted(job->getJobId(), success);
@@ -315,14 +320,14 @@ json UberJob::importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool 
     return respMsg.toJson();
 }
 
-json UberJob::workerError(int errorCode, string const& errorMsg) {
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " errcode=" << errorCode << " errmsg=" << errorMsg);
+json UberJob::workerError(util::MultiError const& multiErr_) {
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " multiErr=" << multiErr_);
 
     bool const deleteData = true;
     bool const keepData = !deleteData;
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled " << errorMsg);
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled " << multiErr_);
         return _workerErrorFinish(deleteData, "cancelled");
     }
 
@@ -336,31 +341,52 @@ json UberJob::workerError(int errorCode, string const& errorMsg) {
         return _workerErrorFinish(keepData, "none", "rowLimitComplete");
     }
 
-    string const eMsg = "host:" + _wContactInfo->getWHost() + " " + errorMsg;
-    exec->addMultiError(errorCode, eMsg, util::ErrorCode::WORKER_ERROR);
+    exec->addMultiError(multiErr_);
+    string mErrMsg = multiErr_.toOneLineString();
 
-    // Currently there are no detectable recoverable errors from workers. The only
-    // error that a worker could send back that may possibly be recoverable would
-    // be a missing table error, which is not trivial to detect. A worker local
-    // database error may also qualify.
-    // TODO:DM-53238 If recoverable errors can be detected on the workers, or
-    //   maybe allow a single retry before sending the error back to the user?
-    bool recoverableError = false;
-
+    // Is this a missing table error? It may be recoverable.
+    bool missingTable = false;
+    bool otherErrors = false;
+    auto errVect = multiErr_.getVector();
+    set<int> missingTableJobs;
+    for (auto const& err : errVect) {
+        switch (err.getCode()) {
+            case util::Error::WORKER_SQL: {
+                int subErr = err.getSubCode();
+                if (subErr == util::Error::UNKNOWN_TABLE || subErr == util::Error::NONEXISTANT_TABLE) {
+                    missingTable = true;
+                    auto jobIdVect = err.getJobIdsVect();
+                    missingTableJobs.insert(jobIdVect.begin(), jobIdVect.end());
+                } else {
+                    otherErrors = true;
+                }
+                break;
+            }
+            default:
+                LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " other err code=" << err.getCode());
+                otherErrors = true;
+        }
+    }
+    bool recoverableError = missingTable && !otherErrors;
     if (recoverableError) {
-        // The czar should have new maps before the the new UberJob(s) for
-        // these Jobs are created. (see Czar::_monitor)
+        // The czar needs to use alternates or new maps in hopes of finding
+        // replicas with the missing tables.
+        for (int jobId : missingTableJobs) {
+            // Find the job(s) and flag it not to use the worker, unless there's a newer map than the one used
+            // to make this UberJob
+            auto job = exec->findJob(jobId);
+            if (job != nullptr) {
+                job->avoidWorker(_wContactInfo, _familyMapTimestamp);
+            }
+        }
         _unassignJobs();
     } else {
         // Get the error message to the user and kill the user query.
-        int errState = util::ErrorCode::MYSQLEXEC;
-        getRespHandler()->flushHttpError(errorCode, errorMsg, errState);
-        exec->addMultiError(errorCode, errorMsg, errState);
-        exec->squash(string("UberJob::workerError ") + errorMsg);
+        exec->addMultiError(multiErr_);
+        exec->squash(string("UberJob::workerError ") + mErrMsg);
     }
 
-    string errType = to_string(errorCode) + ":" + errorMsg;
-    return _workerErrorFinish(deleteData, errType, "");
+    return _workerErrorFinish(deleteData, mErrMsg, "");
 }
 
 json UberJob::importResultError(bool shouldCancel, string const& errorType, string const& note) {
@@ -412,11 +438,9 @@ bool UberJob::importResultFinish() {
 
 nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& errorType,
                                            std::string const& note) {
-    // If this is called, the file has been collected and the worker should delete it
-    //
-    // Should this call markComplete for all jobs in the uberjob???
-    // TODO:DM-53238 Only recoverable errors would be: communication failure, or missing table ???
-    // Return a "success:1" json message to be sent to the worker.
+    // If this is called, the error has been received and the worker should delete
+    // the result file.
+    // Return error message received "success:1" json message to be sent to the worker.
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");

@@ -249,7 +249,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _czarConfig->setReplicationHttpPort(port);
 
     // Start special threads.
-    startRegistryUpdate(_czarConfig);
     startGarbageCollect(_czarConfig);
     startGarbageCollectAsync(_czarConfig);
     startGarbageCollectInProgress(_czarConfig, _uqFactory->userQuerySharedResources()->czarId,
@@ -336,9 +335,10 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
         QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
         LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
         uq->submit();
-        uq->join();
+        ccontrol::QueryState qState = uq->join();
+        bool querySuccess = (qState == ccontrol::QueryState::SUCCESS);
         try {
-            msgTable.unlock(uq);
+            msgTable.unlock(uq, querySuccess);
             if (uq) uq->discard();
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
@@ -745,7 +745,7 @@ nlohmann::json Czar::handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErr
                                " ujId=" + to_string(uberJobId) + " czar=" + to_string(czarId));
     }
 
-    auto importRes = uj->workerError(jrMsg->errorCode, jrMsg->errorMsg);
+    auto importRes = uj->workerError(jrMsg->multiError);
     return importRes;
 }
 

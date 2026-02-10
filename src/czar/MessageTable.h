@@ -60,12 +60,12 @@ public:
     void lock();
 
     /// Release lock on message table so that proxy can proceed
-    void unlock(ccontrol::UserQuery::Ptr const& userQuery);
+    void unlock(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess);
 
 protected:
 private:
     /// store all messages from current session to the table
-    void _saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery);
+    void _saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess);
 
     std::string const _tableName;
     std::shared_ptr<sql::SqlConnection> _sqlConn;

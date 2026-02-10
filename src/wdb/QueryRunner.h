@@ -68,7 +68,8 @@ public:
     QueryRunner& operator=(QueryRunner const&) = delete;
     virtual ~QueryRunner() = default;
 
-    bool runQuery();
+    /// errMsg is used to pass information to the end user that may help explain why the query failed.
+    bool runQuery(std::string& errMsg);
 
     /// Cancel the action (in-progress). This should only be called
     /// by Task::cancel(), so if this needs to be cancelled elsewhere,
@@ -88,7 +89,7 @@ private:
     void _setDb();
 
     /// Dispatch with output sent through a SendChannel
-    bool _dispatchChannel();
+    bool _dispatchChannel(std::string& errStr);
     MYSQL_RES* _primeResult(std::string const& query);  ///< Obtain a result handle for a query.
 
     wbase::Task::Ptr const _task;  ///< Actual task

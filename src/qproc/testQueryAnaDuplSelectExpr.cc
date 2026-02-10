@@ -65,7 +65,6 @@ using lsst::qserv::query::QueryContext;
 using lsst::qserv::sql::SqlConfig;
 using lsst::qserv::tests::QueryAnaFixture;
 using lsst::qserv::util::Error;
-using lsst::qserv::util::ErrorCode;
 using lsst::qserv::util::MultiError;
 
 /**
@@ -79,8 +78,8 @@ std::string build_exception_msg(std::string n, std::string name, std::string pos
     MultiError multiError;
     boost::format dupl_err_msg = boost::format(DuplSelectExprPlugin::ERR_MSG) % name % pos;
 
-    Error error(ErrorCode::DUPLICATE_SELECT_EXPR, dupl_err_msg.str());
-    multiError.push_back(error);
+    Error error(Error::DUPLICATE_SELECT_EXPR, Error::NONE, dupl_err_msg.str());
+    multiError.insert(error);
     std::string err_msg =
             "AnalysisError:" + DuplSelectExprPlugin::EXCEPTION_MSG + multiError.toOneLineString();
     return err_msg;
