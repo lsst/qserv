@@ -132,21 +132,6 @@ public:
 
     std::string const wId;  ///< key, this is the one thing that cannot change.
 
-    std::string getWHostAddr() const {
-        std::lock_guard lg(_rMtx);
-        return _wHostAddr;
-    }
-
-    std::string getWHostName() const {
-        std::lock_guard lg(_rMtx);
-        return _wHostName;
-    }
-
-    int getWPort() const {
-        std::lock_guard lg(_rMtx);
-        return _wPort;
-    }
-
     /// Change host and port info to those provided in `other`.
     void changeBaseInfo(WorkerContactInfo const& other) {
         auto [oWId, oWHostAddr, oWHostName, oWPort] = other.getAll();
