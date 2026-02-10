@@ -63,10 +63,8 @@ string MultiError::toOneLineString() const {
 
 util::Error MultiError::firstError() const {
     auto const iter = _errorMap.begin();
-    return (iter == _errorMap.end()) ? Error() : iter->second;
+    return iter == _errorMap.end() ? Error() : iter->second;
 }
-
-bool MultiError::empty() const { return _errorMap.empty(); }
 
 std::vector<Error>::size_type MultiError::size() const { return _errorMap.size(); }
 
@@ -114,10 +112,10 @@ std::ostream& operator<<(std::ostream& out, MultiError const& multiError) {
 
     // To get numerous '[0]' entries in the output under control...
     // Put all errors in a map, and count how many times each occurs.
-    bool firstLoop = true;
+    bool first = true;
     for (auto const& [key, err] : multiError._errorMap) {
-        if (firstLoop) {
-            firstLoop = false;
+        if (first) {
+            first = false;
         } else {
             out << "\n";
         }
