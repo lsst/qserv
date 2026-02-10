@@ -74,9 +74,6 @@ public:
     /// @return - @see MergeEndStatus
     virtual MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) = 0;
 
-    /// Add the error to the error output if it is the first error.
-    virtual void flushHttpError(int errorCode, std::string const& errorMsg, int status) = 0;
-
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
 

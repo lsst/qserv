@@ -180,7 +180,7 @@ MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> const& merge
 MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__); }
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
-    _setError(code, msg, util::ErrorCode::RESULT_IMPORT);
+    _setError(code, util::Error::NONE, msg);
     // Might want more info from result service.
     // Do something about the error. FIXME.
     LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
@@ -251,17 +251,17 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     if (!fileMergeSuccess) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
         util::Error const& err = _infileMerger->getError();
-        _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg(), util::ErrorCode::RESULT_IMPORT);
+        _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, err.getMsg());
     }
     if (csvMemDisk->getContaminated()) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
         fileMergeSuccess = false;
-        _setError(ccontrol::MSG_RESULT_ERROR, "merge stream contaminated", util::ErrorCode::RESULT_IMPORT);
+        _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, "merge stream contaminated");
     }
 
     if (!fileReadErrorMsg.empty()) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " result file read failed");
-        _setError(ccontrol::MSG_HTTP_RESULT, fileReadErrorMsg, util::ErrorCode::RESULT_IMPORT);
+        _setError(ccontrol::MSG_HTTP_RESULT, util::Error::RESULT_IMPORT, fileReadErrorMsg);
     }
     _flushed = true;
 
@@ -302,11 +302,11 @@ bool MergingHandler::_startMerge() {
     return false;
 }
 
-void MergingHandler::_setError(int code, std::string const& msg, int errorState) {
+void MergingHandler::_setError(int code, int subError, std::string const& msg) {
     LOGS(_log, LOG_LVL_DEBUG, "_setError: code: " << code << ", message: " << msg);
     auto exec = _executive.lock();
     if (exec == nullptr) return;
-    exec->addMultiError(code, msg, errorState);
+    exec->addMultiError(code, subError, msg, true);
 }
 
 qdisp::MergeEndStatus MergingHandler::flushHttp(string const& fileUrl, uint64_t fileSize) {
@@ -323,12 +323,6 @@ qdisp::MergeEndStatus MergingHandler::flushHttp(string const& fileUrl, uint64_t 
 
     qdisp::MergeEndStatus mergeStatus = _mergeHttp(uberJob, fileUrl, fileSize);
     return mergeStatus;
-}
-
-void MergingHandler::flushHttpError(int errorCode, std::string const& errorMsg, int errState) {
-    if (!_errorSet.exchange(true)) {
-        _setError(errorCode, errorMsg, errState);
-    }
 }
 
 }  // namespace lsst::qserv::ccontrol

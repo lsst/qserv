@@ -74,9 +74,6 @@ public:
     /// @see qdisp::MergeEndStatus
     qdisp::MergeEndStatus flushHttp(std::string const& fileUrl, std::uint64_t fileSize) override;
 
-    /// @see ResponseHandler::flushHttpError
-    void flushHttpError(int errorCode, std::string const& errorMsg, int status) override;
-
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
 
@@ -93,7 +90,8 @@ private:
                                      std::string const& fileUrl, std::uint64_t fileSize);
 
     /// Set error code and string.
-    void _setError(int code, std::string const& msg, int errorState);
+    /// @see `util::Error` for information on parameters.
+    void _setError(int code, int subCode, std::string const& msg);
 
     /// Return true if merging should be started and set _mergeState to MERGING.
     /// This should only be called once after the file has been collected and
