@@ -63,7 +63,12 @@ public:
     JobDescription::Ptr getDescription() { return _jobDescription; }
     qmeta::JobStatus::Ptr getStatus() { return _jobStatus; }
 
-    bool cancel(bool superfluous = false);
+    /// Cancel this job.
+    /// @param superfluous - true means this job is part of a LIMIT query
+    ///            and the result of this job isn't needed to satisfy the LIMIT.
+    /// @param logLvlErr - put this in the log at log level ERROR when true.
+    ///            There can be 100K+ of these, making the log hard to read.
+    bool cancel(bool superfluous = false, bool logLvlErr = true);
     bool isQueryCancelled();
 
     std::shared_ptr<Executive> getExecutive() { return _executive.lock(); }
@@ -92,6 +97,15 @@ public:
     /// If ujId is the current owner, clear ownership.
     /// @return true if job is unassigned.
     bool unassignFromUberJob(UberJobId ujId);
+
+    /// The query wasn't found on the `worker` using the FamilyMap from `familyMapTime`
+    void avoidWorker(std::shared_ptr<protojson::WorkerContactInfo> const& workerContactInfo,
+                     TIMEPOINT familyMapTime);
+
+    /// Return true if the worker was previously missing this chunk and using the same map.
+    /// This function will remove dead worker entries.
+    bool isWorkerInAvoidMap(std::shared_ptr<protojson::WorkerContactInfo> const& workerContactInfo,
+                            TIMEPOINT familyMapTime);
 
     std::ostream& dumpOS(std::ostream& os) const;
     std::string dump() const;
@@ -136,6 +150,9 @@ protected:
 
     // Cancellation
     std::atomic<bool> _cancelled{false};  ///< Lock to make sure cancel() is only called once.
+
+    typedef std::pair<std::weak_ptr<protojson::WorkerContactInfo>, TIMEPOINT> WorkerAvoidType;
+    std::map<std::string, WorkerAvoidType> _workerAvoidMap;
 
     /// The UberJobId that this job is assigned to. Values less than zero
     /// indicate this job is unassigned. To prevent race conditions,

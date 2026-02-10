@@ -78,15 +78,6 @@ void JobStatus::updateInfoNoErrorOverwrite(std::string const& idMsg, JobStatus::
         jState != qmeta::JobStatus::RESULT_ERROR && jState != qmeta::JobStatus::MERGE_ERROR) {
         _updateInfo(idMsg, s, source, code, desc, severity);
     }
-
-    LOGS(_log, LOG_LVL_DEBUG,
-         idMsg << " Updating state to: " << s << " code=" << code << " " << desc << " src=" << source);
-    _info.stateTime = getNow();
-    _info.state = s;
-    _info.stateCode = code;
-    _info.stateDesc = desc;
-    _info.source = source;
-    _info.severity = severity;
 }
 
 std::string JobStatus::stateStr(JobStatus::State const& state) {
