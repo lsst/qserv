@@ -140,12 +140,15 @@ bool JobQuery::isWorkerInAvoidMap(protojson::WorkerContactInfo::Ptr const& worke
     lock_guard lock(_jqMtx);
     auto iter = _workerAvoidMap.find(workerContactInfo->wId);
     if (iter == _workerAvoidMap.end()) return false;
-    if (iter->second.second < familyMapTime) {
+    WorkerAvoidType const& wat = iter->second;
+    if (wat.second < familyMapTime) {
+        // There's a newer family map making this obsolete.
         _workerAvoidMap.erase(iter);
         return false;
     }
-    auto wci = iter->second.first.lock();
+    protojson::WorkerContactInfo::Ptr const wci = wat.first.lock();
     if (wci == nullptr || wci->wId != workerContactInfo->wId) {
+        // Original worker information has changed.
         _workerAvoidMap.erase(iter);
         return false;
     }
