@@ -99,7 +99,8 @@ void CzarRegistry::_registryUpdateLoop() {
             if (0 == response.at("success").get<int>()) {
                 string const error = response.at("error").get<string>();
                 LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
-                // TODO: Is there a better thing to do than just log this here?
+                // TODO: Controlled shutdown would be nice instead of abort.
+                abort();
             }
         } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());

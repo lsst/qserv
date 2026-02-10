@@ -97,6 +97,9 @@ public:
         return _getChunkMap(familyName);
     }
 
+    /// Returns the time the data for this Family map was put in the database.
+    TIMEPOINT getLastUpdateTime() const { return _lastUpdateTime; }
+
     /// Read the registry information from the database, if not already set.
     bool read();
 
