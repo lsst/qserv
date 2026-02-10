@@ -235,7 +235,7 @@ void UberJob::callMarkCompleteFunc(bool success) {
     // Need to set this uberJob's status, however exec->markCompleted will set
     // the status for each job when it is called.
     // "COMPLETE" and "CANCEL" are used by QmetaMysql to reduce the rows used in qmeta.
-    string source = (success ? "COMPLETE" : "CANCEL");
+    string const source = success ? "COMPLETE" : "CANCEL";
     _jobStatus->updateInfo(getIdStr(), qmeta::JobStatus::COMPLETE, source, 0, "", MSG_INFO);
     for (auto&& job : _jobs) {
         string idStr = job->getIdStr();

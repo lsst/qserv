@@ -315,14 +315,10 @@ bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWork
                      protojson::WorkerContactInfo::WCMapPtr const& wContactMap,
                      qdisp::JobQuery::Ptr const& jqPtr,
                      std::shared_ptr<czar::CzarFamilyMap> const& czFamilyMap) {
-    protojson::WorkerContactInfo::Ptr targetWorkerInfo;
-    auto targetWorkerIter = wContactMap->find(targetWorker->getWorkerId());
-    if (targetWorkerIter != wContactMap->end()) targetWorkerInfo = targetWorkerIter->second;
-    bool avoidWorker = false;
-    if (targetWorkerInfo != nullptr) {
-        avoidWorker = jqPtr->isWorkerInAvoidMap(targetWorkerInfo, czFamilyMap->getLastUpdateTime());
-    }
-    return avoidWorker;
+    auto iter = wContactMap->find(targetWorker->getWorkerId());
+    if (iter == wContactMap->end()) return false;
+    auto const wInfo = iter->second;
+    return wInfo == nullptr || jqPtr->isWorkerInAvoidMap(wInfo, czFamilyMap->getLastUpdateTime());
 }
 
 void UserQuerySelect::buildAndSendUberJobs() {

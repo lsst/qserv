@@ -336,9 +336,9 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
         LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
         uq->submit();
         ccontrol::QueryState qState = uq->join();
-        bool completeSuccess = (qState == ccontrol::QueryState::SUCCESS);
+        bool querySuccess = (qState == ccontrol::QueryState::SUCCESS);
         try {
-            msgTable.unlock(uq, completeSuccess);
+            msgTable.unlock(uq, querySuccess);
             if (uq) uq->discard();
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
