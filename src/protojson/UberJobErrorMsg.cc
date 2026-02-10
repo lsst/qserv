@@ -98,7 +98,7 @@ util::MultiError UberJobErrorMsg::multiErrorFromJson(nlohmann::json const& jsMEr
             set<int> jobIds(jobIdsArray.begin(), jobIdsArray.end());
             util::Error err(errCode, subCode, chunkIds, jobIds, eMsg, count);
             multiErr_.insert(err);
-        } catch (std::invalid_argument const& ex) {
+        } catch (invalid_argument const& ex) {
             // skip to next element
             LOGS(_log, LOG_LVL_WARN, "UberJobErrorMsg::multiErrorFromJson failed to read Error:" << jsElem);
         }
@@ -145,13 +145,16 @@ json UberJobErrorMsg::toJson() const {
     jsJr["czarid"] = czarId;
     jsJr["queryid"] = queryId;
     jsJr["uberjobid"] = uberJobId;
-    auto& jsMultiE = jsJr["multiError"] = json::array();
+    jsJr["multiError"] = json::array();
+    auto& jsMultiE = jsJr["multiError"];
     auto errVect = multiError.getVector();
     for (auto const& err : errVect) {
-        json jsErr = {{"count", err.getCount()},           {"eCode", err.getCode()},
-                      {"subCode", err.getSubCode()},       {"eMsg", err.getMsg()},
-                      {"chunkIds", err.getChunkIdsVect()}, {"jobIds", err.getJobIdsVect()}};
-        jsMultiE.push_back(jsErr);
+        jsMultiE.push_back(json::object({{"count", err.getCount()},
+                                         {"eCode", err.getCode()},
+                                         {"subCode", err.getSubCode()},
+                                         {"eMsg", err.getMsg()},
+                                         {"chunkIds", err.getChunkIdsVect()},
+                                         {"jobIds", err.getJobIdsVect()}}));
     }
 
     return jsJr;

@@ -42,9 +42,11 @@ public:
     /// TODO: make recursive
     nlohmann::json hide(nlohmann::json const& in) const;
 
-    std::set<std::string> keySet{"auth_key", "password", "pw"};
+    std::set<std::string> keySet{"auth_key", "password", "pw", "passwd", "admin_auth_key"};
     std::string mask{"-"};
 };
+
+nlohmann::json pwHide(nlohmann::json const& in);
 
 }  // namespace lsst::qserv::protojson
 

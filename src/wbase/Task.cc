@@ -371,7 +371,7 @@ void Task::action(util::CmdData* data) {
         success = qr->runQuery(errStr);
     } catch (UnsupportedError const& e) {
         LOGS(_log, LOG_LVL_ERROR, __func__ << " runQuery threw UnsupportedError " << e.what() << tIdStr);
-        errStr += string(" threw:") + e.what();
+        errStr += string(" exception:") + e.what();
     }
     if (not success) {
         LOGS(_log, _logLvlET, "runQuery failed " << tIdStr);
@@ -381,8 +381,8 @@ void Task::action(util::CmdData* data) {
         // This is what gets sent if a more specific error has not been sent already.
         util::MultiError multiErr;
         bool logLvl = (_logLvlET != LOG_LVL_TRACE);
-        string strMsg = string("worker run error chunk=" + to_string(_chunkId) + ":" + errStr);
-        strMsg += " worker=" + getUberJobData()->getWorkerId();
+        string const strMsg = string("worker run error chunk=") + to_string(_chunkId) + ":" + errStr +
+                              " worker=" + getUberJobData()->getWorkerId();
         util::Error err(util::Error::WORKER_QUERY, util::Error::NONE, strMsg, logLvl);
         multiErr.insert(err);
         _ujData->responseError(multiErr, -1, false, _logLvlET);

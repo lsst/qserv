@@ -41,21 +41,26 @@
 namespace lsst::qserv::util {
 
 /// Store a Qserv error to be used with util::MultiError
+/// This class stores and error `_code`, `_subCode`, `_msg`, and possibly some other
+/// information about the error like chunkId.
+/// The Error objects usually stored in a `util::MultiError` object, which uses
+/// `_code` +`_subCode` as the key. `MultiError` only stores the first
+/// `Error` for each key and increments the `_count` if more errors of the
+/// same type are found.
+/// `_code` is either from MariaDb or `Error::ErrCode`.
+/// `_subCode` is usually 0, but is useful in some cases. A primary use is
+///        for reporting the SQL error code behind a WORKER_SQL error.
 class Error {
 public:
-    /// TODO: fix confusion between status and code see: DM-2996
     /// Final Errors sent to the user are set by qmeta::MessageStore which
     /// writes the errors to a database table, which makes them impossible
-    /// to sort from this side.
+    /// to sort within qserv.
     /// All of the errors in the MultiError object go into a single error
-    /// row in the table, so sorting them in MultiError does have an effect,
-    /// but the proxy may reorder all of the rows in qmeta::MessageStore
+    /// row in the table, so sorting them in MultiError does have an effect.
     ///
     /// List of Qserv errors
     /// Errors codes should be in order of likely usefulness to the end user.
-    /// MariahDB errors should all be below 5000. Any error in qana
-    /// makes it unlikely the work will continue long enough to see
-    /// any of the errors listed here.
+    /// MariahDB errors should all be below 5000.
     enum ErrCode {
         // Default for blank error.
         NONE = 0,
@@ -96,8 +101,9 @@ public:
         // Communication errors
         CZAR_WORKER_COM,
         WORKER_CZAR_COM,
-        // Use a large number to put at the end of the list.
-        CANCEL = 10'000'000
+        // This a common error code indicating the czar
+        // cancelled this because another error had been found.
+        CANCEL
     };
 
     Error(int code, int subCode, std::string const& msg = "", bool logLvlErr = true);
@@ -130,8 +136,10 @@ public:
     friend std::ostream& operator<<(std::ostream& out, Error const& error);
 
 private:
+    /// This is either from MariaDB or from Error::ErrCode
     int _code = NONE;
     /// Only used for certain cases, such as SQL error numbers, may have any value.
+    /// A primary use is for reporting the SQL error code behind a WORKER_SQL error.
     int _subCode = 0;
     std::set<int> _jobIds;    /// Job ID number, when useful.
     std::set<int> _chunkIds;  /// Chunk ID number, when useful.

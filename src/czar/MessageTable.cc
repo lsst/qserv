@@ -95,8 +95,8 @@ void MessageTable::lock() {
 }
 
 // Release lock on message table so that proxy can proceed
-void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery, bool completeSuccess) {
-    _saveQueryMessages(userQuery, completeSuccess);
+void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess) {
+    _saveQueryMessages(userQuery, querySuccess);
 
     sql::SqlErrorObject sqlErr;
     LOGS(_log, LOG_LVL_DEBUG, "unlocking message table " << _tableName);
@@ -108,7 +108,7 @@ void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery, bool comple
 }
 
 // store all messages from current session to the table
-void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery, bool completeSuccess) {
+void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess) {
     if (not userQuery) {
         return;
     }
@@ -117,7 +117,7 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery,
     int completeCount = 0;
     int cancelCount = 0;
     std::string multiErrStr = "";
-    std::string severity = (completeSuccess) ? "INFO" : "ERROR";
+    std::string severity = (querySuccess) ? "INFO" : "ERROR";
 
     // Collect information about the query and put it in the message table.
     int msgCount = msgStore->messageCount();
