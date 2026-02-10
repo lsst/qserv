@@ -66,7 +66,7 @@ public:
     /// Return the error with the lowest error code.
     util::Error firstError() const;
 
-    bool empty() const;
+    bool empty() const { return _errorMap.empty(); }
 
     std::vector<Error>::size_type size() const;
 
@@ -83,6 +83,7 @@ public:
     friend std::ostream& operator<<(std::ostream& out, MultiError const& multiError);
 
 private:
+    /// Map of Errors using Error::_code + Error::_subCode as the key.
     std::map<std::pair<int, int>, Error> _errorMap;
 };
 
