@@ -81,6 +81,7 @@ private:
     bool _ready();
     std::shared_ptr<ChunkTaskCollection> _taskQueue;  ///< Constrains access to files.
 
+protected:
     /// Scans placed on this scheduler should have a rating between(inclusive) _minRating and _maxRating.
     const int _minRating;
     const int _maxRating;
