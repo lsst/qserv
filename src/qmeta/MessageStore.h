@@ -117,6 +117,8 @@ public:
     int messageCount() const;
     int messageCount(int code) const;
 
+    std::string dump() const;
+
 private:
     std::mutex _storeMutex;
     std::vector<QueryMessage> _queryMessages;
