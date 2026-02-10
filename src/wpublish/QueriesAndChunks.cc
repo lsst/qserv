@@ -93,11 +93,21 @@ QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds ex
     }
 
     auto rExamine = [this]() {
+        int examineAfterSeconds = _examineAfter.count();
+        int seconds = 0;
         while (_loopExamine) {
-            this_thread::sleep_for(_examineAfter);
-            if (_loopExamine) examineAll();
+            // Check frequently so unit tests finish in less time,
+            // as they aren't waiting for a 5 minute sleep to finish.
+            this_thread::sleep_for(chrono::seconds(2));
+            seconds++;
+            if (_loopExamine && seconds > examineAfterSeconds) {
+                examineAll();
+                seconds = 0;
+                examineAfterSeconds = _examineAfter.count();
+            }
         }
     };
+
     thread te(rExamine);
     _examineThread = move(te);
 }
@@ -119,21 +129,40 @@ void QueriesAndChunks::setBlendScheduler(shared_ptr<wsched::BlendScheduler> cons
 
 void QueriesAndChunks::setRequiredTasksCompleted(unsigned int value) { _requiredTasksCompleted = value; }
 
-/// Add statistics for the Task, creating a QueryStatistics object if needed.
-void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
-    auto qid = task->getQueryId();
-    unique_lock<mutex> guardStats(_queryStatsMapMtx);
-    auto itr = _queryStatsMap.find(qid);
+QueryStatistics::Ptr QueriesAndChunks::_addQueryId(QueryId qId, CzarId czarId) {
+    auto itr = _queryStatsMap.find(qId);
     QueryStatistics::Ptr stats;
     if (_queryStatsMap.end() == itr) {
-        stats = QueryStatistics::create(qid);
-        _queryStatsMap[qid] = stats;
+        stats = QueryStatistics::create(qId, czarId);
+        _queryStatsMap[qId] = stats;
     } else {
         stats = itr->second;
     }
-    guardStats.unlock();
+    return stats;
+}
+
+QueryStatistics::Ptr QueriesAndChunks::addQueryId(QueryId qId, CzarId czarId) {
+    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+    return _addQueryId(qId, czarId);
+}
+
+/// Add statistics for the Task, creating a QueryStatistics object if needed.
+void QueriesAndChunks::addTask(wbase::Task::Ptr const& task) {
+    auto qid = task->getQueryId();
+    auto czId = task->getCzarId();
+    auto stats = addQueryId(qid, czId);
     stats->addTask(task);
-    task->setQueryStatistics(stats);
+}
+void QueriesAndChunks::addTasks(vector<wbase::Task::Ptr> const& tasks,
+                                std::vector<util::Command::Ptr>& cmds) {
+    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+    for (auto const& task : tasks) {
+        auto qid = task->getQueryId();
+        auto czId = task->getCzarId();
+        auto stats = _addQueryId(qid, czId);
+        stats->addTask(task);
+        cmds.push_back(task);
+    }
 }
 
 /// Update statistics for the Task that was just queued.
@@ -195,10 +224,11 @@ void QueriesAndChunks::_finishedTaskForChunk(wbase::Task::Ptr const& task, doubl
     }
     auto ptr = res.first->second;
     ul.unlock();
-    proto::ScanInfo& scanInfo = task->getScanInfo();
+    auto iter = res.first->second;
+    protojson::ScanInfo::Ptr scanInfo = task->getScanInfo();
     string tblName;
-    if (!scanInfo.infoTables.empty()) {
-        proto::ScanTableInfo& sti = scanInfo.infoTables.at(0);
+    if (!scanInfo->infoTables.empty()) {
+        protojson::ScanTableInfo& sti = scanInfo->infoTables.at(0);
         tblName = ChunkTableStats::makeTableName(sti.db, sti.table);
     }
     ChunkTableStats::Ptr tableStats = ptr->add(tblName, minutes);
@@ -257,7 +287,7 @@ void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
     _queryStatsMap.erase(qId);
 }
 
-QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId const& qId) const {
+QueryStatistics::Ptr QueriesAndChunks::getStats(QueryId qId) const {
     lock_guard<mutex> lockG(_queryStatsMapMtx);
     return _getStats(qId);
 }
@@ -324,8 +354,8 @@ void QueriesAndChunks::examineAll() {
             }
             double schedMaxTime = sched->getMaxTimeMinutes();  // Get max time for scheduler
             // Get the slowest scan table in task.
-            auto begin = task->getScanInfo().infoTables.begin();
-            if (begin == task->getScanInfo().infoTables.end()) {
+            auto begin = task->getScanInfo()->infoTables.begin();
+            if (begin == task->getScanInfo()->infoTables.end()) {
                 continue;
             }
             string const& slowestTable = begin->db + ":" + begin->table;
@@ -672,6 +702,23 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
     return removedList;
 }
 
+void QueriesAndChunks::killAllQueriesFromCzar(CzarId czarId) {
+    std::map<QueryId, QueryStatistics::Ptr> qsMap;
+    {
+        lock_guard<mutex> lgQsm(_queryStatsMapMtx);
+        qsMap = _queryStatsMap;
+    }
+
+    for (auto const& [qsKey, qsPtr] : qsMap) {
+        if (qsPtr != nullptr) {
+            auto uqInfo = qsPtr->getUserQueryInfo();
+            if (uqInfo != nullptr && uqInfo->getCzarId() == czarId) {
+                uqInfo->cancelAllUberJobs();
+            }
+        }
+    }
+}
+
 ostream& operator<<(ostream& os, QueriesAndChunks const& qc) {
     lock_guard<mutex> g(qc._chunkMtx);
     os << "Chunks(";
@@ -727,7 +774,7 @@ void ChunkTableStats::addTaskFinished(double minutes) {
     } else {
         _data.avgCompletionTime = minutes;
     }
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGS(_log, LOG_LVL_TRACE,
          "ChkId=" << _chunkId << ":tbl=" << _scanTableName << " completed=" << _data.tasksCompleted
                   << " avgCompletionTime=" << _data.avgCompletionTime);
 }

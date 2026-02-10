@@ -43,6 +43,8 @@ namespace lsst::qserv::mysql {
  */
 class CsvBuffer {
 public:
+    virtual ~CsvBuffer() = default;
+
     /// Fetch a number of bytes into a buffer. Return the number of bytes
     /// fetched. Returning less than bufLen does NOT indicate EOF.
     virtual unsigned fetch(char* buffer, unsigned bufLen) = 0;
@@ -96,6 +98,12 @@ public:
     void push(char const* data, std::size_t size);
 
     /**
+     *  Call to break push operations if the results are no longer needed.
+     *  This is only meant to be used to break lingering push() calls.
+     */
+    void cancel();
+
+    /**
      * Pop a record from the stream. The method will block if the stream is empty
      * until a record is pushed.
      * @return A shared pointer to the popped record or an empty string for the end of the stream
@@ -111,6 +119,15 @@ public:
      */
     bool empty() const;
 
+    void increaseBytesWrittenBy(size_t bytesToCopy) { _bytesWritten += bytesToCopy; }
+    size_t getBytesWritten() const { return _bytesWritten; }
+
+    /**
+     * If this returns true, the result table has been contaminated by bad characters
+     * in an effort to keep the system from hanging, and the UserQuery is done.
+     */
+    bool getContaminated() const { return _contaminated; }
+
 private:
     CsvStream(std::size_t maxRecords);
 
@@ -118,6 +135,9 @@ private:
     std::condition_variable _cv;
     std::size_t const _maxRecords;
     std::list<std::shared_ptr<std::string>> _records;
+    std::atomic<size_t> _bytesWritten;
+    bool _cancelled = false;
+    std::atomic<bool> _contaminated = false;
 };
 
 /**

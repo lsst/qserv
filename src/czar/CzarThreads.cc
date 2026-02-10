@@ -67,41 +67,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
 namespace lsst::qserv::czar {
 
-void registryUpdate(shared_ptr<cconfig::CzarConfig> const& czarConfig) {
-    auto const method = http::Method::POST;
-    string const url = "http://" + czarConfig->replicationRegistryHost() + ":" +
-                       to_string(czarConfig->replicationRegistryPort()) + "/czar";
-    vector<string> const headers = {"Content-Type: application/json"};
-    json const request = json::object({{"version", http::MetaModule::version},
-                                       {"instance_id", czarConfig->replicationInstanceId()},
-                                       {"auth_key", czarConfig->replicationAuthKey()},
-                                       {"czar",
-                                        {{"name", czarConfig->name()},
-                                         {"id", czarConfig->id()},
-                                         {"management-port", czarConfig->replicationHttpPort()},
-                                         {"host-name", util::get_current_host_fqdn()}}}});
-    string const requestContext = "'" + http::method2string(method) + "' request to '" + url + "'";
-    http::Client client(method, url, request.dump(), headers);
-    while (true) {
-        try {
-            json const response = client.readAsJson();
-            if (0 == response.at("success").get<int>()) {
-                string const error = response.at("error").get<string>();
-                ERROR_(requestContext << " was denied, error: '" << error << "'.");
-                abort();
-            }
-        } catch (exception const& ex) {
-            WARN_(requestContext << " failed, ex: " << ex.what());
-        }
-        this_thread::sleep_for(chrono::seconds(max(1U, czarConfig->replicationRegistryHearbeatIvalSec())));
-    }
-}
-
-void startRegistryUpdate(shared_ptr<cconfig::CzarConfig> czarConfig) {
-    thread t(registryUpdate, czarConfig);
-    t.detach();
-}
-
 inline string searchForOldTablesQuery(string const& resultDbName, int const resultAgeDay) {
     return "SELECT table_name,create_time FROM information_schema.tables WHERE table_schema='" +
            resultDbName +
@@ -257,7 +222,7 @@ void startGarbageCollectAsync(shared_ptr<cconfig::CzarConfig> czarConfig) {
     t.detach();
 }
 
-void startGarbageCollectInProgress(shared_ptr<cconfig::CzarConfig> czarConfig, qmeta::CzarId czarId,
+void startGarbageCollectInProgress(shared_ptr<cconfig::CzarConfig> czarConfig, CzarId czarId,
                                    shared_ptr<qmeta::QMeta> queryMetadata) {
     // Sanitize a value of the configuration parameters to tolerate a misconfiguration of Czar.
     chrono::seconds const cleanupInterval = max(czarConfig->getInProgressCleanupIvalSec(), 1U) * 1s;
