@@ -61,6 +61,7 @@
 #include "util/threadSafe.h"
 #include "wbase/Base.h"
 #include "wbase/FileChannelShared.h"
+#include "wbase/UberJobData.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
 #include "wdb/ChunkResource.h"
@@ -111,15 +112,16 @@ bool QueryRunner::_initConnection() {
 
     if (not _mysqlConn->connect()) {
         LOGS(_log, LOG_LVL_ERROR, "Unable to connect to MySQL: " << localMySqlConfig);
-        util::Error error(-1, "Unable to connect to MySQL; " + localMySqlConfig.toString());
-        _multiError.push_back(error);
+        util::Error error(util::Error::WORKER_SQL_CONNECT, util::Error::NONE,
+                          "Unable to connect to MySQL; " + localMySqlConfig.toString());
+        _multiError.insert(error);
         return false;
     }
     _task->setMySqlThreadId(_mysqlConn->threadId());
     return true;
 }
 
-bool QueryRunner::runQuery() {
+bool QueryRunner::runQuery(std::string& errMsg) {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
     LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__));
@@ -148,6 +150,7 @@ bool QueryRunner::runQuery() {
 
     if (_task->checkCancelled()) {
         LOGS(_log, LOG_LVL_TRACE, "runQuery, task was cancelled before it started." << _task->getIdStr());
+        errMsg += "already cancelled";
         return false;
     }
 
@@ -157,13 +160,16 @@ bool QueryRunner::runQuery() {
 
     bool connOk = _initConnection();
     if (!connOk) {
+        errMsg += "initConnection failed";
+        util::Error err(util::Error::WORKER_SQL_CONNECT, 0, errMsg);
+        _multiError.insert(err);
         // Since there's an error, this will be the last transmit from this QueryRunner.
         _task->getSendChannel()->buildAndTransmitError(_multiError, _task, _cancelled);
         return false;
     }
 
     // Run the query and send the results back.
-    return _dispatchChannel();
+    return _dispatchChannel(errMsg);
 }
 
 MYSQL_RES* QueryRunner::_primeResult(string const& query) {
@@ -201,7 +207,7 @@ private:
     wbase::Task& _task;
 };
 
-bool QueryRunner::_dispatchChannel() {
+bool QueryRunner::_dispatchChannel(string& errMsg) {
     bool erred = false;
     bool needToFreeRes = false;  // set to true once there are results to be freed.
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
@@ -252,9 +258,11 @@ bool QueryRunner::_dispatchChannel() {
             }
         }
     } catch (sql::SqlErrorObject const& e) {
-        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << e.errMsg() << " " << _task->getIdStr());
-        util::Error worker_err(e.errNo(), e.errMsg());
-        _multiError.push_back(worker_err);
+        errMsg = e.errMsg() + " " + errMsg;
+        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << errMsg << " " << _task->getIdStr());
+        util::Error worker_err(util::Error::WORKER_SQL, e.errNo(), {_task->getChunkId()}, {_task->getJobId()},
+                               errMsg);
+        _multiError.insert(worker_err);
         erred = true;
     }
 
