@@ -195,6 +195,7 @@ public:
     int getTotalJobs() { return _totalJobs; }
 
     /// Add an error code and message that may be displayed to the user.
+    /// @see util::Error for information about parameters.
     void addMultiError(int errorCode, int subError, std::string const& errorMsg, bool logLvlErr = true);
     void addMultiError(util::MultiError const& multiErr);
 

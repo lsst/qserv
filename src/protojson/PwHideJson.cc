@@ -53,4 +53,9 @@ nlohmann::json PwHideJson::hide(nlohmann::json const& in) const {
     }
 }
 
+nlohmann::json pwHide(nlohmann::json const& in) {
+    PwHideJson phj;
+    return phj.hide(in);
+}
+
 }  // namespace lsst::qserv::protojson
