@@ -100,13 +100,6 @@ void UberJobData::responseFileReady(protojson::FileUrlInfo const& fileUrlInfo_) 
              cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
     }
 
-    // Latch to prevent errors from being transmitted.
-    // NOTE: Calls to responseError() and responseFileReady() are protected by the
-    //       mutex in FileChannelShared (_tMtx).
-    if (_responseState.exchange(SENDING_FILEURL) != NOTHING) {
-        LOGS(_log, LOG_LVL_ERROR,
-             cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
-    }
     protojson::AuthContext authContext_(wconfig::WorkerConfig::instance()->replicationInstanceId(),
                                         wconfig::WorkerConfig::instance()->replicationAuthKey());
     auto ujMsg = responseFileReadyBuild(fileUrlInfo_, authContext_);
@@ -143,7 +136,8 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
     if (_responseState == NOTHING) {
         _responseState = SENDING_ERROR;
     } else {
-        LOGS(_log, logLvl, cName(__func__) << " Already sending a different message.");
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " Already sending a different message. NOT sending [" << multiErr << "]");
         return;
     }
 
@@ -171,22 +165,17 @@ shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
-    string errorMsg;
-    int errorCode = 0;
-    if (!multiErr.empty()) {
-        errorMsg = multiErr.toOneLineString();
-        errorCode = multiErr.firstErrorCode();
-    } else if (cancelled) {
-        errorMsg = "cancelled";
-        errorCode = -1;
+    if (cancelled) {
+        util::Error err(util::Error::CANCEL, util::Error::NONE, "cancelled");
+        multiErr.insert(err);
     }
-    if (!errorMsg.empty() or (errorCode != 0)) {
-        errorMsg = cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ": " + errorMsg;
-        LOGS(_log, logLvl, errorMsg);
-    }
+    LOGS(_log, logLvl,
+         cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ":" +
+                 multiErr.toOneLineString());
     unsigned int const version = http::MetaModule::version;
     auto jrMsg = protojson::UberJobErrorMsg::create(authContext_, version, workerIdStr, _czarName, _czarId,
-                                                    _queryId, _uberJobId, errorCode, errorMsg);
+                                                    _queryId, _uberJobId, multiErr);
+
     return jrMsg;
 }
 

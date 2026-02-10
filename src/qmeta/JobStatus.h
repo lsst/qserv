@@ -94,15 +94,14 @@ public:
      *  - resourceUnit should be extracted from Info (beware of mutex)
      *  - Info should be put in a vector
      */
-    void updateInfo(std::string const& idMsg, State s, std::string const& source, int code = 0,
-                    std::string const& desc = "", MessageSeverity severity = MSG_INFO);
+    void updateInfo(std::string const& idMsg, State s, std::string const& source, int code,
+                    std::string const& desc, MessageSeverity severity);
 
     /// Same as updateInfo() except existing error states are not overwritten.
     /// @see updateInfo()
     /// @return Negative values indicate the status was changed, zero and positive values
-    void updateInfoNoErrorOverwrite(std::string const& idMsg, State s, std::string const& source,
-                                    int code = 0, std::string const& desc = "",
-                                    MessageSeverity severity = MSG_INFO);
+    void updateInfoNoErrorOverwrite(std::string const& idMsg, State s, std::string const& source, int code,
+                                    std::string const& desc, MessageSeverity severity);
 
     struct Info {
         Info();

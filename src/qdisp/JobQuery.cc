@@ -56,7 +56,7 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
 JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
-bool JobQuery::cancel(bool superfluous) {
+bool JobQuery::cancel(bool superfluous, bool logLvlErr) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     if (_cancelled.exchange(true) == false) {
         LOGS(_log, LOG_LVL_TRACE, "JobQuery::cancel() " << superfluous);
@@ -71,7 +71,7 @@ bool JobQuery::cancel(bool superfluous) {
             return false;
         }
         if (!superfluous) {
-            exec->addMultiError(-1, context, util::ErrorCode::JOB_CANCEL);
+            exec->addMultiError(util::Error::CANCEL, util::Error::JOB_CANCEL, context, logLvlErr);
         }
         exec->markCompleted(getJobId(), false);
         return true;
@@ -123,6 +123,35 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
 
     auto exec = _executive.lock();
     // Do not increase the attempt count as it should have been increased when the job was started.
+    return true;
+}
+
+void JobQuery::avoidWorker(protojson::WorkerContactInfo::Ptr const& workerContactInfo,
+                           TIMEPOINT familyMapTime) {
+    VMUTEX_NOT_HELD(_jqMtx);
+    lock_guard lock(_jqMtx);
+    _workerAvoidMap[workerContactInfo->wId] = make_pair(workerContactInfo, familyMapTime);
+}
+
+bool JobQuery::isWorkerInAvoidMap(protojson::WorkerContactInfo::Ptr const& workerContactInfo,
+                                  TIMEPOINT familyMapTime) {
+    if (workerContactInfo == nullptr) return false;
+    VMUTEX_NOT_HELD(_jqMtx);
+    lock_guard lock(_jqMtx);
+    auto iter = _workerAvoidMap.find(workerContactInfo->wId);
+    if (iter == _workerAvoidMap.end()) return false;
+    WorkerAvoidType const& wat = iter->second;
+    if (wat.second < familyMapTime) {
+        // There's a newer family map making this obsolete.
+        _workerAvoidMap.erase(iter);
+        return false;
+    }
+    protojson::WorkerContactInfo::Ptr const wci = wat.first.lock();
+    if (wci == nullptr || wci->wId != workerContactInfo->wId) {
+        // Original worker information has changed.
+        _workerAvoidMap.erase(iter);
+        return false;
+    }
     return true;
 }
 
