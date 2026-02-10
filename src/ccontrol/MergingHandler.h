@@ -90,7 +90,8 @@ private:
                                      std::string const& fileUrl, std::uint64_t fileSize);
 
     /// Set error code and string.
-    void _setError(int code, int subCode, std::string const& msg, int errorState);
+    /// @see `util::Error` for information on parameters.
+    void _setError(int code, int subCode, std::string const& msg);
 
     /// Return true if merging should be started and set _mergeState to MERGING.
     /// This should only be called once after the file has been collected and

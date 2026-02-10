@@ -111,10 +111,9 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
         auto importRes = czar::Czar::getCzar()->handleUberJobErrorMsg(jrMsg, fName);
         return importRes;
     } catch (std::invalid_argument const& iaEx) {
-        protojson::PwHideJson phj;
         LOGS(_log, LOG_LVL_ERROR,
-             "HttpCzarWorkerModule::_handleJobError received " << iaEx.what()
-                                                               << " js=" << phj.hide(body().objJson));
+             "HttpCzarWorkerModule::_handleJobError received "
+                     << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
         return respMsg.toJson();
     }
@@ -132,10 +131,9 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
         auto importRes = czar::Czar::getCzar()->handleUberJobReadyMsg(jrMsg, fName);
         return importRes;
     } catch (std::invalid_argument const& iaEx) {
-        protojson::PwHideJson phj;
         LOGS(_log, LOG_LVL_ERROR,
-             "HttpCzarWorkerModule::_handleJobReady received " << iaEx.what()
-                                                               << " js=" << phj.hide(body().objJson));
+             "HttpCzarWorkerModule::_handleJobReady received "
+                     << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
         return respMsg.toJson();
     }
@@ -192,10 +190,9 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
         LOGS(_log, LOG_LVL_TRACE, "HttpCzarWorkerModule::_handleWorkerCzarComIssue jsRet=" << jsRet.dump());
         return jsRet;
     } catch (std::invalid_argument const& iaEx) {
-        protojson::PwHideJson phj;
         LOGS(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleWorkerCzarComIssue received "
-                     << iaEx.what() << " js=" << phj.hide(body().objJson));
+                     << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
         return respMsg.toJson();
     }
