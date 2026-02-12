@@ -68,6 +68,7 @@ private:
 
     void sync(antlr4::Parser* recognizer) override {
         // we want this function to be a no-op so we override it.
+        // LOGS(_log, LOG_LVL_TRACE, "run:*");
     }
 
     std::string const& _statement;
@@ -110,20 +111,33 @@ ParseRunner::ParseRunner(std::string const& statement,
 }
 
 void ParseRunner::run() {
+    LOGS(_log, LOG_LVL_TRACE, "run:1");
     _listener = std::make_shared<ParseListener>(_statement, _queryResources);
+    LOGS(_log, LOG_LVL_TRACE, "run:2");
     using namespace antlr4;
     ANTLRInputStream input(_statement);
+    LOGS(_log, LOG_LVL_TRACE, "run:3");
     NonRecoveringQSMySqlLexer lexer(&input, _statement);
+    LOGS(_log, LOG_LVL_TRACE, "run:4");
     CommonTokenStream tokens(&lexer);
+    LOGS(_log, LOG_LVL_TRACE, "run:5");
     tokens.fill();
+    LOGS(_log, LOG_LVL_TRACE, "run:6");
     LOGS(_log, LOG_LVL_TRACE,
          "Parsed tokens:" << util::printable(ParseListener::getTokenPairs(tokens, lexer)));
+    LOGS(_log, LOG_LVL_TRACE, "run:7");
     QSMySqlParser parser(&tokens);
+    LOGS(_log, LOG_LVL_TRACE, "run:8");
     parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));
+    LOGS(_log, LOG_LVL_TRACE, "run:9");
     tree::ParseTree* tree = parser.root();
+    LOGS(_log, LOG_LVL_TRACE, "run:10");
     tree::ParseTreeWalker walker;
+    LOGS(_log, LOG_LVL_TRACE, "run:11");
     antlr4::tree::ParseTreeListener* listener = _listener.get();
+    LOGS(_log, LOG_LVL_TRACE, "run:12");
     walker.walk(listener, tree);
+    LOGS(_log, LOG_LVL_TRACE, "run:13");
 }
 
 std::shared_ptr<query::SelectStmt> ParseRunner::getSelectStmt() { return _listener->getSelectStatement(); }

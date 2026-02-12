@@ -188,7 +188,7 @@ protected:
     // passed in to CALLBACK_INFO
     template <typename CALLBACK_INFO>
     void trace_callback_info(std::string const& function, CALLBACK_INFO const& callbackInfo) {
-        LOGS(_log, LOG_LVL_TRACE, name() << function << " " << callbackInfo);
+        // LOGS(_log, LOG_LVL_TRACE, name() << function << " " << callbackInfo);
     }
 
     static LOG_LOGGER _log;
@@ -1706,7 +1706,7 @@ public:
         } else if (_ctx->functionNameBase() != nullptr) {
             return;
         } else if (_ctx->keywordsCanBeId() != nullptr) {
-            LOGS(_log, LOG_LVL_WARN, __FUNCTION__ << " reusing keyword as ID: " << _ctx->getText());
+            // LOGS(_log, LOG_LVL_WARN, __FUNCTION__ << " reusing keyword as ID: " << _ctx->getText());
             return;
         }
         assertNotSupported(__FUNCTION__, false, "Unsupported SimpleId", _ctx);
