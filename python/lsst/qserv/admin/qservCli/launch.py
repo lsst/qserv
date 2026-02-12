@@ -42,11 +42,12 @@ from .opt import (
     env_qserv_image,
 )
 
-# The location where the lite-build and run-base images should be built from:
+# The dockerfile locations for various images:
 base_image_build_subdir = "deploy/docker/base"
 user_build_image_subdir = "deploy/docker/build-user"
 run_image_build_subdir = "deploy/docker/run"
 mariadb_image_subdir = "deploy/docker/mariadb"
+
 mypy_cfg_file = "pyproject.toml"
 
 # the location of the testdata dir within qserv_root:
@@ -410,7 +411,7 @@ def build(
     pull_image: bool,
     user: str,
 ) -> None:
-    """Build qserv and a new lite-qserv image.
+    """Build qserv and a new qserv image.
 
     Parameters
     ----------
@@ -434,17 +435,17 @@ def build(
         "reformat" if clang-format should reformat files if needed.
         "off" if clang-format should not be run.
     user_build_image : `str`
-        The name of the lite-build image to use to run cmake and make.
+        The name of the user build image to use to run cmake and make.
     qserv_image : `str`
         The name of the image to create.
     run_base_image : `str`
-        The name of the lite-run-base image to use as a base for the lite-run image.
+        The name of the run base image to use as a base for the qserv image.
     do_build_image : `bool`
         True if a qserv run image should be created.
     push_image : `bool`
-        True if the lite-qserv image should be pushed to dockerhub.
+        True if the qserv image should be pushed to dockerhub.
     pull_image: `bool`
-        Pull the lite-qserv image from dockerhub if it exists there.
+        Pull the qserv image from dockerhub if it exists there.
     user : `str`
         The name of the user to run the build container as.
     """
@@ -567,26 +568,26 @@ def build_docs(
 def build_build_image(
     build_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
-    """Build the build image.
+    """Build the build base image.
 
     Parameters
     ----------
     build_image : `str`
-        The name of the build image to make.
+        The name of the build base image to make.
     qserv_root : `str`
         The path to the qserv source folder.
     dry : `bool`
         If True do not run the command; print what would have been run.
     push_image : `bool`
-        True if the lite-qserv image should be pushed to dockerhub.
+        True if the build base image should be pushed to dockerhub.
     pull_image: `bool`
-        Pull the lite-qserv image from dockerhub if it exists there.
+        Pull the build base image from dockerhub if it exists there.
     """
     if pull_image and do_pull_image(build_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
     images.build_image(
         image_name=build_image,
-        target="lite-build",
+        target="qserv-build-base",
         run_dir=os.path.join(qserv_root, base_image_build_subdir),
         dry=dry,
     )
@@ -597,7 +598,7 @@ def build_build_image(
 def build_user_build_image(
     qserv_root: str, build_image: str, user_build_image: str, group: str, dry: bool
 ) -> None:
-    """Build the user-build image."""
+    """Build the user build image."""
     user_info = pwd.getpwnam(getpass.getuser())
     args = [
         "docker",
@@ -626,12 +627,12 @@ def build_user_build_image(
 def build_run_base_image(
     run_base_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
-    """Build the qserv lite-run-base image."""
+    """Build the qserv run base image."""
     if pull_image and do_pull_image(run_base_image, env_dh_user.val(), env_dh_token.val(), dry):
         return
     images.build_image(
         image_name=run_base_image,
-        target="lite-run-base",
+        target="qserv-run-base",
         run_dir=os.path.join(qserv_root, base_image_build_subdir),
         dry=dry,
     )
@@ -698,7 +699,7 @@ def run_dev(
     project: str,
     dry: bool,
 ) -> str:
-    """Launch a lite-qserv container for iterative developement testing.
+    """Launch a qserv container for iterative developement testing.
 
     Parameters
     ----------

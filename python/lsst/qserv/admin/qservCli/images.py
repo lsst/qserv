@@ -199,8 +199,14 @@ def git_log(a: str, b: str, cwd: str) -> list[str]:
         If there is an error running `git log a..b`.
     """
     args = ["git", "log", "--pretty=format:%H", f"{a}..{b}"]
-    res = subproc.run(args, cwd=cwd, capture_stdout=True, errmsg=f"Get log of shas {a}..{b}.")
-    return res.stdout.strip().split()
+    _log.debug('Running "%s"', " ".join(args))
+    res = subproc.run(
+        args,
+        cwd=cwd,
+        capture_stdout=True,
+        errmsg=f"Failed to get git log of shas {a}..{b}.",
+    )
+    return res.stdout.decode().strip().split()
 
 
 def get_most_recent(shas: list[str], cwd: str) -> str:
@@ -375,7 +381,7 @@ def build_image(
     options: list[str] | None = None,
     dockerfile: str | None = None,
 ) -> None:
-    """Build the qserv lite-build image.
+    """Build the qserv build image.
 
     Parameters
     ----------

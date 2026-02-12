@@ -226,7 +226,7 @@ jobs:
           --build-image ${{ needs.image-names.outputs.build-image }} \
           --user-build-image ${{ needs.image-names.outputs.user-build-image }}
 
-      - name: Build lite-qserv image
+      - name: Build qserv image
         run: |
           ./bin/qserv --log-level DEBUG build \
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
