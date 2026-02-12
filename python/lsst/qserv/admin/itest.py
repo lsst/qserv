@@ -33,6 +33,7 @@ from typing import Any, TextIO
 from urllib.parse import urljoin, urlparse
 
 import requests
+import requests.auth
 import urllib3
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
@@ -1418,7 +1419,9 @@ def run_http_ingest(
             validate_result,
         )
     except Exception as e:
-        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_dir, database_dir, e)
+        _log.error(
+            "Failed to query table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
+        )
 
     # Cleanup the tables and the database in two separate steps unless the user
     # requested to keep the results.
@@ -1498,7 +1501,9 @@ def run_http_ingest(
             validate_result,
         )
     except Exception as e:
-        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_dir, database_dir, e)
+        _log.error(
+            "Failed to query table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
+        )
 
     # Cleanup the tables and the database in two separate steps unless the user
     # requested to keep the results.
