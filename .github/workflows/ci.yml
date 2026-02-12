@@ -54,11 +54,37 @@ jobs:
       - name: Save image names
         id: image-names
         run: |
-          echo "build-image=$(./bin/qserv env --build-image)" >> "$GITHUB_OUTPUT"
-          echo "user-build-image=$(./bin/qserv env --user-build-image)" >> "$GITHUB_OUTPUT"
-          echo "run-base-image=$(./bin/qserv env --run-base-image)" >> "$GITHUB_OUTPUT"
-          echo "mariadb-image=$(./bin/qserv env --mariadb-image)" >> "$GITHUB_OUTPUT"
-          echo "qserv-image=$(./bin/qserv env --qserv-image)" >> "$GITHUB_OUTPUT"
+
+          QSERV_BUILD_IMAGE=$(./bin/qserv env --build-image)
+          QSERV_USER_BUILD_IMAGE=$(./bin/qserv env --user-build-image)
+          QSERV_RUN_BASE_IMAGE=$(./bin/qserv env --run-base-image)
+          QSERV_MARIADB_IMAGE=$(./bin/qserv env --mariadb-image)
+          QSERV_IMAGE=$(./bin/qserv env --qserv-image)
+
+          {
+            echo "build-image=$QSERV_BUILD_IMAGE"
+            echo "user-build-image=$QSERV_USER_BUILD_IMAGE"
+            echo "run-base-image=$QSERV_RUN_BASE_IMAGE"
+            echo "mariadb-image=$QSERV_MARIADB_IMAGE"
+            echo "qserv-image=$QSERV_IMAGE"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "| Image Type | Image Name                  |"
+            echo "| ---------- | --------------------------- |"
+            echo "| Build      | \`$QSERV_BUILD_IMAGE\`      |"
+            echo "| Run Base   | \`$QSERV_RUN_BASE_IMAGE\`   |"
+            echo "| MariaDB    | \`$QSERV_MARIADB_IMAGE\`    |"
+            echo "| Qserv      | \`$QSERV_IMAGE\`            |"
+            echo ""
+            echo "To use this build with the helm chart, use the following in \`values.yaml\`:"
+            echo "\`\`\`yaml"
+            echo "qservImageName: $QSERV_IMAGE"
+            echo "mariadbImageName: $QSERV_MARIADB_IMAGE"
+            echo "sslProxyImageName: qserv/mysql-proxy-ssl:latest"
+            echo "ingestHelperImageName: $QSERV_BUILD_IMAGE"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   update-base-images:
     name: Update base images
