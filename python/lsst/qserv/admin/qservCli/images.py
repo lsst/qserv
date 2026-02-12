@@ -20,22 +20,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-"""Utilities for working with docker images and dockerhub."""
+"""Utilities for working with docker images and registries."""
 
 import logging
 import subprocess
 from copy import copy
 
-import requests
-
 from . import subproc
-
-# Values specific to dockerhub and its api that could be substituted or added as
-# ImageTagger init args as needed. Currently they're set at member variables in
-# init so they can be changed on a class instance.
-manifest_header = "application/vnd.docker.distribution.manifest.v2+json"
-auth_header = "Bearer {token}"
-
 
 _log = logging.getLogger(__name__)
 
@@ -91,15 +82,19 @@ def last_git_tag(cwd: str) -> str:
         If the most recent tag can not be gotten, or if the
         SHA of that tag can not be gotten from git.
     """
+    args = ["git", "describe", "--abbrev=0"]
+    _log.debug('Running "%s"', " ".join(args))
     res = subproc.run(
-        "git describe --abbrev=0".split(),
+        args,
         capture_stdout=True,
         cwd=cwd,
         errmsg=f"Failed to get most recent tag from repo at {cwd}.",
     )
     tag = res.stdout.decode().strip()
+    args = ["git", "rev-list", "-n", "1", tag]
+    _log.debug('Running "%s"', " ".join(args))
     res = subproc.run(
-        ["git", "rev-list", "-n", "1", tag],
+        args,
         capture_stdout=True,
         cwd=cwd,
         errmsg=f"Failed to get SHA for tag {tag}.",
@@ -133,7 +128,7 @@ def describe(sha: str | None, cwd: str) -> str:
         args = ["git", "describe", "--always", f"--abbrev={abbrev}", sha]
     else:
         args = ["git", "describe", "--always", "--dirty", f"--abbrev={abbrev}"]
-    _log.debug("Running %s", " ".join(args))
+    _log.debug('Running "%s"', " ".join(args))
     res = subproc.run(
         args,
         cwd=cwd,
@@ -164,7 +159,7 @@ def get_last_change(fname: str, cwd: str) -> str:
         The sha of the commit that contains the most recent change.
     """
     args = ["git", "log", "--pretty=format:%H", "--max-count=1", fname]
-    _log.debug("running %s", " ".join(args))
+    _log.debug('Running "%s"', " ".join(args))
     res = subproc.run(
         args,
         cwd=cwd,
@@ -199,8 +194,14 @@ def git_log(a: str, b: str, cwd: str) -> list[str]:
         If there is an error running `git log a..b`.
     """
     args = ["git", "log", "--pretty=format:%H", f"{a}..{b}"]
-    res = subproc.run(args, cwd=cwd, capture_stdout=True, errmsg=f"Get log of shas {a}..{b}.")
-    return res.stdout.strip().split()
+    _log.debug('Running "%s"', " ".join(args))
+    res = subproc.run(
+        args,
+        cwd=cwd,
+        capture_stdout=True,
+        errmsg=f"Failed to get git log of shas {a}..{b}.",
+    )
+    return res.stdout.decode().strip().split()
 
 
 def get_most_recent(shas: list[str], cwd: str) -> str:
@@ -235,89 +236,27 @@ def get_most_recent(shas: list[str], cwd: str) -> str:
     return newest
 
 
-def dh_get_repo_tags(repository: str, token: str) -> list[str]:
-    """Get the tags associated with a repository in dockerhub.
-
-    Parameters
-    ----------
-    repository : `str`
-        The name of the dockerhub repository without the tag. E.g. "qserv/lite-build"
-    token : `str`
-        The token obtained by calling `dh_get_token`
-
-    Returns
-    -------
-    tags: List [ `str` ]
-        The list of tags.
-    """
-    url = f"https://registry.hub.docker.com/v2/{repository}/tags/list"
-    res = requests.get(
-        url=url,
-        headers=dict(
-            Authorization=auth_header.format(token=token),
-            Accept=manifest_header,
-        ),
-    )
-    # Raise if there was a failure getting the token.
-    res.raise_for_status()
-    tags = [str(t) for t in res.json()["tags"]]
-    _log.debug("The tags in dockerhub for %s are: %s", repository, tags)
-    return tags
-
-
-def dh_image_exists(image_name: str, user: str, token: str) -> bool:
-    """Get if an image name+tag exists in dockerhub.
+def image_exists(image_name: str) -> bool:
+    """Determine if a given tag exists in its associated registry.
 
     Parameters
     ----------
     image_name : `str`
-        The name+tag of the image, e.g. "qserv/lite-build:2021.9.2-rc1-24-gda31230
-    user : `str`
-        The user name associated with the token.
-    token : `str`
-        The access token.
+        The name+tag of the image, e.g. "ghcr.io/qserv-build-base:2021.9.2-rc1-24-gda31230
 
     Returns
     -------
     exists : `bool`
-        True if the image exists in dockerhub.
+        True if the image exists in the associated registry.
     """
-    repo, tag = image_name.split(":")
-    exists = tag in dh_get_repo_tags(repo, dh_get_token(repo, user, token))
-    _log.debug("%s %s exist in dockerhub.", image_name, "does" if exists else "does not")
-    return exists
+    args = ["crane", "manifest", image_name]
+    _log.debug('Running "%s"', " ".join(args))
+    result = subprocess.run(args, capture_output=True)
+    return result.returncode == 0
 
 
-def dh_get_token(repository: str, user: str, token: str) -> str:
-    """Get an access token from dockerhub for interacting with the registry.
-
-    Parameters
-    ----------
-    repository : `str`
-        The name of the repository for the token
-    user : `str`
-        The owner of the personal access token.
-    token : `str`
-        The personal access token (uuid) generated for the user account via
-        web interface.
-
-    Returns
-    -------
-    access_token : `str`
-        The access token.
-    """
-    url = f"https://auth.docker.io/token?service=registry.docker.io&scope=repository:{repository}:push,pull"
-    res = requests.get(
-        url,
-        auth=(user, token),
-    )
-    # Raise if there was a failure getting the token.
-    res.raise_for_status()
-    return str(res.json()["token"])
-
-
-def dh_pull_image(image_name: str, dry: bool) -> bool:
-    """Pull an image from dockerhub.
+def pull_image(image_name: str, dry: bool) -> bool:
+    """Pull an image from registry.
 
     Parameters
     ----------
@@ -331,11 +270,7 @@ def dh_pull_image(image_name: str, dry: bool) -> bool:
     pulled : `bool`
         `True` if the image was pulled, `False` if it was not pulled.
     """
-    args = [
-        "docker",
-        "pull",
-        image_name,
-    ]
+    args = ["docker", "pull", image_name]
     if dry:
         print(" ".join(args))
         return True  # if `dry`, emulate successful state.
@@ -344,8 +279,8 @@ def dh_pull_image(image_name: str, dry: bool) -> bool:
     return result.returncode == 0
 
 
-def dh_push_image(image_name: str, dry: bool) -> None:
-    """Push an image to dockerhub.
+def push_image(image_name: str, dry: bool) -> None:
+    """Push an image to registry.
 
     Parameters
     ----------
@@ -354,11 +289,7 @@ def dh_push_image(image_name: str, dry: bool) -> None:
     dry : `bool`
         If True do not run the command; print what would have been run.
     """
-    args = [
-        "docker",
-        "push",
-        image_name,
-    ]
+    args = ["docker", "push", image_name]
     if dry:
         print(" ".join(args))
         return
@@ -375,7 +306,7 @@ def build_image(
     options: list[str] | None = None,
     dockerfile: str | None = None,
 ) -> None:
-    """Build the qserv lite-build image.
+    """Build a qserv image.
 
     Parameters
     ----------
@@ -384,7 +315,7 @@ def build_image(
     target : `str` or `None
         Names the target to build if the dockerfile has multiple targets.
     run_dir : `str`
-        The path to the directory that contains the dockerfile.
+        The path to the directory that contains the docker build context.
     dry : `bool`
         If True do not run the command; print what would have been run.
     options : `list` [ `str` ] or `None`
@@ -392,10 +323,7 @@ def build_image(
     dockerfile : `str`
         The path to the dockerfile.
     """
-    args = [
-        "docker",
-        "build",
-    ]
+    args = ["docker", "build"]
     if target:
         args.append(f"--target={target}")
     args.append(f"--tag={image_name}")

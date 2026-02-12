@@ -228,15 +228,15 @@ class ImageName:
             The image name
         """
         if self.image == "qserv":
-            return "qserv/lite-qserv"
+            return "ghcr.io/lsst/qserv"
         if self.image == "run-base":
-            return "qserv/lite-run-base"
+            return "ghcr.io/lsst/qserv-run-base"
         if self.image == "mariadb":
-            return "qserv/lite-mariadb"
+            return "ghcr.io/lsst/qserv-mariadb"
         if self.image == "build-base":
-            return "qserv/lite-build"
+            return "ghcr.io/lsst/qserv-build-base"
         if self.image == "build-user":
-            return f"qserv/lite-build-{getpass.getuser()}"
+            return f"ghcr.io/lsst/qserv-build-{getpass.getuser()}"
         raise RuntimeError(f"Invalid image type: {self.image}")
 
     @property
@@ -314,12 +314,6 @@ env_project = FlagEnvVal("--project", "QSERV_PROJECT", getpass.getuser())
 env_outdir = FlagEnvVal("--outdir", "OUTDIR", "/tmp")
 env_dashboard_port = FlagEnvVal("--dashboard-port", "QSERV_DASHBOARD_PORT", "25081")
 env_http_frontend_port = FlagEnvVal("--http-frontend-port", "QSERV_HTTP_FRONTEND_PORT", "4048")
-env_dh_user = EnvVal("QSERV_DH_USER", "CI only; the dockerhub user for pushing and pulling images")
-env_dh_token = EnvVal(
-    "QSERV_DH_TOKEN",
-    "CI only; the dockerhub user token for pushing and pulling images",
-    private=True,
-)
 env_ltd_user = EnvVal("QSERV_LTD_USERNAME", "CI only; the LSST The Docs user for pushing docs.")
 env_ltd_password = EnvVal(
     "QSERV_LTD_PASSWORD", "CI only; the LSST The Docs password for pushing docs.", private=True
@@ -526,8 +520,6 @@ qserv_env_vals = FlagEnvVals(
         env_project,
         env_dashboard_port,
         env_http_frontend_port,
-        env_dh_user,
-        env_dh_token,
         env_ltd_user,
         env_ltd_password,
         env_gh_event_name,
@@ -585,7 +577,7 @@ option_user = partial(
 option_push_image = partial(
     click.option,
     "--push-image",
-    help="Push the image to dockerhub if it does not exist. Requires login to dockerhub first.",
+    help="Push the image to its associated registry if it does not exist. Requires docker login first.",
     is_flag=True,
 )
 
@@ -593,7 +585,7 @@ option_push_image = partial(
 option_pull_image = partial(
     click.option,
     "--pull-image",
-    help="Pull the image from dockerhub if it exists.",
+    help="Pull the image from its associated registry if it exists.",
     is_flag=True,
 )
 

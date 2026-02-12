@@ -291,8 +291,9 @@ class SchemaMigMgr(metaclass=ABCMeta):
         on_backoff=on_backoff(log=_log),
         # Do give up, unless error is that the connection was refused (assume db is starting up)
         max_time=max_backoff_sec,
-        giveup=lambda e: isinstance(e, MySQLInterfaceError)
-        and e.errno != database_error_connection_refused_code,
+        giveup=lambda e: (
+            isinstance(e, MySQLInterfaceError) and e.errno != database_error_connection_refused_code
+        ),
     )
     @backoff.on_exception(
         exception=mysql.connector.errors.OperationalError,

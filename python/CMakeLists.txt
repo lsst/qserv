@@ -4,13 +4,6 @@ install(
   PATTERN __pycache__ EXCLUDE
 )
 
-add_test (NAME test_watcher
-  COMMAND python3 -m unittest tests.admin.test_watcher
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
-
-set_tests_properties(test_watcher PROPERTIES WILL_FAIL 1)
-
 add_test(NAME test_smig
   COMMAND python3 -m unittest lsst.qserv.admin.tests.test_smig
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

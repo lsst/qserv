@@ -34,7 +34,6 @@ import click
 from click.decorators import pass_context
 
 from ..template import save_template_cfg
-from ..watcher import watch
 from . import script, utils
 from .options import (
     OptionGroup,
@@ -212,7 +211,6 @@ commands = OrderedDict(
         ("integration-test-http", CommandInfo()),
         ("delete-database", CommandInfo()),
         ("load-simple", CommandInfo()),
-        ("watcher", CommandInfo()),
         ("prepare-data", CommandInfo()),
         ("spawned-app-help", CommandInfo()),
     )
@@ -979,61 +977,6 @@ def replication_registry(ctx: click.Context, **kwargs: Any) -> None:
         log_cfg_file=targs["log_cfg_file"],
         cmd=targs["cmd"],
         run=targs["run"],
-    )
-
-
-@entrypoint.command()
-@click.option(
-    "--cluster-id",
-    required=True,
-    help="The name/identifier of the cluster to show in alerts and log messages.",
-)
-@click.option(
-    "--notify-url-file",
-    help="The path to the file that contains the url to receive alerts. "
-    "Accepts 'None' to not send notifications (useful for debugging).",
-    required=True,
-    callback=lambda ctx, par, val: None if val == "None" else val,
-)
-@click.option(
-    "--qserv",
-    default="qserv://qsmaster@czar-proxy:4040",
-    help="The url to the qserv instance to watch.",
-)
-@click.option(
-    "--timeout-sec",
-    help="The threshold time, in seconds, queries taking longer than this will trigger an alert.",
-    default=600,  # 10 minutes
-)
-@click.option(
-    "--interval-sec",
-    help="How long to wait (in seconds) between checks.",
-    default=60,  # 1 minute
-)
-@click.option(
-    "--show-query",
-    help="Show the query in alerts.",
-    default=False,
-    show_default=True,
-    is_flag=True,
-)
-def watcher(
-    cluster_id: str,
-    notify_url_file: str,
-    qserv: str,
-    timeout_sec: int,
-    interval_sec: int,
-    show_query: bool,
-) -> None:
-    """Run a watcher algorithm that sends notifications if querys appear to stop
-    processing."""
-    watch(
-        cluster_id=cluster_id,
-        notify_url_file=notify_url_file,
-        qserv=qserv,
-        timeout_sec=timeout_sec,
-        interval_sec=interval_sec,
-        show_query=show_query,
     )
 
 

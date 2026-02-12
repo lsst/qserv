@@ -33,6 +33,7 @@ from typing import Any, TextIO
 from urllib.parse import urljoin, urlparse
 
 import requests
+import requests.auth
 import urllib3
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 
@@ -47,11 +48,13 @@ query_mode_mysql = "mysql"
 query_mode_qserv_attached = "qserv_attached"
 query_mode_qserv_detached = "qserv_detached"
 
+
 class FrontEndError(Exception):
     """
     A custom exception class for errors reported by the REST API of the HTTP-based
     frontend of Qserv. Inherits from Python's built-in Exception class.
     """
+
     def __init__(self, context: str, error: str):
         """
         Initializes the FrontEndError.
@@ -1296,8 +1299,8 @@ def run_http_ingest(
     # to ensure that the error is properly reported. The API limits the combined length
     # of the database and table names to 56 characters. Here we attempt to create
     # such a combination.
-    database = "user_test_db_012345678901234567890"   # 30 characters
-    table_json = "user_table_0123456789012345"    # 27 characters
+    database = "user_test_db_012345678901234567890"  # 30 characters
+    table_json = "user_table_0123456789012345"  # 27 characters
     try:
         _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows)
     except FrontEndError as e:
@@ -1379,19 +1382,46 @@ def run_http_ingest(
 
     try:
         _http_ingest_data_csv(
-            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir, rows_dir, timeout,
-            charset, collation, is_director, id_col_name, longitude_col_name, latitude_col_name
+            http_frontend_uri,
+            user,
+            password,
+            database_dir,
+            table_csv_dir,
+            schema_dir,
+            indexes_dir,
+            rows_dir,
+            timeout,
+            charset,
+            collation,
+            is_director,
+            id_col_name,
+            longitude_col_name,
+            latitude_col_name,
         )
     except Exception as e:
         _log.error(
-            "Failed to ingest data into table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
+            "Failed to ingest data into table: %s of user database: %s, error: %s",
+            table_csv_dir,
+            database_dir,
+            e,
         )
         return False
     try:
         query = f"SELECT `id`,`ra`,`dec`,`val`,`active` FROM `{table_csv_dir}` ORDER BY `id` ASC"
-        _http_query_table(http_frontend_uri, user, password, database_dir, table_csv_dir, query, expected_rows_dir, validate_result)
+        _http_query_table(
+            http_frontend_uri,
+            user,
+            password,
+            database_dir,
+            table_csv_dir,
+            query,
+            expected_rows_dir,
+            validate_result,
+        )
     except Exception as e:
-        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_dir, database_dir, e)
+        _log.error(
+            "Failed to query table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
+        )
 
     # Cleanup the tables and the database in two separate steps unless the user
     # requested to keep the results.
@@ -1399,7 +1429,9 @@ def run_http_ingest(
         try:
             _http_delete_table(http_frontend_uri, user, password, database_dir, table_csv_dir)
         except Exception as e:
-            _log.error("Failed to delete table: %s from user database: %s, error: %s", table_csv_dir, database_dir, e)
+            _log.error(
+                "Failed to delete table: %s from user database: %s, error: %s", table_csv_dir, database_dir, e
+            )
             return False
         try:
             _http_delete_database(http_frontend_uri, user, password, database_dir)
@@ -1430,21 +1462,48 @@ def run_http_ingest(
     table_csv_dir = "csv-director-table-no-pk"
     try:
         _http_ingest_data_csv(
-            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir, rows_dir, timeout,
-            charset, collation, is_director, id_col_name, longitude_col_name, latitude_col_name
+            http_frontend_uri,
+            user,
+            password,
+            database_dir,
+            table_csv_dir,
+            schema_dir,
+            indexes_dir,
+            rows_dir,
+            timeout,
+            charset,
+            collation,
+            is_director,
+            id_col_name,
+            longitude_col_name,
+            latitude_col_name,
         )
     except Exception as e:
         _log.error(
-            "Failed to ingest data into table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
+            "Failed to ingest data into table: %s of user database: %s, error: %s",
+            table_csv_dir,
+            database_dir,
+            e,
         )
         return False
     try:
         # Query the table expecting the PK column "qserv_id" to be added automatically. Expected result
         # of the query is in expected_rows_dir.
         query = f"SELECT `qserv_id`,`ra`,`dec`,`val`,`active` FROM `{table_csv_dir}` ORDER BY `qserv_id` ASC"
-        _http_query_table(http_frontend_uri, user, password, database_dir, table_csv_dir, query, expected_rows_dir, validate_result)
+        _http_query_table(
+            http_frontend_uri,
+            user,
+            password,
+            database_dir,
+            table_csv_dir,
+            query,
+            expected_rows_dir,
+            validate_result,
+        )
     except Exception as e:
-        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_dir, database_dir, e)
+        _log.error(
+            "Failed to query table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
+        )
 
     # Cleanup the tables and the database in two separate steps unless the user
     # requested to keep the results.
@@ -1452,7 +1511,9 @@ def run_http_ingest(
         try:
             _http_delete_table(http_frontend_uri, user, password, database_dir, table_csv_dir)
         except Exception as e:
-            _log.error("Failed to delete table: %s from user database: %s, error: %s", table_csv_dir, database_dir, e)
+            _log.error(
+                "Failed to delete table: %s from user database: %s, error: %s", table_csv_dir, database_dir, e
+            )
             return False
         try:
             _http_delete_database(http_frontend_uri, user, password, database_dir)
@@ -1716,7 +1777,9 @@ def _http_query_table(
     table: str,
     query: str,
     expected_rows: list[list[Any]],
-    validate_result: Callable[[list[list[Any]], list[list[Any]]], bool] = lambda ingested, expected: ingested == expected,
+    validate_result: Callable[[list[list[Any]], list[list[Any]]], bool] = lambda ingested, expected: (
+        ingested == expected
+    ),
 ) -> None:
     """Query an existing table of the user database.
 
