@@ -35,8 +35,6 @@ from ..constants import tmp_data_dir
 from . import images, subproc
 from .opt import (
     env_dashboard_port,
-    env_dh_token,
-    env_dh_user,
     env_http_frontend_port,
     env_mariadb_image,
     env_qserv_image,
@@ -63,19 +61,13 @@ def make_itest_volumes(project: str) -> ITestVolumes:
     return ITestVolumes(project + "_itest_db_data", project + "_itest_db_lib", project + "_itest_exe")
 
 
-def do_pull_image(image_name: str, dh_user: str | None, dh_token: str | None, dry: bool) -> bool:
-    """Attempt to pull an image. If valid dockerhub credentials are provided
-    check the registry for the image first. If they are not provided then just
-    try to pull the image and accept any failure as 'image does not exist'.
+def do_pull_image(image_name: str, dry: bool) -> bool:
+    """Attempt to pull an image.
 
     Parameters
     ----------
     image_name : `str`
         The name of the image to pull.
-    dh_user : `Optional[str]`
-        The name of the dockerhub user, or None.
-    dh_token : `Optional[str]`
-        The dockerhub user's token, or None.
     dry : `bool`
         If True do not run the command; print what would have been run.
 
@@ -85,10 +77,8 @@ def do_pull_image(image_name: str, dh_user: str | None, dh_token: str | None, dr
         True if the images was pulled, else False.
     """
     did_pull = False
-    if (dh_user and dh_token and images.dh_image_exists(image_name, dh_user, dh_token)) or (
-        not dh_user and not dh_token
-    ):
-        did_pull = images.dh_pull_image(image_name, dry)
+    if images.image_exists(image_name):
+        did_pull = images.pull_image(image_name, dry)
     _log.debug("%s %s", "Pulled" if did_pull else "Could not pull", image_name)
     return did_pull
 
@@ -443,13 +433,13 @@ def build(
     do_build_image : `bool`
         True if a qserv run image should be created.
     push_image : `bool`
-        True if the qserv image should be pushed to dockerhub.
+        True if the qserv image should be pushed to the associated registry.
     pull_image: `bool`
-        Pull the qserv image from dockerhub if it exists there.
+        Pull the qserv image from the associated registry if it exists there.
     user : `str`
         The name of the user to run the build container as.
     """
-    if pull_image and do_pull_image(qserv_image, env_dh_user.val(), env_dh_token.val(), dry):
+    if pull_image and do_pull_image(qserv_image, dry):
         return
 
     if clang_format_mode != "off":
@@ -476,7 +466,7 @@ def build(
     )
 
     if push_image:
-        images.dh_push_image(qserv_image, dry)
+        images.push_image(qserv_image, dry)
 
 
 def build_docs(
@@ -579,11 +569,11 @@ def build_build_image(
     dry : `bool`
         If True do not run the command; print what would have been run.
     push_image : `bool`
-        True if the build base image should be pushed to dockerhub.
+        True if the build base image should be pushed to the associated registry.
     pull_image: `bool`
-        Pull the build base image from dockerhub if it exists there.
+        Pull the build base image from the associated registry if it exists there.
     """
-    if pull_image and do_pull_image(build_image, env_dh_user.val(), env_dh_token.val(), dry):
+    if pull_image and do_pull_image(build_image, dry):
         return
     images.build_image(
         image_name=build_image,
@@ -592,7 +582,7 @@ def build_build_image(
         dry=dry,
     )
     if push_image:
-        images.dh_push_image(build_image, dry)
+        images.push_image(build_image, dry)
 
 
 def build_user_build_image(
@@ -627,8 +617,8 @@ def build_user_build_image(
 def build_run_base_image(
     run_base_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
-    """Build the qserv run base image."""
-    if pull_image and do_pull_image(run_base_image, env_dh_user.val(), env_dh_token.val(), dry):
+    """Build the qserv qserv-run-base image."""
+    if pull_image and do_pull_image(run_base_image, dry):
         return
     images.build_image(
         image_name=run_base_image,
@@ -637,14 +627,14 @@ def build_run_base_image(
         dry=dry,
     )
     if push_image:
-        images.dh_push_image(run_base_image, dry)
+        images.push_image(run_base_image, dry)
 
 
 def build_mariadb_image(
     mariadb_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
     """Build the mariadb image."""
-    if pull_image and do_pull_image(mariadb_image, env_dh_user.val(), env_dh_token.val(), dry):
+    if pull_image and do_pull_image(mariadb_image, dry):
         return
     images.build_image(
         image_name=mariadb_image,
@@ -653,7 +643,7 @@ def build_mariadb_image(
         dry=dry,
     )
     if push_image:
-        images.dh_push_image(mariadb_image, dry)
+        images.push_image(mariadb_image, dry)
 
 
 def bind_args(qserv_root: str, bind_names: list[str]) -> list[str]:
