@@ -38,7 +38,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
@@ -48,7 +48,7 @@ jobs:
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
-      - name: force update tags
+      - name: Force update tags
         run: git fetch --force --tags
 
       - name: Save image names
@@ -67,7 +67,6 @@ jobs:
     outputs:
       build-rebuilt: ${{ steps.rebuild.outputs.build-rebuilt }}
       run-base-rebuilt: ${{ steps.rebuild.outputs.run-base-rebuilt }}
-
     steps:
 
       - name: Install python
@@ -75,7 +74,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
@@ -91,7 +90,7 @@ jobs:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
-      - name: Rebuild and push build image if needed
+      - name: Rebuild and push build base image if needed
         id: rebuild
         run: |
           if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
@@ -133,7 +132,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
@@ -149,7 +148,7 @@ jobs:
           username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
           password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
-      - name: Rebuild and push if needed
+      - name: Rebuild and push mariadb image if needed
         id: rebuild
         run: |
           if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
@@ -174,7 +173,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
@@ -231,7 +230,7 @@ jobs:
         with:
           version: '1.29.2'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
@@ -270,8 +269,8 @@ jobs:
 
       - name: Run integration tests of ingesting user tables via the HTTP frontend
         run: |
-            ./bin/qserv --log-level DEBUG itest-http-ingest \
-            --qserv-image ${{ needs.image-names.outputs.qserv-image }}
+          ./bin/qserv --log-level DEBUG itest-http-ingest \
+          --qserv-image ${{ needs.image-names.outputs.qserv-image }}
 
       - name: Check Qserv containers
         if: always()
@@ -342,10 +341,9 @@ jobs:
         run: docker logs ${USER}-worker-mariadb-1-1
 
       - name: Remove integration test volumes
-        run: |
-          ./bin/qserv --log-level DEBUG itest-rm
+        if: always()
+        run: ./bin/qserv --log-level DEBUG itest-rm
 
       - name: Shut down qserv
-        run: |
-          ./bin/qserv --log-level DEBUG down \
-          -v
+        if: always()
+        run: ./bin/qserv --log-level DEBUG down -v
