@@ -12,7 +12,7 @@
 # account in the image. Values are provided at build time via the --build-arg option to `docker build`.
 #-------------------------------------------------------------------------------------------------------------
 
-ARG QSERV_BUILD_BASE=qserv/lite-build:latest
+ARG QSERV_BUILD_BASE=ghcr.io/lsst/qserv-build-base:latest
 FROM ${QSERV_BUILD_BASE} AS qserv-build-user
 
 ARG USER
