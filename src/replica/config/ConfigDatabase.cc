@@ -302,13 +302,24 @@ TableInfo DatabaseInfo::validate(map<std::string, DatabaseInfo> const& databases
                        "the RefMatch table can't have spatial coordinate columns");
         } else {
             throwIf(table.directorTable.empty(), "the dependent table requires a valid director");
-            throwIfNot(table.directorTable.databaseName().empty(),
-                       "the database name isn't allowed in the director"
-                       " table spec of the dependent tables");
-            throwIfNot(tableExists(table.directorTable.tableName()),
-                       "non-existing director table referenced in the dependent table definition");
-            throwIfNot(findTable(table.directorTable.tableName()).isDirector(),
-                       "a table referenced in the dependent table definition isn't the director table");
+            DatabaseInfo const* database = this;
+            if (!table.directorTable.databaseName().empty()) {
+                auto const itr = databases.find(table.directorTable.databaseName());
+                throwIf(itr == databases.cend(), "non-existing database '" +
+                                                         table.directorTable.databaseName() +
+                                                         "' referenced in the spec of the director table '" +
+                                                         table.directorTable.tableName() + "'");
+                database = &(itr->second);
+            }
+            throwIfNot(database->tableExists(table.directorTable.tableName()),
+                       "non-existing director table referenced database='" +
+                               table.directorTable.databaseName() + "' table='" +
+                               table.directorTable.tableName() + "' in the dependent table definition");
+            throwIfNot(database->findTable(table.directorTable.tableName()).isDirector(),
+                       "a table referenced database='" + table.directorTable.databaseName() + "' table='" +
+                               table.directorTable.tableName() +
+                               "' in the dependent table definition isn't the director table");
+
             throwIfNot(table.directorTable2.empty(), "the dependent table can't have the second director");
 
             // This is the required FK to the corresponding director table.
