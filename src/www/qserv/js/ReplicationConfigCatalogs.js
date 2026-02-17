@@ -224,6 +224,7 @@ function(CSSLoader,
                             } else {
                                 databaseHtml += `
   <td scope="row" style="border-right: ${borderStyle}">
+    <span ${directorTableSchemaSupportCSS}>${table.director_database_name || database.database}</span><br>
     <span ${directorTableSchemaSupportCSS}>${table.director_table_name}</span></br>
     <span>${table.director_key}</span>
   </td>
