@@ -26,12 +26,18 @@
 #define LSST_PARTITION_CONFIG_H
 
 // System headers
+#include <memory>
 #include <string>
 #include <vector>
 
 // Third party headers
 #include "boost/program_options.hpp"
 #include "nlohmann/json.hpp"
+
+// Forward declarations
+namespace lsst::partition {
+class ObjectIndex;
+}  // namespace lsst::partition
 
 namespace lsst::partition {
 /**
@@ -256,6 +262,9 @@ public:
      */
     bool flag(std::string const& path) const;
 
+    std::shared_ptr<ObjectIndex> const& objectIndex1() const { return _objectIndex1; }
+    std::shared_ptr<ObjectIndex> const& objectIndex2() const { return _objectIndex2; }
+
 private:
     /**
      * Translate a dot-separated path into a JSON pointer.
@@ -275,6 +284,12 @@ private:
 
     /// Parameter storage
     nlohmann::json _config = nlohmann::json::object();
+
+    // Two director indexes are needed to support partitioning the ref-match tables.
+    // Only one of the indexes may be used for partitioning ordinary child tables.
+
+    std::shared_ptr<ObjectIndex> const _objectIndex1;
+    std::shared_ptr<ObjectIndex> const _objectIndex2;
 };
 }  // namespace lsst::partition
 

@@ -70,8 +70,7 @@ private:
     Chunker _chunker;
     std::vector<ChunkLocation> _locations;
     bool _disableChunks;
-    /// The cached pointer to the index (if the one is used by the class) is needed
-    /// to optimize operations with the index.
+    /// The cached pointer to the "director" index for object ID partitioning.
     ObjectIndex* _objectIndex = nullptr;
 };
 
@@ -84,7 +83,7 @@ PartitionTool::Worker::Worker(ConfigStore const& config)
           _subChunkIdField(-1),
           _chunker(config),
           _disableChunks(config.flag("part.disable-chunks")),
-          _objectIndex(ObjectIndex::instance()) {
+          _objectIndex(config.objectIndex1().get()) {
     if (!config.has("part.pos") && !config.has("part.id")) {
         throw std::runtime_error("Neither --part.pos not --part.id option were specified.");
     }
@@ -230,7 +229,6 @@ PartitionTool::PartitionTool(nlohmann::json const& params, int argc, char const*
     makeOutputDirectory(*config, true);
     Job<PartitionTool::Worker> job(*config);
     chunkIndex = job.run(makeInputLines(*config));
-    ObjectIndex::instance()->close();
     if (!chunkIndex->empty()) {
         fs::path d(config->get<std::string>("out.dir"));
         fs::path f = config->get<std::string>("part.prefix") + "_index.bin";

@@ -29,7 +29,6 @@
 #include <fstream>
 #include <iostream>
 #include <map>
-#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -46,8 +45,9 @@ class ChunkLocation;
 namespace lsst::partition {
 
 /**
- * Class ObjectIndex is the named singleton serving as a front-end to a specific implementation of
- * the "secondary" index.
+ * Class ObjectIndex is a frontend to the file-based index which maps object identifiers
+ * to their partitioning locations. The index is meant to be used as a "director" index for
+ * partitioned data-sets.
  *
  * Objects of the class can be open in two modes:
  * - WRITE: for writing into an index file at the specified location.
@@ -72,7 +72,8 @@ namespace lsst::partition {
  */
 class ObjectIndex {
 public:
-    // Objects of this class can't be copied or directly constructed by clients.
+    ObjectIndex() = default;
+
     ObjectIndex(ObjectIndex const&) = delete;
     ObjectIndex& operator=(ObjectIndex const&) = delete;
 
@@ -81,25 +82,6 @@ public:
 
     /// Modes for opening the index.
     enum Mode { READ, WRITE };
-
-    /**
-     * The factory method for creating/accessing the named indexes.
-     *
-     * @param The optional name for the index.
-     * @return  A pointer to the underlining implementation of the index
-     */
-    static ObjectIndex* instance(std::string const& name = std::string()) {
-        static std::mutex mtx;
-        std::lock_guard<std::mutex> lock(mtx);
-        static std::map<std::string, std::unique_ptr<ObjectIndex>> oi;
-        if (auto itr = oi.find(name); itr != oi.end()) {
-            return itr->second.get();
-        } else {
-            auto obj = new ObjectIndex();
-            oi[name].reset(obj);
-            return obj;
-        }
-    }
 
     /// @return A value of 'true' if the index is open or created.
     bool isOpen() const { return _isOpen; }
@@ -136,9 +118,6 @@ public:
      */
     void open(std::string const& url, csv::Dialect const& dialect);
 
-    /// Close the index and release all resources associated with it.
-    void close();
-
     /**
      * Write a record into the index.
      *
@@ -161,8 +140,6 @@ public:
     std::pair<int32_t, int32_t> read(std::string const& id);
 
 private:
-    ObjectIndex() = default;
-
     // The genera state of the index
     bool _isOpen = false;
     Mode _mode = Mode::READ;
