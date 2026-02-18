@@ -1353,6 +1353,7 @@ def run_http_ingest(
     database_dir = "user_test-db-dir"
     table_csv_dir = "csv-director-table"
     is_director = True
+    is_child = False
     id_col_name = "id"
     longitude_col_name = "ra"
     latitude_col_name = "dec"
@@ -1382,21 +1383,8 @@ def run_http_ingest(
 
     try:
         _http_ingest_data_csv(
-            http_frontend_uri,
-            user,
-            password,
-            database_dir,
-            table_csv_dir,
-            schema_dir,
-            indexes_dir,
-            rows_dir,
-            timeout,
-            charset,
-            collation,
-            is_director,
-            id_col_name,
-            longitude_col_name,
-            latitude_col_name,
+            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir, rows_dir, timeout,
+            charset, collation, is_director, is_child, id_col_name, longitude_col_name, latitude_col_name
         )
     except Exception as e:
         _log.error(
@@ -1462,21 +1450,8 @@ def run_http_ingest(
     table_csv_dir = "csv-director-table-no-pk"
     try:
         _http_ingest_data_csv(
-            http_frontend_uri,
-            user,
-            password,
-            database_dir,
-            table_csv_dir,
-            schema_dir,
-            indexes_dir,
-            rows_dir,
-            timeout,
-            charset,
-            collation,
-            is_director,
-            id_col_name,
-            longitude_col_name,
-            latitude_col_name,
+            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir, rows_dir, timeout,
+            charset, collation, is_director, is_child, id_col_name, longitude_col_name, latitude_col_name
         )
     except Exception as e:
         _log.error(
@@ -1505,9 +1480,82 @@ def run_http_ingest(
             "Failed to query table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
         )
 
-    # Cleanup the tables and the database in two separate steps unless the user
+    # Ingest a child table of the previously ingested director. The child table will be placed into a separate database.
+    # The table will be partitioned based on values of the FK pointing to the object identifiers in the director table.
+    # Then query the child table.
+    schema_dir = [
+        {"name": "id", "type": "BIGINT UNSIGNED"},
+        {"name": "height", "type": "INT"},
+    ]
+    rows_dir = [
+        ["1", "182"],
+        ["2", "175"],
+        ["3", "190"],
+    ]
+    expected_rows_dir = [
+        ["1", "Andy", "182"],
+        ["2", "Bob", "175"],
+        ["3", "Charlie", "190"],
+    ]
+    indexes_child = [
+        {
+            "index": "idx_id",
+            "spec": "DEFAULT",
+            "comment": "The non-unique key index on the id column.",
+            "columns": [{"columnn": "id", "length": 0, "ascending": 1}],
+        },
+    ]
+    id_col_name = "id"
+    database_child = "user_test-db-child"
+    table_csv_child = "csv-child-table"
+    is_director = False
+    is_child = True
+    longitude_col_name = ""
+    latitude_col_name = ""
+    try:
+        _http_ingest_data_csv(
+            http_frontend_uri, user, password, database_child, table_csv_child, schema_dir, indexes_child, rows_dir, timeout,
+            charset, collation, is_director, is_child, id_col_name, longitude_col_name, latitude_col_name,
+            database_dir, table_csv_dir, "qserv_id"
+        )
+    except Exception as e:
+        _log.error(
+            "Failed to ingest data into table: %s of user database: %s, error: %s", table_csv_child, database_child, e
+        )
+        return False
+    try:
+        # Query the table expecting the PK column "qserv_id" to be added automatically. Expected result
+        # of the query is in expected_rows_dir.
+        query = f"SELECT c.id,d.val,c.height FROM `{database_dir}`.`{table_csv_dir}` d JOIN `{database_child}`.`{table_csv_child}` c  ON d.qserv_id=c.id ORDER BY c.id ASC"
+        _http_query_table(http_frontend_uri, user, password, database_child, table_csv_child, query, expected_rows_dir)
+    except Exception as e:
+        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_child, database_child, e)
+
+    # Cleanup both last 2 tables and 2 databases in two separate steps unless the user
     # requested to keep the results.
+    #
+    # IMPORTANT: The cleanup must be done in the right order: first delete the child table & the child databases,
+    #            then the director table, and only after that delete the director database.
+    #            Otherwise, the Replication system's worker will crash. In general this is the minor problem
+    #            because the large-scale ingest workflows are aware of the right sequence for managing lifecycles
+    #            of databases/tables. The life expectancy of the large (referenced) catalogs is normally longer
+    #            than that of the smaller, temporary user tables. The problem will be addressed later
+    #            in a separate effort.
     if not keep_results:
+
+        # First, delete the dependent table & database.
+        try:
+            _http_delete_table(http_frontend_uri, user, password, database_child, table_csv_child)
+        except Exception as e:
+            _log.error("Failed to delete table: %s from user database: %s, error: %s", table_csv_child, database_child, e)
+            return False
+        try:
+            _http_delete_database(http_frontend_uri, user, password, database_child)
+        except Exception as e:
+            _log.error("Failed to delete user database: %s, error: %s", database_child, e)
+            return False
+
+        # Then delete the director table and database.
         try:
             _http_delete_table(http_frontend_uri, user, password, database_dir, table_csv_dir)
         except Exception as e:
@@ -1661,9 +1709,13 @@ def _http_ingest_data_csv(
     charset: str | None = None,
     collation: str | None = None,
     is_director: bool = False,
+    is_child: bool = False,
     id_col_name: str | None = None,
     longitude_col_name: str | None = None,
     latitude_col_name: str | None = None,
+    ref_director_database: str | None = None,
+    ref_director_table: str | None = None,
+    ref_director_id_col_name: str | None = None,
 ) -> None:
     """Create the table and ingest the data into the table.
 
@@ -1695,6 +1747,8 @@ def _http_ingest_data_csv(
         collation will be used.
     is_director : `bool`, optional
         If `True` then the table is a director table.
+    is_child : `bool`, optional
+        If `True` then the table is a child table.
     id_col_name : `str`, optional
         The name of the column to use as the director id column. Required if
         `is_director` is `True`.
@@ -1704,6 +1758,13 @@ def _http_ingest_data_csv(
     latitude_col_name : `str`, optional
         The name of the column to use as the director latitude column. Required
         if `is_director` is `True`.
+    ref_director_database: `str`, optional
+        The name of the database where the director table is located. Required if
+        `is_child` is `True`.
+    ref_director_table: `str`, optional
+        The name of the director table. Required if `is_child` is `True`.
+    ref_director_id_col_name: `str`, optional
+        The name of the column to use as the director id column in the director table. Required if `is_child` is `True`.
     """
     _log.debug("Ingesting CSV data into table: %s of user database: %s", table, database)
     base_dir = "/tmp"
@@ -1728,11 +1789,31 @@ def _http_ingest_data_csv(
             fields={
                 "database": (None, database),
                 "table": (None, table),
-                "is_partitioned": (None, "true"),
-                "is_director": (None, "true"),
+                "is_partitioned": (None, "1"),
+                "is_director": (None, "1"),
+                "is_child": (None, "0"),
                 "id_col_name": (None, id_col_name),
                 "longitude_col_name": (None, longitude_col_name),
                 "latitude_col_name": (None, latitude_col_name),
+                "fields_terminated_by": (None, ","),
+                "timeout": (None, str(timeout)),
+                "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
+                "indexes": (indexes_file, open(indexes_file_path, "rb"), "application/json"),
+                "rows": (rows_file, open(rows_file_path, "rb"), "text/csv"),
+            }
+        )
+    elif is_child:
+        encoder = MultipartEncoder(
+            fields={
+                "database": (None, database),
+                "table": (None, table),
+                "is_partitioned": (None, "1"),
+                "is_director": (None, "0"),
+                "is_child": (None, "1"),
+                "id_col_name": (None, id_col_name),
+                "ref_director_database": (None, ref_director_database),
+                "ref_director_table": (None, ref_director_table),
+                "ref_director_id_col_name": (None, ref_director_id_col_name),
                 "fields_terminated_by": (None, ","),
                 "timeout": (None, str(timeout)),
                 "schema": (schema_file, open(schema_file_path, "rb"), "application/json"),
