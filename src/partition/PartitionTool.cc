@@ -110,7 +110,7 @@ PartitionTool::Worker::Worker(ConfigStore const& config)
         if (url.empty()) {
             throw std::runtime_error("Secondary index URL --part.id-url was not specified.");
         }
-        _objectIndex->open(url, _editor.getOutputDialect());
+        _objectIndex->open(url, _editor.getInputDialect());
     } else {
         // The RA/DEC partitioning will create and populate the "secondary" index if requested
         if (_idField != -1) {
