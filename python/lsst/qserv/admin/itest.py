@@ -1148,13 +1148,13 @@ def run_http_ingest(
             "index": "idx_id",
             "spec": "UNIQUE",
             "comment": "The unique primary key index.",
-            "columns": [{"columnn": "id", "length": 0, "ascending": 1}],
+            "columns": [{"column": "id", "length": 0, "ascending": 1}],
         },
         {
             "index": "idx_val",
             "spec": "DEFAULT",
             "comment": "The non-unique index on the string values.",
-            "columns": [{"columnn": "val", "length": 32, "ascending": 1}],
+            "columns": [{"column": "val", "length": 32, "ascending": 1}],
         },
     ]
     rows = [
@@ -1502,7 +1502,7 @@ def run_http_ingest(
             "index": "idx_id",
             "spec": "DEFAULT",
             "comment": "The non-unique key index on the id column.",
-            "columns": [{"columnn": "id", "length": 0, "ascending": 1}],
+            "columns": [{"column": "id", "length": 0, "ascending": 1}],
         },
     ]
     id_col_name = "id"
