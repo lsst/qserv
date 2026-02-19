@@ -385,7 +385,7 @@ private:
     CVTIntPtr _czarStatsUpdateIvalSec =
             util::ConfigValTInt::create(_configValMap, "tuning", "czarStatsUpdateIvalSec", notReq, 1);
     CVTUIntPtr _jobMaxAttempts =
-            util::ConfigValTUInt::create(_configValMap, "tuning", "jobMaxAttempts", notReq, 5);
+            util::ConfigValTUInt::create(_configValMap, "tuning", "jobMaxAttempts", notReq, 150);
 
     // Replicator
     CVTStrPtr _replicationInstanceId =
