@@ -30,6 +30,7 @@
 #include "czar/Czar.h"
 #include "http/Client.h"
 #include "http/MetaModule.h"
+#include "protojson/PwHideJson.h"
 #include "util/common.h"
 #include "util/QdispPool.h"
 
@@ -128,7 +129,7 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
         }
     }
 
-    // _aMtx must not be held when calling this.
+    // _aMtx and _awMapMtx must not be held when calling this.
     if (newlyDeadWorker) {
         LOGS(_log, LOG_LVL_WARN,
              cName(__func__) << " worker " << wInfo_->wId << " appears to have died, reassigning its jobs.");
@@ -200,7 +201,8 @@ void ActiveWorker::_sendStatusMsg(protojson::WorkerContactInfo::Ptr const& wInf,
     }
     if (!transmitSuccess) {
         LOGS(_log, LOG_LVL_ERROR,
-             cName(__func__) << " transmit failure " << jsWorkerReq.dump() << " resp=" << response);
+             cName(__func__) << " transmit failure " << protojson::pwHide(jsWorkerReq)
+                             << " resp=" << protojson::pwHide(response));
     }
 }
 
@@ -252,8 +254,16 @@ ActiveWorker::Ptr ActiveWorkerMap::getActiveWorker(string const& workerId) const
 
 void ActiveWorkerMap::sendActiveWorkersMessages() {
     // Send messages to each active worker as needed
-    lock_guard<mutex> lck(_awMapMtx);
-    for (auto&& [wName, awPtr] : _awMap) {
+    vector<ActiveWorker::Ptr> awVect;
+    {
+        lock_guard<mutex> lck(_awMapMtx);
+        for (auto const& [wName, awPtr] : _awMap) {
+            awVect.push_back(awPtr);
+        }
+    }
+
+    // _awMapMtx must be free before calling updateStateAndSendMessages
+    for (auto&& awPtr : awVect) {
         awPtr->updateStateAndSendMessages(_timeoutAliveSecs, _timeoutDeadSecs, _maxLifetime);
     }
 }
