@@ -1,0 +1,17 @@
+{{- if (include "qserv.enable" . | fromYaml).registry -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "qserv.name" . }}-registry
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "qserv.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: registry
+  ports:
+    - name: http
+      port: 25082
+      targetPort: http
+{{- end }}
