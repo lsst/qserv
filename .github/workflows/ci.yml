@@ -34,31 +34,60 @@ jobs:
 
     steps:
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.1
+
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
-      - name: force update tags
+      - name: Force update tags
         run: git fetch --force --tags
 
       - name: Save image names
         id: image-names
         run: |
-          echo "build-image=$(./bin/qserv env --build-image)" >> "$GITHUB_OUTPUT"
-          echo "user-build-image=$(./bin/qserv env --user-build-image)" >> "$GITHUB_OUTPUT"
-          echo "run-base-image=$(./bin/qserv env --run-base-image)" >> "$GITHUB_OUTPUT"
-          echo "mariadb-image=$(./bin/qserv env --mariadb-image)" >> "$GITHUB_OUTPUT"
-          echo "qserv-image=$(./bin/qserv env --qserv-image)" >> "$GITHUB_OUTPUT"
+
+          QSERV_BUILD_IMAGE=$(./bin/qserv env --build-image)
+          QSERV_USER_BUILD_IMAGE=$(./bin/qserv env --user-build-image)
+          QSERV_RUN_BASE_IMAGE=$(./bin/qserv env --run-base-image)
+          QSERV_MARIADB_IMAGE=$(./bin/qserv env --mariadb-image)
+          QSERV_IMAGE=$(./bin/qserv env --qserv-image)
+
+          {
+            echo "build-image=$QSERV_BUILD_IMAGE"
+            echo "user-build-image=$QSERV_USER_BUILD_IMAGE"
+            echo "run-base-image=$QSERV_RUN_BASE_IMAGE"
+            echo "mariadb-image=$QSERV_MARIADB_IMAGE"
+            echo "qserv-image=$QSERV_IMAGE"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "| Image Type | Image Name                  |"
+            echo "| ---------- | --------------------------- |"
+            echo "| Build      | \`$QSERV_BUILD_IMAGE\`      |"
+            echo "| Run Base   | \`$QSERV_RUN_BASE_IMAGE\`   |"
+            echo "| MariaDB    | \`$QSERV_MARIADB_IMAGE\`    |"
+            echo "| Qserv      | \`$QSERV_IMAGE\`            |"
+            echo ""
+            echo "To use this build with the helm chart, use the following in \`values.yaml\`:"
+            echo "\`\`\`yaml"
+            echo "qservImageName: $QSERV_IMAGE"
+            echo "mariadbImageName: $QSERV_MARIADB_IMAGE"
+            echo "sslProxyImageName: qserv/mysql-proxy-ssl:latest"
+            echo "ingestHelperImageName: $QSERV_BUILD_IMAGE"
+            echo "\`\`\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   update-base-images:
     name: Update base images
@@ -67,58 +96,55 @@ jobs:
     outputs:
       build-rebuilt: ${{ steps.rebuild.outputs.build-rebuilt }}
       run-base-rebuilt: ${{ steps.rebuild.outputs.run-base-rebuilt }}
-
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.1
+
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
-      - name: Login to DockerHub
+      - name: Login to ghcr
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Rebuild and push build image if needed
+      - name: Rebuild and push build base image if needed
         id: rebuild
         run: |
-          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
-            echo "Build image already on docker hub; skipping..."
+          if [[ $(./bin/qserv --log-level DEBUG image-exists ${{ needs.image-names.outputs.build-image }}) == "True" ]]; then
+            echo "Build image already in registry; skipping..."
             echo "build-rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./bin/qserv --log-level DEBUG build-build-image --push-image \
             --build-image ${{ needs.image-names.outputs.build-image }}
             echo "build-rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
       - name: Rebuild and push run base image if needed
         run: |
-          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.run-base-image }}) == "True" ]]; then
-            echo "Run base image already on docker hub; skipping..."
+          if [[ $(./bin/qserv --log-level DEBUG image-exists ${{ needs.image-names.outputs.run-base-image }}) == "True" ]]; then
+            echo "Run base image already in registry; skipping..."
             echo "run-base-rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./bin/qserv --log-level DEBUG build-run-base-image --push-image \
             --run-base-image ${{ needs.image-names.outputs.run-base-image }}
             echo "run-base-rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
   update-mariadb-image:
     name: Update MariaDB image
@@ -129,39 +155,40 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.1
+
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
-      - name: Login to DockerHub
+      - name: Login to ghcr
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Rebuild and push if needed
+      - name: Rebuild and push mariadb image if needed
         id: rebuild
         run: |
-          if [[ $(./bin/qserv --log-level DEBUG dh-image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
-            echo "MariaDB image already on docker hub; skipping..."
+          if [[ $(./bin/qserv --log-level DEBUG image-exists ${{ needs.image-names.outputs.mariadb-image }}) == "True" ]]; then
+            echo "MariaDB image already in registry; skipping..."
             echo "rebuilt=False" >> "$GITHUB_OUTPUT"
           else
             ./bin/qserv --log-level DEBUG build-mariadb-image --push-image --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
             echo "rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
   update-run-image:
     name: Update Qserv image
@@ -170,17 +197,20 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
 
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.1
+
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
@@ -188,11 +218,12 @@ jobs:
         run: |
           git submodule update --init
 
-      - name: Login to DockerHub
+      - name: Login to ghcr
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare user build image
         run: |
@@ -201,7 +232,7 @@ jobs:
           --build-image ${{ needs.image-names.outputs.build-image }} \
           --user-build-image ${{ needs.image-names.outputs.user-build-image }}
 
-      - name: Build lite-qserv image
+      - name: Build qserv image
         run: |
           ./bin/qserv --log-level DEBUG build \
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
@@ -211,9 +242,6 @@ jobs:
           --push-image \
           --clang-format CHECK \
           -j2
-        env:
-          QSERV_DH_USER: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          QSERV_DH_TOKEN: ${{ secrets.FM_DOCKERHUB_TOKEN }}
 
   compose-integration-tests:
     name: Integration tests (compose)
@@ -222,7 +250,7 @@ jobs:
     steps:
 
       - name: Install python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
 
@@ -231,21 +259,22 @@ jobs:
         with:
           version: '1.29.2'
 
-      - name: Install click
+      - name: Install python packages
         run: |
           python -m pip install --upgrade pip
           pip install click pyyaml requests
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # 0 is "all history and branch tags"
 
-      - name: Login to DockerHub
+      - name: Login to ghcr
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.FM_DOCKERHUB_TOKEN_USER }}
-          password: ${{ secrets.FM_DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Launch qserv
         run: |
@@ -270,8 +299,8 @@ jobs:
 
       - name: Run integration tests of ingesting user tables via the HTTP frontend
         run: |
-            ./bin/qserv --log-level DEBUG itest-http-ingest \
-            --qserv-image ${{ needs.image-names.outputs.qserv-image }}
+          ./bin/qserv --log-level DEBUG itest-http-ingest \
+          --qserv-image ${{ needs.image-names.outputs.qserv-image }}
 
       - name: Check Qserv containers
         if: always()
@@ -342,25 +371,9 @@ jobs:
         run: docker logs ${USER}-worker-mariadb-1-1
 
       - name: Remove integration test volumes
-        run: |
-          ./bin/qserv --log-level DEBUG itest-rm
+        if: always()
+        run: ./bin/qserv --log-level DEBUG itest-rm
 
       - name: Shut down qserv
-        run: |
-          ./bin/qserv --log-level DEBUG down \
-          -v
-
-  notify-on-fail:
-    name: Notify Slack if fail on main
-    runs-on: ubuntu-22.04
-    needs: [compose-integration-tests]
-    if: github.ref == 'refs/heads/main' && failure()
-    steps:
-      - name: Notify
-        uses: voxmedia/github-action-slack-notify-build@v1
-        with:
-          channel_id: G2JPZ3GC8  # this is the channel id of the dm_db_team room
-          status: FAILED
-          color: danger
-        env:
-          SLACK_BOT_TOKEN: ${{ secrets.QSERV_GHA_BUILD_NOTIFICATIONS }}
+        if: always()
+        run: ./bin/qserv --log-level DEBUG down -v

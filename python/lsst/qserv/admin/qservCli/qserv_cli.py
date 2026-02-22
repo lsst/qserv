@@ -47,8 +47,6 @@ from ..cli.options import (
 from . import images, launch
 from .opt import (
     env_build_image,
-    env_dh_token,
-    env_dh_user,
     env_gh_event_name,
     env_gh_head_ref,
     env_gh_ref,
@@ -120,7 +118,7 @@ help_order = [
     "run-build",
     "run-debug",
     "entrypoint-help",
-    "dh-image-exists",
+    "image-exists",
 ]
 
 
@@ -182,13 +180,13 @@ def show_qserv_environment(
 
 
 @qserv.command()
-@option_qserv_image(help=env_qserv_image.help("The name and tag of the qserv run image to be built."))
+@option_qserv_image(help=env_qserv_image.help("The name and tag of the qserv image to be built."))
 @option_qserv_root()
 @option_qserv_build_root()
 @option_run_base_image(
     help=env_run_base_image.help(
-        "The name of the lite-run-base image to use as the FROM image for the lite-run image. "
-        "Overrides the default lite-run-base image name in the Dockerfile."
+        "The name of the run base image to use as the FROM image for the qserv image. "
+        "Overrides the default qserv-run-base image name in the Dockerfile."
     )
 )
 @option_user_build_image()
@@ -320,7 +318,7 @@ def build_docs(
 def build_build_image(
     build_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
-    "Build the qserv lite-build image."
+    "Build the build base image."
     launch.build_build_image(build_image, qserv_root, dry, push_image, pull_image)
 
 
@@ -334,9 +332,9 @@ def build_build_image(
 def build_user_build_image(
     qserv_root: str, build_image: str, user_build_image: str, group: str, dry: bool
 ) -> None:
-    """Build lite-build with current-user credentials.
+    """Build build base with current-user credentials.
 
-    Adds the current user's id and group id to the lite-build image and creates
+    Adds the current user's id and group id to the build base image and creates
     an image that will run as the current user. This allows folders & files to
     be bind-mounted in the container without permissions problems.
     """
@@ -344,7 +342,7 @@ def build_user_build_image(
 
 
 @qserv.command()
-@option_run_base_image(help=env_run_base_image.help("The name of the lite-run-base image to create."))
+@option_run_base_image(help=env_run_base_image.help("The name of the run base image to create."))
 @option_push_image()
 @option_pull_image()
 @option_qserv_root()
@@ -352,7 +350,7 @@ def build_user_build_image(
 def build_run_base_image(
     run_base_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
 ) -> None:
-    "Build the qserv lite-build image."
+    "Build the run base image."
     launch.build_run_base_image(run_base_image, qserv_root, dry, push_image, pull_image)
 
 
@@ -365,7 +363,7 @@ def build_run_base_image(
 def build_mariadb_image(
     mariadb_image: str, qserv_root: str, push_image: bool, pull_image: bool, dry: bool
 ) -> None:
-    "Build the qserv lite-mariadb image."
+    "Build the mariadb image."
     launch.build_mariadb_image(
         mariadb_image=mariadb_image,
         push_image=push_image,
@@ -377,14 +375,15 @@ def build_mariadb_image(
 
 @qserv.command()
 @option_build_image(help=env_build_image.help("The name of the build base image to create."))
-@option_user_build_image(help=env_run_base_image.help("The name of the lite-run-base image to create."))
+@option_user_build_image(help=env_run_base_image.help("The name of the user build image to create."))
 @option_qserv_group()
-@option_run_base_image(help=env_run_base_image.help("The name of the lite-run-base image to create."))
+@option_run_base_image(help=env_run_base_image.help("The name of the run base image to create."))
 @option_mariadb_image(help=env_mariadb_image.help("The name of the mariadb image to create."))
 @option_push_image(
-    help="Push base images to dockerhub if they do not exist. Requires login to dockerhub first."
+    help="Push base images to the associated registry if they do not exist. Requires login to the registry "
+    "first."
 )
-@option_pull_image(help="Pull images from dockerhub if they exist.")
+@option_pull_image(help="Pull images from the associated registry if they exist.")
 @option_qserv_root()
 @option_dry()
 def build_images(
@@ -547,7 +546,7 @@ def itest(
 ) -> None:
     """Run integration tests.
 
-    Launches a lite-qserv container and uses it to run integration tests."""
+    Launches a qserv container and uses it to run integration tests."""
     returncode = launch.itest(
         qserv_root=qserv_root,
         mariadb_image=mariadb_image,
@@ -624,7 +623,7 @@ def itest_http(
 ) -> None:
     """Run integration tests for the HTTP frontend.
 
-    Launches a lite-qserv container and uses it to run integration tests."""
+    Launches a qserv container and uses it to run integration tests."""
     returncode = launch.itest_http(
         qserv_root=qserv_root,
         mariadb_image=mariadb_image,
@@ -685,7 +684,7 @@ def itest_http_ingest(
 ) -> None:
     """Run integration tests for ingesting user tables via the HTTP frontend.
 
-    Launches a lite-qserv container and uses it to run integration tests."""
+    Launches a qserv container and uses it to run integration tests."""
     returncode = launch.itest_http_ingest(
         qserv_root=qserv_root,
         itest_http_ingest_container=itest_http_ingest_container,
@@ -730,7 +729,7 @@ def prepare_data(
 ) -> None:
     """Unzip and partition integration tests datasets.
 
-    Launches a lite-qserv container and uses it to prepare integration tests datasets."""
+    Launches a qserv container and uses it to prepare integration tests datasets."""
     returncode = launch.prepare_data(
         qserv_root=qserv_root,
         itest_container=itest_container,
@@ -903,28 +902,14 @@ def entrypoint_help(
 
 
 @qserv.command(
-    help="""Check if an image is in dockerhub.
+    help="""Check if an image is in its associated registry.
 
     IMAGE is the image name + tag.
 
     Mostly this is useful for CI, so base image builds can be skipped for
-    base images that are already already on dockerhub.
-
-    Dockerhub credentials must be provided in the environment variables
-    QSERV_DH_USER and QSERV_DH_TOKEN.
+    images that are already already in their associated registry.
     """
 )
 @click.argument("IMAGE")
-def dh_image_exists(image: str) -> None:
-    user = env_dh_user.val()
-    token = env_dh_token.val()
-    if not (user and token):
-        click.echo("QSERV_DH_USER and QSERV_DH_TOKEN must be set to use this command.")
-        return
-    click.echo(
-        images.dh_image_exists(
-            image,
-            user,
-            token,
-        )
-    )
+def image_exists(image: str) -> None:
+    click.echo(images.image_exists(image))

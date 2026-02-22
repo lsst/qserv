@@ -45,13 +45,17 @@ COPY --from=mariadb-scisql-builder /tmp/scisql/build/libscisql-scisql_0.3.so /us
 COPY --from=mariadb-scisql-builder /tmp/scisql/build/deploy.mysql /docker-entrypoint-initdb.d/scisql.sql
 
 #-------------------------------------------------------------------------------------------------------------
-# The 'lite-mariadb' target further customizes the generic 'mariadb-scisql' image above by adding a 'qserv'
+# The 'qserv-mariadb' target further customizes the generic 'mariadb-scisql' image above by adding a 'qserv'
 # user, creating directories with appropriate ownership at locations expected to be used for bind-mounts in
 # the qserv operating environment, and setting the default runtime user to 'qserv'.  This image is the
 # artifact to be used for all MariaDB instantiations within a Qserv deployment.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM mariadb-scisql AS lite-mariadb
+FROM mariadb-scisql AS qserv-mariadb
+
+LABEL org.opencontainers.image.source=https://github.com/lsst/qserv
+LABEL org.opencontainers.image.description="Customized MariaDB image for the Qserv distributed database system"
+LABEL org.opencontainers.image.licenses=GPL-3.0-only
 
 RUN useradd --uid 1000 qserv
 
