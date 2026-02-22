@@ -1,0 +1,17 @@
+{{- if .Values.ingest.enable -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "qserv.name" . }}-ingest
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "qserv.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: ingest
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+{{- end }}
