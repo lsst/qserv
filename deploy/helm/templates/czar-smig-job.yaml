@@ -1,0 +1,54 @@
+{{- $myjob := .Values.czarSmig | default (dict) -}}
+{{- $trig  := get $myjob "runId" | default "" | toString -}}
+{{- if $trig -}}
+{{- $name := include "qserv.name" . -}}
+{{- $ns := .Release.Namespace -}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{$name}}-czar-smig-{{$trig}}
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+    app.kubernetes.io/component: schema
+spec:
+  completionMode: Indexed
+  completions: {{ .Values.czars.replicas }}
+  parallelism: {{ .Values.czars.replicas }}
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 600
+  template:
+    metadata:
+      labels:
+        {{- include "qserv.labels" . | nindent 8 }}
+        app.kubernetes.io/component: schema
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: czar-smig
+          image: {{ .Values.qservImageName | quote }}
+          imagePullPolicy: {{ .Values.qservImagePullPolicy | quote }}
+          env:
+            - name: JOB_COMPLETION_INDEX
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['batch.kubernetes.io/job-completion-index']
+            - name: CZAR_DB_HOST
+              value: "{{$name}}-czar-$(JOB_COMPLETION_INDEX).{{$name}}-czar.{{$ns}}.svc"
+            - name: CZAR_DB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: czar-secrets
+                  key: mariadb-root-password
+            - name: CZAR_DB_QSMASTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: czar-secrets
+                  key: mariadb-qsmaster-password
+            - name: CZAR_DB_CONN
+              value: "mysql://root:$(CZAR_DB_ROOT_PASSWORD)@$(CZAR_DB_HOST):3306/qservMeta"
+          command: ["entrypoint"]
+          args:
+            - "smig-update"
+            - "--czar-connection=$(CZAR_DB_CONN)"
+            - "--targs=mysqld_user_qserv_password=$(CZAR_DB_QSMASTER_PASSWORD)"
+{{- end }}
