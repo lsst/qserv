@@ -274,4 +274,44 @@ BOOST_AUTO_TEST_CASE(TestCsvRowParser2) {
     LOGS_INFO("TestCsvRowParser2 test ends");
 }
 
+// Test that enclosure characters appearing in the middle of fields (not at the start)
+// are treated as regular characters and do not trigger field content stripping.
+// Also tests malformed input where the opening enclosure is missing its closing pair.
+BOOST_AUTO_TEST_CASE(TestCsvRowParserEnclosureEdgeCases) {
+    LOGS_INFO("TestCsvRowParserEnclosureEdgeCases test begins");
+    csv::DialectInput dialectInput;
+    dialectInput.fieldsTerminatedBy = ",";
+    dialectInput.fieldsEnclosedBy = "\"";
+    csv::Dialect const dialect(dialectInput);
+    csv::RowParser rowParser(dialect);
+
+    // Fields with the enclosure character in the middle (not at the start): must be treated as plain text.
+    // Fields with the enclosure character at the start but not the end: malformed, parsed best-effort.
+    vector<string> const in = {
+            // Enclosure in the middle of a field: should be treated as a regular character.
+            "hello\"world\",\"normal\"",
+            // Malformed last field: only an opening enclosure with no closing pair.
+            "normal,\"",
+    };
+    vector<vector<string>> rows;
+    for (auto const& row : in) {
+        vector<string> fields;
+        rowParser.parse(row.data(), row.size(),
+                        [&fields](char const* out, size_t size) { fields.emplace_back(string(out, size)); });
+        rows.emplace_back(move(fields));
+    }
+    // Row 0: hello"world" has enclosure in the middle (not at the start), so the quotes are treated
+    // as regular characters. The second field "normal" is properly enclosed.
+    BOOST_CHECK_EQUAL(rows[0].size(), 2ULL);
+    BOOST_CHECK_EQUAL(rows[0][0], string("hello\"world\""));
+    BOOST_CHECK_EQUAL(rows[0][1], string("normal"));
+    // Row 1: first field "normal" is plain text. The last field consists of only an opening enclosure
+    // with no closing pair (malformed), which is reported as an empty string without undefined behavior.
+    BOOST_CHECK_EQUAL(rows[1].size(), 2ULL);
+    BOOST_CHECK_EQUAL(rows[1][0], string("normal"));
+    BOOST_CHECK_EQUAL(rows[1][1], string(""));
+    LOGS_INFO("TestCsvRowParserEnclosureEdgeCases test ends");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
+

@@ -185,13 +185,19 @@ void RowParser::parse(char const* inRow, size_t inRowSize,
         if (ch == escapeChar) {
             // Two subsequent escapes eliminate each other.
             inEscapeMode = !inEscapeMode;
-        } else if (ch == enclosureChar && !inEscapeMode) {
+        } else if (ch == enclosureChar && !inEscapeMode && (ptr == fieldStartPtr || inEnclosure)) {
+            // Only treat the enclosure as special if it appears at the start of the field
+            // or if we're already inside an enclosure (closing it).
             inEnclosure = !inEnclosure;
-            hasEnclosure = true;
+            if (ptr == fieldStartPtr) {
+                hasEnclosure = true;
+            }
         } else if (ch == fieldTerminator && !inEnclosure && !inEscapeMode) {
             if (hasEnclosure) {
                 // Ignore enclosing characters at both ends of the field.
-                onFieldParsed(fieldStartPtr + 1, ptr - fieldStartPtr - 2);
+                // Guard against underflow for malformed input missing the closing enclosure.
+                size_t const fieldLen = static_cast<size_t>(ptr - fieldStartPtr);
+                onFieldParsed(fieldStartPtr + 1, fieldLen >= 2 ? fieldLen - 2 : 0);
             } else {
                 onFieldParsed(fieldStartPtr, ptr - fieldStartPtr);
             }
@@ -206,7 +212,9 @@ void RowParser::parse(char const* inRow, size_t inRowSize,
     if (fieldStartPtr != endRowPtr) {
         if (hasEnclosure) {
             // Ignore enclosing characters at both ends of the field.
-            onFieldParsed(fieldStartPtr + 1, endRowPtr - fieldStartPtr - 2);
+            // Guard against underflow for malformed input missing the closing enclosure.
+            size_t const fieldLen = static_cast<size_t>(endRowPtr - fieldStartPtr);
+            onFieldParsed(fieldStartPtr + 1, fieldLen >= 2 ? fieldLen - 2 : 0);
         } else {
             onFieldParsed(fieldStartPtr, endRowPtr - fieldStartPtr);
         }
