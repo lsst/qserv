@@ -15,7 +15,8 @@ require.config({
         'bootstrap':  'https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.bundle',
         'underscore': 'https://underscorejs.org/underscore-umd-min',
         'chartjs':    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min',
-        'highcharts': 'https://code.highcharts.com',
+        // 'highcharts': 'https://code.highcharts.com',
+        'highcharts': 'modules/js',
         'webfwk':     'webfwk/js',
         'qserv':      'qserv/js',
         'modules':    'modules/js'
