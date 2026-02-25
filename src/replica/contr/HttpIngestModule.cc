@@ -1228,10 +1228,13 @@ void HttpIngestModule::_publishDatabaseInMaster(DatabaseInfo const& database) co
                 double const overlap = table.isDirector() ? databaseFamilyInfo.overlap : 0;
                 bool const isPartitioned = true;
                 bool const hasSubChunks = table.isDirector();
-                css::PartTableParams const partParams(database.name, table.directorTable.tableName(),
-                                                      table.directorTable.primaryKeyColumn(),
-                                                      table.latitudeColName, table.longitudeColName, overlap,
-                                                      isPartitioned, hasSubChunks);
+                string const databaseName =
+                        (!table.isDirector() && !table.directorTable.databaseName().empty())
+                                ? table.directorTable.databaseName()
+                                : database.name;
+                css::PartTableParams const partParams(
+                        databaseName, table.directorTable.tableName(), table.directorTable.primaryKeyColumn(),
+                        table.latitudeColName, table.longitudeColName, overlap, isPartitioned, hasSubChunks);
                 bool const lockInMem = true;
                 int const scanRating = 1;
                 css::ScanTableParams const scanParams(lockInMem, scanRating);

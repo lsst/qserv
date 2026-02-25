@@ -81,9 +81,12 @@ protected:
      * @param databaseName The name of the database to ingest the data into.
      * @param tableName The name of the table to ingest the data into.
      * @param isPartitioned A flag indicating whether the table is partitioned.
+     * @param isDirector A flag indicating whether the table is a director table.
      * @param directorIdColName The name of the column to be used as a director key.
      * @param directorLongitudeColName The name of the column to be used as a director longitude.
      * @param directorLatitudeColName The name of the column to be used as a director latitude.
+     * @param refDirectorDatabaseName The name of the reference director database.
+     * @param refDirectorTableName The name of the reference director table.
      * @param charsetName The name of the character set for the table.
      * @param collationName The name of the collation for the table.
      * @param schema The schema of the table.
@@ -105,8 +108,9 @@ protected:
      */
     std::list<std::pair<std::string, std::string>> ingestData(
             std::string const& databaseName, std::string const& tableName, bool isPartitioned,
-            std::string directorIdColName, std::string directorLongitudeColName,
-            std::string directorLatitudeColName, std::string const& charsetName,
+            bool isDirector, std::string directorIdColName, std::string directorLongitudeColName,
+            std::string directorLatitudeColName, std::string const& refDirectorDatabaseName,
+            std::string const& refDirectorTableName, std::string const& charsetName,
             std::string const& collationName, nlohmann::json const& schema, nlohmann::json const& indexes,
             std::set<std::int32_t> const& chunkIds,
             std::function<std::map<std::string, std::string>(
@@ -193,6 +197,26 @@ protected:
      */
     void setProtocolFields(std::list<http::ClientMimeEntry>& mimeData) const;
 
+    /**
+     * The database family descriptor.
+     */
+    struct DatabaseFamily {
+        std::string familyName;
+        unsigned int numStripes = 0;
+        unsigned int numSubStripes = 0;
+        double overlap = 0.0;
+    };
+
+    /**
+     * Get parameters of the database family for the specified database.
+     * @param databaseName The name of the database to get the family for.
+     * @return DatabaseFamily The family descriptor.
+     * @throw std::invalid_argument If the input parameter is empty.
+     * @throw std::logic_error If no such database or family exists.
+     * @throw http::Error In case of a communication errors or any errors reported by the Controller.
+     */
+    DatabaseFamily getDatabaseFamily(const std::string& databaseName);
+
 private:
     // The following methods are used to interact with the Replication Controller.
     // The methods throw http::Error or other exceptions in case of communication
@@ -204,8 +228,9 @@ private:
     void _publishDatabase(std::string const& databaseName);
 
     void _createTable(std::string const& databaseName, std::string const& tableName, bool isPartitioned,
-                      std::string directorIdColName, std::string directorLongitudeColName,
-                      std::string directorLatitudeColName, std::string const& charsetName,
+                      bool isDirector, std::string directorIdColName, std::string directorLongitudeColName,
+                      std::string directorLatitudeColName, std::string const& refDirectorDatabaseName,
+                      std::string const& refDirectorTableName, std::string const& charsetName,
                       std::string const& collationName, nlohmann::json const& schema);
     void _createDefaultDirectorTable(std::string const& databaseName);
 

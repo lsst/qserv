@@ -204,6 +204,43 @@ private:
     bool _inEscapeMode = false;  ///< for counting escapes while processing the input stream
 };
 
+/**
+ * The class RowParser is meant to be used for parsing the rows of the CSV/TSV formatted
+ * input stream after they have been separated by the Parser class. The main purpose of
+ * the RowParser is to prepare the rows for further post-processing (such as adding extra
+ * columns) by the Ingest system before loading the processed rows into the destination
+ * table.
+ *
+ * @see class Parser
+ */
+class RowParser {
+public:
+    RowParser(Dialect const& dialect);
+
+    RowParser() = delete;
+    RowParser(RowParser const&) = delete;
+    RowParser& operator=(RowParser const&) = delete;
+    ~RowParser() = default;
+
+    /**
+     * Parse the input row and call the specified function for each field
+     * found in the row. The field is defined as a sequence of characters
+     * terminated by the corresponding EOL sequence of the Dialect or by the end
+     * of the row. The field may be optionally enclosed by the corresponding
+     * character of the Dialect. The field may also contain escaped characters
+     * as defined by the Dialect.
+     *
+     * @param inRow A pointer to the input row.
+     * @param inRowSize The number of bytes to be read from the row (allowed to be 0).
+     * @param onFieldParsed The callback function to be called for each field parsed.
+     */
+    void parse(char const* inRow, size_t inRowSize,
+               std::function<void(char const*, size_t)> const& onFieldParsed);
+
+private:
+    Dialect const _dialect;
+};
+
 }  // namespace lsst::qserv::replica::csv
 
 #endif  // LSST_QSERV_REPLICA_CSV_H

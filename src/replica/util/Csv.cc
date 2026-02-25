@@ -165,4 +165,60 @@ void Parser::parse(char const* inBuf, size_t inBufSize, bool flush,
     }
 }
 
+RowParser::RowParser(Dialect const& dialect) : _dialect(dialect) {}
+
+void RowParser::parse(char const* inRow, size_t inRowSize,
+                      std::function<void(char const*, size_t)> const& onFieldParsed) {
+    if (inRow == nullptr) throw invalid_argument(context + "input row is the null pointer.");
+
+    char const* endRowPtr = inRow + inRowSize;
+    bool inEnclosure = false;
+    bool inEscapeMode = false;
+    char const enclosureChar = _dialect.fieldsEnclosedBy();
+    char const escapeChar = _dialect.fieldsEscapedBy();
+    char const fieldTerminator = _dialect.fieldsTerminatedBy();
+    bool hasEnclosure = false;
+
+    char const* fieldStartPtr = inRow;
+    for (char const* ptr = inRow; ptr != endRowPtr; ++ptr) {
+        char const ch = *ptr;
+        if (ch == escapeChar) {
+            // Two subsequent escapes eliminate each other.
+            inEscapeMode = !inEscapeMode;
+        } else if (ch == enclosureChar && !inEscapeMode && (ptr == fieldStartPtr || inEnclosure)) {
+            // Only treat the enclosure as special if it appears at the start of the field
+            // or if we're already inside an enclosure (closing it).
+            inEnclosure = !inEnclosure;
+            if (ptr == fieldStartPtr) {
+                hasEnclosure = true;
+            }
+        } else if (ch == fieldTerminator && !inEnclosure && !inEscapeMode) {
+            if (hasEnclosure) {
+                // Ignore enclosing characters at both ends of the field.
+                // Guard against underflow for malformed input missing the closing enclosure.
+                size_t const fieldLen = static_cast<size_t>(ptr - fieldStartPtr);
+                onFieldParsed(fieldStartPtr + 1, fieldLen >= 2 ? fieldLen - 2 : 0);
+            } else {
+                onFieldParsed(fieldStartPtr, ptr - fieldStartPtr);
+            }
+            hasEnclosure = false;  // Reset the flag for the next field.
+            fieldStartPtr = ptr + 1;
+        } else {
+            // Escape (if any) has been applied to the current character.
+            inEscapeMode = false;
+        }
+    }
+    // Report the last field if the row doesn't end with the field terminator.
+    if (fieldStartPtr != endRowPtr) {
+        if (hasEnclosure) {
+            // Ignore enclosing characters at both ends of the field.
+            // Guard against underflow for malformed input missing the closing enclosure.
+            size_t const fieldLen = static_cast<size_t>(endRowPtr - fieldStartPtr);
+            onFieldParsed(fieldStartPtr + 1, fieldLen >= 2 ? fieldLen - 2 : 0);
+        } else {
+            onFieldParsed(fieldStartPtr, endRowPtr - fieldStartPtr);
+        }
+    }
+}
+
 }  // namespace lsst::qserv::replica::csv

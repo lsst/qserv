@@ -79,19 +79,19 @@ HttpCzarIngestModuleBase::HttpCzarIngestModuleBase(asio::io_service& io_service)
                            to_string(cconfig::CzarConfig::instance()->replicationRegistryPort())) {}
 
 list<pair<string, string>> HttpCzarIngestModuleBase::ingestData(
-        string const& databaseName, string const& tableName, bool isPartitioned, string directorIdColName,
-        string directorLongitudeColName, string directorLatitudeColName, string const& charsetName,
+        string const& databaseName, string const& tableName, bool isPartitioned, bool isDirector,
+        string directorIdColName, string directorLongitudeColName, string directorLatitudeColName,
+        string const& refDirectorDatabaseName, string const& refDirectorTableName, string const& charsetName,
         string const& collationName, json const& schema, json const& indexes, set<int32_t> const& chunkIds,
         function<map<string, string>(uint32_t, map<int32_t, vector<string>> const&)> const&
                 submitRequestsToWorkers) {
     // At lest one director table is needed per catalog for Qserv to function correctly.
-    // The default director should be created unless the ingest is for a partitioned table
-    // and the user has specified a director table (which is presently the only option
-    // supported by the current implementation for the partitioned tables).
-    bool const createDefaultDirectorTable = !isPartitioned;
+    // The default director should be created unless the ingest is for a partitioned director table.
+    bool const createDefaultDirectorTable = !(isPartitioned && isDirector);
     _unpublishOrCreateDatabase(databaseName, createDefaultDirectorTable);
-    _createTable(databaseName, tableName, isPartitioned, directorIdColName, directorLongitudeColName,
-                 directorLatitudeColName, charsetName, collationName, schema);
+    _createTable(databaseName, tableName, isPartitioned, isDirector, directorIdColName,
+                 directorLongitudeColName, directorLatitudeColName, refDirectorDatabaseName,
+                 refDirectorTableName, charsetName, collationName, schema);
 
     uint32_t transactionId = 0;
     try {
@@ -129,7 +129,7 @@ list<pair<string, string>> HttpCzarIngestModuleBase::ingestData(
 void HttpCzarIngestModuleBase::verifyUserDatabaseName(string const& func, string const& databaseName) {
     string const userDatabaseNamesPrefix = "user_";
     if ((databaseName.size() <= userDatabaseNamesPrefix.size()) ||
-        !boost::iequals(databaseName.substr(0, userDatabaseNamesPrefix.size()), userDatabaseNamesPrefix)) {
+        (databaseName.substr(0, userDatabaseNamesPrefix.size()) != userDatabaseNamesPrefix)) {
         auto err = "database name doesn't start with the prefix: " + userDatabaseNamesPrefix;
         throw http::Error(func, err);
     }
@@ -138,7 +138,7 @@ void HttpCzarIngestModuleBase::verifyUserDatabaseName(string const& func, string
 void HttpCzarIngestModuleBase::verifyUserTableName(string const& func, string const& tableName) {
     string const qservTableNamesPrefix = "qserv_";
     if (tableName.empty()) throw http::Error(func, "table name is empty");
-    if (boost::iequals(tableName.substr(0, qservTableNamesPrefix.size()), qservTableNamesPrefix)) {
+    if (tableName.substr(0, qservTableNamesPrefix.size()) == qservTableNamesPrefix) {
         auto err = "table name starts with the reserved prefix: " + qservTableNamesPrefix;
         throw http::Error(func, err);
     }
@@ -188,7 +188,7 @@ void HttpCzarIngestModuleBase::_unpublishOrCreateDatabase(const string& database
                                                           bool createDefaultDirectorTable) {
     json const config = _requestController(http::Method::GET, "/replication/config").at("config");
     for (const auto& database : config.at("databases")) {
-        if (boost::iequals(database.at("database").get<string>(), databaseName)) {
+        if (database.at("database").get<string>() == databaseName) {
             if (database.at("is_published").get<int>() != 0) _unpublishDatabase(databaseName);
             if (::countDirectors(database) == 0 && createDefaultDirectorTable) {
                 _createDefaultDirectorTable(databaseName);
@@ -221,10 +221,11 @@ void HttpCzarIngestModuleBase::_publishDatabase(string const& databaseName) {
 }
 
 void HttpCzarIngestModuleBase::_createTable(string const& databaseName, string const& tableName,
-                                            bool isPartitioned, string directorIdColName,
+                                            bool isPartitioned, bool isDirector, string directorIdColName,
                                             string directorLongitudeColName, string directorLatitudeColName,
-                                            string const& charsetName, string const& collationName,
-                                            json const& schema) {
+                                            string const& refDirectorDatabaseName,
+                                            string const& refDirectorTableName, string const& charsetName,
+                                            string const& collationName, json const& schema) {
     json data = json::object({{"database", databaseName},
                               {"table", tableName},
                               {"is_partitioned", isPartitioned ? 1 : 0},
@@ -233,8 +234,12 @@ void HttpCzarIngestModuleBase::_createTable(string const& databaseName, string c
                               {"schema", schema}});
     if (isPartitioned) {
         data["director_key"] = directorIdColName;
-        data["longitude_key"] = directorLongitudeColName;
-        data["latitude_key"] = directorLatitudeColName;
+        if (isDirector) {
+            data["longitude_key"] = directorLongitudeColName;
+            data["latitude_key"] = directorLatitudeColName;
+        } else {
+            data["director_table"] = refDirectorDatabaseName + "." + refDirectorTableName;
+        }
     }
     _requestController(http::Method::POST, "/ingest/table/", data);
 }
@@ -422,6 +427,31 @@ void HttpCzarIngestModuleBase::setProtocolFields(list<http::ClientMimeEntry>& mi
     mimeData.push_front({"auth_key", cconfig::CzarConfig::instance()->replicationAuthKey(), "", ""});
     mimeData.push_front(
             {"admin_auth_key", cconfig::CzarConfig::instance()->replicationAdminAuthKey(), "", ""});
+}
+
+HttpCzarIngestModuleBase::DatabaseFamily HttpCzarIngestModuleBase::getDatabaseFamily(
+        const std::string& databaseName) {
+    if (databaseName.empty()) {
+        throw std::invalid_argument(string(__func__) + ": database name is empty");
+    }
+    json const config = _requestController(http::Method::GET, "/replication/config").at("config");
+    for (const auto& databaseConfig : config.at("databases")) {
+        if (databaseConfig.at("database").get<string>() == databaseName) {
+            DatabaseFamily family;
+            family.familyName = databaseConfig.at("family_name").get<string>();
+            for (const auto& familyConfig : config.at("database_families")) {
+                if (familyConfig.at("name").get<string>() == family.familyName) {
+                    family.numStripes = familyConfig.at("num_stripes").get<unsigned int>();
+                    family.numSubStripes = familyConfig.at("num_sub_stripes").get<unsigned int>();
+                    family.overlap = familyConfig.at("overlap").get<double>();
+                    return family;
+                }
+            }
+            throw logic_error(string(__func__) + ": database family: " + family.familyName +
+                              " not found for database: " + databaseName);
+        }
+    }
+    throw logic_error(string(__func__) + ": database not found: " + databaseName);
 }
 
 }  // namespace lsst::qserv::czar

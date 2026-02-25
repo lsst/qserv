@@ -141,4 +141,176 @@ BOOST_AUTO_TEST_CASE(TestCsvParser) {
     LOGS_INFO("TestCsvParser test ends");
 }
 
+// Test with the following dialect parameters:
+// - enclosure character is the null character
+// - tab is the field separator
+BOOST_AUTO_TEST_CASE(TestCsvRowParser) {
+    LOGS_INFO("TestCsvRowParser test begins");
+    csv::Dialect const dialect;
+    csv::RowParser rowParser(dialect);
+    vector<string> const in = {
+            "Field 1\tField 2\tField 3",
+            "Field 4\tField 5 with \"escaped\" enclosure\tField 6",
+            "Field 7\tField 8 with escaped terminator \\ \tField 9",
+    };
+    vector<vector<string>> rows;
+    for (auto const& row : in) {
+        vector<string> fields;
+        rowParser.parse(row.data(), row.size(),
+                        [&fields](char const* out, size_t size) { fields.emplace_back(string(out, size)); });
+        rows.emplace_back(move(fields));
+    }
+    for (auto const& row : rows) {
+        LOGS_INFO("TestCsvRowParser: " + to_string(row.size()) + " fields");
+        for (auto const& field : row) {
+            LOGS_INFO("TestCsvRowParser: " + field);
+        }
+    }
+    BOOST_CHECK_EQUAL(rows.size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[0].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[0][0], string("Field 1"));
+    BOOST_CHECK_EQUAL(rows[0][1], string("Field 2"));
+    BOOST_CHECK_EQUAL(rows[0][2], string("Field 3"));
+    BOOST_CHECK_EQUAL(rows[1].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[1][0], string("Field 4"));
+    BOOST_CHECK_EQUAL(rows[1][1], string("Field 5 with \"escaped\" enclosure"));
+    BOOST_CHECK_EQUAL(rows[1][2], string("Field 6"));
+    BOOST_CHECK_EQUAL(rows[2].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[2][0], string("Field 7"));
+    BOOST_CHECK_EQUAL(rows[2][1], string("Field 8 with escaped terminator \\ "));
+    BOOST_CHECK_EQUAL(rows[2][2], string("Field 9"));
+    LOGS_INFO("TestCsvRowParser test ends");
+}
+
+// Test with the following dialect parameters:
+// - enclosure character is a double quote
+// - field separator is a comma
+BOOST_AUTO_TEST_CASE(TestCsvRowParser1) {
+    LOGS_INFO("TestCsvRowParser1 test begins");
+    csv::DialectInput dialectInput;
+    dialectInput.fieldsTerminatedBy = ",";
+    dialectInput.fieldsEnclosedBy = "\"";
+    csv::Dialect const dialect(dialectInput);
+    csv::RowParser rowParser(dialect);
+    vector<string> const in = {
+            "\"Field 1\",\"Field 2\",\"Field 3\"",
+            "\"Field 4\",\"Field 5 with \\\"escaped\\\" enclosure\",\"Field 6\"",
+            "\"Field 7\",\"Field 8 with escaped terminator \\ \",\"Field 9\"",
+    };
+    vector<vector<string>> rows;
+    for (auto const& row : in) {
+        vector<string> fields;
+        rowParser.parse(row.data(), row.size(),
+                        [&fields](char const* out, size_t size) { fields.emplace_back(string(out, size)); });
+        rows.emplace_back(move(fields));
+    }
+    for (auto const& row : rows) {
+        LOGS_INFO("TestCsvRowParser1: " + to_string(row.size()) + " fields");
+        for (auto const& field : row) {
+            LOGS_INFO("TestCsvRowParser1: " + field);
+        }
+    }
+    BOOST_CHECK_EQUAL(rows.size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[0].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[0][0], string("Field 1"));
+    BOOST_CHECK_EQUAL(rows[0][1], string("Field 2"));
+    BOOST_CHECK_EQUAL(rows[0][2], string("Field 3"));
+    BOOST_CHECK_EQUAL(rows[1].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[1][0], string("Field 4"));
+    BOOST_CHECK_EQUAL(rows[1][1], string("Field 5 with \\\"escaped\\\" enclosure"));
+    BOOST_CHECK_EQUAL(rows[1][2], string("Field 6"));
+    BOOST_CHECK_EQUAL(rows[2].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[2][0], string("Field 7"));
+    BOOST_CHECK_EQUAL(rows[2][1], string("Field 8 with escaped terminator \\ "));
+    BOOST_CHECK_EQUAL(rows[2][2], string("Field 9"));
+    LOGS_INFO("TestCsvRowParser1 test ends");
+}
+
+// Test with the following dialect parameters:
+// - enclosure character is a single quote
+// - field separator is a comma
+// Also note that the second row has the unquoted numeric value in the first field and
+// a null value represented as \N in the last field. MySQL allows unquoted fields in the input CSV
+// as long as they don't contain special characters (enclosure, escape, field terminator, line terminator).
+// The test checks that the parser correctly handles such cases.
+BOOST_AUTO_TEST_CASE(TestCsvRowParser2) {
+    LOGS_INFO("TestCsvRowParser2 test begins");
+    csv::DialectInput dialectInput;
+    dialectInput.fieldsTerminatedBy = ",";
+    dialectInput.fieldsEnclosedBy = "'";
+    csv::Dialect const dialect(dialectInput);
+    csv::RowParser rowParser(dialect);
+    vector<string> const in = {
+            "'Field 1','Field 2','Field 3'",
+            "'Field 4','Field 5 with \\'escaped\\' enclosure','Field 6'",
+            "1234,'Field 8 with escaped terminator \\ ',\\N",
+    };
+    vector<vector<string>> rows;
+    for (auto const& row : in) {
+        vector<string> fields;
+        rowParser.parse(row.data(), row.size(),
+                        [&fields](char const* out, size_t size) { fields.emplace_back(string(out, size)); });
+        rows.emplace_back(move(fields));
+    }
+    for (auto const& row : rows) {
+        LOGS_INFO("TestCsvRowParser2: " + to_string(row.size()) + " fields");
+        for (auto const& field : row) {
+            LOGS_INFO("TestCsvRowParser2: " + field);
+        }
+    }
+    BOOST_CHECK_EQUAL(rows.size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[0].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[0][0], string("Field 1"));
+    BOOST_CHECK_EQUAL(rows[0][1], string("Field 2"));
+    BOOST_CHECK_EQUAL(rows[0][2], string("Field 3"));
+    BOOST_CHECK_EQUAL(rows[1].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[1][0], string("Field 4"));
+    BOOST_CHECK_EQUAL(rows[1][1], string("Field 5 with \\'escaped\\' enclosure"));
+    BOOST_CHECK_EQUAL(rows[1][2], string("Field 6"));
+    BOOST_CHECK_EQUAL(rows[2].size(), 3ULL);
+    BOOST_CHECK_EQUAL(rows[2][0], string("1234"));
+    BOOST_CHECK_EQUAL(rows[2][1], string("Field 8 with escaped terminator \\ "));
+    BOOST_CHECK_EQUAL(rows[2][2], string("\\N"));
+    LOGS_INFO("TestCsvRowParser2 test ends");
+}
+
+// Test that enclosure characters appearing in the middle of fields (not at the start)
+// are treated as regular characters and do not trigger field content stripping.
+// Also tests malformed input where the opening enclosure is missing its closing pair.
+BOOST_AUTO_TEST_CASE(TestCsvRowParserEnclosureEdgeCases) {
+    LOGS_INFO("TestCsvRowParserEnclosureEdgeCases test begins");
+    csv::DialectInput dialectInput;
+    dialectInput.fieldsTerminatedBy = ",";
+    dialectInput.fieldsEnclosedBy = "\"";
+    csv::Dialect const dialect(dialectInput);
+    csv::RowParser rowParser(dialect);
+
+    // Fields with the enclosure character in the middle (not at the start): must be treated as plain text.
+    // Fields with the enclosure character at the start but not the end: malformed, parsed best-effort.
+    vector<string> const in = {
+            // Enclosure in the middle of a field: should be treated as a regular character.
+            "hello\"world\",\"normal\"",
+            // Malformed last field: only an opening enclosure with no closing pair.
+            "normal,\"",
+    };
+    vector<vector<string>> rows;
+    for (auto const& row : in) {
+        vector<string> fields;
+        rowParser.parse(row.data(), row.size(),
+                        [&fields](char const* out, size_t size) { fields.emplace_back(string(out, size)); });
+        rows.emplace_back(move(fields));
+    }
+    // Row 0: hello"world" has enclosure in the middle (not at the start), so the quotes are treated
+    // as regular characters. The second field "normal" is properly enclosed.
+    BOOST_CHECK_EQUAL(rows[0].size(), 2ULL);
+    BOOST_CHECK_EQUAL(rows[0][0], string("hello\"world\""));
+    BOOST_CHECK_EQUAL(rows[0][1], string("normal"));
+    // Row 1: first field "normal" is plain text. The last field consists of only an opening enclosure
+    // with no closing pair (malformed), which is reported as an empty string without undefined behavior.
+    BOOST_CHECK_EQUAL(rows[1].size(), 2ULL);
+    BOOST_CHECK_EQUAL(rows[1][0], string("normal"));
+    BOOST_CHECK_EQUAL(rows[1][1], string(""));
+    LOGS_INFO("TestCsvRowParserEnclosureEdgeCases test ends");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -49,6 +49,10 @@ namespace lsst::qserv::qmeta {
 class UserTables;
 }  // namespace lsst::qserv::qmeta
 
+namespace lsst::qserv::sql {
+class SqlConnection;
+}  // namespace lsst::qserv::sql
+
 namespace httplib {
 class ContentReader;
 class Request;
@@ -96,10 +100,41 @@ private:
                             std::shared_ptr<ingest::Processor> const& workerIngestProcessor);
 
     nlohmann::json _ingestDirectorTable();
+    nlohmann::json _ingestChildTable();
+
+    void _makeDirectorIndexFile();
+
+    /**
+     * Scan the input file and get a collection of the object identifiers.
+     * @return The key of the map is the object identifier and the value is the pair
+     *  of (chunkId, subChunkId) values. Values of (chunkId, subChunkId) will be
+     *  initialized with (-1, -1).
+     */
+    std::map<std::string, std::pair<int, int>> _getObjectIdsFromInputFile();
+
+    /**
+     * Get the maximum allowed length of a query to be sent to the MySQL server. The method is used
+     * to determine the maximum number of identifiers that can be packed into a single query when
+     * pulling the (objectId, chunkId, subChunkId) mapping for the referenced director table.
+     * The implementation will submit the "SHOW VARIABLES LIKE 'max_allowed_packet'" query
+     * to the MySQL server and parse the results.
+     * @see https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_max_allowed_packet
+     * @throw http::Error In case of a communication error or an error reported by the MySQL server.
+     */
+    size_t _getMaxQueryLength(std::shared_ptr<sql::SqlConnection> const& conn);
+
     void _injectIdColValues();
     void _createChunksDir();
     void _getFileSize();
-    void _partitionTableData();
+
+    /**
+     * Partition the input data file into the chunk files.
+     * @param configBase The table type-specific configuration for the partitioning.
+     *   The configuration will be extended with the common parameters.
+     */
+    void _partitionTableData(nlohmann::json const& configBase);
+
+    void _pushChunksToWorkersDriver();
     std::map<std::string, std::string> _pushChunksToWorkers(
             std::uint32_t transactionId,
             std::map<std::int32_t, std::vector<std::string>> const& chunk2workerIds);
@@ -133,9 +168,11 @@ private:
     std::string _name;            ///< The name of a file entry that is open ("rows", "schema" or "indexes").
     std::string _csvFilePath;     ///< The absolute path of the CSV file in the temporary directory.
     std::string _csvExtFilePath;  ///< The absolute path of the extended CSV file (if any).
-    std::ofstream _csvFile;       ///< The output stream for the CSV file.
-    std::string _schema;          ///< The schema payload before parsing it into the JSON object.
-    std::string _indexes;         ///< The indexes payload before parsing it into the JSON object.
+    std::string _csvDirIndexFilePath;  ///< The absolute path of the director index file for partitioned
+                                       ///< tables (if any).
+    std::ofstream _csvFile;            ///< The output stream for the CSV file.
+    std::string _schema;               ///< The schema payload before parsing it into the JSON object.
+    std::string _indexes;              ///< The indexes payload before parsing it into the JSON object.
 
     // The following parameters are parsed from the request body.
     std::string _databaseName;
@@ -146,6 +183,11 @@ private:
     std::string _idColName;         ///< The name of the ID (PK) column for partitioned tables.
     std::string _longitudeColName;  ///< Right ascension column name for partitioned tables.
     std::string _latitudeColName;   ///< Declination column name for partitioned tables.
+    std::string
+            _refDirectorDatabase;   ///< The name of the database for the director table of a dependent table.
+    std::string _refDirectorTable;  ///< The name of the director table of a dependent table.
+    std::string
+            _refDirectorIdColName;  ///< The name of the ID column in the director table of a dependent table.
     std::string _charsetName;
     std::string _collationName;
     std::string _fieldsTerminatedBy;

@@ -34,7 +34,18 @@ using namespace std;
 
 namespace lsst::partition {
 
-ObjectIndex::~ObjectIndex() { close(); }
+ObjectIndex::~ObjectIndex() {
+    if (!_isOpen) return;
+    switch (_mode) {
+        case Mode::READ:
+            break;
+        case Mode::WRITE:
+            if (_outFile.is_open()) {
+                _outFile.close();
+            }
+            break;
+    }
+}
 
 void ObjectIndex::create(string const& fileName, csv::Editor const& editor, string const& idFieldName,
                          string const& chunkIdFieldName, string const& subChunkIdFieldName) {
@@ -55,7 +66,7 @@ void ObjectIndex::create(string const& fileName, csv::Editor const& editor, stri
     }
     _outFileName = fileName;
     _outFile.open(_outFileName, ios_base::out | ios_base::app);
-    if (not _outFile.good()) {
+    if (!_outFile.good()) {
         throw runtime_error(context + "failed to open/create index file: '" + _outFileName + "'");
     }
 
@@ -93,7 +104,7 @@ void ObjectIndex::open(string const& url, csv::Dialect const& dialect) {
     // https://en.wikipedia.org/wiki/File_URI_scheme
     string const fileName = url.substr(scheme.length() - 1);
     ifstream inFile(fileName, ios_base::in);
-    if (not inFile.good()) {
+    if (!inFile.good()) {
         throw runtime_error(context + "failed to open index file: '" + fileName + "'");
     }
     // Field specifications in the index file are random as they don't have any actual
@@ -122,25 +133,10 @@ void ObjectIndex::open(string const& url, csv::Dialect const& dialect) {
     _isOpen = true;
 }
 
-void ObjectIndex::close() {
-    lock_guard<mutex> lock(_mtx);
-    if (not _isOpen) return;
-    switch (_mode) {
-        case Mode::READ:
-            break;
-        case Mode::WRITE:
-            if (_outFile.is_open()) {
-                _outFile.close();
-            }
-            break;
-    }
-    _isOpen = false;
-}
-
 void ObjectIndex::write(string const& id, ChunkLocation const& location) {
     string const context = "ObjectIndex::" + string(__func__) + ": ";
     lock_guard<mutex> lock(_mtx);
-    if (not _isOpen) throw logic_error(context + "index is not open");
+    if (!_isOpen) throw logic_error(context + "index is not open");
     if (Mode::WRITE != _mode) throw logic_error(context + "index is not open in Mode::WRITE");
     if (id.empty()) throw invalid_argument(context + "empty identifier passed as a parameter");
     if (location.chunkId < 0 || location.subChunkId < 0)
@@ -155,7 +151,7 @@ void ObjectIndex::write(string const& id, ChunkLocation const& location) {
 pair<int32_t, int32_t> ObjectIndex::read(string const& id) {
     string const context = "ObjectIndex::" + string(__func__) + ": ";
     lock_guard<mutex> lock(_mtx);
-    if (not _isOpen) throw logic_error(context + "index is not open");
+    if (!_isOpen) throw logic_error(context + "index is not open");
     if (Mode::READ != _mode) throw logic_error(context + "index is not open in Mode::READ");
     if (id.empty()) throw invalid_argument(context + "empty identifier passed as a parameter");
     auto const itr = _inIndexMap.find(id);

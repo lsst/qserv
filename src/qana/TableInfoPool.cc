@@ -142,8 +142,11 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
                                 " is a child"
                                 " table, but can be sub-chunked!");
     }
+    // Note that the director table for a child table may be in a different database, so use
+    // the partitioning database if it is specified, otherwise use the child table's database.
     std::unique_ptr<ChildTableInfo> infoPtr(new ChildTableInfo(db_, table));
-    infoPtr->director = dynamic_cast<DirTableInfo const*>(get(db_, partParam.dirTable));
+    infoPtr->director = dynamic_cast<DirTableInfo const*>(
+            get(partParam.dirDb.empty() ? db_ : partParam.dirDb, partParam.dirTable));
     if (!infoPtr->director) {
         throw InvalidTableError(db_ + "." + table +
                                 " is a child table, but"

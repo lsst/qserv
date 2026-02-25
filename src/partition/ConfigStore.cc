@@ -30,12 +30,18 @@
 // Third party headers
 #include <boost/core/demangle.hpp>
 
+// LSST headers
+#include "partition/ObjectIndex.h"
+
 using namespace std;
 using json = nlohmann::json;
 
 namespace lsst::partition {
 
-ConfigStore::ConfigStore(json const& config) : _config(json::object()) {
+ConfigStore::ConfigStore(json const& config)
+        : _config(json::object()),
+          _objectIndex1(make_shared<ObjectIndex>()),
+          _objectIndex2(make_shared<ObjectIndex>()) {
     string const context = "ConfigStore::" + string(__func__) + ": ";
     if (config.is_null() || config.empty()) return;
     if (!config.is_object()) throw invalid_argument(context + "config is not a valid JSON object");

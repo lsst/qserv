@@ -117,12 +117,11 @@ private:
     fs::path _outputDir;
     std::string _prefix;
     BufferedAppender _chunk;
-    // Cached pointers to the indexes (if used by the class) are needed
-    // to avoid the extra performance penalty when calling the synchronized
-    // factory method of the class. It's safe to use the cache since the pointers
-    // are immutable.
+
+    /// The cached pointers to the "director" indexes for object ID partitioning.
     ObjectIndex* _objectIndex1 = nullptr;
     ObjectIndex* _objectIndex2 = nullptr;
+
     bool _abortOnMissingId1 = false;
     bool _abortOnMissingId2 = false;
 };
@@ -143,8 +142,8 @@ PartitionMatchesTool::Worker::Worker(ConfigStore const& config)
           _outputDir(config.get<std::string>("out.dir").c_str()),   // defend against GCC PR21334
           _prefix(config.get<std::string>("part.prefix").c_str()),  // defend against GCC PR21334
           _chunk(config.get<size_t>("mr.block-size") * MiB),
-          _objectIndex1(ObjectIndex::instance("1")),
-          _objectIndex2(ObjectIndex::instance("2")),
+          _objectIndex1(config.objectIndex1().get()),
+          _objectIndex2(config.objectIndex2().get()),
           _abortOnMissingId1(config.flag("part.id1-missing-abort")),
           _abortOnMissingId2(config.flag("part.id2-missing-abort")) {
     if (_numNodes == 0 || _numNodes > 99999u) {
@@ -466,7 +465,6 @@ PartitionMatchesTool::PartitionMatchesTool(nlohmann::json const& params, int arg
     makeOutputDirectory(*config, true);
     Job<PartitionMatchesTool::Worker> job(*config);
     chunkIndex = job.run(makeInputLines(*config));
-    ObjectIndex::instance()->close();
     if (!chunkIndex->empty()) {
         fs::path d(config->get<std::string>("out.dir"));
         fs::path f = config->get<std::string>("part.prefix") + "_index.bin";

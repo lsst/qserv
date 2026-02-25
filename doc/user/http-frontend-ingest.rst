@@ -3,12 +3,18 @@
 The User Table Ingest Interface
 ===============================
 
+.. warning::
+
+   The service does not support any table ownership mechanism or user quota control.
+   All user tables are accessible to any client with the appropriate API credentials.
+
 The frontend provides a simple interface for ingesting and managing user-defined tables in Qserv. Key features and limitations include:
 
 - Supports creation and ingestion of the following table types:
 
-  - Fully-replicated (non-partitioned) tables
+  - Fully-replicated (non-partitioned) tables (JSON and CSV options)
   - Director (partitioned) tables (CSV option only)
+  - Dependent (partitioned) tables (CSV option only)
 
 - Two options for ingesting table data are supported:
 
@@ -37,9 +43,6 @@ The frontend provides a simple interface for ingesting and managing user-defined
     - :ref:`http-frontend-ingest-names`
 
 - Users can delete tables or their corresponding databases.
-
-  - **Currently, the service does not support authentication/authorization or user quota control.**
-
 - No backups are provided for tables ingested using this mechanism.
 - Binary data types are supported in both ingest options. However, there are differences in how binary data is handled:
 
@@ -228,7 +231,7 @@ Here is an example of the simple table creation specification:
 
 .. code-block:: json
 
-    {   "version" :  54,
+    {   "version" :  55,
         "database" : "user_gapon",
         "table" :    "employee",
         "schema" : [
@@ -248,7 +251,7 @@ The description could be pushed to the service using:
 
     curl -k 'https://localhost:4041/ingest/data' -X POST \
          -H 'Content-Type: application/json' \
-         -d'{"version":54,"database":"user_gapon",..}'
+         -d'{"version":55,"database":"user_gapon",..}'
 
 If the request succeeds then the following table will be created:
 
@@ -268,7 +271,7 @@ includes an index specification:
 
 .. code-block:: json
 
-    {   "version" :  54,
+    {   "version" :  55,
         "database" : "user_gapon",
         "table" :    "employee",
         "schema" : [
@@ -311,19 +314,8 @@ This specification will result in creating the following table:
 multipart/form-data
 ^^^^^^^^^^^^^^^^^^^
 
-..  warning::
-
-    - This service can be used for ingesting both fully-replicated (non-partitioned) tables and director (partitioned) tables.
-      There are 5 additional parameters that are required for ingesting director tables: ``is_partitioned``, ``is_director``,
-      ``id_col_name`` (the optional column), ``longitude_col_name`` and ``latitude_col_name``. These parameters are described later in the document.
-    - The service automatically partitions (CSV) data of the director tables into ``chunks``  based on the default partitioning
-      scheme of the corresponding Qserv deployment and distributes them across the cluster.
-    - The order of parts in the request body is important. The service expects the table payload to be sent last.
-      Otherwise, the service will fail to process the request.
-    - The ``multipart/form-data`` header is not required when using ``curl`` to send the request. The service will
-      automatically recognize the format of the request body.
-
-The following REST service implements the synchronous interface for ingesting a table into Qserv:
+The following REST service implements the synchronous interface for ingesting the fully-replicated (non-partitioned) tables and
+the partitioned tables:
 
 .. list-table::
    :widths: 10 90
@@ -332,105 +324,164 @@ The following REST service implements the synchronous interface for ingesting a 
    * - ``POST``
      - ``/ingest/csv``
 
-The service requires a ``multipart/form-data``-formatted request body. The body must include the following parts
-and files:
+The service requires a ``multipart/form-data``-formatted request body. 
 
-``database`` : *part*
+.. hint::
+
+    The ``multipart/form-data`` header is not required when using ``curl`` to send the request. The service will
+    automatically recognize the format of the request body.
+
+The service automatically partitions (CSV) data of the partitioned tables into ``chunks`` based on the default partitioning
+scheme of the corresponding Qserv deployment and distributes them across the cluster.
+
+A call to this service will block the client application for the time required to create
+a database (if it does not already exist), create a table, process and ingest the data, and perform
+additional steps (such as creating indexes). The request will fail if it exceeds the specified (or implied) timeout.
+
+Parameters in the request body are sent as separate parts, and the data is sent as a file part.
+The service recognizes the parts by their names.
+
+.. warning::
+
+    The order of parts in the request body is important. The service expects the table payload to be sent last.
+    Otherwise, the service will fail to process the request.
+
+Among all possible parameters, there are 8 special ones that are used for ingesting the partitioned tables:
+
+- ``is_partitioned``
+- ``is_director``
+- ``id_col_name``
+- ``longitude_col_name``
+- ``latitude_col_name``
+- ``ref_director_database``
+- ``ref_director_table``
+- ``ref_director_id_col_name``
+
+The rest of this section lists the (required or optional) parts and files recognized by the service:
+
+``database`` [ *repl*, *dir*, *dep* ] : *part*
   The required name of a user database.
 
-``table`` : *part*
+``table`` [ *repl*, *dir*, *dep* ] : *part*
   The required name of a table.
 
-``is_partitioned`` : *part* = ``0``
-  The optional parameter that indicates whether the table to be ingested is a partitioned table. Note that the director
-  table type is presently the only supported partitioned table type.
+``is_partitioned`` [ *dir*, *dep* ] : *part* = ``0``
+  The optional parameter that indicates whether the table to be ingested is a partitioned table.
   The default value assumes that the table is not partitioned.
 
-``is_director`` : *part* = ``0``
-  The optional parameter that indicates whether the table to be ingested is a director table; the default value
-  assumes that the table is not a director table. This parameter is required if the table is partitioned and will be
-  ignored otherwise.
+``is_director`` [ *dir*, *dep* ] : *part* = ``0``
+  The optional parameter that indicates whether the table to be ingested is a director table or a dependent table;
+  the default value assumes that the table is not a director table. This parameter is required if the table is partitioned
+  and will be ignored otherwise.
 
-``id_col_name`` : *part* = ``""``
-  The optional parameter that specifies the name of the column to be used as the primary key (unique row identifier) for director tables.
-  This parameter is not required for the director tables. Hence for the users of this API there are two options:
+``id_col_name`` [ *dir*, *dep* ] : *part* = ``""``
+  The optional parameter that specifies the name of the column to be used as the primary key (unique row identifier) of the
+  director tables or as the foreign key of dependent tables. Rules for using this parameter depend on the type of
+  the table being ingested:
+
+  - The director tables may or may not have the key:
   
-  - If the column specified and if it's not empty then it must also be included in the table schema. It's recommended that the type
-    of the column is ``INT`` (32-bit) or ``BIGINT`` (64-bit), or unsigned variants of those types.
-    The data must also be provided for the column in the CSV file. Note that the values of the column must be unique across the entire table.
-  - Another possibility for the director tables is not to specify this parameter (or to set it to an empty string). In this case, the service will
-    automatically create an internal column ``qserv_id`` and populate it with unique values for each row. The type of the internal column will
-    be ``BIGINT UNSIGNED``. A sequence of the values will be generated starting from ``1``.
+    - If the column specified and if it's not empty then it must also be included in the table schema. It's recommended that the type
+      of the column is ``INT`` (32-bit) or ``BIGINT`` (64-bit), or unsigned variants of those types.
+      The data must also be provided for the column in the CSV file. Note that the values of the column must be unique across the entire table.
+    - Another possibility for the director tables is not to specify this parameter (or to set it to an empty string). In this case, the service will
+      automatically create an internal column ``qserv_id`` and populate it with unique values for each row. The type of the internal column will
+      be ``BIGINT UNSIGNED``. A sequence of the values will be generated starting from ``1``.
 
-  Regardless of which option is selected by a user, Qserv will create the unique index on the column in each chunk automatically.
-  The *director* index will also be created on the column.
+    Regardless of which option is selected by a user, Qserv will create the unique index on the column in each chunk automatically.
+    The *director* index will also be created on the column.
 
-  Two examples of using this parameter are provided in the subsequent section of the document:
+    Two examples of using this parameter are provided in the subsequent section of the document:
 
-  - :ref:`http-frontend-ingest-example-user-pk`
-  - :ref:`http-frontend-ingest-example-auto-pk`
+    - :ref:`http-frontend-ingest-example-user-pk`
+    - :ref:`http-frontend-ingest-example-auto-pk`
 
-``longitude_col_name`` : *part* = ``""``
+  - The dependent tables must have the key. The column specified in this parameter must also be included in the table schema.
+    Values of the column must be provided in the CSV file. They must match the values in the column ``ref_director_id_col_name``
+    of the director table referenced in parameters ``ref_director_database`` and ``ref_director_table``.
+    The service will validate the values of the column against the values in the director table and will refuse to execute
+    the request if any mismatch is found.
+    The service will use the column for partitioning the dependent tables to ensure the table's chunks are distributed across
+    the cluster in the same way as the chunks of the referenced director table.
+    The type of the column must be the same as the type of the primary key column of the referenced director table.
+
+    Two following example illustrate the use of this parameter for dependent tables:
+
+    - :ref:`http-frontend-ingest-example-user-dep`
+
+``longitude_col_name`` [ *dir* ] : *part* = ``""``
   The optional parameter that specifies the name of the column to be used as the longitude (right ascension) coordinate for director tables.
   This parameter is required if the table is a director table; it will be ignored otherwise. The column specified in this parameter must
   be included in the table schema.
   It's recommended that the type of the column is ``FLOAT`` (32-bit) or ``DOUBLE`` (64-bit).
   Note that values of the longitude column are degrees, where the allowed range of (0,360] degrees is expected.
 
-``latitude_col_name`` : *part* = ``""``
+``latitude_col_name`` [ *dir* ] : *part* = ``""``
   The optional parameter that specifies the name of the column to be used as the latitude (declination) coordinate for director tables.
   This parameter is required if the table is a director table; it will be ignored otherwise. The column specified in this parameter must
   be included in the table schema.
   It's recommended that the type of the column is ``FLOAT`` (32-bit) or ``DOUBLE`` (64-bit).
   Note that values of the latitude column are degrees, where the allowed range of (-90,90) degrees is expected.
 
-``fields_terminated_by`` : *part* = ``\t``
+``ref_director_database`` [ *dep* ] : *part* = ``""``
+  The optional parameter that specifies the name of the user database of the director table referenced by a dependent table.
+  This parameter is expected to be specified if the table is a dependent table; it will be ignored otherwise.
+
+  There is one exception for when the parameter can be omitted - if the director table was already ingested into the same
+  user database.
+
+``ref_director_table`` [ *dep* ] : *part* = ``""``
+  The optional parameter that specifies the name of the director table referenced by a dependent table.
+  This parameter is required if the table is a dependent table; it will be ignored otherwise.
+
+``ref_director_id_col_name`` [ *dep* ] : *part* = ``""``
+  The optional parameter that specifies the name of the column in the director table referenced by a dependent table that
+  corresponds to the column specified in parameter ``id_col_name``. This parameter is required if the table is a dependent
+  table; it will be ignored otherwise.
+
+``fields_terminated_by`` [ *repl*, *dir*, *dep* ] : *part* = ``\t``
   The optional parameter of the desired CSV dialect: a character that separates fields in a row.
   The dafault value assumes the tab character.
 
-``fields_enclosed_by`` : *part* = ``""``
+``fields_enclosed_by`` [ *repl*, *dir*, *dep* ] : *part* = ``""``
   The optional parameter of the desired CSV dialect: a character that encloses fields in a row.
   The default value assumes no quotes around fields.
 
-``fields_escaped_by`` : *part* = ``\\``
+``fields_escaped_by`` [ *repl*, *dir*, *dep* ] : *part* = ``\\``
   The optional parameter of the desired CSV dialect: a character that escapes special characters in a field.
   The default value assumes two backslash characters.
 
-``lines_terminated_by`` : *part* = ``\n``
+``lines_terminated_by`` [ *repl*, *dir*, *dep* ] : *part* = ``\n``
   The optional parameter of the desired CSV dialect: a character that separates rows.
   The default value assumes the newline character.
 
-``charset_name`` : *part* = ``latin1``
+``charset_name`` [ *repl*, *dir*, *dep* ] : *part* = ``latin1``
   The optional parameter that affects the interpretation of the data in the CSV file when ingesting the contribution.
   The name will be also used for setting the ``CHARSET`` attribute of the relevant MySQL tables created by the service.
 
-``collation_name`` : *part* = ``latin1_swedish_ci``
+``collation_name`` [ *repl*, *dir*, *dep* ] : *part* = ``latin1_swedish_ci``
   The optional parameter is used for setting the ``COLLATE`` attribute of the relevant MySQL tables created by the service.
 
-``timeout`` : *part* = ``300``
+``timeout`` [ *repl*, *dir*, *dep* ] : *part* = ``300``
   The optional timeout (in seconds) that limits the duration of the internal operations initiated by the service.
   In practical terms, this means that the total wait time for the completion of a request will not exceed the specified timeout.
 
   **Note**: The number specified as a value of the attribute can not be ``0``.
 
-``schema`` : *file*
+``schema`` : *file* [*repl*, *dir*, *dep*]
   The required schema definition. More information on the schema specification requirements can be found in the dedicated
   section of the document:
 
   - :ref:`http-frontend-ingest-schema-spec`
 
-``indexes`` : *file*  = ``[]``
+``indexes`` : *file*  = ``[]`` [*repl*, *dir*, *dep*]
   The optional indexes will be created after ingesting the table. The indexes must be a JSON file that follows
   the index specification as described in the following section:
 
   - :ref:`http-frontend-ingest-index-spec`
 
-``rows`` : *file*
+``rows`` : *file* [*repl*, *dir*, *dep*]
   The required CSV file containing the data to be ingested.
-
-A call to this service will block the client application for the time required to create
-a database (if it does not already exist), create a table, process and ingest the data, and perform
-additional steps (such as creating indexes). The request will fail if it exceeds the specified (or implied) timeout.
 
 Example: ingesting fully-replicated table
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -495,10 +546,10 @@ Here is the complete Python code that does the same:
 
     database = "user_gapon"
     table = "employee"
-    url = "https://localhost:4041/ingest/csv?version=54"
+    url = "https://localhost:4041/ingest/csv?version=55"
     encoder = MultipartEncoder(
         fields = {
-            "version": (None, "54"),
+            "version": (None, "55"),
             "database" : (None, database),
             "table": (None, table),
             "fields_terminated_by": (None, ","),
@@ -581,7 +632,7 @@ The only difference is that the parameters related to partitioning and director 
 
     encoder = MultipartEncoder(
         fields = {
-            "version": (None, "54"),
+            "version": (None, "55"),
             "database" : (None, database),
             "table": (None, table),
             "is_partitioned": (None, "1"),
@@ -650,7 +701,7 @@ The only difference is that the parameters related to partitioning and director 
 
     encoder = MultipartEncoder(
         fields = {
-            "version": (None, "54"),
+            "version": (None, "55"),
             "database" : (None, database),
             "table": (None, table),
             "is_partitioned": (None, "1"),
@@ -664,6 +715,90 @@ The only difference is that the parameters related to partitioning and director 
             "rows": ("employee.csv", open("/path/to/employee.csv", "rb"), "text/csv"),
         }
     )
+
+
+.. _http-frontend-ingest-example-user-dep:
+
+Example: ingesting the dependent table of an existing director table
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Here is an example of the table creation specification for a dependent table. An idea here
+is to ingest the dependent table that references an existing director table ``dp1.Object``
+to add some additional information (the ``flux``) about the objects in the director table.
+
+The table schema is sent as a JSON file ``schema.json`` presented below:
+
+.. code-block:: json
+
+    [   { "name" : "id",   "type" : "BIGINT UNSIGNED" },
+        { "name" : "flux", "type" : "DOUBLE" }
+    ]
+
+And the CSV file ``ObjectExt.csv`` containing the data to be ingested:
+
+.. code-block::
+
+    579574500513809549,0
+    579574637952761859,1
+    579575118989099291,2
+    579575325147531114,3
+    579577180573401666,4
+    579577180573401667,5
+    579577455451309231,6
+    579582540692586641,7
+    591817699928047627,8
+    591817768647524543,9
+
+The request could be pushed to the service using:
+
+.. code-block:: bash
+
+    curl -k 'https://localhost:4041/ingest/csv' \
+         -F 'database=user_gapon' \
+         -F 'table=ObjectExt' \
+         -F 'is_partitioned=1' \
+         -F 'is_director=0' \
+         -F 'id_col_name=id' \
+         -F 'ref_director_database=dp1' \
+         -F 'ref_director_table=Object' \
+         -F 'ref_director_id_col_name=objectId' \
+         -F 'fields_terminated_by=,' \
+         -F 'timeout=300' \
+         -F 'charset_name=utf8mb4' \
+         -F 'collation_name=utf8mb4_uca1400_ai_ci' \
+         -F 'schema=@/path/to/schema.json' \
+         -F 'indexes=@/path/to/indexes.json' \
+         -F 'rows=@/path/to/ObjectExt.csv'
+
+
+After ingesting the director table and the dependent table, the following query will be able to join the tables
+and retrieve the data:
+
+.. code-block:: sql
+
+    SELECT o.objectId, o.ra, o.dec, e.flux
+      FROM dp1.Object AS o
+      JOIN user_gapon.ObjectExt AS e ON o.objectId = e.id
+      WHERE o.objectId IN (
+        579574500513809549,
+        579574637952761859,
+        579575118989099291,
+        579575325147531114,
+        579577180573401666,
+        579577180573401667,
+        579577455451309231,
+        579582540692586641,
+        591817699928047627,
+        591817768647524543)
+
+..  warning::
+
+    A known limitation of the current Qserv implementation is that queries involving dependent tables
+    may fail if the referenced director and dependent tables have different spatial coverage. This issue
+    is under investigation and will be addressed in a future release. As a workaround, queries should
+    explicitly constrain results to the common spatial coverage of both tables. Another workaround
+    is to explicitly specify the object IDs in the query as shown in the example above.
+
 
 .. _http-frontend-ingest-schema-spec:
 
@@ -774,7 +909,7 @@ For example:
 
     curl -k 'https://localhost:4041/ingest/table/user_gapon/employees' -X DELETE \
          -H 'Content-Type: application/json' \
-         -d'{"version":54}'
+         -d'{"version":55}'
 
 A few notes:
 
@@ -807,7 +942,7 @@ For example:
 
     curl -k 'https://localhost:4041/ingest/database/user_gapon' -X DELETE \
          -H 'Content-Type: application/json' \
-         -d'{"version":54}'
+         -d'{"version":55}'
 
 A few notes:
 
