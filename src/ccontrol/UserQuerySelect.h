@@ -32,6 +32,7 @@
  */
 
 // System headers
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -41,19 +42,17 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "css/StripingParams.h"
-#include "qdisp/SharedResources.h"
 #include "qmeta/QInfo.h"
-#include "qmeta/types.h"
 #include "qproc/ChunkSpec.h"
 
 // Forward declarations
 namespace lsst::qserv::qdisp {
 class Executive;
-class MessageStore;
 class QdispPool;
 }  // namespace lsst::qserv::qdisp
 
 namespace lsst::qserv::qmeta {
+class MessageStore;
 class QMeta;
 class QProgress;
 }  // namespace lsst::qserv::qmeta
@@ -76,21 +75,26 @@ class InfileMergerConfig;
 
 namespace lsst::qserv::ccontrol {
 
+class TmpTableName;
+
 /// UserQuerySelect : implementation of the UserQuery for regular SELECT statements.
 class UserQuerySelect : public UserQuery {
 public:
     UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
-                    std::shared_ptr<qdisp::MessageStore> const& messageStore,
+                    std::shared_ptr<qmeta::MessageStore> const& messageStore,
                     std::shared_ptr<qdisp::Executive> const& executive,
                     std::shared_ptr<qproc::DatabaseModels> const& dbModels,
                     std::shared_ptr<rproc::InfileMergerConfig> const& infileMergerConfig,
                     std::shared_ptr<qproc::SecondaryIndex> const& secondaryIndex,
                     std::shared_ptr<qmeta::QMeta> const& queryMetadata,
-                    std::shared_ptr<qmeta::QProgress> const& queryProgress, qmeta::CzarId czarId,
-                    std::string const& errorExtra, bool async, std::string const& resultDb);
+                    std::shared_ptr<qmeta::QProgress> const& queryProgress, CzarId czarId,
+                    std::string const& errorExtra, bool async, std::string const& resultDb,
+                    int uberJobMaxChunks);
 
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
+
+    ~UserQuerySelect() override = default;
 
     /**
      *  @param resultLocation:  Result location, if empty use result table with unique
@@ -119,7 +123,7 @@ public:
     void discard() override;
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
+    std::shared_ptr<qmeta::MessageStore> getMessageStore() override { return _messageStore; }
 
     /// @return Name of the result table for this query, can be empty
     std::string getResultTableName() const override { return _resultTable; }
@@ -146,6 +150,11 @@ public:
     /// save the result query in the query metadata
     void saveResultQuery();
 
+    /// Use the query and jobs information in the executive to construct and run whatever
+    /// UberJobs are needed. This can be called multiple times by Czar::_monitor
+    /// to reassign failed jobs or jobs that were never assigned.
+    void buildAndSendUberJobs();
+
 private:
     /// @return ORDER BY part of SELECT statement that gets executed by the proxy
     std::string _getResultOrderBy() const;
@@ -166,7 +175,7 @@ private:
 
     // Delegate classes
     std::shared_ptr<qproc::QuerySession> _qSession;
-    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::shared_ptr<qmeta::MessageStore> _messageStore;
     std::shared_ptr<qdisp::Executive> _executive;
     std::shared_ptr<qproc::DatabaseModels> _databaseModels;
     std::shared_ptr<rproc::InfileMergerConfig> _infileMergerConfig;
@@ -175,16 +184,27 @@ private:
     std::shared_ptr<qmeta::QMeta> _queryMetadata;
     std::shared_ptr<qmeta::QProgress> _queryProgress;
 
-    qmeta::CzarId _czarId;                                        ///< Czar ID in QMeta database
-    QueryId _queryId = 0;                                         ///< Query ID in QMeta database
+    CzarId _czarId;
+    QueryId _queryId = 0;
     std::string _queryIdStr = QueryIdHelper::makeIdStr(0, true);  ///< Initialized to unknown
     bool _killed = false;
     std::mutex _killMutex;
     mutable std::string _errorExtra;  ///< Additional error information
     std::string _resultTable;         ///< Result table name
     std::string _resultLoc;           ///< Result location
-    std::string _resultDb;            ///< Result database (todo is this the same as resultLoc??)
+    std::string _resultDb;            ///< Result database
     bool _async;                      ///< true for async query
+
+    /// The maximum number of chunks allowed in an UberJob, set from config.
+    int const _uberJobMaxChunks;
+    std::atomic<int> _uberJobIdSeq{1};   ///< Sequence number for UberJobs in this query.
+    std::shared_ptr<TmpTableName> _ttn;  ///< Temporary table name generator.
+
+    /// Primary database name for the query.
+    std::string _queryDbName;
+
+    /// Only one thread should run buildAndSendUberJobs() for this query at a time.
+    std::mutex _buildUberJobMtx;
 };
 
 }  // namespace lsst::qserv::ccontrol

@@ -34,7 +34,6 @@
 
 // Qserv headers
 #include "global/intTypes.h"
-#include "qmeta/types.h"
 
 // Forward declarations
 
@@ -58,9 +57,12 @@ namespace lsst::qserv::util {
  * All operations are done in the class's constructors. A few forms of the construction are
  * provided for convenience of the client applications.
  *
+ * QueryId + UberJobId results is a unique identifier.
+ * CzarId can be useful for some operations.
+ *
  * The file path has the following general format:
  * @code
- *   [<folder>/]<czar-id>-<query-id>-<job-id>-<chunk-id>-<attemptcount>[.<ext>]
+ *   [<folder>/]<czar-id>-<query-id>[.<ext>]
  * @code
  */
 class ResultFileName {
@@ -68,14 +70,15 @@ public:
     /// The file extention including the '.' prefix.
     static std::string const fileExt;
 
+    static std::string splitToken() { return std::string("-"); }
+
     ResultFileName() = default;
     ResultFileName(ResultFileName const&) = default;
     ResultFileName& operator=(ResultFileName const&) = default;
 
-    /// This form of constructionstores attributes of a file and generates
+    /// This form of construction stores attributes of a file and generates
     /// the name of a file in a format specified in the class description section.
-    ResultFileName(qmeta::CzarId czarId, QueryId queryId, std::uint32_t jobId, std::uint32_t chunkId,
-                   std::uint32_t attemptCount);
+    ResultFileName(CzarId czarId, QueryId queryId, UberJobId ujId);
 
     /// @param filePath The file to be evaluated.
     /// @throw std::invalid_argument If the file path did not match expectations.
@@ -88,11 +91,9 @@ public:
     /// @return The name of a file including its extension and excluding the optional base folder.
     std::string const& fileName() const { return _fileName; }
 
-    qmeta::CzarId czarId() const { return _czarId; }
+    CzarId czarId() const { return _czarId; }
     QueryId queryId() const { return _queryId; }
-    std::uint32_t jobId() const { return _jobId; }
-    std::uint32_t chunkId() const { return _chunkId; }
-    std::uint32_t attemptCount() const { return _attemptCount; }
+    UberJobId ujId() const { return _ujId; }
 
     /// @return The JSON object (dictionary) encapsulating values of the attributes.
     nlohmann::json toJson() const;
@@ -106,26 +107,26 @@ private:
     static std::string _context(std::string const& func);
     void _parse();
 
+    // This only works with unsigned, which wouldn't work with UberJobId
+    // except that negative UberJobId's never make it off of the czar.
     template <typename T>
     void _validateAndStoreAttr(std::size_t attrIndex, std::string const& attrName, T& attr) {
-        std::uint64_t const& attrValue = _taskAttributes[attrIndex];
-        T const minVal = std::numeric_limits<T>::min();
-        T const maxVal = std::numeric_limits<T>::max();
-        if ((attrValue >= minVal) && (attrValue <= maxVal)) {
+        size_t const& attrValue = _taskAttributes[attrIndex];
+        size_t const maxVal = std::numeric_limits<T>::max();
+        /// min value for size_t is 0, so only max matters
+        if (attrValue <= maxVal) {
             attr = static_cast<T>(attrValue);
             return;
         }
-        throw std::invalid_argument(_context(__func__) + " failed for attribute=" + attrName + ", value=" +
-                                    std::to_string(attrValue) + ", allowed range=[" + std::to_string(minVal) +
-                                    "," + std::to_string(maxVal) + "], file=" + _fileName);
+        throw std::invalid_argument(_context(__func__) + " failed for attribute=" + attrName +
+                                    ", value=" + std::to_string(attrValue) + ", allowed range=[0," +
+                                    std::to_string(maxVal) + "], file=" + _fileName);
     }
 
     std::string _fileName;
-    qmeta::CzarId _czarId = 0;
+    CzarId _czarId = 0;
     QueryId _queryId = 0;
-    std::uint32_t _jobId = 0;
-    std::uint32_t _chunkId = 0;
-    std::uint32_t _attemptCount = 0;
+    UberJobId _ujId = 0;
 
     std::vector<std::uint64_t> _taskAttributes;
 };

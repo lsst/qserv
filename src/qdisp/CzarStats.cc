@@ -29,8 +29,8 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
-#include "qdisp/QdispPool.h"
 #include "util/Bug.h"
+#include "util/QdispPool.h"
 #include "util/TimeUtils.h"
 
 // LSST headers
@@ -46,23 +46,23 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.CzarStats");
 namespace lsst::qserv::qdisp {
 
 CzarStats::Ptr CzarStats::_globalCzarStats;
-util::Mutex CzarStats::_globalMtx;
+MUTEX CzarStats::_globalMtx;
 
-void CzarStats::setup(qdisp::QdispPool::Ptr const& qdispPool) {
-    std::lock_guard<util::Mutex> lg(_globalMtx);
+void CzarStats::setup(util::QdispPool::Ptr const& qdispPool) {
+    std::lock_guard lg(_globalMtx);
     if (_globalCzarStats != nullptr || qdispPool == nullptr) {
         throw util::Bug(ERR_LOC, "Error CzarStats::setup called after global pointer set or qdispPool=null.");
     }
     _globalCzarStats = Ptr(new CzarStats(qdispPool));
 }
 
-CzarStats::CzarStats(qdisp::QdispPool::Ptr const& qdispPool)
+CzarStats::CzarStats(util::QdispPool::Ptr const& qdispPool)
         : _qdispPool(qdispPool), _startTimeMs(util::TimeUtils::now()) {
     auto bucketValsRates = {128'000.0,       512'000.0,       1'024'000.0,     16'000'000.0,
                             128'000'000.0,   256'000'000.0,   512'000'000.0,   768'000'000.0,
                             1'000'000'000.0, 2'000'000'000.0, 4'000'000'000.0, 8'000'000'000.0};
-    _histXRootDSSIRecvRate = util::HistogramRolling::Ptr(
-            new util::HistogramRolling("XRootDSSIRecvRateBytesPerSec", bucketValsRates, 1h, 10000));
+    _histDataRecvRate = util::HistogramRolling::Ptr(
+            new util::HistogramRolling("DataRecvRateBytesPerSec", bucketValsRates, 1h, 10000));
     _histMergeRate = util::HistogramRolling::Ptr(
             new util::HistogramRolling("MergeRateBytesPerSec", bucketValsRates, 1h, 10000));
     _histFileReadRate = util::HistogramRolling::Ptr(
@@ -77,7 +77,7 @@ CzarStats::CzarStats(qdisp::QdispPool::Ptr const& qdispPool)
 }
 
 CzarStats::Ptr CzarStats::get() {
-    std::lock_guard<util::Mutex> lg(_globalMtx);
+    std::lock_guard lg(_globalMtx);
     if (_globalCzarStats == nullptr) {
         throw util::Bug(ERR_LOC, "Error CzarStats::get called before CzarStats::setup.");
     }
@@ -102,10 +102,10 @@ void CzarStats::endQueryRespConcurrentProcessing(TIMEPOINT start, TIMEPOINT end)
     _histRespProcessing->addEntry(end, secs.count());
 }
 
-void CzarStats::addXRootDSSIRecvRate(double bytesPerSec) {
-    _histXRootDSSIRecvRate->addEntry(bytesPerSec);
+void CzarStats::addDataRecvRate(double bytesPerSec) {
+    _histDataRecvRate->addEntry(bytesPerSec);
     LOGS(_log, LOG_LVL_TRACE,
-         "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histXRootDSSIRecvRate->getString(""));
+         "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histDataRecvRate->getString(""));
 }
 
 void CzarStats::addMergeRate(double bytesPerSec) {
@@ -147,7 +147,7 @@ nlohmann::json CzarStats::getQdispStatsJson() const {
 
 nlohmann::json CzarStats::getTransmitStatsJson() const {
     nlohmann::json result;
-    result[_histXRootDSSIRecvRate->label()] = _histXRootDSSIRecvRate->getJson();
+    result[_histDataRecvRate->label()] = _histDataRecvRate->getJson();
     result[_histMergeRate->label()] = _histMergeRate->getJson();
     result[_histFileReadRate->label()] = _histFileReadRate->getJson();
     return result;

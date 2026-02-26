@@ -30,7 +30,6 @@
 #include <atomic>
 #include <mutex>
 #include <sstream>
-#include <unordered_map>
 #include <vector>
 
 // Third-party headers
@@ -40,21 +39,27 @@
 #include "global/intTypes.h"
 #include "global/ResourceUnit.h"
 #include "global/stringTypes.h"
+#include "protojson/ScanTableInfo.h"
 #include "qdisp/JobDescription.h"
-#include "qdisp/JobStatus.h"
 #include "qdisp/ResponseHandler.h"
-#include "qdisp/SharedResources.h"
-#include "qdisp/QdispPool.h"
+#include "qdisp/UberJob.h"
+#include "qmeta/JobStatus.h"
 #include "util/EventThread.h"
 #include "util/InstanceCount.h"
 #include "util/MultiError.h"
 #include "util/threadSafe.h"
 #include "util/ThreadPool.h"
 
-// Forward declarations
-class XrdSsiService;
+namespace lsst::qserv::ccontrol {
+class UserQuerySelect;
+}
+
+namespace lsst::qserv::protojson {
+class FileUrlInfo;
+}
 
 namespace lsst::qserv::qmeta {
+class MessageStore;
 class QProgress;
 class QProgressHistory;
 }  // namespace lsst::qserv::qmeta
@@ -63,53 +68,60 @@ namespace lsst::qserv::qproc {
 class QuerySession;
 }  // namespace lsst::qserv::qproc
 
-namespace lsst::qserv::qdisp {
-class JobQuery;
-class MessageStore;
-}  // namespace lsst::qserv::qdisp
-
 namespace lsst::qserv::util {
 class AsyncTimer;
+class PriorityCommand;
+class QdispPool;
 }  // namespace lsst::qserv::util
 
 // This header declarations
 namespace lsst::qserv::qdisp {
 
-struct ExecutiveConfig {
-    typedef std::shared_ptr<ExecutiveConfig> Ptr;
-    ExecutiveConfig(std::string const& serviceUrl_, int secsBetweenChunkUpdates_)
-            : serviceUrl(serviceUrl_), secondsBetweenChunkUpdates(secsBetweenChunkUpdates_) {}
-    ExecutiveConfig(int, int) : serviceUrl(getMockStr()) {}
+class JobQuery;
+class UberJob;
 
-    std::string serviceUrl;          ///< XrdSsi service URL, e.g. localhost:1094
-    int secondsBetweenChunkUpdates;  ///< Seconds between QMeta chunk updates.
-    static std::string getMockStr() { return "Mock"; }
-};
-
-/// class Executive manages the execution of jobs for a UserQuery, while
-/// maintaining minimal information about the jobs themselves.
+/// class Executive manages the execution of jobs for a UserQuery.
 class Executive : public std::enable_shared_from_this<Executive> {
 public:
     typedef std::shared_ptr<Executive> Ptr;
     typedef std::unordered_map<int, std::shared_ptr<JobQuery>> JobMap;
+    typedef int ChunkIdType;
+    typedef std::map<ChunkIdType, std::shared_ptr<JobQuery>> ChunkIdJobMapType;
 
     /// Construct an Executive.
-    /// If c->serviceUrl == ExecutiveConfig::getMockStr(), then use XrdSsiServiceMock
-    /// instead of a real XrdSsiService
-    static Executive::Ptr create(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-                                 SharedResources::Ptr const& sharedResources,
+    static Executive::Ptr create(int secsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
+                                 std::shared_ptr<util::QdispPool> const& qdispPool,
                                  std::shared_ptr<qmeta::QProgress> const& queryProgress,
                                  std::shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
                                  std::shared_ptr<qproc::QuerySession> const& querySession,
                                  boost::asio::io_service& asioIoService);
 
-    ~Executive();
+    virtual ~Executive();
+
+    std::string cName(const char* funcName = "") {
+        return std::string("Executive::") + funcName + " " + getIdStr();
+    }
+
+    /// Set the UserQuerySelect object for this query so this Executive can ask it to make new
+    /// UberJobs in the future, if needed.
+    void setUserQuerySelect(std::shared_ptr<ccontrol::UserQuerySelect> const& uqs) { _userQuerySelect = uqs; }
+
+    /// Return a map that only contains Jobs not assigned to an UberJob.
+    ChunkIdJobMapType unassignedChunksInQuery();
+
+    /// Find the UberJob with `ujId`.
+    std::shared_ptr<UberJob> findUberJob(UberJobId ujId) const;
+
+    std::shared_ptr<JobQuery> findJob(int jobId) const;
 
     /// Add an item with a reference number
     std::shared_ptr<JobQuery> add(JobDescription::Ptr const& s);
 
-    /// Queue a job to be sent to a worker so it can be started.
-    void queueJobStart(PriorityCommand::Ptr const& cmd);
+    /// Add the UberJob `uj` to the list and queue it to be sent to a worker.
+    void addAndQueueUberJob(std::shared_ptr<UberJob> const& uj);
+
+    /// Queue `cmd`, using the QDispPool, so it can be used to collect the result file.
+    void queueFileCollect(std::shared_ptr<util::PriorityCommand> const& cmd);
 
     /// Waits for all jobs on _jobStartCmdList to start. This should not be called
     /// before ALL jobs have been added to the pool.
@@ -120,18 +132,23 @@ public:
     bool join();
 
     /// Notify the executive that an item has completed
-    void markCompleted(int refNum, bool success);
+    void markCompleted(JobId refNum, bool success);
 
     /// Squash all the jobs.
-    void squash();
+    void squash(std::string const& note);
 
     bool getEmpty() { return _empty; }
 
+    /// These values cannot be set until information has been collected from
+    /// QMeta, which isn't called until some basic checks on the user query
+    /// have passed.
     void setQueryId(QueryId id);
+
     QueryId getId() const { return _id; }
     std::string const& getIdStr() const { return _idStr; }
 
     void setScanInteractive(bool interactive) { _scanInteractive = interactive; }
+    bool getScanInteractive() const { return _scanInteractive; }
 
     /// @return number of jobs in flight.
     int getNumInflight() const;
@@ -142,11 +159,10 @@ public:
     /// @return true if cancelled
     bool getCancelled() { return _cancelled; }
 
-    XrdSsiService* getXrdSsiService() { return _xrdSsiService; }
+    /// Return true if LIMIT conditions met.
+    bool getSuperfluous() { return _superfluous; }
 
-    std::shared_ptr<QdispPool> getQdispPool() { return _qdispPool; }
-
-    bool startQuery(std::shared_ptr<JobQuery> const& jobQuery);
+    std::shared_ptr<util::QdispPool> getQdispPool() { return _qdispPool; }
 
     /// Add 'rowCount' to the total number of rows in the result table.
     void addResultRows(int64_t rowCount);
@@ -157,9 +173,13 @@ public:
     /// rows already read in.
     void checkLimitRowComplete();
 
-    /// @return _limitRowComplete, which can only be meaningful if the
+    /// Returns the maximum number of rows the worker needs for the LIMIT clause, or
+    ///   a value <= 0 there's no limit that can be applied at the worker.
+    int getUjRowLimit() const;
+
+    /// @return _rowLimitComplete, which can only be meaningful if the
     ///         user query has not been cancelled.
-    bool isLimitRowComplete() { return _limitRowComplete && !_cancelled; }
+    bool isRowLimitComplete() { return _rowLimitComplete && !_cancelled; }
 
     /// @return the value of _dataIgnoredCount
     int incrDataIgnoredCount() { return ++_dataIgnoredCount; }
@@ -168,14 +188,66 @@ public:
     /// @see python module lsst.qserv.czar.proxy.unlock()
     void updateProxyMessages();
 
-private:
-    Executive(ExecutiveConfig const& c, std::shared_ptr<MessageStore> const& ms,
-              SharedResources::Ptr const& sharedResources,
+    /// Call UserQuerySelect::buildAndSendUberJobs make new UberJobs for
+    /// unassigned jobs.
+    virtual void assignJobsToUberJobs();
+
+    int getTotalJobs() { return _totalJobs; }
+
+    /// Add an error code and message that may be displayed to the user.
+    /// @see util::Error for information about parameters.
+    void addMultiError(int errorCode, int subError, std::string const& errorMsg, bool logLvlErr = true);
+    void addMultiError(util::MultiError const& multiErr);
+
+    std::string dumpUberJobCounts() const;
+
+    /// Maximum number of times to try running a job before squashing the query.
+    int getMaxAttempts() const { return _jobMaxAttempts; }
+
+    /// Calling this indicates all Jobs for this user query have been created.
+    void setAllJobsCreated() { _allJobsCreated = true; }
+
+    /// Returns true if all jobs have been created.
+    bool isAllJobsCreated() { return _allJobsCreated; }
+
+    /// Send a message to all workers to cancel this query.
+    /// @param deleteResults - If true, delete all result files for this query on the workers.
+    void sendWorkersEndMsg(bool deleteResults);
+
+    /// Complete UberJobs have their results on the czar, the
+    /// incomplete UberJobs need to be stopped and possibly reassigned.
+    void killIncompleteUberJobsOnWorker(std::string const& workerId);
+
+    // Try to remove this and put in constructor
+    void setScanInfo(protojson::ScanInfo::Ptr const& scanInfo) { _scanInfo = scanInfo; }
+
+    /// Return a pointer to _scanInfo.
+    protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
+
+    /// Add fileSize to `_totalResultFileSize` and check if it exceeds limits.
+    /// If it is too large, check the value against existing UberJob result
+    /// sizes as `_totalResultFileSize` may include failed UberJobs.
+    /// If the sum of all UberJob result files size is too large,
+    /// cancel this user query.
+    void checkResultFileSize(uint64_t fileSize = 0);
+
+    /// Returns a pointer to a lock on _mtxLimitSquash.
+    std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();
+
+    void collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
+                     std::string const& idStr);
+
+    /// Return true if the result size limit has been exceeded.
+    bool resultSizeLimitExceeded() const { return _resultFileSizeExceeded; }
+
+protected:
+    Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
+              std::shared_ptr<util::QdispPool> const& sharedResources,
               std::shared_ptr<qmeta::QProgress> const& queryProgress,
               std::shared_ptr<qmeta::QProgressHistory> const& queryProgressHistory,
-              std::shared_ptr<qproc::QuerySession> const& querySession);
+              std::shared_ptr<qproc::QuerySession> const& querySession, unsigned int maxJobAttempts);
 
-    void _setup();
+private:
     void _setupLimit();
 
     bool _track(int refNum, std::shared_ptr<JobQuery> const& r);
@@ -187,10 +259,10 @@ private:
 
     void _squashSuperfluous();
 
-    /// @return previous value of _limitRowComplete while setting it to true.
+    /// @return previous value of _rowLimitComplete while setting it to true.
     ///  This indicates that enough rows have been read to complete the user query
     ///  with a LIMIT clause, and no group by or order by clause.
-    bool _setLimitRowComplete() { return _limitRowComplete.exchange(true); }
+    bool _setLimitRowComplete() { return _rowLimitComplete.exchange(true); }
 
     // for debugging
     void _printState(std::ostream& os);
@@ -199,27 +271,29 @@ private:
     /// The stats are pushed to qdisp::CzarStats.
     void _updateStats() const;
 
-    ExecutiveConfig _config;  ///< Personal copy of config
+    // util::InstanceCount const _icEx{"Executive"};
     std::atomic<bool> _empty{true};
-    std::shared_ptr<MessageStore> _messageStore;  ///< MessageStore for logging
+    std::shared_ptr<qmeta::MessageStore> _messageStore;  ///< MessageStore for logging
 
-    /// RPC interface, static to avoid getting every time a user query starts and separate
-    /// from _xrdSsiService to avoid conflicts with XrdSsiServiceMock.
-    XrdSsiService* _xrdSsiService;  ///< RPC interface
-    JobMap _jobMap;                 ///< Contains information about all jobs.
-    JobMap _incompleteJobs;         ///< Map of incomplete jobs.
+    JobMap _jobMap;          ///< Contains information about all jobs.
+    JobMap _incompleteJobs;  ///< Map of incomplete jobs.
     /// How many jobs are used in this query. 1 avoids possible 0 of 0 jobs completed race condition.
     /// The correct value is set when it is available.
     std::atomic<int> _totalJobs{1};
-    QdispPool::Ptr _qdispPool;  ///< Shared thread pool for handling commands to and from workers.
 
-    std::deque<PriorityCommand::Ptr> _jobStartCmdList;  ///< list of jobs to start.
+    /// Shared thread pool for handling commands to and from workers.
+    std::shared_ptr<util::QdispPool> _qdispPool;
+
+    std::deque<std::shared_ptr<util::PriorityCommand>> _jobStartCmdList;  ///< list of jobs to start.
 
     /** Execution errors */
     util::MultiError _multiError;
 
-    std::atomic<int> _requestCount;      ///< Count of submitted jobs
+    std::atomic<int> _requestCount{0};   ///< Count of submitted jobs
     util::Flag<bool> _cancelled{false};  ///< Has execution been cancelled.
+
+    /// Set to true when LIMIT conditions have been satisfied.
+    std::atomic<bool> _superfluous{false};
 
     // Mutexes
     mutable std::mutex _incompleteJobsMutex;  ///< protect incompleteJobs map.
@@ -228,11 +302,11 @@ private:
     mutable std::mutex _errorsMutex;
 
     std::condition_variable _allJobsComplete;
-    mutable std::recursive_mutex _jobMapMtx;
 
-    QueryId _id{0};  ///< Unique identifier for this query.
+    mutable std::mutex _jobMapMtx;  ///< Protects _jobMap.
+
+    QueryId _id = 0;  ///< Unique identifier for this query.
     std::string _idStr{QueryIdHelper::makeIdStr(0, true)};
-    // util::InstanceCount _instC{"Executive"};
 
     std::shared_ptr<qmeta::QProgress> _queryProgress;  ///< Query progress, used to update QMeta.
     std::shared_ptr<qmeta::QProgressHistory>
@@ -240,14 +314,25 @@ private:
     /// Last time Executive updated QMeta, defaults to epoch for clock.
     std::chrono::system_clock::time_point _lastQMetaUpdate;
     /// Minimum number of seconds between QMeta chunk updates (set by config)
-    std::chrono::seconds _secondsBetweenQMetaUpdates{60};
+    std::chrono::seconds _secondsBetweenQMetaUpdates;
     std::mutex _lastQMetaMtx;  ///< protects _lastQMetaUpdate.
 
-    bool _scanInteractive = false;  ///< true for interactive scans.
+    /// true for interactive scans, once set it doesn't change.
+    bool _scanInteractive = false;
+
+    // Add a job to the _chunkToJobMap
+    void _addToChunkJobMap(std::shared_ptr<JobQuery> const& job);
+    std::mutex _chunkToJobMapMtx;      ///< protects _chunkToJobMap
+    ChunkIdJobMapType _chunkToJobMap;  ///< Map of jobs ordered by chunkId
+
+    /// Map of all UberJobs. Failed UberJobs remain in the map as new ones are created
+    /// to handle failed UberJobs.
+    std::map<UberJobId, std::shared_ptr<UberJob>> _uberJobsMap;
+    mutable std::mutex _uberJobsMapMtx;  ///< protects _uberJobs.
 
     /// True if enough rows were read to satisfy a LIMIT query with
     /// no ORDER BY or GROUP BY clauses.
-    std::atomic<bool> _limitRowComplete{false};
+    std::atomic<bool> _rowLimitComplete{false};
 
     std::atomic<int64_t> _totalResultRows{0};
     std::weak_ptr<qproc::QuerySession> _querySession;
@@ -257,27 +342,32 @@ private:
     /// true if query can be returned as soon as _limit rows have been read.
     bool _limitSquashApplies = false;
 
+    /// Maximum number of time to try running a job before squashing the query.
+    unsigned int const _jobMaxAttempts;
+
     /// Number of time data has been ignored for for this user query.
     std::atomic<int> _dataIgnoredCount{0};
-};
 
-class MarkCompleteFunc {
-public:
-    typedef std::shared_ptr<MarkCompleteFunc> Ptr;
+    std::atomic<bool> _queryIdSet{false};  ///< Set to true when _id is set.
 
-    MarkCompleteFunc(Executive::Ptr const& e, int jobId) : _executive(e), _jobId(jobId) {}
-    virtual ~MarkCompleteFunc() {}
+    /// Weak pointer to the UserQuerySelect object for this query.
+    std::weak_ptr<ccontrol::UserQuerySelect> _userQuerySelect;
 
-    virtual void operator()(bool success) {
-        auto exec = _executive.lock();
-        if (exec != nullptr) {
-            exec->markCompleted(_jobId, success);
-        }
-    }
+    /// Flag that is set to true when all jobs have been created.
+    std::atomic<bool> _allJobsCreated{false};
 
-private:
-    std::weak_ptr<Executive> _executive;
-    int _jobId;
+    protojson::ScanInfo::Ptr _scanInfo;  ///< Scan rating and tables.
+
+    std::atomic<uint64_t> _totalResultFileSize{0};  ///< Total size of all UberJob result files.
+
+    /// This mutex is used to limit collecting result files to one at a time
+    /// but only when the executive will squash the query when the limit is reached.
+    /// This keeps data transfers (and temporary storage requirements) from
+    /// getting out of hand.
+    std::mutex _mtxLimitSquash;
+
+    /// Set to true if the result file is too large.
+    std::atomic<bool> _resultFileSizeExceeded{false};
 };
 
 }  // namespace lsst::qserv::qdisp

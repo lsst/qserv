@@ -30,35 +30,81 @@
 #include <map>
 #include <sstream>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.util.MultiError");
+}  // namespace
+
 using namespace std;
 
 namespace lsst::qserv::util {
 
-std::string MultiError::toString() const {
-    std::ostringstream oss;
+string MultiError::toString() const {
+    ostringstream oss;
     oss << *this;
     return oss.str();
 }
 
-std::string MultiError::toOneLineString() const {
-    std::ostringstream oss;
-    if (!this->empty()) {
-        if (this->size() > 1) {
-            std::ostream_iterator<Error> string_it(oss, ", ");
-            std::copy(_errorVector.begin(), _errorVector.end() - 1, string_it);
+string MultiError::toOneLineString() const {
+    ostringstream oss;
+    bool first = true;
+    for (auto const& [key, elem] : _errorMap) {
+        if (first) {
+            oss << elem;
+            first = false;
+        } else {
+            oss << ", " << elem;
         }
-        oss << _errorVector.back();
     }
     return oss.str();
 }
 
-int MultiError::firstErrorCode() const { return empty() ? ErrorCode::NONE : _errorVector.front().getCode(); }
+util::Error MultiError::firstError() const {
+    auto const iter = _errorMap.begin();
+    return iter == _errorMap.end() ? Error() : iter->second;
+}
 
-bool MultiError::empty() const { return _errorVector.empty(); }
+std::vector<Error>::size_type MultiError::size() const { return _errorMap.size(); }
 
-std::vector<Error>::size_type MultiError::size() const { return _errorVector.size(); }
+void MultiError::insert(Error const& err) {
+    // Error with code == NONE being added to the map indicates a coding
+    // error. It will be added to the map, but the
+    // problem should be fixed as soon as it is discovered. Throwing an
+    // exception is likely overkill. Not adding it could hide useful information
+    // as the message could still valuable.
+    if (err.getCode() == Error::NONE) {
+        LOGS(_log, LOG_LVL_WARN, "MultiError::insert adding error with code=NONE " << err);
+    }
+    auto const key = make_pair(err.getCode(), err.getSubCode());
+    auto iter = _errorMap.find(key);
+    if (iter == _errorMap.end()) {
+        _errorMap[key] = err;
+    } else {
+        iter->second.incrCount();
+    }
+}
 
-void MultiError::push_back(const std::vector<Error>::value_type& val) { _errorVector.push_back(val); }
+void MultiError::merge(MultiError const& other) {
+    for (auto const& [key, err] : other._errorMap) {
+        auto iter = _errorMap.find(key);
+        if (iter != _errorMap.end()) {
+            // Entry already exists, increase the count
+            iter->second.incrCount(err.getCount());
+        } else {
+            _errorMap[key] = err;
+        }
+    }
+}
+
+std::vector<Error> MultiError::getVector() const {
+    std::vector<Error> errVect;
+    for (auto const& [key, elem] : _errorMap) {
+        errVect.push_back(elem);
+    }
+    return errVect;
+}
 
 std::ostream& operator<<(std::ostream& out, MultiError const& multiError) {
     // This string is meant to be provided to end users on a failure, so
@@ -66,37 +112,20 @@ std::ostream& operator<<(std::ostream& out, MultiError const& multiError) {
 
     // To get numerous '[0]' entries in the output under control...
     // Put all errors in a map, and count how many times each occurs.
-    std::map<string, int> errMap;
-    for (auto const& err : multiError._errorVector) {
-        stringstream sstrm;
-        sstrm << err;
-        string errStr = sstrm.str();
-        auto iter = errMap.find(errStr);
-        if (iter == errMap.end()) {
-            errMap[errStr] = 1;
-        } else {
-            iter->second += 1;
-        }
-    }
-
-    // Write the map to `out`
-    bool firstLoop = true;
-    for (auto const& elem : errMap) {
-        int count = elem.second;
-        if (firstLoop) {
-            firstLoop = false;
+    bool first = true;
+    for (auto const& [key, err] : multiError._errorMap) {
+        if (first) {
+            first = false;
         } else {
             out << "\n";
         }
-        out << elem.first;
-        if (count > 1) {
-            out << "   (Occurences = " << count << ")";
-        }
+        out << err;
 
         // Limit this to about 10,000 characters, as that's more than will
         // likely be useful to end users.
         if (out.tellp() > 10'000) break;
     }
+
     return out;
 }
 

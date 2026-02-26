@@ -39,7 +39,7 @@ namespace lsst::qserv::util {
 class Tracker {
 public:
     Tracker() {}
-    virtual ~Tracker() {}
+    virtual ~Tracker() = default;
     enum class Status { INPROGRESS, COMPLETE };
     using Ptr = std::shared_ptr<Tracker>;
     void setComplete();
@@ -79,6 +79,11 @@ public:
     void setFunc(std::function<void(CmdData*)> func);
     void resetFunc();
 
+    /// Returns a string for logging.
+    virtual std::ostream& dump(std::ostream& os) const;
+    std::string dump() const;
+    friend std::ostream& operator<<(std::ostream& os, Command const& cmd);
+
 protected:
     std::function<void(CmdData*)> _func = [](CmdData*) { ; };
 };
@@ -88,7 +93,7 @@ protected:
 class CommandTracked : public Command, public Tracker {
 public:
     using Ptr = std::shared_ptr<CommandTracked>;
-    CommandTracked() = default;
+    CommandTracked() : Command(), Tracker() {}
     explicit CommandTracked(std::function<void(CmdData*)> func) : Command(func) {}
     ~CommandTracked() override = default;
 

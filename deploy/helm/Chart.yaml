@@ -1,0 +1,6 @@
+apiVersion: "v2"
+type: "application"
+name: "qserv"
+description: "Qserv: a petascale parallel database"
+version: "2026.2.2-pre"
+appVersion: "2026.2.2-pre"

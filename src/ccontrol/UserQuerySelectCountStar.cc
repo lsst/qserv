@@ -33,7 +33,7 @@
 #include "ccontrol/UserQueryError.h"
 #include "ccontrol/UserQueryType.h"
 #include "global/LogContext.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/QMetaSelect.h"
 #include "query/SelectStmt.h"
@@ -57,11 +57,11 @@ UserQuerySelectCountStar::UserQuerySelectCountStar(std::string query,
                                                    std::shared_ptr<qmeta::QMeta> const& queryMetadata,
                                                    std::string const& userQueryId,
                                                    std::string const& rowsTable, std::string const& resultDb,
-                                                   std::string const& countSpelling, qmeta::CzarId czarId,
+                                                   std::string const& countSpelling, CzarId czarId,
                                                    bool async)
         : _qMetaSelect(qMetaSelect),
           _queryMetadata(queryMetadata),
-          _messageStore(std::make_shared<qdisp::MessageStore>()),
+          _messageStore(std::make_shared<qmeta::MessageStore>()),
           _userQueryId(userQueryId),
           _rowsTable(rowsTable),
           _resultDb(resultDb),

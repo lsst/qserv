@@ -1,5 +1,4 @@
 add_library(qana SHARED)
-add_dependencies(qana proto)
 
 target_sources(qana PRIVATE
     AggregatePlugin.cc
@@ -21,9 +20,7 @@ target_link_libraries(qana PUBLIC
     log
 )
 
-install (
-    TARGETS qana
-)
+install (TARGETS qana)
 
 FUNCTION(qana_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
@@ -32,6 +29,7 @@ FUNCTION(qana_tests)
             cconfig
             ccontrol
             czar
+            global
             parser
             qana
             qdisp
@@ -40,7 +38,6 @@ FUNCTION(qana_tests)
             css
             qmeta
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )

@@ -1,5 +1,4 @@
 add_library(query SHARED)
-add_dependencies(query proto)
 
 target_sources(query PRIVATE
     AggOp.cc
@@ -45,9 +44,7 @@ target_link_libraries(query PUBLIC
     sphgeom
 )
 
-install(
-    TARGETS query
-)
+install(TARGETS query)
 
 FUNCTION(query_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
@@ -64,7 +61,6 @@ FUNCTION(query_tests)
             qmeta
             query
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )

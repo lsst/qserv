@@ -32,6 +32,7 @@
 // System headers
 #include <functional>
 #include <iterator>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -90,18 +91,43 @@ public:
     // do not use it for SELECT
     unsigned long long getAffectedRows() const { return _affectedRows; }
     bool extractFirstValue(std::string&, SqlErrorObject&);
-    bool extractFirstColumn(std::vector<std::string>&, SqlErrorObject&);
-    bool extractFirst2Columns(std::vector<std::string>&,  // FIXME: generalize
-                              std::vector<std::string>&, SqlErrorObject&);
-    bool extractFirst3Columns(std::vector<std::string>&,  // FIXME: generalize
-                              std::vector<std::string>&, std::vector<std::string>&, SqlErrorObject&);
-    bool extractFirst4Columns(std::vector<std::string>&, std::vector<std::string>&, std::vector<std::string>&,
-                              std::vector<std::string>&, SqlErrorObject&);
+
+    /// Return the value of the first X columns of `_results`, where X is the size() of vectorRef.
+    /// It would be nice to use references instead of pointers, but curly bracket initialization
+    /// of the references was problematic.
+    /// @param vectorRef - A vector of pointers to vectors of strings. Each vector of strings
+    ///                    contains a column of the table (index 0 holds column1,
+    ///                    index 1 holds column2, etc.). The number of columns returned is
+    ///                    vectorRef.size(). NULL values are set to empty strings.
+    /// @param errObj - is never set and should be removed. (Only likely error is database disconnect,
+    ///                 which would be catastrophic)
+    /// @return - Returns false when fewer than expected columns are found.
+    bool extractFirstXColumns(std::vector<std::vector<std::string>*> const& vectorRef,
+                              SqlErrorObject& sqlErr);
+    bool extractFirstColumn(std::vector<std::string>& col1, SqlErrorObject& errObj);
+    bool extractFirst2Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                              SqlErrorObject& errObj);
+    bool extractFirst3Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                              std::vector<std::string>& col3, SqlErrorObject& errObj);
+    bool extractFirst4Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                              std::vector<std::string>& col3, std::vector<std::string>& col4,
+                              SqlErrorObject& errObj);
+    bool extractFirst6Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                              std::vector<std::string>& col3, std::vector<std::string>& col4,
+                              std::vector<std::string>& col5, std::vector<std::string>& col6,
+                              SqlErrorObject& errObj);
+
     template <typename... Columns>
     bool extractFirstColumns(SqlErrorObject& err, Columns&... cols) {
         std::vector<std::reference_wrapper<std::vector<std::string>>> columns = {std::ref(cols)...};
         return _extractFirstColumnsImpl(err, columns);
     }
+
+    /// Extract a result set into the 2D array.
+    /// @param numColumns The number of columns in the array.
+    /// @return a 2D array, where the first index of the array represents rows
+    ///  and the second index represents columns.
+    std::vector<std::vector<std::string>> extractFirstNColumns(size_t numColumns);
 
     void freeResults();
 

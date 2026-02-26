@@ -30,6 +30,12 @@
 #include <sstream>
 #include <stdexcept>
 
+// LSST headers
+#include "lsst/log/Log.h"
+
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "mysql/SchemaFactory.h"
 
@@ -37,6 +43,10 @@
 // It prevents the undetermined behavior (or crashes) during construction of std::string()
 // when the null pointer is passed into the constructor.
 #define EMPTY_STR_IF_NULL(x) ((x) == nullptr ? "" : (x))
+
+namespace {
+LOG_LOGGER _log = LOG_GET("lsst.qserv.sql.SqlResults");
+}
 
 namespace lsst::qserv::sql {
 
@@ -117,12 +127,22 @@ void SqlResults::addResult(MYSQL_RES* r) {
     }
 }
 
-bool SqlResults::extractFirstColumn(std::vector<std::string>& ret, SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i = 0; i < s; ++i) {
+bool SqlResults::extractFirstXColumns(std::vector<std::vector<std::string>*> const& vectorRef,
+                                      SqlErrorObject& sqlErr) {
+    size_t rsz = _results.size();
+    size_t expectedCols = vectorRef.size();
+    if (rsz > 0 && mysql_num_fields(_results[0]) < expectedCols) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "extractFirstXColumns had too few columns expected=" << rsz << " found="
+                                                                  << mysql_num_fields(_results[0]));
+        return false;
+    }
+    for (size_t i = 0; i < rsz; ++i) {
         MYSQL_ROW row;
         while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            ret.push_back(EMPTY_STR_IF_NULL(row[0]));
+            for (size_t j = 0; j < expectedCols; ++j) {
+                vectorRef[j]->push_back(EMPTY_STR_IF_NULL(row[j]));
+            }
         }
         mysql_free_result(_results[i]);
     }
@@ -130,53 +150,45 @@ bool SqlResults::extractFirstColumn(std::vector<std::string>& ret, SqlErrorObjec
     return true;
 }
 
+bool SqlResults::extractFirstColumn(std::vector<std::string>& col1, SqlErrorObject& errObj) {
+    return extractFirstXColumns({&col1}, errObj);
+}
 bool SqlResults::extractFirst2Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
                                       SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i = 0; i < s; ++i) {
-        MYSQL_ROW row;
-        while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            col1.push_back(EMPTY_STR_IF_NULL(row[0]));
-            col2.push_back(EMPTY_STR_IF_NULL(row[1]));
-        }
-        mysql_free_result(_results[i]);
-    }
-    _results.clear();
-    return true;
+    return extractFirstXColumns({&col1, &col2}, errObj);
 }
-
 bool SqlResults::extractFirst3Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
                                       std::vector<std::string>& col3, SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i = 0; i < s; ++i) {
-        MYSQL_ROW row;
-        while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            col1.push_back(EMPTY_STR_IF_NULL(row[0]));
-            col2.push_back(EMPTY_STR_IF_NULL(row[1]));
-            col3.push_back(EMPTY_STR_IF_NULL(row[2]));
-        }
-        mysql_free_result(_results[i]);
-    }
-    _results.clear();
-    return true;
+    return extractFirstXColumns({&col1, &col2, &col3}, errObj);
 }
-
 bool SqlResults::extractFirst4Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
                                       std::vector<std::string>& col3, std::vector<std::string>& col4,
                                       SqlErrorObject& errObj) {
-    int i, s = _results.size();
-    for (i = 0; i < s; ++i) {
+    return extractFirstXColumns({&col1, &col2, &col3, &col4}, errObj);
+}
+bool SqlResults::extractFirst6Columns(std::vector<std::string>& col1, std::vector<std::string>& col2,
+                                      std::vector<std::string>& col3, std::vector<std::string>& col4,
+                                      std::vector<std::string>& col5, std::vector<std::string>& col6,
+                                      SqlErrorObject& errObj) {
+    return extractFirstXColumns({&col1, &col2, &col3, &col4, &col5, &col6}, errObj);
+}
+
+std::vector<std::vector<std::string>> SqlResults::extractFirstNColumns(size_t numColumns) {
+    std::vector<std::vector<std::string>> rows;
+    for (int resultIdx = 0, numResults = _results.size(); resultIdx < numResults; ++resultIdx) {
         MYSQL_ROW row;
-        while ((row = mysql_fetch_row(_results[i])) != nullptr) {
-            col1.push_back(EMPTY_STR_IF_NULL(row[0]));
-            col2.push_back(EMPTY_STR_IF_NULL(row[1]));
-            col3.push_back(EMPTY_STR_IF_NULL(row[2]));
-            col4.push_back(EMPTY_STR_IF_NULL(row[3]));
+        while ((row = mysql_fetch_row(_results[resultIdx])) != nullptr) {
+            std::vector<std::string> columns;
+            columns.reserve(numColumns);
+            for (size_t colIdx = 0; colIdx < numColumns; ++colIdx) {
+                columns.push_back(row[colIdx]);
+            }
+            rows.push_back(std::move(columns));
         }
-        mysql_free_result(_results[i]);
+        mysql_free_result(_results[resultIdx]);
     }
     _results.clear();
-    return true;
+    return rows;
 }
 
 bool SqlResults::extractFirstValue(std::string& ret, SqlErrorObject& errObj) {

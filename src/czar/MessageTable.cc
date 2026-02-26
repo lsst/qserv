@@ -35,7 +35,7 @@
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQuery.h"
 #include "czar/CzarErrors.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 
@@ -95,8 +95,8 @@ void MessageTable::lock() {
 }
 
 // Release lock on message table so that proxy can proceed
-void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
-    _saveQueryMessages(userQuery);
+void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess) {
+    _saveQueryMessages(userQuery, querySuccess);
 
     sql::SqlErrorObject sqlErr;
     LOGS(_log, LOG_LVL_DEBUG, "unlocking message table " << _tableName);
@@ -108,7 +108,7 @@ void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
 }
 
 // store all messages from current session to the table
-void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
+void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess) {
     if (not userQuery) {
         return;
     }
@@ -117,12 +117,12 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery)
     int completeCount = 0;
     int cancelCount = 0;
     std::string multiErrStr = "";
-    std::string severity = "INFO";
+    std::string severity = (querySuccess) ? "INFO" : "ERROR";
 
     // Collect information about the query and put it in the message table.
     int msgCount = msgStore->messageCount();
     for (int i = 0; i != msgCount; ++i) {
-        const qdisp::QueryMessage& qm = msgStore->getMessage(i);
+        const qmeta::QueryMessage& qm = msgStore->getMessage(i);
         std::string src = qm.msgSource;
         if (src == "COMPLETE") {
             ++completeCount;
@@ -130,7 +130,6 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery)
             ++cancelCount;
         } else if (src == "MULTIERROR") {
             multiErrStr += qm.description + "\n";
-            severity = "ERROR";
         }
     }
     std::string cMsg("Completed chunks=");

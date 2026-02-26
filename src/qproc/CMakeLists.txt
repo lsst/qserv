@@ -1,5 +1,4 @@
 add_library(qproc SHARED)
-add_dependencies(qproc proto)
 
 target_sources(qproc PRIVATE
     ChunkQuerySpec.cc
@@ -8,7 +7,6 @@ target_sources(qproc PRIVATE
     IndexMap.cc
     QuerySession.cc
     SecondaryIndex.cc
-    TaskMsgFactory.cc
 )
 
 target_link_libraries(qproc PRIVATE
@@ -17,9 +15,7 @@ target_link_libraries(qproc PRIVATE
     sphgeom
 )
 
-install(
-    TARGETS qproc
-)
+install(TARGETS qproc)
 
 FUNCTION(qproc_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
@@ -28,6 +24,7 @@ FUNCTION(qproc_tests)
             cconfig
             ccontrol
             czar
+            global
             parser
             qana
             qdisp
@@ -36,7 +33,6 @@ FUNCTION(qproc_tests)
             css
             qmeta
             rproc
-            xrdreq
             Boost::unit_test_framework
             Threads::Threads
         )

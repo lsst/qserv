@@ -34,8 +34,8 @@
 #include <nlohmann/json.hpp>
 
 // Qserv headers
+#include "global/intTypes.h"
 #include "mysql/MySqlConfig.h"
-#include "qmeta/types.h"
 #include "util/ConfigStore.h"
 #include "util/ConfigValMap.h"
 
@@ -59,6 +59,7 @@ namespace lsst::qserv::cconfig {
  */
 class CzarConfig {
 public:
+    using Ptr = std::shared_ptr<CzarConfig>;
     /**
      * Create an instance of CzarConfig and load parameters from the specifid file.
      * @note One has to call this method at least once before trying to obtain
@@ -69,7 +70,7 @@ public:
      * @param czarName - the unique name of Czar.
      * @return the shared pointer to the configuration object
      */
-    static std::shared_ptr<CzarConfig> create(std::string const& configFileName, std::string const& czarName);
+    static Ptr create(std::string const& configFileName, std::string const& czarName);
 
     /**
      * Get a pointer to an instance that was created by the last call to
@@ -77,7 +78,7 @@ public:
      * @return the shared pointer to the configuration object
      * @throws std::logic_error when attempting to call the bethod before creating an instance.
      */
-    static std::shared_ptr<CzarConfig> instance();
+    static Ptr instance();
 
     CzarConfig() = delete;
     CzarConfig(CzarConfig const&) = delete;
@@ -114,35 +115,7 @@ public:
      */
     int getInteractiveChunkLimit() const { return _interactiveChunkLimit->getVal(); }
 
-    /* Get hostname and port for xrootd manager
-     *
-     * "localhost:1094" is the most reasonable default, even though it is
-     * the wrong choice for all but small developer installations
-     *
-     * @return a string containing "<hostname>:<port>"
-     */
-    std::string const& getXrootdFrontendUrl() const { return _xrootdFrontendUrl->getVal(); }
-
-    /* Get the maximum number of threads for xrootd to use.
-     *
-     * @return the maximum number of threads for xrootd to use.
-     */
-    int getXrootdCBThreadsMax() const { return _xrootdCBThreadsMax->getVal(); }
-
-    /* Get the initial number of threads for xrootd to create and maintain.
-     *
-     * @return the initial number of threads for xrootd to use.
-     */
-    int getXrootdCBThreadsInit() const { return _xrootdCBThreadsInit->getVal(); }
-
     bool getQueryDistributionTestVer() const { return _queryDistributionTestVer->getVal(); }
-
-    /*
-     * @return A value of the "spread" parameter. This may improve a performance
-     * of xrootd for catalogs with the large number of chunks. The default value
-     * of this parameter in xrootd is 4.
-     */
-    int getXrootdSpread() const { return _xrootdSpread->getVal(); }
 
     /* Get minimum number of seconds between QMeta chunk completion updates.
      *
@@ -157,8 +130,16 @@ public:
     /// Getters for result aggregation options.
     int getMaxTableSizeMB() const { return _maxTableSizeMB->getVal(); }
     int getMaxSqlConnectionAttempts() const { return _maxSqlConnectionAttempts->getVal(); }
+    unsigned int getMaxTransferMemMB() const { return _resultMaxTransferMemMB->getVal(); }
+    /// Return the transfer directory. This is customizable to allow for a
+    /// high performance volume.
+    std::string getTransferDir() const { return _resultTransferDir->getVal(); }
 
-    /// The size of the TCP connection pool witin the client API that is used
+    /// Return the minimum amount of memory per UberJob to keep in memory. This much transfer
+    /// data will be stored in memory regardless of other conditions.
+    unsigned int getTransferMinMBInMem() const { return _resultTransferMinMBInMem->getVal(); }
+
+    /// The size of the TCP connection pool within the client API that is used
     /// by the merger to pool result files from workers via the HTTP protocol.
     int getResultMaxHttpConnections() const { return _resultMaxHttpConnections->getVal(); }
 
@@ -196,6 +177,34 @@ public:
     /// the method then the monitoring will be disabled.
     unsigned int czarStatsUpdateIvalSec() const { return _czarStatsUpdateIvalSec->getVal(); }
 
+    /// Maximum number of attempts to run a given job before aborting the entire user query.
+    unsigned int jobMaxAttempts() const { return _jobMaxAttempts->getVal(); }
+
+    /// A worker is considered fully ALIVE if the last update from the worker has been
+    /// heard in less than _activeWorkerTimeoutAliveSecs seconds.
+    int getActiveWorkerTimeoutAliveSecs() const { return _activeWorkerTimeoutAliveSecs->getVal(); }
+
+    /// A worker is considered DEAD if it hasn't been heard from in more than
+    /// _activeWorkerTimeoutDeadSecs.
+    int getActiveWorkerTimeoutDeadSecs() const { return _activeWorkerTimeoutDeadSecs->getVal(); }
+
+    /// Max lifetime of a message to be sent to an active worker. If the czar has been
+    /// trying to send a message to a worker and has failed for this many seconds,
+    /// it gives up at this point, removing elements of the message to save memory.
+    int getActiveWorkerMaxLifetimeSecs() const { return _activeWorkerMaxLifetimeSecs->getVal(); }
+
+    /// The maximum number of chunks (basically Jobs) allowed in a single UberJob.
+    int getUberJobMaxChunks() const { return _uberJobMaxChunks->getVal(); }
+
+    /// Return the maximum number of http connections to use for czar commands.
+    int getCommandMaxHttpConnections() const { return _commandMaxHttpConnections->getVal(); }
+
+    /// Return the sleep time (in milliseconds) between messages sent to active workers.
+    int getMonitorSleepTimeMilliSec() const { return _monitorSleepTimeMilliSec->getVal(); }
+
+    /// Return true if family map chunk distribution should depend on chunk size.
+    bool getFamilyMapUsingChunkSize() const { return _familyMapUsingChunkSize->getVal(); }
+
     // Parameters of the Czar management service
 
     std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
@@ -224,14 +233,14 @@ public:
     std::string const& name() const { return _czarName; }
 
     /// @return The unique identifier of Czar.
-    qmeta::CzarId id() const { return _czarId; }
+    CzarId id() const { return _czarId; }
 
     /// Set a unique identifier of Czar.
     /// @note In the current implementation of Qserv a value of the identifier is not
     /// available at a time when the configuration is initialized. The identifier is generated
     /// when registering Czar by name in a special table of teh Qserv database.
     /// This logic should be fixed in some future version of Qserv.
-    void setId(qmeta::CzarId id);
+    void setId(CzarId id);
 
     /// @return The interval in seconds for cleaning up the in-progress queries in QMeta.
     unsigned int getInProgressCleanupIvalSec() const { return _inProgressCleanupIvalSec->getVal(); }
@@ -260,8 +269,7 @@ private:
     /// The unique identifier of the Czar instance, the real vale cannot be
     /// acquired until later. Using a crazy initial value in hopes of highlighting
     /// issues.
-    /// TODO: Is this really the right place for this? (previously undefined)
-    qmeta::CzarId _czarId = std::numeric_limits<qmeta::CzarId>::max();
+    CzarId _czarId = std::numeric_limits<CzarId>::max();
 
     nlohmann::json _jsonConfig;  ///< JSON-ified configuration
 
@@ -295,11 +303,19 @@ private:
     CVTIntPtr _maxSqlConnectionAttempts =
             util::ConfigValTInt::create(_configValMap, "resultdb", "maxsqlconnectionattempts", notReq, 10);
     CVTIntPtr _resultMaxHttpConnections =
-            util::ConfigValTInt::create(_configValMap, "resultdb", "maxhttpconnections", notReq, 8192);
+            util::ConfigValTInt::create(_configValMap, "resultdb", "maxhttpconnections", notReq, 2000);
     CVTIntPtr _oldestResultKeptDays =
             util::ConfigValTInt::create(_configValMap, "resultdb", "oldestResultKeptDays", notReq, 30);
     CVTIntPtr _oldestAsyncResultKeptSeconds = util::ConfigValTInt::create(
             _configValMap, "resultdb", "oldestAsyncResultKeptSeconds", notReq, 3600);
+
+    // This must be larger than _maxTableSizeMB when using the "memory" TransferMethod
+    CVTUIntPtr _resultMaxTransferMemMB =
+            util::ConfigValTUInt::create(_configValMap, "resultdb", "maxTransferMemMB", notReq, 10000);
+    CVTStrPtr _resultTransferDir =
+            util::ConfigValTStr::create(_configValMap, "resultdb", "transferDir", notReq, "/tmp");
+    CVTUIntPtr _resultTransferMinMBInMem =
+            util::ConfigValTUInt::create(_configValMap, "resultdb", "transferMinMBInMem", notReq, 10);
 
     /// Get all the elements in the css section.
     CVTStrPtr _cssTechnology =
@@ -336,8 +352,6 @@ private:
     CVTStrPtr _qstatusDb =
             util::ConfigValTStr::create(_configValMap, "qstatus", "db", notReq, "qservStatusData");
 
-    CVTStrPtr _xrootdFrontendUrl =
-            util::ConfigValTStr::create(_configValMap, "frontend", "xrootd", notReq, "localhost:1094");
     CVTStrPtr _emptyChunkPath =
             util::ConfigValTStr::create(_configValMap, "partitioner", "emptyChunkPath", notReq, ".");
     CVTIntPtr _maxMsgSourceStore =
@@ -351,19 +365,17 @@ private:
     CVTIntPtr _qdispMaxPriority =
             util::ConfigValTInt::create(_configValMap, "qdisppool", "largestPriority", notReq, 2);
     CVTStrPtr _qdispVectRunSizes =
-            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectRunSizes", notReq, "50:50:50:50");
+            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectRunSizes", notReq, "800:800:500:50");
     CVTStrPtr _qdispVectMinRunningSizes =
-            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectMinRunningSizes", notReq, "0:1:3:3");
+            util::ConfigValTStr::create(_configValMap, "qdisppool", "vectMinRunningSizes", notReq, "0:3:3:3");
 
-    CVTIntPtr _xrootdSpread = util::ConfigValTInt::create(_configValMap, "tuning", "xrootdSpread", notReq, 4);
+    // UberJobs
+    CVTIntPtr _uberJobMaxChunks =
+            util::ConfigValTInt::create(_configValMap, "uberjob", "maxChunks", notReq, 10000);
     CVTIntPtr _qMetaSecsBetweenChunkCompletionUpdates = util::ConfigValTInt::create(
             _configValMap, "tuning", "qMetaSecsBetweenChunkCompletionUpdates", notReq, 60);
     CVTIntPtr _interactiveChunkLimit =
             util::ConfigValTInt::create(_configValMap, "tuning", "interactiveChunkLimit", notReq, 10);
-    CVTIntPtr _xrootdCBThreadsMax =
-            util::ConfigValTInt::create(_configValMap, "tuning", "xrootdCBThreadsMax", notReq, 500);
-    CVTIntPtr _xrootdCBThreadsInit =
-            util::ConfigValTInt::create(_configValMap, "tuning", "xrootdCBThreadsInit", notReq, 50);
     CVTIntPtr _queryDistributionTestVer =
             util::ConfigValTInt::create(_configValMap, "tuning", "queryDistributionTestVer", notReq, 0);
     CVTBoolPtr _notifyWorkersOnQueryFinish =
@@ -372,6 +384,8 @@ private:
             util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnCzarRestart", notReq, 1);
     CVTIntPtr _czarStatsUpdateIvalSec =
             util::ConfigValTInt::create(_configValMap, "tuning", "czarStatsUpdateIvalSec", notReq, 1);
+    CVTUIntPtr _jobMaxAttempts =
+            util::ConfigValTUInt::create(_configValMap, "tuning", "jobMaxAttempts", notReq, 150);
 
     // Replicator
     CVTStrPtr _replicationInstanceId =
@@ -395,6 +409,24 @@ private:
     CVTStrPtr _httpUser = util::ConfigValTStr::create(_configValMap, "http", "user", notReq, "");
     CVTStrPtr _httpPassword =
             util::ConfigValTStr::create(_configValMap, "http", "password", notReq, "", hidden);
+
+    // Active Worker
+    CVTIntPtr _activeWorkerTimeoutAliveSecs =  // 5min
+            util::ConfigValTInt::create(_configValMap, "activeworker", "timeoutAliveSecs", notReq, 60 * 5);
+    CVTIntPtr _activeWorkerTimeoutDeadSecs =  // 10min
+            util::ConfigValTInt::create(_configValMap, "activeworker", "timeoutDeadSecs", notReq, 60 * 10);
+    CVTIntPtr _activeWorkerMaxLifetimeSecs =  // 1hr
+            util::ConfigValTInt::create(_configValMap, "activeworker", "maxLifetimeSecs", notReq, 60 * 60);
+    CVTIntPtr _monitorSleepTimeMilliSec = util::ConfigValTInt::create(
+            _configValMap, "activeworker", "monitorSleepTimeMilliSec", notReq, 15'000);
+
+    // FamilyMap
+    CVTBoolPtr _familyMapUsingChunkSize =
+            util::ConfigValTBool::create(_configValMap, "familymap", "usingChunkSize", notReq, 0);
+
+    /// This may impact `_resultMaxHttpConnections` as too many connections may cause kernel memory issues.
+    CVTIntPtr _commandMaxHttpConnections =
+            util::ConfigValTInt::create(_configValMap, "uberjob", "commandMaxHttpConnections", notReq, 2000);
 };
 
 }  // namespace lsst::qserv::cconfig

@@ -36,7 +36,7 @@
 #include "css/CssAccess.h"
 #include "css/CssError.h"
 #include "cconfig/CzarConfig.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMetaSelect.h"
 #include "query/FromList.h"
@@ -64,11 +64,11 @@ namespace lsst::qserv::ccontrol {
 // Constructor
 UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> const& statement,
                                            std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                           qmeta::CzarId czarId, std::string const& userQueryId,
+                                           CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
           _czarId(czarId),
-          _messageStore(std::make_shared<qdisp::MessageStore>()),
+          _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {
     // The SQL statement should be mostly OK alredy but we need to change
@@ -91,11 +91,11 @@ UserQueryProcessList::UserQueryProcessList(std::shared_ptr<query::SelectStmt> co
 }
 
 UserQueryProcessList::UserQueryProcessList(bool full, std::shared_ptr<qmeta::QMetaSelect> const& qMetaSelect,
-                                           qmeta::CzarId czarId, std::string const& userQueryId,
+                                           CzarId czarId, std::string const& userQueryId,
                                            std::string const& resultDb)
         : _qMetaSelect(qMetaSelect),
           _czarId(czarId),
-          _messageStore(std::make_shared<qdisp::MessageStore>()),
+          _messageStore(std::make_shared<qmeta::MessageStore>()),
           _resultTableName(::g_nextResultTableId(userQueryId)),
           _resultDb(resultDb) {
     _query = "SELECT `qi`.`queryId` `ID`,`qi`.`qType` `TYPE`,`qc`.`czar` `CZAR`,`qc`.`czarId` `CZAR_ID`,"

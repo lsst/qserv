@@ -50,6 +50,8 @@ class ConfigValMap;
 /// Base class for storing values, usually from configuration files, that have
 /// identifiers consisting of a `section` and a `name`.
 /// This class is meant to be used with ConfigValMap.
+/// TODO:Maybe a command line argument can be added to this and if the command
+///         line argument is found, it will override the value in the file.
 class ConfigVal {
 public:
     using Ptr = std::shared_ptr<ConfigVal>;
