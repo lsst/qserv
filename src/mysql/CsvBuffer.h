@@ -92,13 +92,16 @@ public:
      * stream termination.
      * @param data The record to be pushed to the stream
      * @param size The size of the record
+     * @return true if the record was successfully pushed, false if the stream is closed
      */
-    void push(char const* data, std::size_t size);
+    bool push(char const* data, std::size_t size);
 
     /**
      * Pop a record from the stream. The method will block if the stream is empty
      * until a record is pushed.
+     * @note An empty string indicates end of the stream or that the stream is closed.
      * @return A shared pointer to the popped record or an empty string for the end of the stream
+     *   or if the stream is closed
      */
     std::shared_ptr<std::string> pop();
 
@@ -111,11 +114,19 @@ public:
      */
     bool empty() const;
 
+    /**
+     * Close the stream. The method is meant to be used to unblock the push() method
+     * in case the stream is still being used by multiple threads. After the method is called,
+     * the push() method will throw an exception to indicate that the stream is closed.
+     */
+    void close();
+
 private:
     CsvStream(std::size_t maxRecords);
 
     mutable std::mutex _mtx;
     std::condition_variable _cv;
+    std::atomic<bool> _closed{false};
     std::size_t const _maxRecords;
     std::list<std::shared_ptr<std::string>> _records;
 };
