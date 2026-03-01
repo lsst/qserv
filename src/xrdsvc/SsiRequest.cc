@@ -157,9 +157,9 @@ void SsiRequest::execute(XrdSsiRequest& req) {
             }
             _channelShared = wbase::FileChannelShared::create(sendChannel, taskMsg->czarid(),
                                                               _foreman->chunkInventory()->id());
-            auto const tasks = wbase::Task::createTasks(taskMsg, _channelShared, _foreman->chunkResourceMgr(),
-                                                        _foreman->mySqlConfig(), _foreman->sqlConnMgr(),
-                                                        _foreman->queriesAndChunks(), _foreman->httpPort());
+            auto const tasks = wbase::Task::createTasks(taskMsg, _channelShared, _foreman->mySqlConfig(),
+                                                        _foreman->sqlConnMgr(), _foreman->queriesAndChunks(),
+                                                        _foreman->httpPort());
             for (auto const& task : tasks) {
                 _tasks.push_back(task);
             }

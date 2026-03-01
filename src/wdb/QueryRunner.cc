@@ -67,7 +67,6 @@
 #include "wbase/FileChannelShared.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/SqlConnMgr.h"
-#include "wdb/ChunkResource.h"
 #include "wpublish/QueriesAndChunks.h"
 
 namespace {
@@ -79,23 +78,20 @@ using namespace std;
 namespace lsst::qserv::wdb {
 
 QueryRunner::Ptr QueryRunner::newQueryRunner(wbase::Task::Ptr const& task,
-                                             ChunkResourceMgr::Ptr const& chunkResourceMgr,
                                              mysql::MySqlConfig const& mySqlConfig,
                                              shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                                              shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
-    Ptr qr(new QueryRunner(task, chunkResourceMgr, mySqlConfig, sqlConnMgr,
+    Ptr qr(new QueryRunner(task, mySqlConfig, sqlConnMgr,
                            queriesAndChunks));  // Private constructor.
     return qr;
 }
 
 /// New instances need to be made with QueryRunner to ensure registration with the task
 /// and correct setup of enable_shared_from_this.
-QueryRunner::QueryRunner(wbase::Task::Ptr const& task, ChunkResourceMgr::Ptr const& chunkResourceMgr,
-                         mysql::MySqlConfig const& mySqlConfig,
+QueryRunner::QueryRunner(wbase::Task::Ptr const& task, mysql::MySqlConfig const& mySqlConfig,
                          shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
                          shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks)
         : _task(task),
-          _chunkResourceMgr(chunkResourceMgr),
           _mySqlConfig(mySqlConfig),
           _sqlConnMgr(sqlConnMgr),
           _queriesAndChunks(queriesAndChunks) {
@@ -194,45 +190,15 @@ MYSQL_RES* QueryRunner::_primeResult(string const& query) {
     return _mysqlConn->getResult();
 }
 
-class ChunkResourceRequest {
-public:
-    using Ptr = std::shared_ptr<ChunkResourceRequest>;
-
-    ChunkResourceRequest(shared_ptr<ChunkResourceMgr> const& mgr, wbase::Task& task)
-            : _mgr(mgr), _task(task) {}
-
-    // Since each Task has only one subchunk, fragment number isn't needed.
-    ChunkResource getResourceFragment() {
-        if (!_task.getFragmentHasSubchunks()) {
-            /// Why acquire anything if there are no subchunks in the fragment?
-            /// Future: Need to be certain this never happens before removing.
-            return _mgr->acquire(_task.getDb(), _task.getChunkId(), _task.getDbTbls());
-        }
-
-        return _mgr->acquire(_task.getDb(), _task.getChunkId(), _task.getDbTbls(), _task.getSubchunksVect());
-    }
-
-private:
-    shared_ptr<ChunkResourceMgr> const _mgr;
-    wbase::Task& _task;
-};
-
 bool QueryRunner::_dispatchChannel() {
     bool erred = false;
     bool needToFreeRes = false;  // set to true once there are results to be freed.
     // Collect the result in _transmitData. When a reasonable amount of data has been collected,
     // or there are no more rows to collect, pass _transmitData to _sendChannel.
-    ChunkResourceRequest::Ptr req;
-    ChunkResource::Ptr cr;
     try {
         util::Timer subChunkT;
         subChunkT.start();
-        req.reset(new ChunkResourceRequest(_chunkResourceMgr, *_task));
-        cr.reset(new ChunkResource(req->getResourceFragment()));
         subChunkT.stop();
-        // TODO: Hold onto this for longer period of time as the odds of reuse are pretty low at this scale
-        //       Ideally, hold it until moving on to the next chunk. Try to clean up ChunkResource code.
-
         auto taskSched = _task->getTaskScheduler();
         if (!_cancelled && !_task->getSendChannel()->isDead()) {
             string const& query = _task->getQueryString();
