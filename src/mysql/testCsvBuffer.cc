@@ -68,10 +68,10 @@ BOOST_AUTO_TEST_CASE(TestCsvStreamBuffer) {
     auto csvBuf = lsst::qserv::mysql::newCsvStreamBuffer(csvStream);
 
     std::thread producer([csvStream]() {
-        csvStream->push("abc", 3);
-        csvStream->push("def", 3);
-        csvStream->push("0123456789", 10);
-        csvStream->push(nullptr, 0);
+        BOOST_CHECK(csvStream->push("abc", 3));
+        BOOST_CHECK(csvStream->push("def", 3));
+        BOOST_CHECK(csvStream->push("0123456789", 10));
+        BOOST_CHECK(csvStream->push(nullptr, 0));
     });
 
     std::thread consumer([csvBuf]() {
@@ -89,6 +89,30 @@ BOOST_AUTO_TEST_CASE(TestCsvStreamBuffer) {
         BOOST_CHECK_EQUAL(std::string(buffer, 3), "def");
         BOOST_CHECK_EQUAL(csvBuf->fetch(buffer, sizeof(buffer)), 10);
         BOOST_CHECK_EQUAL(std::string(buffer, 10), "0123456789");
+        BOOST_CHECK_EQUAL(csvBuf->fetch(buffer, sizeof(buffer)), 0);
+    });
+    producer.join();
+    consumer.join();
+}
+
+BOOST_AUTO_TEST_CASE(TestClosingCsvStreamBuffer) {
+    auto csvStream = lsst::qserv::mysql::CsvStream::create(2);
+    auto csvBuf = lsst::qserv::mysql::newCsvStreamBuffer(csvStream);
+
+    std::thread producer([csvStream]() {
+        BOOST_CHECK(csvStream->push("abc", 3));
+        BOOST_CHECK(csvStream->push("def", 3));
+        csvStream->close();
+        // The following push should fail since the stream is closed.
+        BOOST_CHECK(!csvStream->push("0123456789", 10));
+    });
+
+    std::thread consumer([csvBuf]() {
+        char buffer[20];
+        BOOST_CHECK_EQUAL(csvBuf->fetch(buffer, sizeof(buffer)), 3);
+        BOOST_CHECK_EQUAL(std::string(buffer, 3), "abc");
+        BOOST_CHECK_EQUAL(csvBuf->fetch(buffer, sizeof(buffer)), 3);
+        BOOST_CHECK_EQUAL(std::string(buffer, 3), "def");
         BOOST_CHECK_EQUAL(csvBuf->fetch(buffer, sizeof(buffer)), 0);
     });
     producer.join();

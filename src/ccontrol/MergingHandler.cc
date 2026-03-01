@@ -276,13 +276,19 @@ bool MergingHandler::_merge(proto::ResponseSummary const& resp, shared_ptr<qdisp
                     if (buf == nullptr || size == 0 || queryEnded) {
                         last = true;
                     } else {
-                        csvStream->push(buf, size);
+                        bool const closed = !csvStream->push(buf, size);
+                        if (closed) {
+                            throw ::QueryEnded(
+                                    "query " + jobQuery->getIdStr() +
+                                    " ended while reading the file, bytesRead=" + to_string(bytesRead) +
+                                    ", transmitsize=" + to_string(resp.transmitsize()));
+                        }
                         bytesRead += size;
                         last = bytesRead >= resp.transmitsize();
                     }
                     if (last) {
-                        csvStream->push(nullptr, 0);
-                        if (queryEnded) {
+                        bool const closed = !csvStream->push(nullptr, 0);
+                        if (queryEnded || closed) {
                             throw ::QueryEnded(
                                     "query " + jobQuery->getIdStr() +
                                     " ended while reading the file, bytesRead=" + to_string(bytesRead) +
@@ -305,6 +311,10 @@ bool MergingHandler::_merge(proto::ResponseSummary const& resp, shared_ptr<qdisp
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
     }
+
+    // Close the stream to unblock the file reader thread if it is still waiting
+    // for the stream to be consumed.
+    csvStream->close();
     csvThread.join();
     if (!fileReadErrorMsg.empty()) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " result file read failed");
