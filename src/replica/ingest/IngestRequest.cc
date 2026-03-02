@@ -630,9 +630,10 @@ void IngestRequest::_readRemoteFile(replica::Lock const& lock) {
     bool const flush = true;
     http::Client reader(_contrib.httpMethod, _contrib.url, _contrib.httpData, _contrib.httpHeaders,
                         clientConfig);
-    reader.read([&](char const* record, size_t size) {
+    reader.read([&](char const* record, size_t size) -> size_t {
         parser->parse(record, size, !flush, reportRow);
         numBytes += size;
+        return size;
     });
     // Flush the last non-terminated line stored in the parser (if any).
     string const emptyRecord;

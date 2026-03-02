@@ -40,8 +40,7 @@ namespace lsst::qserv::http {
 
 size_t forwardToClient(char* ptr, size_t size, size_t nmemb, void* client) {
     size_t const nchars = size * nmemb;
-    reinterpret_cast<Client*>(client)->_store(ptr, nchars);
-    return nchars;
+    return reinterpret_cast<Client*>(client)->_store(ptr, nchars);
 }
 
 Client::Client(http::Method method, string const& url, string const& data, vector<string> const& headers,
@@ -158,7 +157,10 @@ void Client::read(CallbackType const& onDataRead) {
 
 json Client::readAsJson() {
     vector<char> data;
-    this->read([&data](char const* buf, size_t size) { data.insert(data.cend(), buf, buf + size); });
+    this->read([&data](char const* buf, size_t size) -> size_t {
+        data.insert(data.cend(), buf, buf + size);
+        return size;
+    });
     return json::parse(data);
 }
 
@@ -277,6 +279,6 @@ void Client::_curlEasyErrorChecked(string const& scope, CURLcode errnum) {
     }
 }
 
-void Client::_store(char const* ptr, size_t nchars) { _onDataRead(ptr, nchars); }
+size_t Client::_store(char const* ptr, size_t nchars) { return _onDataRead(ptr, nchars); }
 
 }  // namespace lsst::qserv::http

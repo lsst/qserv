@@ -65,6 +65,7 @@ struct ClientMimeEntry {
  *   Client reader("GET", "http://my.host.domain/data/chunk_0.txt");
  *   reader.read([](char const* buf, size_t size) {
  *       std::cout << str::string(buf, size);
+ *       return size;
  *   });
  * @code
  * Another example illustrates how to use the class for interacting with a REST service
@@ -84,7 +85,10 @@ struct ClientMimeEntry {
 class Client {
 public:
     /// The function type for notifications on each record retrieved from the input stream.
-    typedef std::function<void(char const*, size_t)> CallbackType;
+    /// Normally, the function is expected to return the same number of bytes that was passed
+    /// in as an argument. However, the function is allowed to return a different number of bytes
+    /// to signal the reader to stop reading from the input stream.
+    typedef std::function<size_t(char const*, size_t)> CallbackType;
 
     // No copy semantics for this class.
     Client() = delete;
@@ -197,8 +201,9 @@ private:
      *
      * @param ptr A pointer to the beginning of the data buffer.
      * @param nchars The number of characters in the buffer.
+     * @return The number of bytes processed from the input buffer.
      */
-    void _store(char const* ptr, size_t nchars);
+    size_t _store(char const* ptr, size_t nchars);
 
     /**
      * The non-member callback function is used for pushing chunks of data retrieved from
