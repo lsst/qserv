@@ -40,8 +40,7 @@ namespace lsst::qserv::http {
 
 size_t forwardToClient(char* ptr, size_t size, size_t nmemb, void* client) {
     size_t const nchars = size * nmemb;
-    reinterpret_cast<Client*>(client)->_store(ptr, nchars);
-    return nchars;
+    return reinterpret_cast<Client*>(client)->_store(ptr, nchars);
 }
 
 Client::Client(http::Method method, string const& url, string const& data, vector<string> const& headers,
@@ -153,12 +152,19 @@ void Client::read(CallbackType const& onDataRead) {
                           curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToClient));
     _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)",
                           curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
-    _curlEasyErrorChecked("curl_easy_perform()", curl_easy_perform(_hcurl));
+    _abortedByCallback = false;
+    CURLcode const rc = curl_easy_perform(_hcurl);
+    if (rc != CURLE_OK && !(rc == CURLE_WRITE_ERROR && _abortedByCallback)) {
+        _curlEasyErrorChecked("curl_easy_perform()", rc);
+    }
 }
 
 json Client::readAsJson() {
     vector<char> data;
-    this->read([&data](char const* buf, size_t size) { data.insert(data.cend(), buf, buf + size); });
+    this->read([&data](char const* buf, size_t size) -> size_t {
+        data.insert(data.cend(), buf, buf + size);
+        return size;
+    });
     return json::parse(data);
 }
 
@@ -277,6 +283,12 @@ void Client::_curlEasyErrorChecked(string const& scope, CURLcode errnum) {
     }
 }
 
-void Client::_store(char const* ptr, size_t nchars) { _onDataRead(ptr, nchars); }
+size_t Client::_store(char const* ptr, size_t nchars) {
+    size_t const nread = _onDataRead(ptr, nchars);
+    if (nread != nchars) {
+        _abortedByCallback = true;
+    }
+    return nread;
+}
 
 }  // namespace lsst::qserv::http

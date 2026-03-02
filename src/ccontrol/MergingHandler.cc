@@ -129,26 +129,47 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
         // Starts the tracker to measure the performance of the network I/O.
         transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
 
+        // This variable is used to track if the file reading was aborted by the callback
+        // function before the end of the file was reached. Knowing this condition is needed
+        // for proper error reporting in case the file was not completely read.
+        bool readAborted = false;
+
         // Start reading the file. The read() method will call the callback function
         // for each chunk of data read from the file.
-        reader.read([&](char const* inBuf, size_t inBufSize) {
+        reader.read([&](char const* inBuf, size_t inBufSize) -> size_t {
             // Check if the end of the file has been reached.
             // Destroying the tracker will result in stopping the tracker's timer and
             // reporting the file read rate before proceeding to the merge.
             transmitRateTracker->addToValue(inBufSize);
             transmitRateTracker->setSuccess();
             transmitRateTracker.reset();
-            messageIsReady(inBuf, inBufSize);
+            try {
+                messageIsReady(inBuf, inBufSize);
+            } catch (QueryEnded const& ex) {
+                // This is a normal condition which should be handled gracefully by the algorithm.
+                LOGS(_log, LOG_LVL_DEBUG, context << ex.what() << ", httpUrl=" << httpUrl);
+                readAborted = true;
+
+                // Returning a different number of bytes will signal the reader to stop reading
+                // the file and return control to the caller. The actual value of the returned number
+                // is not important as long as it is different from the number of bytes that was
+                // passed in as an argument.
+                // For more details on the expected behavior of the callback function,
+                // see http::Client::CallbackType and http::Client::read() documentation.
+                return inBufSize == 0 ? 1 : 0;
+            }
             offset += inBufSize;
+
             // Restart the tracker to measure the reading performance of the next chunk of data.
             transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
+
+            // Return the number of bytes that was passed into the callback function to signal
+            // the reader to continue reading the file.
+            return inBufSize;
         });
-        if (offset != fileSize) {
+        if (offset != fileSize && !readAborted) {
             throw runtime_error(context + "short read");
         }
-    } catch (QueryEnded const& ex) {
-        // This is a normal condition which should be handled gracefully by the algorithm.
-        LOGS(_log, LOG_LVL_DEBUG, context << ex.what() << ", httpUrl=" << httpUrl);
     } catch (exception const& ex) {
         string const errMsg = "failed to open/read: " + httpUrl + ", fileSize: " + to_string(fileSize) +
                               ", offset: " + to_string(offset) + ", ex: " + string(ex.what());
