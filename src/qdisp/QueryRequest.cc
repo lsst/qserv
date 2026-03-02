@@ -84,7 +84,7 @@ public:
             http::Client remover(http::Method::DELETE, _httpUrl, noClientData, noClientHeaders,
                                  qdisp::QueryRequest::makeHttpClientConfig(),
                                  qdisp::QueryRequest::getHttpConnPool());
-            remover.read([](char const*, size_t) {});
+            remover.read([](char const* ptr, size_t size) -> size_t { return size; });
         } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_WARN,
                  "HttpFileRemoverRAII failed to remove " << _httpUrl << ", ex: " << ex.what());

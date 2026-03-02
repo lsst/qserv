@@ -173,8 +173,9 @@ int HttpClientApp::runImpl() {
     if (_result2json) {
         if (nullptr != osPtr) *osPtr << reader.readAsJson() << "\n";
     } else {
-        reader.read([&](char const* record, size_t size) {
+        reader.read([&](char const* record, size_t size) -> size_t {
             if (nullptr != osPtr) *osPtr << string(record, size) << "\n";
+            return size;
         });
     }
     if (nullptr != osPtr) {
