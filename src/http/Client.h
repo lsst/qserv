@@ -225,7 +225,8 @@ private:
     ClientConfig const _clientConfig;
     std::shared_ptr<ClientConnPool> const _connPool;
 
-    CallbackType _onDataRead;  ///< set by method read() before pulling the data
+    CallbackType _onDataRead;         ///< set by method read() before pulling the data
+    bool _abortedByCallback = false;  ///< set by _store() if callback returns a short byte count
 
     // Cached members
     CURL* _hcurl = nullptr;
