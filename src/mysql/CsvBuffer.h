@@ -117,7 +117,8 @@ public:
     /**
      * Close the stream. The method is meant to be used to unblock the push() method
      * in case the stream is still being used by multiple threads. After the method is called,
-     * the push() method will throw an exception to indicate that the stream is closed.
+     * the push() method will not accept new records and will return false to indicate that
+     * the stream is closed.
      */
     void close();
 
