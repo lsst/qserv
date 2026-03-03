@@ -152,7 +152,11 @@ void Client::read(CallbackType const& onDataRead) {
                           curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToClient));
     _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)",
                           curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
-    _curlEasyErrorChecked("curl_easy_perform()", curl_easy_perform(_hcurl));
+    _abortedByCallback = false;
+    CURLcode const rc = curl_easy_perform(_hcurl);
+    if (rc != CURLE_OK && !(rc == CURLE_WRITE_ERROR && _abortedByCallback)) {
+        _curlEasyErrorChecked("curl_easy_perform()", rc);
+    }
 }
 
 json Client::readAsJson() {
@@ -279,6 +283,12 @@ void Client::_curlEasyErrorChecked(string const& scope, CURLcode errnum) {
     }
 }
 
-size_t Client::_store(char const* ptr, size_t nchars) { return _onDataRead(ptr, nchars); }
+size_t Client::_store(char const* ptr, size_t nchars) {
+    size_t const nread = _onDataRead(ptr, nchars);
+    if (nread != nchars) {
+        _abortedByCallback = true;
+    }
+    return nread;
+}
 
 }  // namespace lsst::qserv::http
