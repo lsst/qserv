@@ -24,6 +24,7 @@
 #define LSST_QSERV_MYSQL_CSVBUFFER_H
 
 // System headers
+#include <atomic>
 #include <condition_variable>
 #include <cstddef>
 #include <list>
