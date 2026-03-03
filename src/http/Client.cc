@@ -152,7 +152,16 @@ void Client::read(CallbackType const& onDataRead) {
                           curl_easy_setopt(_hcurl, CURLOPT_WRITEFUNCTION, forwardToClient));
     _curlEasyErrorChecked("curl_easy_setopt(CURLOPT_WRITEDATA)",
                           curl_easy_setopt(_hcurl, CURLOPT_WRITEDATA, this));
-    _curlEasyErrorChecked("curl_easy_perform()", curl_easy_perform(_hcurl));
+    _abortedByCallback = false;
+    CURLcode const performResult = curl_easy_perform(_hcurl);
+    if (performResult != CURLE_OK) {
+        if (_abortedByCallback && performResult == CURLE_WRITE_ERROR) {
+            // The callback requested an early abort by returning fewer bytes than provided.
+            // libcurl signals this via CURLE_WRITE_ERROR, which is expected in this case.
+            return;
+        }
+        _curlEasyErrorChecked("curl_easy_perform()", performResult);
+    }
 }
 
 json Client::readAsJson() {
@@ -279,6 +288,12 @@ void Client::_curlEasyErrorChecked(string const& scope, CURLcode errnum) {
     }
 }
 
-size_t Client::_store(char const* ptr, size_t nchars) { return _onDataRead(ptr, nchars); }
+size_t Client::_store(char const* ptr, size_t nchars) {
+    size_t const consumed = _onDataRead(ptr, nchars);
+    if (consumed != nchars) {
+        _abortedByCallback = true;
+    }
+    return consumed;
+}
 
 }  // namespace lsst::qserv::http

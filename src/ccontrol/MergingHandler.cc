@@ -130,7 +130,7 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
         transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
 
         // This variable is used to track if the file reading was aborted by the callback
-        // function before the end of the file was reached. Knowning this condition is needed
+        // function before the end of the file was reached. Knowing this condition is needed
         // for proper error reporting in case the file was not completely read.
         bool readAborted = false;
 

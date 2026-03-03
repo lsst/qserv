@@ -226,6 +226,7 @@ private:
     std::shared_ptr<ClientConnPool> const _connPool;
 
     CallbackType _onDataRead;  ///< set by method read() before pulling the data
+    bool _abortedByCallback = false;  ///< set to true if the callback requested early abort
 
     // Cached members
     CURL* _hcurl = nullptr;
