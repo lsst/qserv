@@ -258,10 +258,8 @@ CsvStream::CsvStream(std::size_t maxRecords) : _maxRecords(maxRecords) {
 
 bool CsvStream::push(char const* data, std::size_t size) {
     std::unique_lock<std::mutex> lock(_mtx);
-    while (_records.size() >= _maxRecords) {
-        _cv.wait_for(lock, std::chrono::milliseconds(100));
-        if (_closed) return false;
-    }
+    _cv.wait(lock, [this] { return _records.size() < _maxRecords || _closed; });
+    if (_closed) return false;
     if (data != nullptr && size != 0) {
         _records.emplace_back(std::make_shared<std::string>(data, size));
     } else {
@@ -274,10 +272,8 @@ bool CsvStream::push(char const* data, std::size_t size) {
 
 std::shared_ptr<std::string> CsvStream::pop() {
     std::unique_lock<std::mutex> lock(_mtx);
-    while (_records.empty()) {
-        _cv.wait_for(lock, std::chrono::milliseconds(100));
-        if (_closed) return std::make_shared<std::string>();
-    }
+    _cv.wait(lock, [this] { return !_records.empty() || _closed; });
+    if (_closed && _records.empty()) return std::make_shared<std::string>();
     std::shared_ptr<std::string> front = _records.front();
     _records.pop_front();
     _cv.notify_one();
