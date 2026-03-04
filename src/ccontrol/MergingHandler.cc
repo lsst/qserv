@@ -129,26 +129,47 @@ string readHttpFileAndMerge(string const& httpUrl, size_t fileSize,
         // Starts the tracker to measure the performance of the network I/O.
         transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
 
+        // This variable is used to track if the file reading was aborted by the callback
+        // function before the end of the file was reached. Knowing this condition is needed
+        // for proper error reporting in case the file was not completely read.
+        bool readAborted = false;
+
         // Start reading the file. The read() method will call the callback function
         // for each chunk of data read from the file.
-        reader.read([&](char const* inBuf, size_t inBufSize) {
+        reader.read([&](char const* inBuf, size_t inBufSize) -> size_t {
             // Check if the end of the file has been reached.
             // Destroying the tracker will result in stopping the tracker's timer and
             // reporting the file read rate before proceeding to the merge.
             transmitRateTracker->addToValue(inBufSize);
             transmitRateTracker->setSuccess();
             transmitRateTracker.reset();
-            messageIsReady(inBuf, inBufSize);
+            try {
+                messageIsReady(inBuf, inBufSize);
+            } catch (QueryEnded const& ex) {
+                // This is a normal condition which should be handled gracefully by the algorithm.
+                LOGS(_log, LOG_LVL_DEBUG, context << ex.what() << ", httpUrl=" << httpUrl);
+                readAborted = true;
+
+                // Returning a different number of bytes will signal the reader to stop reading
+                // the file and return control to the caller. The actual value of the returned number
+                // is not important as long as it is different from the number of bytes that was
+                // passed in as an argument.
+                // For more details on the expected behavior of the callback function,
+                // see http::Client::CallbackType and http::Client::read() documentation.
+                return inBufSize == 0 ? 1 : 0;
+            }
             offset += inBufSize;
+
             // Restart the tracker to measure the reading performance of the next chunk of data.
             transmitRateTracker = make_unique<lsst::qserv::TimeCountTracker<double>>(reportFileRecvRate);
+
+            // Return the number of bytes that was passed into the callback function to signal
+            // the reader to continue reading the file.
+            return inBufSize;
         });
-        if (offset != fileSize) {
+        if (offset != fileSize && !readAborted) {
             throw runtime_error(context + "short read");
         }
-    } catch (QueryEnded const& ex) {
-        // This is a normal condition which should be handled gracefully by the algorithm.
-        LOGS(_log, LOG_LVL_DEBUG, context << ex.what() << ", httpUrl=" << httpUrl);
     } catch (exception const& ex) {
         string const errMsg = "failed to open/read: " + httpUrl + ", fileSize: " + to_string(fileSize) +
                               ", offset: " + to_string(offset) + ", ex: " + string(ex.what());
@@ -276,13 +297,19 @@ bool MergingHandler::_merge(proto::ResponseSummary const& resp, shared_ptr<qdisp
                     if (buf == nullptr || size == 0 || queryEnded) {
                         last = true;
                     } else {
-                        csvStream->push(buf, size);
+                        bool const closed = !csvStream->push(buf, size);
+                        if (closed) {
+                            throw ::QueryEnded(
+                                    "query " + jobQuery->getIdStr() +
+                                    " ended while reading the file, bytesRead=" + to_string(bytesRead) +
+                                    ", transmitsize=" + to_string(resp.transmitsize()));
+                        }
                         bytesRead += size;
                         last = bytesRead >= resp.transmitsize();
                     }
                     if (last) {
-                        csvStream->push(nullptr, 0);
-                        if (queryEnded) {
+                        bool const closed = !csvStream->push(nullptr, 0);
+                        if (queryEnded || closed) {
                             throw ::QueryEnded(
                                     "query " + jobQuery->getIdStr() +
                                     " ended while reading the file, bytesRead=" + to_string(bytesRead) +
@@ -305,6 +332,10 @@ bool MergingHandler::_merge(proto::ResponseSummary const& resp, shared_ptr<qdisp
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, err.getMsg());
     }
+
+    // Close the stream to unblock the file reader thread if it is still waiting
+    // for the stream to be consumed.
+    csvStream->close();
     csvThread.join();
     if (!fileReadErrorMsg.empty()) {
         LOGS(_log, LOG_LVL_WARN, __func__ << " result file read failed");
