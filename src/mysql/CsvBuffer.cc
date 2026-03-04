@@ -258,8 +258,10 @@ CsvStream::CsvStream(std::size_t maxRecords) : _maxRecords(maxRecords) {
 
 bool CsvStream::push(char const* data, std::size_t size) {
     std::unique_lock<std::mutex> lock(_mtx);
+    if (_closed) return false;
     while (_records.size() >= _maxRecords) {
-        _cv.wait_for(lock, std::chrono::milliseconds(100));
+        _cv.wait_for(lock, std::chrono::milliseconds(100),
+                     [this] { return _records.size() < _maxRecords || _closed; });
         if (_closed) return false;
     }
     if (data != nullptr && size != 0) {
