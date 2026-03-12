@@ -1,7 +1,7 @@
-qservImageName: qserv/lite-qserv:2026.2.1-rc1-49-gcf115b202
-mariadbImageName: qserv/lite-mariadb:2026.2.1-rc1
+qservImageName: ghcr.io/lsst/qserv:2026.2.2-rc1-48-gbf7de83f1
+mariadbImageName: ghcr.io/lsst/qserv-mariadb:2026.2.2-rc1
 sslProxyImageName: qserv/mysql-proxy-ssl:latest
-ingestHelperImageName: qserv/lite-build:2026.2.1-rc1-19-gf0e450b0e
+ingestHelperImageName: ghcr.io/lsst/qserv-build-base:2026.2.2-rc1-46-gf129c37c1
 
 qservImagePullPolicy: IfNotPresent
 mariadbImagePullPolicy: IfNotPresent
@@ -32,3 +32,19 @@ ingest:
   storage:
     class: rubin-qserv-storage
     size: 200Gi
+
+czarExternalService:
+  enable: true
+  type: LoadBalancer
+  annotations:
+    metallb.io/address-pool: sdf-dmz
+  allocateLoadBalancerNodePorts: false
+  loadBalancerIP: 134.79.23.221
+  loadBalancerSourceRanges:
+    - 35.232.79.62/32
+    - 34.135.212.179/32
+    - 35.225.239.81/32
+    - 34.121.239.92/32
+    - 134.79.0.0/16
+    - 172.16.0.0/12
+    - 172.24.49.51/32
