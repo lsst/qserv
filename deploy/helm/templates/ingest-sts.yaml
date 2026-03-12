@@ -49,6 +49,7 @@ spec:
           env:
             - name: QSERV_INSTANCE_ID
               value: {{ .Release.Name }}
+          command: ["tini", "--", "tail", "-f", "/dev/null"]
           volumeMounts:
             - name: tmp
               mountPath: /tmp
