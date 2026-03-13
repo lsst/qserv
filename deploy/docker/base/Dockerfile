@@ -57,6 +57,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         protobuf-devel \
         python3.12 \
         python3.12-devel \
+        tini \
         tree \
         vim \
         zip \
@@ -102,8 +103,10 @@ RUN cd /tmp \
 
 RUN cd /tmp \
     && git clone https://github.com/nlohmann/json \
-    && mkdir json/build \
-    && cd json/build \
+    && cd json \
+    && git checkout v3.12.0 \
+    && mkdir build \
+    && cd build \
     && cmake -DJSON_BuildTests=off .. \
     && make -j8 \
     && make install \
