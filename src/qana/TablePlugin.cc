@@ -52,10 +52,11 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
+#include "css/CssAccess.h"
+#include "css/CssError.h"
 #include "qana/QueryMapping.h"
 #include "qana/RelationGraph.h"
 #include "qana/TableInfoPool.h"
-
 #include "query/FromList.h"
 #include "query/FuncExpr.h"
 #include "query/GroupByClause.h"
@@ -194,10 +195,21 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
     std::for_each(fromListTableRefs.begin(), fromListTableRefs.end(),
                   [&](query::TableRef::Ptr const& tableRef) { _setAlias(tableRef, context); });
 
-    // update the dominant db in the context ("dominant" is not the same as the default db)
+    // Update the dominant db in the plugin and in the context ("dominant" is not the same
+    // as the default db).
+    // If there is more than one table referenced in the from list, then the dominant db
+    // will be the db of the first partitioned table found in the list.
     if (fromListTableRefs.size() > 0) {
-        context.dominantDb = fromListTableRefs[0]->getDb();
-        _dominantDb = context.dominantDb;
+        for (auto const& tableRef : fromListTableRefs) {
+            css::PartTableParams const params =
+                    context.css->getPartTableParams(tableRef->getDb(), tableRef->getTable());
+            if (params.partitioned) {
+                _dominantDb = tableRef->getDb();
+                break;
+            }
+        }
+        if (_dominantDb.empty()) _dominantDb = fromListTableRefs[0]->getDb();
+        context.dominantDb = _dominantDb;
     }
 
     matchTableRefs(context, *stmt.getSelectList().getValueExprList(), true);
