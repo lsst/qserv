@@ -298,6 +298,11 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         }
         auto stmt = parser->getSelectStmt();
 
+        // Parsing doesn't need protection, but CSS in analyze query does and
+        // some of the uq related calls may require protection, but it
+        // isn't clear.
+        std::lock_guard<std::mutex> factoryLock(_factoryMtx);
+
         // handle special database/table names
         if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
             return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
@@ -378,12 +383,14 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {
+        std::lock_guard<std::mutex> factoryLock(_factoryMtx);
         auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _userQuerySharedResources->czarId,
                                                          _userQuerySharedResources->queryMetadata);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
         return uq;
     } else if (UserQueryType::isShowProcessList(query, full)) {
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
+        std::lock_guard<std::mutex> factoryLock(_factoryMtx);
         try {
             return std::make_shared<UserQueryProcessList>(full, _userQuerySharedResources->qMetaSelect,
                                                           _userQuerySharedResources->czarId, userQueryId,
@@ -392,10 +399,12 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
     } else if (UserQueryType::isCall(query)) {
+        std::lock_guard<std::mutex> factoryLock(_factoryMtx);
         auto parser = std::make_shared<ParseRunner>(
                 query, _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
         return parser->getUserQuery();
     } else if (UserQueryType::isSet(query)) {
+        std::lock_guard<std::mutex> factoryLock(_factoryMtx);
         ParseRunner::Ptr parser;
         try {
             parser = std::make_shared<ParseRunner>(query);
@@ -414,6 +423,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         }
         return uq;
     } else {
+        std::lock_guard<std::mutex> factoryLock(_factoryMtx);
         // something that we don't recognize
         auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
         return uq;
