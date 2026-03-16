@@ -30,6 +30,7 @@
 
 // System headers
 #include <memory>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -110,7 +111,7 @@ public:
     // The statement used to run the aggregation step on the merge table.
     query::SelectStmt& stmtMerge;
 
-    std::string dominantDb;
+    std::set<std::string> dominantDbs;
 
     // True if an aggregation step must be performed on the merge table after worker queries
     // complete.

@@ -176,7 +176,7 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
         }
     }
 
-    query::TableRefList& fromListTableRefs = fromList.getTableRefList();
+    query::TableRefList const& fromListTableRefs = fromList.getTableRefList();
 
     // Add aliases to all table references in the from-list (if they don't exist already) and then patch the
     // other clauses so that they refer to the aliases.
@@ -188,7 +188,7 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
     // be incorrect.
 
     // make sure the TableRefs in the from list are all completetly populated (db AND table)
-    for (auto&& tableRef : fromListTableRefs) {
+    for (auto const& tableRef : fromListTableRefs) {
         tableRef->verifyPopulated(context.defaultDb);
     }
 
@@ -201,15 +201,29 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
     // will be the db of the first partitioned table found in the list.
     if (fromListTableRefs.size() > 0) {
         for (auto const& tableRef : fromListTableRefs) {
+            // Get the partitioned parameters of the first table referenced in the FROM clause.
             css::PartTableParams const params =
                     context.css->getPartTableParams(tableRef->getDb(), tableRef->getTable());
             if (params.partitioned) {
-                _dominantDb = tableRef->getDb();
-                break;
+                _dominantDbs.insert(tableRef->getDb());
+            }
+
+            // Process any joins in the from list, and if any of the joined tables are partitioned,
+            // add those to the dominant db set as well.
+            if (!tableRef->isSimple()) {
+                query::JoinRefPtrVector const& joinRefs = tableRef->getJoins();
+                for (auto const& joinRef : joinRefs) {
+                    auto const& rightTableRef = joinRef->getRight();
+                    css::PartTableParams const params = context.css->getPartTableParams(
+                            rightTableRef->getDb(), rightTableRef->getTable());
+                    if (params.partitioned) {
+                        _dominantDbs.insert(rightTableRef->getDb());
+                    }
+                }
             }
         }
-        if (_dominantDb.empty()) _dominantDb = fromListTableRefs[0]->getDb();
-        context.dominantDb = _dominantDb;
+        if (_dominantDbs.empty()) _dominantDbs.insert(fromListTableRefs[0]->getDb());
+        context.dominantDbs = _dominantDbs;
     }
 
     matchTableRefs(context, *stmt.getSelectList().getValueExprList(), true);
@@ -233,13 +247,13 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
 
     LOGS(_log, LOG_LVL_TRACE, "OnClauses of Join:");
     // and in the on clauses of all join specifications.
-    for (auto&& tableRef : fromListTableRefs) {
-        for (auto&& joinRef : tableRef->getJoins()) {
-            auto&& joinSpec = joinRef->getSpec();
+    for (auto const& tableRef : fromListTableRefs) {
+        for (auto const& joinRef : tableRef->getJoins()) {
+            auto const& joinSpec = joinRef->getSpec();
             if (joinSpec) {
                 // A column name in a using clause should be unqualified,
                 // so only patch on clauses.
-                auto&& onBoolTerm = joinSpec->getOn();
+                auto const& onBoolTerm = joinSpec->getOn();
                 if (onBoolTerm) {
                     matchTableRefs(context, *onBoolTerm, false);
                     matchValueExprs(context, *onBoolTerm, false);
@@ -271,7 +285,7 @@ void TablePlugin::applyPhysical(QueryPlugin::Plan& p, query::QueryContext& conte
         RelationGraph g(**i, pool);
         g.rewrite(newList, *context.queryMapping);
     }
-    p.dominantDb = _dominantDb;
+    p.dominantDbs = _dominantDbs;
     p.stmtParallel.swap(newList);
 }
 

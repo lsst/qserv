@@ -31,6 +31,7 @@
 
 // System headers
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -78,7 +79,7 @@ public:
 
     std::shared_ptr<css::CssAccess> css;  ///< interface to CSS
     std::string defaultDb;                ///< User session db context
-    std::string dominantDb;               ///< "dominant" database for this query
+    std::set<std::string> dominantDbs;    ///< "dominant" databases for this query
     std::string userName{"default"};      ///< unused, but reserved.
 
     std::shared_ptr<qproc::DatabaseModels> databaseModels;  ///< contains database schema information.
@@ -180,7 +181,13 @@ public:
     /// i.e. no stopping early when reaching LIMIT X rows.
     bool allChunksRequired = false;
 
-    css::StripingParams getDbStriping() { return css->getDbStriping(dominantDb); }
+    /**
+     * Get the striping parameters for any dominant database of this query.
+     * @note That all databases are required to have the same striping parameters, so it does
+     * not matter which one we get the parameters for, as long as it is a dominant database.
+     */
+    css::StripingParams getDbStriping() const;
+
     bool containsDb(std::string const& dbName) { return css->containsDb(dbName); }
     bool containsTable(std::string const& dbName, std::string const& tableName) {
         return css->containsTable(dbName, tableName);

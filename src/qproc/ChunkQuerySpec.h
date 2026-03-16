@@ -57,7 +57,8 @@ public:
             : db(db_), chunkId(chunkId_), scanInfo(scanInfo_), scanInteractive(scanInteractive_) {}
 
     // Contents could change
-    std::string db{""};  ///< dominant db
+    std::string db{
+            ""};  ///< dominant db (any database if there are multiple databases referenced in the query)
     int chunkId{0};
     proto::ScanInfo scanInfo;  ///< shared-scan candidates
     // Consider saving subChunkTable templates, and substituting the chunkIds

@@ -34,6 +34,14 @@ public:
               subStripes(subStripes_),
               partitioningId(partitioningId_),
               overlap(overlap_) {}
+    bool isDefaultConstructed() const {
+        return stripes == 0 && subStripes == 0 && partitioningId == 0 && overlap == 0.0;
+    }
+    bool operator==(StripingParams const& rhs) const {
+        return stripes == rhs.stripes && subStripes == rhs.subStripes &&
+               partitioningId == rhs.partitioningId && overlap == rhs.overlap;
+    }
+    bool operator!=(StripingParams const& rhs) const { return !(*this == rhs); }
     int stripes;
     int subStripes;
     int partitioningId;
