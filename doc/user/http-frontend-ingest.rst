@@ -771,7 +771,7 @@ The request could be pushed to the service using:
          -F 'rows=@/path/to/ObjectExt.csv'
 
 
-After ingesting the director table and the dependent table, the following query will be able to join the tables
+After ingesting the director table and the dependent table, the following queries will be able to join the tables
 and retrieve the data:
 
 .. code-block:: sql
@@ -791,13 +791,24 @@ and retrieve the data:
         591817699928047627,
         591817768647524543)
 
-..  warning::
+.. code-block:: sql
 
-    A known limitation of the current Qserv implementation is that queries involving dependent tables
-    may fail if the referenced director and dependent tables have different spatial coverage. This issue
-    is under investigation and will be addressed in a future release. As a workaround, queries should
-    explicitly constrain results to the common spatial coverage of both tables. Another workaround
-    is to explicitly specify the object IDs in the query as shown in the example above.
+    SELECT o.objectId, o.ra, o.dec, e.flux
+      FROM dp1.Object AS o
+      JOIN user_gapon.ObjectExt AS e ON o.objectId = e.id
+      WHERE scisql_s2PtInBox(o.coord_ra,
+                             o.coord_dec,
+                             52.462335990353665,
+                             -28.588229240077368,
+                             53.065325285368786,
+                             -28.058831566800524)=1;
+
+.. code-block:: sql
+
+    SELECT o.objectId, o.ra, o.dec, e.flux
+      FROM dp1.Object AS o
+      JOIN user_gapon.ObjectExt AS e ON o.objectId = e.id
+      WHERE e.flux > 5;
 
 
 .. _http-frontend-ingest-schema-spec:
