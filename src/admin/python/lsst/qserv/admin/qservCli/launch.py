@@ -1484,7 +1484,7 @@ def up(
     http_frontend_port : `int` or `None`
         The host port to use for the qserv HTTP frontend.
     """
-    args = ["docker-compose", "-f", yaml_file]
+    args = ["docker", "compose", "-f", yaml_file]
     if project:
         args.extend(["-p", project])
     args.extend(["up", "-d"])
@@ -1531,7 +1531,8 @@ def down(
         The name of the qserv being used.
     """
     args = [
-        "docker-compose",
+        "docker",
+        "compose",
         "-f",
         yaml_file,
     ]
