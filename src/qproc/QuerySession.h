@@ -129,15 +129,38 @@ public:
      */
     std::string getResultOrderBy() const;
 
-    /// Dominant database is the database that will be used for query
-    /// dispatch. This is distinct from the default database, which is what is
-    /// used for unqualified table and column references
-    std::string const& getDominantDb() const;
     bool containsDb(std::string const& dbName) const;
     bool containsTable(std::string const& dbName, std::string const& tableName) const;
-    bool validateDominantDb() const;
-    css::StripingParams getDbStriping();
+
+    /**
+     * Validate that the dominant databases specified in the query context are registered
+     * in CSS and compatible with each other.
+     * @note Dominant databases are the databases that will be used for query
+     *  dispatch. They are distinct from the default database, which is what is
+     *  used for unqualified table and column references.
+     * @return true if the dominant databases are valid, false otherwise. If false is returned,
+     *  details will be logged.
+     */
+    bool validateDominantDbs() const;
+
+    /**
+     * Get the striping parameters of any dominant database found in the query.
+     * @note That all dominant databases are required to have the same striping parameters, so it does
+     *  not matter which one we get the parameters for, as long as it is a dominant database.
+     * @return The striping parameters for any dominant database
+     * @throw std::logic_error if there are no dominant databases or if the dominant databases
+     *  have different striping parameters.
+     */
+    css::StripingParams getDbStriping() const;
+
+    /**
+     * Get the union of empty chunks for all dominant databases of this query.
+     * @return The set of empty chunks for all dominant databases, or nullptr if CSS is not available.
+     * @throw std::logic_error if there are no dominant databases or if the dominant databases
+     *  have different striping parameters.
+     */
     std::shared_ptr<IntSet const> getEmptyChunks();
+
     std::string const& getError() const { return _error; }
 
     std::shared_ptr<query::SelectStmt> getMergeStmt() const;

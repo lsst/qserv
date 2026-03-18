@@ -210,31 +210,68 @@ void QuerySession::setDummy() {
     _chunks.push_back(ChunkSpec(DUMMY_CHUNK, v));
 }
 
-std::string const& QuerySession::getDominantDb() const {
-    return _context->dominantDb;  // parsed query's dominant db (via TablePlugin)
-}
-
 bool QuerySession::containsDb(std::string const& dbName) const { return _context->containsDb(dbName); }
 
 bool QuerySession::containsTable(std::string const& dbName, std::string const& tableName) const {
     return _context->containsTable(dbName, tableName);
 }
 
-bool QuerySession::validateDominantDb() const { return _context->containsDb(_context->dominantDb); }
+bool QuerySession::validateDominantDbs() const {
+    if (_context->dominantDbs.empty()) {
+        LOGS(_log, LOG_LVL_WARN, "QuerySession::" << __func__ << ": no dominant dbs specified");
+        return false;
+    }
+    std::string prevDb;
+    css::StripingParams prevStriping;
+    for (auto const& dbName : _context->dominantDbs) {
+        if (_context->containsDb(dbName)) {
+            css::StripingParams const striping = _context->css->getDbStriping(dbName);
+            if (!prevStriping.isDefaultConstructed() && (striping != prevStriping)) {
+                LOGS(_log, LOG_LVL_WARN,
+                     "QuerySession::"
+                             << __func__ << ": dominant db " << dbName
+                             << " has incompatible striping parameters compared to other dominant db "
+                             << prevDb);
+                return false;
+            }
+            prevStriping = striping;
+        } else {
+            LOGS(_log, LOG_LVL_WARN,
+                 "QuerySession::" << __func__ << ": dominant db " << dbName << " not in CSS");
+            return false;
+        }
+        prevDb = dbName;
+    }
+    return true;
+}
 
-css::StripingParams QuerySession::getDbStriping() { return _context->getDbStriping(); }
+css::StripingParams QuerySession::getDbStriping() const {
+    if (!validateDominantDbs()) {
+        throw std::logic_error("QuerySession::" + std::string(__func__) + ": Invalid dominant databases");
+    }
+    return _context->getDbStriping();
+}
 
 std::shared_ptr<IntSet const> QuerySession::getEmptyChunks() {
-    // FIXME: do we need to catch an exception here?
-    if (_css != nullptr) {
-        LOGS(_log, LOG_LVL_TRACE, "QuerySession::getEmptyChunks " << _context->dominantDb);
-        std::shared_ptr<IntSet const> result = _css->getEmptyChunks()->getEmpty(_context->dominantDb);
-        return result;
-    } else {
-        LOGS(_log, LOG_LVL_WARN, "QuerySession::getEmptyChunks no _css");
-        std::shared_ptr<IntSet const> res;
-        return res;
+    if (_css == nullptr) {
+        LOGS(_log, LOG_LVL_WARN, "QuerySession::" << __func__ << " no _css");
+        return nullptr;
     }
+    if (!validateDominantDbs()) {
+        throw std::logic_error("QuerySession::" + std::string(__func__) + ": Invalid dominant databases");
+    }
+    std::shared_ptr<IntSet> result = std::make_shared<IntSet>();
+    for (auto const& dbName : _context->dominantDbs) {
+        LOGS(_log, LOG_LVL_TRACE, "QuerySession::" << __func__ << " " << dbName);
+        std::shared_ptr<IntSet const> const dbResult = _css->getEmptyChunks()->getEmpty(dbName);
+        if (dbResult == nullptr) {
+            LOGS(_log, LOG_LVL_WARN,
+                 "QuerySession::" << __func__ << " no empty chunk info for db " << dbName);
+            continue;
+        }
+        result->insert(dbResult->begin(), dbResult->end());
+    }
+    return result;
 }
 
 /// Returns the merge statment, if appropriate.
@@ -405,7 +442,16 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
                                                       ChunkSpec const& chunkSpec,
                                                       bool fillInChunkIdTag) const {
-    auto cQSpec = std::make_shared<ChunkQuerySpec>(_context->dominantDb, chunkSpec.chunkId,
+    if (!validateDominantDbs()) {
+        throw std::logic_error("QuerySession::" + std::string(__func__) + ": Invalid dominant databases");
+    }
+
+    // Any dominant database (if there is more than one) works here. Note that after the previously made
+    // validation step, there should be at least one such database, and if there are more than one, then
+    // all databases ara guaranteeded to have the same striping parameters. The only role if the database
+    // name in the ChunkQuerySpec is to build the CSS resource path. See details in the implementation
+    // of the class.
+    auto cQSpec = std::make_shared<ChunkQuerySpec>(*(_context->dominantDbs.begin()), chunkSpec.chunkId,
                                                    _context->scanInfo, _scanInteractive);
     // Reset subChunkTables
     qana::QueryMapping const& queryMapping = *(_context->queryMapping);

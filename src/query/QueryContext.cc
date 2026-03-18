@@ -31,6 +31,9 @@
 // Class header
 #include "query/QueryContext.h"
 
+// System headers
+#include <stdexcept>
+
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -206,6 +209,14 @@ std::string QueryContext::columnToTablesMapToString() const {
         os << ") ";
     }
     return os.str();
+}
+
+css::StripingParams QueryContext::getDbStriping() const {
+    auto const itr = dominantDbs.begin();
+    if (itr == dominantDbs.end()) {
+        throw std::logic_error(std::string(__func__) + " called with no dominant databases");
+    }
+    return css->getDbStriping(*itr);
 }
 
 /// Get the table schema from the databaseModels. Primarily, this is

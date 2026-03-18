@@ -75,7 +75,10 @@ BOOST_AUTO_TEST_CASE(SecondaryIndex) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_REQUIRE(not context->secIdxRestrictors);  // since DM-38621
 }
 
@@ -85,7 +88,10 @@ BOOST_AUTO_TEST_CASE(NoSecondaryIndex) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_REQUIRE(not context->secIdxRestrictors);
 }
 
@@ -101,7 +107,10 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictor) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_REQUIRE(context->secIdxRestrictors);
     BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);  // since DM-38621
     BOOST_REQUIRE(context->secIdxRestrictors->at(0));
@@ -129,7 +138,10 @@ BOOST_AUTO_TEST_CASE(DoubleSecondaryIndexRestrictorCartesian) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_REQUIRE(context->secIdxRestrictors);
     BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);  // since DM-38621
     BOOST_REQUIRE(context->secIdxRestrictors->at(0));

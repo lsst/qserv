@@ -219,7 +219,10 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
 
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_REQUIRE(context->areaRestrictors);
     BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
     auto restrictorFunc = context->areaRestrictors->front();
@@ -364,7 +367,10 @@ BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_C
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, queryData.stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     if (nullptr != queryData.expectedRestrictor) {
         BOOST_REQUIRE(context->areaRestrictors);
         BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
@@ -412,7 +418,10 @@ BOOST_AUTO_TEST_CASE(ObjectSourceJoin) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_REQUIRE(context->areaRestrictors);
     BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
     BOOST_REQUIRE(context->areaRestrictors->front());
@@ -430,7 +439,10 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoin) {
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(!context->areaRestrictors);
     BOOST_CHECK(!context->secIdxRestrictors);
 }
@@ -448,7 +460,10 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinQualified) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -476,7 +491,10 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinWithAs) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(!context->areaRestrictors);
     BOOST_CHECK(!context->secIdxRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -519,7 +537,10 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr != context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -544,7 +565,10 @@ BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(!context->needsMerge);
@@ -570,7 +594,10 @@ BOOST_AUTO_TEST_CASE(AliasHandling) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -591,7 +618,10 @@ BOOST_AUTO_TEST_CASE(SpatialRestr) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr != context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -612,7 +642,10 @@ BOOST_AUTO_TEST_CASE(SpatialRestr2) {  // Redundant?
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr != context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -644,7 +677,10 @@ BOOST_AUTO_TEST_CASE(ChunkDensity) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -666,7 +702,10 @@ BOOST_AUTO_TEST_CASE(AltDbName) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, "rplante_PT1_2_u_pt12prod_im3000_qserv");
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), "rplante_PT1_2_u_pt12prod_im3000_qserv");
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr != context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -684,7 +723,10 @@ BOOST_AUTO_TEST_CASE(NonpartitionedTable) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(!context->hasChunks());
@@ -698,7 +740,10 @@ BOOST_AUTO_TEST_CASE(CountQuery) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK(context->hasChunks());
@@ -715,7 +760,10 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
 
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
 
@@ -742,7 +790,10 @@ BOOST_AUTO_TEST_CASE(SimpleScan) {
 
         std::shared_ptr<QueryContext> context = qs->dbgGetContext();
         BOOST_CHECK(context);
-        BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+        BOOST_CHECK(context->dominantDbs.size() == 1);
+        if (context->dominantDbs.size() == 1) {
+            BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+        }
         BOOST_CHECK(nullptr == context->secIdxRestrictors);
         BOOST_CHECK(nullptr == context->areaRestrictors);
         BOOST_CHECK_EQUAL(context->scanInfo.infoTables.size(), 1U);
@@ -761,7 +812,10 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
 
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     // BOOST_CHECK(!spr->getHasChunks());
@@ -1142,7 +1196,10 @@ BOOST_AUTO_TEST_CASE(Case01_0002) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr != context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     BOOST_CHECK_EQUAL(context->secIdxRestrictors->size(), 1U);
@@ -1192,7 +1249,10 @@ BOOST_AUTO_TEST_CASE(Case01_0012) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     // BOOST_CHECK(!spr->getHasChunks());
     // BOOST_CHECK(!spr->getHasSubChunks());
     // BOOST_CHECK(!spr->getHasAggregate());
@@ -1314,7 +1374,10 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
-    BOOST_CHECK_EQUAL(context->dominantDb, std::string("LSST"));
+    BOOST_CHECK(context->dominantDbs.size() == 1);
+    if (context->dominantDbs.size() == 1) {
+        BOOST_CHECK_EQUAL(*(context->dominantDbs.begin()), std::string("LSST"));
+    }
     BOOST_CHECK(nullptr == context->secIdxRestrictors);
     BOOST_CHECK(nullptr == context->areaRestrictors);
     qs->addChunk(ChunkSpec::makeFake(100, true));
