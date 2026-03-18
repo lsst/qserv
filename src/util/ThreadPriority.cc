@@ -39,10 +39,8 @@ namespace lsst::qserv::util {
 
 void ThreadPriority::storeOriginalValues() {
     getCurrentValues(_originalPriority, _originalPolicy);
-    LOGS(
-            _log, LOG_LVL_DEBUG,
-            "thread priority original "
-                    << " priority=" << _originalPriority << " policy=" << _originalPolicy);
+    LOGS(_log, LOG_LVL_DEBUG,
+         "thread priority original " << " priority=" << _originalPriority << " policy=" << _originalPolicy);
 }
 
 void ThreadPriority::getCurrentValues(int &priority, int &policy) {

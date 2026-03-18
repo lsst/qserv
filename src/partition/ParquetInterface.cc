@@ -128,8 +128,8 @@ void ParquetFile::setupBatchReader(int maxBufferSize) {
     reader_builder.memory_pool(pool);
     reader_builder.properties(arrow_reader_props);
 
-//    ARROW_ASSIGN_OR_RAISE(_arrow_reader_gbl, reader_builder.Build());
-//    ARROW_RETURN_NOT_OK(_arrow_reader_gbl->GetRecordBatchReader(&_rb_reader_gbl));
+    //    ARROW_ASSIGN_OR_RAISE(_arrow_reader_gbl, reader_builder.Build());
+    //    ARROW_RETURN_NOT_OK(_arrow_reader_gbl->GetRecordBatchReader(&_rb_reader_gbl));
     PARQUET_ASSIGN_OR_THROW(_arrow_reader_gbl, reader_builder.Build());
     PARQUET_ASSIGN_OR_THROW(_rb_reader_gbl, _arrow_reader_gbl->GetRecordBatchReader());
 
@@ -172,7 +172,7 @@ void ParquetFile::_getTotals() {
     _fileSize = infile->GetSize().ValueOrDie();
 
     std::unique_ptr<parquet::arrow::FileReader> reader;
-//    PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader));
+    //    PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(infile, arrow::default_memory_pool(), &reader));
     PARQUET_ASSIGN_OR_THROW(reader, parquet::arrow::OpenFile(infile, arrow::default_memory_pool()));
     _numRowGroups = reader->num_row_groups();
 

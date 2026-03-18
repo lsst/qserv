@@ -222,8 +222,8 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrSimpleTest) {
 
     // Make sure any further attepts to pull requests from the empty input queue
     // will time out.
-    BOOST_REQUIRE_THROW({ outRequest2 = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW(
+            { outRequest2 = requestScheduler->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Cancel the request while it's in the in-progress queue.
     // The cancelled request will remain in the queue because of
@@ -338,8 +338,8 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
 
     // This attempt should block since we're about to exceed the concurrency limit
     // specified for the database.
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW(
+            { outRequest = requestScheduler->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Submit 3 more requests in a scope of a different database.
     char const* db2 = "db2";
@@ -402,8 +402,8 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
     // This attempt should block since we've run out of the resource unconstrained
     // requests of the second database, and we would still exceed the concurrency limit
     // specified for the first database.
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW(
+            { outRequest = requestScheduler->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Now declare one in-progress request of tht first database
     // as completed. This should unblock us from scheduling the remaing
@@ -452,8 +452,8 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
     // the input queue, finishing request processing.
     resourceMgr->setAsyncProcLimit(db1, 3);
 
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW(
+            { outRequest = requestScheduler->next(expirationIvalMs); }, IngestRequestTimerExpired);
     BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(), 4U);
     BOOST_CHECK_EQUAL(requestScheduler->inputQueueSize(db1), 4U);
     BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(), 5U);
@@ -485,8 +485,8 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
 
     // Now we should be locked up since the number of in-progress requests
     // for the first database has reached the extended by 1 limit.
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW(
+            { outRequest = requestScheduler->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Mark one of those requests as completed and make another try.
     // The scheduler should let us move by one request only and then get
@@ -511,8 +511,8 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
     BOOST_CHECK_EQUAL(requestScheduler->inProgressQueueSize(db2), 3U);
     BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 3U);
 
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW(
+            { outRequest = requestScheduler->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Extend the limit byy 2 and add one more request for the for database.
     // This will allow the scheduler to schedule 2 requests because the limits
@@ -553,8 +553,8 @@ BOOST_AUTO_TEST_CASE(IngestRequestMgrComplexTest) {
     BOOST_CHECK_EQUAL(requestScheduler->outputQueueSize(), 3U);
 
     // No more input requests are available at this point.
-    BOOST_REQUIRE_THROW({ outRequest = requestScheduler->next(expirationIvalMs); },
-                        IngestRequestTimerExpired);
+    BOOST_REQUIRE_THROW(
+            { outRequest = requestScheduler->next(expirationIvalMs); }, IngestRequestTimerExpired);
 
     // Cleanup the BOOST ASIO service to prevent the nasty SIGABRT of the process.
     io_service.stop();

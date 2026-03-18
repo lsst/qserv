@@ -95,8 +95,8 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
     // Test if throws when the model is empty
     prefix = string();
     model = string();
-    BOOST_CHECK_THROW({ filePath = FileUtils::createTemporaryFile(baseDir, prefix, model); },
-                      invalid_argument);
+    BOOST_CHECK_THROW(
+            { filePath = FileUtils::createTemporaryFile(baseDir, prefix, model); }, invalid_argument);
 
     // Test if throws when the maximum number of retries is less than 1
     prefix = string();
@@ -137,8 +137,9 @@ BOOST_AUTO_TEST_CASE(FileUtils_createTemporaryFile) {
     for (auto&& d : digits) {
         string const filePath = baseFilePath + "-" + d;
         LOGS_INFO("FileUtils::createTemporaryFile creating a temporary file: " + filePath);
-        BOOST_CHECK_THROW({ FileUtils::createTemporaryFile(baseFilePath, "-", "%", suffix, maxRetries); },
-                          runtime_error);
+        BOOST_CHECK_THROW(
+                { FileUtils::createTemporaryFile(baseFilePath, "-", "%", suffix, maxRetries); },
+                runtime_error);
     }
 
     fs::remove(baseFilePath, errCode);

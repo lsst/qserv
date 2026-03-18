@@ -80,7 +80,7 @@ public:
     virtual Error getError() const = 0;
 
     /// Do anything that needs to be done if this job gets cancelled.
-    virtual void processCancel(){};
+    virtual void processCancel() {};
 
     /// Scrub the results from jobId-attempt from the result table.
     virtual void prepScrubResults(int jobId, int attempt) = 0;

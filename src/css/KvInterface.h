@@ -48,7 +48,7 @@ public:
      */
     static const unsigned int MAX_KEY_LENGTH = 255;
 
-    virtual ~KvInterface(){};
+    virtual ~KvInterface() {};
 
     /**
      * Create a slash-delimited key-value pair.

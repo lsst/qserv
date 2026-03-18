@@ -130,7 +130,7 @@ public:
     nlohmann::json statusToJsonBlend();
 
     /// Do nothing, the schedulers this class manages keep their own statistics.
-    void recordPerformanceData() override{};
+    void recordPerformanceData() override {};
 
 private:
     int _getAdjustedMaxThreads(int oldAdjMax, int inFlight);

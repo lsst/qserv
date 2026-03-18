@@ -159,9 +159,7 @@ Task::Task(TaskMsgPtr const& t, int fragmentNumber, shared_ptr<UserQueryInfo> co
     }
 
     allIds.add(to_string(_qId) + "_" + to_string(_jId));
-    LOGS(_log, LOG_LVL_DEBUG,
-         "Task(...) "
-                 << "this=" << this << " : " << allIds);
+    LOGS(_log, LOG_LVL_DEBUG, "Task(...) " << "this=" << this << " : " << allIds);
 
     // Determine which major tables this task will use.
     int const size = t->scantable_size();

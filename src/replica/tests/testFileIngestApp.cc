@@ -227,11 +227,12 @@ BOOST_AUTO_TEST_CASE(FileIngestAppTest_parseChunkContribution) {
     BOOST_CHECK(contrib.chunk == 2);
     BOOST_CHECK(contrib.isOverlap);
 
-    BOOST_CHECK_THROW({ contrib = FileIngestApp::parseChunkContribution("path/chunk_2_overlap.txt"); },
-                      invalid_argument);
+    BOOST_CHECK_THROW(
+            { contrib = FileIngestApp::parseChunkContribution("path/chunk_2_overlap.txt"); },
+            invalid_argument);
 
-    BOOST_CHECK_THROW({ contrib = FileIngestApp::parseChunkContribution("chunk_2_overlap"); },
-                      invalid_argument);
+    BOOST_CHECK_THROW(
+            { contrib = FileIngestApp::parseChunkContribution("chunk_2_overlap"); }, invalid_argument);
 
     BOOST_CHECK_THROW({ contrib = FileIngestApp::parseChunkContribution("chunk_"); }, invalid_argument);
 

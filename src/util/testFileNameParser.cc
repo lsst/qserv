@@ -104,11 +104,11 @@ BOOST_AUTO_TEST_CASE(ResultFileNameParserTest) {
         BOOST_CHECK_EQUAL(file, fileExpected);
     });
 
-    BOOST_CHECK_THROW({ util::ResultFileNameParser const file("1-2-3-4" + fileName); },
-                      std::invalid_argument);
+    BOOST_CHECK_THROW(
+            { util::ResultFileNameParser const file("1-2-3-4" + fileName); }, std::invalid_argument);
 
-    BOOST_CHECK_THROW({ util::ResultFileNameParser const file("a-2-3-4-5" + fileName); },
-                      std::invalid_argument);
+    BOOST_CHECK_THROW(
+            { util::ResultFileNameParser const file("a-2-3-4-5" + fileName); }, std::invalid_argument);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

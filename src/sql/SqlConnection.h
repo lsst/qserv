@@ -69,7 +69,7 @@ protected:
 /// class SqlConnection : Class for interacting with a MySQL database.
 class SqlConnection {
 public:
-    virtual ~SqlConnection(){};
+    virtual ~SqlConnection() {};
 
     virtual void reset(mysql::MySqlConfig const& sc) = 0;
 

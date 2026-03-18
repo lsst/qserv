@@ -67,7 +67,7 @@ using lsst::qserv::qproc::SecondaryIndex;
 struct Fixture {
     Fixture(void) : si() {}
 
-    ~Fixture(void){};
+    ~Fixture(void) {};
 
     SecondaryIndex si;
     // TODO: IndexMap with fake secondary index: see DM-4047

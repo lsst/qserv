@@ -50,7 +50,7 @@ public:
         return sql::SqlTransactionScope::create<QMetaTransaction>(conn);
     }
 
-    ~QMetaTransaction() override{};
+    ~QMetaTransaction() override {};
 
     void throwException(util::Issue::Context const& ctx, std::string const& msg) override;
 

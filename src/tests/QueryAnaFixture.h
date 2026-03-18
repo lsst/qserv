@@ -56,7 +56,7 @@ struct QueryAnaFixture {
 
     QueryAnaFixture()
             : qsTest(cfgNum, css::CssAccess::createFromData(mapBuffer, "."), defaultDb,
-                     sql::SqlConfig(sql::SqlConfig::MOCK)){};
+                     sql::SqlConfig(sql::SqlConfig::MOCK)) {};
 
     qproc::QuerySession::Test qsTest;
     QueryAnaHelper queryAnaHelper;

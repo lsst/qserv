@@ -194,8 +194,8 @@ public:
                     last = it->second;
                 }
                 scm[*i] = last + 1;  // write new value
-            }                        // All subchunks
-        }                            // All tables
+            }  // All subchunks
+        }  // All tables
         // For now, every other user of this chunk must wait while
         // we fetch the resource.
         if (needed.size() > 0) {
@@ -230,8 +230,8 @@ public:
                             "ChunkResource ChunkEntry::release: Error releasing un-acquired resource");
                 }
                 scm[*i] = it->second - 1;  // write new value
-            }                              // All subchunks
-        }                                  // All tables
+            }  // All subchunks
+        }  // All tables
         --_refCount;
         _flush(db, backend);  // Discard resources no longer needed by anyone.
         // flush could be detached from the release function, to be called at a

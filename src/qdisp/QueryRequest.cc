@@ -180,8 +180,8 @@ bool QueryRequest::_importResultFile(JobQuery::Ptr const& jq) {
             int dataIgnored = (executive->incrDataIgnoredCount());
             if ((dataIgnored - 1) % 1000 == 0) {
                 LOGS(_log, LOG_LVL_INFO,
-                     "QueryRequest::_processData ignoring, enough rows already "
-                             << "dataIgnored=" << dataIgnored);
+                     "QueryRequest::_processData ignoring, enough rows already " << "dataIgnored="
+                                                                                 << dataIgnored);
             }
         }
         _errorFinish(true);

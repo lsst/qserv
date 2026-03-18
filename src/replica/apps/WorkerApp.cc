@@ -141,12 +141,11 @@ int WorkerApp::runImpl() {
             LOGS(_log, LOG_LVL_WARN, context << "adding worker to the registry failed, ex: " << ex.what());
         }
         LOGS(_log, LOG_LVL_DEBUG,
-             "HEARTBEAT"
-                     << "  worker: " << reqProcSvr->worker()
-                     << "  processor.state: " << reqProcSvr->processor()->state2string()
-                     << "  new, in-progress, finished: " << reqProcSvr->processor()->numNewRequests() << ", "
-                     << reqProcSvr->processor()->numInProgressRequests() << ", "
-                     << reqProcSvr->processor()->numFinishedRequests());
+             "HEARTBEAT" << "  worker: " << reqProcSvr->worker()
+                         << "  processor.state: " << reqProcSvr->processor()->state2string()
+                         << "  new, in-progress, finished: " << reqProcSvr->processor()->numNewRequests()
+                         << ", " << reqProcSvr->processor()->numInProgressRequests() << ", "
+                         << reqProcSvr->processor()->numFinishedRequests());
         this_thread::sleep_for(
                 chrono::seconds(max(1U, config->get<unsigned int>("registry", "heartbeat-ival-sec"))));
     }

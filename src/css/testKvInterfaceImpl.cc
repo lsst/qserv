@@ -61,7 +61,7 @@ struct KvInterfaceFixture {
         v2 = "secondOne";
     };
 
-    ~KvInterfaceFixture(void){};
+    ~KvInterfaceFixture(void) {};
 
     void doIt(lsst::qserv::css::KvInterface* kvI) {
         kvI->create(prefix, v1);

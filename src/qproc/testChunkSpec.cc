@@ -71,7 +71,7 @@ struct Fixture {
               c4(ChunkSpec::makeFake(104)),
               c5(ChunkSpec::makeFake(105)) {}
 
-    ~Fixture(void){};
+    ~Fixture(void) {};
 
     ChunkSpec c1;
     ChunkSpec c2;

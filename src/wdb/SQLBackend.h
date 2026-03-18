@@ -128,7 +128,7 @@ public:
 
     void discard(ScTableVector const& v) override;
 
-    void memLockRequireOwnership() override{};  ///< Do nothing for fake version.
+    void memLockRequireOwnership() override {};  ///< Do nothing for fake version.
 
     /// For unit tests only.
     static std::string makeFakeKey(ScTable const& sctbl) {
