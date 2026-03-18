@@ -122,7 +122,7 @@ RUN cd /tmp \
 RUN cd /tmp \
     && git clone https://github.com/xrootd/xrootd.git \
     && cd xrootd \
-    && git checkout tags/v5.6.2 \
+    && git checkout tags/v5.9.0 \
     && mkdir build \
     && cd build \
     && cmake -DENABLE_PYTHON=off .. \
@@ -214,8 +214,8 @@ RUN dnf update -y \
        https://apache.jfrog.io/artifactory/arrow/almalinux/$(cut -d: -f5 /etc/system-release-cpe | cut -d. -f1)/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
     && dnf config-manager --set-enabled crb \
-    && dnf install -y arrow16-libs \
-    && dnf install -y parquet16-libs \
+    && dnf install -y arrow2300-libs \
+    && dnf install -y parquet2300-libs \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
