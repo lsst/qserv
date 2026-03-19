@@ -100,10 +100,10 @@ Metadata files below describe input data and are required by ``qserv-ingest``:
     }
 
 - ``<database_name>.json``: describe the database to register inside the replication service and where the data will be ingested
-  `Ingest API documentation for registering databases <https://confluence.lsstcorp.org/display/DM/2.+Registering+databases>`_
+  "Ingest API documentation for registering databases" (https://confluence.lsstcorp.org/display/DM/2.+Registering+databases)
 - ``<table_name>.json``: each of these files describes a table to register inside the replication service and where the data will be ingested,
-  `Ingest API documentation for registering tables <https://confluence.lsstcorp.org/display/DM/3.+Registering+tables>`_
+  "Ingest API documentation for registering tables" (https://confluence.lsstcorp.org/display/DM/3.+Registering+tables)
 - ``<table_index>.json``:each of these files describes an index to create for a given set of chunk tables,
-  `Ingest API documentation for creating indexes <https://confluence.lsstcorp.org/display/DM/Managing+indexes+of+MySQL+tables+at+Qserv+workers#ManagingindexesofMySQLtablesatQservworkers-Creatinganewindex>`_
+  "Ingest API documentation for creating indexes" (https://confluence.lsstcorp.org/display/DM/Managing+indexes+of+MySQL+tables+at+Qserv+workers#ManagingindexesofMySQLtablesatQservworkers-Creatinganewindex)
 
 A valid set of examples for all of these files is available in this `Rubin IN2P3 repository <https://github.com/rubin-in2p3/qserv-ingest-schema>`_.

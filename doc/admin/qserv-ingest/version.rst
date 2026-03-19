@@ -7,7 +7,7 @@ The version history of the Ingest Workflow
 Version numbers
 ===============
 
-Version numbers are consistent with `Ingest API version numbers <https://confluence.lsstcorp.org/display/DM/Ingest%3A+4.+The+version+history+of+the+Ingest+API>`_
+Version numbers are consistent with "Ingest API version numbers" (https://confluence.lsstcorp.org/display/DM/Ingest%3A+4.+The+version+history+of+the+Ingest+API)
 
 The summary info on the versions
 ================================
