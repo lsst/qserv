@@ -118,6 +118,7 @@ void registryUpdateLoop(string const& id, uint16_t const dataPort) {
     string const url = "http://" + workerConfig->replicationRegistryHost() + ":" +
                        to_string(workerConfig->replicationRegistryPort()) + "/qserv-worker";
     vector<string> const headers = {"Content-Type: application/json"};
+    string const hostFqdn = util::get_current_host_fqdn_wait(600);
     json const request = json::object({{"version", http::MetaModule::version},
                                        {"instance_id", workerConfig->replicationInstanceId()},
                                        {"auth_key", workerConfig->replicationAuthKey()},
@@ -125,7 +126,7 @@ void registryUpdateLoop(string const& id, uint16_t const dataPort) {
                                         {{"name", id},
                                          {"management-port", workerConfig->replicationHttpPort()},
                                          {"data-port", dataPort},
-                                         {"host-name", util::get_current_host_fqdn()}}}});
+                                         {"host-name", hostFqdn}}}});
     string const requestContext =
             "SsiService: '" + http::method2string(method) + "' request to '" + url + "'";
     http::Client client(method, url, request.dump(), headers);
@@ -134,8 +135,7 @@ void registryUpdateLoop(string const& id, uint16_t const dataPort) {
             json const response = client.readAsJson();
             if (0 == response.at("success").get<int>()) {
                 string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
-                abort();
+                LOGS(_log, LOG_LVL_WARN, requestContext + " was denied, error: '" + error + "'.");
             }
         } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());

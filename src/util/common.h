@@ -51,9 +51,19 @@ namespace lsst::qserv::util {
  * @param all The optional parameter that allows returning all names instead
  *   of the first one that was found.
  * @return The FQDN (or FQDNs)
- * @throws std::runtime_error In case if the information couldn't be retreived.
+ * @throws std::runtime_error If the information couldn't be retrieved.
  */
 std::string get_current_host_fqdn(bool all = false);
+
+/**
+ * Get the FQDN(s) of the current host, with retrying until the information is available
+ * or timeout is reached.
+ *
+ * @param timeoutSec The maximum time to wait for the information to be available, in seconds.
+ * @return The FQDN (or FQDNs)
+ * @throws std::runtime_error If the information couldn't be retrieved within the specified timeout.
+ */
+std::string get_current_host_fqdn_wait(unsigned int timeoutSec = 600);
 
 /**
  * Resolve the host name to its IP address string.
