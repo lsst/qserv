@@ -1,0 +1,38 @@
+{{- $enabled := (include "qserv.enable" . | fromYaml) -}}
+{{- if and $enabled.czar .Values.czarExternalService.enable }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "qserv.name" . }}-czar-external
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+  {{- with .Values.czarExternalService.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.czarExternalService.type | default "LoadBalancer" }}
+  selector:
+    {{- include "qserv.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: czar
+    statefulset.kubernetes.io/pod-name: {{ include "qserv.name" . }}-czar-0
+  {{- if hasKey .Values.czarExternalService "allocateLoadBalancerNodePorts" }}
+  allocateLoadBalancerNodePorts: {{ .Values.czarExternalService.allocateLoadBalancerNodePorts }}
+  {{- end }}
+  {{- with .Values.czarExternalService.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with .Values.czarExternalService.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: czar-http
+      port: 4048
+      targetPort: czar-http
+      protocol: TCP
+    - name: mysql-proxy-ssl
+      port: 4040
+      targetPort: mysql-proxy-ssl
+      protocol: TCP
+{{- end }}
