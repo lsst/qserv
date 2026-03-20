@@ -25,6 +25,8 @@
 
 // Standard headers
 #include <arpa/inet.h>
+#include <chrono>
+#include <thread>
 #include <netdb.h>
 #include <stdexcept>
 #include <string.h>
@@ -76,6 +78,24 @@ string get_current_host_fqdn(bool all) {
     }
     freeaddrinfo(info);
     return fqdn;
+}
+
+std::string get_current_host_fqdn_wait(unsigned int timeoutSec) {
+    auto const startTime = std::chrono::steady_clock::now();
+    while (true) {
+        try {
+            return get_current_host_fqdn();
+        } catch (std::exception const& ex) {
+            auto const elapsedSec = std::chrono::duration_cast<std::chrono::seconds>(
+                                            std::chrono::steady_clock::now() - startTime)
+                                            .count();
+            if (elapsedSec >= timeoutSec) {
+                throw runtime_error(string(__func__) + ": failed to get FQDN within " +
+                                    to_string(timeoutSec) + " seconds, last error: " + ex.what());
+            }
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    }
 }
 
 std::string hostNameToAddr(std::string const& hostName) {
