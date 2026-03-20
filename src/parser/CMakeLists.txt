@@ -10,7 +10,7 @@ antlr_target(QSMySqlParser QSMySqlParser.g4 PARSER LISTENER
 
 add_library(parser SHARED)
 
-target_include_directories(parser PRIVATE 
+target_include_directories(parser PRIVATE
     ${ANTLR4_INCLUDE_DIR}
 )
 
@@ -29,6 +29,4 @@ target_link_libraries(parser PUBLIC
     antlr4-runtime
 )
 
-install(
-    TARGETS parser
-)
+install(TARGETS parser)

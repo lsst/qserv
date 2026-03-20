@@ -28,7 +28,7 @@
 #include "boost/lexical_cast.hpp"
 
 // Qserv headers
-#include "qmeta/types.h"
+#include "global/intTypes.h"
 #include "sql/SqlErrorObject.h"
 #include "util/Issue.h"
 
@@ -107,6 +107,15 @@ public:
             : QMetaError(ctx, "Query metadata table is missing: " + table) {}
 
     virtual std::string typeName() const override { return "MissingTableError"; }
+};
+
+/// Exception thrown when the specified metadata table is empty.
+class EmptyTableError : public QMetaError {
+public:
+    EmptyTableError(util::Issue::Context const& ctx, std::string const& table)
+            : QMetaError(ctx, "Query metadata table is empty: " + table) {}
+
+    virtual std::string typeName() const override { return "EmptyTableError"; }
 };
 
 /// Exception thrown when database consistency is violated.

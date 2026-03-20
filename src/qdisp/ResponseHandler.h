@@ -32,17 +32,24 @@
 // Qserv headers
 #include "util/Error.h"
 
-// Forward declarations
-
-namespace lsst::qserv::proto {
-class ResponseSummary;
-}  // namespace lsst::qserv::proto
-
-// This header declaration
-
 namespace lsst::qserv::qdisp {
 
 class JobQuery;
+class UberJob;
+
+/// Status of the merge at the end of merging.
+/// contaminated can be true only if success is false.
+class MergeEndStatus {
+public:
+    MergeEndStatus() = default;
+    explicit MergeEndStatus(bool success_) : success(success_) {}
+
+    /// True indicates the results were successfully merged
+    bool success = false;
+
+    /// True indicates merge results are ruined and this query should be abandoned.
+    bool contaminated = false;
+};
 
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
@@ -52,39 +59,35 @@ class JobQuery;
 /// segment of results.
 class ResponseHandler {
 public:
-    typedef util::Error Error;
     using BufPtr = std::shared_ptr<std::vector<char>>;
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
     ResponseHandler() {}
-    void setJobQuery(std::shared_ptr<JobQuery> const& jobQuery) { _jobQuery = jobQuery; }
+    void setUberJob(std::weak_ptr<UberJob> const& ujPtr) { _uberJob = ujPtr; }
     virtual ~ResponseHandler() {}
 
-    /// Process a request for pulling and merging a job result into the result table
-    /// @param responseSummary - worker response to be analyzed and processed
-    /// @return true if successful (no error)
-    virtual bool flush(proto::ResponseSummary const& responseSummary) = 0;
+    /// Collect result data from the worker and merge it with the query result table.
+    /// If MergeEndStatus.success == true, then everything is fine.
+    /// If not .success, and not .contaminated, the user query can be saved by abandoning
+    /// this UberJob. If .contaminated is true, the result table is fouled and the user
+    /// query is ruined.
+    /// @return - @see MergeEndStatus
+    virtual MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
 
-    /// @return true if the receiver has completed its duties.
-    virtual bool finished() const = 0;
-    virtual bool reset() = 0;  ///< Reset the state that a request can be retried.
+    /// Stop an ongoing file merge, if possible.
+    /// @return true if the merge was cancelled.
+    virtual bool cancelFileMerge() = 0;
 
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
 
-    /// @return an error code and description
-    virtual Error getError() const = 0;
-
-    /// Do anything that needs to be done if this job gets cancelled.
-    virtual void processCancel() {};
-
-    std::weak_ptr<JobQuery> getJobQuery() { return _jobQuery; }
+    std::weak_ptr<UberJob> getUberJob() { return _uberJob; }
 
 private:
-    std::weak_ptr<JobQuery> _jobQuery;
+    std::weak_ptr<UberJob> _uberJob;
 };
 
 inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) { return r.print(os); }
