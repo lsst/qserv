@@ -40,7 +40,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "czar/Czar.h"
 #include "global/stringTypes.h"
 #include "proto/ScanTableInfo.h"
 #include "query/ColumnRef.h"
@@ -173,18 +172,8 @@ proto::ScanInfo ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, query:
         }
     }
 
-    auto czar = czar::Czar::getCzar();
-    bool queryDistributionTestVer = (czar == nullptr) ? 0 : czar->getQueryDistributionTestVer();
-
     StringPairVector scanTables;
-    // Even trivial queries need to use full table scans to avoid crippling the czar
-    // with heaps of high priority, but very simple queries. Unless there are
-    // factors that greatly restrict how many chunks need to be read, it needs to be
-    // a table scan.
-    // For system testing, it is useful to see how the system handles large numbers
-    // trivial queries as the amount of work done by the workers is minimal. This
-    // highlights the cost of czar-worker communications.
-    if (!queryDistributionTestVer || hasSelectColumnRef) {
+    if (hasSelectColumnRef) {
         if (hasSecondaryKey) {
             LOGS(_log, LOG_LVL_TRACE, "**** Not a scan ****");
             // Not a scan? Leave scanTables alone
