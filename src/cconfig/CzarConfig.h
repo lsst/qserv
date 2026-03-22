@@ -135,8 +135,6 @@ public:
      */
     int getXrootdCBThreadsInit() const { return _xrootdCBThreadsInit->getVal(); }
 
-    bool getQueryDistributionTestVer() const { return _queryDistributionTestVer->getVal(); }
-
     /*
      * @return A value of the "spread" parameter. This may improve a performance
      * of xrootd for catalogs with the large number of chunks. The default value
@@ -364,8 +362,6 @@ private:
             util::ConfigValTInt::create(_configValMap, "tuning", "xrootdCBThreadsMax", notReq, 500);
     CVTIntPtr _xrootdCBThreadsInit =
             util::ConfigValTInt::create(_configValMap, "tuning", "xrootdCBThreadsInit", notReq, 50);
-    CVTIntPtr _queryDistributionTestVer =
-            util::ConfigValTInt::create(_configValMap, "tuning", "queryDistributionTestVer", notReq, 0);
     CVTBoolPtr _notifyWorkersOnQueryFinish =
             util::ConfigValTBool::create(_configValMap, "tuning", "notifyWorkersOnQueryFinish", notReq, 1);
     CVTBoolPtr _notifyWorkersOnCzarRestart =
