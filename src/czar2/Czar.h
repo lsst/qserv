@@ -35,12 +35,20 @@
 
 // Qserv headers
 #include "ccontrol/UserQuery.h"
+#if 0
+// ---------------------------------- REDESIGN ---------------------------------------------------
+// Remove this include when the UserQueryFactory is removed. The UserQueryFactory is expected to be removed
 #include "ccontrol/UserQueryFactory.h"
+#endif
 #include "czar2/SubmitResult.h"
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
+#if 0
+// ---------------------------------- REDESIGN ---------------------------------------------------
+// Remove togerther with the QdisPool and UserQueryFactory.
 #include "qdisp/SharedResources.h"
+#endif
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
@@ -49,6 +57,10 @@
 namespace lsst::qserv::cconfig {
 class CzarConfig;
 }  // namespace lsst::qserv::cconfig
+
+namespace lsst::qserv::ccontrol {
+class UserQuerySharedResources;
+}  // namespace lsst::qserv::ccontrol
 
 namespace lsst::qserv::czar2 {
 class HttpSvc;
@@ -110,8 +122,13 @@ public:
      */
     static Ptr getCzar() { return _czar; }
 
+#if 0
+    // ---------------------------------- REDESIGN ---------------------------------------------------
+    // Remove this method when the qdisp pool is removed. The QueryProcessor objects will be responsible for
+    // managing the worker requests and the resources needed for that.
     /// Return a pointer to QdispSharedResources
     qdisp::SharedResources::Ptr getQdispSharedResources() { return _qdispSharedResources; }
+#endif
 
     /// @param queryId The unique identifier of the previously submitted user query
     /// @return The reconstructed info for the query
@@ -120,6 +137,13 @@ public:
 private:
     /// Private constructor for singleton.
     Czar(std::string const& configFilePath, std::string const& czarName);
+
+#if 1
+    // ---------------------------------- NEW ----------------------------------------
+    ccontrol::UserQuery::Ptr _newUserQuery(std::string const& query, std::string const& defaultDb,
+                                           std::string const& userQueryId, std::string const& msgTableName,
+                                           std::string const& resultDb);
+#endif
 
     /// Clean query maps from expired entries, _mutex must be locked
     void _cleanupQueryHistoryLocked();
@@ -140,22 +164,46 @@ private:
 
     // combines client name (ID) and its thread ID into one unique ID
     typedef std::pair<std::string, int> ClientThreadId;
+#if 1
+    // ---------------------------------- REDESIGN ---------------------------------------------------
+    // To be replaced by a collection of pointers to the QueryProcessor instances that are responsible
+    // for getting user queries through and managing their execution.
     typedef std::map<ClientThreadId, std::weak_ptr<ccontrol::UserQuery>> ClientToQuery;
     typedef std::map<QueryId, std::weak_ptr<ccontrol::UserQuery>> IdToQuery;
+#endif
 
     std::string const _czarName;  ///< Unique czar name
     std::shared_ptr<cconfig::CzarConfig> const _czarConfig;
 
     std::atomic<uint64_t> _idCounter;  ///< Query/task identifier for next query
+
+#if 0
+    // ---------------------------------- REDESIGN ---------------------------------------------------
+    // Remove this member when the UserQueryFactory is removed.
     std::unique_ptr<ccontrol::UserQueryFactory> _uqFactory;
+#endif
+#if 1
+    // ---------------------------------- REDESIGN ---------------------------------------------------
+    // Replace with new collections of pointers to the QueryProcessor instances that are responsible
+    // for getting user queries through and managing their execution.
     ClientToQuery _clientToQuery;  ///< maps client ID to query
     IdToQuery _idToQuery;          ///< maps query ID to query (for currently running queries)
     std::mutex _mutex;             ///< protects _uqFactory, _clientToQuery, and _idToQuery
+#endif
+#if 0
+    // ---------------------------------- REDESIGN ---------------------------------------------------
+    // Remove this member when the qdisp pool is removed.
 
     /// Thread pool for handling Responses from XrdSsi,
     /// the PsuedoFifo to prevent czar from calling most recent requests,
     /// and any other resources for use by query executives.
     qdisp::SharedResources::Ptr _qdispSharedResources;
+#endif
+
+#if 1
+    // ---------------------------------- NEW ---------------------------------------------------
+    std::shared_ptr<ccontrol::UserQuerySharedResources> _userQuerySharedResources;
+#endif
 
     /// Reloads the log configuration file on log config file change.
     std::shared_ptr<util::FileMonitor> _logFileMonitor;
