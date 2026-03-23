@@ -41,17 +41,25 @@
 #include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
+#include "css/CssAccess.h"
 #include "czar2/CzarErrors.h"
 #include "czar2/CzarThreads.h"
 #include "czar2/HttpSvc.h"
 #include "czar2/MessageTable.h"
 #include "global/LogContext.h"
+#include "mysql/MySqlConfig.h"
 #include "proto/worker.pb.h"
 #include "qdisp/CzarStats.h"
 #include "qdisp/QdispPool.h"
 #include "qdisp/SharedResources.h"
+#include "qmeta/QMetaMysql.h"
+#include "qmeta/QMetaSelect.h"
+#include "qmeta/QProgress.h"
+#include "qmeta/QProgressHistory.h"
+#include "qmeta/types.h"
 #include "qproc/DatabaseModels.h"
 #include "rproc/InfileMerger.h"
+#include "qproc/SecondaryIndex.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
@@ -85,6 +93,27 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.Czar");
 
 namespace lsst::qserv::czar2 {
 
+#if 1
+// ---------------------------------- NEW ---------------------------------------------------
+// This was copied from ccontrol::UserQueryFactory.cc, but it should be moved to
+// a different place and renamed. The UserQueryFactory may be removed altogether.
+
+std::shared_ptr<ccontrol::UserQuerySharedResources> makeUserQuerySharedResources(
+        std::shared_ptr<qproc::DatabaseModels> const& dbModels, std::string const& czarName) {
+    auto const czarConfig = cconfig::CzarConfig::instance();
+    return std::make_shared<ccontrol::UserQuerySharedResources>(
+            css::CssAccess::createFromConfig(czarConfig->getCssConfigMap()),
+            czarConfig->getMySqlResultConfig(),
+            std::make_shared<qproc::SecondaryIndex>(czarConfig->getMySqlQmetaConfig()),
+            std::make_shared<qmeta::QMetaMysql>(czarConfig->getMySqlQmetaConfig(),
+                                                czarConfig->getMaxMsgSourceStore()),
+            std::make_shared<qmeta::QProgress>(czarConfig->getMySqlQStatusDataConfig()),
+            qmeta::QProgressHistory::create(czarConfig->getMySqlQStatusDataConfig()),
+            std::make_shared<qmeta::QMetaSelect>(czarConfig->getMySqlQmetaConfig()), dbModels, czarName,
+            czarConfig->getInteractiveChunkLimit());
+}
+#endif
+
 Czar::Ptr Czar::_czar;
 
 Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName) {
@@ -101,6 +130,10 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
 
+#if 0
+    // ---------------------------------- REDESIGN -------------------------------------
+    // UserQueryFactory to be replaced by a simpler QueryProcessor factory that does not
+    // need database models.
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());
 
@@ -110,6 +143,13 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // NOTE: This steps should be done after constructing the query factory where
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->czarId);
+#else
+    // ---------------------------------- NEW -------------------------------------
+    auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
+                                                        _czarConfig->getMySqlResultConfig());
+    _userQuerySharedResources = makeUserQuerySharedResources(databaseModels, _czarName);
+    _czarConfig->setId(_userQuerySharedResources->czarId);
+#endif
 
     // Tell workers to cancel any queries that were submitted before this restart of Czar.
     // Figure out which query (if any) was recorded in Czar database before the restart.
@@ -127,6 +167,10 @@ Czar::Czar(string const& configFilePath, string const& czarName)
         }
     }
 
+#if 0
+    // ---------------------------------- REDESIGN ----------------------------------------
+    // Remove that "qdisp" altogether. Worker requests will be initiated and managed
+    // by the QueryProcessor objects that are responsible for getting user queries through.
     int qPoolSize = _czarConfig->getQdispPoolSize();
     int maxPriority = std::max(0, _czarConfig->getQdispMaxPriority());
     string vectRunSizesStr = _czarConfig->getQdispVectRunSizes();
@@ -143,6 +187,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     qdisp::CzarStats::setup(qdispPool);
 
     _qdispSharedResources = qdisp::SharedResources::create(qdispPool);
+#endif
 
     int xrootdCBThreadsMax = _czarConfig->getXrootdCBThreadsMax();
     int xrootdCBThreadsInit = _czarConfig->getXrootdCBThreadsInit();
@@ -180,8 +225,17 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     startRegistryUpdate(_czarConfig);
     startGarbageCollect(_czarConfig);
     startGarbageCollectAsync(_czarConfig);
+#if 0
+    // ---------------------------------- REDESIGN ---------------------------------------------------
+    // Make a local copy of the UserQuerySharedResources and pass it to the garbage collection thread.
+    // This is needed because the UserQueryFactory is expected to be removed.
     startGarbageCollectInProgress(_czarConfig, _uqFactory->userQuerySharedResources()->czarId,
                                   _uqFactory->userQuerySharedResources()->queryMetadata);
+#else
+    // ---------------------------------- NEW -------------------------------------
+    startGarbageCollectInProgress(_czarConfig, _userQuerySharedResources->czarId,
+                                  _userQuerySharedResources->queryMetadata);
+#endif
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
@@ -222,13 +276,15 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     }
 
     // make new UserQuery
-    // this is atomic
-    ccontrol::UserQuery::Ptr uq;
-    {
-        lock_guard<mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispSharedResources(), userQueryId, msgTableName,
-                                      resultDb);
-    }
+#if 0
+    // ---------------------------------- REDESIGN ----------------------------------------
+    // Remove the UserQueryFactory and create the UserQuery directly in Czar.
+    auto const uq = _uqFactory->newUserQuery(query, defaultDb, getQdispSharedResources(), userQueryId, msgTableName,
+                                    resultDb);
+#else
+    // ---------------------------------- NEW ----------------------------------------
+    auto const uq = _newUserQuery(query, defaultDb, userQueryId, msgTableName, resultDb);
+#endif
 
     // Add logging context with query ID
     QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
@@ -306,6 +362,18 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
                                                    << " resultQuery=" << result.resultQuery);
     return result;
 }
+
+#if 1
+// ---------------------------------- NEW ----------------------------------------
+ccontrol::UserQuery::Ptr Czar::_newUserQuery(string const& query, string const& defaultDb,
+                                             string const& userQueryId, string const& msgTableName,
+                                             string const& resultDb) {
+    // This is just a placeholder for now, but eventually this should create a UserQuery object
+    // directly without going through the UserQueryFactory. The UserQueryFactory may be removed
+    // altogether.
+    return nullptr;
+}
+#endif
 
 void Czar::killQuery(string const& query, string const& clientId) {
     LOGS(_log, LOG_LVL_INFO, "KILL query: " << query << ", clientId: " << clientId);
