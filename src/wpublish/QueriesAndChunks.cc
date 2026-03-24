@@ -416,6 +416,28 @@ void QueriesAndChunks::examineAll() {
     LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
 }
 
+void QueriesAndChunks::buildCancelledAndDeletedLists(
+        CzarId czarId, std::map<QueryId, TIMEPOINT> const& qIdFiles, bool keepFiles,
+        std::vector<std::shared_ptr<wbase::UserQueryInfo>>& cancelledList,
+        std::vector<std::shared_ptr<wbase::UserQueryInfo>>& deleteList) {
+    // see wcomms::HttpWorkerCzarModule::_handleQueryStatus
+    unique_lock<mutex> guardStats(_queryStatsMapMtx);
+    for (auto const& [dkQid, dkTm] : qIdFiles) {
+        auto qStats = _addQueryId(dkQid, czarId);
+        if (qStats != nullptr) {
+            auto uqInfo = qStats->getUserQueryInfo();
+            if (uqInfo != nullptr) {
+                if (!uqInfo->getCancelledByCzar()) {
+                    cancelledList.push_back(uqInfo);
+                }
+                if (!keepFiles) {
+                    deleteList.push_back(uqInfo);
+                }
+            }
+        }
+    }
+}
+
 nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSelector) const {
     nlohmann::json status = nlohmann::json::object();
     {

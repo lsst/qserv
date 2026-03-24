@@ -37,6 +37,7 @@
 #include "http/Method.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
+#include "protojson/PwHideJson.h"
 #include "protojson/UberJobErrorMsg.h"
 #include "protojson/UberJobReadyMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
@@ -264,26 +265,35 @@ void UJTransmitCmd::action(util::CmdData* data) {
     http::Client client(_method, _url, requestStr, _headers);
     bool transmitSuccess = false;
     try {
+#if 1  //&&& For error path testing, seeting 0 here forces communication to use WorkerCzarComIssue.
         json const response = client.readAsJson();
-        auto respMsg = protojson::ResponseMsg::createFromJson(response);
+        auto respMsg = protojson::ExecutiveRespMsg::createFromJson(response);
         if (respMsg->success) {
             transmitSuccess = true;
+            if (respMsg->dataObsolete) {
+                // Delete the file and end this UberJob
+                ujPtr->cancelAllTasks();
+                // TODO: Delete the file, there's currently no code to delete a specific qId + ujId file
+                //       in FileChannelShared, but it should be added and called here.
+            }
             string note = response.at("note");
-            if (note.empty()) {
-                LOGS(_log, LOG_LVL_INFO, response);
+            if (!note.empty()) {
+                LOGS(_log, LOG_LVL_INFO, protojson::pwHide(response));
             }
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success=0 " << response);
+            LOGS(_log, LOG_LVL_WARN,
+                 cName(__func__) << " Transmit success=0 " << protojson::pwHide(response));
             respMsg->failedUpdateUberJobData(ujPtr);
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
             return;
         }
+#endif  //&&&
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " " << _requestContext << " failed, ex: " << ex.what());
     }
     if (!transmitSuccess) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " resending!");
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit failed, adding to WorkerCzarComIssue");
         auto sPtr = _selfPtr;
         if (_foreman != nullptr && sPtr != nullptr) {
             // Do not reset _selfPtr as re-queuing may be needed several times.

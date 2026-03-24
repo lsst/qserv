@@ -202,6 +202,17 @@ public:
     /// @see _addQueryId
     QueryStatistics::Ptr addQueryId(QueryId qId, CzarId czarId);
 
+    /// Build lists of cancelled and deleted user queries based on the provided `qIdFiles` and `keepFiles`
+    /// flag.
+    /// @param qIdFiles - A map of files IDs to be cancelled or deleted.
+    /// @param keepfiles - If true, none of the files will be added to the delete list.
+    /// @param cancelledList - A vector to be populated with user queries that should be cancelled.
+    /// @param deleteList - A vector to be populated with user queries that should be deleted.
+    void buildCancelledAndDeletedLists(CzarId czarId, std::map<QueryId, TIMEPOINT> const& qIdFiles,
+                                       bool keepFiles,
+                                       std::vector<std::shared_ptr<wbase::UserQueryInfo>>& cancelledList,
+                                       std::vector<std::shared_ptr<wbase::UserQueryInfo>>& deleteList);
+
     void addTask(wbase::Task::Ptr const& task);
     void addTasks(std::vector<wbase::Task::Ptr> const& tasks, std::vector<util::Command::Ptr>& cmds);
     void queuedTask(wbase::Task::Ptr const& task);
