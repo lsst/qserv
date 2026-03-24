@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
 }
 
 BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
-    lsst::qserv::protojson::AuthContext authContext_("repliInstId", "repliIAuthKey");
+    AuthContext authContext_("repliInstId", "repliIAuthKey");
 
     uint64_t cxrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 5s);
 
@@ -171,18 +171,23 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto workerA = WorkerContactInfo::create("sd_workerA", "host_w1", "mgmhost_a", 3421, start);
     auto jsWorkerA = workerA->toJson();
 
-    // WorkerCzarComIssue
+    // WorkerCzarComIssue, thaought czar was dead test.
     auto wccIssueA = lsst::qserv::protojson::WorkerCzarComIssue::create(authContext_);
     wccIssueA->setContactInfo(workerA, czarA);
     BOOST_REQUIRE(wccIssueA->needToSend() == false);
-    wccIssueA->setThoughtCzarWasDead(true);
+    wccIssueA->setThoughtCzarWasDeadTime(3452987);
     BOOST_REQUIRE(wccIssueA->needToSend() == true);
 
     auto jsIssueA = wccIssueA->toJson();
 
+    // The source WorkerCzarComIssue for failed transmit tests.
     auto wccIssueA1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(jsIssueA, authContext_);
     auto jsIssueA1 = wccIssueA1->toJson();
     BOOST_REQUIRE(jsIssueA == jsIssueA1);
+
+    // A vector of the expected responses from the czar from UberJobData responses
+    // added to wccIssueA1 as failed transmits.
+    std::vector<ExecutiveRespMsg::Ptr> czarResponseMsgs;
 
     // Test a list of failed messages.
     string const czarHost = "czarHost";
@@ -206,6 +211,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
             scaninteractive1, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
     auto ujResponse1 = ujData1->responseFileReadyBuild(fileInf1, authContext_);
     wccIssueA1->addFailedTransmit(qId1, ujId1, ujResponse1);
+    auto execRespMsg1 = ExecutiveRespMsg::create(true, false, qId1, ujId1, czarId);
+    czarResponseMsgs.push_back(execRespMsg1);
 
     auto jsWcA1 = wccIssueA1->toJson();
     // parse jsWcA1 and check if the answer is correct
@@ -220,6 +227,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
             scaninteractive1, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
     auto ujResponse1a = ujData1->responseFileReadyBuild(fileInf1a, authContext_);
     wccIssueA1->addFailedTransmit(qId1a, ujId1a, ujResponse1a);
+    auto execRespMsg1a = ExecutiveRespMsg::create(true, true, qId1a, ujId1a, czarId);
+    czarResponseMsgs.push_back(execRespMsg1a);
 
     auto jsWcA1a = wccIssueA1->toJson();
     // parse jsWcA1a and check if the answer is correct
@@ -237,6 +246,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
             scaninteractive2, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
     auto ujResponse2 = ujData2->responseFileReadyBuild(fileInf2, authContext_);
     wccIssueA1->addFailedTransmit(qId2, ujId2, ujResponse2);
+    auto execRespMsg2 = ExecutiveRespMsg::create(true, false, qId2, ujId2, czarId);
+    czarResponseMsgs.push_back(execRespMsg2);
 
     auto jsWcA2 = wccIssueA1->toJson();
     // parse jsWcA2 and check if the answer is correct
@@ -256,6 +267,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto ujResponse3 =
             ujData3->responseErrorBuild(multiErr, chunkId3, cancelled3, LOG_LVL_DEBUG, authContext_);
     wccIssueA1->addFailedTransmit(qId3, ujId3, ujResponse3);
+    auto execRespMsg3 = ExecutiveRespMsg::create(true, true, qId3, ujId3, czarId);
+    czarResponseMsgs.push_back(execRespMsg3);
 
     auto jsWcA3 = wccIssueA1->toJson();
     // parse jsWcA3 and check if the answer is correct
@@ -265,17 +278,30 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     BOOST_REQUIRE(*wccIssueA1 != *wccIssueA2Out1);
     BOOST_REQUIRE(*wccIssueA1 == *wccIssueA3Out1);
 
-    // Create the response to jsWcA3.
-    auto jsRespA3Out1 = wccIssueA3Out1->responseToJson();
-    LOGS(_log, LOG_LVL_INFO, "jsRespA3Out1=" << jsRespA3Out1);
+    // Add the ExecutiveRespMsg messages that correlate to the failed transmits to
+    // the czar response message so they can be used to clear the map entries.
+    auto czarRespMsgJson =
+            wccIssueA3Out1->responseToJson(wccIssueA3Out1->getThoughtCzarWasDeadTime(), czarResponseMsgs);
+    LOGS(_log, LOG_LVL_INFO, "czarRespMsgJson=" << czarRespMsgJson);
 
     // Parse the response and remove the appropriate entries from wccIsueA1.
-    auto respMsg = lsst::qserv::protojson::ResponseMsg::createFromJson(jsRespA3Out1);
-    BOOST_REQUIRE(respMsg->success == true);
-    BOOST_REQUIRE(wccIssueA1->clearMapEntries(jsRespA3Out1) == 4);
+    auto czRespMsg = lsst::qserv::protojson::WorkerCzarComRespMsg::createFromJson(czarRespMsgJson);
+    LOGS(_log, LOG_LVL_INFO, "czRespMsg=" << czRespMsg->dump());
+    BOOST_REQUIRE(czRespMsg->success == true);
+
+    // Use the response to clear the original transmit failure messages from the originating worker.
+    auto [countA3Out1, obsoleteList, parseErrorList] = wccIssueA1->clearMapEntries(czarRespMsgJson);
+    LOGS(_log, LOG_LVL_INFO,
+         "countA3Out1=" << countA3Out1 << " obsoleteSz=" << obsoleteList.size()
+                        << " parseErrorSz=" << parseErrorList.size());
+    BOOST_REQUIRE(countA3Out1 == 4);
+    BOOST_REQUIRE(obsoleteList.size() == 2);
+    BOOST_REQUIRE(parseErrorList.size() == 0);
 
     auto ftMap = wccIssueA1->takeFailedTransmitsMap();
     BOOST_REQUIRE(ftMap->size() == 0);
+
+    //&&& TODO repeat this test adding a parseError response.
 }
 
 BOOST_AUTO_TEST_CASE(ResponseMsg) {
@@ -293,6 +319,8 @@ BOOST_AUTO_TEST_CASE(ResponseMsg) {
     BOOST_REQUIRE(!respMsgA->equal(*respMsgBOut));
     BOOST_REQUIRE(!respMsgB->equal(*respMsgC));
     BOOST_REQUIRE(!respMsgD->equal(*respMsgC));
+
+    // &&& test for ExecutiveRespMsg and WorkerCzarComRespMsg should be added here.
 }
 
 BOOST_AUTO_TEST_SUITE_END()
