@@ -177,7 +177,7 @@ private:
      * @param task - a task that produced the result set
      * @param mResult - MySQL result to be used as a source
      * @param bytes - the number of bytes in the result message recorded into the file
-     * @param rows - the number of rows extracted from th eresult set
+     * @param rows - the number of rows extracted from the result set
      * @param multiErr - a collector of any errors that were captured during result set processing
      * @throws std::runtime_error for problems encountered when attemting to create the file
      *   or write into the file.

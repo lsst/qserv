@@ -32,6 +32,7 @@
 #include "nlohmann/json.hpp"
 
 // qserv headers
+#include "protojson/ResponseMsg.h"
 #include "protojson/WorkerQueryStatusData.h"
 
 // This header declarations
@@ -41,6 +42,8 @@ class UberJobStatusMsg;
 
 typedef std::shared_ptr<UberJobStatusMsg> FailedTransmitType;
 typedef std::map<std::pair<QueryId, UberJobId>, FailedTransmitType> FailedTransmitsMap;
+
+typedef std::tuple<CzarContactInfo::Ptr, QueryId, UberJobId> UberJobIdentifierType;
 
 /// This class is used to send/receive a message from the worker to a specific
 /// czar. It is used when there has been a communication issue with the worker
@@ -79,19 +82,41 @@ public:
 
     static Ptr createFromJson(nlohmann::json const& workerJson, AuthContext const& authContext_);
 
-    void setThoughtCzarWasDead(bool wasDead) {
+    void setThoughtCzarWasDeadTime(uint64_t msDeadNowAliveTime) {
         std::lock_guard lg(_wciMtx);
-        _thoughtCzarWasDead = wasDead;
+        _thoughtCzarWasDeadTime = msDeadNowAliveTime;
     }
 
-    size_t clearMapEntries(nlohmann::json const& response);
+    /// Remove all entries from the failedTransmits map with QueryId `qId`.
+    void clearTransmitsForQid(QueryId qId) {  //&&& this needs to be called somewhere. &&&
+        std::lock_guard lg(_wciMtx);
+        for (auto it = _failedTransmits->begin(); it != _failedTransmits->end();) {
+            if (it->first.first == qId) {
+                it = _failedTransmits->erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
 
-    bool getThoughtCzarWasDead() const { return _thoughtCzarWasDead; }
+    /// Go through the list of QueryId + UberJobId values in the response and clear those entries from the
+    /// failedTransmits map.
+    /// @return - the number of entries cleared,
+    ///         - a vector of obsolete UberJob identifiers
+    ///         - a vector of UberJob identifier that the czar could not parse
+    /// Nothing really needs to be done with the vector of obsolete UberJob identifiers, but deleting them
+    /// will conserve resources. The vector of UberJob identifiers that the czar could not parse is a problem.
+    /// An error message should be sent back to the czar for each of those in an attempt to maintain system
+    /// stability, but they really should never have happened in the first place.
+    std::tuple<size_t, std::vector<UberJobIdentifierType>, std::vector<UberJobIdentifierType>>
+    clearMapEntries(nlohmann::json const& response);
+
+    uint64_t getThoughtCzarWasDeadTime() const { return _thoughtCzarWasDeadTime; }
 
     /// Return true if there is a reason this WorkerCzarComIssue should be sent to this czar.
     bool needToSend() const {
         std::lock_guard lg(_wciMtx);
-        return (_thoughtCzarWasDead || _failedTransmits->size() > 0);
+        return (_thoughtCzarWasDeadTime > 0 || _failedTransmits->size() > 0);
     }
 
     /// Set the contact information for the appropriate czar and worker.
@@ -120,7 +145,8 @@ public:
 
     /// Return a json object indicating the status of the message for the
     /// original requester.
-    nlohmann::json responseToJson() const;
+    nlohmann::json responseToJson(uint64_t msgThoughtCzarWasDeadTime,
+                                  std::vector<protojson::ExecutiveRespMsg::Ptr> const& execRespMsgs) const;
 
     /// Take the failedTransmitsMap and make an empty one to take its place.
     std::shared_ptr<FailedTransmitsMap> takeFailedTransmitsMap();
@@ -136,7 +162,8 @@ private:
 
     /// Return a json object indicating the status of the message for the
     /// original requester.
-    nlohmann::json _responseToJson() const;
+    nlohmann::json _responseToJson(uint64_t thoughtCzarWasDeadTime,
+                                   std::vector<protojson::ExecutiveRespMsg::Ptr> const& execRespMsgs_) const;
 
     std::string _dump() const;
 
@@ -144,9 +171,13 @@ private:
     CzarContactInfo::Ptr _czInfo;
     AuthContext _authContext;
 
-    /// Set to by the worker true if the czar was considered dead, and reset to false
-    /// after the czar has acknowledged successful reception of this message.
-    bool _thoughtCzarWasDead = false;
+    /// If the worker thought the czar was dead, this is the time in milliseconds that the worker
+    /// thought the czar came back to life. This is passed to the czar so the czar knows
+    /// the worker has killed all related UberJobs. The czar sends this value back to
+    /// the worker in the response to avoid race conditions. If the returned value matches
+    /// or is greater than what is stored, it is certain that there have not been any
+    /// dead/alive cycles since the czar received the message.
+    uint64_t _thoughtCzarWasDeadTime = 0;
 
     /// Map of failed transmits using QueryId + UberJobId for the key
     std::shared_ptr<FailedTransmitsMap> _failedTransmits{new FailedTransmitsMap};

@@ -41,6 +41,7 @@
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
+#include "protojson/ResponseMsg.h"
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
@@ -166,15 +167,13 @@ public:
 
     /// Starts the process of collecting a result file from the worker.
     /// @throws std::invalid_argument
-    /// @param retry - true indicates this is a retry of a failed communication and
-    ///          should not kill the associated UberJob due to an unexpected state.
-    nlohmann::json handleUberJobReadyMsg(std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg,
-                                         std::string const& note, bool const retry = false);
+    protojson::ExecutiveRespMsg::Ptr handleUberJobReadyMsg(
+            std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg, std::string const& note);
 
     /// Handle an UberJob processing error from the worker.
     /// @throws std::invalid_argument
-    nlohmann::json handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg,
-                                         std::string const& note);
+    protojson::ExecutiveRespMsg::Ptr handleUberJobErrorMsg(
+            std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg, std::string const& note);
 
     /// Startup time of czar, sent to workers so they can detect that the czar was
     /// was restarted when this value changes.

@@ -697,8 +697,8 @@ void Czar::killIncompleteUbjerJobsOn(std::string const& restartedWorkerId) {
     }
 }
 
-nlohmann::json Czar::handleUberJobReadyMsg(std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg,
-                                           string const& note, bool const retry) {
+protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobReadyMsg(
+        std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg, string const& note) {
     auto queryId = jrMsg->queryId;
     auto czarId = jrMsg->czarId;
     auto uberJobId = jrMsg->uberJobId;
@@ -707,6 +707,7 @@ nlohmann::json Czar::handleUberJobReadyMsg(std::shared_ptr<protojson::UberJobRea
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN,
              note << " null exec QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
+        // This means the user query is done and the results on the worker won't be needed
         throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
                                to_string(queryId) + " czar=" + to_string(czarId));
     }
@@ -722,30 +723,42 @@ nlohmann::json Czar::handleUberJobReadyMsg(std::shared_ptr<protojson::UberJobRea
     uj->setResultFileSize(jrMsg->fileUrlInfo.fileSize);
     exec->checkResultFileSize(jrMsg->fileUrlInfo.fileSize);
 
-    auto importRes = uj->importResultFile(jrMsg->fileUrlInfo, retry);
+    auto importRes = uj->importResultFile(jrMsg->fileUrlInfo);
     return importRes;
 }
 
-nlohmann::json Czar::handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg,
-                                           string const& note) {
+protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobErrorMsg(
+        std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg, string const& note) {
     auto queryId = jrMsg->queryId;
     auto czarId = jrMsg->czarId;
     auto uberJobId = jrMsg->uberJobId;
+    string const idMsg =
+            "qId=" + to_string(queryId) + " ujId=" + to_string(uberJobId) + " czId=" + to_string(czarId);
+    auto execRespMsg = protojson::ExecutiveRespMsg::create(false, false, queryId, uberJobId, czarId);
 
     // Find UberJob
     qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
     if (exec == nullptr) {
-        throw invalid_argument(note + " No executive for qid=" + to_string(queryId) +
-                               " czar=" + to_string(czarId));
+        // exec==nullptr just means this czar no longer has any use for any data associated with this QID.
+        LOGS(_log, LOG_LVL_WARN, note << " No executive for " << idMsg);
+        execRespMsg->success = true;
+        execRespMsg->dataObsolete = true;
+        execRespMsg->errorType = "queryEnded";
+        execRespMsg->note = "null Executive";
+        return execRespMsg;
     }
     qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
     if (uj == nullptr) {
-        throw invalid_argument(note + " No UberJob for qid=" + to_string(queryId) +
-                               " ujId=" + to_string(uberJobId) + " czar=" + to_string(czarId));
+        LOGS(_log, LOG_LVL_WARN, note << " No UberJob for " << idMsg);
+        execRespMsg->success = true;
+        execRespMsg->dataObsolete = true;
+        execRespMsg->errorType = "queryEnded";
+        execRespMsg->note = "null UberJob";
+        return execRespMsg;
     }
 
-    auto importRes = uj->workerError(jrMsg->multiError);
-    return importRes;
+    uj->workerError(jrMsg->multiError, *execRespMsg);
+    return execRespMsg;
 }
 
 }  // namespace lsst::qserv::czar

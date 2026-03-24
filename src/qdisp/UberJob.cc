@@ -253,18 +253,20 @@ void UberJob::callMarkCompleteFunc(bool success) {
     _jobs.clear();
 }
 
-json UberJob::importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool const retry) {
+protojson::ExecutiveRespMsg::Ptr UberJob::importResultFile(protojson::FileUrlInfo const& fileUrlInfo_) {
     LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << fileUrlInfo_.dump());
 
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " no executive");
-        return importResultError(true, "cancelled", "Query cancelled - no executive");
+        return protojson::ExecutiveRespMsg::create(true, true, _queryId, _uberJobId, _czarId, "cancelled",
+                                                   "Query cancelled no executive");
     }
 
     if (exec->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " import job was cancelled.");
-        return importResultError(true, "cancelled", "Query cancelled");
+        return protojson::ExecutiveRespMsg::create(true, true, _queryId, _uberJobId, _czarId, "cancelled",
+                                                   "Query cancelled");
     }
 
     if (exec->isRowLimitComplete()) {
@@ -273,22 +275,26 @@ json UberJob::importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool 
             LOGS(_log, LOG_LVL_INFO,
                  "UberJob ignoring, enough rows already " << "dataIgnored=" << dataIgnored);
         }
-        return importResultError(false, "rowLimited", "Enough rows already");
+        return protojson::ExecutiveRespMsg::create(true, false, _queryId, _uberJobId, _czarId, "rowLimited",
+                                                   "Enough rows already");
     }
 
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileUrlInfo_.fileSize);
     bool const statusSet =
             setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrlInfo_.fileUrl);
+    // During flaky communications, it's possible to get messages out of order, which can make for a real
+    // mess. Going to err on the side of caution and give up if things are not as expected.
     if (!statusSet) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " setStatusFail could not set status to RESPONSE_READY");
-        if (!retry) {
-            // This is a retry, subject to many awful race conditions due to not knowing if
-            // previous attempts worked. If a previous attempt worked, it should
-            // be allowed to continue.
-            protojson::ResponseMsg respMsg(false, "ignored", "ignored");
-            return respMsg.toJson();
-        }
-        return importResultError(false, "setStatusFail", "could not set status to RESPONSE_READY");
+        // If this UberJob has not started merging, this will kill it. If it has started merging,
+        // a previous message worked and everything should be okay.
+        bool killed = killUberJob();
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " killUberJob "
+                             << (killed ? "stopped before merge" : "already merging or merged"));
+        // Since things are strange, don't flag the worker result file as obsolete at this point.
+        return protojson::ExecutiveRespMsg::create(true, false, _queryId, _uberJobId, _czarId,
+                                                   "setStatusFail", "could not set status to RESPONSE_READY");
     }
 
     weak_ptr<UberJob> ujThis = static_pointer_cast<UberJob>(shared_from_this());
@@ -316,19 +322,21 @@ json UberJob::importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool 
     exec->queueFileCollect(cmd);
 
     // The file collection has been queued for later, let the worker know that it's okay so far.
-    protojson::ResponseMsg respMsg(true, "", "queued for collection");
-    return respMsg.toJson();
+    return protojson::ExecutiveRespMsg::create(true, false, _queryId, _uberJobId, _czarId, "",
+                                               "queued for collection");
 }
 
-json UberJob::workerError(util::MultiError const& multiErr_) {
+void UberJob::workerError(util::MultiError const& multiErr_, protojson::ExecutiveRespMsg& execRespMsg) {
     LOGS(_log, LOG_LVL_WARN, cName(__func__) << " multiErr=" << multiErr_);
 
-    bool const deleteData = true;
-    bool const keepData = !deleteData;
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled " << multiErr_);
-        return _workerErrorFinish(deleteData, "cancelled");
+        execRespMsg.success = true;
+        execRespMsg.dataObsolete = true;
+        execRespMsg.errorType = "queryEnded";
+        execRespMsg.note = "nullExecutive";
+        return;
     }
 
     if (exec->isRowLimitComplete()) {
@@ -338,7 +346,11 @@ json UberJob::workerError(util::MultiError const& multiErr_) {
                  cName(__func__) << " ignoring, enough rows already "
                                  << "dataIgnored=" << dataIgnored);
         }
-        return _workerErrorFinish(keepData, "none", "rowLimitComplete");
+        execRespMsg.success = true;
+        execRespMsg.dataObsolete = true;
+        execRespMsg.errorType = "none";
+        execRespMsg.note = "rowLimitComplete";
+        return;
     }
 
     exec->addMultiError(multiErr_);
@@ -386,11 +398,16 @@ json UberJob::workerError(util::MultiError const& multiErr_) {
         exec->squash(string("UberJob::workerError ") + mErrMsg);
     }
 
-    return _workerErrorFinish(deleteData, mErrMsg, "");
+    execRespMsg.success = true;
+    execRespMsg.dataObsolete = true;
+    execRespMsg.errorType = mErrMsg;
 }
 
-json UberJob::importResultError(bool shouldCancel, string const& errorType, string const& note) {
-    protojson::ResponseMsg respMsg(false, errorType, note);
+protojson::ExecutiveRespMsg::Ptr UberJob::importResultError(bool shouldCancel, string const& errorType,
+                                                            string const& note) {
+    // If there's been an error, the worker should consider the result file obsolete.
+    auto respMsg =
+            protojson::ExecutiveRespMsg::create(true, true, _queryId, _uberJobId, _czarId, errorType, note);
     // In all cases, the worker should delete the file as this czar will not ask for it.
 
     auto exec = _executive.lock();
@@ -417,7 +434,7 @@ json UberJob::importResultError(bool shouldCancel, string const& errorType, stri
              cName(__func__) << " already cancelled shouldCancel=" << shouldCancel
                              << " errorType=" << errorType << " " << note);
     }
-    return respMsg.toJson();
+    return respMsg;
 }
 
 bool UberJob::importResultFinish() {
@@ -436,22 +453,23 @@ bool UberJob::importResultFinish() {
     return statusSet;
 }
 
-nlohmann::json UberJob::_workerErrorFinish(bool deleteData, std::string const& errorType,
-                                           std::string const& note) {
+void UberJob::_workerErrorFinish(protojson::ExecutiveRespMsg& execRespMsg, std::string const& errorType,
+                                 std::string const& note) {
     // If this is called, the error has been received and the worker should delete
     // the result file.
     // Return error message received "success:1" json message to be sent to the worker.
     auto exec = _executive.lock();
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
-        protojson::ResponseMsg respMsg(false, "cancelled", "executive is null");
-        return respMsg.toJson();
+        execRespMsg.success = true;
+        execRespMsg.dataObsolete = true;
+        execRespMsg.errorType = "cancelled_QID";
+        execRespMsg.note = " executive is null";
+        return;
     }
 
-    protojson::ResponseMsg respMsg(true);
-    json jsRet = respMsg.toJson();
-    jsRet["deletedata"] = deleteData;
-    return jsRet;
+    execRespMsg.success = true;
+    return;
 }
 
 bool UberJob::killUberJob() {
@@ -492,6 +510,7 @@ bool UberJob::killUberJob() {
     // this czar.)
     bool cancelledMerge = getRespHandler()->cancelFileMerge();
     if (cancelledMerge) {
+        // The merge could be cancelled
         _unassignJobs();
     }
     // Let Czar::_monitor reassign jobs - other UberJobs are probably being killed
