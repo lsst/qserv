@@ -82,16 +82,79 @@ public:
     virtual nlohmann::json toJson() const;
 
     /// class name for log, fName is expected to be __func__.
-    std::string cName(const char* fName) const { return std::string("ResponseMsg"); }
+    std::string cName(const char* fName) const { return std::string("ResponseMsg::") + fName; }
 
     /// Returns a string for logging.
-    virtual std::ostream& dump(std::ostream& os) const;
+    /// Note: Naming dumpOs just dump should work, but is causes gcc to fail when child classes in
+    ///       unit tests try to call dump() and the base class version is not found.
+    virtual std::ostream& dumpOs(std::ostream& os) const;
     std::string dump() const;
     friend std::ostream& operator<<(std::ostream& os, ResponseMsg const& cmd);
 
     bool success;
     std::string errorType;
     std::string note;
+};
+
+class ExecutiveRespMsg : public ResponseMsg {
+public:
+    using Ptr = std::shared_ptr<ExecutiveRespMsg>;
+
+    ExecutiveRespMsg(bool success_, bool dataObsolete_, QueryId qId_, UberJobId ujId_, CzarId czId_,
+                     std::string const& errorType_ = "none", std::string const& note_ = std::string());
+
+    virtual ~ExecutiveRespMsg() = default;
+
+    static Ptr create(bool success_, bool dataObsolete_, QueryId qId_, UberJobId ujId_, CzarId czId_,
+                      std::string const& errorType_ = "none", std::string const& note_ = std::string()) {
+        return Ptr(new ExecutiveRespMsg(success_, dataObsolete_, qId_, ujId_, czId_, errorType_, note_));
+    }
+
+    /// This function creates ExecutiveRespMsg from respJson, if reasonable.
+    static Ptr createFromJson(nlohmann::json const& respJson);
+
+    std::string cName(const char* fName) const { return std::string("ExecutiveRespMsg::") + fName; }
+
+    nlohmann::json toJson() const override;
+
+    std::ostream& dumpOs(std::ostream& os) const override;
+
+    bool dataObsolete;  ///< Indicates that the result data the worker has is obsolete and may be deleted.
+    QueryId qId;        ///< The query id for the data, if applicable.
+    UberJobId ujId;     ///< The uberjob id for the data, if applicable.
+    CzarId czId;        ///< The czar id for the data, if applicable.
+};
+
+class WorkerCzarComRespMsg : public ResponseMsg {
+public:
+    using Ptr = std::shared_ptr<WorkerCzarComRespMsg>;
+
+    WorkerCzarComRespMsg(bool success_, uint64_t thoughtCzarWasDeadTime_,
+                         std::string const& errorType_ = "none", std::string const& note_ = std::string())
+            : ResponseMsg(success_, errorType_, note_), thoughtCzarWasDeadTime(thoughtCzarWasDeadTime_) {}
+
+    virtual ~WorkerCzarComRespMsg() = default;
+
+    static Ptr create(bool success_, uint64_t thoughtCzarWasDeadTime_, std::string const& errorType_ = "none",
+                      std::string const& note_ = std::string()) {
+        return Ptr(new WorkerCzarComRespMsg(success_, thoughtCzarWasDeadTime_, errorType_, note_));
+    }
+
+    /// This function creates WorkerCzarComRespMsg from respJson, if reasonable.
+    static Ptr createFromJson(nlohmann::json const& respJson);
+
+    std::string cName(const char* fName) const { return std::string("WorkerCzarComRespMsg::") + fName; }
+
+    nlohmann::json toJson() const override;
+
+    std::ostream& dumpOs(std::ostream& os) const override;
+
+    /// Indicates the `thoughtCzarWasDeadTime` sent by the worker (normally 0)
+    uint64_t thoughtCzarWasDeadTime;
+
+    /// List of ExecutiveRespMsg objects for the UberJobs that were
+    /// in the originating WorkerCzarComIssue message.
+    std::vector<ExecutiveRespMsg::Ptr> execRespMsgs;
 };
 
 }  // namespace lsst::qserv::protojson

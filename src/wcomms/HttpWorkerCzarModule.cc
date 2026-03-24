@@ -262,44 +262,25 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     auto const queriesAndChunks = foreman()->queriesAndChunks();
     vector<wbase::UserQueryInfo::Ptr> cancelledList;
     vector<wbase::UserQueryInfo::Ptr> deleteFilesList;
+    std::map<QueryId, std::map<UberJobId, TIMEPOINT>> deadUberJobsList;
     {
         // Cancelled queries where we want to keep the files
         lock_guard mapLg(wqsData->mapMtx);
-        for (auto const& [dkQid, dkTm] : wqsData->qIdDoneKeepFiles) {
-            auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
-            if (qStats != nullptr) {
-                auto uqInfo = qStats->getUserQueryInfo();
-                if (uqInfo != nullptr) {
-                    if (!uqInfo->getCancelledByCzar()) {
-                        cancelledList.push_back(uqInfo);
-                    }
-                }
-            }
-        }
-        for (auto const& [dkQid, dkTm] : wqsData->qIdDoneDeleteFiles) {
-            auto qStats = queriesAndChunks->addQueryId(dkQid, czId);
-            if (qStats != nullptr) {
-                auto uqInfo = qStats->getUserQueryInfo();
-                if (uqInfo != nullptr) {
-                    if (!uqInfo->getCancelledByCzar()) {
-                        cancelledList.push_back(uqInfo);
-                    }
-                    deleteFilesList.push_back(uqInfo);
-                }
-            }
-        }
-    }
+        queriesAndChunks->buildCancelledAndDeletedLists(czId, wqsData->qIdDoneKeepFiles, true, cancelledList,
+                                                        deleteFilesList);
+        queriesAndChunks->buildCancelledAndDeletedLists(czId, wqsData->qIdDoneDeleteFiles, false,
+                                                        cancelledList, deleteFilesList);
 
-    // Cancel everything in the cancelled list.
-    for (auto const& canUqInfo : cancelledList) {
-        canUqInfo->cancelFromCzar();
+        // Need to make a list of these while the mutex is held,
+        // and then delete them after the mutex is released.
+        deadUberJobsList = wqsData->qIdDeadUberJobs;
     }
 
     // For dead UberJobs, add them to a list of dead uberjobs within UserQueryInfo.
     // UserQueryInfo will cancel the tasks in the uberjobs if they exist.
     // New UberJob Id's will be checked against the list, and immediately be
     // killed if they are on it. (see HttpWorkerCzarModule::_handleQueryJob)
-    for (auto const& [ujQid, ujIdMap] : wqsData->qIdDeadUberJobs) {
+    for (auto const& [ujQid, ujIdMap] : deadUberJobsList) {
         auto qStats = queriesAndChunks->addQueryId(ujQid, czId);
         if (qStats != nullptr) {
             auto uqInfo = qStats->getUserQueryInfo();
@@ -311,6 +292,11 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
                 }
             }
         }
+    }
+
+    // Cancel everything in the cancelled list.
+    for (auto const& canUqInfo : cancelledList) {
+        canUqInfo->cancelFromCzar();
     }
 
     // Delete files that should be deleted
