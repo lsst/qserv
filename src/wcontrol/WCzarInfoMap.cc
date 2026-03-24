@@ -31,6 +31,7 @@
 
 // qserv headers
 #include "http/Client.h"
+#include "protojson/ResponseMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
 #include "protojson/WorkerQueryStatusData.h"
 #include "util/Bug.h"
@@ -64,8 +65,10 @@ void WCzarInfo::czarMsgReceived(TIMEPOINT tm) {
     _lastTouch = tm;
     if (_alive.exchange(true) == false) {
         uniLock.unlock();
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " was dead and is now alive");
-        _workerCzarComIssue->setThoughtCzarWasDead(true);
+        auto msSinceEpoch = std::chrono::duration_cast<std::chrono::milliseconds>(tm.time_since_epoch());
+        uint64_t msDeadNowAliveTime = msSinceEpoch.count();
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " was dead and is now alive ms=" << msDeadNowAliveTime);
+        _workerCzarComIssue->setThoughtCzarWasDeadTime(msDeadNowAliveTime);
     }
 }
 
@@ -109,9 +112,8 @@ void WCzarInfo::_sendMessage() {
     auto const method = http::Method::POST;
 
     unique_lock<mutex> uniLock(_wciMtx);
-    auto czInfo = _workerCzarComIssue->getCzarInfo();
     // If thoughtCzarWasDead is set now, it needs to be cleared on successful reception from czar.
-    bool needToClearThoughtCzarWasDead = _workerCzarComIssue->getThoughtCzarWasDead();
+    auto czInfo = _workerCzarComIssue->getCzarInfo();
     if (czInfo == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " czar info was null");
         return;
@@ -125,22 +127,43 @@ void WCzarInfo::_sendMessage() {
     auto requestStr = jsReq.dump();
     http::Client client(method, url, requestStr, headers);
     bool transmitSuccess = false;
+    size_t cleanupCount = 0;
+    vector<protojson::UberJobIdentifierType> ujDataObsoleteList;
+    vector<protojson::UberJobIdentifierType> ujParseErrorList;
     try {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read start");
         nlohmann::json const response = client.readAsJson();
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
-        auto respMsg = protojson::ResponseMsg::createFromJson(response);
+        auto respMsg = protojson::WorkerCzarComRespMsg::createFromJson(response);
         uniLock.lock();
         if (respMsg->success) {
             transmitSuccess = true;
-            if (needToClearThoughtCzarWasDead) {
-                _workerCzarComIssue->setThoughtCzarWasDead(false);
+            /// Read the value sent back by the czar. If it is greater than or equal
+            /// czDeadTime, then set dead time to zero.
+            auto localDeadTime = _workerCzarComIssue->getThoughtCzarWasDeadTime();
+            if (localDeadTime != 0) {
+                auto respDeadTime = respMsg->thoughtCzarWasDeadTime;
+                bool cleared = false;
+                if (respDeadTime >= _workerCzarComIssue->getThoughtCzarWasDeadTime()) {
+                    _workerCzarComIssue->setThoughtCzarWasDeadTime(0);
+                    cleared = true;
+                }
+                LOGS(_log, LOG_LVL_WARN,
+                     cName(__func__) << " ThoughtCzarWasDeadTime check local=" << localDeadTime
+                                     << " resp=" << respDeadTime << " cleared=" << cleared);
             }
-            _workerCzarComIssue->clearMapEntries(response);
+            tie(cleanupCount, ujDataObsoleteList, ujParseErrorList) =
+                    _workerCzarComIssue->clearMapEntries(response);
+            // TODO &&& mark everything in Obsolete list as obsolete
+            // TODO &&& kill everything in parseErrorlist and send failed messages for each ("Internal parse
+            // error in WorkerCzarComIssue")
         } else {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit " << *respMsg);
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
+            // TODO&&& ??? What to do here. It failed to parse. Start counting and consider the czar dead
+            // &&& if there are say 10 parse errors in a row. At that point, this worker and this czar
+            // &&& are hopelessly out of sink???
         }
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + requestStr + " failed, ex: " + ex.what());

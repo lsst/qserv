@@ -213,7 +213,7 @@ public:
 
     unsigned fetch(char* buffer, unsigned bufLen) override {
         if (bufLen == 0) {
-            throw LocalInfileError("CsvStreamBuffer::fetch Can't fetch non-positive bytes");
+            throw LocalInfileError("CsvMemDiskBuffer::fetch Can't fetch non-positive bytes");
         }
         auto csvMd = _csvMemDisk.lock();
         if (csvMd == nullptr) return 0;
@@ -234,7 +234,7 @@ public:
         return bytesToCopy;
     }
 
-    string dump() const override { return "CsvStreamBuffer"; }
+    string dump() const override { return "CsvMemDiskBuffer"; }
 
 private:
     weak_ptr<CsvMemDisk> _csvMemDisk;
