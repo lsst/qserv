@@ -106,7 +106,6 @@
 #include "rproc/InfileMerger.h"
 #include "sql/Schema.h"
 #include "util/IterableFormatter.h"
-#include "util/ThreadPriority.h"
 #include "xrdreq/QueryManagementAction.h"
 
 namespace {
@@ -254,13 +253,6 @@ void UserQuerySelect::submit() {
                                                                : "none produced."));
 
     // Writing query for each chunk, stop if query is cancelled.
-    // attempt to change priority, requires root
-    bool increaseThreadPriority = false;  // TODO: add to configuration
-    util::ThreadPriority threadPriority(pthread_self());
-    if (increaseThreadPriority) {
-        threadPriority.storeOriginalValues();
-        threadPriority.setPriorityPolicy(10);
-    }
 
     // Add QProgress table entry
     try {
@@ -297,11 +289,6 @@ void UserQuerySelect::submit() {
         auto cmd = std::make_shared<qdisp::PriorityCommand>(funcBuildJob);
         _executive->queueJobStart(cmd);
         ++sequence;
-    }
-
-    // attempt to restore original thread priority, requires root
-    if (increaseThreadPriority) {
-        threadPriority.restoreOriginalValues();
     }
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
