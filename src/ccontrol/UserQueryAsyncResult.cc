@@ -23,10 +23,6 @@
 // Class header
 #include "ccontrol/UserQueryAsyncResult.h"
 
-// System headers
-
-// Third-party headers
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -46,7 +42,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryAsyncResult");
 
 namespace lsst::qserv::ccontrol {
 
-// Constructors
 UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId,
                                            std::shared_ptr<qmeta::QMeta> const& qMeta)
         : UserQuery(),
@@ -74,11 +69,6 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId
         _messageStore->addErrorMessage("SYSTEM", message);
     }
 }
-
-// Destructor
-UserQueryAsyncResult::~UserQueryAsyncResult() {}
-
-std::string UserQueryAsyncResult::getError() const { return std::string(); }
 
 void UserQueryAsyncResult::submit() {
     _qState = ERROR;
@@ -181,12 +171,6 @@ void UserQueryAsyncResult::submit() {
 }
 
 QueryState UserQueryAsyncResult::join() { return _qState; }
-
-void UserQueryAsyncResult::kill() {}
-
-void UserQueryAsyncResult::discard() {}
-
-std::shared_ptr<qdisp::MessageStore> UserQueryAsyncResult::getMessageStore() { return _messageStore; }
 
 std::string UserQueryAsyncResult::getResultTableName() const {
     if (_qInfo.resultLocation().compare(0, 6, "table:") == 0) {

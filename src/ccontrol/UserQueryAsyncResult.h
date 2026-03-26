@@ -23,13 +23,15 @@
 #define LSST_QSERV_CCONTROL_USERQUERYASYNCRESULT_H
 
 // System headers
-
-// Third-party headers
+#include <memory>
+#include <string>
 
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "qmeta/QInfo.h"
 #include "qmeta/types.h"
+
+// Forward declarations
 
 namespace lsst::qserv::qdisp {
 class MessageStore;
@@ -38,6 +40,8 @@ class MessageStore;
 namespace lsst::qserv::qmeta {
 class QMeta;
 }
+
+// This header declarations
 
 namespace lsst::qserv::ccontrol {
 
@@ -60,15 +64,14 @@ public:
      */
     UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId, std::shared_ptr<qmeta::QMeta> const& qMeta);
 
-    // Destructor
-    ~UserQueryAsyncResult();
-
     UserQueryAsyncResult(UserQueryAsyncResult const&) = delete;
     UserQueryAsyncResult& operator=(UserQueryAsyncResult const&) = delete;
 
+    virtual ~UserQueryAsyncResult() = default;
+
     /// @return a non-empty string describing the current error state
     /// Returns an empty string if no errors have been detected.
-    std::string getError() const override;
+    std::string getError() const override { return std::string(); }
 
     /// Begin execution of the query over all ChunkSpecs added so far.
     void submit() override;
@@ -78,13 +81,13 @@ public:
     QueryState join() override;
 
     /// Stop a query in progress (for immediate shutdowns)
-    void kill() override;
+    void kill() override {}
 
     /// Release resources related to user query
-    void discard() override;
+    void discard() override {}
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override;
+    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
 
     /// This method should disappear when we start supporting results
     /// in locations other than MySQL tables. We'll switch to getResultLocation()
@@ -100,7 +103,6 @@ public:
     /// @return get the SELECT statement, to be executed by proxy, from metadata
     std::string getResultQuery() const override;
 
-protected:
 private:
     QueryId _queryId;
     qmeta::CzarId _czarId;
