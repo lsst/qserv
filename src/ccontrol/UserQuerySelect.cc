@@ -66,14 +66,12 @@
 
 // System headers
 #include <cassert>
-#include <chrono>
 #include <memory>
 #include <stdexcept>
 
 // Third-party headers
 #include <boost/algorithm/string/replace.hpp>
 
-#include "qdisp/QdispPool.h"
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -85,13 +83,12 @@
 #include "global/constants.h"
 #include "global/LogContext.h"
 #include "proto/worker.pb.h"
-#include "proto/ProtoImporter.h"
 #include "qdisp/Executive.h"
 #include "qdisp/MessageStore.h"
 #include "qmeta/Exceptions.h"
+#include "qdisp/QdispPool.h"
 #include "qmeta/QMeta.h"
 #include "qmeta/QProgress.h"
-#include "qproc/geomAdapter.h"
 #include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
 #include "qproc/TaskMsgFactory.h"
@@ -102,33 +99,16 @@
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
 #include "query/ValueExpr.h"
-#include "query/ValueFactor.h"
 #include "rproc/InfileMerger.h"
 #include "sql/Schema.h"
-#include "util/IterableFormatter.h"
-#include "util/ThreadPriority.h"
 #include "xrdreq/QueryManagementAction.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQuerySelect");
 }  // namespace
 
-namespace lsst::qserv {
+namespace lsst::qserv::ccontrol {
 
-/// A class that can be used to parameterize a ProtoImporter<TaskMsg> for
-/// debugging purposes
-class ProtoPrinter {
-public:
-    ProtoPrinter() {}
-    virtual void operator()(std::shared_ptr<proto::TaskMsg> m) { std::cout << "Got taskmsg ok"; }
-    virtual ~ProtoPrinter() {}
-};
-
-////////////////////////////////////////////////////////////////////////
-// UserQuerySelect implementation
-namespace ccontrol {
-
-/// Constructor
 UserQuerySelect::UserQuerySelect(std::shared_ptr<qproc::QuerySession> const& qs,
                                  std::shared_ptr<qdisp::MessageStore> const& messageStore,
                                  std::shared_ptr<qdisp::Executive> const& executive,
@@ -156,7 +136,6 @@ std::string UserQuerySelect::getError() const {
     return _qSession->getError() + div + _errorExtra;
 }
 
-/// Attempt to kill in progress.
 void UserQuerySelect::kill() {
     LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect kill");
     // The lock must be held for the entire query cancellation operation to prevent
@@ -235,7 +214,6 @@ std::string UserQuerySelect::getResultQuery() const {
     return resultQuery;
 }
 
-/// Begin running on all chunks added so far.
 void UserQuerySelect::submit() {
     _qSession->finalize();
 
@@ -254,13 +232,6 @@ void UserQuerySelect::submit() {
                                                                : "none produced."));
 
     // Writing query for each chunk, stop if query is cancelled.
-    // attempt to change priority, requires root
-    bool increaseThreadPriority = false;  // TODO: add to configuration
-    util::ThreadPriority threadPriority(pthread_self());
-    if (increaseThreadPriority) {
-        threadPriority.storeOriginalValues();
-        threadPriority.setPriorityPolicy(10);
-    }
 
     // Add QProgress table entry
     try {
@@ -299,17 +270,10 @@ void UserQuerySelect::submit() {
         ++sequence;
     }
 
-    // attempt to restore original thread priority, requires root
-    if (increaseThreadPriority) {
-        threadPriority.restoreOriginalValues();
-    }
-
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     _executive->waitForAllJobsToStart();
 }
 
-/// Block until a submit()'ed query completes.
-/// @return the QueryState indicating success or failure
 QueryState UserQuerySelect::join() {
     bool successful = _executive->join();  // Wait for all data
     // Since all data are in, run final SQL commands like GROUP BY.
@@ -373,7 +337,6 @@ QueryState UserQuerySelect::join() {
     return state;
 }
 
-/// Release resources held by the merger
 void UserQuerySelect::_discardMerger(std::lock_guard<std::mutex> const& lock) {
     _infileMergerConfig.reset();
     if (_infileMerger && !_infileMerger->isFinished()) {
@@ -382,7 +345,6 @@ void UserQuerySelect::_discardMerger(std::lock_guard<std::mutex> const& lock) {
     _infileMerger.reset();
 }
 
-/// Release resources.
 void UserQuerySelect::discard() {
     // The lock must be held for the entire discard operation to prevent
     // the race condition if the query cancellation happens at the same time
@@ -406,7 +368,6 @@ void UserQuerySelect::discard() {
     LOGS(_log, LOG_LVL_INFO, "Discarded UserQuerySelect");
 }
 
-/// Setup merger (for results handling and aggregation)
 void UserQuerySelect::setupMerger() {
     LOGS(_log, LOG_LVL_TRACE, "Setup merger");
     _infileMergerConfig->targetTable = _resultTable;
@@ -511,7 +472,6 @@ void UserQuerySelect::_setupChunking() {
     _qSession->setScanInteractive();
 }
 
-// register query in qmeta database
 void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::string const& msgTableName) {
     qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
     std::string user = "anonymous";  // we do not have access to that info yet
@@ -610,7 +570,6 @@ void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::stri
     }
 }
 
-// update query status in QMeta
 void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t rows, size_t bytes,
                                          size_t finalRows) {
     _queryMetadata->completeQuery(_queryId, qStatus, rows, bytes, finalRows);
@@ -623,8 +582,6 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t r
 }
 
 void UserQuerySelect::_qMetaUpdateMessages() {
-    // message table
-
     auto msgStore = getMessageStore();
     try {
         _queryMetadata->addQueryMessages(_queryId, msgStore);
@@ -633,8 +590,4 @@ void UserQuerySelect::_qMetaUpdateMessages() {
     }
 }
 
-/// Return this query's QueryId string.
-std::string UserQuerySelect::getQueryIdString() const { return _queryIdStr; }
-
-}  // namespace ccontrol
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::ccontrol

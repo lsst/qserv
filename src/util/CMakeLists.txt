@@ -26,7 +26,6 @@ target_sources(util PRIVATE
     Substitution.cc
     TablePrinter.cc
     ThreadPool.cc
-    ThreadPriority.cc
     Timer.cc
     TimeUtils.cc
     WorkQueue.cc

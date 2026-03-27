@@ -92,6 +92,8 @@ public:
     UserQuerySelect(UserQuerySelect const&) = delete;
     UserQuerySelect& operator=(UserQuerySelect const&) = delete;
 
+    virtual ~UserQuerySelect() = default;
+
     /**
      *  @param resultLocation:  Result location, if empty use result table with unique
      *                          name generated from query ID.
@@ -130,7 +132,7 @@ public:
     /// @return get the SELECT statement to be executed by proxy
     std::string getResultQuery() const override;
 
-    std::string getQueryIdString() const override;
+    std::string getQueryIdString() const override { return _queryIdStr; }
 
     /// @return this query's QueryId.
     QueryId getQueryId() const override { return _queryId; }
