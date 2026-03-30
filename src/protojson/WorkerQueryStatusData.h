@@ -101,6 +101,17 @@ private:
               czStartupTime(czStartupTime_) {}
 };
 
+class UberJobIdentType {
+public:
+    UberJobIdentType() = default;
+    UberJobIdentType(CzarContactInfo::Ptr const& czInfo_, QueryId qId_, UberJobId ujId_)
+            : czInfo(czInfo_), qId(qId_), ujId(ujId_) {}
+
+    CzarContactInfo::Ptr czInfo;
+    QueryId qId;
+    UberJobId ujId;
+};
+
 /// This class just contains the worker id and network communication information.
 class WorkerContactInfo {
 public:
@@ -158,11 +169,6 @@ public:
     }
 
     void setRegUpdateTime(TIMEPOINT updateTime);
-
-    TIMEPOINT getRegUpdateTime(TIMEPOINT updateTime) {
-        std::lock_guard lg(_rMtx);
-        return _regUpdateTime;
-    }
 
     double timeSinceRegUpdateSeconds() const {
         std::lock_guard lg(_rMtx);
