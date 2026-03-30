@@ -72,7 +72,7 @@ void ActiveWorker::setWorkerContactInfo(protojson::WorkerContactInfo::Ptr const&
 }
 
 void ActiveWorker::_changeStateTo(State newState, double secsSinceUpdate, string const& note) {
-    auto lLvl = (newState == DEAD) ? LOG_LVL_ERROR : LOG_LVL_INFO;
+    auto lLvl = (newState == DEAD) ? LOG_LVL_ERROR : LOG_LVL_WARN;
     LOGS(_log, lLvl,
          note << " oldState=" << getStateStr(_state) << " newState=" << getStateStr(newState)
               << " secsSince=" << secsSinceUpdate);
@@ -96,6 +96,9 @@ void ActiveWorker::updateStateAndSendMessages(double timeoutAliveSecs, double ti
              cName(__func__) << " wInfo=" << wInfo_->dump()
                              << " secsSince=" << wInfo_->timeSinceRegUpdateSeconds()
                              << " secsSinceUpdate=" << secsSinceUpdate);
+        LOGS(_log, LOG_LVL_WARN,
+             "&&& " << cName(__func__) << " wInfo=" << wInfo_->dump() << " secsSince="
+                    << wInfo_->timeSinceRegUpdateSeconds() << " secsSinceUpdate=" << secsSinceUpdate);
 
         // Update the last time the registry contacted this worker.
         // TODO:DM-53240 - This needs to be added to the dashboard.

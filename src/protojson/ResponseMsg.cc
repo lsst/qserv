@@ -26,6 +26,7 @@
 
 // Qserv headers
 #include "http/RequestBodyJSON.h"
+#include "protojson/PwHideJson.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -120,17 +121,17 @@ std::ostream& ExecutiveRespMsg::dumpOs(std::ostream& os) const {
     return os;
 }
 
-WorkerCzarComRespMsg::Ptr WorkerCzarComRespMsg::createFromJson(nlohmann::json const& respJson) {
-    auto basePtr = ResponseMsg::createFromJson(respJson);
+WorkerCzarComRespMsg::Ptr WorkerCzarComRespMsg::createFromJson(nlohmann::json const& inJson) {
+    auto basePtr = ResponseMsg::createFromJson(inJson);
     auto success_ = basePtr->success;
     auto errorType_ = basePtr->errorType;
     auto note_ = basePtr->note;
 
     auto thoughtCzarWasDeadTime_ =
-            http::RequestBodyJSON::required<uint64_t>(respJson, "thoughtCzarWasDeadTime");
+            http::RequestBodyJSON::required<uint64_t>(inJson, "thoughtCzarWasDeadTime");
     auto execRespMsgs_ = json::array();
-    if (respJson.contains("execRespMsgs")) {
-        execRespMsgs_ = respJson["execRespMsgs"];
+    if (inJson.contains("execRespMsgs")) {
+        execRespMsgs_ = inJson["execRespMsgs"];
     }
     vector<ExecutiveRespMsg::Ptr> execRMsgs;
     for (auto const& jsExecRespMsg : execRespMsgs_) {
@@ -138,9 +139,12 @@ WorkerCzarComRespMsg::Ptr WorkerCzarComRespMsg::createFromJson(nlohmann::json co
             auto execRespMsg = ExecutiveRespMsg::createFromJson(jsExecRespMsg);
             execRMsgs.emplace_back(execRespMsg);
         } catch (std::invalid_argument const& ex) {
+            // Can anything be done beyond logging the error?
+            // The worker is probably going to send this until the qId/ujId is killed.
+            // This error message should never show up, but good to know if it happens.
             LOGS(_log, LOG_LVL_WARN,
                  "WorkerCzarComRespMsg::createFromJson failed to read execRespMsg:"
-                         << jsExecRespMsg << " exception: " << ex.what());
+                         << protojson::pwHide(jsExecRespMsg) << " exception: " << ex.what());
         }
     }
     auto wccRespMsg = WorkerCzarComRespMsg::create(success_, thoughtCzarWasDeadTime_, errorType_, note_);
