@@ -31,11 +31,13 @@
 
 // qserv headers
 #include "http/Client.h"
+#include "protojson/PwHideJson.h"
 #include "protojson/ResponseMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
 #include "protojson/WorkerQueryStatusData.h"
 #include "util/Bug.h"
 #include "util/Histogram.h"
+#include "wbase/FileChannelShared.h"
 #include "wbase/UberJobData.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
@@ -124,18 +126,25 @@ void WCzarInfo::_sendMessage() {
     auto jsReq = _workerCzarComIssue->toJson();
     uniLock.unlock();  // Must unlock before communication
 
+    // Send the request to the czar to be handled by
     auto requestStr = jsReq.dump();
     http::Client client(method, url, requestStr, headers);
     bool transmitSuccess = false;
+
     size_t cleanupCount = 0;
-    vector<protojson::UberJobIdentifierType> ujDataObsoleteList;
-    vector<protojson::UberJobIdentifierType> ujParseErrorList;
+    vector<protojson::UberJobIdentType> ujDataObsoleteList;
+    vector<protojson::UberJobIdentType> ujIdNotFoundErrorList;
     try {
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read start");
         nlohmann::json const response = client.readAsJson();
         LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
         auto respMsg = protojson::WorkerCzarComRespMsg::createFromJson(response);
-        uniLock.lock();
+
+        // `response` json was created by WorkerCzarComRespMsg::toJson on the czar.
+        // The `response` from the czar needs to be used to remove the handled entries
+        // from the `failedTransmits` map and to determine if any result files are obsolete
+        // or if there were any parse errors.
+        uniLock.lock();  // re-lock _wciMtx to protect members.
         if (respMsg->success) {
             transmitSuccess = true;
             /// Read the value sent back by the czar. If it is greater than or equal
@@ -152,26 +161,49 @@ void WCzarInfo::_sendMessage() {
                      cName(__func__) << " ThoughtCzarWasDeadTime check local=" << localDeadTime
                                      << " resp=" << respDeadTime << " cleared=" << cleared);
             }
-            tie(cleanupCount, ujDataObsoleteList, ujParseErrorList) =
+            tie(cleanupCount, ujDataObsoleteList, ujIdNotFoundErrorList) =
                     _workerCzarComIssue->clearMapEntries(response);
-            // TODO &&& mark everything in Obsolete list as obsolete
-            // TODO &&& kill everything in parseErrorlist and send failed messages for each ("Internal parse
-            // error in WorkerCzarComIssue")
+
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit " << *respMsg);
+            ++_czarSentFailCount;
+            LOGS(_log, LOG_LVL_WARN,
+                 cName(__func__) << " Transmit czarSentFailCount=" << _czarSentFailCount
+                                 << " msg=" << *respMsg);
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
-            // TODO&&& ??? What to do here. It failed to parse. Start counting and consider the czar dead
-            // &&& if there are say 10 parse errors in a row. At that point, this worker and this czar
-            // &&& are hopelessly out of sink???
+            // TODO:  What to do here? Ignore this until its a problem? Czar failed to parse original
+            //   message. Start counting and consider the czar dead when a threshold is reached?
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) + " " + requestStr + " failed, ex: " + ex.what());
+        ++_parseErrorCount;
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " " << protojson::pwHide(jsReq)
+                             << " failed, parseErrorCount=" << _parseErrorCount << " ex:" << ex.what());
     }
 
     if (!transmitSuccess) {
-        // If transmit fails, the message will be resent
+        // If transmit fails, the czar will send another message eventually.
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failed to send message");
+        return;
+    }
+
+    auto foreman = Foreman::getForeman();
+    if (foreman == nullptr) return;
+    auto queriesAndChunks = foreman->getQueriesAndChunks();
+    if (queriesAndChunks == nullptr) return;
+
+    // Set these files as obsolete (at this point they are just deleted, but that may change).
+    for (auto const& ujIdent : ujDataObsoleteList) {
+        LOGS(_log, LOG_LVL_INFO,
+             cName(__func__) << " marking qId=" << ujIdent.qId << "_ujId=" << ujIdent.ujId << " as obsolete");
+        wbase::FileChannelShared::cleanUpResults(ujIdent.czInfo->czId, ujIdent.qId, ujIdent.ujId);
+    }
+    // Delete files where there were parse errors.
+    for (auto const& ujIdent : ujIdNotFoundErrorList) {
+        LOGS(_log, LOG_LVL_INFO,
+             cName(__func__) << " deleting qId=" << ujIdent.qId << "_ujId=" << ujIdent.ujId
+                             << " due to parse error");
+        wbase::FileChannelShared::cleanUpResults(ujIdent.czInfo->czId, ujIdent.qId, ujIdent.ujId);
     }
 }
 

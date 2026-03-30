@@ -34,6 +34,7 @@
 // qserv headers
 #include "protojson/ResponseMsg.h"
 #include "protojson/WorkerQueryStatusData.h"
+#include "wpublish/QueriesAndChunks.h"
 
 // This header declarations
 namespace lsst::qserv::protojson {
@@ -42,8 +43,6 @@ class UberJobStatusMsg;
 
 typedef std::shared_ptr<UberJobStatusMsg> FailedTransmitType;
 typedef std::map<std::pair<QueryId, UberJobId>, FailedTransmitType> FailedTransmitsMap;
-
-typedef std::tuple<CzarContactInfo::Ptr, QueryId, UberJobId> UberJobIdentifierType;
 
 /// This class is used to send/receive a message from the worker to a specific
 /// czar. It is used when there has been a communication issue with the worker
@@ -76,7 +75,9 @@ public:
 
     bool operator==(WorkerCzarComIssue const& other) const;
 
-    std::string cName(const char* funcN) const { return std::string("WorkerCzarComIssue") + funcN; }
+    std::string cName(const char* funcN) const {
+        return std::string("WorkerCzarComIssue") + funcN + wrkCzIdLog();
+    }
 
     static Ptr create(AuthContext const& authContext_) { return Ptr(new WorkerCzarComIssue(authContext_)); }
 
@@ -85,18 +86,6 @@ public:
     void setThoughtCzarWasDeadTime(uint64_t msDeadNowAliveTime) {
         std::lock_guard lg(_wciMtx);
         _thoughtCzarWasDeadTime = msDeadNowAliveTime;
-    }
-
-    /// Remove all entries from the failedTransmits map with QueryId `qId`.
-    void clearTransmitsForQid(QueryId qId) {  //&&& this needs to be called somewhere. &&&
-        std::lock_guard lg(_wciMtx);
-        for (auto it = _failedTransmits->begin(); it != _failedTransmits->end();) {
-            if (it->first.first == qId) {
-                it = _failedTransmits->erase(it);
-            } else {
-                ++it;
-            }
-        }
     }
 
     /// Go through the list of QueryId + UberJobId values in the response and clear those entries from the
@@ -108,8 +97,15 @@ public:
     /// will conserve resources. The vector of UberJob identifiers that the czar could not parse is a problem.
     /// An error message should be sent back to the czar for each of those in an attempt to maintain system
     /// stability, but they really should never have happened in the first place.
-    std::tuple<size_t, std::vector<UberJobIdentifierType>, std::vector<UberJobIdentifierType>>
-    clearMapEntries(nlohmann::json const& response);
+    std::tuple<size_t, std::vector<UberJobIdentType>, std::vector<UberJobIdentType>> clearMapEntries(
+            nlohmann::json const& response);
+
+    /// Remove all entries from the failedTransmits map with QueryId `qId`.
+    /// The czar is done with these queries.
+    /// @param qIdMap - map of dead queries and times. The times aren't needed
+    ///              here, but using the existing map is more efficient.
+    /// Note:  _failedTransmits is normally empty.
+    void clearFailedTransmitsForQids(std::map<QueryId, TIMEPOINT> const& qIdMap);
 
     uint64_t getThoughtCzarWasDeadTime() const { return _thoughtCzarWasDeadTime; }
 
@@ -150,6 +146,9 @@ public:
 
     /// Take the failedTransmitsMap and make an empty one to take its place.
     std::shared_ptr<FailedTransmitsMap> takeFailedTransmitsMap();
+
+    /// Return a short string with worker and czar IDs for logging.
+    std::string wrkCzIdLog() const;
 
     std::string dump() const;
 

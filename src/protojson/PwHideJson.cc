@@ -34,7 +34,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.PwHideJson");
 
 namespace lsst::qserv::protojson {
 
-//&&& Really need to make this recursive.
+// TODO Really need to make this recursive.
 nlohmann::json PwHideJson::hide(nlohmann::json const& in) const {
     try {
         nlohmann::json js(in);
