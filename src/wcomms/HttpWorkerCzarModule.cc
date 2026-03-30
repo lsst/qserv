@@ -36,7 +36,9 @@
 #include "http/RequestQuery.h"
 #include "http/RequestBodyJSON.h"
 #include "mysql/MySqlUtils.h"
+#include "protojson/ResponseMsg.h"
 #include "protojson/UberJobMsg.h"
+#include "protojson/WorkerCzarComIssue.h"
 #include "protojson/WorkerQueryStatusData.h"
 #include "util/Command.h"
 #include "util/Error.h"
@@ -264,15 +266,17 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     vector<wbase::UserQueryInfo::Ptr> deleteFilesList;
     std::map<QueryId, std::map<UberJobId, TIMEPOINT>> deadUberJobsList;
     {
-        // Cancelled queries where we want to keep the files
-        lock_guard mapLg(wqsData->mapMtx);
-        queriesAndChunks->buildCancelledAndDeletedLists(czId, wqsData->qIdDoneKeepFiles, true, cancelledList,
-                                                        deleteFilesList);
-        queriesAndChunks->buildCancelledAndDeletedLists(czId, wqsData->qIdDoneDeleteFiles, false,
-                                                        cancelledList, deleteFilesList);
+        // Need to make a lists of these while the mutex is held,
+        // and then use the lists to make changes after the mutex is released.
 
-        // Need to make a list of these while the mutex is held,
-        // and then delete them after the mutex is released.
+        lock_guard mapLg(wqsData->mapMtx);
+        // Cancelled queries where we want to keep the files
+        bool const keepFiles = true;
+        queriesAndChunks->buildCancelledAndDeletedLists(czId, wqsData->qIdDoneKeepFiles, keepFiles,
+                                                        cancelledList, deleteFilesList);
+        // Cancelled queries where the files can be deleted.
+        queriesAndChunks->buildCancelledAndDeletedLists(czId, wqsData->qIdDoneDeleteFiles, !keepFiles,
+                                                        cancelledList, deleteFilesList);
         deadUberJobsList = wqsData->qIdDeadUberJobs;
     }
 
@@ -288,6 +292,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
                 if (!uqInfo->getCancelledByCzar()) {
                     for (auto const& [ujId, tm] : ujIdMap) {
                         uqInfo->cancelUberJob(ujId);
+                        wbase::FileChannelShared::cleanUpResults(czId, uqInfo->getQueryId(), ujId);
                     }
                 }
             }
@@ -306,6 +311,10 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
         wbase::FileChannelShared::cleanUpResults(czIdToDelete, uqiPtr->getQueryId());
     }
     // Syntax errors in the message would throw invalid_argument, which is handled elsewhere.
+
+    // Remove associated entries from the associated WorkerCzarComIssue object.
+    auto wccIssue = wCzarInfo->getWorkerCzarComIssue();
+    wccIssue->clearFailedTransmitsForQids(wqsData->qIdDoneDeleteFiles);
 
     // Return a message containing lists of the queries that were cancelled.
     jsRet = wqsData->serializeResponseJson(foreman()->getWorkerStartupTime());

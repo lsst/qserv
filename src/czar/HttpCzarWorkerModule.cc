@@ -143,13 +143,14 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
     string const fName("HttpCzarWorkerModule::_handleWorkerCzarComIssue");
     LOGS(_log, LOG_LVL_DEBUG, fName << " start");
     // Parse and verify the json message and then deal with the problems.
+    string wId = "unknown";
     try {
         protojson::AuthContext const authC(cconfig::CzarConfig::instance()->replicationInstanceId(),
                                            cconfig::CzarConfig::instance()->replicationAuthKey());
         auto const& jsReq = body().objJson;
         auto wccIssue = protojson::WorkerCzarComIssue::createFromJson(jsReq, authC);
 
-        auto wId = wccIssue->getWorkerInfo()->wId;
+        wId = wccIssue->getWorkerInfo()->wId;
         if (wccIssue->getThoughtCzarWasDeadTime() > 0) {
             LOGS(_log, LOG_LVL_WARN,
                  "HttpCzarWorkerModule::_handleWorkerCzarComIssue worker="
@@ -180,13 +181,13 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
             auto rdyMsg = dynamic_pointer_cast<protojson::UberJobReadyMsg>(statusMsg);
             if (rdyMsg != nullptr) {
                 // Put the file on a queue to be collected later.
-                auto erMsg = czar::Czar::getCzar()->handleUberJobReadyMsg(rdyMsg, fName);
-                execRespMsgs.push_back(erMsg);
+                auto exRespMsg = czar::Czar::getCzar()->handleUberJobReadyMsgNoThrow(rdyMsg, fName);
+                execRespMsgs.push_back(exRespMsg);
             } else {
                 auto errMsg = dynamic_pointer_cast<protojson::UberJobErrorMsg>(statusMsg);
-                // Kill the UberJob or user query depending on the error.
-                auto erMsg = czar::Czar::getCzar()->handleUberJobErrorMsg(errMsg, fName);
-                execRespMsgs.push_back(erMsg);
+                // Kill the UberJob or user query depending on the error. (Doesn't throw)
+                auto exRespMsg = czar::Czar::getCzar()->handleUberJobErrorMsg(errMsg, fName);
+                execRespMsgs.push_back(exRespMsg);
             }
         }
         auto jsRet = wccIssue->responseToJson(wccIssue->getThoughtCzarWasDeadTime(), execRespMsgs);
@@ -197,6 +198,9 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
         LOGS(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleWorkerCzarComIssue received "
                      << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
+        // This is very bad as there's no way to know what is going wrong. Just one of these is surviveable,
+        // but if it keeps happening, the system is unstable.
+        Czar::getCzar()->incrCommErrCount("WorkerCzarComIssue", wId, iaEx.what());
         protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
         return respMsg.toJson();
     }

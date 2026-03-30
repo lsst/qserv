@@ -300,8 +300,6 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
 
     auto ftMap = wccIssueA1->takeFailedTransmitsMap();
     BOOST_REQUIRE(ftMap->size() == 0);
-
-    //&&& TODO repeat this test adding a parseError response.
 }
 
 BOOST_AUTO_TEST_CASE(ResponseMsg) {
@@ -319,8 +317,21 @@ BOOST_AUTO_TEST_CASE(ResponseMsg) {
     BOOST_REQUIRE(!respMsgA->equal(*respMsgBOut));
     BOOST_REQUIRE(!respMsgB->equal(*respMsgC));
     BOOST_REQUIRE(!respMsgD->equal(*respMsgC));
+}
 
-    // &&& test for ExecutiveRespMsg and WorkerCzarComRespMsg should be added here.
+BOOST_AUTO_TEST_CASE(ExecutiveRespMsg) {
+    auto respMsgA = lsst::qserv::protojson::ExecutiveRespMsg::create(true, false, 123, 456, 9, "allGood",
+                                                                     "just a test");
+    auto jsA = respMsgA->toJson();
+    auto respMsgAOut = lsst::qserv::protojson::ExecutiveRespMsg::createFromJson(jsA);
+    BOOST_REQUIRE(respMsgA->equal(*respMsgAOut));
+}
+
+BOOST_AUTO_TEST_CASE(WorkerCzarComRespMsg) {
+    auto respMsgA = lsst::qserv::protojson::WorkerCzarComRespMsg::create(true, 73);
+    auto jsA = respMsgA->toJson();
+    auto respMsgAOut = lsst::qserv::protojson::WorkerCzarComRespMsg::createFromJson(jsA);
+    BOOST_REQUIRE(respMsgA->equal(*respMsgAOut));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

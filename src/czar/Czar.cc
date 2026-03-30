@@ -162,7 +162,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _clientToQuery(),
           _monitorSleepTime(_czarConfig->getMonitorSleepTimeMilliSec()),
           _activeWorkerMap(new ActiveWorkerMap(_czarConfig)),
-          _fqdn(util::get_current_host_fqdn()) {
+          _fqdn(util::get_current_host_fqdn_wait()) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
@@ -728,6 +728,20 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobReadyMsg(
     return importRes;
 }
 
+protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobReadyMsgNoThrow(
+        std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg, string const& note) {
+    protojson::ExecutiveRespMsg::Ptr execRespMsg;
+    try {
+        execRespMsg = handleUberJobReadyMsg(jrMsg, note);
+    } catch (invalid_argument const& ex) {
+        LOGS(_log, LOG_LVL_WARN, note << " exception: " << ex.what());
+        // The message was parsed, but this UberJob is no longer needed by the czar.
+        execRespMsg = protojson::ExecutiveRespMsg::create(false, true, jrMsg->queryId, jrMsg->uberJobId,
+                                                          jrMsg->czarId, "uberJobEnded", ex.what());
+    }
+    return execRespMsg;
+}
+
 protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobErrorMsg(
         std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg, string const& note) {
     auto queryId = jrMsg->queryId;
@@ -753,13 +767,32 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobErrorMsg(
         LOGS(_log, LOG_LVL_WARN, note << " No UberJob for " << idMsg);
         execRespMsg->success = true;
         execRespMsg->dataObsolete = true;
-        execRespMsg->errorType = "queryEnded";
+        execRespMsg->errorType = "uberJobEnded";
         execRespMsg->note = "null UberJob";
         return execRespMsg;
     }
 
     uj->workerError(jrMsg->multiError, *execRespMsg);
     return execRespMsg;
+}
+
+void Czar::incrCommErrCount(std::string const& type, std::string const& worker, std::string const& note) {
+    LOGS(_log, LOG_LVL_WARN, "Czar::incrCommErrCount " << type << " worker=" << worker << " " << note);
+    stringstream os;
+    lock_guard lg(_commErrCountMtx);
+    auto key = std::make_pair(type, worker);
+    auto iter = _commErrCountMap.find(key);
+    if (iter == _commErrCountMap.end()) {
+        _commErrCountMap[key] = 1;
+    } else {
+        iter->second += 1;
+    }
+    os << "Czar::incrCommErrCount {";
+    for (auto const& [key, val] : _commErrCountMap) {
+        LOGS(_log, LOG_LVL_WARN, "(" << key.first << " worker=" << key.second << " count=" << val << ")");
+    }
+    os << "}";
+    LOGS(_log, LOG_LVL_WARN, os.str());
 }
 
 }  // namespace lsst::qserv::czar

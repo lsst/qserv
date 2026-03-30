@@ -39,10 +39,15 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "protojson/WorkerQueryStatusData.h"
 #include "wbase/Task.h"
 #include "wpublish/QueryStatistics.h"
 
 // Forward declarations
+namespace lsst::qserv::protojson {
+class CzarContactInfo;
+}  // namespace lsst::qserv::protojson
+
 namespace lsst::qserv::wbase {
 struct TaskSelector;
 }  // namespace lsst::qserv::wbase

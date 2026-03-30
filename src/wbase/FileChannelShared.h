@@ -87,9 +87,17 @@ public:
     /**
      * Clean up result files of the specified query.
      * @param czarId The unique identifier of Czar that initiated the query.
-     * @param queryId The most recent user query registered before restart.
+     * @param queryId The id of the query results to be removed.
      */
     static void cleanUpResults(uint32_t czarId, QueryId queryId);
+
+    /**
+     * Clean up result files of the specified UberJob.
+     * @param czarId The unique identifier of Czar that initiated the query.
+     * @param queryId The id of the UberJob results to be removed.
+     * @param ujId The id of the UberJob results to be removed.
+     */
+    static void cleanUpResults(uint32_t czarId, QueryId queryId, UberJobId ujId);
 
     /// @return Status and statistics on the results folder (capacity, usage, etc.)
     static nlohmann::json statusToJson();

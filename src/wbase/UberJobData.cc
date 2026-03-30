@@ -44,6 +44,7 @@
 #include "util/Bug.h"
 #include "util/MultiError.h"
 #include "util/ResultFileName.h"
+#include "wbase/FileChannelShared.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/WCzarInfoMap.h"
@@ -265,16 +266,16 @@ void UJTransmitCmd::action(util::CmdData* data) {
     http::Client client(_method, _url, requestStr, _headers);
     bool transmitSuccess = false;
     try {
-#if 1  //&&& For error path testing, seeting 0 here forces communication to use WorkerCzarComIssue.
         json const response = client.readAsJson();
         auto respMsg = protojson::ExecutiveRespMsg::createFromJson(response);
         if (respMsg->success) {
             transmitSuccess = true;
             if (respMsg->dataObsolete) {
-                // Delete the file and end this UberJob
+                // Mark the as obsolete and end this UberJob
                 ujPtr->cancelAllTasks();
-                // TODO: Delete the file, there's currently no code to delete a specific qId + ujId file
-                //       in FileChannelShared, but it should be added and called here.
+                // At this point, just deleting obsolete result files.
+                wbase::FileChannelShared::cleanUpResults(ujPtr->getCzarId(), ujPtr->getQueryId(),
+                                                         ujPtr->getUberJobId());
             }
             string note = response.at("note");
             if (!note.empty()) {
@@ -288,7 +289,6 @@ void UJTransmitCmd::action(util::CmdData* data) {
             // it.
             return;
         }
-#endif  //&&&
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " " << _requestContext << " failed, ex: " << ex.what());
     }
