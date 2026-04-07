@@ -442,9 +442,21 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 protojson::ScanInfo::Ptr QuerySession::getScanInfo() const { return _context->scanInfo; }
 
 ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
-                                                      ChunkSpec const& chunkSpec,
-                                                      bool fillInChunkIdTag) const {
-    if (!validateDominantDbs()) {
+                                                      ChunkSpec const& chunkSpec, bool fillInChunkIdTag,
+                                                      bool checkDominantDb) const {
+    /// TODO: checkDominantDb may not be the best way to go about this, but checking it
+    ///   for every chunk is not useful and wastes a lot of time as the information doesn't
+    ///   change and all chunks use the same databases (while using different tables).
+    ///   There are things that could be done, maybe all are applicable, or maybe not worth the effort:
+    ///   - validateDominantDbs() is called in many places and maybe it just doesn't need to be called
+    ///     that often.
+    ///   - Create a cache of CSS that is immutable so many threads can read without locking.
+    ///     - When a query is started, it asks for a shared pointer to the CSS cache, if the
+    ///       CSS cache is obsolete, a new cache is made and returned, otherwise the existing
+    ///       cache is returned. This way, the CSS cache is only updated when the CSS changes,
+    ///       and all threads can read from it without locking. Changing CSS values mid analysis
+    //        may be detrimental, and this would prevent that as well.
+    if (checkDominantDb && !validateDominantDbs()) {
         throw std::logic_error("QuerySession::" + std::string(__func__) + ": Invalid dominant databases");
     }
 

@@ -170,11 +170,6 @@ public:
 
     void setRegUpdateTime(TIMEPOINT updateTime);
 
-    TIMEPOINT getRegUpdateTime(TIMEPOINT updateTime) {
-        std::lock_guard lg(_rMtx);
-        return _regUpdateTime;
-    }
-
     double timeSinceRegUpdateSeconds() const {
         std::lock_guard lg(_rMtx);
         double secs = std::chrono::duration<double>(CLOCK::now() - _regUpdateTime).count();

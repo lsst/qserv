@@ -253,7 +253,7 @@ void UserQuerySelect::submit() {
 
     string dbName("");
     bool dbNameSet = false;
-
+    bool checkDbs = true;
     for (auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e && !exec->getCancelled();
          ++i) {
         auto& chunkSpec = *i;
@@ -267,7 +267,10 @@ void UserQuerySelect::submit() {
         {
             lock_guard<mutex> lock(chunksMtx);
             bool fillInChunkIdTag = false;  // do not fill in the chunkId
-            cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag);
+            cs = _qSession->buildChunkQuerySpec(queryTemplates, chunkSpec, fillInChunkIdTag, checkDbs);
+            // Only need to check the dominantDbs for the first chunk, as all chunks
+            // should have the same databases (same databases, different tables).
+            checkDbs = false;
             chunks.push_back(cs->chunkId);
         }
 

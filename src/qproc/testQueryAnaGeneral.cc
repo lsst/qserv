@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_CASE(RestrictorNeighborCount) {
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
     auto queryTemplates = qs->makeQueryTemplates();
-    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
+    auto first = qs->buildChunkQuerySpec(queryTemplates, *i, true);
     int numQueries = first->queries.size();
     BOOST_CHECK_EQUAL(numQueries, 2);
     BOOST_REQUIRE(numQueries > 0);
@@ -272,7 +272,7 @@ BOOST_AUTO_TEST_CASE(Triple) {
     BOOST_CHECK(context);
     std::string parallel = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(parallel, expected);
-    auto first = qs->buildChunkQuerySpec(qs->makeQueryTemplates(), *qs->cQueryBegin());
+    auto first = qs->buildChunkQuerySpec(qs->makeQueryTemplates(), *qs->cQueryBegin(), true);
     BOOST_REQUIRE_EQUAL(first->subChunkIds.size(), 3u);
     BOOST_CHECK_EQUAL(first->subChunkIds[0], 100000);
     BOOST_CHECK_EQUAL(first->subChunkIds[1], 100010);
@@ -772,7 +772,7 @@ BOOST_AUTO_TEST_CASE(CountQuery2) {
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
     auto queryTemplates = qs->makeQueryTemplates();
-    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
+    auto first = qs->buildChunkQuerySpec(queryTemplates, *i, true);
     BOOST_CHECK_EQUAL(first->queries.size(), 1U);
     BOOST_CHECK_EQUAL(first->queries[0], expected_100);
 }
@@ -1150,7 +1150,7 @@ BOOST_AUTO_TEST_CASE(NoSpec) {
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
     auto queryTemplates = qs->makeQueryTemplates();
-    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
+    auto first = qs->buildChunkQuerySpec(queryTemplates, *i, true);
     BOOST_CHECK_EQUAL(first->queries.size(), 1U);
     BOOST_CHECK_EQUAL(first->queries[0], expected);
     BOOST_CHECK_EQUAL(first->subChunkTables.size(), 0U);
@@ -1385,7 +1385,7 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     auto e = qs->cQueryEnd();
     BOOST_REQUIRE(i != e);
     auto queryTemplates = qs->makeQueryTemplates();
-    auto first = qs->buildChunkQuerySpec(queryTemplates, *i);
+    auto first = qs->buildChunkQuerySpec(queryTemplates, *i, true);
     int numQueries = first->queries.size();
     BOOST_CHECK_EQUAL(numQueries, 2);
     BOOST_REQUIRE(numQueries > 0);

@@ -85,7 +85,7 @@ public:
     std::string cName(const char* fName) const { return std::string("ResponseMsg::") + fName; }
 
     /// Returns a string for logging.
-    /// Note: Naming dumpOs just dump should work, but is causes gcc to fail when child classes in
+    /// Note: Naming dumpOs just dump should work, but it causes gcc to fail when child classes in
     ///       unit tests try to call dump() and the base class version is not found.
     virtual std::ostream& dumpOs(std::ostream& os) const;
     std::string dump() const;

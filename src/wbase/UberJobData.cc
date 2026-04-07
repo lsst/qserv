@@ -138,7 +138,7 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
     if (_responseState == NOTHING) {
         _responseState = SENDING_ERROR;
     } else {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) << " Already sending a different message. NOT sending [" << multiErr << "]");
         return;
     }

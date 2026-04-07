@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(CountIn) {
     for (auto i = queryAnaHelper.querySession->cQueryBegin(), e = queryAnaHelper.querySession->cQueryEnd();
          i != e; ++i) {
         auto queryTemplates = queryAnaHelper.querySession->makeQueryTemplates();
-        auto cs = queryAnaHelper.querySession->buildChunkQuerySpec(queryTemplates, *i);
+        auto cs = queryAnaHelper.querySession->buildChunkQuerySpec(queryTemplates, *i, true);
         LOGS_DEBUG("Chunk spec: " << *cs);
     }
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
