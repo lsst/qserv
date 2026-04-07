@@ -220,4 +220,26 @@ BOOST_AUTO_TEST_CASE(FileUtils_verifyFolders) {
     LOGS_INFO("FileUtils::verifyFolders test ends");
 }
 
+BOOST_AUTO_TEST_CASE(FileUtils_getSetMTime) {
+    LOGS_INFO("getMTime and setMTime test begins");
+    string const baseDir = "/tmp";
+    string const fileName =
+            FileUtils::createTemporaryFile(baseDir, "test-file-", "%%%%-%%%%-%%%%-%%%%", ".dat");
+
+    // Get the current modification time
+    time_t const mtime = getMTime(fileName);
+
+    // Set a new modification time
+    time_t const newMTime = mtime + 10;
+    setMTime(fileName, newMTime);
+
+    // Verify the modification time was updated
+    BOOST_CHECK_EQUAL(getMTime(fileName), newMTime);
+
+    // Clean up
+    std::error_code ec;
+    fs::remove(fileName, ec);
+    LOGS_INFO("getMTime and setMTime test ends");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

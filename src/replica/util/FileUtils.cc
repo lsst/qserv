@@ -27,10 +27,12 @@
 #include <cerrno>
 #include <cstring>
 #include <cstdio>
+#include <fcntl.h>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
 #include <system_error>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <pwd.h>
 #include <unistd.h>
@@ -382,6 +384,38 @@ bool MultiFileCsComputeEngine::execute() {
         _processed[*_currentFileItr].reset(new FileCsComputeEngine(*_currentFileItr, _recordSizeBytes));
     }
     return false;
+}
+
+time_t getMTime(string const& fileName) {
+    if (fileName.empty()) {
+        throw invalid_argument("FileUtils::" + string(__func__) + "  empty file name passed into the method");
+    }
+    struct stat sb;
+    if (lstat(fileName.c_str(), &sb) == -1) {
+        throw runtime_error("FileUtils::" + string(__func__) + "  failed to access the file: " + fileName +
+                            ", error: '" + strerror(errno) + "', errno: " + to_string(errno) + ")");
+    }
+    return sb.st_mtime;
+}
+
+void setMTime(string const& fileName, time_t mtime) {
+    if (fileName.empty()) {
+        throw invalid_argument("FileUtils::" + string(__func__) + "  empty file name passed into the method");
+    }
+    struct stat sb;
+    if (lstat(fileName.c_str(), &sb) == -1) {
+        throw runtime_error("FileUtils::" + string(__func__) + "  failed to access the file: " + fileName +
+                            ", error: '" + strerror(errno) + "', errno: " + to_string(errno) + ")");
+    }
+    struct timespec times[2];
+    times[0] = sb.st_atim;  // keep the access time unchanged
+    times[1].tv_sec = mtime;
+    times[1].tv_nsec = 0;
+    if (utimensat(AT_FDCWD, fileName.c_str(), times, 0) == -1) {
+        throw runtime_error("FileUtils::" + string(__func__) +
+                            "  failed to set mtime for the file: " + fileName + ", error: '" +
+                            strerror(errno) + "', errno: " + to_string(errno) + ")");
+    }
 }
 
 }  // namespace lsst::qserv::replica
