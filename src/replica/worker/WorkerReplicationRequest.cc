@@ -449,11 +449,14 @@ bool WorkerReplicationRequest::_finalize(replica::Lock const& lock) {
                 reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_RENAME,
                               "failed to rename file: " + tmpFile.string() + " into " + outFile.string() +
                                       ", code: " + to_string(ec.value()) + ", error: " + ec.message());
-        fs::last_write_time(outFile, fs::file_time_type(std::chrono::seconds(_file2descr[file].mtime)), ec);
-        errorContext = errorContext ||
-                       reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                     "failed to change 'mtime' of file: " + tmpFile.string() +
-                                             ", code: " + to_string(ec.value()) + ", error: " + ec.message());
+        try {
+            replica::setMTime(outFile.string(), _file2descr[file].mtime);
+        } catch (exception const& ex) {
+            errorContext =
+                    errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                                                  "failed to change 'mtime' of file: " + outFile.string() +
+                                                          ", ex: " + ex.what());
+        }
     }
     if (errorContext.failed) {
         setStatus(lock, ProtocolStatus::FAILED, errorContext.extendedStatus);

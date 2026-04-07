@@ -156,11 +156,15 @@ bool WorkerFindRequest::execute() {
                                    reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_SIZE,
                                                  "failed to read file size: " + path.string() + ", code: " +
                                                          to_string(ec.value()) + ", error: " + ec.message());
-                    const time_t mtime = fs::last_write_time(path, ec).time_since_epoch().count();
-                    errorContext = errorContext ||
-                                   reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                                 "failed to read file mtime: " + path.string() + ", code: " +
-                                                         to_string(ec.value()) + ", error: " + ec.message());
+                    time_t mtime = 0;
+                    try {
+                        mtime = replica::getMTime(path.string());
+                    } catch (exception const& ex) {
+                        errorContext =
+                                errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                                                              "failed to read file mtime: " + path.string() +
+                                                                      ", ex: " + ex.what());
+                    }
                     fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
                             file, size, mtime, "", /* cs */
                             0,                     /* beginTransferTime */
@@ -209,11 +213,15 @@ bool WorkerFindRequest::execute() {
             for (auto&& file : fileNames) {
                 const fs::path path(file);
                 uint64_t const size = _csComputeEnginePtr->bytes(file);
-                time_t const mtime = fs::last_write_time(path, ec).time_since_epoch().count();
-                errorContext = errorContext || reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                                             "failed to read file mtime: " + path.string() +
-                                                                     ", code: " + to_string(ec.value()) +
-                                                                     ", error: " + ec.message());
+                time_t mtime = 0;
+                try {
+                    mtime = replica::getMTime(path.string());
+                } catch (exception const& ex) {
+                    errorContext =
+                            errorContext || reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                                                          "failed to read file mtime: " + path.string() +
+                                                                  ", ex: " + ex.what());
+                }
                 fileInfoCollection.emplace_back(ReplicaInfo::FileInfo({
                         path.filename().string(), size, mtime, to_string(_csComputeEnginePtr->cs(file)),
                         0,   /* beginTransferTime */

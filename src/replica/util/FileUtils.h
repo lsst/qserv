@@ -27,6 +27,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <time.h>
 #include <tuple>
 #include <vector>
 
@@ -297,6 +298,24 @@ private:
     /// Files which has been or are being processed
     std::map<std::string, std::unique_ptr<FileCsComputeEngine>> _processed;
 };
+
+/**
+ * Get mtime of a file.
+ * @param fileName the name of a file
+ * @return the mtime of the file
+ * @throws std::runtime_error if there was a problem with accessing the file
+ * @throws std::invalid_argument if the file name is empty
+ */
+time_t getMTime(std::string const& fileName);
+
+/**
+ * Set mtime of a file.
+ * @param fileName the name of a file
+ * @param mtime the mtime to be set for the file
+ * @throws std::runtime_error if there was a problem with accessing the file
+ * @throws std::invalid_argument if the file name is empty
+ */
+void setMTime(std::string const& fileName, time_t mtime);
 
 }  // namespace lsst::qserv::replica
 

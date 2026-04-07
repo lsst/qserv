@@ -35,6 +35,7 @@
 #include "replica/config/Configuration.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/services/ServiceProvider.h"
+#include "replica/util/FileUtils.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -199,11 +200,11 @@ void FileServerConnection::_requestReceived(boost::system::error_code const& ec,
                          << ", code: " << to_string(fs_ec.value()) << ", error: " << fs_ec.message());
             break;
         }
-        mtime = fs::last_write_time(file, fs_ec).time_since_epoch().count();
-        if (fs_ec.value() != 0) {
+        try {
+            mtime = replica::getMTime(file.string());
+        } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_ERROR,
-                 context << __func__ << "  failed to get file mtime of: " << file
-                         << ", code: " << to_string(fs_ec.value()) << ", error: " << fs_ec.message());
+                 context << __func__ << "  failed to get file mtime of: " << file << ", ex: " << ex.what());
             break;
         }
 

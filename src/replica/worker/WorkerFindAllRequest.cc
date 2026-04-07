@@ -132,12 +132,15 @@ bool WorkerFindAllRequest::execute() {
                                                          ", code: " + to_string(ec.value()) +
                                                          ", error: " + ec.message());
 
-                    time_t const mtime = fs::last_write_time(entry.path(), ec).time_since_epoch().count();
-                    errorContext = errorContext ||
-                                   reportErrorIf(ec.value() != 0, ProtocolStatusExt::FILE_MTIME,
-                                                 "failed to read file mtime: " + entry.path().string() +
-                                                         ", error: " + ec.message());
-
+                    time_t mtime = 0;
+                    try {
+                        mtime = replica::getMTime(entry.path().string());
+                    } catch (exception const& ex) {
+                        errorContext = errorContext ||
+                                       reportErrorIf(true, ProtocolStatusExt::FILE_MTIME,
+                                                     "failed to read file mtime: " + entry.path().string() +
+                                                             ", ex: " + ex.what());
+                    }
                     unsigned const chunk = get<1>(parsed);
                     chunk2fileInfoCollection[chunk].emplace_back(ReplicaInfo::FileInfo({
                             entry.path().filename().string(), size, mtime,
