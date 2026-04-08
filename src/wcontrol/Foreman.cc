@@ -116,7 +116,7 @@ Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int pool
           _io_service(),
           _httpServer(qhttp::Server::create(_io_service, 0 /* grab the first available port */)),
           _wCzarInfoMap(WCzarInfoMap::create()),
-          _fqdn(util::get_current_host_fqdn()) {
+          _fqdn(util::get_current_host_fqdn_wait()) {
     // Make the chunk resource mgr
     // Creating backend makes a connection to the database for making temporary tables.
     // It will delete temporary tables that it can identify as being created by a worker.

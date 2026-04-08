@@ -87,9 +87,17 @@ public:
     /**
      * Clean up result files of the specified query.
      * @param czarId The unique identifier of Czar that initiated the query.
-     * @param queryId The most recent user query registered before restart.
+     * @param queryId The id of the query results to be removed.
      */
     static void cleanUpResults(uint32_t czarId, QueryId queryId);
+
+    /**
+     * Clean up result files of the specified UberJob.
+     * @param czarId The unique identifier of Czar that initiated the query.
+     * @param queryId The id of the UberJob results to be removed.
+     * @param ujId The id of the UberJob results to be removed.
+     */
+    static void cleanUpResults(uint32_t czarId, QueryId queryId, UberJobId ujId);
 
     /// @return Status and statistics on the results folder (capacity, usage, etc.)
     static nlohmann::json statusToJson();
@@ -177,7 +185,7 @@ private:
      * @param task - a task that produced the result set
      * @param mResult - MySQL result to be used as a source
      * @param bytes - the number of bytes in the result message recorded into the file
-     * @param rows - the number of rows extracted from th eresult set
+     * @param rows - the number of rows extracted from the result set
      * @param multiErr - a collector of any errors that were captured during result set processing
      * @throws std::runtime_error for problems encountered when attemting to create the file
      *   or write into the file.

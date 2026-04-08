@@ -41,6 +41,7 @@
 #include "global/intTypes.h"
 #include "global/stringTypes.h"
 #include "mysql/MySqlConfig.h"
+#include "protojson/ResponseMsg.h"
 #include "util/ConfigStore.h"
 #include "util/Timer.h"
 
@@ -166,15 +167,21 @@ public:
 
     /// Starts the process of collecting a result file from the worker.
     /// @throws std::invalid_argument
-    /// @param retry - true indicates this is a retry of a failed communication and
-    ///          should not kill the associated UberJob due to an unexpected state.
-    nlohmann::json handleUberJobReadyMsg(std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg,
-                                         std::string const& note, bool const retry = false);
+    protojson::ExecutiveRespMsg::Ptr handleUberJobReadyMsg(
+            std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg, std::string const& note);
 
-    /// Handle an UberJob processing error from the worker.
-    /// @throws std::invalid_argument
-    nlohmann::json handleUberJobErrorMsg(std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg,
-                                         std::string const& note);
+    /// Same as handleUberJobReadyMsg but returns an altered message instead of throwing.
+    protojson::ExecutiveRespMsg::Ptr handleUberJobReadyMsgNoThrow(
+            std::shared_ptr<protojson::UberJobReadyMsg> const& jrMsg, std::string const& note);
+
+    /// Handle an UberJob processing error from the worker, does not throw exceptions.
+    /// It alters the returned response message instead of throwing an exception.
+    protojson::ExecutiveRespMsg::Ptr handleUberJobErrorMsg(
+            std::shared_ptr<protojson::UberJobErrorMsg> const& jrMsg, std::string const& note);
+
+    /// Increment a communication error count. Just logging them now as it probably is not an
+    /// issue, but may be they have been happening and it would be useful to know.
+    void incrCommErrCount(std::string const& type, std::string const& worker, std::string const& note);
 
     /// Startup time of czar, sent to workers so they can detect that the czar was
     /// was restarted when this value changes.
@@ -270,6 +277,11 @@ private:
 
     /// FQDN for this czar.
     std::string const _fqdn;
+
+    /// Map of communication error counts by type and worker, protected by _commErrCountMtx.
+    /// Key - <error type, worker id> - value - count of errors of that type for that worker.
+    std::map<std::pair<std::string, std::string>, int> _commErrCountMap;
+    mutable std::mutex _commErrCountMtx;  ///< protects _commErrCountMap
 };
 
 }  // namespace lsst::qserv::czar
