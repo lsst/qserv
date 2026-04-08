@@ -168,6 +168,29 @@ void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId) {
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
 }
 
+void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId, UberJobId ujId) {
+    string const context = "FileChannelShared::" + string(__func__) + " ";
+    fs::path const dirPath = wconfig::WorkerConfig::instance()->resultsDirname();
+    LOGS(_log, LOG_LVL_INFO,
+         context << "removing result files from " << dirPath << " for czarId=" << czarId
+                 << ", queryId=" << queryId << ", and ujId=" << ujId << ".");
+    lock_guard<mutex> const lock(_resultsDirCleanupMtx);
+    size_t const numFilesRemoved = ::cleanUpResultsImpl(
+            context, dirPath, [&context, czarId, queryId, ujId](string const& fileName) -> bool {
+                try {
+                    auto const fileAttributes = util::ResultFileName(fileName);
+                    return (fileAttributes.czarId() == czarId) && (fileAttributes.queryId() == queryId) &&
+                           (fileAttributes.ujId() == ujId);
+                } catch (exception const& ex) {
+                    LOGS(_log, LOG_LVL_WARN,
+                         context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
+                }
+                return false;
+            });
+    LOGS(_log, LOG_LVL_INFO,
+         context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
+}
+
 json FileChannelShared::statusToJson() {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     auto const config = wconfig::WorkerConfig::instance();

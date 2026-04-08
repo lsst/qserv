@@ -37,12 +37,14 @@
 #include "http/Method.h"
 #include "http/RequestBodyJSON.h"
 #include "http/RequestQuery.h"
+#include "protojson/PwHideJson.h"
 #include "protojson/UberJobErrorMsg.h"
 #include "protojson/UberJobReadyMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
 #include "util/Bug.h"
 #include "util/MultiError.h"
 #include "util/ResultFileName.h"
+#include "wbase/FileChannelShared.h"
 #include "wconfig/WorkerConfig.h"
 #include "wcontrol/Foreman.h"
 #include "wcontrol/WCzarInfoMap.h"
@@ -136,7 +138,7 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
     if (_responseState == NOTHING) {
         _responseState = SENDING_ERROR;
     } else {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGS(_log, LOG_LVL_DEBUG,
              cName(__func__) << " Already sending a different message. NOT sending [" << multiErr << "]");
         return;
     }
@@ -265,15 +267,23 @@ void UJTransmitCmd::action(util::CmdData* data) {
     bool transmitSuccess = false;
     try {
         json const response = client.readAsJson();
-        auto respMsg = protojson::ResponseMsg::createFromJson(response);
+        auto respMsg = protojson::ExecutiveRespMsg::createFromJson(response);
         if (respMsg->success) {
             transmitSuccess = true;
+            if (respMsg->dataObsolete) {
+                // Mark the as obsolete and end this UberJob
+                ujPtr->cancelAllTasks();
+                // At this point, just deleting obsolete result files.
+                wbase::FileChannelShared::cleanUpResults(ujPtr->getCzarId(), ujPtr->getQueryId(),
+                                                         ujPtr->getUberJobId());
+            }
             string note = response.at("note");
-            if (note.empty()) {
-                LOGS(_log, LOG_LVL_INFO, response);
+            if (!note.empty()) {
+                LOGS(_log, LOG_LVL_INFO, protojson::pwHide(response));
             }
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit success=0 " << response);
+            LOGS(_log, LOG_LVL_WARN,
+                 cName(__func__) << " Transmit success=0 " << protojson::pwHide(response));
             respMsg->failedUpdateUberJobData(ujPtr);
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
@@ -283,7 +293,7 @@ void UJTransmitCmd::action(util::CmdData* data) {
         LOGS(_log, LOG_LVL_WARN, cName(__func__) << " " << _requestContext << " failed, ex: " << ex.what());
     }
     if (!transmitSuccess) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " resending!");
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit failed, adding to WorkerCzarComIssue");
         auto sPtr = _selfPtr;
         if (_foreman != nullptr && sPtr != nullptr) {
             // Do not reset _selfPtr as re-queuing may be needed several times.
