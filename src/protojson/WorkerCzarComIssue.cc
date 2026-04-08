@@ -28,6 +28,7 @@
 #include "http/Client.h"
 #include "http/MetaModule.h"
 #include "http/RequestBodyJSON.h"
+#include "protojson/PwHideJson.h"
 #include "protojson/ResponseMsg.h"
 #include "protojson/UberJobErrorMsg.h"
 #include "protojson/UberJobReadyMsg.h"
@@ -47,6 +48,20 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.WorkerCzarComIssue");
 
 namespace lsst::qserv::protojson {
 
+std::string WorkerCzarComIssue::wrkCzIdLog() const {
+    stringstream os;
+    auto wInf = _wInfo;
+    auto cInf = _czInfo;
+    os << " wId=" << (wInf == nullptr ? "null" : wInf->wId) << " czId=";
+    // `?` doesn't like mixing return types.
+    if (cInf == nullptr)
+        os << "null";
+    else
+        os << cInf->czId;
+    os << " ";
+    return os.str();
+}
+
 json WorkerCzarComIssue::toJson() {
     json jsCzarR;
     lock_guard _lgWciMtx(_wciMtx);
@@ -62,7 +77,7 @@ json WorkerCzarComIssue::toJson() {
     jsCzarR["czar"] = _czInfo->czName;
     jsCzarR["workerinfo"] = _wInfo->toJson();
 
-    jsCzarR["thoughtczarwasdead"] = _thoughtCzarWasDead;
+    jsCzarR["thoughtczarwasdead"] = _thoughtCzarWasDeadTime;
 
     // List of failed transmits
     jsCzarR["failedtransmits"] = json::array();
@@ -100,8 +115,8 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
         }
         auto wccIssue = create(authContext_);
         wccIssue->setContactInfo(wInfo_, czInfo_);
-        wccIssue->_thoughtCzarWasDead =
-                http::RequestBodyJSON::required<bool>(jsCzarReq, "thoughtczarwasdead");
+        wccIssue->_thoughtCzarWasDeadTime =
+                http::RequestBodyJSON::required<uint64_t>(jsCzarReq, "thoughtczarwasdead");
         json fTransmits = json::array();
         fTransmits = jsCzarReq.at("failedtransmits");
         if (!fTransmits.is_array()) {
@@ -136,7 +151,7 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
 
 bool WorkerCzarComIssue::operator==(WorkerCzarComIssue const& other) const {
     if ((*_wInfo != *other._wInfo) || (*_czInfo != *other._czInfo) || (_authContext != other._authContext) ||
-        (_thoughtCzarWasDead != other._thoughtCzarWasDead)) {
+        (_thoughtCzarWasDeadTime != other._thoughtCzarWasDeadTime)) {
         return false;
     }
 
@@ -170,11 +185,13 @@ void WorkerCzarComIssue::_addFailedTransmit(QueryId qId, UberJobId ujId,
                                             std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg) {
     auto key = make_pair(qId, ujId);
     (*_failedTransmits)[key] = ujMsg;
+    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " failedTransmits sz=" << _failedTransmits->size());
 }
 
-json WorkerCzarComIssue::responseToJson() const {
+json WorkerCzarComIssue::responseToJson(uint64_t msgThoughtCzarWasDeadTime,
+                                        vector<protojson::ExecutiveRespMsg::Ptr> const& execRespMsgs) const {
     lock_guard _lgWciMtx(_wciMtx);
-    return _responseToJson();
+    return _responseToJson(msgThoughtCzarWasDeadTime, execRespMsgs);
 }
 
 std::shared_ptr<FailedTransmitsMap> WorkerCzarComIssue::takeFailedTransmitsMap() {
@@ -184,48 +201,104 @@ std::shared_ptr<FailedTransmitsMap> WorkerCzarComIssue::takeFailedTransmitsMap()
     return res;
 }
 
-size_t WorkerCzarComIssue::clearMapEntries(nlohmann::json const& response) {
-    if (!response.contains("recvtransmits")) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " response did not have 'recvtransmits' " << response);
-        return 0;
-    }
-    auto const& recvTransmits = response["recvtransmits"];
-    if (!recvTransmits.is_array()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " response 'recvtransmits' is not array " << response);
-        return 0;
-    }
+tuple<size_t, vector<UberJobIdentType>, vector<UberJobIdentType>> WorkerCzarComIssue::clearMapEntries(
+        nlohmann::json const& response) {
+    vector<UberJobIdentType> ujDataObsoleteList;
+    vector<UberJobIdentType> ujParseErrorList;
     size_t count = 0;
+    if (!response.contains("execRespMsgs")) {
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " response did not have 'execRespMsgs' " << pwHide(response));
+        return {count, ujDataObsoleteList, ujParseErrorList};
+    }
+    auto const& jsExecRespMsgs = response["execRespMsgs"];
+    if (!jsExecRespMsgs.is_array()) {
+        LOGS(_log, LOG_LVL_WARN,
+             cName(__func__) << " response 'execRespMsgs' is not array " << pwHide(response));
+        return {count, ujDataObsoleteList, ujParseErrorList};
+    }
+
     lock_guard _lgWciMtx(_wciMtx);
-    for (auto const& elem : recvTransmits) {
+    for (auto const& elem : jsExecRespMsgs) {
         if (!(elem.contains("qId") && elem.contains("ujId"))) {
             LOGS(_log, LOG_LVL_WARN, cName(__func__) << "elem missing qId or ujId elem=" << elem);
             continue;
         }
         QueryId qId = elem["qId"];
         UberJobId ujId = elem["ujId"];
-        LOGS(_log, LOG_LVL_DEBUG,
-             cName(__func__) << " removing qId=" << qId << "_ujId=" << ujId << " from map");
-        _failedTransmits->erase(make_pair(qId, ujId));
-        count++;
+
+        try {
+            auto execRespMsg = ExecutiveRespMsg::createFromJson(elem);
+            if (execRespMsg == nullptr) {
+                LOGS(_log, LOG_LVL_WARN,
+                     cName(__func__) << " failed to parse execRespMsg elem=" << pwHide(elem));
+                continue;
+            }
+            // Find the appropriate Task and update it if needed.
+            if (execRespMsg->success) {
+                // Nothing needs to be done if the UberJob is not obsolete. If it
+                // is obsolete, it could be useful to delete the result file.
+                if (execRespMsg->dataObsolete) {
+                    ujDataObsoleteList.emplace_back(_czInfo, qId, ujId);
+                }
+            } else {
+                // The czar couldn't parse this for some reason, leaving no way to get the result
+                // file back to the czar. Delete the result file.
+                ujParseErrorList.emplace_back(_czInfo, qId, ujId);
+            }
+            LOGS(_log, LOG_LVL_DEBUG,
+                 cName(__func__) << " removing qId=" << qId << "_ujId=" << ujId << " from map");
+            _failedTransmits->erase(make_pair(qId, ujId));
+            count++;
+        } catch (std::invalid_argument const& ex) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 cName(__func__) << " failed to parse execRespMsg elem=" << elem
+                                 << " exception: " << ex.what());
+            // This should never happen as all messages should parse.
+            // There's probably nothing else that can be done at this point. Hopefully, other
+            // cleanup mechanisms will be enough to prevent this from causing problems.
+            continue;
+        }
     }
-    return count;
+    return {count, ujDataObsoleteList, ujParseErrorList};
 }
 
-json WorkerCzarComIssue::_responseToJson() const {
-    protojson::ResponseMsg respMsg(true);
-
-    // Add a list of uberjobs that are being handled by this czar due to
-    // the worker's WorkerCzarComIssue message.
-    nlohmann::json jsResp = respMsg.toJson();
-    jsResp["recvtransmits"] = json::array();
-    auto& jsFts = jsResp["recvtransmits"];
-    for (auto const& [key, elem] : *_failedTransmits) {
-        QueryId qId = key.first;
-        UberJobId ujId = key.second;
-        json jsF = json{{"qId", qId}, {"ujId", ujId}};
-        jsFts.push_back(jsF);
+void WorkerCzarComIssue::clearFailedTransmitsForQids(std::map<QueryId, TIMEPOINT> const& qIdMap) {
+    size_t startSize = 0;
+    size_t endSize = 0;
+    {
+        std::lock_guard lg(_wciMtx);
+        // Normally empty.
+        startSize = _failedTransmits->size();
+        if (startSize == 0) {
+            return;
+        }
+        // Make a qId set for faster lookup.
+        std::set<QueryId> qIdSet;
+        for (auto const& [qId, tm] : qIdMap) {
+            qIdSet.insert(qId);
+        }
+        for (auto iter = _failedTransmits->begin(); iter != _failedTransmits->end();) {
+            QueryId qIdFailed = iter->first.first;
+            if (qIdSet.find(qIdFailed) != qIdSet.end()) {
+                iter = _failedTransmits->erase(iter);
+            } else {
+                ++iter;
+            }
+        }
+        endSize = _failedTransmits->size();
     }
-    return jsResp;
+    if (startSize > 0) {
+        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " startSize=" << startSize << " endSize=" << endSize);
+    }
+}
+
+json WorkerCzarComIssue::_responseToJson(
+        uint64_t msgThoughtCzarWasDeadTime,
+        vector<protojson::ExecutiveRespMsg::Ptr> const& execRespMsgs_) const {
+    protojson::WorkerCzarComRespMsg wccRespMsg(true, msgThoughtCzarWasDeadTime);
+    wccRespMsg.execRespMsgs = execRespMsgs_;
+    return wccRespMsg.toJson();
 }
 
 string WorkerCzarComIssue::dump() const {
@@ -237,7 +310,7 @@ string WorkerCzarComIssue::_dump() const {
     stringstream os;
     os << "WorkerCzarComIssue wInfo=" << ((_wInfo == nullptr) ? "?" : _wInfo->dump());
     os << " czInfo=" << _czInfo->dump();
-    os << " thoughtCzarWasDead=" << _thoughtCzarWasDead;
+    os << " thoughtCzarWasDeadTime=" << _thoughtCzarWasDeadTime;
     os << " failedTransmits[";
     for (auto const& [key, ft] : *_failedTransmits) {
         os << "{qId=" << key.first << " ujId=" << key.second << "{";

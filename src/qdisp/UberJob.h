@@ -79,6 +79,8 @@ public:
     /// @return true if the UberJob results were stopped from merging. False means
     ///         the results for this UberJob were already being merged or were merged before
     ///         killUberJob was called.
+    /// Note that returning false means merging either already finished or merging has already
+    /// started and there's no way to stop it without corrupting the results.
     bool killUberJob();
 
     std::shared_ptr<ResponseHandler> getRespHandler() { return _respHandler; }
@@ -108,15 +110,12 @@ public:
     protojson::WorkerContactInfo::Ptr getWorkerContactInfo() { return _wContactInfo; }
 
     /// Queue the lambda function to collect and merge the results from the worker.
-    /// @param retry - true indicates this is a retry of failed communication
-    ///            and should not be used to kill this UberJob due to an unexpected
-    ///            state.
     /// @return a json message indicating success unless the query has been
     ///         cancelled, limit row complete, or similar.
-    nlohmann::json importResultFile(protojson::FileUrlInfo const& fileUrlInfo_, bool const retry = false);
+    protojson::ExecutiveRespMsg::Ptr importResultFile(protojson::FileUrlInfo const& fileUrlInfo_);
 
     /// Handle an error from the worker.
-    nlohmann::json workerError(util::MultiError const& multiErr_);
+    void workerError(util::MultiError const& multiErr_, protojson::ExecutiveRespMsg& execRespMsg);
 
     void setResultFileSize(uint64_t fileSize) { _resultFileSize = fileSize; }
     uint64_t getResultFileSize() { return _resultFileSize; }
@@ -125,8 +124,8 @@ public:
     bool importResultFinish();
 
     /// Import and error from trying to collect results.
-    nlohmann::json importResultError(bool shouldCancel, std::string const& errorType,
-                                     std::string const& note);
+    protojson::ExecutiveRespMsg::Ptr importResultError(bool shouldCancel, std::string const& errorType,
+                                                       std::string const& note);
 
     std::ostream& dump(std::ostream& os) const override;
 
@@ -149,8 +148,9 @@ private:
     void _unassignJobs();
 
     /// Let the Executive know about errors while handling results.
-    nlohmann::json _workerErrorFinish(bool successful, std::string const& errorType = std::string(),
-                                      std::string const& note = std::string());
+    void _workerErrorFinish(protojson::ExecutiveRespMsg& execRespMsg,
+                            std::string const& errorType = std::string(),
+                            std::string const& note = std::string());
 
     std::vector<std::shared_ptr<JobQuery>> _jobs;  ///< List of Jobs in this UberJob.
     mutable std::mutex _jobsMtx;                   ///< Protects _jobs, _jobStatus
