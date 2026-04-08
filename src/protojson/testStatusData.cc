@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
 }
 
 BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
-    lsst::qserv::protojson::AuthContext authContext_("repliInstId", "repliIAuthKey");
+    AuthContext authContext_("repliInstId", "repliIAuthKey");
 
     uint64_t cxrStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 5s);
 
@@ -171,18 +171,23 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto workerA = WorkerContactInfo::create("sd_workerA", "host_w1", "mgmhost_a", 3421, start);
     auto jsWorkerA = workerA->toJson();
 
-    // WorkerCzarComIssue
+    // WorkerCzarComIssue, thought czar was dead test.
     auto wccIssueA = lsst::qserv::protojson::WorkerCzarComIssue::create(authContext_);
     wccIssueA->setContactInfo(workerA, czarA);
     BOOST_REQUIRE(wccIssueA->needToSend() == false);
-    wccIssueA->setThoughtCzarWasDead(true);
+    wccIssueA->setThoughtCzarWasDeadTime(3452987);
     BOOST_REQUIRE(wccIssueA->needToSend() == true);
 
     auto jsIssueA = wccIssueA->toJson();
 
+    // The source WorkerCzarComIssue for failed transmit tests.
     auto wccIssueA1 = lsst::qserv::protojson::WorkerCzarComIssue::createFromJson(jsIssueA, authContext_);
     auto jsIssueA1 = wccIssueA1->toJson();
     BOOST_REQUIRE(jsIssueA == jsIssueA1);
+
+    // A vector of the expected responses from the czar from UberJobData responses
+    // added to wccIssueA1 as failed transmits.
+    std::vector<ExecutiveRespMsg::Ptr> czarResponseMsgs;
 
     // Test a list of failed messages.
     string const czarHost = "czarHost";
@@ -206,6 +211,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
             scaninteractive1, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
     auto ujResponse1 = ujData1->responseFileReadyBuild(fileInf1, authContext_);
     wccIssueA1->addFailedTransmit(qId1, ujId1, ujResponse1);
+    auto execRespMsg1 = ExecutiveRespMsg::create(true, false, qId1, ujId1, czarId);
+    czarResponseMsgs.push_back(execRespMsg1);
 
     auto jsWcA1 = wccIssueA1->toJson();
     // parse jsWcA1 and check if the answer is correct
@@ -220,6 +227,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
             scaninteractive1, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
     auto ujResponse1a = ujData1->responseFileReadyBuild(fileInf1a, authContext_);
     wccIssueA1->addFailedTransmit(qId1a, ujId1a, ujResponse1a);
+    auto execRespMsg1a = ExecutiveRespMsg::create(true, true, qId1a, ujId1a, czarId);
+    czarResponseMsgs.push_back(execRespMsg1a);
 
     auto jsWcA1a = wccIssueA1->toJson();
     // parse jsWcA1a and check if the answer is correct
@@ -237,6 +246,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
             scaninteractive2, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
     auto ujResponse2 = ujData2->responseFileReadyBuild(fileInf2, authContext_);
     wccIssueA1->addFailedTransmit(qId2, ujId2, ujResponse2);
+    auto execRespMsg2 = ExecutiveRespMsg::create(true, false, qId2, ujId2, czarId);
+    czarResponseMsgs.push_back(execRespMsg2);
 
     auto jsWcA2 = wccIssueA1->toJson();
     // parse jsWcA2 and check if the answer is correct
@@ -256,6 +267,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto ujResponse3 =
             ujData3->responseErrorBuild(multiErr, chunkId3, cancelled3, LOG_LVL_DEBUG, authContext_);
     wccIssueA1->addFailedTransmit(qId3, ujId3, ujResponse3);
+    auto execRespMsg3 = ExecutiveRespMsg::create(true, true, qId3, ujId3, czarId);
+    czarResponseMsgs.push_back(execRespMsg3);
 
     auto jsWcA3 = wccIssueA1->toJson();
     // parse jsWcA3 and check if the answer is correct
@@ -265,17 +278,113 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     BOOST_REQUIRE(*wccIssueA1 != *wccIssueA2Out1);
     BOOST_REQUIRE(*wccIssueA1 == *wccIssueA3Out1);
 
-    // Create the response to jsWcA3.
-    auto jsRespA3Out1 = wccIssueA3Out1->responseToJson();
-    LOGS(_log, LOG_LVL_INFO, "jsRespA3Out1=" << jsRespA3Out1);
+    // Add the ExecutiveRespMsg messages that correlate to the failed transmits to
+    // the czar response message so they can be used to clear the map entries.
+    auto czarRespMsgJson =
+            wccIssueA3Out1->responseToJson(wccIssueA3Out1->getThoughtCzarWasDeadTime(), czarResponseMsgs);
+    LOGS(_log, LOG_LVL_INFO, "czarRespMsgJson=" << czarRespMsgJson);
 
     // Parse the response and remove the appropriate entries from wccIsueA1.
-    auto respMsg = lsst::qserv::protojson::ResponseMsg::createFromJson(jsRespA3Out1);
-    BOOST_REQUIRE(respMsg->success == true);
-    BOOST_REQUIRE(wccIssueA1->clearMapEntries(jsRespA3Out1) == 4);
+    auto czRespMsg = lsst::qserv::protojson::WorkerCzarComRespMsg::createFromJson(czarRespMsgJson);
+    LOGS(_log, LOG_LVL_INFO, "czRespMsg=" << czRespMsg->dump());
+    BOOST_REQUIRE(czRespMsg->success == true);
+
+    // Use the response to clear the original transmit failure messages from the originating worker.
+    auto [countA3Out1, obsoleteList, parseErrorList] = wccIssueA1->clearMapEntries(czarRespMsgJson);
+    LOGS(_log, LOG_LVL_INFO,
+         "countA3Out1=" << countA3Out1 << " obsoleteSz=" << obsoleteList.size()
+                        << " parseErrorSz=" << parseErrorList.size());
+    BOOST_REQUIRE(countA3Out1 == 4);
+    BOOST_REQUIRE(obsoleteList.size() == 2);
+    BOOST_REQUIRE(parseErrorList.size() == 0);
 
     auto ftMap = wccIssueA1->takeFailedTransmitsMap();
     BOOST_REQUIRE(ftMap->size() == 0);
+}
+
+BOOST_AUTO_TEST_CASE(WorkerCzarComIssueClearFailedTransmitsForQids) {
+    AuthContext authContext_("repliInstId", "repliIAuthKey");
+
+    uint64_t czStartTime = lsst::qserv::millisecSinceEpoch(lsst::qserv::CLOCK::now() - 5s);
+    string const czName("czar_name");
+    lsst::qserv::CzarId const czId = 32;
+    int czPort = 2022;
+    string const czHost("cz_host");
+
+    auto czarA = lsst::qserv::protojson::CzarContactInfo::create(czName, czId, czPort, czHost, czStartTime);
+
+    auto start = lsst::qserv::CLOCK::now();
+    auto workerA = WorkerContactInfo::create("sd_workerA", "host_w1", "mgmhost_a", 3421, start);
+
+    // Create the WorkerCzarComIssue and set contact info
+    auto wcc = lsst::qserv::protojson::WorkerCzarComIssue::create(authContext_);
+    wcc->setContactInfo(workerA, czarA);
+
+    // Build three failed transmit messages:
+    // - qIdA has two UberJobs (uj 1 and uj 2)
+    // - qIdB has one UberJob (uj 3)
+    lsst::qserv::QueryId const qIdA = 1001;
+    lsst::qserv::QueryId const qIdB = 2002;
+    lsst::qserv::UberJobId const ujA1 = 1;
+    lsst::qserv::UberJobId const ujA2 = 2;
+    lsst::qserv::UberJobId const ujB1 = 3;
+
+    string const workerId1 = "wrkr1";
+    int const resultPort = 436;
+    int const rowlimit = 0;
+    int const maxTableBytes = 1'000'000;
+    bool const scaninteractive = true;
+    auto scanInfo = lsst::qserv::protojson::ScanInfo::create();
+
+    // create UberJobData for qIdA ujA1
+    lsst::qserv::protojson::FileUrlInfo fileInf1("http://test/fn1", 10, 100);
+    auto ujDataA1 = lsst::qserv::wbase::UberJobData::create(
+            ujA1, czName, czId, czHost, czPort, qIdA, rowlimit, maxTableBytes, scanInfo, scaninteractive,
+            workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+    auto ujRespA1 = ujDataA1->responseFileReadyBuild(fileInf1, authContext_);
+    wcc->addFailedTransmit(qIdA, ujA1, ujRespA1);
+
+    // create UberJobData for qIdA ujA2
+    lsst::qserv::protojson::FileUrlInfo fileInf2("http://test/fn2", 20, 200);
+    auto ujDataA2 = lsst::qserv::wbase::UberJobData::create(
+            ujA2, czName, czId, czHost, czPort, qIdA, rowlimit, maxTableBytes, scanInfo, scaninteractive,
+            workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+    auto ujRespA2 = ujDataA2->responseFileReadyBuild(fileInf2, authContext_);
+    wcc->addFailedTransmit(qIdA, ujA2, ujRespA2);
+
+    // create UberJobData for qIdB ujB1
+    lsst::qserv::protojson::FileUrlInfo fileInf3("http://test/fn3", 30, 300);
+    auto ujDataB1 = lsst::qserv::wbase::UberJobData::create(
+            ujB1, czName, czId, czHost, czPort, qIdB, rowlimit, maxTableBytes, scanInfo, scaninteractive,
+            workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+    auto ujRespB1 = ujDataB1->responseFileReadyBuild(fileInf3, authContext_);
+    wcc->addFailedTransmit(qIdB, ujB1, ujRespB1);
+
+    // Confirm three failed transmits exist via JSON representation
+    auto jsBefore = wcc->toJson();
+    BOOST_REQUIRE(jsBefore.contains("failedtransmits"));
+    auto const& arrBefore = jsBefore["failedtransmits"];
+    BOOST_REQUIRE(arrBefore.is_array());
+    BOOST_REQUIRE(arrBefore.size() == 3);
+
+    // Prepare a map with qIdA to be cleared
+    std::map<lsst::qserv::QueryId, lsst::qserv::TIMEPOINT> qIdMap;
+    qIdMap[qIdA] = lsst::qserv::CLOCK::now();
+
+    // Call clearFailedTransmitsForQids
+    wcc->clearFailedTransmitsForQids(qIdMap);
+
+    // Verify only the qIdB entry remains
+    auto jsAfter = wcc->toJson();
+    BOOST_REQUIRE(jsAfter.contains("failedtransmits"));
+    auto const& arrAfter = jsAfter["failedtransmits"];
+    BOOST_REQUIRE(arrAfter.is_array());
+    BOOST_REQUIRE(arrAfter.size() == 1);
+    // remaining element should have qId == qIdB
+    auto rem = arrAfter[0];
+    BOOST_REQUIRE(rem.contains("qId"));
+    lsst::qserv::QueryId remQ = rem["qId"];
+    BOOST_REQUIRE(remQ == qIdB);
 }
 
 BOOST_AUTO_TEST_CASE(ResponseMsg) {
@@ -293,6 +402,21 @@ BOOST_AUTO_TEST_CASE(ResponseMsg) {
     BOOST_REQUIRE(!respMsgA->equal(*respMsgBOut));
     BOOST_REQUIRE(!respMsgB->equal(*respMsgC));
     BOOST_REQUIRE(!respMsgD->equal(*respMsgC));
+}
+
+BOOST_AUTO_TEST_CASE(ExecutiveRespMsg) {
+    auto respMsgA = lsst::qserv::protojson::ExecutiveRespMsg::create(true, false, 123, 456, 9, "allGood",
+                                                                     "just a test");
+    auto jsA = respMsgA->toJson();
+    auto respMsgAOut = lsst::qserv::protojson::ExecutiveRespMsg::createFromJson(jsA);
+    BOOST_REQUIRE(respMsgA->equal(*respMsgAOut));
+}
+
+BOOST_AUTO_TEST_CASE(WorkerCzarComRespMsg) {
+    auto respMsgA = lsst::qserv::protojson::WorkerCzarComRespMsg::create(true, 73);
+    auto jsA = respMsgA->toJson();
+    auto respMsgAOut = lsst::qserv::protojson::WorkerCzarComRespMsg::createFromJson(jsA);
+    BOOST_REQUIRE(respMsgA->equal(*respMsgAOut));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

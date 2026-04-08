@@ -109,12 +109,12 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
         auto const& jsReq = body().objJson;
         auto jrMsg = protojson::UberJobErrorMsg::createFromJson(jsReq);
         auto importRes = czar::Czar::getCzar()->handleUberJobErrorMsg(jrMsg, fName);
-        return importRes;
+        return importRes->toJson();
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleJobError received "
                      << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
-        protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
+        protojson::ExecutiveRespMsg respMsg(false, false, 0, 0, 0, "parse", iaEx.what());
         return respMsg.toJson();
     }
 }
@@ -129,12 +129,12 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
         auto const& jsReq = body().objJson;
         auto jrMsg = protojson::UberJobReadyMsg::createFromJson(jsReq);
         auto importRes = czar::Czar::getCzar()->handleUberJobReadyMsg(jrMsg, fName);
-        return importRes;
+        return importRes->toJson();
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleJobReady received "
                      << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
-        protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
+        protojson::ExecutiveRespMsg respMsg(false, false, 0, 0, 0, "parse", iaEx.what());
         return respMsg.toJson();
     }
 }
@@ -143,14 +143,15 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
     string const fName("HttpCzarWorkerModule::_handleWorkerCzarComIssue");
     LOGS(_log, LOG_LVL_DEBUG, fName << " start");
     // Parse and verify the json message and then deal with the problems.
+    string wId = "unknown";
     try {
         protojson::AuthContext const authC(cconfig::CzarConfig::instance()->replicationInstanceId(),
                                            cconfig::CzarConfig::instance()->replicationAuthKey());
         auto const& jsReq = body().objJson;
         auto wccIssue = protojson::WorkerCzarComIssue::createFromJson(jsReq, authC);
 
-        auto wId = wccIssue->getWorkerInfo()->wId;
-        if (wccIssue->getThoughtCzarWasDead()) {
+        wId = wccIssue->getWorkerInfo()->wId;
+        if (wccIssue->getThoughtCzarWasDeadTime() > 0) {
             LOGS(_log, LOG_LVL_WARN,
                  "HttpCzarWorkerModule::_handleWorkerCzarComIssue worker="
                          << wId << " thought czar was dead and killed related uberjobs.");
@@ -164,35 +165,42 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
                 execPtr->killIncompleteUberJobsOnWorker(wId);
             }
         }
-        // The response here includes the QueryId and UberJobId of all
-        // uberjobs in the original message. If the czar cannot handle
-        // one now, it won't be able to handle it later, so there's no
-        // point in the worker sending it again.
-        // Under normal circumstances, the czar should be able to
-        // find and handle all failed transmits. Anything it can't find should
-        // show up in completed query IDs, or failed uberJobs, and failing that
-        // it should be garbage collected.
-        auto jsRet = wccIssue->responseToJson();
+
+        // Responses are sent for all `failedTransmits` in the message. If
+        // something couldn't be parsed, the response indicates that and
+        // the UberJob will be abandoned by the worker. If the query
+        // could finish without the results of that uberjob, it indicates
+        // that the result file is obsolete. If the this was successful,
+        // the worker just waits for the czar to collect the file as usual.
+        // In all cases, the worker will remove the item from its
+        // `failedTransmits` list so it won't be tried again.
+        vector<protojson::ExecutiveRespMsg::Ptr> execRespMsgs;
         auto failedTransmits = wccIssue->takeFailedTransmitsMap();
         for (auto& [key, elem] : *failedTransmits) {
             protojson::UberJobStatusMsg::Ptr& statusMsg = elem;
             auto rdyMsg = dynamic_pointer_cast<protojson::UberJobReadyMsg>(statusMsg);
             if (rdyMsg != nullptr) {
-                bool const retry = true;
                 // Put the file on a queue to be collected later.
-                czar::Czar::getCzar()->handleUberJobReadyMsg(rdyMsg, fName, retry);
+                auto exRespMsg = czar::Czar::getCzar()->handleUberJobReadyMsgNoThrow(rdyMsg, fName);
+                execRespMsgs.push_back(exRespMsg);
             } else {
                 auto errMsg = dynamic_pointer_cast<protojson::UberJobErrorMsg>(statusMsg);
-                // Kill the UberJob or user query depending on the error.
-                czar::Czar::getCzar()->handleUberJobErrorMsg(errMsg, fName);
+                // Kill the UberJob or user query depending on the error. (Doesn't throw)
+                auto exRespMsg = czar::Czar::getCzar()->handleUberJobErrorMsg(errMsg, fName);
+                execRespMsgs.push_back(exRespMsg);
             }
         }
-        LOGS(_log, LOG_LVL_TRACE, "HttpCzarWorkerModule::_handleWorkerCzarComIssue jsRet=" << jsRet.dump());
+        auto jsRet = wccIssue->responseToJson(wccIssue->getThoughtCzarWasDeadTime(), execRespMsgs);
+        LOGS(_log, LOG_LVL_TRACE,
+             "HttpCzarWorkerModule::_handleWorkerCzarComIssue jsRet=" << protojson::pwHide(jsRet));
         return jsRet;
     } catch (std::invalid_argument const& iaEx) {
         LOGS(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleWorkerCzarComIssue received "
                      << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
+        // This is very bad as there's no way to know what is going wrong. Just one of these is surviveable,
+        // but if it keeps happening, the system is unstable.
+        Czar::getCzar()->incrCommErrCount("WorkerCzarComIssue", wId, iaEx.what());
         protojson::ResponseMsg respMsg(false, "parse", iaEx.what());
         return respMsg.toJson();
     }

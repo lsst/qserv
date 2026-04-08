@@ -848,7 +848,9 @@ shared_ptr<lock_guard<mutex>> Executive::getLimitSquashLock() {
 
 void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlInfo const& fileUrlInfo,
                             std::string const& idStr) {
-    // Limit collecting LIMIT queries to one at a time, but only those.
+    // Limit collecting LIMIT queries to one at a time, but only for LIMIT.
+    // This is to avoid having to wait for multiple large files to merge when only a
+    // few are needed to satisfy the LIMIT. This can make a huge difference.
     shared_ptr<lock_guard<mutex>> limitSquashL;
     if (_limitSquashApplies) {
         limitSquashL.reset(new lock_guard<mutex>(_mtxLimitSquash));

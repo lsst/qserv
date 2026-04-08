@@ -101,6 +101,13 @@ private:
     /// true when running a thread to send a message to the czar
     /// with _sendMessage()
     std::atomic<bool> _msgThreadRunning{false};
+
+    /// If the system is working properly, these counts should be zero. If
+    /// they start climbing, it may indicate a problem that should be dealt with.
+    /// This is used to track how many times the czar has failed to handle a worker message.
+    std::atomic<int> _czarSentFailCount{0};
+    /// This is used to track how many times there's been a parse error.
+    std::atomic<int> _parseErrorCount{0};
 };
 
 /// Each worker talks to multiple czars and needs a WCzarInfo object for each czar,
