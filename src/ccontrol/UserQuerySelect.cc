@@ -33,11 +33,6 @@
  *
  * getRestrictors() -- retrieve restrictors to be passed to spatial region selection code in another layer.
  *
- * validateDominantDbs() -- validate the "dominantDbs", that is, the databases whose
- * partitioning will be used for chunking and dispatch. Note that the dominantDbs are required to have
- * the same striping parameters to allow joins between them, so it is not sufficient to just validate
- * that they are present in the CSS, but they must also have compatible striping parameters.
- *
  * getDbStriping() -- retrieve the striping parameters of the dominantDb.
  *
  * getError() -- See if there are errors
@@ -429,13 +424,7 @@ void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_query
 
 void UserQuerySelect::_setupChunking() {
     LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
-    // Do not throw exceptions here, set _errorExtra .
     std::shared_ptr<qproc::IndexMap> im;
-    if (!_qSession->validateDominantDbs()) {
-        // TODO: Revisit this for L3
-        throw UserQueryError(getQueryIdString() + " Couldn't determine dominantDbs for dispatch");
-    }
-
     std::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
     {
         eSet = _qSession->getEmptyChunks();

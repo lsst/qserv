@@ -133,17 +133,6 @@ public:
     bool containsTable(std::string const& dbName, std::string const& tableName) const;
 
     /**
-     * Validate that the dominant databases specified in the query context are registered
-     * in CSS and compatible with each other.
-     * @note Dominant databases are the databases that will be used for query
-     *  dispatch. They are distinct from the default database, which is what is
-     *  used for unqualified table and column references.
-     * @return true if the dominant databases are valid, false otherwise. If false is returned,
-     *  details will be logged.
-     */
-    bool validateDominantDbs() const;
-
-    /**
      * Get the striping parameters of any dominant database found in the query.
      * @note That all dominant databases are required to have the same striping parameters, so it does
      *  not matter which one we get the parameters for, as long as it is a dominant database.
@@ -217,6 +206,17 @@ private:
     void _generateConcrete();
     void _applyConcretePlugins();
 
+    /**
+     * Validate that the dominant databases specified in the query context are registered
+     * in CSS and compatible with each other.
+     * @note Dominant databases are the databases that will be used for query
+     *  dispatch. They are distinct from the default database, which is what is
+     *  used for unqualified table and column references.
+     * @return true if the dominant databases are valid, false otherwise. If false is returned,
+     *  details will be logged.
+     */
+    bool _validateDominantDbs() const;
+
     std::vector<std::string> _buildChunkQueries(query::QueryTemplate::Vect const& queryTemplates,
                                                 ChunkSpec const& chunkSpec) const;
     std::shared_ptr<ChunkQuerySpec> _buildFragment(query::QueryTemplate::Vect const& queryTemplates,
@@ -280,6 +280,11 @@ private:
     /// Maximum number of chunks in an interactive query.
     int const _interactiveChunkLimit = 10;  // Value of 10 only used in unit tests.
     bool _scanInteractive = true;           ///< True if the query can be considered interactive.
+
+    /// Whether to validate the dominant databases against CSS. This is set true for unit tests
+    /// that construct QuerySessions without CSS access, and thus can't validate the dominant
+    /// databases, and false for all other use cases.
+    bool const _skipDominatDbsValidation = false;
 };
 
 /**

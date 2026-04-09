@@ -141,6 +141,11 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
         LOGS(_log, LOG_LVL_TRACE, "Query Plugins applied: " << *this);
         LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for result query: " << getResultOrderBy());
 
+        // Besides analysing an explicit result of the operation, allow catching CSS exceptions
+        // that may be thrown by the method.
+        if (!_validateDominantDbs()) {
+            _error = "Dominant databases validation failed";
+        }
     } catch (QueryProcessingBug& b) {
         _error = std::string("QuerySession bug:") + b.what();
     } catch (qana::AnalysisError& e) {
@@ -216,7 +221,13 @@ bool QuerySession::containsTable(std::string const& dbName, std::string const& t
     return _context->containsTable(dbName, tableName);
 }
 
-bool QuerySession::validateDominantDbs() const {
+bool QuerySession::_validateDominantDbs() const {
+    if (_skipDominatDbsValidation) {
+        LOGS(_log, LOG_LVL_DEBUG,
+             "QuerySession::" << __func__ << ": Skipping dominant DB validation in unit test");
+        return true;
+    }
+
     if (_context->dominantDbs.empty()) {
         LOGS(_log, LOG_LVL_WARN, "QuerySession::" << __func__ << ": no dominant dbs specified");
         return false;
@@ -245,20 +256,12 @@ bool QuerySession::validateDominantDbs() const {
     return true;
 }
 
-css::StripingParams QuerySession::getDbStriping() const {
-    if (!validateDominantDbs()) {
-        throw std::logic_error("QuerySession::" + std::string(__func__) + ": Invalid dominant databases");
-    }
-    return _context->getDbStriping();
-}
+css::StripingParams QuerySession::getDbStriping() const { return _context->getDbStriping(); }
 
 std::shared_ptr<IntSet const> QuerySession::getEmptyChunks() {
     if (_css == nullptr) {
         LOGS(_log, LOG_LVL_WARN, "QuerySession::" << __func__ << " no _css");
         return nullptr;
-    }
-    if (!validateDominantDbs()) {
-        throw std::logic_error("QuerySession::" + std::string(__func__) + ": Invalid dominant databases");
     }
     std::shared_ptr<IntSet> result = std::make_shared<IntSet>();
     for (auto const& dbName : _context->dominantDbs) {
@@ -298,7 +301,7 @@ void QuerySession::finalize() {
     }
 }
 
-QuerySession::QuerySession(Test& t) : _css(t.css), _defaultDb(t.defaultDb) {
+QuerySession::QuerySession(Test& t) : _css(t.css), _defaultDb(t.defaultDb), _skipDominatDbsValidation(true) {
     sql::SqlConfig sqlConfig(t.sqlConfig);
     _databaseModels = DatabaseModels::create(sqlConfig, sqlConfig);
     _initContext();
@@ -442,10 +445,6 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
 ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
                                                       ChunkSpec const& chunkSpec,
                                                       bool fillInChunkIdTag) const {
-    if (!validateDominantDbs()) {
-        throw std::logic_error("QuerySession::" + std::string(__func__) + ": Invalid dominant databases");
-    }
-
     // Any dominant database (if there is more than one) works here. Note that after the previously made
     // validation step, there should be at least one such database, and if there are more than one, then
     // all databases ara guaranteeded to have the same striping parameters. The only role if the database
