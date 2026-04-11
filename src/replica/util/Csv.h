@@ -108,7 +108,7 @@ public:
      *         [TERMINATED BY 'string']
      *     ]
      *     ...
-     * @code
+     * @endcode
      * @param quote The optional quote.
      * @return A string generated for values of the corresponding options stored
      *   in an object.

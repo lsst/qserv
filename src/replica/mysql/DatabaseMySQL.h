@@ -316,7 +316,7 @@ public:
      *   if needed.
      *
      * @return a pointer to the same connector against which the method was invoked
-     *   in case of successful completion of the requested operaton.
+     *   in case of successful completion of the requested operation.
      *
      * @see Configuration::databaseMaxReconnects()
      * @see Configuration::setDatabaseMaxReconnects()

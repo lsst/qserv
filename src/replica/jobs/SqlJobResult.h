@@ -74,7 +74,7 @@ public:
      * @code
      *   worker | [scopeName] | status | error
      *  --------+-------------+--------+-------
-     * @code
+     * @endcode
      *
      * First three parameters ('caption', 'indent', and 'verticalSeparator') of
      * the method are the same as for the constructor of the table printer class.
@@ -98,7 +98,7 @@ public:
      * @code
      *   worker | #succeeded | #failed | performance [sec]
      *  --------+------------+---------+-------------------
-     * @code
+     * @endcode
      *
      * First three parameters ('caption', 'indent', and 'verticalSeparator') of
      * the method are the same as for the constructor of the table printer class.

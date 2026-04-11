@@ -22,7 +22,7 @@
 #define LSST_QSERV_REPLICA_PERFORMANCE_H
 
 /**
- * This header declares vairous utilities (classes) which are used
+ * This header declares various utilities (classes) which are used
  * for timing and performance measurements of the Replication system's
  * operations.
  */

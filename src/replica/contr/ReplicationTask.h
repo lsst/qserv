@@ -96,7 +96,7 @@ private:
     /// on the Qserv synchronization requests.
     unsigned int const _qservSyncTimeoutSec;
 
-    bool const _disableQservSync;     ///< Disable replica synchroization at Qserv workers if 'true'.
+    bool const _disableQservSync;     ///< Disable replica synchronization at Qserv workers if 'true'.
     bool const _forceQservSync;       ///< Force removal at worker resource collections if 'true'.
     bool const _qservChunkMapUpdate;  ///< Enable updating the chunk disposition map in Qserv's QMeta
                                       /// database if 'true'.

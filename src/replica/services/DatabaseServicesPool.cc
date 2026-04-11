@@ -20,7 +20,7 @@
  */
 
 // Class header
-#include "replica//services/DatabaseServicesPool.h"
+#include "replica/services/DatabaseServicesPool.h"
 
 // System headers
 #include <stdexcept>

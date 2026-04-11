@@ -40,7 +40,7 @@ namespace lsst::qserv::replica {
 /**
  * Class ChttpSvc is a base class for HTTP servers of various components of the system.
  *
- * @note The class's implementation runs the server witing its own collection
+ * @note The class's implementation runs the server within its own collection
  *   of service threads. The number of threads is specified via the corresponding
  *   parameter of the class's constructor.
  * @note The implementation of the class is not thread-safe.

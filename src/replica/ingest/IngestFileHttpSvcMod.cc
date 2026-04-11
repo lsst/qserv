@@ -100,7 +100,7 @@ void IngestFileHttpSvcMod::onStartOfFile(string const& name, string const& fileN
     // is made the persistent state of the destination table is supposed to be changed.
     _contrib.retryAllowed = true;
 
-    // This parameters sets a limit foe the number of warnings (should there be any)
+    // This parameters sets a limit for the number of warnings (should there be any)
     // reported by MySQL after contribution loading attempt. Warnings is an important
     // mechanism for debugging problems with the ingested data.
     _contrib.maxNumWarnings = body().optionalUInt("max_num_warnings",

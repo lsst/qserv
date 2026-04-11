@@ -141,7 +141,7 @@ public:
      *   replica::Lock lock(mutex);
      *   // The better option
      *   replica::Lock lock(serviceProvider->getNamedMutex("name"));
-     * @code
+     * @endcode
      * Class replica::Lock makes a copy of the shared pointer for a duration of the lock.
      *
      * If, for some reason, a code resorts to using low-level references/pointers to the stored mutex
@@ -151,7 +151,7 @@ public:
      *   auto mutex = serviceProvider->getNamedMutex("name");
      *   replica::Lock lock(*mutex);
      *   std::lock_guard<replica::Mutex> lock(*mutex);
-     * @code
+     * @endcode
      * Though, in general this would work, the above shown dereferencing is not recommended.
      *
      * @param name The name of a named mutex.

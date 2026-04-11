@@ -22,7 +22,7 @@
 #define LSST_QSERV_REPLICA_FILESERVER_H
 
 /**
- * This header declares class FileServern which is used
+ * This header declares class FileServer which is used
  * in the server-side implementation of the point-to-point file migration
  * service of the Replication system.
  */

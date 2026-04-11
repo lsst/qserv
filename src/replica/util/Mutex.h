@@ -51,14 +51,14 @@ public:
 
     Mutex() : _id(nextId()) {}
 
-    /// Lock the mutext (replaces the corresponding method of the base class)
+    /// Lock the mutex (replaces the corresponding method of the base class)
     void lock() {
         std::mutex::lock();
         _holder = std::this_thread::get_id();
         addCurrentId();
     }
 
-    /// Release the mutext (replaces the corresponding method of the base class)
+    /// Release the mutex (replaces the corresponding method of the base class)
     void unlock() {
         removeCurrentId();
         _holder = std::thread::id();
@@ -99,10 +99,10 @@ private:
 };
 
 /**
- * Class Lock is designed to completement the above defined class Mutex.
+ * Class Lock is designed to complement the above defined class Mutex.
  * The current implementation of the class is very similar to std::lock_guard.
  * In addition Lock would also print out 3 debug messages into the log stream when
- * a state transition ocurrs:
+ * a state transition occurs:
  *
  * - before the lock is acquired
  * - right after it's acquired
@@ -126,7 +126,7 @@ public:
     /**
      * Lock the mutex given by a shared pointer.
      * @note A local copy of the shared pointer will be owned by the lock.
-     *   A local reference to the Mutex will be reffering an object pointed
+     *   A local reference to the Mutex will be referring an object pointed
      *   to by the pointer to allow unifid inner implementation of
      *   the locking/unlocking algorithms. See the code for further details.
      * @param mutex A mutex object to be locked.

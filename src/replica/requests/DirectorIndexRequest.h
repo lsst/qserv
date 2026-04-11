@@ -68,7 +68,7 @@ public:
     DirectorIndexRequest& operator=(DirectorIndexRequest const&) = delete;
 
     /// Non-trivial destructor is needed to delete the data file that is created
-    /// upon successfull completion of the request.
+    /// upon successful completion of the request.
     virtual ~DirectorIndexRequest() final;
 
     std::string const& database() const { return _database; }

@@ -160,11 +160,11 @@ public:
             try {
                 responseBuffer().parse(response, responseBuffer().size());
             } catch (std::runtime_error const& ex) {
-                // The message is corrupt. Google Protobuf will report an error
-                // of the following kind:
-                // @code
-                //   [libprotobuf ERROR google/protobuf/message_lite.cc:123] Can't parse message...
-                // @code
+                /// The message is corrupt. Google Protobuf will report an error
+                /// of the following kind:
+                /// @code
+                ///   [libprotobuf ERROR google/protobuf/message_lite.cc:123] Can't parse message...
+                /// @endcode
                 setSuccess(false);
             }
         }

@@ -134,7 +134,7 @@ private:
     unsigned int _numWarnings = 0;
     std::list<database::mysql::Warning> _warnings;
 
-    uint64_t _numRowsLoaded = 0;  ///< Th enumber of rows actually ingested into Qserv.
+    uint64_t _numRowsLoaded = 0;  ///< The number of rows actually ingested into Qserv.
 };
 
 }  // namespace lsst::qserv::replica

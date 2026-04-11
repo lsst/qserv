@@ -122,7 +122,7 @@ public:
     ~Sql() override = default;
 };
 
-/// The enumerator type dwefining a scope for a variable(s)
+/// The enumerator type defining a scope for a variable(s)
 enum class SqlVarScope : int { SESSION = 1, GLOBAL = 2 };
 
 /**
@@ -1101,7 +1101,7 @@ public:
      * @code
      *  SET GLOBAL `var1`=1
      *  SET `var2`=2,`var3`='abc'
-     * @code
+     * @endcode
      *
      * @param scope The scope of the variable (SESSION, GLOBAL, etc.)
      * @param Fargs A collection of pairs specifying variable names and their values.
@@ -1124,7 +1124,7 @@ public:
      * The generator will produce this statement:
      * @code
      *  CALL QSERV_MANAGER('abc')
-     * @code
+     * @endcode
      *
      * @param packedProcAndArgs The well-formed SQL for the procedure and its parameters
      * @return Well-formed SQL statement.

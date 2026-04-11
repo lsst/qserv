@@ -65,7 +65,7 @@ bool selectSingleValueImpl(std::shared_ptr<Connection> const& conn, std::string 
  * @return 'true' if the value is not NULL.
  *
  * @throws logic_error If the query is not supposed to return any result set,
- *   or if the result set has nore than 1 row (unless noMoreThanOne = false).
+ *   or if the result set has more than 1 row (unless noMoreThanOne = false).
  * @throws EmptyResultSetError If a result set is empty.
  * @throws InvalidTypeError If the conversion to a proposed type will fail.
  */
@@ -86,7 +86,7 @@ inline bool selectSingleValue(std::shared_ptr<Connection> const& conn, std::stri
 
 /**
  * Report info on the on-going queries using 'SHOW [FULL] PROCESSLIST'.
- * @param A scope of the operaton depends on the user credentials privided
+ * @param A scope of the operation depends on the user credentials provided
  *   in the configuration object. Normally, a subset of queries which belong
  *   to the specified user will be reported.
  * @param conn The MySQL connection for executing the query.

@@ -69,12 +69,12 @@ private:
      * the following format:
      * @code
      *   <database>:<chunk>
-     * @code
+     * @endcode
      * For example:
      * @code
      *   LSST:123 LSST:124 LSST:23456
      *   LSST:0
-     * @code
+     * @endcode
      * @param replicas collection to be initialized
      * @param databases collection of unique database names found in the input files. The collection
      *   will be populated upon a successful completion of the method.

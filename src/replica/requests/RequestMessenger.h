@@ -49,7 +49,7 @@ public:
     /// The pointer type for instances of the class
     typedef std::shared_ptr<RequestMessenger> Ptr;
 
-    /// The callaback type for notifications on completion of the request
+    /// The callback type for notifications on completion of the request
     /// disposal operation. The first parameter (std::string const&) of the callback
     /// is the unique identifier of a request, the second parameter (bool) is a flag
     /// indicating a success or a failure of the operation, and the last parameter

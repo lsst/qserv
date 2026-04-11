@@ -71,7 +71,7 @@ public:
      *   },
      *   ...
      * ]
-     * @code
+     * @endcode
      * Otherwise, the following schema will be expected:
      * @code
      * [
@@ -84,7 +84,7 @@ public:
      *   },
      *   ...
      * ]
-     * @code
+     * @endcode
      *
      * Notes on the values of the parameters :
      * - "worker-host" is a DNS name or an IP address
@@ -127,7 +127,7 @@ public:
      * @code
      *   chunk_<number>.txt
      *   chunk_<number>_overlap.txt
-     * @code
+     * @endcode
      * @param filename the name of the chunk contribution files
      * @return an object encapsulating the attributes
      */
