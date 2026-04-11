@@ -300,7 +300,7 @@ void SqlResultSet::iterate(SqlResultSet::ResultSet const& resultSet,
 
 ostream& operator<<(ostream& os, SqlResultSet const& info) {
     os << "SqlResultSet:{qservResultSet:[";
-    bool first = false;
+    bool first = true;
     for (auto&& itr : info.queryResultSet) {
         auto&& scope = itr.first;
         auto&& result = itr.second;

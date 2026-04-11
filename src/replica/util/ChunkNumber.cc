@@ -114,7 +114,7 @@ bool ChunkNumber::operator==(ChunkNumber const& rhs) const {
 
 bool ChunkNumber::operator<(ChunkNumber const& rhs) const {
     assertBothValid(*this, rhs);
-    return _value <= rhs._value;
+    return _value < rhs._value;
 }
 
 bool ChunkNumber::operator==(unsigned int value) const {
@@ -126,7 +126,7 @@ bool ChunkNumber::operator==(unsigned int value) const {
 bool ChunkNumber::operator<(unsigned int value) const {
     ChunkNumber const rhs(value, _validator);
     assertBothValid(*this, rhs);
-    return _value <= rhs._value;
+    return _value < rhs._value;
 }
 
 void ChunkNumber::assertBothValid(ChunkNumber const& lhs, ChunkNumber const& rhs) {

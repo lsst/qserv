@@ -111,8 +111,8 @@ void ProtocolBuffer::_extend(size_t newCapacityBytes) {
 
 uint32_t ProtocolBuffer::parseLength() const {
     if (_size != sizeof(uint32_t)) {
-        overflow_error("ProtocolBufferr::" + string(__func__) +
-                       "  not enough data to be interpreted as the frame header");
+        throw overflow_error("ProtocolBuffer::" + string(__func__) +
+                             "  not enough data to be interpreted as the frame header");
     }
     return ntohl(*(reinterpret_cast<uint32_t const*>(_data)));
 }
