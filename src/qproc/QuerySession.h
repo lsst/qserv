@@ -272,7 +272,6 @@ private:
     std::string _tmpTable;
     std::string _resultTable;
     std::string _error;
-    int _isFinal = 0;  ///< Has query analysis/optimization completed?
 
     ChunkSpecVector _chunks;                         ///< Chunk coverage
     std::shared_ptr<QueryPluginPtrVector> _plugins;  ///< Analysis plugin chain

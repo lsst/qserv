@@ -128,7 +128,6 @@ std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const& s
 void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::SelectStmt> const& stmt) {
     _original = sql;
     _stmt = stmt;
-    _isFinal = false;
     _initContext();
     assert(_context.get());
 
@@ -288,9 +287,6 @@ std::shared_ptr<query::SelectStmt> QuerySession::getMergeStmt() const {
 }
 
 void QuerySession::finalize() {
-    if (_isFinal) {
-        return;
-    }
     QueryPluginPtrVector::iterator i;
     for (i = _plugins->begin(); i != _plugins->end(); ++i) {
         (**i).applyFinal(*_context);
