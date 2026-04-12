@@ -119,7 +119,7 @@ public:
      * from the following source:
      * @code
      *   mysql://[user][:password][@host][:port][/database]
-     * @code
+     * @endcode
      * @note Configuration objects initialized from MySQL would rely on MySQL as
      *   the persistent backend for any requests to update the state of the transient
      *   parameters. A connection object to the MySQL service will be initialized

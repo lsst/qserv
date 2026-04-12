@@ -476,7 +476,7 @@ protected:
      *   void T::notify(replica::Lock const& lock) {
      *       notifyDefaultImpl<T>(lock, _onFinish);
      *   }
-     * @code
+     * @endcode
      *
      * @see Request::notifyDefaultImpl
      * @param lock A lock on Request::_mtx must be acquired before calling this method.

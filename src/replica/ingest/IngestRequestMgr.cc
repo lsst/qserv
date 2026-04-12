@@ -136,7 +136,7 @@ shared_ptr<IngestRequestMgr> IngestRequestMgr::create(shared_ptr<ServiceProvider
         //     contrib.loadTime is guaranteed to be set to 0
         //
         //   contrib.loadTime -- is set to a non-zero value by a processing thread after finishing
-        //     uploading the content of teh temporary file into MySQL. At this point the request
+        //     uploading the content of the temporary file into MySQL. At this point the request
         //     is supposed to be completed and moved into the output queue.
         //
         // The auto-resume algorithm is evaluating a progress of requests from the newest

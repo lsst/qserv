@@ -41,7 +41,7 @@ namespace lsst::qserv::replica {
  * The resulting query will have the following format:
  * @code
  * ?include_tasks=<numeric_flag>&max_tasks=<num>[&query_ids=<id1>[,<id2>...][&task_states=<state1>[,<state2>...]
- * @code
+ * @endcode
  * @param taskSelector The selector to be processed.
  * @return The corresponding query.
  */

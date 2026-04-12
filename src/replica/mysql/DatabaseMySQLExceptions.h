@@ -176,7 +176,7 @@ public:
  * a non-partitioned table:
  * @code
  *   ALTER TABLE <database>.<table> REMOVE PARTITIONING;
- * @code
+ * @endcode
  * Some application may choose to explicitly identify and process this type
  * of failures.
  */
@@ -190,7 +190,7 @@ public:
  * of a partitioned table:
  * @code
  *   SELECT * FROM <database>.<table> PARTITION (<partition>);
- * @code
+ * @endcode
  * Some application may choose to explicitly identify and process this type
  * of failures.
  */
@@ -204,7 +204,7 @@ public:
  * the table's definition:
  * @code
  *   ALTER TABLE <database>.<table> DROP PARTITION <partition>;
- * @code
+ * @endcode
  */
 class ER_DROP_PARTITION_NON_EXISTENT_ : public Error {
 public:
@@ -224,7 +224,7 @@ public:
  * Thrown on foreign key constraint violations. MySQL reports this error when you try to add
  * a row but there is no parent row, and a foreign key constraint fails. Add the parent row first.
  * This exception may also indicate the normal scenario when a parent row was deleted on purpose.
- * In this cases, the application shoiuld catch this exception and handle it appropriately.
+ * In this cases, the application should catch this exception and handle it appropriately.
  */
 class ER_NO_REFERENCED_ROW_2_ : public Error {
 public:

@@ -57,11 +57,11 @@ public:
      * expected to have the following syntax:
      * @code
      *   mysql://[user][:password]@[host][:port][/database]
-     * @code
+     * @endcode
      * The minimal (though, totally useless) URI would be:
      * @code
      *   mysql://@
-     * @code
+     * @endcode
      *
      * @note
      *   1) all attributes are optional

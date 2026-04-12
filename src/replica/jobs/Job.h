@@ -93,7 +93,7 @@ public:
     }
 
     /// Structure Progress captures counters for the tasks completed by the jobs
-    /// adn the total number of tasks to be processed by the job.
+    /// and the total number of tasks to be processed by the job.
     struct Progress {
         size_t complete = 0;
         size_t total = 1;
@@ -257,7 +257,7 @@ protected:
      *   void T::notify(replica::Lock const& lock) {
      *       notifyDefaultImpl<T>(lock, _onFinish);
      *   }
-     * @code
+     * @endcode
      * @see Job::notifyDefaultImpl
      * @param lock  A lock on Job::_mtx must be acquired by a caller of the method.
      */

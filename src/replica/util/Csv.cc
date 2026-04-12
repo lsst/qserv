@@ -42,7 +42,7 @@ map<char, string> const outTranslationMap = {{'\0', R"()"}, {'\t', R"(\t)"}, {',
 
 /**
  * Translate the string value of the specified parameter into a character
- * given a subset of strings allowed in a contex of the parameter.
+ * given a subset of strings allowed in a context of the parameter.
  * @param name The name of a parameter (used for error reporting).
  * @param value The input string value of the parameter to be translated.
  * @param allowedValues A collection of allowed input (string) values.

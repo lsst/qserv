@@ -60,7 +60,7 @@ void DeleteWorkerTask::onStart() {
 
     _logStartedEvent(jobs[0]);
     track<DeleteWorkerJob>(DeleteWorkerJob::typeName(), jobs, numFinishedJobs);
-    _logStartedEvent(jobs[0]);
+    _logFinishedEvent(jobs[0]);
 }
 
 void DeleteWorkerTask::_logStartedEvent(DeleteWorkerJob::Ptr const& job) const {

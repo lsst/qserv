@@ -373,7 +373,7 @@ void DirectorIndexJob::_loadDataIntoTable() {
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
     // Open MySQL connection using the RAII-style handler that would automatically
-    // abort the transaction should any problem occured when loading data into the table.
+    // abort the transaction should any problem occurred when loading data into the table.
     Connection::Ptr conn;
     try {
         conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));

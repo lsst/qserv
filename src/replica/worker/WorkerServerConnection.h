@@ -46,7 +46,7 @@ namespace lsst::qserv::replica {
  * a series of asynchronous operations to communicate with remote client.
  * When all details of an incoming request are obtained from the client
  * the connection object forwards this request for actual processing
- * to an instance of the WorkerProcessor class. A response resieved from
+ * to an instance of the WorkerProcessor class. A response received from
  * the processor is serialized and sent back (asynchronously) to
  * the client.
  */

@@ -61,7 +61,7 @@ json ConfigCzar::toJson() const {
 }
 
 bool ConfigCzar::operator==(ConfigCzar const& other) const {
-    return (name == other.name) && (host == other.host) && (port == other.port);
+    return (name == other.name) && (id == other.id) && (host == other.host) && (port == other.port);
 }
 
 ostream& operator<<(ostream& os, ConfigCzar const& info) {

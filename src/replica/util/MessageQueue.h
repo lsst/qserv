@@ -49,7 +49,7 @@ namespace lsst::qserv::replica {
  *   public:
  *       std::string const& id() const;
  *   };
- * @code
+ * @endcode
  * The implementation is optimized for three most frequent operations with
  * the queue:
  * - fetching the first element from the front of the highest-priority lane,

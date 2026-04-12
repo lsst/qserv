@@ -105,8 +105,8 @@ void IngestClient::send() {
         ProtocolIngestData data;
         eof = !file.read(record.get(), _recordSizeBytes);
         if (eof && !file.eof()) {
-            _abort(__func__, "failed to open the file: '" + _inputFilePath + +"', error: '" +
-                                     strerror(errno) + "', errno: " + to_string(errno));
+            _abort(__func__, "failed to open the file: '" + _inputFilePath + "', error: '" + strerror(errno) +
+                                     "', errno: " + to_string(errno));
         }
         size_t const num = file.gcount();
         _sizeBytes += num;

@@ -136,7 +136,7 @@ void ReplicationTask::_updateChunkMap() {
     }
 
     // Open MySQL connection using the RAII-style handler that would automatically
-    // abort the transaction should any problem occured when loading data into the table.
+    // abort the transaction should any problem occurred when loading data into the table.
     ConnectionHandler h;
     try {
         h.conn = Connection::open(Configuration::qservCzarDbParams("qservMeta"));
