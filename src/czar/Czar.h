@@ -113,10 +113,6 @@ public:
     /// Return a pointer to QdispSharedResources
     qdisp::SharedResources::Ptr getQdispSharedResources() { return _qdispSharedResources; }
 
-    /// @return true if trivial queries should be treated as
-    ///         interactive queries to stress test the czar.
-    bool getQueryDistributionTestVer() { return _queryDistributionTestVer; }
-
     /// @param queryId The unique identifier of the previously submitted user query
     /// @return The reconstructed info for the query
     SubmitResult getQueryInfo(QueryId queryId) const;
@@ -160,8 +156,6 @@ private:
     /// the PsuedoFifo to prevent czar from calling most recent requests,
     /// and any other resources for use by query executives.
     qdisp::SharedResources::Ptr _qdispSharedResources;
-
-    bool _queryDistributionTestVer;  ///< True if config says this is distribution test version.
 
     /// Reloads the log configuration file on log config file change.
     std::shared_ptr<util::FileMonitor> _logFileMonitor;

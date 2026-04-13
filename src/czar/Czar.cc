@@ -152,7 +152,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     int const xrootdSpread = _czarConfig->getXrootdSpread();
     LOGS(_log, LOG_LVL_INFO, "config xrootdSpread=" << xrootdSpread);
     XrdSsiProviderClient->SetSpread(xrootdSpread);
-    _queryDistributionTestVer = _czarConfig->getQueryDistributionTestVer();
 
     LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
     LOGS(_log, LOG_LVL_INFO, "Czar config: " << *_czarConfig);
@@ -223,13 +222,8 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     }
 
     // make new UserQuery
-    // this is atomic
-    ccontrol::UserQuery::Ptr uq;
-    {
-        lock_guard<mutex> lock(_mutex);
-        uq = _uqFactory->newUserQuery(query, defaultDb, getQdispSharedResources(), userQueryId, msgTableName,
-                                      resultDb);
-    }
+    ccontrol::UserQuery::Ptr const uq = _uqFactory->newUserQuery(query, defaultDb, getQdispSharedResources(),
+                                                                 userQueryId, msgTableName, resultDb);
 
     // Add logging context with query ID
     QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
