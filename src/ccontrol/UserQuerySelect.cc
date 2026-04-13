@@ -423,33 +423,26 @@ void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::Se
 void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_queryId, getResultQuery()); }
 
 void UserQuerySelect::_setupChunking() {
-    LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
-    std::shared_ptr<qproc::IndexMap> im;
-    std::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
-    {
-        eSet = _qSession->getEmptyChunks();
-        if (!eSet) {
-            eSet = std::make_shared<IntSet>();
-            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
-        }
-    }
-    // FIXME add operator<< for QuerySession
-    LOGS(_log, LOG_LVL_TRACE, "_qSession: " << _qSession);
+    LOGS(_log, LOG_LVL_TRACE, "Setup chunking  _qSession: " << _qSession);
     if (_qSession->hasChunks()) {
         auto areaRestrictors = _qSession->getAreaRestrictors();
         auto secIdxRestrictors = _qSession->getSecIdxRestrictors();
         css::StripingParams partStriping = _qSession->getDbStriping();
-
-        im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
+        auto const im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
         qproc::ChunkSpecVector csv;
         if (areaRestrictors != nullptr || secIdxRestrictors != nullptr) {
             csv = im->getChunks(areaRestrictors, secIdxRestrictors);
         } else {  // Unrestricted: full-sky
             csv = im->getAllChunks();
         }
-
         LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
+
         // Filter out empty chunks
+        std::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
+        if (!eSet) {
+            eSet = std::make_shared<IntSet const>();
+            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
+        }
         for (qproc::ChunkSpecVector::const_iterator i = csv.begin(), e = csv.end(); i != e; ++i) {
             if (eSet->count(i->chunkId) == 0) {  // chunk not in empty?
                 _qSession->addChunk(*i);
