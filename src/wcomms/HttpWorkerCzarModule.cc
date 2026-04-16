@@ -266,7 +266,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     vector<wbase::UserQueryInfo::Ptr> deleteFilesList;
     std::map<QueryId, std::map<UberJobId, TIMEPOINT>> deadUberJobsList;
     {
-        // Need to make a lists of these while the mutex is held,
+        // Make a lists of these while the mutex is held,
         // and then use the lists to make changes after the mutex is released.
 
         lock_guard mapLg(wqsData->mapMtx);
@@ -317,7 +317,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     wccIssue->clearFailedTransmitsForQids(wqsData->qIdDoneDeleteFiles);
 
     // Return a message containing lists of the queries that were cancelled.
-    jsRet = wqsData->serializeResponseJson(foreman()->getWorkerStartupTime());
+    jsRet = wqsData->buildResponseJson(foreman()->getWorkerStartupTime());
     wCzarInfo->sendWorkerCzarComIssueIfNeeded(wqsData->getWInfo(), wqsData->getCzInfo());
     return jsRet;
 }

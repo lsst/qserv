@@ -377,7 +377,7 @@ void WorkerQueryStatusData::removeDeadUberJobsFor(QueryId qId) {
     qIdDeadUberJobs.erase(qId);
 }
 
-json WorkerQueryStatusData::serializeResponseJson(uint64_t workerStartupTime) {
+json WorkerQueryStatusData::buildResponseJson(uint64_t workerStartupTime) {
     // Go through the _qIdDoneKeepFiles, _qIdDoneDeleteFiles, and _qIdDeadUberJobs lists to build a
     // response. Nothing should be deleted and time is irrelevant for this, so maxLifetime is enormous
     // and any time could be used for last contact, but now() is easy.
