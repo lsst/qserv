@@ -247,7 +247,7 @@ json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult
         // at any point of time after the query has been submitted. If the query is still
         // executing the thread will block until the query is completed or failed.
         string const messageSelectQuery =
-                "SELECT chunkId, code, message, severity+0, timeStamp FROM " + submitResult.messageTable;
+                "SELECT chunkId, code, message, severity, timeStamp FROM " + submitResult.messageTable;
         sql::SqlResults messageQueryResults;
         sql::SqlErrorObject messageQueryErr;
         if (!conn->runQuery(messageSelectQuery, messageQueryResults, messageQueryErr)) {
@@ -258,7 +258,7 @@ json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult
             throw http::Error(context() + __func__, msg);
         }
 
-        // Read thе message table to see if the user query suceeded or failed
+        // Read thе message table to see if the user query succeeded or failed
         vector<string> chunkId;
         vector<string> code;
         vector<string> message;
@@ -274,13 +274,15 @@ json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult
             throw http::Error(context() + __func__, msg);
         }
         string errorMsg;
+        bool errorFound = false;
         for (size_t i = 0; i < chunkId.size(); ++i) {
-            if (stoi(code[i]) > 0) {
-                errorMsg += "[chunkId=" + chunkId[i] + " code=" + code[i] + " message=" + message[i] +
-                            " severity=" + severity[i] + "], ";
+            errorMsg += "[chunkId=" + chunkId[i] + " code=" + code[i] + " message=" + message[i] +
+                        " severity=" + severity[i] + "], ";
+            if (severity[i] == "ERROR") {  // MessageSeverity::MSG_ERROR
+                errorFound = true;
             }
         }
-        if (!errorMsg.empty()) {
+        if (errorFound) {
             messageQueryResults.freeResults();
             _dropTable(submitResult.messageTable);
             _dropTable(submitResult.resultTable);
@@ -290,7 +292,6 @@ json HttpCzarQueryModule::_waitAndExtractResult(SubmitResult const& submitResult
         messageQueryResults.freeResults();
         _dropTable(submitResult.messageTable);
     }
-
     // Read a result set from the result table, package it into the JSON object
     // and sent it back to a user.
     sql::SqlResults resultQueryResults;

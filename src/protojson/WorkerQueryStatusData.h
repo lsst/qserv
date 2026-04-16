@@ -320,7 +320,7 @@ public:
 
     /// Return a json object indicating the status of the message for the
     /// original requester.
-    nlohmann::json serializeResponseJson(uint64_t workerStartupTime);
+    nlohmann::json buildResponseJson(uint64_t workerStartupTime);
 
     /// Use the worker's response, `jsResp`, to update the status of this object.
     /// The worker's response contains lists indicating what the worker
