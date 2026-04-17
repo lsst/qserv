@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     BOOST_REQUIRE(*jsDataA == *jsWorkerAFromJson);
 
     // Make the response, which contains lists of the items handled by the workers.
-    auto jsWorkerResp = workerAFromJson->serializeResponseJson(wkrStartTime);
+    auto jsWorkerResp = workerAFromJson->buildResponseJson(wkrStartTime);
 
     // test removal of elements after response.
     BOOST_REQUIRE(!wqsdA->qIdDoneDeleteFiles.empty());
