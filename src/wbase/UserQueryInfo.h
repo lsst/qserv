@@ -44,7 +44,6 @@ class UberJobData;
 class UserQueryInfo {
 public:
     using Ptr = std::shared_ptr<UserQueryInfo>;
-    using Map = std::map<QueryId, std::weak_ptr<UserQueryInfo>>;
 
     UserQueryInfo() = delete;
     UserQueryInfo(UserQueryInfo const&) = delete;

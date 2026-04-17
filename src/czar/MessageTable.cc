@@ -54,10 +54,6 @@ std::string const createTmpl(
 
 std::string const createAndLockTmpl(createTmpl + "; LOCK TABLES %1% WRITE;");
 
-std::string const writeTmpl(
-        "INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
-        "VALUES (%2%, %3%, '%4$." MAX_MESSAGE_LEN "s', '%5%', %6%)");
-
 // mysql can only unlock all locked tables,
 // there is no command to unlock single table
 std::string const unlockTmpl("UNLOCK TABLES");
@@ -136,7 +132,10 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery,
     cMsg += std::to_string(completeCount) + " cancelled chunks=" + std::to_string(cancelCount) + "\n";
     cMsg += multiErrStr;
     LOGS(_log, LOG_LVL_DEBUG, " MULTIERROR:" << cMsg);
-    std::string summaryQ = (boost::format(::writeTmpl) % _tableName % "-1" % "-1" %
+    std::string const writeTmpl(
+            "INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
+            "VALUES (%2%, %3%, '%4$." MAX_MESSAGE_LEN "s', '%5%', %6%)");
+    std::string summaryQ = (boost::format(writeTmpl) % _tableName % "-1" % "-1" %
                             _sqlConn->escapeString(cMsg) % severity % std::time(nullptr))
                                    .str();
     sql::SqlErrorObject sqlE;
