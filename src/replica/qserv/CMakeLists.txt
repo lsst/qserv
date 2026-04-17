@@ -1,7 +1,9 @@
 add_library(replica_qserv OBJECT)
+
 target_include_directories(replica_qserv PRIVATE
     ${XROOTD_INCLUDE_DIRS}
 )
+
 target_sources(replica_qserv PRIVATE
     AddReplicaQservMgtRequest.cc
     GetReplicasQservMgtRequest.cc
@@ -19,8 +21,8 @@ target_sources(replica_qserv PRIVATE
     RemoveReplicaQservMgtRequest.cc
     SetReplicasQservMgtRequest.cc
     TestEchoQservMgtRequest.cc
-    XrdCmsgetVnId.cc
 )
+
 target_link_libraries(replica_qserv PUBLIC
     log
 )

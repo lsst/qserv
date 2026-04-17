@@ -29,17 +29,13 @@
 // Qserv headers
 #include "ccontrol/UserQuery.h"
 #include "qmeta/QInfo.h"
-#include "qmeta/types.h"
 
 // Forward declarations
 
-namespace lsst::qserv::qdisp {
-class MessageStore;
-}
-
 namespace lsst::qserv::qmeta {
+class MessageStore;
 class QMeta;
-}
+}  // namespace lsst::qserv::qmeta
 
 // This header declarations
 
@@ -62,7 +58,7 @@ public:
      *  @param czarId ID for current czar
      *  @param qMeta QMeta instance
      */
-    UserQueryAsyncResult(QueryId queryId, qmeta::CzarId czarId, std::shared_ptr<qmeta::QMeta> const& qMeta);
+    UserQueryAsyncResult(QueryId queryId, CzarId czarId, std::shared_ptr<qmeta::QMeta> const& qMeta);
 
     UserQueryAsyncResult(UserQueryAsyncResult const&) = delete;
     UserQueryAsyncResult& operator=(UserQueryAsyncResult const&) = delete;
@@ -87,7 +83,7 @@ public:
     void discard() override {}
 
     // Delegate objects
-    std::shared_ptr<qdisp::MessageStore> getMessageStore() override { return _messageStore; }
+    std::shared_ptr<qmeta::MessageStore> getMessageStore() override { return _messageStore; }
 
     /// This method should disappear when we start supporting results
     /// in locations other than MySQL tables. We'll switch to getResultLocation()
@@ -105,10 +101,10 @@ public:
 
 private:
     QueryId _queryId;
-    qmeta::CzarId _czarId;
+    CzarId _czarId;
     std::shared_ptr<qmeta::QMeta> _qMeta;
     qmeta::QInfo _qInfo;
-    std::shared_ptr<qdisp::MessageStore> _messageStore;
+    std::shared_ptr<qmeta::MessageStore> _messageStore;
     QueryState _qState = UNKNOWN;
 };
 

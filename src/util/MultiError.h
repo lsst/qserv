@@ -35,6 +35,7 @@
 
 // System headers
 #include <exception>
+#include <map>
 #include <ostream>
 #include <vector>
 
@@ -43,59 +44,47 @@
 
 namespace lsst::qserv::util {
 
-/** @class
- * @brief Implement a generic error container for Qserv
- *
- * Store Qserv errors in a throwable vector.
- * util::Error operator << is used for output.
- *
- */
-class MultiError : public std::exception {
+/// Implement a generic error container for Qserv
+/// Errors are stored in a map using a code/subCode pair for the key.
+/// The first error with a given code/subCode sets the message and
+///  duplicate values increase the count of the error.
+/// The hope is that numerous duplicate errors will just have a high
+///    count and not obscure other important messages.
+class MultiError {
 public:
-    /** Return a string representation of the object
-     *
-     * Can be used in the log
-     *
-     * @return a string representation of the object
-     */
-    std::string toString() const;
+    MultiError() = default;
+    MultiError(MultiError const& multiErr) = default;
 
-    /** Return a minimalistic string representation of the object
-     *
-     * Can be used to print error messages to the
-     * command-line interface
-     *
-     * @return a string representation of the object
-     */
+    virtual ~MultiError() = default;
+
+    bool operator==(MultiError const& other) const = default;
+
+    /// Return a minimalistic string representation of the object
+    /// @return a string representation of the object
     std::string toOneLineString() const;
 
-    /** Return the first error code (if any)
-     *
-     * The idea is to return the first code that might trigger the "chain" reaction.
-     * An interpretation of the code depns on a context.
-     *
-     * @return the code or ErrorCode::NONE if the collection of errors is empty
-     */
-    int firstErrorCode() const;
+    /// Return the error with the lowest error code.
+    util::Error firstError() const;
 
-    virtual ~MultiError() throw() {}
-
-    /** Overload output operator for this class
-     *
-     * @param out
-     * @param multiError
-     * @return an output stream, with no newline at the end
-     */
-    friend std::ostream& operator<<(std::ostream& out, MultiError const& multiError);
-
-    bool empty() const;
+    bool empty() const { return _errorMap.empty(); }
 
     std::vector<Error>::size_type size() const;
 
-    void push_back(const std::vector<Error>::value_type& val);
+    std::vector<Error> getVector() const;
+
+    /// Errors should set the error code to anything but NONE (0).
+    /// The Error subCode may be any value, including NONE.
+    void insert(Error const& val);
+    void merge(MultiError const& other);
+
+    //// Return a string representation of the object
+    std::string toString() const;
+
+    friend std::ostream& operator<<(std::ostream& out, MultiError const& multiError);
 
 private:
-    std::vector<Error> _errorVector;
+    /// Map of Errors using Error::_code + Error::_subCode as the key.
+    std::map<std::pair<int, int>, Error> _errorMap;
 };
 
 }  // namespace lsst::qserv::util

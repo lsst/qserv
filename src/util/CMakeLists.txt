@@ -20,6 +20,7 @@ target_sources(util PRIVATE
     Issue.cc
     MultiError.cc
     Mutex.cc
+    QdispPool.cc
     ResultFileName.cc
     StringHash.cc
     String.cc
@@ -29,7 +30,6 @@ target_sources(util PRIVATE
     Timer.cc
     TimeUtils.cc
     WorkQueue.cc
-    xrootd.cc
 )
 
 target_link_libraries(util PUBLIC
@@ -39,9 +39,7 @@ target_link_libraries(util PUBLIC
     log
 )
 
-install(
-    TARGETS util
-)
+install(TARGETS util)
 
 FUNCTION(util_tests)
     FOREACH(TEST IN ITEMS ${ARGV})

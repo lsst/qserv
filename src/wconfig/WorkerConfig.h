@@ -136,6 +136,9 @@ public:
     /// @return slow shared scan priority
     unsigned int getPrioritySnail() const { return _prioritySnail->getVal(); }
 
+    /// @return Prioritize by number of inFLight tasks per scheduler.
+    bool getPrioritizeByInFlight() const { return _prioritizeByInFlight->getVal(); }
+
     /// @return maximum concurrent chunks for fast shared scan
     unsigned int getMaxActiveChunksFast() const { return _maxActiveChunksFast->getVal(); }
 
@@ -159,8 +162,28 @@ public:
     /// @return the name of a folder where query results will be stored
     std::string const resultsDirname() const { return _resultsDirname->getVal(); }
 
-    /// @return the port number of the worker XROOTD service for serving result files
-    uint16_t resultsXrootdPort() const { return _resultsXrootdPort->getVal(); }
+    /// The size
+    int getQPoolSize() const { return _qPoolSize->getVal(); }
+
+    /// The highest priority number, such as 2, which results
+    /// in queues for priorities 0, 1, 2, and 100; where 0 is the
+    /// highest priority.
+    /// @see util::QdispPool
+    int getQPoolMaxPriority() const { return _qPoolMaxPriority->getVal(); }
+
+    /// The maximum number of running threads at each priority,
+    /// "30:20:20:10" with _qPoolMaxPriority=2 allows 30 threads
+    /// at priority 0, 20 threads at priorities 1+2, and 10 threads
+    /// at priority 100.
+    /// @see util::QdispPool
+    std::string getQPoolRunSizes() const { return _qPoolRunSizes->getVal(); }
+
+    /// The minimum number of running threads per priority,
+    /// "3:3:3:3" with _qPoolMaxPriority=2 means that a thread at priority
+    /// 0 would not start if it meant that there would not be enough threads
+    /// left to have running for each of priorities 1, 2, and 100.
+    /// @see util::QdispPool
+    std::string getQPoolMinRunningSizes() const { return _qPoolMinRunningSizes->getVal(); }
 
     /// @return the number of the BOOST ASIO threads for servicing HTGTP requests
     size_t resultsNumHttpThreads() const { return _resultsNumHttpThreads->getVal(); }
@@ -193,6 +216,13 @@ public:
     std::string const& httpPassword() const { return _httpPassword->getVal(); }
     void setHttpPassword(std::string const& password);
     http::AuthContext httpAuthContext() const;
+
+    /// The number of seconds a czar needs to be incommunicado before being considered
+    /// dead by a worker.
+    unsigned int getCzarDeadTimeSec() const { return _czarDeadTimeSec->getVal(); }
+
+    /// Return the number of threads HttpSvc use for communicating with the czar.
+    unsigned int getCzarComNumHttpThreads() const { return _czarComNumHttpThreads->getVal(); }
 
     /// @return the JSON representation of the configuration parameters.
     /// @note The object has two collections of the parameters: 'input' - for
@@ -264,6 +294,9 @@ private:
             util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_med", notReq, 3);
     CVTUIntPtr _priorityFast =
             util::ConfigValTUInt::create(_configValMap, "scheduler", "priority_fast", notReq, 4);
+    CVTBoolPtr _prioritizeByInFlight =
+            util::ConfigValTBool::create(_configValMap, "results", "prioritize_by_inflight", notReq, false);
+
     CVTUIntPtr _maxReserveSlow =
             util::ConfigValTUInt::create(_configValMap, "scheduler", "reserve_slow", notReq, 2);
     CVTUIntPtr _maxReserveSnail =
@@ -298,8 +331,6 @@ private:
             _configValMap, "sqlconnections", "reservedinteractivesqlconn", notReq, 50);
     CVTStrPtr _resultsDirname =
             util::ConfigValTStr::create(_configValMap, "results", "dirname", notReq, "/qserv/data/results");
-    CVTUIntPtr _resultsXrootdPort =
-            util::ConfigValTUInt::create(_configValMap, "results", "xrootd_port", notReq, 1094);
     CVTUIntPtr _resultsNumHttpThreads =
             util::ConfigValTUInt::create(_configValMap, "results", "num_http_threads", notReq, 1);
     CVTBoolPtr _resultsCleanUpOnStart =
@@ -320,7 +351,7 @@ private:
     CVTUIntPtr _replicationHttpPort =
             util::ConfigValTUInt::create(_configValMap, "replication", "http_port", required, 0);
     CVTUIntPtr _replicationNumHttpThreads =
-            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
+            util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 20);
 
     CVTUIntPtr _mysqlPort = util::ConfigValTUInt::create(_configValMap, "mysql", "port", notReq, 4048);
     CVTStrPtr _mysqlSocket = util::ConfigValTStr::create(_configValMap, "mysql", "socket", notReq, "");
@@ -336,6 +367,18 @@ private:
     CVTStrPtr _httpUser = util::ConfigValTStr::create(_configValMap, "http", "user", notReq, "");
     CVTStrPtr _httpPassword =
             util::ConfigValTStr::create(_configValMap, "http", "password", notReq, "", hidden);
+
+    CVTIntPtr _qPoolSize = util::ConfigValTInt::create(_configValMap, "qpool", "Size", notReq, 50);
+    CVTIntPtr _qPoolMaxPriority =
+            util::ConfigValTInt::create(_configValMap, "qpool", "MaxPriority", notReq, 2);
+    CVTStrPtr _qPoolRunSizes =
+            util::ConfigValTStr::create(_configValMap, "qpool", "RunSizes", notReq, "50:20:10");
+    CVTStrPtr _qPoolMinRunningSizes =
+            util::ConfigValTStr::create(_configValMap, "qpool", "MinRunningSizes", notReq, "3:3:3");
+    CVTUIntPtr _czarDeadTimeSec =
+            util::ConfigValTUInt::create(_configValMap, "czar", "DeadTimeSec", notReq, 180);
+    CVTUIntPtr _czarComNumHttpThreads =
+            util::ConfigValTUInt::create(_configValMap, "czar", "ComNumHttpThreads", notReq, 40);
 };
 
 }  // namespace lsst::qserv::wconfig

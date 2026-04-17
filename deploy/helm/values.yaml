@@ -1,0 +1,50 @@
+qservImageName: ghcr.io/lsst/qserv:2026.2.2-rc1-48-gbf7de83f1
+mariadbImageName: ghcr.io/lsst/qserv-mariadb:2026.2.2-rc1
+sslProxyImageName: qserv/mysql-proxy-ssl:latest
+ingestHelperImageName: ghcr.io/lsst/qserv-build-base:2026.2.2-rc1-46-gf129c37c1
+
+qservImagePullPolicy: IfNotPresent
+mariadbImagePullPolicy: IfNotPresent
+sslProxyImagePullPolicy: IfNotPresent
+ingestHelperPullPolicy: IfNotPresent
+
+mode: full  # full | db-only
+
+czars:
+  replicas: 1
+  storage:
+    class: rubin-qserv-storage
+    size: 5Ti
+
+workers:
+  replicas: 72
+  storage:
+    class: rubin-qserv-storage
+    size: 10Ti
+
+replication:
+  storage:
+    class: rubin-qserv-storage
+    size: 2Ti
+
+ingest:
+  enable: true
+  storage:
+    class: rubin-qserv-storage
+    size: 200Gi
+
+czarExternalService:
+  enable: true
+  type: LoadBalancer
+  annotations:
+    metallb.io/address-pool: sdf-dmz
+  allocateLoadBalancerNodePorts: false
+  loadBalancerIP: 134.79.23.221
+  loadBalancerSourceRanges:
+    - 35.232.79.62/32
+    - 34.135.212.179/32
+    - 35.225.239.81/32
+    - 34.121.239.92/32
+    - 134.79.0.0/16
+    - 172.16.0.0/12
+    - 172.24.49.51/32

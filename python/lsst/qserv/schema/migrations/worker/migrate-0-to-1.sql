@@ -81,7 +81,9 @@ CREATE TABLE IF NOT EXISTS `Id` (
 
 -- Add a record with a unique identifier of a worker
 
-INSERT INTO Id (`id`) VALUES (UUID());
+INSERT INTO `Id` (`id`) VALUES (
+  COALESCE(NULLIF('{{ worker_name }}', ''), CONCAT(UUID()))
+);
 
 -- -----------------------------------------------------
 -- Create table `QMetadata`

@@ -33,6 +33,9 @@
 // Third party headers
 #include "boost/program_options.hpp"
 
+// LSST headers
+#include "lsst/log/Log.h"
+
 // Qserv headers
 #include "cconfig/CzarConfig.h"
 #include "czar/Czar.h"
@@ -47,6 +50,7 @@ namespace qserv = lsst::qserv;
 namespace {
 char const* const help = "The HTTP-based Czar frontend.";
 char const* const context = "[CZAR-HTTP-FRONTEND]";
+LOG_LOGGER _log = LOG_GET("lsst.qserv.czar.czarhttp");
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -57,7 +61,7 @@ int main(int argc, char* argv[]) {
     desc.add_options()("verbose,v", "Produce verbose output.");
     desc.add_options()("czar-name", po::value<string>()->default_value("http"),
                        "The name of this Czar frontend. Assign a unique name to each Czar.");
-    desc.add_options()("config", po::value<string>()->default_value("/config-etc/qserv-czar.cnf"),
+    desc.add_options()("config", po::value<string>()->default_value("/config-etc/qserv-czar.cfg"),
                        "The configuration file.");
     desc.add_options()("user", po::value<string>()->default_value(""),
                        "The login name of a user for connecting to the frontend.");
@@ -131,21 +135,25 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     bool const verbose = vm.count("verbose") > 0;
+
+    std::stringstream os;
+    os << ::context << " Czar name: " << czarName << "\n"
+       << ::context << " Configuration file: " << configFilePath << "\n"
+       << ::context << " Port: " << httpCzarConfig.port << "\n"
+       << ::context << " Number of threads: " << httpCzarConfig.numThreads << "\n"
+       << ::context << " Number of worker ingest threads: " << httpCzarConfig.numWorkerIngestThreads << "\n"
+       << ::context << " SSL certificate file: " << httpCzarConfig.sslCertFile << "\n"
+       << ::context << " SSL private key file: " << httpCzarConfig.sslPrivateKeyFile << "\n"
+       << ::context << " Temporary directory: " << httpCzarConfig.tmpDir << "\n"
+       << ::context << " Max.number of queued requests: " << httpCzarConfig.maxQueuedRequests << "\n"
+       << ::context << " Connection pool size (libcurl): " << httpCzarConfig.clientConnPoolSize << "\n"
+       << ::context << " Number of BOOST ASIO threads: " << httpCzarConfig.numBoostAsioThreads << "\n"
+       << ::context << " HTTP user: " << httpUser << "\n"
+       << ::context << " HTTP password: ******" << endl;
+    LOGS(_log, LOG_LVL_INFO, " czar-http startup " << os.str());
+
     if (verbose) {
-        cout << ::context << " Czar name: " << czarName << "\n"
-             << ::context << " Configuration file: " << configFilePath << "\n"
-             << ::context << " Port: " << httpCzarConfig.port << "\n"
-             << ::context << " Number of threads: " << httpCzarConfig.numThreads << "\n"
-             << ::context << " Number of worker ingest threads: " << httpCzarConfig.numWorkerIngestThreads
-             << "\n"
-             << ::context << " SSL certificate file: " << httpCzarConfig.sslCertFile << "\n"
-             << ::context << " SSL private key file: " << httpCzarConfig.sslPrivateKeyFile << "\n"
-             << ::context << " Temporary directory: " << httpCzarConfig.tmpDir << "\n"
-             << ::context << " Max.number of queued requests: " << httpCzarConfig.maxQueuedRequests << "\n"
-             << ::context << " Connection pool size (libcurl): " << httpCzarConfig.clientConnPoolSize << "\n"
-             << ::context << " Number of BOOST ASIO threads: " << httpCzarConfig.numBoostAsioThreads << "\n"
-             << ::context << " HTTP user: " << httpUser << "\n"
-             << ::context << " HTTP password: ******" << endl;
+        cout << os.str();
     }
     try {
         auto const czar = czar::Czar::createCzar(configFilePath, czarName);
