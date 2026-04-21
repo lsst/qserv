@@ -102,6 +102,9 @@ std::ostream& operator<<(std::ostream& os, Performance const& p);
  */
 class WorkerPerformance {
 public:
+    /// @return a JSON object with all counters set to the current time.
+    static nlohmann::json finishedToJson();
+
     /// All (but the request receive time) timestamps will be initialized with 0.
     WorkerPerformance();
     WorkerPerformance(WorkerPerformance const&) = default;

@@ -62,41 +62,43 @@ using namespace database::mysql;
 
 shared_ptr<WorkerDirectorIndexHttpRequest> WorkerDirectorIndexHttpRequest::create(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
-        protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired,
+        protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
+        ExpirationCallbackType const& onExpired,
         shared_ptr<database::mysql::ConnectionPool> const& connectionPool) {
-    auto ptr = shared_ptr<WorkerDirectorIndexHttpRequest>(
-            new WorkerDirectorIndexHttpRequest(serviceProvider, worker, hdr, req, onExpired, connectionPool));
+    auto ptr = shared_ptr<WorkerDirectorIndexHttpRequest>(new WorkerDirectorIndexHttpRequest(
+            serviceProvider, worker, hdr, params, onExpired, connectionPool));
     ptr->init();
     return ptr;
 }
 
 WorkerDirectorIndexHttpRequest::WorkerDirectorIndexHttpRequest(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
-        protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired,
+        protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
+        ExpirationCallbackType const& onExpired,
         shared_ptr<database::mysql::ConnectionPool> const& connectionPool)
-        : WorkerHttpRequest(serviceProvider, worker, "INDEX", hdr, req, onExpired),
-          _databaseName(req.at("database")),
-          _tableName(req.at("director_table")),
-          _hasTransactions(req.at("has_transaction").get<int>() != 0),
-          _transactionId(req.at("transaction_id")),
-          _chunkNumber(req.at("chunk")),
-          _offset(req.at("offset")),
+        : WorkerHttpRequest(serviceProvider, worker, "INDEX", hdr, params, onExpired),
+          _databaseName(params.requiredString("database")),
+          _tableName(params.requiredString("director_table")),
+          _hasTransactions(params.requiredBool("has_transaction")),
+          _transactionId(params.requiredUInt32("transaction_id")),
+          _chunkNumber(params.requiredUInt32("chunk")),
+          _offset(params.requiredUInt64("offset")),
           _connectionPool(connectionPool),
           _tmpDirName(serviceProvider->config()->get<string>("worker", "loader-tmp-dir") + "/" +
                       database::mysql::obj2fs(_databaseName)),
           _fileName(_tmpDirName + "/" + database::mysql::obj2fs(_tableName) + "-" + to_string(_chunkNumber) +
                     (_hasTransactions ? "-p" + to_string(_transactionId) : "") + "-" + hdr.id) {}
 
-void WorkerDirectorIndexHttpRequest::getResult(json& result) const {
-    result["error"] = _error;
-    result["data"] = util::String::toHex(_data.data(), _data.size());
-    result["total_bytes"] = _fileSizeBytes;
+json WorkerDirectorIndexHttpRequest::getResult() const {
+    return json::object({{"error", _error},
+                         {"data", util::String::toHex(_data.data(), _data.size())},
+                         {"total_bytes", _fileSizeBytes}});
 }
 
 bool WorkerDirectorIndexHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, CONTEXT);
 
     // This method will throw ConfigUnknownDatabase if the database is invalid.

@@ -81,10 +81,19 @@ public:
 
         /**
          * Remove a request from the queue by its identifier
+         * @note The performance of the algorithm is O(n) where n is the number of requests in the queue.
          * @param id an identifier of a request
          * @return 'true' if the object was actually removed
          */
         bool remove(std::string const& id);
+
+        /**
+         * Check if a request with the specified identifier exists in the queue
+         * @note The performance of the algorithm is O(n) where n is the number of requests in the queue.
+         * @param id an identifier of a request
+         * @return 'true' if the request is found in the queue
+         */
+        bool exists(std::string const& id) const;
     };
 
     /**
@@ -123,66 +132,69 @@ public:
     /**
      * Enqueue the replica creation request for processing
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @return the response object to be sent back to a client
      */
-    nlohmann::json createReplica(protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req);
+    nlohmann::json createReplica(protocol::QueuedRequestHdr const& hdr,
+                                 protocol::RequestParams const& params);
 
     /**
      * Enqueue the replica deletion request for processing
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @return the response object to be sent back to a client
      */
-    nlohmann::json deleteReplica(protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req);
+    nlohmann::json deleteReplica(protocol::QueuedRequestHdr const& hdr,
+                                 protocol::RequestParams const& params);
 
     /**
      * Enqueue the replica lookup request for processing
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @return the response object to be sent back to a client
      */
-    nlohmann::json findReplica(protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req);
+    nlohmann::json findReplica(protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params);
 
     /**
      * Enqueue the multi-replica lookup request for processing
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @return the response object to be sent back to a client
      */
-    nlohmann::json findAllReplicas(protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req);
+    nlohmann::json findAllReplicas(protocol::QueuedRequestHdr const& hdr,
+                                   protocol::RequestParams const& params);
 
     /**
      * Enqueue the worker-side testing request for processing
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @return the response object to be sent back to a client
      */
-    nlohmann::json echo(protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req);
+    nlohmann::json echo(protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params);
 
     /**
      * Enqueue a request for querying the worker database
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @return the response object to be sent back to a client
      */
-    nlohmann::json sql(protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req);
+    nlohmann::json sql(protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params);
 
     /**
      * Enqueue a request for extracting the "director" index data from
      * the director tables.
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @return the response object to be sent back to a client
      */
-    nlohmann::json index(protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req);
+    nlohmann::json index(protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params);
 
     /**
      * Get a status of the request
      * @param id an identifier of a request affected by the operation
      * @return the response object to be sent back to a client
      */
-    nlohmann::json requestStatus(std::string const& id);
+    nlohmann::json statusOfRequests(std::string const& id);
 
     /**
      * Dequeue replication request
@@ -219,51 +231,74 @@ public:
 
     /**
      * Capture the processor's state and counters.
+     * @param type the type of the service operation which is being performed (e.g. "SVC_SUSPEND",
+     * "SVC_RESUME", etc.)
      * @param status desired status to set in the response objet
      * @param includeRequests (optional) flag to return detailed info on all known requests
      * @return the response object to be sent back to a client
      */
-    nlohmann::json toJson(protocol::Status status, bool includeRequests = false);
+    nlohmann::json toJson(std::string const& type, protocol::Status status, bool includeRequests = false);
 
 private:
     WorkerHttpProcessor(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker);
 
-    static std::string _classMethodContext(std::string const& func);
+    /**
+     * Check if the request with the specified identifier exists in any of the queues.
+     * @param lock а lock on _mtx to be acquired before calling this method
+     * @param id an identifier of a request
+     * @return 'true' if the request is found in any queue
+     */
+    bool _exists(replica::Lock const& lock, std::string const& id) const;
 
     /**
      * Submit a request for processing
      * @param lock a lock on _mtx to be acquired before calling this method
      * @param context the logging context (including the name of a function/method)
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @return the response object to be sent back to a client
      */
     template <typename REQUEST_TYPE, typename... Args>
     nlohmann::json _submit(replica::Lock const& lock, std::string const& context,
-                           protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req, Args... args) {
+                           protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
+                           Args... args) {
         try {
+            if (_exists(lock, hdr.id)) {
+                return _reportInvalidParamError(context, hdr, params,
+                                                "request with the same id already exists");
+            }
             auto const ptr = REQUEST_TYPE::create(
-                    _serviceProvider, _worker, hdr, req,
+                    _serviceProvider, _worker, hdr, params,
                     [self = shared_from_this()](std::string const& id) { self->disposeRequest(id); },
                     args...);
             _newRequests.push(ptr);
             return ptr->toJson();
         } catch (std::exception const& ec) {
-            _logError(context, ec.what());
-            return nlohmann::json::object(
-                    {{"status", protocol::Status::BAD},
-                     {"status_str", protocol::toString(protocol::Status::BAD)},
-                     {"status_ext", protocol::StatusExt::INVALID_PARAM},
-                     {"status_ext_str", protocol::toString(protocol::StatusExt::INVALID_PARAM)}});
+            return _reportInvalidParamError(context, hdr, params, ec.what());
         }
     }
 
     /**
-     * Log the error message.
+     * Log the error message for invalid parameters.
      * @param context the logging context (including the name of a function/method)
+     * @param hdr request header (common parameters of the queued request)
+     * @param params the request parameters received from a client (request-specific parameters)
      * @param message the error message to be reported
+     * @return the response object to be sent back to a client
      */
-    void _logError(std::string const& context, std::string const& message) const;
+    nlohmann::json _reportInvalidParamError(std::string const& context, protocol::QueuedRequestHdr const& hdr,
+                                            protocol::RequestParams const& params,
+                                            std::string const& message) const;
+
+    /**
+     * Log the error message for an invalid request identifier.
+     * @param context the logging context (including the name of a function/method)
+     * @param id an identifier of a request
+     * @param message the error message to be reported
+     * @return the response object to be sent back to a client
+     */
+    nlohmann::json _reportInvalidIdError(std::string const& context, std::string const& id,
+                                         std::string const& message) const;
 
     /**
      * Return the next request which is ready to be processed
@@ -343,8 +378,6 @@ private:
      * @param processorThread reference to the processing thread which finished
      */
     void _processorThreadStopped(std::shared_ptr<WorkerHttpProcessorThread> const& processorThread);
-
-    std::string _context(std::string const& func = std::string()) const { return "PROCESSOR  " + func; }
 
     std::shared_ptr<ServiceProvider> const _serviceProvider;
     std::string const _worker;

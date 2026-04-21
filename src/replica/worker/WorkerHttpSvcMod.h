@@ -39,6 +39,7 @@ class WorkerHttpProcessor;
 
 namespace lsst::qserv::replica::protocol {
 struct QueuedRequestHdr;
+class RequestParams;
 }  // namespace lsst::qserv::replica::protocol
 
 // This header declarations
@@ -110,20 +111,24 @@ private:
     /// @return The parsed header
     protocol::QueuedRequestHdr _parseHdr(std::string const& func) const;
 
+    /// Extract the request parameters from the request body and return them
+    /// @return The parser for the request parameters
+    protocol::RequestParams _reqParams() const;
+
     /// Process the ECHO request
     nlohmann::json _echo() const;
 
     /// Process the REPLICA-CREATE request
-    nlohmann::json _replicaCreate();
+    nlohmann::json _createReplica();
 
     /// Process the REPLICA-DELETE request
-    nlohmann::json _replicaDelete();
+    nlohmann::json _deleteReplica();
 
     /// Process the REPLICA-FIND request
-    nlohmann::json _replicaFind();
+    nlohmann::json _findReplica();
 
     /// Process the REPLICA-FIND-ALL request
-    nlohmann::json _replicaFindAll();
+    nlohmann::json _findAllReplicas();
 
     /// Process the INDEX request
     nlohmann::json _index();
@@ -132,34 +137,34 @@ private:
     nlohmann::json _sql();
 
     /// Process the REQUEST-TRACK request
-    nlohmann::json _requestTrack();
+    nlohmann::json _trackRequest();
 
     /// Process the REQUEST-STATUS request
-    nlohmann::json _requestStatus();
+    nlohmann::json _statusOfRequests();
 
     /// Process the REQUEST-STOP request
-    nlohmann::json _requestStop();
+    nlohmann::json _stopRequest();
 
     /// Process the REQUEST-DISPOSE request
-    nlohmann::json _requestDispose();
+    nlohmann::json _disposeRequests();
 
     /// Process the SERVICE-SUSPEND request
-    nlohmann::json _serviceSuspend();
+    nlohmann::json _suspendService();
 
     /// Process the SERVICE-RESUME request
-    nlohmann::json _serviceResume();
+    nlohmann::json _resumeService();
 
     /// Process the SERVICE-STATUS request
-    nlohmann::json _serviceStatus();
+    nlohmann::json _getServiceStatus();
 
     /// Process the SERVICE-REQUESTS request
-    nlohmann::json _serviceRequests();
+    nlohmann::json _getRequests();
 
     /// Process the SERVICE-DRAIN request
-    nlohmann::json _serviceDrain();
+    nlohmann::json _drainService();
 
     /// Process the SERVICE-RECONFIG request
-    nlohmann::json _serviceReconfig();
+    nlohmann::json _reconfigService();
 
     // Input parameters
     std::shared_ptr<ServiceProvider> const _serviceProvider;

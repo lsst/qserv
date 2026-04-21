@@ -22,7 +22,9 @@
 #define LSST_QSERV_REPLICA_PROTOCOL_H
 
 // System headers
+#include <cstdint>
 #include <string>
+#include <vector>
 
 // Third party headers
 #include "nlohmann/json.hpp"
@@ -142,6 +144,78 @@ struct QueuedRequestHdr {
     QueuedRequestHdr(std::string const& id_, int priority_, unsigned int timeout_)
             : id(id_), priority(priority_), timeout(timeout_) {}
     nlohmann::json toJson() const { return {{"id", id}, {"priority", priority}, {"timeout", timeout}}; };
+};
+
+/**
+ * The class RequestParams provides methods for parsing the input parameters of the request.
+ *
+ * The methods will throw std::invalid_argument if the parameters are not found or have invalid values.
+ * @note When parsing the boolean parameters the corresponding methods will try to convert
+ * the value of a parameter to boolean if it's the JSON boolean value (false or true) or
+ * an integer (0 or != 0).
+ */
+class RequestParams {
+public:
+    explicit RequestParams(nlohmann::json const& req = nlohmann::json());
+    RequestParams(RequestParams const&) = default;
+    RequestParams& operator=(RequestParams const&) = default;
+    ~RequestParams() = default;
+
+    nlohmann::json const& toJson() const { return _req; }
+
+    bool has(std::string const& name) const;
+    std::string requiredString(std::string const& name) const;
+    std::string optionalString(std::string const& name,
+                               std::string const& defaultValue = std::string()) const;
+    bool requiredBool(std::string const& name) const;
+    bool optionalBool(std::string const& name, bool defaultValue = false) const;
+    std::uint16_t requiredUInt16(std::string const& name) const;
+    std::uint16_t optionalUInt16(std::string const& name, std::uint16_t defaultValue = 0) const;
+    std::uint32_t requiredUInt32(std::string const& name) const;
+    std::uint32_t optionalUInt32(std::string const& name, std::uint32_t defaultValue = 0) const;
+    std::int32_t requiredInt32(std::string const& name) const;
+    std::int32_t optionalInt32(std::string const& name, std::int32_t defaultValue = 0) const;
+    std::uint64_t requiredUInt64(std::string const& name) const;
+    std::uint64_t optionalUInt64(std::string const& name, std::uint64_t defaultValue = 0) const;
+    double requiredDouble(std::string const& name) const;
+    double optionalDouble(std::string const& name, double defaultValue = 0.0) const;
+    std::vector<std::string> requiredStringVec(std::string const& name) const;
+    std::vector<std::string> optionalStringVec(
+            std::string const& name,
+            std::vector<std::string> const& defaultValue = std::vector<std::string>()) const;
+    std::vector<std::uint64_t> requiredUInt64Vec(std::string const& name) const;
+    std::vector<std::uint64_t> optionalUInt64Vec(
+            std::string const& name,
+            std::vector<std::uint64_t> const& defaultValue = std::vector<std::uint64_t>()) const;
+    nlohmann::json const& requiredVec(std::string const& name) const;
+    nlohmann::json const& requiredObj(std::string const& name) const;
+
+private:
+    /**
+     * Extract the parameter from the request and return its value.
+     * @param name the name of the parameter to be extracted
+     * @return the value of the parameter
+     * @throw std::invalid_argument if the parameter is not found
+     */
+    nlohmann::json const& _required(std::string const& name) const;
+
+    /**
+     * Extract the parameter from the request and validate its value as an array.
+     * @param name the name of the parameter to be extracted
+     * @return the value of the parameter validated as an array
+     * @throw std::invalid_argument if the parameter is not found or is not an array
+     */
+    nlohmann::json const& _requiredVec(std::string const& name) const;
+
+    /**
+     * Extract the parameter from the request and validate its value as an object.
+     * @param name the name of the parameter to be extracted
+     * @return the value of the parameter validated as an object
+     * @throw std::invalid_argument if the parameter is not found or is not an object
+     */
+    nlohmann::json const& _requiredObj(std::string const& name) const;
+
+    nlohmann::json _req;
 };
 
 }  // namespace lsst::qserv::replica::protocol

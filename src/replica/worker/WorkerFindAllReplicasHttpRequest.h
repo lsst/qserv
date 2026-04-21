@@ -60,13 +60,13 @@ public:
      * @param worker the name of a worker. The name must match the worker which
      *   is going to execute the request.
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request object received from a client (request-specific parameters)
      * @param onExpired request expiration callback function
      * @return pointer to the created object
      */
     static std::shared_ptr<WorkerFindAllReplicasHttpRequest> create(
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
-            protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req,
+            protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
             ExpirationCallbackType const& onExpired);
 
     WorkerFindAllReplicasHttpRequest() = delete;
@@ -78,12 +78,13 @@ public:
     bool execute() override;
 
 protected:
-    void getResult(nlohmann::json& result) const override;
+    nlohmann::json getResult() const override;
 
 private:
     WorkerFindAllReplicasHttpRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                                      std::string const& worker, protocol::QueuedRequestHdr const& hdr,
-                                     nlohmann::json const& req, ExpirationCallbackType const& onExpired);
+                                     protocol::RequestParams const& params,
+                                     ExpirationCallbackType const& onExpired);
 
     // Input parameters (extracted from the request object)
 

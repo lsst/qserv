@@ -75,6 +75,15 @@ ostream& operator<<(ostream& os, Performance const& p) {
     return os;
 }
 
+json WorkerPerformance::finishedToJson() {
+    WorkerPerformance perf;
+    auto const now = util::TimeUtils::now();
+    perf.receive_time = now;
+    perf.start_time = now;
+    perf.finish_time = now;
+    return perf.toJson();
+}
+
 WorkerPerformance::WorkerPerformance()
         : receive_time(util::TimeUtils::now()), start_time(0), finish_time(0) {}
 

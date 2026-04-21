@@ -26,6 +26,7 @@
 #include <stdexcept>
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace lsst::qserv::replica::protocol {
 
@@ -218,6 +219,157 @@ string toString(ServiceState state) {
         default:
             throw logic_error("Unhandled service state: " + to_string(static_cast<int>(state)));
     }
+}
+
+#define _THROW_INVALID_PARAM(name, msg)                                                                    \
+    throw invalid_argument("protocol::RequestParams::" + string(__func__) + " parameter '" + name + "' " + \
+                           string(msg))
+
+RequestParams::RequestParams(json const& req) : _req(req) {}
+
+bool RequestParams::has(string const& name) const { return _req.find(name) != _req.end(); }
+
+string RequestParams::requiredString(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_string()) return param.get<string>();
+    _THROW_INVALID_PARAM(name, "does not have a string value");
+}
+
+string RequestParams::optionalString(string const& name, string const& defaultValue) const {
+    return has(name) ? requiredString(name) : defaultValue;
+}
+
+bool RequestParams::requiredBool(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_boolean())
+        return param.get<bool>();
+    else if (param.is_number_integer())
+        return param.get<int64_t>() != 0;
+    else if (param.is_number_unsigned())
+        return param.get<uint64_t>() != 0;
+    _THROW_INVALID_PARAM(name, "does not have a boolean value");
+}
+
+bool RequestParams::optionalBool(string const& name, bool defaultValue) const {
+    return has(name) ? requiredBool(name) : defaultValue;
+}
+
+uint16_t RequestParams::requiredUInt16(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_number_unsigned()) {
+        uint64_t const val = param.get<uint64_t>();
+        if (val <= std::numeric_limits<uint16_t>::max()) return static_cast<uint16_t>(val);
+    }
+    _THROW_INVALID_PARAM(name, "does not have an unsigned uint16_t value");
+}
+
+uint16_t RequestParams::optionalUInt16(string const& name, uint16_t defaultValue) const {
+    return has(name) ? requiredUInt16(name) : defaultValue;
+}
+
+uint32_t RequestParams::requiredUInt32(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_number_unsigned()) {
+        uint64_t const val = param.get<uint64_t>();
+        if (val <= std::numeric_limits<uint32_t>::max()) return static_cast<uint32_t>(val);
+    }
+    _THROW_INVALID_PARAM(name, "does not have an unsigned uint32_t value");
+}
+
+uint32_t RequestParams::optionalUInt32(string const& name, uint32_t defaultValue) const {
+    return has(name) ? requiredUInt32(name) : defaultValue;
+}
+
+int32_t RequestParams::requiredInt32(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_number_integer()) {
+        int64_t const val = param.get<int64_t>();
+        if (val >= std::numeric_limits<int32_t>::min() && val <= std::numeric_limits<int32_t>::max())
+            return static_cast<int32_t>(val);
+    }
+    _THROW_INVALID_PARAM(name, "does not have an int32_t value");
+}
+
+int32_t RequestParams::optionalInt32(string const& name, int32_t defaultValue) const {
+    return has(name) ? requiredInt32(name) : defaultValue;
+}
+
+uint64_t RequestParams::requiredUInt64(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_number_unsigned()) return param.get<uint64_t>();
+    _THROW_INVALID_PARAM(name, "does not have an unsigned 64-bit integer value");
+}
+
+uint64_t RequestParams::optionalUInt64(string const& name, uint64_t defaultValue) const {
+    return has(name) ? requiredUInt64(name) : defaultValue;
+}
+
+double RequestParams::requiredDouble(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_number_float()) return param.get<double>();
+    _THROW_INVALID_PARAM(name, "does not have a double value");
+}
+
+double RequestParams::optionalDouble(string const& name, double defaultValue) const {
+    return has(name) ? requiredDouble(name) : defaultValue;
+}
+
+vector<string> RequestParams::requiredStringVec(string const& name) const {
+    json const& param = _requiredVec(name);
+    vector<string> result;
+    for (auto const& item : param) {
+        if (!item.is_string()) {
+            _THROW_INVALID_PARAM(name, "does not have an array of string values");
+        }
+        result.push_back(item.get<string>());
+    }
+    return result;
+}
+
+vector<string> RequestParams::optionalStringVec(string const& name,
+                                                vector<string> const& defaultValue) const {
+    return has(name) ? requiredStringVec(name) : defaultValue;
+}
+
+vector<uint64_t> RequestParams::requiredUInt64Vec(string const& name) const {
+    json const& param = _requiredVec(name);
+    vector<uint64_t> result;
+    for (auto const& item : param) {
+        if (!item.is_number_unsigned()) {
+            _THROW_INVALID_PARAM(name, "does not have an array of unsigned 64-bit integer values");
+        }
+        result.push_back(item.get<uint64_t>());
+    }
+    return result;
+}
+
+vector<uint64_t> RequestParams::optionalUInt64Vec(string const& name,
+                                                  vector<uint64_t> const& defaultValue) const {
+    return has(name) ? requiredUInt64Vec(name) : defaultValue;
+}
+
+json const& RequestParams::requiredVec(string const& name) const { return _requiredVec(name); }
+
+json const& RequestParams::requiredObj(string const& name) const { return _requiredObj(name); }
+
+json const& RequestParams::_required(string const& name) const {
+    auto const itr = _req.find(name);
+    if (itr == _req.end()) {
+        _THROW_INVALID_PARAM(name, "is not found in the request");
+    }
+    return *itr;
+}
+
+json const& RequestParams::_requiredVec(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_array()) return param;
+    _THROW_INVALID_PARAM(name, "does not have the JSON array value");
+}
+
+json const& RequestParams::_requiredObj(string const& name) const {
+    json const& param = _required(name);
+    if (param.is_object()) return param;
+    _THROW_INVALID_PARAM(name, "does not have the JSON object value");
 }
 
 }  // namespace lsst::qserv::replica::protocol

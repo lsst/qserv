@@ -39,8 +39,6 @@
 // LSST headers
 #include "lsst/log/Log.h"
 
-#define CONTEXT context("WorkerFindAllReplicasHttpRequest", __func__)
-
 using namespace std;
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -51,108 +49,110 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerFindAllReplicasHttpRequest")
 
 }  // namespace
 
+#define _CONTEXT context("WorkerFindAllReplicasHttpRequest::", __func__)
+#define _SET_STATUS_FAILED(extendedStatus_, error_)       \
+    LOGS(_log, LOG_LVL_ERROR, _CONTEXT << " " << error_); \
+    setStatus(lock, protocol::Status::FAILED, extendedStatus_, error_);
+
 namespace lsst::qserv::replica {
 
 shared_ptr<WorkerFindAllReplicasHttpRequest> WorkerFindAllReplicasHttpRequest::create(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
-        protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired) {
+        protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
+        ExpirationCallbackType const& onExpired) {
     auto ptr = shared_ptr<WorkerFindAllReplicasHttpRequest>(
-            new WorkerFindAllReplicasHttpRequest(serviceProvider, worker, hdr, req, onExpired));
+            new WorkerFindAllReplicasHttpRequest(serviceProvider, worker, hdr, params, onExpired));
     ptr->init();
     return ptr;
 }
 
 WorkerFindAllReplicasHttpRequest::WorkerFindAllReplicasHttpRequest(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
-        protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired)
-        : WorkerHttpRequest(serviceProvider, worker, "FIND-ALL", hdr, req, onExpired),
-          _databaseName(req.at("database")) {}
+        protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
+        ExpirationCallbackType const& onExpired)
+        : WorkerHttpRequest(serviceProvider, worker, "FIND-ALL", hdr, params, onExpired),
+          _databaseName(params.requiredString("database")) {}
 
-void WorkerFindAllReplicasHttpRequest::getResult(json& result) const {
-    result["replica_info_many"] = json::array();
+json WorkerFindAllReplicasHttpRequest::getResult() const {
+    json result = json::object({{"replica_info_many", json::array()}});
     for (auto const& replicaInfo : _replicaInfoCollection) {
         result["replica_info_many"].push_back(replicaInfo.toJson());
     }
+    return result;
 }
 
 bool WorkerFindAllReplicasHttpRequest::execute() {
-    LOGS(_log, LOG_LVL_DEBUG, CONTEXT << " database: " << _databaseName);
+    LOGS(_log, LOG_LVL_DEBUG, _CONTEXT << " database: " << _databaseName);
 
-    replica::Lock lock(_mtx, CONTEXT);
-    checkIfCancelling(lock, CONTEXT);
+    replica::Lock lock(mtx, _CONTEXT);
+    checkIfCancelling(lock, _CONTEXT);
 
     // The method will throw ConfigUnknownDatabase if the database is invalid.
-    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(_databaseName);
+    DatabaseInfo const databaseInfo = serviceProvider()->config()->databaseInfo(_databaseName);
 
     // Scan the data directory to find all files which match the expected pattern(s)
     // and group them by their chunk number
-    WorkerHttpRequest::ErrorContext errorContext;
     std::error_code ec;
-
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
-        replica::Lock dataFolderLock(_mtxDataFolderOperations, CONTEXT);
-        fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
+        replica::Lock dataFolderLock(mtxDataFolderOperations, _CONTEXT);
+        fs::path const dataDir = fs::path(serviceProvider()->config()->get<string>("worker", "data-dir")) /
                                  database::mysql::obj2fs(_databaseName);
         fs::file_status const stat = fs::status(dataDir, ec);
-        errorContext =
-                errorContext ||
-                reportErrorIf(stat.type() == fs::file_type::none, protocol::StatusExt::FOLDER_STAT,
-                              "failed to check the status of directory: " + dataDir.string() +
-                                      ", code: " + to_string(ec.value()) + ", error: " + ec.message()) ||
-                reportErrorIf(!fs::exists(stat), protocol::StatusExt::NO_FOLDER,
-                              "the directory does not exists: " + dataDir.string());
+        if (stat.type() == fs::file_type::none) {
+            _SET_STATUS_FAILED(protocol::StatusExt::FOLDER_STAT,
+                               "failed to check the status of directory: " + dataDir.string() +
+                                       ", code: " + to_string(ec.value()) + ", error: " + ec.message());
+            return true;
+        }
+        if (!fs::exists(stat)) {
+            _SET_STATUS_FAILED(protocol::StatusExt::NO_FOLDER,
+                               "the directory does not exists: " + dataDir.string());
+            return true;
+        }
         try {
+            uint64_t const beginTransferTime = 0;  // unused but required for constructing the FileInfo object
+            uint64_t const endTransferTime = 0;    // unused but required for constructing the FileInfo object
+            string const emptyCs;                  // the sum is never computed for this type of requests
+
             for (fs::directory_entry const& entry : fs::directory_iterator(dataDir)) {
                 tuple<string, unsigned int, string> parsed;
                 if (FileUtils::parsePartitionedFile(parsed, entry.path().filename().string(), databaseInfo)) {
-                    LOGS(_log, LOG_LVL_DEBUG,
-                         CONTEXT << " database: " << _databaseName << " file: " << entry.path().filename()
-                                 << " table: " << get<0>(parsed) << " chunk: " << get<1>(parsed)
-                                 << " ext: " << get<2>(parsed));
-
                     uint64_t const size = fs::file_size(entry.path(), ec);
-                    errorContext = errorContext ||
-                                   reportErrorIf(ec.value() != 0, protocol::StatusExt::FILE_SIZE,
-                                                 "failed to read file size: " + entry.path().string() +
-                                                         ", code: " + to_string(ec.value()) +
-                                                         ", error: " + ec.message());
-
+                    if (ec.value() != 0) {
+                        _SET_STATUS_FAILED(protocol::StatusExt::FILE_SIZE,
+                                           "failed to read file size: " + entry.path().string() + ", code: " +
+                                                   to_string(ec.value()) + ", error: " + ec.message());
+                        return true;
+                    }
                     time_t mtime = 0;
                     try {
                         mtime = replica::getMTime(entry.path().string());
                     } catch (exception const& ex) {
-                        errorContext = errorContext ||
-                                       reportErrorIf(true, protocol::StatusExt::FILE_MTIME,
-                                                     "failed to read file mtime: " + entry.path().string() +
-                                                             ", ex: " + ex.what());
+                        _SET_STATUS_FAILED(
+                                protocol::StatusExt::FILE_MTIME,
+                                "failed to read file mtime: " + entry.path().string() + ", ex: " + ex.what());
+                        return true;
                     }
                     unsigned const chunk = get<1>(parsed);
-                    chunk2fileInfoCollection[chunk].emplace_back(ReplicaInfo::FileInfo({
-                            entry.path().filename().string(), size, mtime,
-                            "",  /* cs is never computed for this type of requests */
-                            0,   /* beginTransferTime */
-                            0,   /* endTransferTime */
-                            size /* inSize */
-                    }));
+                    uint64_t const inSize = size;  // the file size (bytes) at the remote worker
+                    chunk2fileInfoCollection[chunk].emplace_back(entry.path().filename().string(), size,
+                                                                 mtime, emptyCs, beginTransferTime,
+                                                                 endTransferTime, inSize);
                 }
             }
         } catch (fs::filesystem_error const& ex) {
-            errorContext = errorContext || reportErrorIf(true, protocol::StatusExt::FOLDER_READ,
-                                                         "failed to read the directory: " + dataDir.string() +
-                                                                 ", code: " + to_string(ex.code().value()) +
-                                                                 ", error: " + ex.code().message());
+            _SET_STATUS_FAILED(protocol::StatusExt::FOLDER_READ,
+                               "failed to read the directory: " + dataDir.string() + ", code: " +
+                                       to_string(ex.code().value()) + ", error: " + ex.code().message());
+            return true;
         }
-    }
-    if (errorContext.failed) {
-        setStatus(lock, protocol::Status::FAILED, errorContext.extendedStatus);
-        return true;
     }
 
     // Analyze results to see which chunks are complete using chunk 0 as an example
     // of the total number of files which are normally associated with each chunk.
     size_t const numFilesPerChunkRequired = FileUtils::partitionedFiles(databaseInfo, 0).size();
-    for (auto&& entry : chunk2fileInfoCollection) {
+    for (auto const& entry : chunk2fileInfoCollection) {
         unsigned int const chunk = entry.first;
         size_t const numFiles = entry.second.size();
         _replicaInfoCollection.emplace_back(
