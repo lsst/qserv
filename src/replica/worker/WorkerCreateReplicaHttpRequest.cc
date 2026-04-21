@@ -70,14 +70,12 @@ WorkerCreateReplicaHttpRequest::WorkerCreateReplicaHttpRequest(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
         protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired)
         : WorkerHttpRequest(serviceProvider, worker, "REPLICATE", hdr, req, onExpired),
-          _sourceWorker(req.at("worker")),
-          _sourceWorkerHost(req.at("worker_host")),
-          _sourceWorkerPort(req.at("worker_port")),
+          _sourceWorker(reqParamString("worker")),
+          _sourceWorkerHost(reqParamString("worker_host")),
+          _sourceWorkerPort(reqParamUInt16("worker_port")),
           _sourceWorkerHostPort(_sourceWorkerHost + ":" + to_string(_sourceWorkerPort)),
-          _databaseName(req.at("database")),
-          _chunkNumber(req.at("chunk")),
-          _tmpFilePtr(nullptr),
-          _buf(0),
+          _databaseName(reqParamString("database")),
+          _chunkNumber(reqParamUInt32("chunk")),
           _bufSize(serviceProvider->config()->get<size_t>("worker", "fs-buf-size-bytes")) {
     if (worker == _sourceWorker) {
         throw invalid_argument(CONTEXT + " workers are the same in the request.");
@@ -88,7 +86,7 @@ WorkerCreateReplicaHttpRequest::WorkerCreateReplicaHttpRequest(
 }
 
 WorkerCreateReplicaHttpRequest::~WorkerCreateReplicaHttpRequest() {
-    _releaseResources(replica::Lock(_mtx, CONTEXT));
+    _releaseResources(replica::Lock(mtx, CONTEXT));
 }
 
 void WorkerCreateReplicaHttpRequest::getResult(json& result) const {
@@ -100,7 +98,7 @@ bool WorkerCreateReplicaHttpRequest::execute() {
          CONTEXT << " sourceWorkerHostPort: " << _sourceWorkerHostPort << " database: " << _databaseName
                  << " chunk: " << _chunkNumber);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, CONTEXT);
 
     // Obtain the list of files to be migrated
@@ -118,7 +116,7 @@ bool WorkerCreateReplicaHttpRequest::execute() {
     //
     // - All operations with the file system namespace (creating new non-temporary
     //   files, checking for folders and files, renaming files, creating folders, etc.)
-    //   are guarded by acquiring replica::Lock lock(_mtxDataFolderOperations) where it's needed.
+    //   are guarded by acquiring replica::Lock lock(mtxDataFolderOperations) where it's needed.
 
     WorkerHttpRequest::ErrorContext errorContext;
 
@@ -161,7 +159,7 @@ bool WorkerCreateReplicaHttpRequest::execute() {
 
         std::error_code ec;
         {
-            replica::Lock dataFolderLock(_mtxDataFolderOperations, CONTEXT);
+            replica::Lock dataFolderLock(mtxDataFolderOperations, CONTEXT);
 
             // Check for a presence of input files and calculate space requirement
 
@@ -170,7 +168,7 @@ bool WorkerCreateReplicaHttpRequest::execute() {
 
             for (auto&& file : _files) {
                 // Open the file on the remote server in the no-content-read mode
-                auto const inFilePtr = FileClient::stat(_serviceProvider, _sourceWorkerHost,
+                auto const inFilePtr = FileClient::stat(serviceProvider(), _sourceWorkerHost,
                                                         _sourceWorkerPort, _databaseName, file);
                 errorContext = errorContext or
                                reportErrorIf(inFilePtr == nullptr, protocol::StatusExt::FILE_ROPEN,
@@ -375,7 +373,7 @@ bool WorkerCreateReplicaHttpRequest::_openFiles(replica::Lock const& lock) {
     WorkerHttpRequest::ErrorContext errorContext;
 
     // Open the input file on the remote server
-    _inFilePtr = FileClient::open(_serviceProvider, _sourceWorkerHost, _sourceWorkerPort, _databaseName,
+    _inFilePtr = FileClient::open(serviceProvider(), _sourceWorkerHost, _sourceWorkerPort, _databaseName,
                                   *_fileItr);
     errorContext =
             errorContext or reportErrorIf(_inFilePtr == nullptr, protocol::StatusExt::FILE_ROPEN,
@@ -417,7 +415,7 @@ bool WorkerCreateReplicaHttpRequest::_finalize(replica::Lock const& lock) {
     // Note that this operation changes the directory namespace in a way
     // which may affect other users (like replica lookup operations, etc.). Hence we're
     // acquiring the directory lock to guarantee a consistent view onto the folder.
-    replica::Lock dataFolderLock(_mtxDataFolderOperations, CONTEXT);
+    replica::Lock dataFolderLock(mtxDataFolderOperations, CONTEXT);
 
     // ATTENTION: as per ISO/IEC 9945 the file rename operation will
     //            remove empty files. Not sure if this should be treated

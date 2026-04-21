@@ -67,11 +67,12 @@ WorkerDeleteReplicaHttpRequest::WorkerDeleteReplicaHttpRequest(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
         protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired)
         : WorkerHttpRequest(serviceProvider, worker, "DELETE", hdr, req, onExpired),
-          _databaseName(req.at("database")),
-          _chunkNumber(req.at("chunk")),
-          // This status will be returned in all contexts
-          _replicaInfo(ReplicaInfo::Status::NOT_FOUND, worker, _databaseName, _chunkNumber,
-                       util::TimeUtils::now(), ReplicaInfo::FileInfoCollection{}) {}
+          _databaseName(reqParamString("database")),
+          _chunkNumber(reqParamUInt32("chunk")) {
+    // This status will be returned in all contexts
+    _replicaInfo = ReplicaInfo(ReplicaInfo::Status::NOT_FOUND, worker, _databaseName, _chunkNumber,
+                               util::TimeUtils::now(), ReplicaInfo::FileInfoCollection{});
+}
 
 void WorkerDeleteReplicaHttpRequest::getResult(json& result) const {
     result["replica_info"] = _replicaInfo.toJson();
@@ -80,7 +81,7 @@ void WorkerDeleteReplicaHttpRequest::getResult(json& result) const {
 bool WorkerDeleteReplicaHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT << " db: " << _databaseName << " chunk: " << _chunkNumber);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, CONTEXT);
 
     // The method will throw ConfigUnknownDatabase if the database is invalid.
@@ -94,7 +95,7 @@ bool WorkerDeleteReplicaHttpRequest::execute() {
     WorkerHttpRequest::ErrorContext errorContext;
     std::error_code ec;
     {
-        replica::Lock dataFolderLock(_mtxDataFolderOperations, CONTEXT);
+        replica::Lock dataFolderLock(mtxDataFolderOperations, CONTEXT);
         fs::path const dataDir = fs::path(serviceProvider()->config()->get<string>("worker", "data-dir")) /
                                  database::mysql::obj2fs(_databaseName);
         fs::file_status const stat = fs::status(dataDir, ec);

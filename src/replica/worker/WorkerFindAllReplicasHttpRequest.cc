@@ -66,7 +66,7 @@ WorkerFindAllReplicasHttpRequest::WorkerFindAllReplicasHttpRequest(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
         protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired)
         : WorkerHttpRequest(serviceProvider, worker, "FIND-ALL", hdr, req, onExpired),
-          _databaseName(req.at("database")) {}
+          _databaseName(reqParamString("database")) {}
 
 void WorkerFindAllReplicasHttpRequest::getResult(json& result) const {
     result["replica_info_many"] = json::array();
@@ -78,11 +78,11 @@ void WorkerFindAllReplicasHttpRequest::getResult(json& result) const {
 bool WorkerFindAllReplicasHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT << " database: " << _databaseName);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, CONTEXT);
 
     // The method will throw ConfigUnknownDatabase if the database is invalid.
-    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(_databaseName);
+    DatabaseInfo const databaseInfo = serviceProvider()->config()->databaseInfo(_databaseName);
 
     // Scan the data directory to find all files which match the expected pattern(s)
     // and group them by their chunk number
@@ -91,8 +91,8 @@ bool WorkerFindAllReplicasHttpRequest::execute() {
 
     map<unsigned int, ReplicaInfo::FileInfoCollection> chunk2fileInfoCollection;
     {
-        replica::Lock dataFolderLock(_mtxDataFolderOperations, CONTEXT);
-        fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
+        replica::Lock dataFolderLock(mtxDataFolderOperations, CONTEXT);
+        fs::path const dataDir = fs::path(serviceProvider()->config()->get<string>("worker", "data-dir")) /
                                  database::mysql::obj2fs(_databaseName);
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext =

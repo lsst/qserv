@@ -23,6 +23,7 @@
 #include "replica/worker/WorkerHttpRequest.h"
 
 // System headers
+#include <limits>
 #include <stdexcept>
 
 // Third party headers
@@ -47,9 +48,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerHttpRequest");
 
 namespace lsst::qserv::replica {
 
-replica::Mutex WorkerHttpRequest::_mtxDataFolderOperations;
-
-atomic<size_t> WorkerHttpRequest::_numInstances{0};
+replica::Mutex WorkerHttpRequest::mtxDataFolderOperations;
 
 WorkerHttpRequest::WorkerHttpRequest(shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
                                      string const& type, protocol::QueuedRequestHdr const& hdr,
@@ -63,19 +62,12 @@ WorkerHttpRequest::WorkerHttpRequest(shared_ptr<ServiceProvider> const& serviceP
           _expirationTimeoutSec(hdr.timeout == 0 ? serviceProvider->config()->get<unsigned int>(
                                                            "controller", "request-timeout-sec")
                                                  : hdr.timeout),
-          _expirationTimer(serviceProvider->io_service()),
-          _status(protocol::Status::CREATED),
-          _extendedStatus(protocol::StatusExt::NONE),
-          _performance() {
-    _numInstances++;
-    LOGS(_log, LOG_LVL_TRACE, CONTEXT << " numInstances: " << _numInstances);
-}
+          _expirationTimerPtr(new boost::asio::deadline_timer(serviceProvider->io_service())) {}
 
-WorkerHttpRequest::~WorkerHttpRequest() {
-    _numInstances--;
-    LOGS(_log, LOG_LVL_TRACE, CONTEXT << " numInstances: " << _numInstances);
-    dispose();
-}
+WorkerHttpRequest::WorkerHttpRequest(json const& req)
+        : _hdr(protocol::QueuedRequestHdr{string(), 0, 0}), _req(req) {}
+
+WorkerHttpRequest::~WorkerHttpRequest() { dispose(); }
 
 void WorkerHttpRequest::checkIfCancelling(replica::Lock const& lock, string const& context_) {
     switch (status()) {
@@ -103,14 +95,14 @@ WorkerHttpRequest::ErrorContext WorkerHttpRequest::reportErrorIf(bool errorCondi
 
 void WorkerHttpRequest::init() {
     LOGS(_log, LOG_LVL_TRACE, CONTEXT);
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     if (status() != protocol::Status::CREATED) return;
 
     // Start the expiration timer
     if (_expirationTimeoutSec != 0) {
-        _expirationTimer.cancel();
-        _expirationTimer.expires_from_now(boost::posix_time::seconds(_expirationTimeoutSec));
-        _expirationTimer.async_wait(bind(&WorkerHttpRequest::_expired, shared_from_this(), _1));
+        _expirationTimerPtr->cancel();
+        _expirationTimerPtr->expires_from_now(boost::posix_time::seconds(_expirationTimeoutSec));
+        _expirationTimerPtr->async_wait(bind(&WorkerHttpRequest::_expired, shared_from_this(), _1));
         LOGS(_log, LOG_LVL_TRACE,
              CONTEXT << " started timer with _expirationTimeoutSec: " << _expirationTimeoutSec);
     }
@@ -118,7 +110,7 @@ void WorkerHttpRequest::init() {
 
 void WorkerHttpRequest::start() {
     LOGS(_log, LOG_LVL_TRACE, CONTEXT);
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     switch (status()) {
         case protocol::Status::CREATED:
             setStatus(lock, protocol::Status::IN_PROGRESS);
@@ -130,7 +122,7 @@ void WorkerHttpRequest::start() {
 
 void WorkerHttpRequest::cancel() {
     LOGS(_log, LOG_LVL_TRACE, CONTEXT);
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     switch (status()) {
         case protocol::Status::QUEUED:
         case protocol::Status::CREATED:
@@ -152,7 +144,7 @@ void WorkerHttpRequest::cancel() {
 
 void WorkerHttpRequest::rollback() {
     LOGS(_log, LOG_LVL_TRACE, CONTEXT);
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     switch (status()) {
         case protocol::Status::CREATED:
         case protocol::Status::IN_PROGRESS:
@@ -169,20 +161,25 @@ void WorkerHttpRequest::rollback() {
 
 void WorkerHttpRequest::stop() {
     LOGS(_log, LOG_LVL_TRACE, CONTEXT);
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     setStatus(lock, protocol::Status::CREATED);
 }
 
 void WorkerHttpRequest::dispose() noexcept {
     LOGS(_log, LOG_LVL_TRACE, CONTEXT);
-    replica::Lock lock(_mtx, CONTEXT);
-    if (_expirationTimeoutSec != 0) {
-        try {
-            _expirationTimer.cancel();
-        } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN,
-                 CONTEXT << " request expiration couldn't be cancelled, ex: " << ex.what());
-        }
+    replica::Lock lock(mtx, CONTEXT);
+
+    // No timer object exists if the request was created using the simplified constructor
+    // for the unit testing. And the expiration timer won't be started if the expiration
+    // timeout is set to 0.
+    if (_expirationTimerPtr == nullptr || _expirationTimeoutSec == 0) return;
+    try {
+        _expirationTimerPtr->cancel();
+        _expirationTimerPtr.reset();
+        LOGS(_log, LOG_LVL_TRACE,
+             CONTEXT << " cancelled timer with _expirationTimeoutSec: " << _expirationTimeoutSec);
+    } catch (exception const& ex) {
+        LOGS(_log, LOG_LVL_WARN, CONTEXT << " request expiration couldn't be cancelled, ex: " << ex.what());
     }
 }
 
@@ -195,7 +192,7 @@ json WorkerHttpRequest::toJson(bool includeResultIfFinished) const {
 
     json response = _hdr.toJson();
     response["req"] = _req;
-    response["type"] = _type;
+    response["type"] = type();
     response["status"] = _status.load();
     response["status_str"] = protocol::toString(_status.load());
     response["status_ext"] = _extendedStatus.load();
@@ -252,11 +249,155 @@ void WorkerHttpRequest::setStatus(replica::Lock const& lock, protocol::Status st
     _status = status;
 }
 
+bool WorkerHttpRequest::hasParam(string const& name) const { return _req.find(name) != _req.end(); }
+
+string WorkerHttpRequest::reqParamString(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_string()) return param.get<string>();
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not a string value");
+}
+
+string WorkerHttpRequest::optParamString(string const& name, string const& defaultValue) const {
+    return hasParam(name) ? reqParamString(name) : defaultValue;
+}
+
+bool WorkerHttpRequest::reqParamBool(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_boolean())
+        return param.get<bool>();
+    else if (param.is_number_integer())
+        return param.get<int64_t>() != 0;
+    else if (param.is_number_unsigned())
+        return param.get<uint64_t>() != 0;
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not a boolean value");
+}
+
+bool WorkerHttpRequest::optParamBool(string const& name, bool defaultValue) const {
+    return hasParam(name) ? reqParamBool(name) : defaultValue;
+}
+
+uint16_t WorkerHttpRequest::reqParamUInt16(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_number_unsigned()) {
+        uint64_t const val = param.get<uint64_t>();
+        if (val <= std::numeric_limits<uint16_t>::max()) return static_cast<uint16_t>(val);
+    }
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not an unsigned uint16_t value");
+}
+
+uint16_t WorkerHttpRequest::optParamUInt16(string const& name, uint16_t defaultValue) const {
+    return hasParam(name) ? reqParamUInt16(name) : defaultValue;
+}
+
+uint32_t WorkerHttpRequest::reqParamUInt32(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_number_unsigned()) {
+        uint64_t const val = param.get<uint64_t>();
+        if (val <= std::numeric_limits<uint32_t>::max()) return static_cast<uint32_t>(val);
+    }
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not an uint32_t value");
+}
+
+uint32_t WorkerHttpRequest::optParamUInt32(string const& name, uint32_t defaultValue) const {
+    return hasParam(name) ? reqParamUInt32(name) : defaultValue;
+}
+
+int32_t WorkerHttpRequest::reqParamInt32(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_number_integer()) {
+        int64_t const val = param.get<int64_t>();
+        if (val >= std::numeric_limits<int32_t>::min() && val <= std::numeric_limits<int32_t>::max())
+            return static_cast<int32_t>(val);
+    }
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not an integer value");
+}
+
+int32_t WorkerHttpRequest::optParamInt32(string const& name, int32_t defaultValue) const {
+    return hasParam(name) ? reqParamInt32(name) : defaultValue;
+}
+
+uint64_t WorkerHttpRequest::reqParamUInt64(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_number_unsigned()) return param.get<uint64_t>();
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not an unsigned 64-bit integer value");
+}
+
+uint64_t WorkerHttpRequest::optParamUInt64(string const& name, uint64_t defaultValue) const {
+    return hasParam(name) ? reqParamUInt64(name) : defaultValue;
+}
+
+double WorkerHttpRequest::reqParamDouble(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_number_float()) return param.get<double>();
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not a double value");
+}
+
+double WorkerHttpRequest::optParamDouble(string const& name, double defaultValue) const {
+    return hasParam(name) ? reqParamDouble(name) : defaultValue;
+}
+
+vector<string> WorkerHttpRequest::reqParamStringVec(string const& name) const {
+    json const& param = _reqParamVec(name);
+    vector<string> result;
+    for (auto const& item : param) {
+        if (!item.is_string()) {
+            throw invalid_argument(CONTEXT + " parameter '" + name + "' is not an array of string values");
+        }
+        result.push_back(item.get<string>());
+    }
+    return result;
+}
+
+vector<string> WorkerHttpRequest::optParamStringVec(string const& name,
+                                                    vector<string> const& defaultValue) const {
+    return hasParam(name) ? reqParamStringVec(name) : defaultValue;
+}
+
+vector<uint64_t> WorkerHttpRequest::reqParamUInt64Vec(string const& name) const {
+    json const& param = _reqParamVec(name);
+    vector<uint64_t> result;
+    for (auto const& item : param) {
+        if (!item.is_number_unsigned()) {
+            throw invalid_argument(CONTEXT + " parameter '" + name +
+                                   "' is not an array of unsigned 64-bit integer values");
+        }
+        result.push_back(item.get<uint64_t>());
+    }
+    return result;
+}
+
+vector<uint64_t> WorkerHttpRequest::optParamUInt64Vec(string const& name,
+                                                      vector<uint64_t> const& defaultValue) const {
+    return hasParam(name) ? reqParamUInt64Vec(name) : defaultValue;
+}
+
+json const& WorkerHttpRequest::reqParamVec(string const& name) const { return _reqParamVec(name); }
+
+json const& WorkerHttpRequest::reqParamObj(string const& name) const { return _reqParamObj(name); }
+
+json const& WorkerHttpRequest::_reqParam(string const& name) const {
+    auto const itr = _req.find(name);
+    if (itr == _req.end()) throw invalid_argument(CONTEXT + " missing required parameter: " + name);
+    return *itr;
+}
+
+json const& WorkerHttpRequest::_reqParamVec(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_array()) return param;
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not an array");
+}
+
+json const& WorkerHttpRequest::_reqParamObj(string const& name) const {
+    json const& param = _reqParam(name);
+    if (param.is_object()) return param;
+    throw invalid_argument(CONTEXT + " parameter '" + name + "' is not an object");
+}
+
 void WorkerHttpRequest::_expired(boost::system::error_code const& ec) {
     LOGS(_log, LOG_LVL_TRACE,
          CONTEXT << (ec == boost::asio::error::operation_aborted ? " ** ABORTED **" : ""));
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
 
     // Clearing the stored callback after finishing the up-stream notification
     // has two purposes:

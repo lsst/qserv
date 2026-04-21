@@ -64,21 +64,19 @@ shared_ptr<WorkerSqlHttpRequest> WorkerSqlHttpRequest::create(
 WorkerSqlHttpRequest::WorkerSqlHttpRequest(shared_ptr<ServiceProvider> const& serviceProvider,
                                            string const& worker, protocol::QueuedRequestHdr const& hdr,
                                            json const& req, ExpirationCallbackType const& onExpired)
-        : WorkerHttpRequest(serviceProvider, worker, "SQL:" + req.at("type").get<string>(), hdr, req,
-                            onExpired),
-          _sqlRequestType(protocol::parseSqlRequestType(req.at("type").get<string>())),
-          _user(req.at("user").get<string>()),
-          _password(req.at("password").get<string>()),
-          _databaseName(req.at("database").get<string>()),
-          _maxRows(req.at("max_rows").get<size_t>()),
-          _batchMode(req.at("batch_mode").get<int>() != 0),
-          _resultSets(json::array()) {
+        : WorkerHttpRequest(serviceProvider, worker, "SQL", hdr, req, onExpired), _resultSets(json::array()) {
+    // Parse the mandatory parameters which are common for all SQL request types.
+    _sqlRequestType = protocol::parseSqlRequestType(reqParamString("sql_request_type"));
+    _databaseName = reqParamString("database");
+    _maxRows = optParamUInt32("max_rows", 0);
+    _batchMode = reqParamBool("batch_mode");
+
     // In case of a batch request the list of tables must be provided since
     // the request is supposed to be executed for each of the tables.
     // In the non-batch mode the table name is expected to be provided
     // for the coresponding operations.
     if (_batchMode) {
-        for (auto const& table : req.at("tables")) {
+        for (auto const& table : reqParamStringVec("tables")) {
             _tables.push_back(table);
         }
     }
@@ -86,48 +84,54 @@ WorkerSqlHttpRequest::WorkerSqlHttpRequest(shared_ptr<ServiceProvider> const& se
     // Parse the request-specific parameters.
     switch (_sqlRequestType) {
         case protocol::SqlRequestType::QUERY:
-            _query = req.at("query").get<string>();
+            _query = reqParamString("query");
             break;
         case protocol::SqlRequestType::CREATE_TABLE:
-            if (!_batchMode) _table = req.at("table").get<string>();
-            _engine = req.at("engine").get<string>();
-            _comment = req.at("comment").get<string>();
-            _charsetName = req.at("charset_name").get<string>();
-            _collationName = req.at("collation_name").get<string>();
-            _columns = replica::parseSqlColumns(req.at("columns"));
-            _partitionByColumn = req.at("partition_by_column").get<string>();
+            if (!_batchMode) _table = reqParamString("table");
+            _engine = reqParamString("engine");
+            _comment = reqParamString("comment");
+            _charsetName = reqParamString("charset_name");
+            _collationName = reqParamString("collation_name");
+            _columns = replica::parseSqlColumns(reqParamVec("columns"));
+            _partitionByColumn = reqParamString("partition_by_column");
             break;
         case protocol::SqlRequestType::CREATE_TABLE_INDEX:
-            if (!_batchMode) _table = req.at("table").get<string>();
-            _index = SqlIndexDef(req.at("index"));
+            if (!_batchMode) _table = reqParamString("table");
+            _index = SqlIndexDef(reqParamObj("index"));
             break;
         case protocol::SqlRequestType::DROP_TABLE_PARTITION:
-            if (!_batchMode) _table = req.at("table").get<string>();
-            _transactionId = req.at("transaction_id").get<TransactionId>();
+            if (!_batchMode) _table = reqParamString("table");
+            _transactionId = reqParamUInt32("transaction_id");
             break;
         case protocol::SqlRequestType::DROP_TABLE_INDEX:
-            if (!_batchMode) _table = req.at("table").get<string>();
-            _indexName = req.at("index_name");
+            if (!_batchMode) _table = reqParamString("table");
+            _indexName = reqParamString("index_name");
             break;
         case protocol::SqlRequestType::ALTER_TABLE:
-            if (!_batchMode) _table = req.at("table").get<string>();
-            _alterTableSpec = req.at("alter_spec").get<string>();
+            if (!_batchMode) _table = reqParamString("table");
+            _alterTableSpec = reqParamString("alter_spec");
+            break;
+        case protocol::SqlRequestType::GRANT_ACCESS:
+            _user = reqParamString("user");
+            _host = reqParamString("host");
             break;
         default:
             break;
     }
 }
 
+string WorkerSqlHttpRequest::type() const { return "SQL_" + protocol::toString(_sqlRequestType); }
+
 void WorkerSqlHttpRequest::getResult(json& result) const { result["result_sets"] = _resultSets; }
 
 bool WorkerSqlHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, __func__);
 
     // The method will throw ConfigUnknownDatabase if the database is invalid.
-    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(_databaseName);
+    DatabaseInfo const databaseInfo = serviceProvider()->config()->databaseInfo(_databaseName);
 
     try {
         // Pre-create the default result-set message before any operations with
@@ -135,10 +139,10 @@ bool WorkerSqlHttpRequest::execute() {
         json& resultSet = _currentResultSet(lock, true);
 
         // Open the connection once and then manage transactions via
-        // the connection handlers down below to ensure no lingering transactions
+        // the connection handlerto ensure no lingering transactions
         // are left after the completion of the request's execution (whether it's
         // successful or not).
-        auto const connection = _connector();
+        ConnectionHandler const h(Connection::open(Configuration::qservWorkerDbParams()));
 
         // Check if this is the "batch" request which involves executing
         // a series of queries. This kind of requests needs to be processed
@@ -159,9 +163,7 @@ bool WorkerSqlHttpRequest::execute() {
                 }
                 resultSet["scope"] = table;
                 try {
-                    ConnectionHandler const h(connection);
-                    h.conn->execute([&](decltype(h.conn) const& conn_) {
-                        conn_->begin();
+                    h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn_) {
                         auto const query = _generateQuery(conn_, table);
                         if (query.mutexName.empty()) {
                             conn_->execute(query.query);
@@ -171,7 +173,6 @@ bool WorkerSqlHttpRequest::execute() {
                             conn_->execute(query.query);
                         }
                         _extractResultSet(lock, conn_);
-                        conn_->commit();
                     });
                 } catch (database::mysql::ER_NO_SUCH_TABLE_ const& ex) {
                     ++numFailures;
@@ -205,9 +206,7 @@ bool WorkerSqlHttpRequest::execute() {
             // TODO: the algorithm will only report a result set of the last query
             // from the multi-query collections. The implementations of the corresponding
             // requests should take this into account.
-            ConnectionHandler const h(connection);
-            h.conn->execute([&](decltype(h.conn) const& conn_) {
-                conn_->begin();
+            h.conn->executeInOwnTransaction([&](decltype(h.conn) const& conn_) {
                 for (auto const& query : _queries(conn_)) {
                     if (query.mutexName.empty()) {
                         conn_->execute(query.query);
@@ -217,7 +216,6 @@ bool WorkerSqlHttpRequest::execute() {
                     }
                     _extractResultSet(lock, conn_);
                 }
-                conn_->commit();
             });
             setStatus(lock, protocol::Status::SUCCESS);
         }
@@ -239,20 +237,6 @@ bool WorkerSqlHttpRequest::execute() {
         _reportFailure(lock, protocol::StatusExt::OTHER_EXCEPTION, ex.what());
     }
     return true;
-}
-
-Connection::Ptr WorkerSqlHttpRequest::_connector() const {
-    // A choice of credential for connecting to the database service depends
-    // on a type of the request. For the sake of greater security, arbitrary
-    // queries require a client to explicitly provide the credentials.
-    // Otherwise, using credentials from the worker's configuration.
-    bool const clientCredentials = _sqlRequestType == protocol::SqlRequestType::QUERY;
-    auto connectionParams = Configuration::qservWorkerDbParams();
-    if (clientCredentials) {
-        connectionParams.user = _user;
-        connectionParams.password = _password;
-    }
-    return Connection::open(connectionParams);
 }
 
 vector<Query> WorkerSqlHttpRequest::_queries(Connection::Ptr const& conn) const {
@@ -288,7 +272,7 @@ vector<Query> WorkerSqlHttpRequest::_queries(Connection::Ptr const& conn) const 
             break;
         }
         case protocol::SqlRequestType::GRANT_ACCESS: {
-            string const query = g.grant("ALL", _databaseName, _user, "localhost");
+            string const query = g.grant("ALL", _databaseName, _user, _host);
             queries.emplace_back(Query(query));
             break;
         }

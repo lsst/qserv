@@ -88,7 +88,7 @@ private:
     // Input parameters (extracted from the request object)
 
     std::string const _databaseName;
-    unsigned int const _chunkNumber;
+    uint32_t const _chunkNumber;
 
     /// Extended status of the replica deletion request
     ReplicaInfo _replicaInfo;

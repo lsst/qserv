@@ -68,9 +68,9 @@ WorkerFindReplicaHttpRequest::WorkerFindReplicaHttpRequest(shared_ptr<ServicePro
                                                            json const& req,
                                                            ExpirationCallbackType const& onExpired)
         : WorkerHttpRequest(serviceProvider, worker, "FIND", hdr, req, onExpired),
-          _databaseName(req.at("database")),
-          _chunkNumber(req.at("chunk")),
-          _computeCheckSum(req.at("compute_cs")) {}
+          _databaseName(reqParamString("database")),
+          _chunkNumber(reqParamUInt32("chunk")),
+          _computeCheckSum(reqParamBool("compute_cs")) {}
 
 void WorkerFindReplicaHttpRequest::getResult(json& result) const {
     result["replica_info"] = _replicaInfo.toJson();
@@ -79,11 +79,11 @@ void WorkerFindReplicaHttpRequest::getResult(json& result) const {
 bool WorkerFindReplicaHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT << " database: " << _databaseName << " chunk: " << _chunkNumber);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, CONTEXT);
 
     // The method will throw ConfigUnknownDatabase if the database is invalid.
-    DatabaseInfo const databaseInfo = _serviceProvider->config()->databaseInfo(_databaseName);
+    DatabaseInfo const databaseInfo = serviceProvider()->config()->databaseInfo(_databaseName);
 
     // There are two modes of operation of the code which would depend
     // on a presence (or a lack of that) to calculate control/check sums
@@ -102,8 +102,8 @@ bool WorkerFindReplicaHttpRequest::execute() {
 
     if (!_computeCheckSum || (_csComputeEnginePtr == nullptr)) {
         // Check if the data directory exists and it can be read
-        replica::Lock dataFolderLock(_mtxDataFolderOperations, CONTEXT);
-        fs::path const dataDir = fs::path(_serviceProvider->config()->get<string>("worker", "data-dir")) /
+        replica::Lock dataFolderLock(mtxDataFolderOperations, CONTEXT);
+        fs::path const dataDir = fs::path(serviceProvider()->config()->get<string>("worker", "data-dir")) /
                                  database::mysql::obj2fs(_databaseName);
         fs::file_status const stat = fs::status(dataDir, ec);
         errorContext =

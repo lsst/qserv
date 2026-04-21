@@ -84,6 +84,12 @@ public:
 
     ~WorkerSqlHttpRequest() override = default;
 
+    /// @return The type name of the request (e.g. "SQL_QUERY, "SQL_CREATE_TABLE", etc.)
+    /// based on the type of the SQL request type found in the input parameters of
+    /// the request. This makes the names compatible with the ones used by the Controller's
+    /// request and job classes.
+    std::string type() const override;
+
     bool execute() override;
 
 protected:
@@ -93,9 +99,6 @@ private:
     WorkerSqlHttpRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
                          protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req,
                          ExpirationCallbackType const& onExpired);
-
-    /// @return A connector as per the input request
-    std::shared_ptr<database::mysql::Connection> _connector() const;
 
     /**
      * The query generator for simple requests uses parameters of a request
@@ -151,21 +154,16 @@ private:
 
     // Input parameters (mandatory)
 
-    protocol::SqlRequestType const _sqlRequestType;  ///< The type of the SQL request
-    std::string const _user;                         ///< The name of the MySQL user (queries or grants)
-    std::string const _password;      ///< The MySQL password for the user account (queries only)
-    std::string const _databaseName;  ///< The name of the database
-    std::size_t const _maxRows;       ///< The maximum number of rows to be returned in a result set
-
-    // Input parameters (of batch mode requested)
-
-    bool const _batchMode;             ///< A flag to indicate if the request is targeting many tables
-    std::vector<std::string> _tables;  ///< A list of tables to be affected by the request
+    protocol::SqlRequestType _sqlRequestType;  ///< The type of the SQL request
+    std::string _databaseName;                 ///< The name of the database
+    std::size_t _maxRows;                      ///< The maximum number of rows to be returned in a result set
+    bool _batchMode;                           ///< A flag to indicate if the request is targeting many tables
 
     // Input parameters (request-specific, see the constructor for further details)
 
-    std::string _query;              ///< The query to be executed
-    std::string _table;              ///< The name of the table to be affected by the request
+    std::string _query;                ///< The query to be executed
+    std::vector<std::string> _tables;  ///< A list of tables to be affected by the request (batch mode)
+    std::string _table;              ///< The name of the table to be affected by the request (non-batch mode)
     std::list<SqlColDef> _columns;   ///< The list of columns for a table to be created
     std::string _partitionByColumn;  ///< The name of the column to be used for partitioning
     SqlIndexDef _index;              ///< The index definition
@@ -176,6 +174,8 @@ private:
     TransactionId _transactionId;    ///< The transaction identifier
     std::string _indexName;          ///< The name of the index to be dropped
     std::string _alterTableSpec;     ///< The specification for the ALTER TABLE request
+    std::string _user;               ///< The name of the MySQL user in GRANT ACCESS request
+    std::string _host;               ///< The host for the MySQL user in GRANT ACCESS request
 
     /// Cached result to be sent to a client upon a request
     nlohmann::json _resultSets;

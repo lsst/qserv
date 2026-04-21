@@ -23,10 +23,11 @@
 
 // System headers
 #include <atomic>
-#include <exception>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 // Third party headers
 #include "boost/asio.hpp"
@@ -76,16 +77,19 @@ public:
     /// timer (if any was started by the constructor).
     virtual ~WorkerHttpRequest();
 
-    std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
+    // The general attributes of requests are made public to allow
+    // direct access by the worker's request processor for monitoring and reporting purposes.
+    // The attributes are expected to be immutable after the construction of the request.
+
     std::string const& worker() const { return _worker; }
-    std::string const& type() const { return _type; }
     std::string const& id() const { return _hdr.id; }
     int priority() const { return _hdr.priority; }
-    nlohmann::json const& req() const { return _req; }
     protocol::Status status() const { return _status; }
     protocol::StatusExt extendedStatus() const { return _extendedStatus; }
 
-    WorkerPerformance const& performance() const { return _performance; }
+    /// Request type (name) is allowed to be refined by derived classes to provide more
+    /// specific type information. This is needed for requests that support subtypes.
+    virtual std::string type() const { return _type; }
 
     /**
      * This method is called from the initial state protocol::Status::CREATED in order
@@ -171,7 +175,7 @@ public:
      * @param extendedStatus secondary status to be set
      */
     void setStatus(protocol::Status status, protocol::StatusExt extendedStatus = protocol::StatusExt::NONE) {
-        replica::Lock const lock(_mtx, context("WorkerHttpRequest", __func__));
+        replica::Lock const lock(mtx, context("WorkerHttpRequest", __func__));
         setStatus(lock, status, extendedStatus);
     }
 
@@ -186,8 +190,7 @@ public:
 
 protected:
     /**
-     * The normal constructor of the class
-     *
+     * The normal constructor of the class.
      * @param serviceProvider provider is needed to access the Configuration of
      *   a setup and for validating the input parameters
      * @param worker the name of a worker. It must be the same worker as the one
@@ -203,6 +206,32 @@ protected:
                       nlohmann::json const& req, ExpirationCallbackType const& onExpired);
 
     /**
+     * The simplified constructor for testing the request parsing methods: hasParam(),
+     * reqParam*() and optParam*().
+     *
+     * The init testing should be done in the following derived class:
+     * @code
+     * class TestWorkerHttpRequest : public WorkerHttpRequest {
+     * public:
+     *     TestWorkerHttpRequest(json const& req) : WorkerHttpRequest(req) {}
+     *     virtual ~TestWorkerHttpRequest() = default;
+     *     virtual bool execute() { return true; }
+     *     virtual void getResult(nlohmann::json& result) const {}
+     *
+     *     // Bring the parsing methods to the public scope for testing
+     *     using WorkerHttpRequest::hasParam;
+     *     using WorkerHttpRequest::optParamBool;
+     *     ..
+     * };
+     * @endcode
+     * @param req the request object carrying the parameters the request-specific parameters.
+     */
+    WorkerHttpRequest(nlohmann::json const& req);
+
+    /// @return the service provider associated with the request
+    std::shared_ptr<ServiceProvider> const& serviceProvider() const { return _serviceProvider; }
+
+    /**
      * The method is used to check if the request is entered the cancellation state.
      * The implementation assumes the following transitions:
      *
@@ -210,7 +239,7 @@ protected:
      * {protocol::Status::IS_CANCELLING} -> protocol::Status::CANCELLED -> throw WorkerHttpRequestCancelled
      * {*} -> throw std::logic_error
      *
-     * @param lock a lock on _mtx which acquired before calling this method
+     * @param lock a lock on mtx which acquired before calling this method
      * @param context_ a scope class/method from where the method was called
      * @throws WorkerHttpRequestCancelled if the request is being cancelled.
      * @throws std::logic_error if the state is not as expected.
@@ -290,44 +319,72 @@ protected:
         return std::static_pointer_cast<T>(shared_from_this());
     }
 
-    // Input parameters
+    // Methods for parsing the input parameters of the request. The methods will throw std::invalid_argument
+    // if the parameters are not found or have invalid values. The methods are expected to be called from
+    // the constructor of the derived class to validate the input parameters and to extract their values into
+    // the corresponding data members of the derived class.
+    //
+    // Note on the parsing of the boolean parameters: the methods will try to convert the value of a parameter
+    // to boolean if it's the JSON boolean value (false or true) or an integer (0 or != 0).
 
-    std::shared_ptr<ServiceProvider> const _serviceProvider;
-
-    std::string const _worker;
-    std::string const _type;
-    protocol::QueuedRequestHdr const _hdr;
-    nlohmann::json const _req;
-
-    ExpirationCallbackType _onExpired;  ///< The callback is reset when the request gets expired
-                                        /// or explicitly disposed.
-    unsigned int const _expirationTimeoutSec;
-
-    /// This timer is used (if configured) to limit the total duration of time
-    /// a request could exist from its creation till termination. The timer
-    /// starts when the request gets created. And it's explicitly finished when
-    /// a request object gets destroyed.
-    ///
-    /// If the time has a chance to expire then the request expiration callback
-    /// (if any) passed into the constructor will be invoked to notify WorkerProcessor
-    /// on the expiration event.
-    boost::asio::deadline_timer _expirationTimer;
-
-    // 2-layer state of a request
-
-    std::atomic<protocol::Status> _status;
-    std::atomic<protocol::StatusExt> _extendedStatus;
-
-    /// Performance counters
-    WorkerPerformance _performance;
+    bool hasParam(std::string const& name) const;
+    std::string reqParamString(std::string const& name) const;
+    std::string optParamString(std::string const& name,
+                               std::string const& defaultValue = std::string()) const;
+    bool reqParamBool(std::string const& name) const;
+    bool optParamBool(std::string const& name, bool defaultValue = false) const;
+    std::uint16_t reqParamUInt16(std::string const& name) const;
+    std::uint16_t optParamUInt16(std::string const& name, std::uint16_t defaultValue = 0) const;
+    std::uint32_t reqParamUInt32(std::string const& name) const;
+    std::uint32_t optParamUInt32(std::string const& name, std::uint32_t defaultValue = 0) const;
+    std::int32_t reqParamInt32(std::string const& name) const;
+    std::int32_t optParamInt32(std::string const& name, std::int32_t defaultValue = 0) const;
+    std::uint64_t reqParamUInt64(std::string const& name) const;
+    std::uint64_t optParamUInt64(std::string const& name, std::uint64_t defaultValue = 0) const;
+    double reqParamDouble(std::string const& name) const;
+    double optParamDouble(std::string const& name, double defaultValue = 0.0) const;
+    std::vector<std::string> reqParamStringVec(std::string const& name) const;
+    std::vector<std::string> optParamStringVec(
+            std::string const& name,
+            std::vector<std::string> const& defaultValue = std::vector<std::string>()) const;
+    std::vector<std::uint64_t> reqParamUInt64Vec(std::string const& name) const;
+    std::vector<std::uint64_t> optParamUInt64Vec(
+            std::string const& name,
+            std::vector<std::uint64_t> const& defaultValue = std::vector<std::uint64_t>()) const;
+    nlohmann::json const& reqParamVec(std::string const& name) const;
+    nlohmann::json const& reqParamObj(std::string const& name) const;
 
     /// Mutex guarding API calls where it's needed
-    mutable replica::Mutex _mtx;
+    mutable replica::Mutex mtx;
 
     /// Mutex guarding operations with the worker's data folder
-    static replica::Mutex _mtxDataFolderOperations;
+    static replica::Mutex mtxDataFolderOperations;
 
 private:
+    /**
+     * Extract the parameter from the request and return its value.
+     * @param name the name of the parameter to be extracted
+     * @return the value of the parameter
+     * @throw std::invalid_argument if the parameter is not found
+     */
+    nlohmann::json const& _reqParam(std::string const& name) const;
+
+    /**
+     * Extract the parameter from the request and validate its value as an array.
+     * @param name the name of the parameter to be extracted
+     * @return the value of the parameter validated as an array
+     * @throw std::invalid_argument if the parameter is not found or is not an array
+     */
+    nlohmann::json const& _reqParamVec(std::string const& name) const;
+
+    /**
+     * Extract the parameter from the request and validate its value as an object.
+     * @param name the name of the parameter to be extracted
+     * @return the value of the parameter validated as an object
+     * @throw std::invalid_argument if the parameter is not found or is not an object
+     */
+    nlohmann::json const& _reqParamObj(std::string const& name) const;
+
     /**
      * Request expiration timer's handler. The expiration interval (if any)
      * is obtained from the Controller-side requests or obtained from
@@ -340,8 +397,41 @@ private:
      */
     void _expired(boost::system::error_code const& ec);
 
-    // For memory usage monitoring and memory leak diagnostic.
-    static std::atomic<size_t> _numInstances;
+    // Input parameters
+
+    std::shared_ptr<ServiceProvider> const _serviceProvider;
+
+    std::string const _worker;
+    std::string const _type;
+    protocol::QueuedRequestHdr const _hdr;
+    nlohmann::json const _req;
+
+    ExpirationCallbackType _onExpired = nullptr;  ///< The callback is reset when the request gets expired
+                                                  /// or explicitly disposed.
+    unsigned int const _expirationTimeoutSec =
+            0;  ///< The expiration timeout in seconds (0 means no expiration)
+
+    /// This timer is used (if configured) to limit the total duration of time
+    /// a request could exist from its creation till termination. The timer
+    /// starts when the request gets created. And it's explicitly finished when
+    /// a request object gets destroyed.
+    ///
+    /// If the time has a chance to expire then the request expiration callback
+    /// (if any) passed into the constructor will be invoked to notify WorkerProcessor
+    /// on the expiration event.
+    ///
+    /// @note the timer is implemented as a pointer to avoid creating the the timer during
+    /// the unit testing. Thw timer class doesn't have a default constructor and it needs
+    /// to be created with an I/O service which is not available during the unit testing.
+    std::unique_ptr<boost::asio::deadline_timer> _expirationTimerPtr;
+
+    // 2-layer state of a request
+
+    std::atomic<protocol::Status> _status{protocol::Status::CREATED};
+    std::atomic<protocol::StatusExt> _extendedStatus{protocol::StatusExt::NONE};
+
+    /// Performance counters
+    WorkerPerformance _performance;
 };
 
 /**

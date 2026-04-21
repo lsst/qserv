@@ -107,6 +107,7 @@ replica_tests(
     testTaskSelector
     testTypes
     testConfiguration
+    testWorkerHttpRequest
 )
 
 add_subdirectory(apps)

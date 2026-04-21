@@ -58,8 +58,8 @@ WorkerEchoHttpRequest::WorkerEchoHttpRequest(shared_ptr<ServiceProvider> const& 
                                              string const& worker, protocol::QueuedRequestHdr const& hdr,
                                              json const& req, ExpirationCallbackType const& onExpired)
         : WorkerHttpRequest(serviceProvider, worker, "TEST_ECHO", hdr, req, onExpired),
-          _delay(req.at("delay")),
-          _data(req.at("data")),
+          _delay(reqParamInt32("delay")),
+          _data(reqParamString("data")),
           _delayLeft(_delay) {
     if (_delay < 0) {
         throw invalid_argument(CONTEXT + " invalid delay[ms]: " + to_string(_delay));
@@ -71,7 +71,7 @@ void WorkerEchoHttpRequest::getResult(json& result) const { result["data"] = _da
 bool WorkerEchoHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT << " delay[ms]: " << _delayLeft << " / " << _delay);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, CONTEXT);
 
     // Block the thread for the random number of milliseconds in the interval

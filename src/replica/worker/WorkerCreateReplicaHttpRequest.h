@@ -132,7 +132,7 @@ private:
     uint16_t const _sourceWorkerPort;
     std::string const _sourceWorkerHostPort;
     std::string const _databaseName;
-    unsigned int const _chunkNumber;
+    std::uint32_t const _chunkNumber;
 
     /// Result of the operation
     ReplicaInfo _replicaInfo;
@@ -154,7 +154,7 @@ private:
     /// on the source worker node
     std::shared_ptr<FileClient> _inFilePtr;
 
-    std::FILE* _tmpFilePtr;  ///< The file pointer for the temporary output file
+    std::FILE* _tmpFilePtr = nullptr;  ///< The file pointer for the temporary output file
 
     /// The FileDescr structure encapsulates various parameters of a file
     struct FileDescr {
@@ -177,8 +177,8 @@ private:
     /// the corresponding parameters.
     std::map<std::string, FileDescr> _file2descr;
 
-    uint8_t* _buf;    ///< The buffer for storing file payload read from the remote service
-    size_t _bufSize;  ///< The size of the buffer
+    uint8_t* _buf = 0;    ///< The buffer for storing file payload read from the remote service
+    size_t _bufSize = 0;  ///< The size of the buffer
 };
 
 }  // namespace lsst::qserv::replica

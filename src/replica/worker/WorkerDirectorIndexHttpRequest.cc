@@ -75,12 +75,12 @@ WorkerDirectorIndexHttpRequest::WorkerDirectorIndexHttpRequest(
         protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired,
         shared_ptr<database::mysql::ConnectionPool> const& connectionPool)
         : WorkerHttpRequest(serviceProvider, worker, "INDEX", hdr, req, onExpired),
-          _databaseName(req.at("database")),
-          _tableName(req.at("director_table")),
-          _hasTransactions(req.at("has_transaction").get<int>() != 0),
-          _transactionId(req.at("transaction_id")),
-          _chunkNumber(req.at("chunk")),
-          _offset(req.at("offset")),
+          _databaseName(reqParamString("database")),
+          _tableName(reqParamString("director_table")),
+          _hasTransactions(reqParamBool("has_transaction")),
+          _transactionId(reqParamUInt32("transaction_id")),
+          _chunkNumber(reqParamUInt32("chunk")),
+          _offset(reqParamUInt64("offset")),
           _connectionPool(connectionPool),
           _tmpDirName(serviceProvider->config()->get<string>("worker", "loader-tmp-dir") + "/" +
                       database::mysql::obj2fs(_databaseName)),
@@ -96,7 +96,7 @@ void WorkerDirectorIndexHttpRequest::getResult(json& result) const {
 bool WorkerDirectorIndexHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, CONTEXT);
 
     // This method will throw ConfigUnknownDatabase if the database is invalid.
