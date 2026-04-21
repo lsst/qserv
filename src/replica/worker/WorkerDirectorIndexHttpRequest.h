@@ -63,14 +63,14 @@ public:
      * @param worker the name of a worker. The name must match the worker which
      *   is going to execute the request.
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request object received from a client (request-specific parameters)
      * @param onExpired request expiration callback function
      * @param connectionPool a pool of connections to the MySQL/MariaDB server
      * @return pointer to the created object
      */
     static std::shared_ptr<WorkerDirectorIndexHttpRequest> create(
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
-            protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req,
+            protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
             ExpirationCallbackType const& onExpired,
             std::shared_ptr<database::mysql::ConnectionPool> const& connectionPool);
 
@@ -83,12 +83,13 @@ public:
     bool execute() override;
 
 protected:
-    void getResult(nlohmann::json& result) const override;
+    nlohmann::json getResult() const override;
 
 private:
     WorkerDirectorIndexHttpRequest(std::shared_ptr<ServiceProvider> const& serviceProvider,
                                    std::string const& worker, protocol::QueuedRequestHdr const& hdr,
-                                   nlohmann::json const& req, ExpirationCallbackType const& onExpired,
+                                   protocol::RequestParams const& params,
+                                   ExpirationCallbackType const& onExpired,
                                    std::shared_ptr<database::mysql::ConnectionPool> const& connectionPool);
 
     /**
@@ -113,7 +114,7 @@ private:
      */
     protocol::StatusExt _readFile(size_t offset);
 
-    /// Get rid of the temporary file if it's still tehre.
+    /// Get rid of the temporary file if it's still there.
     void _removeFile() const;
 
     // Input parameters of the request as per the request JSON object

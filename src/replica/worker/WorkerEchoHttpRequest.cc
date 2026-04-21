@@ -47,31 +47,33 @@ namespace lsst::qserv::replica {
 
 shared_ptr<WorkerEchoHttpRequest> WorkerEchoHttpRequest::create(
         shared_ptr<ServiceProvider> const& serviceProvider, string const& worker,
-        protocol::QueuedRequestHdr const& hdr, json const& req, ExpirationCallbackType const& onExpired) {
+        protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
+        ExpirationCallbackType const& onExpired) {
     auto ptr = shared_ptr<WorkerEchoHttpRequest>(
-            new WorkerEchoHttpRequest(serviceProvider, worker, hdr, req, onExpired));
+            new WorkerEchoHttpRequest(serviceProvider, worker, hdr, params, onExpired));
     ptr->init();
     return ptr;
 }
 
 WorkerEchoHttpRequest::WorkerEchoHttpRequest(shared_ptr<ServiceProvider> const& serviceProvider,
                                              string const& worker, protocol::QueuedRequestHdr const& hdr,
-                                             json const& req, ExpirationCallbackType const& onExpired)
-        : WorkerHttpRequest(serviceProvider, worker, "TEST_ECHO", hdr, req, onExpired),
-          _delay(req.at("delay")),
-          _data(req.at("data")),
+                                             protocol::RequestParams const& params,
+                                             ExpirationCallbackType const& onExpired)
+        : WorkerHttpRequest(serviceProvider, worker, "TEST_ECHO", hdr, params, onExpired),
+          _delay(params.requiredInt32("delay")),
+          _data(params.requiredString("data")),
           _delayLeft(_delay) {
     if (_delay < 0) {
         throw invalid_argument(CONTEXT + " invalid delay[ms]: " + to_string(_delay));
     }
 }
 
-void WorkerEchoHttpRequest::getResult(json& result) const { result["data"] = _data; }
+json WorkerEchoHttpRequest::getResult() const { return json::object({{"data", _data}}); }
 
 bool WorkerEchoHttpRequest::execute() {
     LOGS(_log, LOG_LVL_DEBUG, CONTEXT << " delay[ms]: " << _delayLeft << " / " << _delay);
 
-    replica::Lock lock(_mtx, CONTEXT);
+    replica::Lock lock(mtx, CONTEXT);
     checkIfCancelling(lock, CONTEXT);
 
     // Block the thread for the random number of milliseconds in the interval

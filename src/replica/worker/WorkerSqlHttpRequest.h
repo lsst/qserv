@@ -69,13 +69,13 @@ public:
      * @param worker the name of a worker. The name must match the worker which
      *   is going to execute the request.
      * @param hdr request header (common parameters of the queued request)
-     * @param req the request object received from a client (request-specific parameters)
+     * @param params the request object received from a client (request-specific parameters)
      * @param onExpired request expiration callback function
      * @return pointer to the created object
      */
     static std::shared_ptr<WorkerSqlHttpRequest> create(
             std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
-            protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req,
+            protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
             ExpirationCallbackType const& onExpired);
 
     WorkerSqlHttpRequest() = delete;
@@ -87,15 +87,12 @@ public:
     bool execute() override;
 
 protected:
-    void getResult(nlohmann::json& result) const override;
+    nlohmann::json getResult() const override;
 
 private:
     WorkerSqlHttpRequest(std::shared_ptr<ServiceProvider> const& serviceProvider, std::string const& worker,
-                         protocol::QueuedRequestHdr const& hdr, nlohmann::json const& req,
+                         protocol::QueuedRequestHdr const& hdr, protocol::RequestParams const& params,
                          ExpirationCallbackType const& onExpired);
-
-    /// @return A connector as per the input request
-    std::shared_ptr<database::mysql::Connection> _connector() const;
 
     /**
      * The query generator for simple requests uses parameters of a request
@@ -151,21 +148,16 @@ private:
 
     // Input parameters (mandatory)
 
-    protocol::SqlRequestType const _sqlRequestType;  ///< The type of the SQL request
-    std::string const _user;                         ///< The name of the MySQL user (queries or grants)
-    std::string const _password;      ///< The MySQL password for the user account (queries only)
-    std::string const _databaseName;  ///< The name of the database
-    std::size_t const _maxRows;       ///< The maximum number of rows to be returned in a result set
-
-    // Input parameters (of batch mode requested)
-
-    bool const _batchMode;             ///< A flag to indicate if the request is targeting many tables
-    std::vector<std::string> _tables;  ///< A list of tables to be affected by the request
+    protocol::SqlRequestType _sqlRequestType;  ///< The type of the SQL request
+    std::string _databaseName;                 ///< The name of the database
+    std::size_t _maxRows;                      ///< The maximum number of rows to be returned in a result set
+    bool _batchMode;                           ///< A flag to indicate if the request is targeting many tables
 
     // Input parameters (request-specific, see the constructor for further details)
 
-    std::string _query;              ///< The query to be executed
-    std::string _table;              ///< The name of the table to be affected by the request
+    std::string _query;                ///< The query to be executed
+    std::vector<std::string> _tables;  ///< A list of tables to be affected by the request (batch mode)
+    std::string _table;              ///< The name of the table to be affected by the request (non-batch mode)
     std::list<SqlColDef> _columns;   ///< The list of columns for a table to be created
     std::string _partitionByColumn;  ///< The name of the column to be used for partitioning
     SqlIndexDef _index;              ///< The index definition
@@ -176,6 +168,8 @@ private:
     TransactionId _transactionId;    ///< The transaction identifier
     std::string _indexName;          ///< The name of the index to be dropped
     std::string _alterTableSpec;     ///< The specification for the ALTER TABLE request
+    std::string _user;               ///< The name of the MySQL user in GRANT ACCESS request
+    std::string _host;               ///< The host for the MySQL user in GRANT ACCESS request
 
     /// Cached result to be sent to a client upon a request
     nlohmann::json _resultSets;

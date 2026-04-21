@@ -39,6 +39,7 @@ class WorkerHttpProcessor;
 
 namespace lsst::qserv::replica::protocol {
 struct QueuedRequestHdr;
+class RequestParams;
 }  // namespace lsst::qserv::replica::protocol
 
 // This header declarations
@@ -109,6 +110,10 @@ private:
     /// @param func The name of the function to be used in the log messages
     /// @return The parsed header
     protocol::QueuedRequestHdr _parseHdr(std::string const& func) const;
+
+    /// Extract the request parameters from the request body and return them
+    /// @return The parser for the request parameters
+    protocol::RequestParams _reqParams() const;
 
     /// Process the ECHO request
     nlohmann::json _echo() const;

@@ -108,46 +108,50 @@ protocol::QueuedRequestHdr WorkerHttpSvcMod::_parseHdr(string const& func) const
     return hdr;
 }
 
+protocol::RequestParams WorkerHttpSvcMod::_reqParams() const {
+    return protocol::RequestParams(body().required<json>("req"));
+}
+
 json WorkerHttpSvcMod::_echo() const {
     debug(__func__);
     checkApiVersion(__func__, 56);
-    return _processor->echo(_parseHdr(__func__), body().required<json>("req"));
+    return _processor->echo(_parseHdr(__func__), _reqParams());
 }
 
 json WorkerHttpSvcMod::_replicaCreate() {
     debug(__func__);
     checkApiVersion(__func__, 56);
-    return _processor->createReplica(_parseHdr(__func__), body().required<json>("req"));
+    return _processor->createReplica(_parseHdr(__func__), _reqParams());
 }
 
 json WorkerHttpSvcMod::_replicaDelete() {
     debug(__func__);
     checkApiVersion(__func__, 56);
-    return _processor->deleteReplica(_parseHdr(__func__), body().required<json>("req"));
+    return _processor->deleteReplica(_parseHdr(__func__), _reqParams());
 }
 
 json WorkerHttpSvcMod::_replicaFind() {
     debug(__func__);
     checkApiVersion(__func__, 56);
-    return _processor->findReplica(_parseHdr(__func__), body().required<json>("req"));
+    return _processor->findReplica(_parseHdr(__func__), _reqParams());
 }
 
 json WorkerHttpSvcMod::_replicaFindAll() {
     debug(__func__);
     checkApiVersion(__func__, 56);
-    return _processor->findAllReplicas(_parseHdr(__func__), body().required<json>("req"));
+    return _processor->findAllReplicas(_parseHdr(__func__), _reqParams());
 }
 
 json WorkerHttpSvcMod::_index() {
     debug(__func__);
     checkApiVersion(__func__, 56);
-    return _processor->index(_parseHdr(__func__), body().required<json>("req"));
+    return _processor->index(_parseHdr(__func__), _reqParams());
 }
 
 json WorkerHttpSvcMod::_sql() {
     debug(__func__);
     checkApiVersion(__func__, 56);
-    return _processor->sql(_parseHdr(__func__), body().required<json>("req"));
+    return _processor->sql(_parseHdr(__func__), _reqParams());
 }
 
 json WorkerHttpSvcMod::_requestTrack() {
@@ -186,11 +190,20 @@ json WorkerHttpSvcMod::_requestDispose() {
         string const id = idJson.get<string>();
         idsDisposedJson[id] = _processor->disposeRequest(id) ? 1 : 0;
     }
-    return json::object({{"status", protocol::Status::SUCCESS},
-                         {"status_str", protocol::toString(protocol::Status::SUCCESS)},
-                         {"status_ext", protocol::StatusExt::NONE},
-                         {"status_ext_str", protocol::toString(protocol::StatusExt::NONE)},
-                         {"ids_disposed", idsDisposedJson}});
+    WorkerPerformance perf;
+    perf.setUpdateStart();
+    perf.setUpdateFinish();
+    return json::object({{"req", json::object({{"id", ""},
+                                               {"priority", 0},
+                                               {"timeout", 0},
+                                               {"params", json::object({{"ids", idsJson}})}})},
+                         {"resp", json::object({{"type", ""},
+                                                {"expiration_timeout_sec", 0},
+                                                {"status", protocol::toString(protocol::Status::SUCCESS)},
+                                                {"status_ext", protocol::toString(protocol::StatusExt::NONE)},
+                                                {"error", ""},
+                                                {"result", json::object({{"ids_disposed", idsDisposedJson}})},
+                                                {"perf", perf.toJson()}})}});
 }
 
 json WorkerHttpSvcMod::_serviceSuspend() {
@@ -200,31 +213,33 @@ json WorkerHttpSvcMod::_serviceSuspend() {
     // This operation is allowed to be asynchronous as it may take
     // extra time for the processor's threads to finish on-going processing
     _processor->stop();
-    return _processor->toJson(_processor->state() == protocol::ServiceState::RUNNING
-                                      ? protocol::Status::FAILED
-                                      : protocol::Status::SUCCESS);
+    return _processor->toJson("SVC_SUSPEND",
+                              _processor->state() == protocol::ServiceState::SUSPEND_IN_PROGRESS ||
+                                              _processor->state() == protocol::ServiceState::SUSPENDED
+                                      ? protocol::Status::SUCCESS
+                                      : protocol::Status::FAILED);
 }
 
 json WorkerHttpSvcMod::_serviceResume() {
     debug(__func__);
     checkApiVersion(__func__, 56);
     _processor->run();
-    return _processor->toJson(_processor->state() == protocol::ServiceState::RUNNING
-                                      ? protocol::Status::SUCCESS
-                                      : protocol::Status::FAILED);
+    return _processor->toJson("SVC_RESUME", _processor->state() == protocol::ServiceState::RUNNING
+                                                    ? protocol::Status::SUCCESS
+                                                    : protocol::Status::FAILED);
 }
 
 json WorkerHttpSvcMod::_serviceStatus() {
     debug(__func__);
     checkApiVersion(__func__, 56);
-    return _processor->toJson(protocol::Status::SUCCESS);
+    return _processor->toJson("SVC_STATUS", protocol::Status::SUCCESS);
 }
 
 json WorkerHttpSvcMod::_serviceRequests() {
     debug(__func__);
     checkApiVersion(__func__, 56);
     const bool includeRequests = true;
-    return _processor->toJson(protocol::Status::SUCCESS, includeRequests);
+    return _processor->toJson("SVC_REQUESTS", protocol::Status::SUCCESS, includeRequests);
 }
 
 json WorkerHttpSvcMod::_serviceDrain() {
@@ -232,14 +247,14 @@ json WorkerHttpSvcMod::_serviceDrain() {
     checkApiVersion(__func__, 56);
     _processor->drain();
     const bool includeRequests = true;
-    return _processor->toJson(protocol::Status::SUCCESS, includeRequests);
+    return _processor->toJson("SVC_DRAIN", protocol::Status::SUCCESS, includeRequests);
 }
 
 json WorkerHttpSvcMod::_serviceReconfig() {
     debug(__func__);
     checkApiVersion(__func__, 56);
     _processor->reconfig();
-    return _processor->toJson(protocol::Status::SUCCESS);
+    return _processor->toJson("SVC_RECONFIG", protocol::Status::SUCCESS);
 }
 
 }  // namespace lsst::qserv::replica
