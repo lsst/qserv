@@ -371,8 +371,7 @@ void MasterControllerHttpApp::_registryUpdateLoop() {
             json const response = client.readAsJson();
             if (0 == response.at("success").get<int>()) {
                 string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
-                abort();
+                LOGS(_log, LOG_LVL_WARN, requestContext + " was denied, error: '" + error + "'.");
             }
         } catch (exception const& ex) {
             LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
