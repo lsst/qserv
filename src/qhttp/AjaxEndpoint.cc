@@ -41,9 +41,9 @@ namespace lsst::qserv::qhttp {
 
 AjaxEndpoint::AjaxEndpoint(std::shared_ptr<Server> const server) : _server(std::move(server)) {}
 
-AjaxEndpoint::Ptr AjaxEndpoint::add(Server& server, std::string const& path) {
-    auto const aep = std::shared_ptr<AjaxEndpoint>(new AjaxEndpoint(std::shared_ptr<Server>(&server)));
-    server.addHandler("GET", path, [aep](Request::Ptr request, Response::Ptr response) {
+AjaxEndpoint::Ptr AjaxEndpoint::add(std::shared_ptr<Server> const server, std::string const& path) {
+    auto const aep = std::shared_ptr<AjaxEndpoint>(new AjaxEndpoint(server));
+    server->addHandler("GET", path, [aep](Request::Ptr request, Response::Ptr response) {
         std::lock_guard<std::mutex> lock{aep->_pendingResponsesMutex};
         aep->_pendingResponses.push_back(response);
         LOGLS_DEBUG(_log, logger(aep->_server) << logger(aep) << "deferring response ("

@@ -49,7 +49,7 @@ public:
     //      thread-safe.  Note also that the Server::addAjaxEndpoint() convenience method would typically be
     //      called in preference to calling the add() method here directly.
 
-    static Ptr add(Server& server, std::string const& path);
+    static Ptr add(std::shared_ptr<Server> const server, std::string const& path);
     void update(std::string const& json);  // thread-safe
 
 private:

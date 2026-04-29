@@ -28,7 +28,6 @@
 #include <errno.h>
 #include <map>
 #include <memory>
-#include <string>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -91,7 +90,7 @@ std::map<Status, const std::string> responseStringsByCode = {
         {STATUS_RANGE_NOT_SATISFIABLE, "Range Not Satisfiable"},
         {STATUS_FAILED_EXPECT, "Expectation Failed"},
         {STATUS_MISREDIRECT_REQ, "Misdirected Request"},
-        {STATUS_UNPROCESSIBLE, "Unprocessable Entity"},
+        {STATUS_UNPROCESSABLE, "Unprocessable Entity"},
         {STATUS_LOCKED, "Locked"},
         {STATUS_FAILED_DEP, "Failed Dependency"},
         {STATUS_UPGRADE_REQUIRED, "Upgrade Required"},
@@ -102,8 +101,8 @@ std::map<Status, const std::string> responseStringsByCode = {
         {STATUS_NOT_IMPL, "Not Implemented"},
         {STATUS_BAD_GATEWAY, "Bad Gateway"},
         {STATUS_SERVICE_UNAVAIL, "Service Unavailable"},
-        {STATUS_GSATEWAY_TIMEOUT, "Gateway Timeout"},
-        {STATUS_UNDSUPPORT_VERSION, "HTTP Version Not Supported"},
+        {STATUS_GATEWAY_TIMEOUT, "Gateway Timeout"},
+        {STATUS_UNSUPPORTED_VERSION, "HTTP Version Not Supported"},
         {STATUS_VARIANT_NEGOTIATES, "Variant Also Negotiates"},
         {STATUS_NO_STORAGE, "Insufficient Storage"},
         {STATUS_LOOP, "Loop Detected"},
