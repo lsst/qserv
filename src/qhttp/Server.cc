@@ -100,7 +100,7 @@ void Server::addStaticContent(std::string const& pattern, std::string const& roo
 }
 
 AjaxEndpoint::Ptr Server::addAjaxEndpoint(const std::string& pattern) {
-    return AjaxEndpoint::add(*this, pattern);
+    return AjaxEndpoint::add(shared_from_this(), pattern);
 }
 
 void Server::setRequestTimeout(chrono::milliseconds const& timeout) { _requestTimeout = timeout; }
