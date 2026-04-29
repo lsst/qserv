@@ -50,4 +50,4 @@ public:
 
 }  // namespace lsst::qserv::qhttp
 
-#endif  // LSST_QSER_QHTTP_STATICCONTENT_H
+#endif  // LSST_QSERV_QHTTP_STATICCONTENT_H
