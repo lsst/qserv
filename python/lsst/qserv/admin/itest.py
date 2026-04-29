@@ -1383,8 +1383,9 @@ def run_http_ingest(
 
     try:
         _http_ingest_data_csv(
-            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir, rows_dir, timeout,
-            charset, collation, is_director, is_child, id_col_name, longitude_col_name, latitude_col_name
+            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir,
+            rows_dir, timeout, charset, collation, is_director, is_child, id_col_name, longitude_col_name,
+            latitude_col_name
         )
     except Exception as e:
         _log.error(
@@ -1450,8 +1451,9 @@ def run_http_ingest(
     table_csv_dir = "csv-director-table-no-pk"
     try:
         _http_ingest_data_csv(
-            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir, rows_dir, timeout,
-            charset, collation, is_director, is_child, id_col_name, longitude_col_name, latitude_col_name
+            http_frontend_uri, user, password, database_dir, table_csv_dir, schema_dir, indexes_dir,
+            rows_dir, timeout, charset, collation, is_director, is_child, id_col_name, longitude_col_name,
+            latitude_col_name
         )
     except Exception as e:
         _log.error(
@@ -1480,9 +1482,9 @@ def run_http_ingest(
             "Failed to query table: %s of user database: %s, error: %s", table_csv_dir, database_dir, e
         )
 
-    # Ingest a child table of the previously ingested director. The child table will be placed into a separate database.
-    # The table will be partitioned based on values of the FK pointing to the object identifiers in the director table.
-    # Then query the child table.
+    # Ingest a child table of the previously ingested director. The child table will be placed into a separate
+    # database. The table will be partitioned based on values of the FK pointing to the object identifiers in
+    # the director table. Then query the child table.
     schema_dir = [
         {"name": "id", "type": "BIGINT UNSIGNED"},
         {"name": "height", "type": "INT"},
@@ -1514,40 +1516,50 @@ def run_http_ingest(
     latitude_col_name = ""
     try:
         _http_ingest_data_csv(
-            http_frontend_uri, user, password, database_child, table_csv_child, schema_dir, indexes_child, rows_dir, timeout,
-            charset, collation, is_director, is_child, id_col_name, longitude_col_name, latitude_col_name,
-            database_dir, table_csv_dir, "qserv_id"
+            http_frontend_uri, user, password, database_child, table_csv_child, schema_dir, indexes_child,
+            rows_dir, timeout, charset, collation, is_director, is_child, id_col_name, longitude_col_name,
+            latitude_col_name, database_dir, table_csv_dir, "qserv_id"
         )
     except Exception as e:
         _log.error(
-            "Failed to ingest data into table: %s of user database: %s, error: %s", table_csv_child, database_child, e
+            "Failed to ingest data into table: %s of user database: %s, error: %s", table_csv_child,
+            database_child, e
         )
         return False
     try:
         # Query the table expecting the PK column "qserv_id" to be added automatically. Expected result
         # of the query is in expected_rows_dir.
-        query = f"SELECT c.id,d.val,c.height FROM `{database_dir}`.`{table_csv_dir}` d JOIN `{database_child}`.`{table_csv_child}` c  ON d.qserv_id=c.id ORDER BY c.id ASC"
-        _http_query_table(http_frontend_uri, user, password, database_child, table_csv_child, query, expected_rows_dir)
+        query = (
+            f"SELECT c.id,d.val,c.height "
+            f"FROM `{database_dir}`.`{table_csv_dir}` d "
+            f"JOIN `{database_child}`.`{table_csv_child}` c  "
+            f"ON d.qserv_id=c.id "
+            "ORDER BY c.id ASC"
+        )
+        _http_query_table(http_frontend_uri, user, password, database_child, table_csv_child, query,
+                          expected_rows_dir)
     except Exception as e:
-        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_child, database_child, e)
+        _log.error("Failed to query table: %s of user database: %s, error: ", table_csv_child,
+                   database_child, e)
 
-    # Cleanup both last 2 tables and 2 databases in two separate steps unless the user
-    # requested to keep the results.
+    # Cleanup both last 2 tables and 2 databases in two separate steps unless the user requested to keep the
+    # results.
     #
-    # IMPORTANT: The cleanup must be done in the right order: first delete the child table & the child databases,
-    #            then the director table, and only after that delete the director database.
+    # IMPORTANT: The cleanup must be done in the right order: first delete the child table & the child
+    #            databases, then the director table, and only after that delete the director database.
     #            Otherwise, the Replication system's worker will crash. In general this is the minor problem
-    #            because the large-scale ingest workflows are aware of the right sequence for managing lifecycles
-    #            of databases/tables. The life expectancy of the large (referenced) catalogs is normally longer
-    #            than that of the smaller, temporary user tables. The problem will be addressed later
-    #            in a separate effort.
+    #            because the large-scale ingest workflows are aware of the right sequence for managing
+    #            lifecycles of databases/tables. The life expectancy of the large (referenced) catalogs is
+    #            normally longer than that of the smaller, temporary user tables. The problem will be
+    #            addressed later in a separate effort.
     if not keep_results:
 
         # First, delete the dependent table & database.
         try:
             _http_delete_table(http_frontend_uri, user, password, database_child, table_csv_child)
         except Exception as e:
-            _log.error("Failed to delete table: %s from user database: %s, error: %s", table_csv_child, database_child, e)
+            _log.error("Failed to delete table: %s from user database: %s, error: %s", table_csv_child,
+                       database_child, e)
             return False
         try:
             _http_delete_database(http_frontend_uri, user, password, database_child)
@@ -1740,31 +1752,26 @@ def _http_ingest_data_csv(
     timeout : `int`
         The timeout for the ingestion operation in seconds.
     charset : `str`, optional
-        The character set to use for the table. If not provided, the default
-        character set will be used.
+        The character set to use for the table. If not provided, the default character set will be used.
     collation : `str`, optional
-        The collation to use for the table. If not provided, the default
-        collation will be used.
+        The collation to use for the table. If not provided, the default collation will be used.
     is_director : `bool`, optional
         If `True` then the table is a director table.
     is_child : `bool`, optional
         If `True` then the table is a child table.
     id_col_name : `str`, optional
-        The name of the column to use as the director id column. Required if
-        `is_director` is `True`.
+        The name of the column to use as the director id column. Required if `is_director` is `True`.
     longitude_col_name : `str`, optional
-        The name of the column to use as the director longitude column. Required
-        if `is_director` is `True`.
+        The name of the column to use as the director longitude column. Required if `is_director` is `True`.
     latitude_col_name : `str`, optional
-        The name of the column to use as the director latitude column. Required
-        if `is_director` is `True`.
+        The name of the column to use as the director latitude column. Required if `is_director` is `True`.
     ref_director_database: `str`, optional
-        The name of the database where the director table is located. Required if
-        `is_child` is `True`.
+        The name of the database where the director table is located. Required if `is_child` is `True`.
     ref_director_table: `str`, optional
         The name of the director table. Required if `is_child` is `True`.
     ref_director_id_col_name: `str`, optional
-        The name of the column to use as the director id column in the director table. Required if `is_child` is `True`.
+        The name of the column to use as the director id column in the director table. Required if `is_child`
+        is `True`.
     """
     _log.debug("Ingesting CSV data into table: %s of user database: %s", table, database)
     base_dir = "/tmp"

@@ -1,0 +1,18 @@
+{
+    "folders": [
+        {
+            "path": "."
+        }
+    ],
+    "settings": {
+        "files.associations": {
+            "**/bin/entrypoint": "python",
+            "**/bin/qserv": "python",
+            "**/bin/qserv-kraken": "python",
+            "**/bin/qserv-smig": "python"
+        },
+        "python.analysis.extraPaths": [
+            "./python"
+        ]
+    }
+}
