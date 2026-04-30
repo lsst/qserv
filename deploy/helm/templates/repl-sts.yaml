@@ -110,6 +110,9 @@ spec:
               --qserv-sync-timeout=600
               --controller-ingest-job-monitor-ival-sec=1
               --controller-auto-register-workers=1
+              --xrootd-auto-notify=0
+              --qserv-sync-disable
+              --worker-evict-timeout=1800
               --purge
               --debug
           resources:
