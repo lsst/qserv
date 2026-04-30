@@ -1,7 +1,7 @@
-qservImageName: ghcr.io/lsst/qserv:2026.2.2-rc1-48-gbf7de83f1
-mariadbImageName: ghcr.io/lsst/qserv-mariadb:2026.2.2-rc1
+qservImageName: ghcr.io/lsst/qserv:2026.3.3-rc1-68-g924b74a1b
+mariadbImageName: ghcr.io/lsst/qserv-mariadb:2026.3.3-rc1
 sslProxyImageName: qserv/mysql-proxy-ssl:latest
-ingestHelperImageName: ghcr.io/lsst/qserv-build-base:2026.2.2-rc1-46-gf129c37c1
+ingestHelperImageName: ghcr.io/lsst/qserv-build-base:2026.3.3-rc1-25-gfd3801377
 
 qservImagePullPolicy: IfNotPresent
 mariadbImagePullPolicy: IfNotPresent
@@ -17,7 +17,7 @@ czars:
     size: 5Ti
 
 workers:
-  replicas: 72
+  replicas: 71
   storage:
     class: rubin-qserv-storage
     size: 10Ti
