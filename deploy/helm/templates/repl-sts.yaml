@@ -112,6 +112,9 @@ spec:
               --controller-auto-register-workers=1
               --purge
               --debug
+          resources:
+            requests:
+              memory: 1Gi
           volumeMounts:
             - name: repl-data
               mountPath: /qserv/data
