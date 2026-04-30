@@ -39,6 +39,7 @@
 #include "replica/util/FileUtils.h"
 #include "replica/worker/FileServer.h"
 #include "replica/worker/WorkerExporterHttpSvc.h"
+#include "replica/worker/WorkerHttpSvc.h"
 #include "replica/worker/WorkerServer.h"
 
 // LSST headers
@@ -111,6 +112,9 @@ int WorkerApp::runImpl() {
 
     auto const reqProcSvr = WorkerServer::create(serviceProvider(), worker);
     thread reqProcSvrThread([reqProcSvr]() { reqProcSvr->run(); });
+
+    auto const reqProcHttpSvr = WorkerHttpSvc::create(serviceProvider(), worker);
+    thread reqProcHttpSvrThread([reqProcHttpSvr]() { reqProcHttpSvr->run(); });
 
     auto const fileSvr = FileServer::create(serviceProvider(), worker);
     thread fileSvrThread([fileSvr]() { fileSvr->run(); });
