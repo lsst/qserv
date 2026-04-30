@@ -57,6 +57,9 @@ spec:
               --auth-key="$(cat /secrets/auth-key)"
               --admin-auth-key="$(cat /secrets/admin-auth-key)"
               --debug
+          resources:
+            requests:
+              memory: 1Gi
           volumeMounts:
             - name: config
               mountPath: /config
