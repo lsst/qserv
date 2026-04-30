@@ -22,6 +22,7 @@ spec:
         {{- include "qserv.labels" . | nindent 8 }}
         app.kubernetes.io/component: registry
     spec:
+      {{- if .Values.replication.tier }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -29,7 +30,8 @@ spec:
               - matchExpressions:
                   - key: qserv.lsst.io/tier
                     operator: In
-                    values: [ int-utility ]
+                    values: {{ .Values.replication.tier | toJson }}
+      {{- end }}
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
