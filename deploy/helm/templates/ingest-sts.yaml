@@ -8,7 +8,7 @@ metadata:
 spec:
   serviceName: {{ include "qserv.name" . }}-ingest
   replicas: 1
-  podManagementPolicy: Parallel
+  podManagementPolicy: {{ .Values.podManagementPolicy }}
   selector:
     matchLabels:
       {{- include "qserv.selectorLabels" . | nindent 6 }}
@@ -19,14 +19,16 @@ spec:
         {{- include "qserv.labels" . | nindent 8 }}
         app.kubernetes.io/component: ingest
     spec:
+      {{- if .Values.ingest.tier }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                - key: qserv.lsst.io/tier
-                  operator: In
-                  values: [ int-utility ]
+                  - key: qserv.lsst.io/tier
+                    operator: In
+                    values: {{ .Values.ingest.tier | toJson }}
+      {{- end }}
       containers:
         - name: nginx
           image: nginx:latest

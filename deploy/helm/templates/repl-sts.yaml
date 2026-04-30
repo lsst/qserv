@@ -7,7 +7,7 @@ metadata:
 spec:
   serviceName: {{ include "qserv.name" . }}-repl
   replicas: 1
-  podManagementPolicy: Parallel
+  podManagementPolicy: {{ .Values.podManagementPolicy }}
   selector:
     matchLabels:
       {{- include "qserv.selectorLabels" . | nindent 6 }}
@@ -18,14 +18,16 @@ spec:
         {{- include "qserv.labels" . | nindent 8 }}
         app.kubernetes.io/component: repl
     spec:
+      {{- if .Values.replication.tier }}
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                - key: qserv.lsst.io/tier
-                  operator: In
-                  values: [ int-utility ]
+                  - key: qserv.lsst.io/tier
+                    operator: In
+                    values: {{ .Values.replication.tier | toJson }}
+      {{- end }}
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
