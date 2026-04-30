@@ -25,7 +25,7 @@ spec:
               - matchExpressions:
                 - key: qserv.lsst.io/tier
                   operator: In
-                  values: [ utility ]
+                  values: [ int-utility ]
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
