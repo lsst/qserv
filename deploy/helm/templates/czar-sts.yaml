@@ -25,7 +25,7 @@ spec:
               - matchExpressions:
                   - key: qserv.lsst.io/tier
                     operator: In
-                    values: [ czar ]
+                    values: [ int-czar ]
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
@@ -38,7 +38,7 @@ spec:
                     values: [ {{ .Release.Name }} ]
                   - key: app.kubernetes.io/component
                     operator: In
-                    values: [ czar ]
+                    values: [ int-czar ]
               topologyKey: kubernetes.io/hostname
       securityContext:
         runAsUser: 1000

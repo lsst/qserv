@@ -25,7 +25,7 @@ spec:
               - matchExpressions:
                   - key: qserv.lsst.io/tier
                     operator: In
-                    values: [ worker ]
+                    values: [ int-worker, prod-worker ]
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
@@ -38,7 +38,7 @@ spec:
                     values: [ {{ .Release.Name }} ]
                   - key: app.kubernetes.io/component
                     operator: In
-                    values: [ worker ]
+                    values: [ int-worker, prod-worker ]
               topologyKey: kubernetes.io/hostname
       securityContext:
         runAsUser: 1000
