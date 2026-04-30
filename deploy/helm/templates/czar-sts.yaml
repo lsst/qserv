@@ -25,7 +25,7 @@ spec:
               - matchExpressions:
                   - key: qserv.lsst.io/tier
                     operator: In
-                    values: [ czar ]
+                    values: [ dev-czar ]
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             - labelSelector:
@@ -48,7 +48,7 @@ spec:
       containers:
         - name: mariadb
           image: {{ .Values.mariadbImageName | quote }}
-          imagePullPolicy: {{ .Values.mariadbimagePullPolicy | quote }}
+          imagePullPolicy: {{ .Values.mariadbImagePullPolicy | quote }}
           ports:
             - name: mysql
               containerPort: 3306

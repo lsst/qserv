@@ -26,7 +26,7 @@ spec:
               - matchExpressions:
                 - key: qserv.lsst.io/tier
                   operator: In
-                  values: [ utility ]
+                  values: [ int-utility ]
       containers:
         - name: nginx
           image: nginx:latest
