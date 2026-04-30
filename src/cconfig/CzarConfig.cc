@@ -28,7 +28,6 @@
 #include <stdexcept>
 
 // Third party headers
-#include "XrdSsi/XrdSsiLogger.hh"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -43,30 +42,15 @@ namespace {
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.cconfig.CzarConfig");
 
-void QservLogger(struct timeval const& mtime, unsigned long tID, const char* msg, int mlen) {
-    static log4cxx::spi::LocationInfo xrdLoc(
-            "client", log4cxx::spi::LocationInfo::calcShortFileName("client"), "<xrdssi>", 0);
-    static LOG_LOGGER myLog = LOG_GET("lsst.qserv.xrdssi.msgs");
-
-    if (myLog.isInfoEnabled()) {
-        while (mlen && msg[mlen - 1] == '\n') --mlen;  // strip all trailing newlines
-        std::string theMsg(msg, mlen);
-        lsst::log::Log::MDC("LWP", std::to_string(tID));
-        myLog.logMsg(log4cxx::Level::getInfo(), xrdLoc, theMsg);
-    }
-}
-
-bool dummy = XrdSsiLogger::SetMCB(QservLogger, XrdSsiLogger::mcbClient);
 }  // namespace
 
 namespace lsst::qserv::cconfig {
 
 std::mutex CzarConfig::_mtxOnInstance;
 
-std::shared_ptr<CzarConfig> CzarConfig::_instance;
+CzarConfig::Ptr CzarConfig::_instance;
 
-std::shared_ptr<CzarConfig> CzarConfig::create(std::string const& configFileName,
-                                               std::string const& czarName) {
+CzarConfig::Ptr CzarConfig::create(std::string const& configFileName, std::string const& czarName) {
     std::lock_guard<std::mutex> const lock(_mtxOnInstance);
     if (_instance == nullptr) {
         _instance = std::shared_ptr<CzarConfig>(new CzarConfig(util::ConfigStore(configFileName), czarName));
@@ -74,7 +58,7 @@ std::shared_ptr<CzarConfig> CzarConfig::create(std::string const& configFileName
     return _instance;
 }
 
-std::shared_ptr<CzarConfig> CzarConfig::instance() {
+CzarConfig::Ptr CzarConfig::instance() {
     std::lock_guard<std::mutex> const lock(_mtxOnInstance);
     if (_instance == nullptr) {
         throw std::logic_error("CzarConfig::" + std::string(__func__) + ": instance has not been created.");
@@ -159,7 +143,7 @@ http::AuthContext CzarConfig::httpAuthContext() const {
                              _replicationAdminAuthKey->getVal());
 }
 
-void CzarConfig::setId(qmeta::CzarId id) {
+void CzarConfig::setId(CzarId id) {
     _czarId = id;
     // Update the relevant section of the JSON-ified configuration.
     _jsonConfig["actual"]["identity"]["id"] = std::to_string(_czarId);

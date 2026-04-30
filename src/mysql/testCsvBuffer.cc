@@ -107,13 +107,15 @@ BOOST_AUTO_TEST_CASE(TestClosingCsvStreamBuffer) {
         BOOST_CHECK(!csvStream->push("0123456789", 10));
     });
 
-    std::thread consumer([csvBuf]() {
+    std::thread consumer([csvBuf, csvStream]() {
         char buffer[20];
         BOOST_CHECK_EQUAL(csvBuf->fetch(buffer, sizeof(buffer)), 3);
         BOOST_CHECK_EQUAL(std::string(buffer, 3), "abc");
         BOOST_CHECK_EQUAL(csvBuf->fetch(buffer, sizeof(buffer)), 3);
         BOOST_CHECK_EQUAL(std::string(buffer, 3), "def");
-        BOOST_CHECK_EQUAL(csvBuf->fetch(buffer, sizeof(buffer)), 0);
+        BOOST_CHECK_EQUAL(csvStream->getContaminated(), false);
+        csvBuf->fetch(buffer, sizeof(buffer));
+        BOOST_CHECK_EQUAL(csvStream->getContaminated(), true);
     });
     producer.join();
     consumer.join();

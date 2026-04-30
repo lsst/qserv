@@ -35,7 +35,7 @@
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQuery.h"
 #include "czar/CzarErrors.h"
-#include "qdisp/MessageStore.h"
+#include "qmeta/MessageStore.h"
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 
@@ -53,10 +53,6 @@ std::string const createTmpl(
         "ENGINE=MEMORY");
 
 std::string const createAndLockTmpl(createTmpl + "; LOCK TABLES %1% WRITE;");
-
-std::string const writeTmpl(
-        "INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
-        "VALUES (%2%, %3%, '%4$." MAX_MESSAGE_LEN "s', '%5%', %6%)");
 
 // mysql can only unlock all locked tables,
 // there is no command to unlock single table
@@ -95,8 +91,8 @@ void MessageTable::lock() {
 }
 
 // Release lock on message table so that proxy can proceed
-void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
-    _saveQueryMessages(userQuery);
+void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess) {
+    _saveQueryMessages(userQuery, querySuccess);
 
     sql::SqlErrorObject sqlErr;
     LOGS(_log, LOG_LVL_DEBUG, "unlocking message table " << _tableName);
@@ -108,7 +104,7 @@ void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery) {
 }
 
 // store all messages from current session to the table
-void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery) {
+void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess) {
     if (not userQuery) {
         return;
     }
@@ -117,12 +113,12 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery)
     int completeCount = 0;
     int cancelCount = 0;
     std::string multiErrStr = "";
-    std::string severity = "INFO";
+    std::string severity = (querySuccess) ? "INFO" : "ERROR";
 
     // Collect information about the query and put it in the message table.
     int msgCount = msgStore->messageCount();
     for (int i = 0; i != msgCount; ++i) {
-        const qdisp::QueryMessage& qm = msgStore->getMessage(i);
+        const qmeta::QueryMessage& qm = msgStore->getMessage(i);
         std::string src = qm.msgSource;
         if (src == "COMPLETE") {
             ++completeCount;
@@ -130,14 +126,16 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery)
             ++cancelCount;
         } else if (src == "MULTIERROR") {
             multiErrStr += qm.description + "\n";
-            severity = "ERROR";
         }
     }
     std::string cMsg("Completed chunks=");
     cMsg += std::to_string(completeCount) + " cancelled chunks=" + std::to_string(cancelCount) + "\n";
     cMsg += multiErrStr;
     LOGS(_log, LOG_LVL_DEBUG, " MULTIERROR:" << cMsg);
-    std::string summaryQ = (boost::format(::writeTmpl) % _tableName % "-1" % "-1" %
+    std::string const writeTmpl(
+            "INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
+            "VALUES (%2%, %3%, '%4$." MAX_MESSAGE_LEN "s', '%5%', %6%)");
+    std::string summaryQ = (boost::format(writeTmpl) % _tableName % "-1" % "-1" %
                             _sqlConn->escapeString(cMsg) % severity % std::time(nullptr))
                                    .str();
     sql::SqlErrorObject sqlE;

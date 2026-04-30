@@ -1,0 +1,55 @@
+add_library(protojson SHARED)
+
+target_sources(protojson PRIVATE
+    PwHideJson.cc
+    ResponseMsg.cc
+    ScanTableInfo.cc
+    UberJobErrorMsg.cc
+    UberJobReadyMsg.cc
+    UberJobMsg.cc
+    WorkerCzarComIssue.cc
+    WorkerQueryStatusData.cc
+)
+
+target_link_libraries(protojson PUBLIC
+    curl
+    http
+    log
+    qhttp
+    util
+    Boost::filesystem
+    Boost::regex
+    Boost::system
+    cpp-httplib
+)
+
+install(TARGETS protojson)
+
+function(PROTOJSON_TESTS)
+    foreach(TEST IN ITEMS ${ARGV})
+        add_executable(${TEST} ${TEST}.cc)
+        target_link_libraries(${TEST} PUBLIC
+            global
+            http
+            protojson
+            mysql
+            sql
+            wbase
+            wconfig
+            wcontrol
+            wdb
+            wpublish
+            wsched
+            Boost::unit_test_framework
+            Threads::Threads
+        )
+        add_test(NAME ${TEST} COMMAND ${TEST})
+    endforeach()
+endfunction()
+
+protojson_tests(
+    testStatusData
+	testUberJobErrorMsg
+    testUberJobReadyMsg
+    testUberJobMsg
+)
