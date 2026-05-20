@@ -6,6 +6,7 @@ metadata:
     {{- include "qserv.labels" . | nindent 4 }}
 spec:
   clusterIP: "None"
+  publishNotReadyAddresses: true
   selector:
     {{- include "qserv.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: repl
@@ -14,5 +15,4 @@ spec:
     - name: http
       port: 25081
       targetPort: http
-  publishNotReadyAddresses: true
   {{- end }}
