@@ -9,7 +9,10 @@
             "**/bin/entrypoint": "python",
             "**/bin/qserv": "python",
             "**/bin/qserv-kraken": "python",
-            "**/bin/qserv-smig": "python"
+            "**/bin/qserv-smig": "python",
+            "**/templates/*.yaml": "helm",
+            "**/templates/**/*.yaml": "helm",
+            "**/templates/*.tpl": "helm"
         },
         "python.analysis.extraPaths": [
             "./python"
