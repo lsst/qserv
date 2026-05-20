@@ -152,7 +152,7 @@ spec:
               --threads=16
               --worker-ingest-threads=16
               --ssl-cert-file=/certs/czar/tls.crt
-              --ssl-private-key-file=.certs/czar/tls.key
+              --ssl-private-key-file=/certs/czar/tls.key
               --tmp-dir=/qserv/data/ingest
               --verbose
           volumeMounts:
