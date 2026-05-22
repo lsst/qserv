@@ -68,8 +68,9 @@ UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, CzarI
                          std::string czarHost, int czarPort, uint64_t queryId, int rowLimit,
                          uint64_t maxTableSizeBytes, protojson::ScanInfo::Ptr const& scanInfo,
                          bool scanInteractive, std::string const& workerId,
-                         std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
-                         uint16_t resultsHttpPort)
+                         std::shared_ptr<wcontrol::Foreman> const& foreman,
+                         std::shared_ptr<wpublish::QueriesAndChunks> queriesAndChunks_,
+                         std::string const& authKey, uint16_t resultsHttpPort)
         : UberJobBase(queryId, uberJobId, czarId),
           _czarName(czarName),
           _czarHost(czarHost),
@@ -80,15 +81,32 @@ UberJobData::UberJobData(UberJobId uberJobId, std::string const& czarName, CzarI
           _authKey(authKey),
           _resultsHttpPort(resultsHttpPort),
           _foreman(foreman),
+          _queriesAndChunks(queriesAndChunks_),
           _scanInteractive(scanInteractive),
           _scanInfo(scanInfo),
           _idStr(string("QID=") + to_string(_queryId) + "_ujId=" + to_string(_uberJobId)) {}
 
-void UberJobData::setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared) {
-    if (_fileChannelShared != nullptr && _fileChannelShared != fileChannelShared) {
-        throw util::Bug(ERR_LOC, string(__func__) + " Trying to change _fileChannelShared");
-    }
-    _fileChannelShared = fileChannelShared;
+UberJobData::Ptr UberJobData::create(UberJobId uberJobId, std::string const& czarName, CzarId czarId,
+                                     std::string const& czarHost, int czarPort, uint64_t queryId,
+                                     int rowLimit, uint64_t maxTableSizeBytes,
+                                     std::shared_ptr<protojson::ScanInfo> const& scanInfo,
+                                     bool scanInteractive, std::string const& workerId,
+                                     wcontrol::Foreman::Ptr const& foreman,
+                                     wpublish::QueriesAndChunks::Ptr const& queriesAndChunks_,
+                                     std::string const& authKey, uint16_t resultsHttpPort) {
+    Ptr ujd = Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, rowLimit,
+                                  maxTableSizeBytes, scanInfo, scanInteractive, workerId, foreman,
+                                  queriesAndChunks_, authKey, resultsHttpPort));
+    // _fileChannelShared accesses this object with a weak pointer for cancellation and query info.
+    ujd->_fileChannelShared = FileChannelShared::create(ujd);
+    return ujd;
+}
+
+void UberJobData::setTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
+    std::lock_guard<std::mutex> tLg(_ujTasksMtx);
+    // Needs to be insert instead of '=' for conversion to weak_ptr
+    _ujTasks.insert(_ujTasks.end(), tasks.begin(), tasks.end());
+    getFileChannelShared()->setTaskCount(tasks.size());
 }
 
 void UberJobData::responseFileReady(protojson::FileUrlInfo const& fileUrlInfo_) {
@@ -110,7 +128,7 @@ void UberJobData::responseFileReady(protojson::FileUrlInfo const& fileUrlInfo_) 
     vector<string> const headers = {"Content-Type: application/json"};
     string const url = "http://" + _czarHost + ":" + to_string(_czarPort) + "/queryjob-ready";
     string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
-    _queueUJResponse(method, headers, url, requestContext, ujMsg);
+    _queueUJAnswer(method, headers, url, requestContext, ujMsg);
 }
 
 shared_ptr<protojson::UberJobReadyMsg> UberJobData::responseFileReadyBuild(
@@ -152,7 +170,7 @@ void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool ca
     vector<string> const headers = {"Content-Type: application/json"};
     string const url = "http://" + _czarHost + ":" + to_string(_czarPort) + "/queryjob-error";
     string const requestContext = "Worker: '" + http::method2string(method) + "' request to '" + url + "'";
-    _queueUJResponse(method, headers, url, requestContext, jrMsg);
+    _queueUJAnswer(method, headers, url, requestContext, jrMsg);
 }
 
 shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(
@@ -181,9 +199,9 @@ shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(
     return jrMsg;
 }
 
-void UberJobData::_queueUJResponse(http::Method method_, vector<string> const& headers_, string const& url_,
-                                   string const& requestContext_,
-                                   shared_ptr<protojson::UberJobStatusMsg> const& ujMsg_) {
+void UberJobData::_queueUJAnswer(http::Method method_, vector<string> const& headers_, string const& url_,
+                                 string const& requestContext_,
+                                 shared_ptr<protojson::UberJobStatusMsg> const& ujMsg_) {
     util::QdispPool::Ptr wPool;
     if (_foreman != nullptr) {
         wPool = _foreman->getWPool();
@@ -284,7 +302,7 @@ void UJTransmitCmd::action(util::CmdData* data) {
         } else {
             LOGS(_log, LOG_LVL_WARN,
                  cName(__func__) << " Transmit success=0 " << protojson::pwHide(response));
-            respMsg->failedUpdateUberJobData(ujPtr);
+            respMsg->failedUpdateUberJobData(ujPtr->getCzarId(), ujPtr->getQueryId(), ujPtr->getUberJobId());
             // There's no point in re-sending as the czar got the message and didn't like
             // it.
             return;
