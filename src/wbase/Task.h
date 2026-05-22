@@ -46,8 +46,6 @@
 #include "util/Histogram.h"
 #include "util/ThreadPool.h"
 
-#include "util/InstanceCount.h"
-
 // Forward declarations
 namespace lsst::qserv::mysql {
 class MySqlConfig;
@@ -68,6 +66,7 @@ class ChunkResourceMgr;
 class QueryRunner;
 }  // namespace lsst::qserv::wdb
 namespace lsst::qserv::wpublish {
+class ChunkStatistics;
 class QueriesAndChunks;
 class QueryStatistics;
 }  // namespace lsst::qserv::wpublish
@@ -89,6 +88,21 @@ public:
     TaskDbTbl(std::string const& db_, std::string const& tbl_) : db(db_), tbl(tbl_) {}
     std::string const db;
     std::string const tbl;
+};
+
+/// Class to manage the use count of a database for a Task.
+class TaskUseRAII {
+public:
+    using Ptr = std::unique_ptr<TaskUseRAII>;
+    TaskUseRAII() = delete;
+    static Ptr create(std::shared_ptr<wpublish::ChunkStatistics> const& chunkStats,
+                      std::string const& dbName);
+    ~TaskUseRAII();
+
+private:
+    TaskUseRAII(std::shared_ptr<wpublish::ChunkStatistics> const& chunkStats, std::string const& dbName);
+    std::shared_ptr<wpublish::ChunkStatistics> const _dbChunkStats;
+    std::string const _dbName;
 };
 
 class Task;
@@ -149,7 +163,6 @@ public:
     Task(std::shared_ptr<UberJobData> const& ujData, int jobId, int attemptCount, int chunkId,
          int fragmentNumber, size_t templateId, bool hasSubchunks, int subchunkId, std::string const& db,
          std::vector<TaskDbTbl> const& fragSubTables, std::vector<int> const& fragSubchunkIds,
-         std::shared_ptr<FileChannelShared> const& sc,
          std::shared_ptr<wpublish::QueryStatistics> const& queryStats_);
     Task& operator=(const Task&) = delete;
     Task(const Task&) = delete;
@@ -159,19 +172,16 @@ public:
     static std::vector<Ptr> createTasksFromUberJobMsg(
             std::shared_ptr<protojson::UberJobMsg> const& uberJobMsg,
             std::shared_ptr<UberJobData> const& ujData,
-            std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
             std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
-            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
+            mysql::MySqlConfig const& mySqlConfig, std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr);
 
     /// Create Tasks needed to run unit tests.
     static std::vector<Ptr> createTasksForUnitTest(
             std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
             std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
-            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
-            std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks);
+            std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr);
 
-    std::shared_ptr<FileChannelShared> getSendChannel() const { return _sendChannel; }
+    std::shared_ptr<FileChannelShared> getSendChannel() const;
     std::string user;  ///< Incoming username
     // Note that manpage spec of "26 bytes"  is insufficient
 
@@ -204,7 +214,8 @@ public:
     /// Return true if already cancelled.
     bool setTaskQueryRunner(std::shared_ptr<wdb::QueryRunner> const& taskQueryRunner);
 
-    /// Free this instances TaskQueryRunner object, but only if the pointer matches `tqr`
+    /// Free object associated with running the SQL query, including the TaskQueryRunner object,
+    /// but only if the pointer matches `tqr`.
     void freeTaskQueryRunner(wdb::QueryRunner* tqr);
     void setTaskScheduler(TaskScheduler::Ptr const& scheduler) { _taskScheduler = scheduler; }
     TaskScheduler::Ptr getTaskScheduler() const { return _taskScheduler.lock(); }
@@ -311,8 +322,6 @@ private:
     std::atomic<int> _logLvlWT;  ///< Normally LOG_LVL_WARN, set to TRACE in cancelled Tasks.
     std::atomic<int> _logLvlET;  ///< Normally LOG_LVL_ERROR, set to TRACE in cancelled Tasks.
 
-    std::shared_ptr<FileChannelShared> _sendChannel;  ///< Send channel.
-
     uint64_t const _tSeq = 0;          ///< identifier for the specific task
     QueryId const _qId = 0;            ///< queryId from czar
     size_t const _templateId;          ///< Id number of the template in _userQueryInfo.
@@ -335,9 +344,9 @@ private:
     std::shared_ptr<wdb::QueryRunner> _taskQueryRunner;
     std::weak_ptr<TaskScheduler> _taskScheduler;
     protojson::ScanInfo::Ptr _scanInfo;
-    bool _scanInteractive;  ///< True if the czar thinks this query should be interactive.
-    bool _onInteractive{
-            false};  ///< True if the scheduler put this task on the interactive (group) scheduler.
+
+    /// True if the scheduler put this task on the interactive (group) scheduler.
+    bool _onInteractive{false};
 
     /// Stores information on the query's resource usage.
     std::weak_ptr<wpublish::QueryStatistics> const _queryStats;
@@ -352,7 +361,7 @@ private:
     std::chrono::system_clock::time_point _startTime;      ///< task processing started
     std::chrono::system_clock::time_point _queryExecTime;  ///< query execution at MySQL started
     std::chrono::system_clock::time_point _queryTime;      ///< MySQL finished executing queries
-    std::chrono::system_clock::time_point _finishTime;     ///< data transmission to Czar fiished
+    std::chrono::system_clock::time_point _finishTime;     ///< data transmission to Czar finished
     size_t _totalSize = 0;                                 ///< Total size of the result so far.
 
     std::atomic<unsigned long> _mysqlThreadId{0};  ///< 0 if not connected to MySQL
@@ -365,8 +374,14 @@ private:
     /// When > 0, indicates maximum number of rows needed for a result.
     int const _rowLimit;
 
+    /// Container for UberJob data and shared objects.
     std::shared_ptr<UberJobData> _ujData;
     std::string const _idStr;
+
+    /// Container to hold RAII objects from when this object is created until
+    /// _taskQueryRunner is finished or this object is destroyed.
+    std::vector<TaskUseRAII::Ptr> _taskUseVect;
+    std::mutex _taskUseVectMtx;  ///< Protects _taskUseVect.
 
     bool _unitTest = false;  ///< Only true in unit tests.
 };

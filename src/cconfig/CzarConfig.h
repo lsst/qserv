@@ -361,7 +361,7 @@ private:
     CVTIntPtr _qdispPoolSize =
             util::ConfigValTInt::create(_configValMap, "qdisppool", "poolSize", notReq, 1000);
     CVTIntPtr _qdispMaxPriority =
-            util::ConfigValTInt::create(_configValMap, "qdisppool", "largestPriority", notReq, 2);
+            util::ConfigValTInt::create(_configValMap, "qdisppool", "largestPriority", notReq, 3);
     CVTStrPtr _qdispVectRunSizes =
             util::ConfigValTStr::create(_configValMap, "qdisppool", "vectRunSizes", notReq, "800:800:500:50");
     CVTStrPtr _qdispVectMinRunningSizes =

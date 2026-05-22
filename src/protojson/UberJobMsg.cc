@@ -226,6 +226,7 @@ json JobSubQueryTempMap::toJson() const {
     }
 
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " " << jsSqtMap);
+    LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " " << jsSqtMap);
     return jsSubQueryTemplateMap;
 }
 
