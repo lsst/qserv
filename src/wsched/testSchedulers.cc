@@ -85,6 +85,9 @@ SqlConnMgr::Ptr sqlConnMgr;        // not used in this test, required by Task::c
 
 auto workerCfg = lsst::qserv::wconfig::WorkerConfig::create();
 
+/// This is basically a dummy object that needs to be available for UberJobData objects in the test.
+auto queriesAndChunksG = QueriesAndChunks::setupGlobal(2s, 1s, 10, 100, false);
+
 std::vector<FileChannelShared::Ptr> locSendSharedPtrs;
 
 lsst::qserv::protojson::ScanInfo::Ptr makeScanInfoFastest() {
@@ -157,7 +160,8 @@ UberJobData::Ptr makeUberJobData(uint64_t queryId,
                                    scanInteractive,  //  scanInteractive
                                    "worker_13",      // workerId,
                                    nullptr,          // std::shared_ptr<wcontrol::Foreman> const& foreman
-                                   "whatever"        // authKey
+                                   queriesAndChunksG,
+                                   "whatever"  // authKey
     );
     return ujd;
 }
@@ -166,13 +170,14 @@ Task::Ptr makeTask(UberJobData::Ptr const& ujData, int jobId, int chunkId, int f
                    size_t templateId, bool hasSubchunks, int subchunkId,
                    vector<lsst::qserv::wbase::TaskDbTbl> const& fragSubTables,
                    vector<int> const& fragSubchunkIds, shared_ptr<FileChannelShared> const& sc,
-                   std::shared_ptr<lsst::qserv::wpublish::QueryStatistics> const& queryStats) {
+                   std::shared_ptr<lsst::qserv::wpublish::QueryStatistics> const& queryStats,
+                   std::shared_ptr<lsst::qserv::wpublish::QueriesAndChunks> const& queriesAndChunks) {
     WorkerConfig::create();
     string const db = ujData->getScanInfo()->infoTables[0].db;
     int const attemptCount = 0;
     Task::Ptr task = shared_ptr<Task>(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
                                                templateId, hasSubchunks, subchunkId, db, fragSubTables,
-                                               fragSubchunkIds, sc, queryStats));
+                                               fragSubchunkIds, queryStats));
     return task;
 }
 
@@ -192,7 +197,8 @@ struct SchedulerFixture {
         vector<lsst::qserv::wbase::TaskDbTbl> fragSubTables;
         vector<int> fragSubchunkIds;
         Task::Ptr t = makeTask(ujData, jobId, chunkId, fragmentNumber, templateId, hasSubchunks, subchunkId,
-                               fragSubTables, fragSubchunkIds, sc, queries->getStats(ujData->getQueryId()));
+                               fragSubTables, fragSubchunkIds, sc, queries->getStats(ujData->getQueryId()),
+                               queries);
         return t;
     }
 
@@ -206,7 +212,8 @@ struct SchedulerFixture {
         vector<lsst::qserv::wbase::TaskDbTbl> fragSubTables;
         vector<int> fragSubchunkIds;
         Task::Ptr t = makeTask(ujData, jobId, chunkId, fragmentNumber, templateId, hasSubchunks, subchunkId,
-                               fragSubTables, fragSubchunkIds, sc, queries->getStats(ujData->getQueryId()));
+                               fragSubTables, fragSubchunkIds, sc, queries->getStats(ujData->getQueryId()),
+                               queries);
         gs.queCmd(t);
         return t;
     }
