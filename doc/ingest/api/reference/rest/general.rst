@@ -259,6 +259,13 @@ The following options for the values of the parameter are allowed in the current
   the encoded value will be packaged into the JSON string.
 - ``b64`` - for serializing bytes into a string using the ``Base64`` algorithm with padding (to ensure 4-byte alignment).
 - ``array`` - for serializing bytes into the JSON array of numbers in a range of ``0 .. 255``.
+- ``none`` - for sending the binary data as is without encoding.
+
+  .. warning::
+
+    The option ``none`` is not recommended for use in the API. It may be used in some specific cases where the client
+    and the service are designed to work with raw binary data, and where the client is confident that the data will be handled correctly
+    witing the JSON representation. In general, it's recommended to use one of the other options for encoding binary data into JSON.
 
 Here is an example of the same sequence of 4-bytes encoded into the hexadecimal format:
 

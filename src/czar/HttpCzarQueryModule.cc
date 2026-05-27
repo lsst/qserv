@@ -404,6 +404,9 @@ json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results, json const& sche
                             rowJson.push_back(
                                     u8string(reinterpret_cast<char8_t const*>(row[i].first), row[i].second));
                             break;
+                        case http::BinaryEncodingMode::NONE:
+                            rowJson.push_back(string(row[i].first, row[i].second));
+                            break;
                         default:
                             throw http::Error(context() + __func__, "unsupported binary encoding");
                     }

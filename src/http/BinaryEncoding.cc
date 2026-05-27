@@ -36,6 +36,8 @@ BinaryEncodingMode parseBinaryEncoding(string const& str) {
         return BinaryEncodingMode::B64;
     else if (str == "array")
         return BinaryEncodingMode::ARRAY;
+    else if (str == "none")
+        return BinaryEncodingMode::NONE;
     throw invalid_argument("http::" + string(__func__) + " unsupported mode '" + str + "'");
 }
 
@@ -47,6 +49,8 @@ string binaryEncoding2string(BinaryEncodingMode mode) {
             return "b64";
         case BinaryEncodingMode::ARRAY:
             return "array";
+        case BinaryEncodingMode::NONE:
+            return "none";
     }
     throw invalid_argument("http::" + string(__func__) + " invalid mode " +
                            to_string(static_cast<int>(mode)));
