@@ -104,6 +104,9 @@ UberJobData::Ptr UberJobData::create(UberJobId uberJobId, std::string const& cza
 
 void UberJobData::setTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
     std::lock_guard<std::mutex> tLg(_ujTasksMtx);
+    if (!_ujTasks.empty()) {
+        throw TaskException(ERR_LOC, "setTasks() called more than once for " + _idStr);
+    }
     // Needs to be insert instead of '=' for conversion to weak_ptr
     _ujTasks.insert(_ujTasks.end(), tasks.begin(), tasks.end());
     getFileChannelShared()->setTaskCount(tasks.size());

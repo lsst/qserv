@@ -801,7 +801,7 @@ ChunkTableStats::Ptr ChunkStatistics::getStats(string const& scanTableName) cons
 
 ostream& operator<<(ostream& os, ChunkStatistics const& cs) {
     lock_guard<mutex> g(cs._tStatsMapMtx);
-    os << "ChunkStatsistics(" << cs._chunkId << "(";
+    os << "ChunkStatisistics(" << cs._chunkId << "(";
     for (auto const& ele : cs._tableStatsMap) {
         os << *(ele.second) << ";";
     }

@@ -180,11 +180,15 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
     // Find the ChunkStatistics for the chunkId.
     auto queriesAndChunks_ = _ujData->getQueriesAndChunks().lock();
     if (queriesAndChunks_ != nullptr) {
+        set<string> dbsUsed;
         lock_guard taskUseVectMtxLock(_taskUseVectMtx);
         wpublish::ChunkStatistics::Ptr chunkStats = queriesAndChunks_->getChunkStatistics(_chunkId);
         for (auto const& fDbTbl : dbTbls_) {
             // Add TaskUseCount using fragSubTables.
-            _taskUseVect.push_back(chunkStats->getTaskUseRAII(fDbTbl.db));
+            dbsUsed.insert(fDbTbl.db);
+        }
+        for (auto const& dbu : dbsUsed) {
+            _taskUseVect.push_back(chunkStats->getTaskUseRAII(dbu));
         }
     }
 

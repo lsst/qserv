@@ -42,16 +42,16 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.ChunkUseCountAnswer");
 namespace lsst::qserv::protojson {
 
 json ChunkUseCountAnswerMsg::toJson() const {
-    json jsArray;
+    json jsCounts = json::object();
     for (auto const& [dbName, chunkCountMap] : *_dbchunkCountMap) {
         json chunkCountJson;
         for (auto const& [chunkId, useCount] : chunkCountMap) {
             chunkCountJson[std::to_string(chunkId)] = useCount;
         }
-        jsArray[dbName] = chunkCountJson;
+        jsCounts[dbName] = chunkCountJson;
     }
     json js;
-    js["dbChunkUseCount"] = jsArray;
+    js["dbChunkUseCount"] = jsCounts;
     return js;
 }
 

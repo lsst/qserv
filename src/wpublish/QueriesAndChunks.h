@@ -110,7 +110,7 @@ private:
 
 /// Store statistics for a specific database in a chunk, generally just usage counts. In this case, usage
 /// counts include the number of Tasks that intend use or are using this chunk for this database.
-/// No mutex is required as long as all there's only one atomic and all other mebers are constant.
+/// No mutex is required as long as there's only one atomic and all other members are constant.
 class ChunkDbStats {
 public:
     using Ptr = std::shared_ptr<ChunkDbStats>;
