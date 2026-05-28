@@ -39,6 +39,7 @@
 
 // Qserv headers
 #include "global/intTypes.h"
+#include "protojson/ChunkUseCountAnswerMsg.h"
 #include "protojson/WorkerQueryStatusData.h"
 #include "wbase/Task.h"
 #include "wpublish/QueryStatistics.h"
@@ -107,25 +108,71 @@ private:
     double _weightSum = _weightAvg + _weightNew;  ///< denominator
 };
 
+/// Store statistics for a specific database in a chunk, generally just usage counts. In this case, usage
+/// counts include the number of Tasks that intend use or are using this chunk for this database.
+/// No mutex is required as long as there's only one atomic and all other members are constant.
+class ChunkDbStats {
+public:
+    using Ptr = std::shared_ptr<ChunkDbStats>;
+
+    static Ptr create(int chunkId, std::string const& dbName) {
+        return Ptr(new ChunkDbStats(chunkId, dbName));
+    }
+
+    int incrUseCount(int incr) { return _useCount += incr; }
+    int getUseCount() const { return _useCount; }
+
+private:
+    ChunkDbStats(int chunkId, std::string const& dbName) : _chunkId{chunkId}, _dbName{dbName} {}
+
+    int const _chunkId;
+    std::string const _dbName;
+    /// Number of Tasks that will use or are using this chunk for this database.
+    std::atomic<int> _useCount{0};
+};
+
+typedef std::map<std::string, ChunkDbStats::Ptr>
+        ChunkDbStatsMap;  ///< Map of database name to database statistics for a chunk.
+
 /// Statistics for one chunk, including scan table statistics.
-class ChunkStatistics {
+class ChunkStatistics : public std::enable_shared_from_this<ChunkStatistics> {
 public:
     using Ptr = std::shared_ptr<ChunkStatistics>;
 
-    ChunkStatistics(int chunkId) : _chunkId{chunkId} {}
+    static Ptr create(int chunkId) { return Ptr(new ChunkStatistics(chunkId)); }
 
-    ChunkTableStats::Ptr add(std::string const& scanTableName, double duration);
+    ChunkTableStats::Ptr addTable(std::string const& scanTableName, double duration);
     ChunkTableStats::Ptr getStats(std::string const& scanTableName) const;
+
+    void incrDbUseCount(std::string const& dbName);
+    void decrDbUseCount(std::string const& dbName);
+
+    /// @return a copy of the database statistics map.
+    /// The map contains pointers to the original ChunkDbStats objects.
+    std::shared_ptr<ChunkDbStatsMap> getDbStatsMapCopy() const;
+
+    /// @return a RAII object that will help keep count of the Tasks needing this chunk+database.
+    wbase::TaskUseRAII::Ptr getTaskUseRAII(std::string const& dbName) {
+        return wbase::TaskUseRAII::create(shared_from_this(), dbName);
+    }
 
     friend QueriesAndChunks;
     friend std::ostream& operator<<(std::ostream& os, ChunkStatistics const& cs);
 
 private:
+    ChunkStatistics(int chunkId) : _chunkId{chunkId} {}
+
     int const _chunkId;
-    mutable std::mutex _tStatsMtx;  ///< protects _tableStats;
+    mutable std::mutex _tStatsMapMtx;  ///< protects _tableStatsMap;
     /// Map of chunk scan table statistics indexed by slowest scan table name in query.
-    std::map<std::string, ChunkTableStats::Ptr> _tableStats;
+    std::map<std::string, ChunkTableStats::Ptr> _tableStatsMap;
+
+    /// Map of chunk use count by database name.
+    ChunkDbStatsMap _dbStatsMap;
+    mutable std::mutex _dbStatsMapMtx;  ///< protects _dbStatsMap;
 };
+
+typedef std::map<int, ChunkStatistics::Ptr> ChunkStatisticsMap;  ///< Map of chunk id to chunk statistics.
 
 /// This class tracks the tasks that have been booted from their scheduler and are
 /// still running. The tasks are grouped by their related QueryId.
@@ -168,6 +215,8 @@ private:
     mutable std::mutex _bootedMapMtx;  ///< protects `_bootedMap`.
 };
 
+/// This class is used to store information (statistical and other) about UserQueries and
+/// Chunks on this worker.
 class QueriesAndChunks {
 public:
     using Ptr = std::shared_ptr<QueriesAndChunks>;
@@ -223,6 +272,12 @@ public:
     void queuedTask(wbase::Task::Ptr const& task);
     void startedTask(wbase::Task::Ptr const& task);
     void finishedTask(wbase::Task::Ptr const& task);
+
+    /// Return the ChunkStatistics object for the specified chunkId, creating it if needed.
+    ChunkStatistics::Ptr getChunkStatistics(int chunkId);
+
+    /// Return an independent DbChunkCountMap object based on _dbChunkStats.
+    protojson::ChunkUseCountAnswerMsg::DbChunkCountMapPtr getDbChunkCountMap() const;
 
     /// Examine all running Tasks and boot Tasks that are taking too long and
     /// move user queries that are too slow to the snail scan.
@@ -309,7 +364,8 @@ private:
     std::map<QueryId, QueryStatistics::Ptr> _queryStatsMap;  ///< Map of Query stats indexed by QueryId.
 
     mutable std::mutex _chunkMtx;
-    std::map<int, ChunkStatistics::Ptr> _chunkStats;  ///< Map of Chunk stats indexed by chunk id.
+    /// Map of ChunkStatistics indexed by chunkId.
+    ChunkStatisticsMap _dbChunkStats;
 
     std::weak_ptr<wsched::BlendScheduler> _blendSched;  ///< Pointer to the BlendScheduler.
 

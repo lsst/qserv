@@ -39,6 +39,8 @@
 #include "util/Error.h"
 #include "util/MultiError.h"
 #include "wbase/UberJobData.h"
+#include "wconfig/WorkerConfig.h"
+#include "wpublish/QueriesAndChunks.h"
 
 // Boost unit test header
 #define BOOST_TEST_MODULE RequestQuery
@@ -53,6 +55,10 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.protojson.testStatusData");
 }
 
 BOOST_AUTO_TEST_SUITE(Suite)
+
+auto workerCfg = lsst::qserv::wconfig::WorkerConfig::create();
+/// This is basically a dummy object that needs to be available for UberJobData objects in the test.
+auto queriesAndChunksG = lsst::qserv::wpublish::QueriesAndChunks::setupGlobal(2s, 1s, 10, 100, false);
 
 BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     lsst::qserv::protojson::AuthContext authContext_("repliInstId", "repliIAuthKey");
@@ -208,7 +214,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     FileUrlInfo fileInf1("http://test/ulr1/fn", rowCount1, fileSize1);
     auto ujData1 = lsst::qserv::wbase::UberJobData::create(
             ujId1, czarName, czarId, czarHost, czarPort, qId1, rowlimit, maxTableBytes, scanInfo1,
-            scaninteractive1, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+            scaninteractive1, workerId1, nullptr, queriesAndChunksG, authContext_.replicationAuthKey,
+            resultPort);
     auto ujResponse1 = ujData1->responseFileReadyBuild(fileInf1, authContext_);
     wccIssueA1->addFailedTransmit(qId1, ujId1, ujResponse1);
     auto execRespMsg1 = ExecutiveRespMsg::create(true, false, qId1, ujId1, czarId);
@@ -224,7 +231,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     lsst::qserv::protojson::FileUrlInfo fileInf1a("http://test/ulr1/fna", 36, 12400);
     auto ujData1a = lsst::qserv::wbase::UberJobData::create(
             ujId1a, czarName, czarId, czarHost, czarPort, qId1, rowlimit, maxTableBytes, scanInfo1,
-            scaninteractive1, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+            scaninteractive1, workerId1, nullptr, queriesAndChunksG, authContext_.replicationAuthKey,
+            resultPort);
     auto ujResponse1a = ujData1->responseFileReadyBuild(fileInf1a, authContext_);
     wccIssueA1->addFailedTransmit(qId1a, ujId1a, ujResponse1a);
     auto execRespMsg1a = ExecutiveRespMsg::create(true, true, qId1a, ujId1a, czarId);
@@ -243,7 +251,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     auto scanInfo2 = lsst::qserv::protojson::ScanInfo::create();
     auto ujData2 = lsst::qserv::wbase::UberJobData::create(
             ujId2, czarName, czarId, czarHost, czarPort, qId2, rowlimit, maxTableBytes, scanInfo2,
-            scaninteractive2, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+            scaninteractive2, workerId1, nullptr, queriesAndChunksG, authContext_.replicationAuthKey,
+            resultPort);
     auto ujResponse2 = ujData2->responseFileReadyBuild(fileInf2, authContext_);
     wccIssueA1->addFailedTransmit(qId2, ujId2, ujResponse2);
     auto execRespMsg2 = ExecutiveRespMsg::create(true, false, qId2, ujId2, czarId);
@@ -263,7 +272,8 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssue) {
     multiErr.insert(err);
     auto ujData3 = lsst::qserv::wbase::UberJobData::create(
             ujId3, czarName, czarId, czarHost, czarPort, qId3, rowlimit, maxTableBytes, scanInfo2,
-            scaninteractive2, workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+            scaninteractive2, workerId1, nullptr, queriesAndChunksG, authContext_.replicationAuthKey,
+            resultPort);
     auto ujResponse3 =
             ujData3->responseErrorBuild(multiErr, chunkId3, cancelled3, LOG_LVL_DEBUG, authContext_);
     wccIssueA1->addFailedTransmit(qId3, ujId3, ujResponse3);
@@ -340,7 +350,7 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssueClearFailedTransmitsForQids) {
     lsst::qserv::protojson::FileUrlInfo fileInf1("http://test/fn1", 10, 100);
     auto ujDataA1 = lsst::qserv::wbase::UberJobData::create(
             ujA1, czName, czId, czHost, czPort, qIdA, rowlimit, maxTableBytes, scanInfo, scaninteractive,
-            workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+            workerId1, nullptr, queriesAndChunksG, authContext_.replicationAuthKey, resultPort);
     auto ujRespA1 = ujDataA1->responseFileReadyBuild(fileInf1, authContext_);
     wcc->addFailedTransmit(qIdA, ujA1, ujRespA1);
 
@@ -348,7 +358,7 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssueClearFailedTransmitsForQids) {
     lsst::qserv::protojson::FileUrlInfo fileInf2("http://test/fn2", 20, 200);
     auto ujDataA2 = lsst::qserv::wbase::UberJobData::create(
             ujA2, czName, czId, czHost, czPort, qIdA, rowlimit, maxTableBytes, scanInfo, scaninteractive,
-            workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+            workerId1, nullptr, queriesAndChunksG, authContext_.replicationAuthKey, resultPort);
     auto ujRespA2 = ujDataA2->responseFileReadyBuild(fileInf2, authContext_);
     wcc->addFailedTransmit(qIdA, ujA2, ujRespA2);
 
@@ -356,7 +366,7 @@ BOOST_AUTO_TEST_CASE(WorkerCzarComIssueClearFailedTransmitsForQids) {
     lsst::qserv::protojson::FileUrlInfo fileInf3("http://test/fn3", 30, 300);
     auto ujDataB1 = lsst::qserv::wbase::UberJobData::create(
             ujB1, czName, czId, czHost, czPort, qIdB, rowlimit, maxTableBytes, scanInfo, scaninteractive,
-            workerId1, nullptr, authContext_.replicationAuthKey, resultPort);
+            workerId1, nullptr, queriesAndChunksG, authContext_.replicationAuthKey, resultPort);
     auto ujRespB1 = ujDataB1->responseFileReadyBuild(fileInf3, authContext_);
     wcc->addFailedTransmit(qIdB, ujB1, ujRespB1);
 
