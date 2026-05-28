@@ -108,6 +108,13 @@ private:
     /// queue the ComIssue message and needed, and send the lists back to
     /// the czar.
     nlohmann::json _handleQueryStatus(std::string const& func);
+
+    /// Verify some aspects of the query and call _handleChunkUseCounts.
+    nlohmann::json _chunkUseCounts();
+
+    /// Return a json object containing how many tasks need to use or are using each database+chunkId
+    /// combination. Only counts > 0 are included.
+    nlohmann::json _handleChunkUseCounts(std::string const& func);
 };
 
 }  // namespace lsst::qserv::wcomms

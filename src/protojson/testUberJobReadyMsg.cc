@@ -32,6 +32,7 @@
 #include "global/clock_defs.h"
 #include "http/MetaModule.h"
 #include "lsst/log/Log.h"
+#include "protojson/ChunkUseCountAnswerMsg.h"
 #include "protojson/UberJobReadyMsg.h"
 
 // Boost unit test header
@@ -101,6 +102,35 @@ BOOST_AUTO_TEST_CASE(WorkerQueryStatusData) {
     LOGS(_log, LOG_LVL_INFO, "stdJrm=" << strJrm);
 
     BOOST_REQUIRE(parseSerializeReparseCheck(strJrm, "A"));
+}
+
+BOOST_AUTO_TEST_CASE(testChunkUseCountAnswerMsg) {
+    LOGS(_log, LOG_LVL_INFO, "test ChunkUseCountAnswerMsg start");
+
+    ChunkUseCountAnswerMsg::DbChunkCountMapPtr dbChunkCountMap1 =
+            make_shared<ChunkUseCountAnswerMsg::DbChunkCountMap>();
+    (*dbChunkCountMap1)["db1"] = {{1, 3}, {8, 5}, {9, 1153}};
+    (*dbChunkCountMap1)["db2"] = {{1, 7}, {8, 11}, {9, 200}};
+
+    auto cAnswerMsgA = ChunkUseCountAnswerMsg::create(dbChunkCountMap1);
+    auto jsMsgA = cAnswerMsgA->toJson();
+    LOGS(_log, LOG_LVL_INFO, "jsMsgA=" << jsMsgA);
+
+    auto cAnswerMsgB = ChunkUseCountAnswerMsg::createFromJson(jsMsgA);
+    auto jsMsgB = cAnswerMsgB->toJson();
+    LOGS(_log, LOG_LVL_INFO, "jsMsgB=" << jsMsgB);
+
+    BOOST_REQUIRE(jsMsgA == jsMsgB);
+    BOOST_REQUIRE(cAnswerMsgA->equal(*cAnswerMsgB));
+
+    ChunkUseCountAnswerMsg::DbChunkCountMapPtr dbChunkCountMap2 =
+            make_shared<ChunkUseCountAnswerMsg::DbChunkCountMap>();
+    (*dbChunkCountMap2)["db1"] = {{1, 3}, {8, 5}, {9, 1153}};
+    (*dbChunkCountMap2)["db2"] = {{1, 7}, {8, 12}, {9, 200}};
+    auto cAnswerMsg2 = ChunkUseCountAnswerMsg::create(dbChunkCountMap2);
+    auto jsMsg2 = cAnswerMsg2->toJson();
+    BOOST_REQUIRE(jsMsgA != jsMsg2);
+    BOOST_REQUIRE(!cAnswerMsgA->equal(*cAnswerMsg2));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

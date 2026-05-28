@@ -76,6 +76,20 @@ size_t const MB_SIZE_BYTES = 1024 * 1024;
 
 namespace lsst::qserv::wbase {
 
+TaskUseRAII::Ptr TaskUseRAII::create(wpublish::ChunkStatistics::Ptr const& chunkStats,
+                                     std::string const& dbName) {
+    return Ptr(new TaskUseRAII(chunkStats, dbName));
+}
+
+TaskUseRAII::TaskUseRAII(wpublish::ChunkStatistics::Ptr const& chunkStats, std::string const& dbName)
+        : _dbChunkStats(chunkStats), _dbName(dbName) {
+    if (_dbChunkStats) _dbChunkStats->incrDbUseCount(_dbName);
+}
+
+TaskUseRAII::~TaskUseRAII() {
+    if (_dbChunkStats) _dbChunkStats->decrDbUseCount(_dbName);
+}
+
 // Task::ChunkEqual functor
 bool Task::ChunkEqual::operator()(Task::Ptr const& x, Task::Ptr const& y) {
     if (!x || !y) {
@@ -111,11 +125,9 @@ atomic<uint32_t> taskSequence{0};  ///< Unique identifier source for Task.
 Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chunkId, int fragmentNumber,
            size_t templateId, bool hasSubchunks, int subchunkId, string const& db,
            vector<TaskDbTbl> const& fragSubTables, vector<int> const& fragSubchunkIds,
-           shared_ptr<FileChannelShared> const& sc,
-           std::shared_ptr<wpublish::QueryStatistics> const& queryStats_)
+           wpublish::QueryStatistics::Ptr const& queryStats_)
         : _logLvlWT(LOG_LVL_WARN),
           _logLvlET(LOG_LVL_ERROR),
-          _sendChannel(sc),
           _tSeq(++taskSequence),
           _qId(ujData->getQueryId()),
           _templateId(templateId),
@@ -165,6 +177,21 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
                               << " subChunks=" << util::printable(subchunksVect_));
     }
 
+    // Find the ChunkStatistics for the chunkId.
+    auto queriesAndChunks_ = _ujData->getQueriesAndChunks().lock();
+    if (queriesAndChunks_ != nullptr) {
+        set<string> dbsUsed;
+        lock_guard taskUseVectMtxLock(_taskUseVectMtx);
+        wpublish::ChunkStatistics::Ptr chunkStats = queriesAndChunks_->getChunkStatistics(_chunkId);
+        for (auto const& fDbTbl : dbTbls_) {
+            // Add TaskUseCount using fragSubTables.
+            dbsUsed.insert(fDbTbl.db);
+        }
+        for (auto const& dbu : dbsUsed) {
+            _taskUseVect.push_back(chunkStats->getTaskUseRAII(dbu));
+        }
+    }
+
     _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
 
     LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " created");
@@ -174,13 +201,15 @@ Task::~Task() {}
 
 std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
         std::shared_ptr<protojson::UberJobMsg> const& ujMsg, std::shared_ptr<UberJobData> const& ujData,
-        std::shared_ptr<wbase::FileChannelShared> const& sendChannel,
         std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr, mysql::MySqlConfig const& mySqlConfig,
-        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr,
-        std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
+        std::shared_ptr<wcontrol::SqlConnMgr> const& sqlConnMgr) {
     QueryId qId = ujData->getQueryId();
     UberJobId ujId = ujData->getUberJobId();
     CzarId czId = ujData->getCzarId();
+    auto const queriesAndChunks = ujData->getQueriesAndChunks().lock();
+    if (queriesAndChunks == nullptr) {
+        throw util::Bug(ERR_LOC, "Task::createTasksFromUberJobMsg queriesAndChunks is null");
+    }
 
     vector<Task::Ptr> vect;  // List of created tasks to be returned.
     wpublish::QueryStatistics::Ptr queryStats = queriesAndChunks->addQueryId(qId, czId);
@@ -242,15 +271,14 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
                     int const subchunkId = -1;
                     auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
                                                    templateId, noSubchunks, subchunkId, chunkQuerySpecDb,
-                                                   fragSubTables, fragSubchunkIds, sendChannel, queryStats));
+                                                   fragSubTables, fragSubchunkIds, queryStats));
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
-                        auto task =
-                                Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
-                                                   templateId, hasSubchunks, subchunkId, chunkQuerySpecDb,
-                                                   fragSubTables, fragSubchunkIds, sendChannel, queryStats));
+                        auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
+                                                       templateId, hasSubchunks, subchunkId, chunkQuerySpecDb,
+                                                       fragSubTables, fragSubchunkIds, queryStats));
                         vect.push_back(task);
                     }
                 }
@@ -271,11 +299,14 @@ std::vector<Task::Ptr> Task::createTasksFromUberJobMsg(
 std::vector<Task::Ptr> Task::createTasksForUnitTest(
         std::shared_ptr<UberJobData> const& ujData, nlohmann::json const& jsJobs,
         std::shared_ptr<wbase::FileChannelShared> const& sendChannel, int maxTableSizeMb,
-        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr,
-        std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks) {
+        std::shared_ptr<wdb::ChunkResourceMgr> const& chunkResourceMgr) {
     vector<Task::Ptr> vect;
     auto const qId = ujData->getQueryId();
     auto const czId = ujData->getCzarId();
+    auto const queriesAndChunks = ujData->getQueriesAndChunks().lock();
+    if (queriesAndChunks == nullptr) {
+        throw util::Bug(ERR_LOC, "Task::createTasksForUnitTest queriesAndChunks is null");
+    }
     protojson::JobSubQueryTempMap::Ptr jobSubQueryTempMap{protojson::JobSubQueryTempMap::create()};
     protojson::JobDbTableMap::Ptr jobDbTablesMap{protojson::JobDbTableMap::create()};
     protojson::JobMsg::VectPtr jobMsgVect{new protojson::JobMsg::Vect()};
@@ -325,15 +356,14 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
                     int const subchunkId = -1;
                     auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
                                                    templateId, noSubchunks, subchunkId, chunkQuerySpecDb,
-                                                   fragSubTables, fragSubchunkIds, sendChannel, queryStats));
+                                                   fragSubTables, fragSubchunkIds, queryStats));
                     vect.push_back(task);
                 } else {
                     for (auto subchunkId : fragSubchunkIds) {
                         bool const hasSubchunks = true;
-                        auto task =
-                                Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
-                                                   templateId, hasSubchunks, subchunkId, chunkQuerySpecDb,
-                                                   fragSubTables, fragSubchunkIds, sendChannel, queryStats));
+                        auto task = Task::Ptr(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
+                                                       templateId, hasSubchunks, subchunkId, chunkQuerySpecDb,
+                                                       fragSubTables, fragSubchunkIds, queryStats));
                         vect.push_back(task);
                     }
                 }
@@ -348,6 +378,8 @@ std::vector<Task::Ptr> Task::createTasksForUnitTest(
 protojson::ScanInfo::Ptr Task::getScanInfo() const { return _ujData->getScanInfo(); }
 
 bool Task::getScanInteractive() const { return _ujData->getScanInteractive(); }
+
+FileChannelShared::Ptr Task::getSendChannel() const { return _ujData->getFileChannelShared(); }
 
 void Task::action(util::CmdData* data) {
     string tIdStr = getIdStr();
@@ -440,7 +472,8 @@ bool Task::checkCancelled() {
     // Returning true here indicates there's no point in doing
     // any more processing for this Task.
     if (_cancelled) return true;
-    if (_sendChannel == nullptr || _sendChannel->isDead() || _sendChannel->isRowLimitComplete()) {
+    auto const sendChannel = getSendChannel();
+    if (sendChannel == nullptr || sendChannel->isDead() || sendChannel->isRowLimitComplete()) {
         cancel();
     }
     return _cancelled;
@@ -458,6 +491,8 @@ void Task::freeTaskQueryRunner(wdb::QueryRunner* tqr) {
     } else {
         LOGS(_log, LOG_LVL_WARN, "Task::freeTaskQueryRunner pointer didn't match!");
     }
+    lock_guard taskUseVectMtxLock(_taskUseVectMtx);
+    _taskUseVect.clear();
 }
 
 /// Set values associated with the Task being put on the queue.

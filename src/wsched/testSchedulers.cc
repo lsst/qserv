@@ -144,7 +144,7 @@ lsst::qserv::protojson::ScanInfo::Ptr makeScanInfoSlow(string const& slowestTabl
 
 UberJobData::Ptr makeUberJobData(uint64_t queryId,
                                  std::shared_ptr<lsst::qserv::protojson::ScanInfo> const& scanInfo,
-                                 bool scanInteractive) {
+                                 bool scanInteractive, QueriesAndChunks::Ptr const& queriesAndChunks) {
     auto ujd = UberJobData::create(7,        // UberJobId
                                    "cz1",    // czarName
                                    11,       // czarId,
@@ -157,7 +157,8 @@ UberJobData::Ptr makeUberJobData(uint64_t queryId,
                                    scanInteractive,  //  scanInteractive
                                    "worker_13",      // workerId,
                                    nullptr,          // std::shared_ptr<wcontrol::Foreman> const& foreman
-                                   "whatever"        // authKey
+                                   queriesAndChunks,
+                                   "whatever"  // authKey
     );
     return ujd;
 }
@@ -166,13 +167,14 @@ Task::Ptr makeTask(UberJobData::Ptr const& ujData, int jobId, int chunkId, int f
                    size_t templateId, bool hasSubchunks, int subchunkId,
                    vector<lsst::qserv::wbase::TaskDbTbl> const& fragSubTables,
                    vector<int> const& fragSubchunkIds, shared_ptr<FileChannelShared> const& sc,
-                   std::shared_ptr<lsst::qserv::wpublish::QueryStatistics> const& queryStats) {
+                   std::shared_ptr<lsst::qserv::wpublish::QueryStatistics> const& queryStats,
+                   std::shared_ptr<lsst::qserv::wpublish::QueriesAndChunks> const& queriesAndChunks) {
     WorkerConfig::create();
     string const db = ujData->getScanInfo()->infoTables[0].db;
     int const attemptCount = 0;
     Task::Ptr task = shared_ptr<Task>(new Task(ujData, jobId, attemptCount, chunkId, fragmentNumber,
                                                templateId, hasSubchunks, subchunkId, db, fragSubTables,
-                                               fragSubchunkIds, sc, queryStats));
+                                               fragSubchunkIds, queryStats));
     return task;
 }
 
@@ -192,7 +194,8 @@ struct SchedulerFixture {
         vector<lsst::qserv::wbase::TaskDbTbl> fragSubTables;
         vector<int> fragSubchunkIds;
         Task::Ptr t = makeTask(ujData, jobId, chunkId, fragmentNumber, templateId, hasSubchunks, subchunkId,
-                               fragSubTables, fragSubchunkIds, sc, queries->getStats(ujData->getQueryId()));
+                               fragSubTables, fragSubchunkIds, sc, queries->getStats(ujData->getQueryId()),
+                               queries);
         return t;
     }
 
@@ -206,7 +209,8 @@ struct SchedulerFixture {
         vector<lsst::qserv::wbase::TaskDbTbl> fragSubTables;
         vector<int> fragSubchunkIds;
         Task::Ptr t = makeTask(ujData, jobId, chunkId, fragmentNumber, templateId, hasSubchunks, subchunkId,
-                               fragSubTables, fragSubchunkIds, sc, queries->getStats(ujData->getQueryId()));
+                               fragSubTables, fragSubchunkIds, sc, queries->getStats(ujData->getQueryId()),
+                               queries);
         gs.queCmd(t);
         return t;
     }
@@ -300,37 +304,37 @@ BOOST_AUTO_TEST_CASE(Grouping) {
     auto scanInfoFastest = makeScanInfoFastest();
     auto scanInfoFast = makeScanInfoFast();
     bool const scanInteractive = true;
-    auto ujData_a1 = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive);
+    auto ujData_a1 = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive, fixt.queries);
     shared_ptr<FileChannelShared> sc = nullptr;
     Task::Ptr a1 = queMsgWithChunkId(ujData_a1, gs, a, 0, sc, fixt.queries);
     BOOST_CHECK(gs.empty() == false);
     BOOST_CHECK(gs.ready() == true);
 
-    auto b1Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive);
+    auto b1Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive, fixt.queries);
     Task::Ptr b1 = queMsgWithChunkId(b1Ujd, gs, b, 0, sc, fixt.queries);
 
-    auto c1Ujd = makeUberJobData(qIdInc++, scanInfoFast, scanInteractive);
+    auto c1Ujd = makeUberJobData(qIdInc++, scanInfoFast, scanInteractive, fixt.queries);
     Task::Ptr c1 = queMsgWithChunkId(c1Ujd, gs, c, 0, sc, fixt.queries);
 
-    auto b2Ujd = makeUberJobData(qIdInc++, scanInfoFastest, false);
+    auto b2Ujd = makeUberJobData(qIdInc++, scanInfoFastest, false, fixt.queries);
     Task::Ptr b2 = queMsgWithChunkId(b2Ujd, gs, b, 0, sc, fixt.queries);
 
-    auto b3Ujd = makeUberJobData(qIdInc++, scanInfoFast, scanInteractive);
+    auto b3Ujd = makeUberJobData(qIdInc++, scanInfoFast, scanInteractive, fixt.queries);
     Task::Ptr b3 = queMsgWithChunkId(b3Ujd, gs, b, 0, sc, fixt.queries);
 
-    auto b4Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive);
+    auto b4Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive, fixt.queries);
     Task::Ptr b4 = queMsgWithChunkId(b4Ujd, gs, b, 0, sc, fixt.queries);
 
-    auto a2Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive);
+    auto a2Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive, fixt.queries);
     Task::Ptr a2 = queMsgWithChunkId(a2Ujd, gs, a, 0, sc, fixt.queries);
 
-    auto a3Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive);
+    auto a3Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive, fixt.queries);
     Task::Ptr a3 = queMsgWithChunkId(a3Ujd, gs, a, 0, sc, fixt.queries);
 
-    auto b5Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive);
+    auto b5Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive, fixt.queries);
     Task::Ptr b5 = queMsgWithChunkId(b5Ujd, gs, b, 0, sc, fixt.queries);
 
-    auto d1Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive);
+    auto d1Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive, fixt.queries);
     Task::Ptr d1 = queMsgWithChunkId(d1Ujd, gs, d, 0, sc, fixt.queries);
 
     BOOST_CHECK(gs.getSize() == 5);
@@ -339,7 +343,7 @@ BOOST_AUTO_TEST_CASE(Grouping) {
     // Should get all the first 3 'a' commands in order
     auto aa1 = gs.getCmd(false);
     auto aa2 = gs.getCmd(false);
-    auto a4Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive);
+    auto a4Ujd = makeUberJobData(qIdInc++, scanInfoFastest, scanInteractive, fixt.queries);
     Task::Ptr a4 = queMsgWithChunkId(a4Ujd, gs, a, 0, sc, fixt.queries);  // this should get its own group
 
     auto aa3 = gs.getCmd(false);
@@ -402,16 +406,16 @@ BOOST_AUTO_TEST_CASE(GroupMaxThread) {
     lsst::qserv::QueryId qIdInc = 1;
 
     int a = 42;
-    auto a1Ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive);
+    auto a1Ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive, queries);
     Task::Ptr a1 = queMsgWithChunkId(a1Ujd, gs, a, 0, sc, queries);
 
-    auto a2Ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive);
+    auto a2Ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive, queries);
     Task::Ptr a2 = queMsgWithChunkId(a2Ujd, gs, a, 0, sc, queries);
 
-    auto a3Ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive);
+    auto a3Ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive, queries);
     Task::Ptr a3 = queMsgWithChunkId(a3Ujd, gs, a, 0, sc, queries);
 
-    auto a4Ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive);
+    auto a4Ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive, queries);
     Task::Ptr a4 = queMsgWithChunkId(a4Ujd, gs, a, 0, sc, queries);
 
     BOOST_CHECK(gs.ready() == true);
@@ -448,21 +452,21 @@ BOOST_AUTO_TEST_CASE(ScanScheduleTest) {
     // Test ready state as Tasks added and removed.
     BOOST_CHECK(sched.ready() == false);
 
-    auto ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive);
+    auto ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive, queries);
     Task::Ptr a38 = makeUTask(38, 0, ujd, sc, queries);
     sched.queCmd(a38);
     // Calling read swaps active and pending heaps, putting a38 at the top of the active.
     BOOST_CHECK(sched.ready() == true);
 
-    ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive);
+    ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive, queries);
     Task::Ptr a40 = makeUTask(40, 0, ujd, sc, queries);  // goes on active
     sched.queCmd(a40);
 
-    ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive);
+    ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive, queries);
     Task::Ptr b41 = makeUTask(41, 0, ujd, sc, queries);  // goes on active
     sched.queCmd(b41);
 
-    ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive);
+    ujd = makeUberJobData(qIdInc++, scanInfo, scanInteractive, queries);
     Task::Ptr a33 = makeUTask(33, 0, ujd, sc, queries);  // goes on pending.
     sched.queCmd(a33);
 
@@ -525,31 +529,31 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 
     // Put one message on each scheduler except ScanFast, which gets 2.
     LOGS(_log, LOG_LVL_DEBUG, "BlendScheduleTest-1 add Tasks");
-    auto ujd = makeUberJobData(fixt.qIdInc++, scanInfoFastest, scanInteractiveT);
+    auto ujd = makeUberJobData(fixt.qIdInc++, scanInfoFastest, scanInteractiveT, fixt.queries);
     Task::Ptr g1 = makeUTask(40, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(g1);
     BOOST_CHECK(fixt.group->getSize() == 1);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFast, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFast, scanInteractiveF, fixt.queries);
     Task::Ptr sF1 = makeUTask(27, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sF1);
     BOOST_CHECK(fixt.scanFast->getSize() == 1);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFast, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFast, scanInteractiveF, fixt.queries);
     Task::Ptr sF2 = makeUTask(40, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sF2);
     BOOST_CHECK(fixt.scanFast->getSize() == 2);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoSlow, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoSlow, scanInteractiveF, fixt.queries);
     Task::Ptr sS1 = makeUTask(34, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sS1);
     BOOST_CHECK(fixt.scanSlow->getSize() == 1);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoMedium, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoMedium, scanInteractiveF, fixt.queries);
     Task::Ptr sM1 = makeUTask(31, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sM1);
     BOOST_CHECK(fixt.scanMed->getSize() == 1);
@@ -581,56 +585,56 @@ BOOST_AUTO_TEST_CASE(BlendScheduleTest) {
 
     // All threads should now be in use or reserved, should be able to start one
     // Task for each scheduler but second Task should remain on queue.
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFastest, scanInteractiveT);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFastest, scanInteractiveT, fixt.queries);
     Task::Ptr g2 = makeUTask(41, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(g2);
     BOOST_CHECK(fixt.group->getSize() == 1);
     BOOST_CHECK(fixt.blend->getSize() == 1);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFastest, scanInteractiveT);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFastest, scanInteractiveT, fixt.queries);
     Task::Ptr g3 = makeUTask(12, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(g3);
     BOOST_CHECK(fixt.group->getSize() == 2);
     BOOST_CHECK(fixt.blend->getSize() == 2);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFast, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFast, scanInteractiveF, fixt.queries);
     Task::Ptr sF3 = makeUTask(70, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sF3);
     BOOST_CHECK(fixt.scanFast->getSize() == 1);
     BOOST_CHECK(fixt.blend->getSize() == 3);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFast, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoFast, scanInteractiveF, fixt.queries);
     Task::Ptr sF4 = makeUTask(72, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sF4);
     BOOST_CHECK(fixt.scanFast->getSize() == 2);
     BOOST_CHECK(fixt.blend->getSize() == 4);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoMedium, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoMedium, scanInteractiveF, fixt.queries);
     Task::Ptr sM2 = makeUTask(13, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sM2);
     BOOST_CHECK(fixt.scanMed->getSize() == 1);
     BOOST_CHECK(fixt.blend->getSize() == 5);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoMedium, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoMedium, scanInteractiveF, fixt.queries);
     Task::Ptr sM3 = makeUTask(15, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sM3);
     BOOST_CHECK(fixt.scanMed->getSize() == 2);
     BOOST_CHECK(fixt.blend->getSize() == 6);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoSlow, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoSlow, scanInteractiveF, fixt.queries);
     Task::Ptr sS2 = makeUTask(5, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sS2);
     BOOST_CHECK(fixt.scanSlow->getSize() == 1);
     BOOST_CHECK(fixt.blend->getSize() == 7);
     BOOST_CHECK(fixt.blend->ready() == true);
 
-    ujd = makeUberJobData(fixt.qIdInc++, scanInfoSlow, scanInteractiveF);
+    ujd = makeUberJobData(fixt.qIdInc++, scanInfoSlow, scanInteractiveF, fixt.queries);
     Task::Ptr sS3 = makeUTask(6, 0, ujd, sc, fixt.queries);
     fixt.blend->queCmd(sS3);
     BOOST_CHECK(fixt.scanSlow->getSize() == 2);
@@ -738,7 +742,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
     BOOST_CHECK(fixt.blend->ready() == false);
     std::vector<Task::Ptr> scanTasks;
     for (int j = 0; j < 7; ++j) {
-        auto ujd = makeUberJobData(fixt.qIdInc++, scanInfoMedium, scanInteractiveF);
+        auto ujd = makeUberJobData(fixt.qIdInc++, scanInfoMedium, scanInteractiveF, fixt.queries);
         auto tsk = makeUTask(j, 0, ujd, sc, fixt.queries);
         fixt.blend->queCmd(tsk);
         if (j < 6) {
@@ -771,7 +775,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleThreadLimitingTest) {
     // This leaves 3 threads available, 1 for each other scheduler.
     std::vector<Task::Ptr> groupTasks;
     for (int j = 0; j < 7; ++j) {
-        auto ujd = makeUberJobData(fixt.qIdInc++, scanInfoFastest, scanInteractiveT);
+        auto ujd = makeUberJobData(fixt.qIdInc++, scanInfoFastest, scanInteractiveT, fixt.queries);
         auto tsk = makeUTask(j, 0, ujd, sc, fixt.queries);
         fixt.blend->queCmd(tsk);
         if (j < 6) {
@@ -831,8 +835,8 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryRemovalTest) {
     {
         int jobId = 0;
         int chunkId = startChunk;
-        auto ujdA = makeUberJobData(qIdA, scanInfoFast, scanInteractiveF);
-        auto ujdB = makeUberJobData(qIdB, scanInfoFast, scanInteractiveF);
+        auto ujdA = makeUberJobData(qIdA, scanInfoFast, scanInteractiveF, qac);
+        auto ujdB = makeUberJobData(qIdB, scanInfoFast, scanInteractiveF, qac);
         for (unsigned int j = 0; j < jobs; ++j) {
             Task::Ptr mv = makeUTask(chunkId, jobId, ujdA, sc, fixt.queries);
             queryATasks.push_back(mv);
@@ -902,7 +906,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     // won't be booted.
     int const qidA = 5;
     int const qidB = 6;
-    auto ujd = makeUberJobData(qidA, scanInfoFast, scanInteractiveF);
+    auto ujd = makeUberJobData(qidA, scanInfoFast, scanInteractiveF, qac);
     Task::Ptr task = makeUTask(27, 0, ujd, sc, fixt.queries);
     std::atomic<bool> running{false};
     auto fastFunc = [&running, &task, queriesAndChunks = fixt.queries](lsst::qserv::util::CmdData*) {
@@ -921,7 +925,7 @@ BOOST_AUTO_TEST_CASE(BlendScheduleQueryBootTaskTest) {
     // fixt.queries should now have a baseline for chunk 27.
     LOGS(_log, LOG_LVL_DEBUG, "Chunks after fastFunc " << *fixt.queries);
 
-    ujd = makeUberJobData(qidB, scanInfoFast, scanInteractiveF);
+    ujd = makeUberJobData(qidB, scanInfoFast, scanInteractiveF, qac);
     task = makeUTask(27, 0, ujd, sc, fixt.queries);
     std::atomic<bool> slowSleepDone{false};
     auto slowFunc = [&running, &slowSleepDone, &task,
@@ -987,14 +991,14 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     BOOST_CHECK(heap.empty() == true);
 
     auto scanI = makeScanInfoMedium("charlie");
-    auto ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    auto ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a1 = makeUTask(7, 0, ujd, sc, fixt.queries);
     heap.push(a1);
     BOOST_CHECK(heap.top().get() == a1.get());
     BOOST_CHECK(heap.empty() == false);
 
     scanI = makeScanInfoMedium("delta");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a2 = makeUTask(7, 0, ujd, sc, fixt.queries);
     heap.push(a2);
     auto hTop = heap.top();
@@ -1002,7 +1006,7 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     BOOST_CHECK(hTop.get() == a2.get());
 
     scanI = makeScanInfoSlow("bravo");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a3 = makeUTask(7, 0, ujd, sc, fixt.queries);
     heap.push(a3);
     hTop = heap.top();
@@ -1010,7 +1014,7 @@ BOOST_AUTO_TEST_CASE(SlowTableHeapTest) {
     BOOST_CHECK(heap.top().get() == a3.get());
 
     scanI = makeScanInfoFast("alpha");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a4 = makeUTask(7, 0, ujd, sc, fixt.queries);
     heap.push(a4);
     hTop = heap.top();
@@ -1054,7 +1058,7 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     BOOST_CHECK(chunkTasks.readyToAdvance() == true);
 
     auto scanI = makeScanInfoMedium("charlie");
-    auto ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    auto ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a1 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     chunkTasks.queTask(a1);
     BOOST_CHECK(chunkTasks.empty() == false);
@@ -1062,19 +1066,19 @@ BOOST_AUTO_TEST_CASE(ChunkTasksTest) {
     BOOST_CHECK(chunkTasks.size() == 1);
 
     scanI = makeScanInfoMedium("delta");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a2 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     chunkTasks.queTask(a2);
     BOOST_CHECK(chunkTasks.size() == 2);
 
     scanI = makeScanInfoSlow("bravo");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a3 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     chunkTasks.queTask(a3);
     BOOST_CHECK(chunkTasks.size() == 3);
 
     scanI = makeScanInfoFast("alpha");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a4 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     chunkTasks.queTask(a4);
     BOOST_CHECK(chunkTasks.size() == 4);
@@ -1141,23 +1145,23 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
     BOOST_CHECK(ctl.ready(true) == false);
 
     auto scanI = makeScanInfoMedium("charlie");
-    auto ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    auto ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a1 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     ctl.queueTask(a1);
     BOOST_CHECK(ctl.empty() == false);
 
     scanI = makeScanInfoMedium("delta");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a2 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     ctl.queueTask(a2);
 
     scanI = makeScanInfoSlow("bravo");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a3 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     ctl.queueTask(a3);
 
     scanI = makeScanInfoFast("alpha");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr a4 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     ctl.queueTask(a4);
 
@@ -1177,23 +1181,23 @@ BOOST_AUTO_TEST_CASE(ChunkTasksQueueTest) {
 
     chunkId = secondChunkId;
     scanI = makeScanInfoMedium("c");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr b1 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     ctl.queueTask(b1);
     BOOST_CHECK(ctl.empty() == false);
 
     scanI = makeScanInfoMedium("d");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr b2 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     ctl.queueTask(b2);
 
     scanI = makeScanInfoSlow("b");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr b3 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     ctl.queueTask(b3);
 
     scanI = makeScanInfoFast("a");
-    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF);
+    ujd = makeUberJobData(qIdInc++, scanI, scanInteractiveF, qac);
     Task::Ptr b4 = makeUTask(chunkId, 0, ujd, sc, fixt.queries);
     ctl.queueTask(b4);
     ctl.queueTask(a3);

@@ -34,7 +34,6 @@
 #include "protojson/UberJobReadyMsg.h"
 #include "util/common.h"
 #include "util/TimeUtils.h"
-#include "wbase/UberJobData.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
