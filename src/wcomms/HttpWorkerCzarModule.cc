@@ -36,6 +36,7 @@
 #include "http/RequestQuery.h"
 #include "http/RequestBodyJSON.h"
 #include "mysql/MySqlUtils.h"
+#include "protojson/ChunkUseCountAnswerMsg.h"
 #include "protojson/ResponseMsg.h"
 #include "protojson/UberJobMsg.h"
 #include "protojson/WorkerCzarComIssue.h"
@@ -96,6 +97,7 @@ json HttpWorkerCzarModule::executeImpl(string const& subModuleName) {
     enforceWorkerId(func);
     if (subModuleName == "/queryjob") return _queryJob();
     if (subModuleName == "/querystatus") return _queryStatus();
+    if (subModuleName == "/chunkusecounts") return _chunkUseCounts();
     throw invalid_argument(context() + func + " unsupported sub-module");
 }
 
@@ -139,13 +141,14 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         }
 
         std::shared_ptr<wcontrol::Foreman> foremanPtr = foreman();
+        auto const qAndC = foremanPtr->getQueriesAndChunks();
         auto authCtx = getAuthContext();
 
         // It is important to create UberJobData at this point as it will be the only way to
         // inform the czar of errors after this function returns.
         auto ujData = wbase::UberJobData::create(ujId, ujCzInfo->czName, ujCzInfo->czId, ujCzInfo->czHostName,
                                                  ujCzInfo->czPort, ujQueryId, ujRowLimit, maxTableSizeBytes,
-                                                 scanInfo, scanInteractive, targetWorkerId, foremanPtr,
+                                                 scanInfo, scanInteractive, targetWorkerId, foremanPtr, qAndC,
                                                  authCtx.authKey, foremanPtr->httpPort());
 
         auto lFunc = [ujId, ujQueryId, ujCzInfo, ujRowLimit, maxTableSizeBytes, targetWorkerId, userQueryInfo,
@@ -182,17 +185,11 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
         timerParse.start();
         auto czarId = ujCzInfo->czId;
 
-        // Find the entry for this queryId, create a new one if needed.
         userQueryInfo->addUberJob(ujData);
-        auto channelShared = wbase::FileChannelShared::create(ujData);
-
-        ujData->setFileChannelShared(channelShared);
-
-        auto ujTasks = wbase::Task::createTasksFromUberJobMsg(
-                uberJobMsg, ujData, channelShared, foremanPtr->chunkResourceMgr(), foremanPtr->mySqlConfig(),
-                foremanPtr->sqlConnMgr(), foremanPtr->queriesAndChunks());
-        channelShared->setTaskCount(ujTasks.size());
-        ujData->addTasks(ujTasks);
+        auto const ujTasks =
+                wbase::Task::createTasksFromUberJobMsg(uberJobMsg, ujData, foremanPtr->chunkResourceMgr(),
+                                                       foremanPtr->mySqlConfig(), foremanPtr->sqlConnMgr());
+        ujData->setTasks(ujTasks);
 
         // At this point, it looks like the message was sent successfully.
         wcontrol::WCzarInfoMap::Ptr wCzarMap = foremanPtr->getWCzarInfoMap();
@@ -320,6 +317,21 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     jsRet = wqsData->buildResponseJson(foreman()->getWorkerStartupTime());
     wCzarInfo->sendWorkerCzarComIssueIfNeeded(wqsData->getWInfo(), wqsData->getCzInfo());
     return jsRet;
+}
+
+json HttpWorkerCzarModule::_chunkUseCounts() {
+    debug(__func__);
+    checkApiVersion(__func__, 34);
+    // At this point, API version, correct worker, and auth have been checked.
+    json jsRet = _handleChunkUseCounts(__func__);
+    return jsRet;
+}
+
+json HttpWorkerCzarModule::_handleChunkUseCounts(std::string const& func) {
+    auto const queriesAndChunks = foreman()->queriesAndChunks();
+    auto const dbChunkCountMap = queriesAndChunks->getDbChunkCountMap();
+    auto answer = protojson::ChunkUseCountAnswerMsg::create(dbChunkCountMap);
+    return answer->toJson();
 }
 
 }  // namespace lsst::qserv::wcomms

@@ -216,22 +216,25 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
 
 /// Update statistics for the Task that finished and the chunk it was querying.
 void QueriesAndChunks::_finishedTaskForChunk(wbase::Task::Ptr const& task, double minutes) {
-    unique_lock<mutex> ul(_chunkMtx);
-    pair<int, ChunkStatistics::Ptr> ele(task->getChunkId(), nullptr);
-    auto res = _chunkStats.insert(ele);
-    if (res.second) {
-        res.first->second = make_shared<ChunkStatistics>(task->getChunkId());
-    }
-    auto ptr = res.first->second;
-    ul.unlock();
-    auto iter = res.first->second;
+    ChunkStatistics::Ptr chunkStats = getChunkStatistics(task->getChunkId());
     protojson::ScanInfo::Ptr scanInfo = task->getScanInfo();
     string tblName;
     if (!scanInfo->infoTables.empty()) {
         protojson::ScanTableInfo& sti = scanInfo->infoTables.at(0);
         tblName = ChunkTableStats::makeTableName(sti.db, sti.table);
     }
-    ChunkTableStats::Ptr tableStats = ptr->add(tblName, minutes);
+    ChunkTableStats::Ptr tableStats = chunkStats->addTable(tblName, minutes);
+}
+
+ChunkStatistics::Ptr QueriesAndChunks::getChunkStatistics(int chunkId) {
+    lock_guard<mutex> chunkMapLck(_chunkMtx);
+    pair<int, ChunkStatistics::Ptr> ele(chunkId, nullptr);
+    auto res = _dbChunkStats.insert(ele);
+    if (res.second) {
+        // New nullptr `ele` was inserted.
+        res.first->second = ChunkStatistics::create(chunkId);
+    }
+    return res.first->second;
 }
 
 /// Go through the list of possibly dead queries and remove those that are too old.
@@ -482,7 +485,7 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
     vector<ChunkStatistics::Ptr> chks;
     {
         lock_guard<mutex> g(_chunkMtx);
-        for (auto const& ele : _chunkStats) {
+        for (auto const& ele : _dbChunkStats) {
             auto const& chk = ele.second;
             chks.push_back(chk);
         }
@@ -494,8 +497,8 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
     // in this chunk.
     for (auto const& chunkStats : chks) {
         auto chunkId = chunkStats->_chunkId;
-        lock_guard<mutex> lock(chunkStats->_tStatsMtx);
-        for (auto const& ele : chunkStats->_tableStats) {
+        lock_guard<mutex> lock(chunkStats->_tStatsMapMtx);
+        for (auto const& ele : chunkStats->_tableStatsMap) {
             auto const& tblName = ele.first;
             if (!tblName.empty()) {
                 auto& sTSums = scanTblSums[tblName];
@@ -741,10 +744,29 @@ void QueriesAndChunks::killAllQueriesFromCzar(CzarId czarId) {
     }
 }
 
+protojson::ChunkUseCountAnswerMsg::DbChunkCountMapPtr QueriesAndChunks::getDbChunkCountMap() const {
+    auto dbChunkCountMap = make_shared<protojson::ChunkUseCountAnswerMsg::DbChunkCountMap>();
+
+    int totalUseCount = 0;
+    lock_guard chunkLock(_chunkMtx);
+    for (auto const& [chunkId, chunkStats] : _dbChunkStats) {
+        std::shared_ptr<wpublish::ChunkDbStatsMap> const chunkDbStatsMap = chunkStats->getDbStatsMapCopy();
+        for (auto const& [dbName, dbStats] : *chunkDbStatsMap) {
+            int useCount = dbStats->getUseCount();
+            (*dbChunkCountMap)[dbName][chunkId] = useCount;
+            totalUseCount += useCount;
+        }
+    }
+    LOGS(_log, LOG_LVL_INFO,
+         string(__func__) << " dbChunkStats size=" << _dbChunkStats.size()
+                          << " totalUseCount=" << totalUseCount);
+    return dbChunkCountMap;
+}
+
 ostream& operator<<(ostream& os, QueriesAndChunks const& qc) {
     lock_guard<mutex> g(qc._chunkMtx);
     os << "Chunks(";
-    for (auto const& ele : qc._chunkStats) {
+    for (auto const& ele : qc._dbChunkStats) {
         os << *(ele.second) << ";";
     }
     os << ")";
@@ -753,10 +775,10 @@ ostream& operator<<(ostream& os, QueriesAndChunks const& qc) {
 
 /// Add the duration to the statistics for the table. Create a statistics object if needed.
 /// @return the statistics for the table.
-ChunkTableStats::Ptr ChunkStatistics::add(string const& scanTableName, double minutes) {
+ChunkTableStats::Ptr ChunkStatistics::addTable(string const& scanTableName, double minutes) {
     pair<string, ChunkTableStats::Ptr> ele(scanTableName, nullptr);
-    unique_lock<mutex> ul(_tStatsMtx);
-    auto res = _tableStats.insert(ele);
+    unique_lock<mutex> ul(_tStatsMapMtx);
+    auto res = _tableStatsMap.insert(ele);
     auto iter = res.first;
     if (res.second) {
         iter->second = make_shared<ChunkTableStats>(_chunkId, scanTableName);
@@ -769,22 +791,60 @@ ChunkTableStats::Ptr ChunkStatistics::add(string const& scanTableName, double mi
 
 /// @return the statistics for a table. nullptr if the table is not found.
 ChunkTableStats::Ptr ChunkStatistics::getStats(string const& scanTableName) const {
-    lock_guard<mutex> g(_tStatsMtx);
-    auto iter = _tableStats.find(scanTableName);
-    if (iter != _tableStats.end()) {
+    lock_guard<mutex> g(_tStatsMapMtx);
+    auto iter = _tableStatsMap.find(scanTableName);
+    if (iter != _tableStatsMap.end()) {
         return iter->second;
     }
     return nullptr;
 }
 
 ostream& operator<<(ostream& os, ChunkStatistics const& cs) {
-    lock_guard<mutex> g(cs._tStatsMtx);
-    os << "ChunkStatsistics(" << cs._chunkId << "(";
-    for (auto const& ele : cs._tableStats) {
+    lock_guard<mutex> g(cs._tStatsMapMtx);
+    os << "ChunkStatisistics(" << cs._chunkId << "(";
+    for (auto const& ele : cs._tableStatsMap) {
         os << *(ele.second) << ";";
     }
     os << ")";
     return os;
+}
+
+void ChunkStatistics::incrDbUseCount(string const& dbName) {
+    ChunkDbStats::Ptr dbStats;
+    lock_guard dbStatsMapLock(_dbStatsMapMtx);
+    auto iter = _dbStatsMap.find(dbName);
+    if (iter == _dbStatsMap.end()) {
+        dbStats = ChunkDbStats::create(_chunkId, dbName);
+        _dbStatsMap[dbName] = dbStats;
+    } else {
+        dbStats = iter->second;
+    }
+    dbStats->incrUseCount(1);
+}
+
+void ChunkStatistics::decrDbUseCount(string const& dbName) {
+    ChunkDbStats::Ptr dbStats;
+    std::lock_guard dbStatsMapLock(_dbStatsMapMtx);
+    auto iter = _dbStatsMap.find(dbName);
+    if (iter != _dbStatsMap.end()) {
+        dbStats = iter->second;
+        int count = dbStats->incrUseCount(-1);
+        // Delete entry if <= 0. When else would it get deleted?
+        if (count <= 0) {
+            _dbStatsMap.erase(iter);
+        }
+    } else {
+        LOGS(_log, LOG_LVL_WARN, __func__ << " decrDbUseCount could not find dbName=" << dbName);
+    }
+}
+
+std::shared_ptr<ChunkDbStatsMap> ChunkStatistics::getDbStatsMapCopy() const {
+    auto copy = make_shared<ChunkDbStatsMap>();
+    lock_guard dbStatsMapLock(_dbStatsMapMtx);
+    for (auto const& [key, val] : _dbStatsMap) {
+        (*copy)[key] = val;
+    }
+    return copy;
 }
 
 /// Use the duration of the last Task completed to adjust the average completion time.

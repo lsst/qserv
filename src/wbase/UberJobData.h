@@ -39,25 +39,26 @@
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
 
-namespace lsst::qserv {
-
-namespace protojson {
+namespace lsst::qserv::protojson {
 class AuthContext;
 class FileUrlInfo;
 class ScanInfo;
 class UberJobErrorMsg;
 class UberJobReadyMsg;
 class UberJobStatusMsg;
-}  // namespace protojson
+}  // namespace lsst::qserv::protojson
 
-namespace util {
+namespace lsst::qserv::util {
 class MultiError;
-}
+}  // namespace lsst::qserv::util
 
-namespace wcontrol {
+namespace lsst::qserv::wcontrol {
 class Foreman;
-}
-}  // namespace lsst::qserv
+}  // namespace lsst::qserv::wcontrol
+
+namespace lsst::qserv::wpublish {
+class QueriesAndChunks;
+}  // namespace lsst::qserv::wpublish
 
 namespace lsst::qserv::wbase {
 
@@ -81,14 +82,10 @@ public:
                       std::string const& czarHost, int czarPort, uint64_t queryId, int rowLimit,
                       uint64_t maxTableSizeBytes, std::shared_ptr<protojson::ScanInfo> const& scanInfo,
                       bool scanInteractive, std::string const& workerId,
-                      std::shared_ptr<wcontrol::Foreman> const& foreman, std::string const& authKey,
-                      uint16_t resultsHttpPort = 8080) {
-        return Ptr(new UberJobData(uberJobId, czarName, czarId, czarHost, czarPort, queryId, rowLimit,
-                                   maxTableSizeBytes, scanInfo, scanInteractive, workerId, foreman, authKey,
-                                   resultsHttpPort));
-    }
-    /// Set file channel for this UberJob
-    void setFileChannelShared(std::shared_ptr<FileChannelShared> const& fileChannelShared);
+                      std::shared_ptr<wcontrol::Foreman> const& foreman,
+                      std::shared_ptr<wpublish::QueriesAndChunks> const& queriesAndChunks_,
+                      std::string const& authKey, uint16_t resultsHttpPort = 8080);
+
     bool getScanInteractive() const { return _scanInteractive; }
     std::shared_ptr<protojson::ScanInfo> getScanInfo() const { return _scanInfo; }
 
@@ -99,12 +96,13 @@ public:
     uint64_t getQueryId() const { return _queryId; }
     std::string getWorkerId() const { return _workerId; }
     uint64_t getMaxTableSizeBytes() const { return _maxTableSizeBytes; }
+    std::shared_ptr<FileChannelShared> getFileChannelShared() const { return _fileChannelShared; }
+    std::weak_ptr<wpublish::QueriesAndChunks> getQueriesAndChunks() const { return _queriesAndChunks; }
 
-    /// Add the tasks defined in the UberJob to this UberJobData object.
-    void addTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks) {
-        std::lock_guard<std::mutex> tLg(_ujTasksMtx);
-        _ujTasks.insert(_ujTasks.end(), tasks.begin(), tasks.end());
-    }
+    /// Set the tasks defined in the UberJob to this UberJobData object.
+    /// Once the tasks are set for the UberJob, no more can be added as it could
+    /// cause a race condition in FileChannelShared task completion comparisons.
+    void setTasks(std::vector<std::shared_ptr<wbase::Task>> const& tasks);
 
     /// Let the czar know the result is ready.
     void responseFileReady(protojson::FileUrlInfo const& fileUrlInfo_);
@@ -143,15 +141,16 @@ private:
                 int czarPort, uint64_t queryId, int rowLimit, uint64_t maxTableSizeBytes,
                 std::shared_ptr<protojson::ScanInfo> const& scanInfo, bool scanInteractive,
                 std::string const& workerId, std::shared_ptr<wcontrol::Foreman> const& foreman,
-                std::string const& authKey, uint16_t resultsHttpPort);
+                std::shared_ptr<wpublish::QueriesAndChunks> queriesAndChunks_, std::string const& authKey,
+                uint16_t resultsHttpPort);
 
     /// Return the name of the file that will contain the results of the query.
     std::string _resultFileName() const;
 
     /// Queue the response to be sent to the originating czar.
-    void _queueUJResponse(http::Method method_, std::vector<std::string> const& headers_,
-                          std::string const& url_, std::string const& requestContext_,
-                          std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg_);
+    void _queueUJAnswer(http::Method method_, std::vector<std::string> const& headers_,
+                        std::string const& url_, std::string const& requestContext_,
+                        std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg_);
 
     std::string const _czarName;
     std::string const _czarHost;
@@ -163,7 +162,9 @@ private:
     uint16_t const _resultsHttpPort;  ///<  = 8080
 
     std::shared_ptr<wcontrol::Foreman> const _foreman;
+    std::weak_ptr<wpublish::QueriesAndChunks> _queriesAndChunks;
 
+    /// Tasks in the UberJob, lifetimes are controlled by the scheduler.
     std::vector<std::weak_ptr<wbase::Task>> _ujTasks;
     std::shared_ptr<FileChannelShared> _fileChannelShared;
 

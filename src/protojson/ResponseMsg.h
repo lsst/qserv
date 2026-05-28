@@ -39,10 +39,6 @@ namespace lsst::qserv::qdisp {
 class UberJob;
 }
 
-namespace lsst::qserv::wbase {
-class UberJobData;
-}
-
 // This header declarations
 namespace lsst::qserv::protojson {
 
@@ -72,7 +68,7 @@ public:
 
     /// Action for worker to take if its message to the czar returned failed.
     /// In most cases, nothing needs to be done.
-    virtual void failedUpdateUberJobData(std::shared_ptr<wbase::UberJobData>) {}
+    virtual void failedUpdateUberJobData(CzarId czarId, QueryId queryId, UberJobId ujId) {}
 
     /// Action for czar to take if its message to the worker returned failed.
     /// In most cases, nothing needs to be done.
