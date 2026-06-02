@@ -62,8 +62,8 @@ public:
     bool overlap = false;
 
     ChunkLocation() = default;
-    ChunkLocation(ChunkLocation const &) = default;
-    ChunkLocation &operator=(ChunkLocation const &) = default;
+    ChunkLocation(ChunkLocation const&) = default;
+    ChunkLocation& operator=(ChunkLocation const&) = default;
 
     ChunkLocation(int32_t chunkId_, int32_t subChunkId_, bool overlap_)
             : chunkId(chunkId_), subChunkId(subChunkId_), overlap(overlap_) {}
@@ -72,7 +72,7 @@ public:
     uint32_t hash() const { return std::hash<uint32_t>{}(static_cast<uint32_t>(chunkId)); }
 
     /// Order chunk locations by chunk ID.
-    bool operator<(ChunkLocation const &loc) const { return chunkId < loc.chunkId; }
+    bool operator<(ChunkLocation const& loc) const { return chunkId < loc.chunkId; }
 };
 
 /// A Chunker locates points according to the following simple partitioning scheme.
@@ -91,7 +91,7 @@ class Chunker {
 public:
     Chunker(double overlap, int32_t numStripes, int32_t numSubStripesPerStripe);
 
-    Chunker(ConfigStore const &config);
+    Chunker(ConfigStore const& config);
 
     ~Chunker();
 
@@ -104,36 +104,36 @@ public:
     SphericalBox const getSubChunkBounds(int32_t chunkId, int32_t subChunkId) const;
 
     /// Find the non-overlap location of the given position.
-    ChunkLocation const locate(std::pair<double, double> const &position) const;
+    ChunkLocation const locate(std::pair<double, double> const& position) const;
 
     /// Append the locations of the given position to the `locations` vector.
     /// If `chunkId` is negative, all locations are appended. Otherwise, only
     /// those in the corresponding chunk are appended.
-    void locate(std::pair<double, double> const &position, int32_t chunkId,
-                std::vector<ChunkLocation> &locations) const;
+    void locate(std::pair<double, double> const& position, int32_t chunkId,
+                std::vector<ChunkLocation>& locations) const;
 
     /// Return the IDs of all chunks overlapping the given box and belonging
     /// to the given node. The target node is specified as an integer in the
     /// range `[0, numNodes)` and a chunk with ID C belongs to the node given
     /// by hash(C) modulo `numNodes`.
-    std::vector<int32_t> const getChunksIn(SphericalBox const &region, uint32_t node,
+    std::vector<int32_t> const getChunksIn(SphericalBox const& region, uint32_t node,
                                            uint32_t numNodes) const;
 
     /// Return the IDs of all chunks overlapping the given box.
-    std::vector<int32_t> const getChunksIn(SphericalBox const &region) const {
+    std::vector<int32_t> const getChunksIn(SphericalBox const& region) const {
         return getChunksIn(region, 0u, 1u);
     }
 
     /// Append IDs for all sub-chunks of `chunkId` to `subChunks`.
-    void getSubChunks(std::vector<int32_t> &subChunks, int32_t chunkId) const;
+    void getSubChunks(std::vector<int32_t>& subChunks, int32_t chunkId) const;
 
     /// Define configuration variables for partitioning.
-    static void defineOptions(boost::program_options::options_description &opts);
+    static void defineOptions(boost::program_options::options_description& opts);
 
 private:
     // Disable copy construction and assignment.
-    Chunker(Chunker const &);
-    Chunker &operator=(Chunker const &);
+    Chunker(Chunker const&);
+    Chunker& operator=(Chunker const&);
 
     void _initialize(double overlap, int32_t numStripes, int32_t numSubStripesPerStripe);
 
@@ -154,7 +154,7 @@ private:
     }
 
     void _upDownOverlap(double lon, int32_t chunkId, int32_t stripe, int32_t subStripe,
-                        std::vector<ChunkLocation> &locations) const;
+                        std::vector<ChunkLocation>& locations) const;
 
     double _overlap;
     double _subStripeHeight;

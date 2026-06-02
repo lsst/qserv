@@ -63,15 +63,15 @@ template <typename K>
 struct Record {
     K key;
     uint32_t size;
-    char *data;
+    char* data;
 
     Record() : key(), size(0), data(0) {}
-    explicit Record(K const &k) : key(k), size(0), data(0) {}
+    explicit Record(K const& k) : key(k), size(0), data(0) {}
 
     /// Return a hash of the record key.
     uint32_t hash() const { return key.hash(); }
 
-    bool operator<(Record const &r) const { return key < r.key; }
+    bool operator<(Record const& r) const { return key < r.key; }
 };
 
 /// An append-only record silo.
@@ -97,9 +97,9 @@ public:
     size_t getBytesUsed() const { return _bytesUsed; }
 
     /// Order silos by memory usage, from largest to smallest.
-    bool operator<(Silo const &silo) const { return silo._bytesUsed < _bytesUsed; }
+    bool operator<(Silo const& silo) const { return silo._bytesUsed < _bytesUsed; }
 
-    std::vector<Record> const &getRecords() const { return _records; }
+    std::vector<Record> const& getRecords() const { return _records; }
 
     void reserve(size_t cap) { _records.reserve(cap); }
 
@@ -112,14 +112,14 @@ public:
     /// Add a record to the silo, using `Editor::writeRecord()` to produce
     /// the record text. Passing in the editor allows records to be written
     /// directly to silo memory, avoiding a copy.
-    void add(K const &key, csv::Editor const &editor);
+    void add(K const& key, csv::Editor const& editor);
     /// Add a record to the silo.
-    void add(K const &key, char const *data, uint32_t size);
+    void add(K const& key, char const* data, uint32_t size);
 
 private:
     // Disable copy construction and assignment.
-    Silo(Silo const &);
-    Silo &operator=(Silo const &);
+    Silo(Silo const&);
+    Silo& operator=(Silo const&);
 
     void _grow();
 
@@ -127,9 +127,9 @@ private:
 
     std::vector<Record> _records;
     size_t _bytesUsed;
-    char *_head;  // Head of linked allocation list.
-    char *_cur;
-    char *_end;  // End of current allocation.
+    char* _head;  // Head of linked allocation list.
+    char* _cur;
+    char* _end;  // End of current allocation.
 
     char _pad1[CACHE_LINE_SIZE];
 };
@@ -138,9 +138,9 @@ template <typename K>
 Silo<K>::~Silo() {
     // Traverse linked-list, freeing each allocation. Forward
     // pointers are located at the beginning of each allocation.
-    char *head = _head;
+    char* head = _head;
     while (head) {
-        char *next = *reinterpret_cast<char **>(head);
+        char* next = *reinterpret_cast<char**>(head);
         std::free(head);
         head = next;
     }
@@ -156,15 +156,15 @@ void Silo<K>::clear() {
     if (_head) {
         // Set data insertion point to the beginning of the
         // first allocation.
-        _cur = _head + sizeof(char *);
+        _cur = _head + sizeof(char*);
         _end = _head + ALLOC_SIZE;
     }
 }
 
 template <typename K>
-void Silo<K>::add(K const &key, csv::Editor const &editor) {
-    char *buf = _cur;
-    char *end = _end;
+void Silo<K>::add(K const& key, csv::Editor const& editor) {
+    char* buf = _cur;
+    char* end = _end;
     if (end - buf < MAX_LINE_SIZE) {
         // The size of the line being written isn't known in advance, so
         // the silo must always present MAX_LINE_SIZE or more contiguous
@@ -183,12 +183,12 @@ void Silo<K>::add(K const &key, csv::Editor const &editor) {
 }
 
 template <typename K>
-void Silo<K>::add(K const &key, char const *data, uint32_t size) {
+void Silo<K>::add(K const& key, char const* data, uint32_t size) {
     if (size > MAX_LINE_SIZE) {
         throw std::runtime_error("Record too long.");
     }
-    char *buf = _cur;
-    char *end = _end;
+    char* buf = _cur;
+    char* end = _end;
     if (static_cast<uint32_t>(end - buf) < size) {
         _grow();
         buf = _cur;
@@ -207,26 +207,26 @@ template <typename K>
 void Silo<K>::_grow() {
     // [_cur, _end) has no room for data, so either advance to the next
     // allocation in the linked-list, or append a new allocation at the tail.
-    char *tail = 0;
-    char *next = 0;
+    char* tail = 0;
+    char* next = 0;
     if (_end) {
         tail = _end - ALLOC_SIZE;
-        next = *reinterpret_cast<char **>(tail);
+        next = *reinterpret_cast<char**>(tail);
     }
     if (!next) {
-        next = static_cast<char *>(std::malloc(ALLOC_SIZE));
+        next = static_cast<char*>(std::malloc(ALLOC_SIZE));
         if (!next) {
             throw std::bad_alloc();
         }
         if (tail) {
-            *reinterpret_cast<char **>(tail) = next;
+            *reinterpret_cast<char**>(tail) = next;
         }
-        *reinterpret_cast<char **>(next) = 0;
+        *reinterpret_cast<char**>(next) = 0;
         if (!_head) {
             _head = next;
         }
     }
-    _cur = next + sizeof(char *);
+    _cur = next + sizeof(char*);
     _end = next + ALLOC_SIZE;
 }
 
@@ -304,7 +304,7 @@ namespace detail {
 /// Comparator for shared pointers to `Silo`s.
 template <typename K>
 struct SiloPtrCmp {
-    bool operator()(std::shared_ptr<Silo<K> > const &s, std::shared_ptr<Silo<K> > const &t) const {
+    bool operator()(std::shared_ptr<Silo<K> > const& s, std::shared_ptr<Silo<K> > const& t) const {
         return *s < *t;
     }
 };
@@ -325,7 +325,7 @@ struct SortedRecordRange {
 
     /// Order sorted ranges by their minimum records,
     /// from largest to smallest.
-    bool operator<(SortedRecordRange const &r) const { return *r.cur < *cur; }
+    bool operator<(SortedRecordRange const& r) const { return *r.cur < *cur; }
 };
 
 /// CRTP base-class containing the meat of the map-reduce implementation.
@@ -336,21 +336,21 @@ class JobBase {
 public:
     typedef WorkerT Worker;
 
-    JobBase(ConfigStore const &config);
+    JobBase(ConfigStore const& config);
     ~JobBase();
 
     void run(InputLines input);
     void operator()();
 
-    static void defineOptions(boost::program_options::options_description &opts);
+    static void defineOptions(boost::program_options::options_description& opts);
 
 private:
-    JobBase(JobBase const &);
-    JobBase &operator=(JobBase const &);
+    JobBase(JobBase const&);
+    JobBase& operator=(JobBase const&);
 
     void _work();
     void _cleanup();
-    void _fail(std::exception const &ex);
+    void _fail(std::exception const& ex);
 
     typedef typename Worker::Key Key;
     typedef detail::SortedRecordRange<Key> SortedRecordRange;
@@ -360,7 +360,7 @@ private:
     typedef detail::SiloPtrCmp<Key> SiloPtrCmp;
     typedef typename std::vector<SiloPtr>::const_iterator SiloPtrIter;
 
-    ConfigStore const *_config;
+    ConfigStore const* _config;
 
     InputLines _input;
     size_t _threshold;
@@ -383,11 +383,11 @@ private:
 
     // DerivedT is responsible for storing worker results. Note
     // that _mutex is locked when this is called.
-    void _storeResultImpl(Worker &worker) { static_cast<DerivedT *>(this)->_storeResult(worker); }
+    void _storeResultImpl(Worker& worker) { static_cast<DerivedT*>(this)->_storeResult(worker); }
 };
 
 template <typename DerivedT, typename WorkerT>
-JobBase<DerivedT, WorkerT>::JobBase(ConfigStore const &config)
+JobBase<DerivedT, WorkerT>::JobBase(ConfigStore const& config)
         : _config(&config),
           _threshold(0),
           _numWorkers(config.get<uint32_t>("mr.num-workers")),
@@ -420,7 +420,7 @@ void JobBase<DerivedT, WorkerT>::_cleanup() {
 }
 
 template <typename DerivedT, typename WorkerT>
-void JobBase<DerivedT, WorkerT>::_fail(std::exception const &ex) {
+void JobBase<DerivedT, WorkerT>::_fail(std::exception const& ex) {
     boost::unique_lock<boost::mutex> lock(_mutex);
     if (!_failed) {
         // Mark job as failed, and set error message.
@@ -449,7 +449,7 @@ void JobBase<DerivedT, WorkerT>::run(InputLines input) {
         for (; i < _numWorkers - 1; ++i) {
             threads[i] = boost::thread(boost::ref(*this));
         }
-    } catch (std::exception const &ex) {
+    } catch (std::exception const& ex) {
         _fail(ex);
     }
     // The caller participates in job execution, avoiding thread
@@ -473,13 +473,13 @@ template <typename DerivedT, typename WorkerT>
 void JobBase<DerivedT, WorkerT>::operator()() {
     try {
         _work();
-    } catch (std::exception const &ex) {
+    } catch (std::exception const& ex) {
         _fail(ex);
     }
 }
 
 template <typename DerivedT, typename WorkerT>
-void JobBase<DerivedT, WorkerT>::defineOptions(boost::program_options::options_description &opts) {
+void JobBase<DerivedT, WorkerT>::defineOptions(boost::program_options::options_description& opts) {
     namespace po = boost::program_options;
     po::options_description mr("\\_________________ Map-Reduce", 80);
     mr.add_options()("mr.block-size", po::value<size_t>()->default_value(4),
@@ -503,7 +503,7 @@ void JobBase<DerivedT, WorkerT>::defineOptions(boost::program_options::options_d
 template <typename DerivedT, typename WorkerT>
 void JobBase<DerivedT, WorkerT>::_work() {
     // Pre-allocate disk read buffer.
-    std::shared_ptr<char> buffer(static_cast<char *>(std::malloc(_input.getMinimumBufferCapacity())),
+    std::shared_ptr<char> buffer(static_cast<char*>(std::malloc(_input.getMinimumBufferCapacity())),
                                  std::free);
     if (!buffer) {
         throw std::bad_alloc();
@@ -541,7 +541,7 @@ void JobBase<DerivedT, WorkerT>::_work() {
             SiloPtr silo = _silos.back();
             _silos.pop_back();
             lock.unlock();
-            std::pair<char *, char *> data = _input.read(buffer.get());
+            std::pair<char*, char*> data = _input.read(buffer.get());
             if (data.first == 0 && data.second == 0) {
                 // No input left.
                 silo->sort();
@@ -601,7 +601,7 @@ void JobBase<DerivedT, WorkerT>::_work() {
         std::make_heap(ranges.begin(), ranges.end());
         while (!ranges.empty()) {
             std::pop_heap(ranges.begin(), ranges.end());
-            SortedRecordRange *r = &ranges.back();
+            SortedRecordRange* r = &ranges.back();
             RecordIter i = r->cur;
             r->advance();
             if (i->hash() % _numWorkers == rank) {
@@ -650,7 +650,7 @@ template <typename WorkerT, typename ResultT>
 class JobImpl : private JobBase<JobImpl<WorkerT, ResultT>, WorkerT> {
     typedef JobBase<JobImpl<WorkerT, ResultT>, WorkerT> Base;
 
-    void _storeResult(WorkerT &w) {
+    void _storeResult(WorkerT& w) {
         std::shared_ptr<ResultT> r = w.result();
         if (!_result) {
             _result = r;
@@ -665,7 +665,7 @@ class JobImpl : private JobBase<JobImpl<WorkerT, ResultT>, WorkerT> {
     friend class JobBase<JobImpl<WorkerT, ResultT>, WorkerT>;
 
 public:
-    explicit JobImpl(ConfigStore const &config) : Base(config) {}
+    explicit JobImpl(ConfigStore const& config) : Base(config) {}
 
     std::shared_ptr<ResultT> const run(InputLines input) {
         try {
@@ -687,13 +687,13 @@ template <typename WorkerT>
 class JobImpl<WorkerT, void> : private JobBase<JobImpl<WorkerT, void>, WorkerT> {
     typedef JobBase<JobImpl<WorkerT, void>, WorkerT> Base;
 
-    void _storeResult(WorkerT &) {}
+    void _storeResult(WorkerT&) {}
 
     // Allow JobBase to call _storeResult.
     friend class JobBase<JobImpl<WorkerT, void>, WorkerT>;
 
 public:
-    explicit JobImpl(ConfigStore const &config) : Base(config) {}
+    explicit JobImpl(ConfigStore const& config) : Base(config) {}
 
     void run(InputLines input) { Base::run(input); }
 
@@ -724,7 +724,7 @@ public:
 template <typename WorkerT>
 class Job : public detail::JobImpl<WorkerT, typename WorkerT::Result> {
 public:
-    explicit Job(ConfigStore const &config) : detail::JobImpl<WorkerT, typename WorkerT::Result>(config) {}
+    explicit Job(ConfigStore const& config) : detail::JobImpl<WorkerT, typename WorkerT::Result>(config) {}
 };
 
 }  // namespace lsst::partition

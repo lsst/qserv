@@ -44,7 +44,7 @@ namespace lsst::qserv::util {
 class DynamicWorkQueue {
     struct Queue;
     struct QueuePtrCmp {
-        bool operator()(Queue const *, Queue const *) const;
+        bool operator()(Queue const*, Queue const*) const;
     };
     struct Runner;
 
@@ -67,7 +67,7 @@ public:
         virtual void cancel() {}
 
     private:
-        Callable *_next;  // Embedded singly linked-list pointer; not owned.
+        Callable* _next;  // Embedded singly linked-list pointer; not owned.
         friend class DynamicWorkQueue;
         friend struct DynamicWorkQueue::Queue;
     };
@@ -81,21 +81,21 @@ public:
 
     /// Add `callable` to the queue, associating it with `session`.
     /// Ownership of `callable` is transfered from the caller to the queue.
-    void add(void const *session, Callable *callable);
+    void add(void const* session, Callable* callable);
 
     /// Remove and `cancel()` any `Callable` objects associated with `session`
     /// from this queue.
-    void cancelQueued(void const *session);
+    void cancelQueued(void const* session);
 
 private:
     // Disable copy-construction and assignment.
-    DynamicWorkQueue(DynamicWorkQueue const &);
-    DynamicWorkQueue &operator=(DynamicWorkQueue const &);
+    DynamicWorkQueue(DynamicWorkQueue const&);
+    DynamicWorkQueue& operator=(DynamicWorkQueue const&);
 
-    static void _startRunner(DynamicWorkQueue &dwq);
+    static void _startRunner(DynamicWorkQueue& dwq);
 
-    typedef std::map<void const *, Queue *> SessionQueueMap;
-    typedef std::set<Queue *, QueuePtrCmp> QueueSet;
+    typedef std::map<void const*, Queue*> SessionQueueMap;
+    typedef std::set<Queue*, QueuePtrCmp> QueueSet;
 
     // Call only while holding a lock on _mutex.
     bool _shouldIncreaseThreadCount() const;

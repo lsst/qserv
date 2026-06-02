@@ -823,9 +823,8 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t r
 }
 
 void UserQuerySelect::_qMetaUpdateMessages() {
-    auto msgStore = getMessageStore();
     try {
-        _queryMetadata->addQueryMessages(_queryId, msgStore);
+        _queryMetadata->addQueryMessages(_queryId, _messageStore);
     } catch (qmeta::SqlError const& ex) {
         LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
     }

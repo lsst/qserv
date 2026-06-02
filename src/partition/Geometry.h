@@ -81,14 +81,14 @@ double reduceLon(double lon);
 double maxAlpha(double r, double centerLat);
 
 /// Compute the HTM ID of `v`.
-uint32_t htmId(Vector3d const &v, int level);
+uint32_t htmId(Vector3d const& v, int level);
 
 /// Return the HTM subdivision level of `id` or -1 if `id` is invalid.
 int htmLevel(uint32_t id);
 
 /// Return the unit 3-vector corresponding to the given spherical
 /// coordinates (in degrees).
-Vector3d const cartesian(std::pair<double, double> const &lonLat);
+Vector3d const cartesian(std::pair<double, double> const& lonLat);
 
 inline Vector3d const cartesian(double lon, double lat) {
     return cartesian(std::pair<double, double>(lon, lat));
@@ -96,14 +96,14 @@ inline Vector3d const cartesian(double lon, double lat) {
 
 /// Return the longitude and latitude angles (in degrees) corresponding
 /// to the given 3-vector.
-std::pair<double, double> const spherical(Vector3d const &v);
+std::pair<double, double> const spherical(Vector3d const& v);
 
 inline std::pair<double, double> const spherical(double x, double y, double z) {
     return spherical(Vector3d(x, y, z));
 }
 
 /// Return the angular separation between `v0` and `v1` in radians.
-double angSep(Vector3d const &v0, Vector3d const &v1);
+double angSep(Vector3d const& v0, Vector3d const& v1);
 
 class SphericalBox;
 
@@ -160,17 +160,17 @@ public:
     explicit SphericalTriangle(uint32_t htmId);
 
     /// Construct the triangle with the given vertices.
-    SphericalTriangle(Vector3d const &v0, Vector3d const &v1, Vector3d const &v2);
+    SphericalTriangle(Vector3d const& v0, Vector3d const& v1, Vector3d const& v2);
 
     /// Get the i-th vertex (i = 0,1,2). No bounds checking is performed.
-    Vector3d const &vertex(int i) const { return _m.col(i); }
+    Vector3d const& vertex(int i) const { return _m.col(i); }
 
     /// Get the matrix that converts from cartesian to
     /// spherical barycentric coordinates.
-    Matrix3d const &getBarycentricTransform() const { return _mi; }
+    Matrix3d const& getBarycentricTransform() const { return _mi; }
     /// Get the matrix that converts from spherical barycentric
     /// to cartesian coordinates.
-    Matrix3d const &getCartesianTransform() const { return _m; }
+    Matrix3d const& getCartesianTransform() const { return _m; }
 
     /// Compute the area of the triangle in steradians.
     double area() const;
@@ -179,7 +179,7 @@ public:
     /// with a spherical box. The routine is not fully general - for simplicity
     /// of implementation, spherical boxes with RA extent strictly between 180
     /// and 360 degrees are not supported.
-    double intersectionArea(SphericalBox const &box) const;
+    double intersectionArea(SphericalBox const& box) const;
 
 private:
     /// [V0 V1 V2], where column vectors V0, V1, V2 are the triangle
@@ -204,7 +204,7 @@ public:
     SphericalBox(double lonMin, double lonMax, double latMin, double latMax);
 
     /// Create a conservative bounding box for a spherical triangle.
-    SphericalBox(Vector3d const &v0, Vector3d const &v1, Vector3d const &v2);
+    SphericalBox(Vector3d const& v0, Vector3d const& v1, Vector3d const& v2);
 
     /// Expand the box by the given radius.
     void expand(double radius);
@@ -242,12 +242,12 @@ public:
         return lon >= _lonMin && lon <= _lonMax;
     }
 
-    bool contains(std::pair<double, double> const &position) const {
+    bool contains(std::pair<double, double> const& position) const {
         return contains(position.first, position.second);
     }
 
     /// Does this box intersect the given box?
-    bool intersects(SphericalBox const &box) const {
+    bool intersects(SphericalBox const& box) const {
         if (isEmpty() || box.isEmpty()) {
             return false;
         } else if (box._latMin > _latMax || box._latMax < _latMin) {
@@ -265,10 +265,10 @@ public:
 
     /// Compute a conservative approximation to the list of HTM triangles
     /// potentially overlapping this box and store them in `ids`.
-    void htmIds(std::vector<uint32_t> &ids, int level) const;
+    void htmIds(std::vector<uint32_t>& ids, int level) const;
 
 private:
-    void _findIds(std::vector<uint32_t> &ids, uint32_t id, int level, Matrix3d const &m) const;
+    void _findIds(std::vector<uint32_t>& ids, uint32_t id, int level, Matrix3d const& m) const;
 
     double _lonMin;
     double _lonMax;
