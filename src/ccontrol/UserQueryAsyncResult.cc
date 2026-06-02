@@ -77,7 +77,8 @@ void UserQueryAsyncResult::submit() {
     // if there are messages already it means the error was detected, stop right here
     if (_messageStore->messageCount() > 0) {
         LOGS(_log, LOG_LVL_WARN,
-             "UserQueryAsyncResult::submit giving up, messageCount=" << _messageStore->messageCount());
+             "UserQueryAsyncResult::" << __func__
+                                      << " submit giving up, messageCount=" << _messageStore->messageCount());
         return;
     }
 
