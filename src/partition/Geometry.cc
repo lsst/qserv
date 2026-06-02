@@ -101,7 +101,7 @@ Vector3d const NY(0.0, -1.0, 0.0);
 Vector3d const NZ(0.0, 0.0, -1.0);
 
 // Vertex triplet for each HTM root triangle.
-Vector3d const *const htmRootVert[24] = {
+Vector3d const* const htmRootVert[24] = {
         &X,  &NZ, &Y,   // S0
         &Y,  &NZ, &NX,  // S1
         &NX, &NZ, &NY,  // S2
@@ -113,7 +113,7 @@ Vector3d const *const htmRootVert[24] = {
 };
 
 // Return the number of the HTM root triangle containing v.
-inline uint32_t rootNumFor(Vector3d const &v) {
+inline uint32_t rootNumFor(Vector3d const& v) {
     if (v(2) < 0.0) {
         // S0, S1, S2, S3
         if (v(1) > 0.0) {
@@ -166,7 +166,7 @@ double maxAlpha(double r, double centerLat) {
     return DEG_PER_RAD * std::fabs(atan(y / x));
 }
 
-uint32_t htmId(Vector3d const &v, int level) {
+uint32_t htmId(Vector3d const& v, int level) {
     // See http://research.microsoft.com/apps/pubs/default.aspx?id=64531
     if (level < 0 || level > HTM_MAX_LEVEL) {
         throw std::runtime_error("Invalid HTM subdivision level.");
@@ -240,7 +240,7 @@ int htmLevel(uint32_t id) {
     return static_cast<int>(level >> 1);
 }
 
-Vector3d const cartesian(std::pair<double, double> const &lonLat) {
+Vector3d const cartesian(std::pair<double, double> const& lonLat) {
     double lon = lonLat.first * RAD_PER_DEG;
     double lat = lonLat.second * RAD_PER_DEG;
     double sinLon = std::sin(lon);
@@ -250,7 +250,7 @@ Vector3d const cartesian(std::pair<double, double> const &lonLat) {
     return Vector3d(cosLon * cosLat, sinLon * cosLat, sinLat);
 }
 
-std::pair<double, double> const spherical(Vector3d const &v) {
+std::pair<double, double> const spherical(Vector3d const& v) {
     std::pair<double, double> sc(0.0, 0.0);
     double d2 = v(0) * v(0) + v(1) * v(1);
     if (d2 != 0.0) {
@@ -269,7 +269,7 @@ std::pair<double, double> const spherical(Vector3d const &v) {
     return sc;
 }
 
-double angSep(Vector3d const &v0, Vector3d const &v1) {
+double angSep(Vector3d const& v0, Vector3d const& v1) {
     double cs = v0.dot(v1);
     Vector3d n = v0.cross(v1);
     double ss = n.norm();
@@ -329,7 +329,7 @@ SphericalTriangle::SphericalTriangle(uint32_t id) : _m(), _mi() {
     _mi = _m.inverse();
 }
 
-SphericalTriangle::SphericalTriangle(Vector3d const &v0, Vector3d const &v1, Vector3d const &v2)
+SphericalTriangle::SphericalTriangle(Vector3d const& v0, Vector3d const& v1, Vector3d const& v2)
         : _m(), _mi() {
     _m.col(0) = v0;
     _m.col(1) = v1;
@@ -427,10 +427,10 @@ double SphericalTriangle::area() const {
 namespace {
 
 // Intersect the input spherical convex polygon with the given half-space.
-size_t intersect(Vector3d const *inVe,   // input (vertex, edge) pair array
+size_t intersect(Vector3d const* inVe,   // input (vertex, edge) pair array
                  size_t numVerts,        // # of input vertices
-                 Vector3d const &plane,  // plane normal of half-space
-                 Vector3d *outVe)        // output (vertex, edge) pair array
+                 Vector3d const& plane,  // plane normal of half-space
+                 Vector3d* outVe)        // output (vertex, edge) pair array
 {
     assert(numVerts > 1 && inVe != 0 && outVe != 0);
     size_t i = 0, j = numVerts - 1, n = 0;
@@ -540,7 +540,7 @@ double LonRangeList::extent() const {
 }
 
 // Compute the area of the input polygon intersected with zmin <= z <= zmax.
-double zArea(Vector3d const *inVe,  // input (vertex, edge) pair array
+double zArea(Vector3d const* inVe,  // input (vertex, edge) pair array
              size_t numVerts,       // # of input vertices
              double zmin, double zmax) {
     // A = 2πχ(M) - Σ αᵥ - Σ cos(φᵤ) ∆θᵤ      (see above)
@@ -560,7 +560,7 @@ double zArea(Vector3d const *inVe,  // input (vertex, edge) pair array
         double z = inVe[2 * i](2);
         // n is parallel to the edge plane normal (but does not necessarily
         // have unit norm).
-        Vector3d const &n = inVe[2 * j + 1];
+        Vector3d const& n = inVe[2 * j + 1];
         if (z >= zmin && z <= zmax) {
             // Vertex i is in z-range; compute and accumulate turning angle αᵥ
             // at vertex v = i. Here αᵥ is just the angle between the normal
@@ -695,7 +695,7 @@ double zArea(Vector3d const *inVe,  // input (vertex, edge) pair array
 
 }  // unnamed namespace
 
-double SphericalTriangle::intersectionArea(SphericalBox const &box) const {
+double SphericalTriangle::intersectionArea(SphericalBox const& box) const {
     if (box.getLonMin() == box.getLonMax() || box.getLatMin() >= 90.0 - EPSILON_DEG ||
         box.getLatMax() <= -90.0 - +EPSILON_DEG) {
         // box is degenerate or very small.
@@ -711,8 +711,8 @@ double SphericalTriangle::intersectionArea(SphericalBox const &box) const {
     }
     Vector3d veBuf0[(3 + 2) * 2];
     Vector3d veBuf1[(3 + 2) * 2];
-    Vector3d *in = veBuf0;
-    Vector3d *out = veBuf1;
+    Vector3d* in = veBuf0;
+    Vector3d* out = veBuf1;
     size_t numVerts = 3;
     // Populate in with (vertex, edge) pairs.
     in[0] = vertex(0);
@@ -774,7 +774,7 @@ SphericalBox::SphericalBox(double lonMin, double lonMax, double latMin, double l
     _latMax = clampLat(latMax);
 }
 
-SphericalBox::SphericalBox(Vector3d const &v0, Vector3d const &v1, Vector3d const &v2) {
+SphericalBox::SphericalBox(Vector3d const& v0, Vector3d const& v1, Vector3d const& v2) {
     // Find the bounding circle of the triangle.
     Vector3d cv = v0 + v1 + v2;
     double r = angSep(cv, v0);
@@ -839,7 +839,7 @@ double SphericalBox::area() const {
     return RAD_PER_DEG * getLonExtent() * (std::sin(RAD_PER_DEG * _latMax) - std::sin(RAD_PER_DEG * _latMin));
 }
 
-void SphericalBox::htmIds(std::vector<uint32_t> &ids, int level) const {
+void SphericalBox::htmIds(std::vector<uint32_t>& ids, int level) const {
     if (level < 0 || level > HTM_MAX_LEVEL) {
         throw std::runtime_error("Invalid HTM subdivision level.");
     }
@@ -855,10 +855,10 @@ void SphericalBox::htmIds(std::vector<uint32_t> &ids, int level) const {
 // Slow method for finding triangles overlapping a box. For the subdivision
 // levels and box sizes encountered in practice, this is very unlikely to be
 // a performance problem.
-void SphericalBox::_findIds(std::vector<uint32_t> &ids,  // Storage for overlapping triangle IDs.
+void SphericalBox::_findIds(std::vector<uint32_t>& ids,  // Storage for overlapping triangle IDs.
                             uint32_t id,                 // HTM ID of triangle `m`.
                             int level,                   // Number of recursions remaining.
-                            Matrix3d const &m) const     // Triangle vertices.
+                            Matrix3d const& m) const     // Triangle vertices.
 {
     if (!intersects(SphericalBox(m.col(0), m.col(1), m.col(2)))) {
         return;
