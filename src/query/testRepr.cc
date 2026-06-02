@@ -75,11 +75,11 @@ BOOST_AUTO_TEST_CASE(Factory) {
 // and the tree is constructed via a push down list.  The aim here
 // was to keep the specification parser as simple as possible...
 
-const std::string RenderedBoolTermFromRPN(const char **rpn) {
+const std::string RenderedBoolTermFromRPN(const char** rpn) {
     BoolTerm::PtrVector pdl;
     int opcount;
 
-    for (const char **t = rpn; *t; ++t) {
+    for (const char** t = rpn; *t; ++t) {
         if (sscanf(*t, "%d", &opcount) == 1) {
             ;
         } else if (!strcmp(*t, "AND")) {
@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
     // |   +-- A
     // |   +-- B
     // +-- C
-    const char *test0[] = {"C", "B", "A", "2", "AND", "2", "AND", nullptr};
+    const char* test0[] = {"C", "B", "A", "2", "AND", "2", "AND", nullptr};
     BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test0), "A AND B AND C");
 
     // AND
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
     // |   +-- A
     // |   +-- B
     // +-- C
-    const char *test1[] = {"C", "B", "A", "2", "OR", "2", "AND", nullptr};
+    const char* test1[] = {"C", "B", "A", "2", "OR", "2", "AND", nullptr};
     BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test1), "(A OR B) AND C");
 
     // OR
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
     // |   +-- A
     // |   +-- B
     // +-- C
-    const char *test2[] = {"C", "B", "A", "2", "AND", "2", "OR", nullptr};
+    const char* test2[] = {"C", "B", "A", "2", "AND", "2", "OR", nullptr};
     BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test2), "A AND B OR C");
 
     // OR
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
     // |   +-- A
     // |   +-- B
     // +-- C
-    const char *test3[] = {"C", "B", "A", "2", "OR", "2", "OR", nullptr};
+    const char* test3[] = {"C", "B", "A", "2", "OR", "2", "OR", nullptr};
     BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test3), "A OR B OR C");
 
     // AND
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
     // |   +-- C
     // |   +-- D
     // +-- E
-    const char *test4[] = {"E", "D", "C", "B", "3", "OR", "A", "3", "AND", nullptr};
+    const char* test4[] = {"E", "D", "C", "B", "3", "OR", "A", "3", "AND", nullptr};
     BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test4), "A AND (B OR C OR D) AND E");
 
     // OR
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(BoolTermRenderParens) {
     // |   +-- C
     // |   +-- D
     // +-- E
-    const char *test5[] = {"E", "D", "C", "B", "3", "AND", "A", "3", "OR", nullptr};
+    const char* test5[] = {"E", "D", "C", "B", "3", "AND", "A", "3", "OR", nullptr};
     BOOST_CHECK_EQUAL(RenderedBoolTermFromRPN(test5), "A OR B AND C AND D OR E");
 }
 

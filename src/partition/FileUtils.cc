@@ -46,7 +46,7 @@ namespace fs = boost::filesystem;
 
 namespace lsst::partition {
 
-InputFile::InputFile(fs::path const &path) : _path(path), _fd(-1), _sz(-1) {
+InputFile::InputFile(fs::path const& path) : _path(path), _fd(-1), _sz(-1) {
     struct ::stat st;
     int fd = ::open(path.string().c_str(), O_RDONLY);
     if (fd == -1) {
@@ -72,8 +72,8 @@ InputFile::~InputFile() {
     }
 }
 
-void InputFile::read(void *buf, off_t off, size_t sz) const {
-    uint8_t *cur = static_cast<uint8_t *>(buf);
+void InputFile::read(void* buf, off_t off, size_t sz) const {
+    uint8_t* cur = static_cast<uint8_t*>(buf);
     while (sz > 0) {
         ssize_t n = ::pread(_fd, cur, sz, off);
         if (n == 0) {
@@ -91,12 +91,12 @@ void InputFile::read(void *buf, off_t off, size_t sz) const {
     }
 }
 
-void InputFile::read(void *buf, off_t off, size_t sz, int & /*bufferSize*/,
-                     ConfigParamArrow const & /*params*/) const {
+void InputFile::read(void* buf, off_t off, size_t sz, int& /*bufferSize*/,
+                     ConfigParamArrow const& /*params*/) const {
     read(buf, off, sz);
 }
 
-InputFileArrow::InputFileArrow(fs::path const &path, off_t blockSize)
+InputFileArrow::InputFileArrow(fs::path const& path, off_t blockSize)
         : InputFile(path), _path(path), _fd(-1), _sz(-1) {
     struct ::stat st;
 
@@ -131,9 +131,9 @@ InputFileArrow::~InputFileArrow() {
 
 int InputFileArrow::getBatchNumber() const { return _batchReader->getTotalBatchNumber(); }
 
-void InputFileArrow::read(void *buf, off_t off, size_t sz, int &csvBufferSize,
-                          ConfigParamArrow const &params) const {
-    uint8_t *cur = static_cast<uint8_t *>(buf);
+void InputFileArrow::read(void* buf, off_t off, size_t sz, int& csvBufferSize,
+                          ConfigParamArrow const& params) const {
+    uint8_t* cur = static_cast<uint8_t*>(buf);
 
     auto const success =
             _batchReader->readNextBatch_Table2CSV(cur, csvBufferSize, params.columns, params.optionalColumns,
@@ -151,7 +151,7 @@ void InputFileArrow::read(void *buf, off_t off, size_t sz, int &csvBufferSize,
     }
 }
 
-OutputFile::OutputFile(fs::path const &path, bool truncate) : _path(path), _fd(-1) {
+OutputFile::OutputFile(fs::path const& path, bool truncate) : _path(path), _fd(-1) {
     int flags = O_CREAT | O_WRONLY;
     if (truncate) {
         flags |= O_TRUNC;
@@ -182,11 +182,11 @@ OutputFile::~OutputFile() {
     }
 }
 
-void OutputFile::append(void const *buf, size_t sz) {
+void OutputFile::append(void const* buf, size_t sz) {
     if (!buf || sz == 0) {
         return;
     }
-    char const *b = static_cast<char const *>(buf);
+    char const* b = static_cast<char const*>(buf);
     while (sz > 0) {
         ssize_t n = ::write(_fd, b, sz);
         if (n < 0) {
@@ -212,13 +212,13 @@ BufferedAppender::~BufferedAppender() {
     _cur = 0;
 }
 
-void BufferedAppender::append(void const *buf, size_t size) {
+void BufferedAppender::append(void const* buf, size_t size) {
     if (!_file) {
         throw std::logic_error(
                 std::string("BufferedAppender: append() called after "
                             "close() and/or before open().\n"));
     }
-    uint8_t const *b = static_cast<uint8_t const *>(buf);
+    uint8_t const* b = static_cast<uint8_t const*>(buf);
     while (size > 0) {
         size_t n = std::min(size, static_cast<size_t>(_end - _cur));
         ::memcpy(_cur, b, n);
@@ -232,13 +232,13 @@ void BufferedAppender::append(void const *buf, size_t size) {
     }
 }
 
-void BufferedAppender::open(fs::path const &path, bool truncate) {
+void BufferedAppender::open(fs::path const& path, bool truncate) {
     close();
-    OutputFile *f = new OutputFile(path, truncate);
+    OutputFile* f = new OutputFile(path, truncate);
     if (!_buf) {
         // Allocate buffer.
         size_t sz = static_cast<size_t>(_end - _buf);
-        uint8_t *buf = static_cast<uint8_t *>(malloc(sz));
+        uint8_t* buf = static_cast<uint8_t*>(malloc(sz));
         if (!buf) {
             delete f;
             throw std::bad_alloc();
