@@ -76,7 +76,7 @@ Dialect::Dialect(char delimiter, char escape, char quote)
     _validate();
 }
 
-Dialect::Dialect(std::string const &null, char delimiter, char escape, char quote)
+Dialect::Dialect(std::string const& null, char delimiter, char escape, char quote)
         : _null(null),
           _scanLut(new uint8_t[NUM_CHARS]),
           _delimiter(delimiter),
@@ -85,7 +85,7 @@ Dialect::Dialect(std::string const &null, char delimiter, char escape, char quot
     _validate();
 }
 
-Dialect::Dialect(ConfigStore const &config, std::string const &prefix)
+Dialect::Dialect(ConfigStore const& config, std::string const& prefix)
         : _null(), _scanLut(new uint8_t[NUM_CHARS]) {
     _delimiter = config.get<char>(prefix + "delimiter");
     if (config.flag(prefix + "no-quote")) {
@@ -109,7 +109,7 @@ Dialect::Dialect(ConfigStore const &config, std::string const &prefix)
     _validate();
 }
 
-Dialect::Dialect(Dialect const &dialect)
+Dialect::Dialect(Dialect const& dialect)
         : _null(dialect._null),
           _scanLut(new uint8_t[NUM_CHARS]),
           _nullHasSpecial(dialect._nullHasSpecial),
@@ -121,7 +121,7 @@ Dialect::Dialect(Dialect const &dialect)
 
 Dialect::~Dialect() {}
 
-Dialect &Dialect::operator=(Dialect const &dialect) {
+Dialect& Dialect::operator=(Dialect const& dialect) {
     if (this != &dialect) {
         _null = dialect._null;
         _nullHasSpecial = dialect._nullHasSpecial;
@@ -133,7 +133,7 @@ Dialect &Dialect::operator=(Dialect const &dialect) {
     return *this;
 }
 
-size_t Dialect::decode(char *buf, char const *value, size_t size) const {
+size_t Dialect::decode(char* buf, char const* value, size_t size) const {
     if (_quote == '\0' && _escape == '\0') {
         if (size > MAX_FIELD_SIZE) {
             throw std::runtime_error("CSV field value is too long to decode.");
@@ -175,7 +175,7 @@ size_t Dialect::decode(char *buf, char const *value, size_t size) const {
     return j;
 }
 
-size_t Dialect::encode(char *buf, char const *value, size_t size) const {
+size_t Dialect::encode(char* buf, char const* value, size_t size) const {
     if (value == 0) {
         std::memcpy(buf, _null.data(), _null.size());
         return _null.size();
@@ -265,7 +265,7 @@ size_t Dialect::encode(char *buf, char const *value, size_t size) const {
     return j;
 }
 
-void Dialect::defineOptions(po::options_description &opts, std::string const &prefix) {
+void Dialect::defineOptions(po::options_description& opts, std::string const& prefix) {
     opts.add_options()((prefix + "null").c_str(), po::value<std::string>(),
                        "NULL CSV field value string. Leaving this option unspecified "
                        "results in a dialect specific default - if quoting is enabled, "
@@ -287,7 +287,7 @@ void Dialect::defineOptions(po::options_description &opts, std::string const &pr
 // Scan the given string for occurrences of the CR, LF, escape, quote or
 // delimiter characters, and return a bitwise or of the HAS_xxx constants
 // indicating which were found.
-int Dialect::_scan(char const *value, size_t size) const {
+int Dialect::_scan(char const* value, size_t size) const {
     uint8_t flags = 0;
     for (size_t i = 0; i < size; ++i) {
         uint8_t c = static_cast<uint8_t>(value[i]);
@@ -363,9 +363,9 @@ Editor::Field::~Field() {
     }
 }
 
-Editor::Editor(Dialect const &inputDialect, Dialect const &outputDialect,
-               std::vector<std::string> const &inputFieldNames,
-               std::vector<std::string> const &outputFieldNames)
+Editor::Editor(Dialect const& inputDialect, Dialect const& outputDialect,
+               std::vector<std::string> const& inputFieldNames,
+               std::vector<std::string> const& outputFieldNames)
         : _inputDialect(inputDialect),
           _outputDialect(outputDialect),
           _dialectsMatch(_inputDialect == _outputDialect),
@@ -377,7 +377,7 @@ Editor::Editor(Dialect const &inputDialect, Dialect const &outputDialect,
     _initialize(inputFieldNames, outputFieldNames);
 }
 
-Editor::Editor(ConfigStore const &config)
+Editor::Editor(ConfigStore const& config)
         : _inputDialect(config, "in.csv."),
           _outputDialect(config, "out.csv."),
           _dialectsMatch(_inputDialect == _outputDialect),
@@ -403,7 +403,7 @@ Editor::Editor(ConfigStore const &config)
 
 Editor::~Editor() {}
 
-char const *Editor::readRecord(char const *const begin, char const *const end) {
+char const* Editor::readRecord(char const* const begin, char const* const end) {
     if (end <= begin || begin == 0) {
         throw std::runtime_error("Empty or invalid input line.");
     } else if (_numInputFields == 0) {
@@ -414,10 +414,10 @@ char const *Editor::readRecord(char const *const begin, char const *const end) {
     bool quoted = false;
     bool escaped = false;
     bool decode = false;
-    Field *f = _fields.get();
-    Field *fend = f + _numInputFields;
+    Field* f = _fields.get();
+    Field* fend = f + _numInputFields;
     f->inputValue = begin;
-    char const *cur = begin;
+    char const* cur = begin;
     for (; cur < end; ++cur) {
         char const c = *cur;
         if (c == '\n' || c == '\r') {
@@ -505,7 +505,7 @@ char const *Editor::readRecord(char const *const begin, char const *const end) {
     // Set output values for remaining fields to NULL.
     fend = _fields.get() + _numFields;
     for (++f; f != fend; ++f) {
-        std::string const &null = _outputDialect.getNull();
+        std::string const& null = _outputDialect.getNull();
         std::memcpy(f->outputValue, null.data(), null.size());
         f->outputSize = static_cast<uint16_t>(null.size());
         f->flags = 0;
@@ -520,15 +520,15 @@ char const *Editor::readRecord(char const *const begin, char const *const end) {
     return cur;
 }
 
-char *Editor::writeRecord(char *buf) const {
+char* Editor::writeRecord(char* buf) const {
     char decodeBuf[MAX_FIELD_SIZE];
     char encodeBuf[MAX_FIELD_SIZE];
     size_t size = 0;
     char const delimiter = _outputDialect.getDelimiter();
 
     for (int i = 0; i < _numOutputFields; ++i) {
-        Field const &f = _fields[_outputs[i]];
-        char const *val;
+        Field const& f = _fields[_outputs[i]];
+        char const* val;
         size_t sz;
         if (!f.inputValue || (f.flags & Field::EDITED) != 0) {
             // Output values are always encoded in the output dialect.
@@ -576,8 +576,8 @@ std::string const Editor::get(int i, bool decode) const {
     if (i < 0 || i >= _numInputFields) {
         throw std::runtime_error("Invalid input field.");
     }
-    Field const &f = _fields[i];
-    char const *val = f.inputValue;
+    Field const& f = _fields[i];
+    char const* val = f.inputValue;
     size_t sz = f.inputSize;
     if (decode) {
         if (_inputDialect.isNull(val, sz)) {
@@ -594,22 +594,22 @@ bool Editor::setNull(int i) {
     if (i < 0 || i >= _numFields) {
         return false;
     }
-    Field *f = &_fields[i];
+    Field* f = &_fields[i];
     if (!f->outputValue) {
         return false;
     }
-    std::string const &null = _outputDialect.getNull();
+    std::string const& null = _outputDialect.getNull();
     std::memcpy(f->outputValue, null.data(), null.size());
     f->outputSize = static_cast<uint16_t>(null.size());
     f->flags |= Field::EDITED;
     return true;
 }
 
-bool Editor::set(int i, std::string const &val) {
+bool Editor::set(int i, std::string const& val) {
     if (i < 0 || i >= _numFields) {
         return false;
     }
-    Field *f = &_fields[i];
+    Field* f = &_fields[i];
     if (!f->outputValue) {
         return false;
     }
@@ -622,7 +622,7 @@ bool Editor::set(int i, char c) {
     if (i < 0 || i >= _numFields) {
         return false;
     }
-    Field *f = &_fields[i];
+    Field* f = &_fields[i];
     if (!f->outputValue) {
         return false;
     }
@@ -637,7 +637,7 @@ bool Editor::set(int i, char c) {
         if (i < 0 || i >= _numFields) {                                                                     \
             return false;                                                                                   \
         }                                                                                                   \
-        Field *f = &_fields[i];                                                                             \
+        Field* f = &_fields[i];                                                                             \
         if (!f->outputValue) {                                                                              \
             return false;                                                                                   \
         }                                                                                                   \
@@ -668,7 +668,7 @@ IMPLEMENT_SET(double, .17g)
 #undef IMPLEMENT_SET_IMPL
 #undef IMPLEMENT_SET
 
-void Editor::defineOptions(po::options_description &opts) {
+void Editor::defineOptions(po::options_description& opts) {
     po::options_description in("\\___________ Input CSV format", 80);
     Dialect::defineOptions(in, "in.csv.");
     in.add_options()("in.csv.field", po::value<std::vector<std::string>>(),
@@ -688,38 +688,38 @@ void Editor::defineOptions(po::options_description &opts) {
     opts.add(in).add(out);
 }
 
-void Editor::_initialize(std::vector<std::string> const &inputFieldNames,
-                         std::vector<std::string> const &outputFieldNames) {
+void Editor::_initialize(std::vector<std::string> const& inputFieldNames,
+                         std::vector<std::string> const& outputFieldNames) {
     typedef std::pair<FieldMap::iterator, bool> Mapping;
 
     int i = 0;  // total number of fields
     for (; i < _numInputFields; ++i) {
-        std::string const &name = inputFieldNames[i];
+        std::string const& name = inputFieldNames[i];
         Mapping m = _fieldMap.insert(std::pair<std::string, int>(name, i));
         if (!m.second) {
             throw std::runtime_error(
                     "The input CSV field name list contains "
                     "duplicates.");
         }
-        Field *f = &_fields[i];
+        Field* f = &_fields[i];
         // Before the first readRecord() call, assign NULL to all input
         // fields.
-        std::string const &null = _inputDialect.getNull();
+        std::string const& null = _inputDialect.getNull();
         f->inputValue = null.data();
         f->inputSize = static_cast<uint16_t>(null.size());
     }
     for (int j = 0; j < _numOutputFields; ++j) {
-        std::string const &name = outputFieldNames[j];
+        std::string const& name = outputFieldNames[j];
         Mapping m = _fieldMap.insert(std::pair<std::string, int>(name, i));
         if (m.second) {
             // The output field name does not match any input field. Create
             // a new output field and assign NULL to the output value.
-            Field *f = &_fields[i];
-            f->outputValue = static_cast<char *>(std::malloc(MAX_FIELD_SIZE));
+            Field* f = &_fields[i];
+            f->outputValue = static_cast<char*>(std::malloc(MAX_FIELD_SIZE));
             if (!f->outputValue) {
                 throw std::bad_alloc();
             }
-            std::string const &null = _outputDialect.getNull();
+            std::string const& null = _outputDialect.getNull();
             std::memcpy(f->outputValue, null.data(), null.size());
             f->outputSize = static_cast<uint16_t>(null.size());
             _outputs[j] = i++;
@@ -727,11 +727,11 @@ void Editor::_initialize(std::vector<std::string> const &inputFieldNames,
             // The output field name matched an existing field -
             // make sure space is available for an output value.
             int k = m.first->second;
-            Field *f = &_fields[k];
+            Field* f = &_fields[k];
             if (!f->outputValue) {
                 // f is also an input field, so there is no need
                 // to set an output value here.
-                f->outputValue = static_cast<char *>(std::malloc(MAX_FIELD_SIZE));
+                f->outputValue = static_cast<char*>(std::malloc(MAX_FIELD_SIZE));
                 if (!f->outputValue) {
                     throw std::bad_alloc();
                 }
@@ -748,8 +748,8 @@ bool Editor::_get<bool>(int i) const {
     if (i < 0 || i >= _numInputFields) {
         throw std::runtime_error("Invalid input field");
     }
-    Field const &f = _fields[i];
-    char const *val = f.inputValue;
+    Field const& f = _fields[i];
+    char const* val = f.inputValue;
     size_t sz = f.inputSize;
     if (_inputDialect.isNull(val, sz)) {
         throw std::runtime_error("Input field value is NULL.");
@@ -760,7 +760,7 @@ bool Editor::_get<bool>(int i) const {
         val = buf;
     }
     // Trim leading and trailing whitespace.
-    char const *end = val + sz;
+    char const* end = val + sz;
     for (; val < end && isspace(*val); ++val) {
     }
     for (; end > val && isspace(end[-1]); --end) {
@@ -786,8 +786,8 @@ char Editor::_get<char>(int i) const {
     if (i < 0 || i >= _numInputFields) {
         throw std::runtime_error("Invalid input field");
     }
-    Field const &f = _fields[i];
-    char const *val = f.inputValue;
+    Field const& f = _fields[i];
+    char const* val = f.inputValue;
     size_t sz = f.inputSize;
     if (_inputDialect.isNull(val, sz)) {
         throw std::runtime_error("Input field value is NULL.");
@@ -810,12 +810,12 @@ char Editor::_get<char>(int i) const {
 // converted. This can lead to crashes or incorrect results. For example,
 // consider what happens when the field delimiter is a digit.
 
-Editor::CharConstPtrPair const Editor::_getFieldText(int i, char *buf) const {
+Editor::CharConstPtrPair const Editor::_getFieldText(int i, char* buf) const {
     if (i < 0 || i >= _numInputFields) {
         throw std::runtime_error("Invalid input field");
     }
-    Field const &f = _fields[i];
-    char const *val = f.inputValue;
+    Field const& f = _fields[i];
+    char const* val = f.inputValue;
     size_t sz = f.inputSize;
     if (_inputDialect.isNull(val, sz)) {
         throw std::runtime_error("Input field value is NULL.");
@@ -825,7 +825,7 @@ Editor::CharConstPtrPair const Editor::_getFieldText(int i, char *buf) const {
         val = buf;
         buf[sz] = '\0';
     }
-    char const *end = val + sz;
+    char const* end = val + sz;
     for (; val < end && isspace(*val); ++val) {
     }
     for (; end > val && isspace(end[-1]); --end) {
@@ -848,7 +848,7 @@ Editor::CharConstPtrPair const Editor::_getFieldText(int i, char *buf) const {
     U Editor::_get<U>(int i) const {                                             \
         char buf[MAX_FIELD_SIZE + 1];                                            \
         CharConstPtrPair f = _getFieldText(i, buf);                              \
-        char *e = 0;                                                             \
+        char* e = 0;                                                             \
         errno = 0;                                                               \
         V v = strto##suffix(f.first, &e, 10);                                    \
         if (e != f.second) {                                                     \
@@ -865,7 +865,7 @@ Editor::CharConstPtrPair const Editor::_getFieldText(int i, char *buf) const {
     U Editor::_get<U>(int i) const {                                             \
         char buf[MAX_FIELD_SIZE + 1];                                            \
         CharConstPtrPair f = _getFieldText(i, buf);                              \
-        char *e = 0;                                                             \
+        char* e = 0;                                                             \
         U u = strto##suffix(f.first, &e);                                        \
         if (e != f.second) {                                                     \
             throw std::runtime_error("Cannot convert field value to a C++ " #U); \

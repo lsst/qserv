@@ -39,18 +39,18 @@ namespace lsst::partition {
 
 namespace {
 
-typedef std::pair<char *, char *> CharPtrPair;
+typedef std::pair<char*, char*> CharPtrPair;
 
 struct LineFragmentStorage {
     size_t size;
     char buf[MAX_LINE_SIZE];
 
-    LineFragmentStorage(size_t sz, char *b) : size(sz) { std::memcpy(buf, b, sz); }
+    LineFragmentStorage(size_t sz, char* b) : size(sz) { std::memcpy(buf, b, sz); }
 };
 
 // One side of a line split in two by a block boundary.
 struct LineFragment {
-    LineFragmentStorage *data;
+    LineFragmentStorage* data;
 
     LineFragment() : data(0) {}
     ~LineFragment() {
@@ -63,17 +63,17 @@ struct LineFragment {
     // caller is absolved of any responsibility for the line. The second
     // call will fail and return the data stored by the first call. In this
     // case, the caller is responsible for the line.
-    LineFragmentStorage *tryStore(LineFragmentStorage *newval) {
+    LineFragmentStorage* tryStore(LineFragmentStorage* newval) {
         assert(newval != 0);
 #if __GNUC__ && ((__SIZEOF_POINTER__ == 4 && __GCC_HAVE_SYNC_COMPARE_AND_SWAP_4) || \
                  (__SIZEOF_POINTER__ == 8 && __GCC_HAVE_SYNC_COMPARE_AND_SWAP_8))
-        LineFragmentStorage *oldval = 0;
+        LineFragmentStorage* oldval = 0;
         return __sync_val_compare_and_swap(&data, oldval, newval);
 #else
 #warning CAS not supported on this platform - falling back to locking.
         static boost::mutex m;
         boost::lock_guard<boost::mutex> lock(m);
-        LineFragmentStorage *oldval = data;
+        LineFragmentStorage* oldval = data;
         if (oldval == 0) {
             data = newval;
         }
@@ -92,14 +92,14 @@ struct Block {
 
     Block() : file(), offset(0), size(0), head(), tail() {}
 
-    CharPtrPair const read(char *buf, bool skipFirstLine, ConfigParamArrow const &params);
+    CharPtrPair const read(char* buf, bool skipFirstLine, ConfigParamArrow const& params);
 };
 
 // Read a file block and handle the lines crossing its boundaries.
-CharPtrPair const Block::read(char *buf, bool skipFirstLine, ConfigParamArrow const &configArrow) {
+CharPtrPair const Block::read(char* buf, bool skipFirstLine, ConfigParamArrow const& configArrow) {
     // Read into buf, leaving space for a line on either side of the block.
-    char *readBeg = buf + MAX_LINE_SIZE;
-    char *readEnd = readBeg + size;
+    char* readBeg = buf + MAX_LINE_SIZE;
+    char* readEnd = readBeg + size;
 
     // Arrow/Parquet : retrieve the real size of the arrow CSV block
     int bufferSize = 0;
@@ -112,7 +112,7 @@ CharPtrPair const Block::read(char *buf, bool skipFirstLine, ConfigParamArrow co
     // The responsibility for returning a line which crosses the beginning
     // or end of this block lies with the last thread to encounter the
     // line.
-    char *beg = readBeg;
+    char* beg = readBeg;
     if (head || skipFirstLine) {
         // Scan past the first line.
         for (; beg < readEnd && *beg != '\n' && *beg != '\r'; ++beg) {
@@ -137,8 +137,8 @@ CharPtrPair const Block::read(char *buf, bool skipFirstLine, ConfigParamArrow co
             // This is not the first block in the enclosing file. If the
             // initial part of the first line has already been read by the
             // reader of the previous block, return the entire line in buf.
-            LineFragmentStorage *right = new LineFragmentStorage(static_cast<size_t>(beg - readBeg), readBeg);
-            LineFragmentStorage *left = head->tryStore(right);
+            LineFragmentStorage* right = new LineFragmentStorage(static_cast<size_t>(beg - readBeg), readBeg);
+            LineFragmentStorage* left = head->tryStore(right);
             if (left != 0) {
                 beg = readBeg - left->size;
                 std::memcpy(beg, left->buf, left->size);
@@ -146,7 +146,7 @@ CharPtrPair const Block::read(char *buf, bool skipFirstLine, ConfigParamArrow co
             }
         }
     }
-    char *end = readEnd;
+    char* end = readEnd;
     if (tail) {
         // This is not the last block in the enclosing file -
         // scan to the beginning of the last line.
@@ -157,8 +157,8 @@ CharPtrPair const Block::read(char *buf, bool skipFirstLine, ConfigParamArrow co
         }
         // If the trailing part of the last line has already been read by
         // the reader of the following block, return the entire line in buf.
-        LineFragmentStorage *left = new LineFragmentStorage(static_cast<size_t>(readEnd - end), end);
-        LineFragmentStorage *right = tail->tryStore(left);
+        LineFragmentStorage* left = new LineFragmentStorage(static_cast<size_t>(readEnd - end), end);
+        LineFragmentStorage* right = tail->tryStore(left);
         if (right != 0) {
             std::memcpy(readEnd, right->buf, right->size);
             end = readEnd + right->size;
@@ -169,7 +169,7 @@ CharPtrPair const Block::read(char *buf, bool skipFirstLine, ConfigParamArrow co
 }
 
 // Split a file into a series of blocks.
-std::vector<Block> const split(fs::path const &path, off_t blockSize) {
+std::vector<Block> const split(fs::path const& path, off_t blockSize) {
     std::vector<Block> blocks;
     Block b;
 
@@ -220,9 +220,9 @@ std::vector<Block> const split(fs::path const &path, off_t blockSize) {
 
 class InputLines::Impl {
 public:
-    Impl(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine);
-    Impl(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine,
-         ConfigParamArrow const &config);
+    Impl(std::vector<fs::path> const& paths, size_t blockSize, bool skipFirstLine);
+    Impl(std::vector<fs::path> const& paths, size_t blockSize, bool skipFirstLine,
+         ConfigParamArrow const& config);
     ~Impl() {}
 
     size_t getBlockSize() const { return _blockSize; }
@@ -232,13 +232,13 @@ public:
         return _blockCount == 0;
     }
 
-    CharPtrPair const read(char *buf);
+    CharPtrPair const read(char* buf);
 
 private:
     BOOST_STATIC_ASSERT(MAX_LINE_SIZE < 1 * MiB);
 
-    Impl(Impl const &);
-    Impl &operator=(Impl const &);
+    Impl(Impl const&);
+    Impl& operator=(Impl const&);
 
     size_t const _blockSize;
     bool const _skipFirstLine;
@@ -254,7 +254,7 @@ private:
     char _pad1[CACHE_LINE_SIZE];
 };
 
-InputLines::Impl::Impl(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine)
+InputLines::Impl::Impl(std::vector<fs::path> const& paths, size_t blockSize, bool skipFirstLine)
         : _blockSize(std::min(std::max(blockSize, 1 * MiB), 1 * GiB)),
           _skipFirstLine(skipFirstLine),
           _configArrow(ConfigParamArrow()),
@@ -263,8 +263,8 @@ InputLines::Impl::Impl(std::vector<fs::path> const &paths, size_t blockSize, boo
           _queue(),
           _paths(paths) {}
 
-InputLines::Impl::Impl(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine,
-                       ConfigParamArrow const &config)
+InputLines::Impl::Impl(std::vector<fs::path> const& paths, size_t blockSize, bool skipFirstLine,
+                       ConfigParamArrow const& config)
         : _blockSize(std::min(std::max(blockSize, 1 * MiB), 1 * GiB)),
           _skipFirstLine(skipFirstLine),
           _configArrow(config),
@@ -273,7 +273,7 @@ InputLines::Impl::Impl(std::vector<fs::path> const &paths, size_t blockSize, boo
           _queue(),
           _paths(paths) {}
 
-CharPtrPair const InputLines::Impl::read(char *buf) {
+CharPtrPair const InputLines::Impl::read(char* buf) {
     boost::unique_lock<boost::mutex> lock(_mutex);
     while (_blockCount > 0) {
         if (!_queue.empty()) {
@@ -318,16 +318,16 @@ CharPtrPair const InputLines::Impl::read(char *buf) {
         }
     }
     // All lines have been read.
-    return CharPtrPair(static_cast<char *>(0), static_cast<char *>(0));
+    return CharPtrPair(static_cast<char*>(0), static_cast<char*>(0));
 }
 
 // Method delegation.
 
-InputLines::InputLines(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine)
+InputLines::InputLines(std::vector<fs::path> const& paths, size_t blockSize, bool skipFirstLine)
         : _impl(std::make_shared<Impl>(paths, blockSize, skipFirstLine)) {}
 
-InputLines::InputLines(std::vector<fs::path> const &paths, size_t blockSize, bool skipFirstLine,
-                       ConfigParamArrow const &configArrow)
+InputLines::InputLines(std::vector<fs::path> const& paths, size_t blockSize, bool skipFirstLine,
+                       ConfigParamArrow const& configArrow)
         : _impl(std::make_shared<Impl>(paths, blockSize, skipFirstLine, configArrow)) {}
 
 size_t InputLines::getBlockSize() const { return _impl ? _impl->getBlockSize() : 0; }
@@ -336,11 +336,11 @@ size_t InputLines::getMinimumBufferCapacity() const { return _impl ? _impl->getM
 
 bool InputLines::empty() const { return _impl ? _impl->empty() : true; }
 
-CharPtrPair const InputLines::read(char *buf) {
+CharPtrPair const InputLines::read(char* buf) {
     if (_impl) {
         return _impl->read(buf);
     }
-    return CharPtrPair(static_cast<char *>(0), static_cast<char *>(0));
+    return CharPtrPair(static_cast<char*>(0), static_cast<char*>(0));
 }
 
 }  // namespace lsst::partition

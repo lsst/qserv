@@ -50,8 +50,8 @@ struct ConfigParamArrow {
     std::string str_escape;
     bool quote = false;
 
-    ConfigParamArrow(std::vector<std::string> const &columns, std::set<std::string> const &optionalColumns,
-                     std::string const &vnull, std::string const &vdelimiter, std::string const &vescape,
+    ConfigParamArrow(std::vector<std::string> const& columns, std::set<std::string> const& optionalColumns,
+                     std::string const& vnull, std::string const& vdelimiter, std::string const& vescape,
                      bool vquote)
             : columns(columns),
               optionalColumns(optionalColumns),
@@ -61,8 +61,8 @@ struct ConfigParamArrow {
               quote(vquote) {}
 
     ConfigParamArrow() = default;
-    ConfigParamArrow(const ConfigParamArrow &v) = default;
-    ConfigParamArrow &operator=(const ConfigParamArrow &) = delete;
+    ConfigParamArrow(const ConfigParamArrow& v) = default;
+    ConfigParamArrow& operator=(const ConfigParamArrow&) = delete;
 };
 
 typedef struct ConfigParamArrow ConfigParamArrow;
@@ -70,25 +70,25 @@ typedef struct ConfigParamArrow ConfigParamArrow;
 /// An input file. Safe for use from multiple threads.
 class InputFile {
 public:
-    explicit InputFile(boost::filesystem::path const &path);
+    explicit InputFile(boost::filesystem::path const& path);
     virtual ~InputFile();
 
     // Disable copy construction and assignment.
-    InputFile(InputFile const &) = delete;
-    InputFile &operator=(InputFile const &) = delete;
+    InputFile(InputFile const&) = delete;
+    InputFile& operator=(InputFile const&) = delete;
 
     /// Return the size of the input file.
     off_t size() const { return _sz; }
 
     /// Return the path of the input file.
-    boost::filesystem::path const &path() const { return _path; }
+    boost::filesystem::path const& path() const { return _path; }
 
     // Needed in derived class InputFileArrow
     virtual int getBatchNumber() const { return -1; }
 
     /// Read a range of bytes into `buf`.
-    void read(void *buf, off_t off, size_t sz) const;
-    virtual void read(void *buf, off_t off, size_t sz, int &bufferSize, ConfigParamArrow const &params) const;
+    void read(void* buf, off_t off, size_t sz) const;
+    virtual void read(void* buf, off_t off, size_t sz, int& bufferSize, ConfigParamArrow const& params) const;
 
 private:
     mutable char _msg[1024];
@@ -100,18 +100,18 @@ private:
 
 class InputFileArrow : public InputFile {
 public:
-    InputFileArrow(boost::filesystem::path const &path, off_t blockSize);
+    InputFileArrow(boost::filesystem::path const& path, off_t blockSize);
     virtual ~InputFileArrow();
 
     // Disable copy construction and assignment.
-    InputFileArrow(InputFileArrow const &) = delete;
-    InputFileArrow &operator=(InputFileArrow const &) = delete;
+    InputFileArrow(InputFileArrow const&) = delete;
+    InputFileArrow& operator=(InputFileArrow const&) = delete;
 
     virtual int getBatchNumber() const override;
 
     /// Read a range of bytes into `buf`.
-    virtual void read(void *buf, off_t off, size_t sz, int &bufferSize,
-                      ConfigParamArrow const &params) const override;
+    virtual void read(void* buf, off_t off, size_t sz, int& bufferSize,
+                      ConfigParamArrow const& params) const override;
 
 private:
     mutable char _msg[1024];
@@ -130,18 +130,18 @@ public:
     /// Open the given file for writing, creating it if necessary.
     /// Setting `truncate` to true will cause the file to be overwritten
     /// if it already exists.
-    OutputFile(boost::filesystem::path const &path, bool truncate);
+    OutputFile(boost::filesystem::path const& path, bool truncate);
     ~OutputFile();
 
     // Disable copy construction and assignment.
-    OutputFile(OutputFile const &) = delete;
-    OutputFile &operator=(OutputFile const &) = delete;
+    OutputFile(OutputFile const&) = delete;
+    OutputFile& operator=(OutputFile const&) = delete;
 
     /// Return the path of the output file.
-    boost::filesystem::path const &path() const { return _path; }
+    boost::filesystem::path const& path() const { return _path; }
 
     /// Append `size` bytes from `buf` to the file.
-    void append(void const *buf, size_t size);
+    void append(void const* buf, size_t size);
 
 private:
     mutable char _msg[1024];
@@ -159,33 +159,33 @@ public:
     ~BufferedAppender();
 
     /// Append `size` bytes from `buf` to the currently open file.
-    void append(void const *buf, size_t size);
+    void append(void const* buf, size_t size);
 
     /// Is there a currently open file? If not, calling `append()` is forbidden.
     bool isOpen() const { return _file != 0; }
 
     /// Close the currently open file and open a new one.
-    void open(boost::filesystem::path const &path, bool truncate);
+    void open(boost::filesystem::path const& path, bool truncate);
 
     /// Write any buffered data to the currently open file and close it.
     void close();
 
 private:
     // Disable copy-construction and assignment.
-    BufferedAppender(BufferedAppender const &);
-    BufferedAppender &operator=(BufferedAppender const &);
+    BufferedAppender(BufferedAppender const&);
+    BufferedAppender& operator=(BufferedAppender const&);
 
-    uint8_t *_buf;
-    uint8_t *_end;
-    uint8_t *_cur;
-    OutputFile *_file;
+    uint8_t* _buf;
+    uint8_t* _end;
+    uint8_t* _cur;
+    OutputFile* _file;
 };
 
 // TODO(smm): the functions below should be moved to their own header.
 
 /// Encode a 32 bit integer as a little-endian sequence of 4 bytes. Return
 /// `buf + 4`.
-inline uint8_t *encode(uint8_t *buf, uint32_t x) {
+inline uint8_t* encode(uint8_t* buf, uint32_t x) {
     buf[0] = static_cast<uint8_t>(x & 0xff);
     buf[1] = static_cast<uint8_t>((x >> 8) & 0xff);
     buf[2] = static_cast<uint8_t>((x >> 16) & 0xff);
@@ -194,7 +194,7 @@ inline uint8_t *encode(uint8_t *buf, uint32_t x) {
 }
 /// Encode a 64 bit integer as a little-endian sequence of 8 bytes. Return
 /// `buf + 8`.
-inline uint8_t *encode(uint8_t *buf, uint64_t x) {
+inline uint8_t* encode(uint8_t* buf, uint64_t x) {
     buf[0] = static_cast<uint8_t>(x & 0xff);
     buf[1] = static_cast<uint8_t>((x >> 8) & 0xff);
     buf[2] = static_cast<uint8_t>((x >> 16) & 0xff);
@@ -207,18 +207,18 @@ inline uint8_t *encode(uint8_t *buf, uint64_t x) {
 }
 
 template <typename T>
-inline T decode(uint8_t const *) {
+inline T decode(uint8_t const*) {
     BOOST_STATIC_ASSERT(sizeof(T) == 0);
 }
 /// Decode a little-endian sequence of 4 bytes to a 32-bit integer.
 template <>
-inline uint32_t decode<uint32_t>(uint8_t const *buf) {
+inline uint32_t decode<uint32_t>(uint8_t const* buf) {
     return static_cast<uint32_t>(buf[0]) | (static_cast<uint32_t>(buf[1]) << 8) |
            (static_cast<uint32_t>(buf[2]) << 16) | (static_cast<uint32_t>(buf[3]) << 24);
 }
 /// Decode a little-endian sequence of 8 bytes to a 64-bit integer.
 template <>
-inline uint64_t decode<uint64_t>(uint8_t const *buf) {
+inline uint64_t decode<uint64_t>(uint8_t const* buf) {
     return static_cast<uint64_t>(buf[0]) | (static_cast<uint64_t>(buf[1]) << 8) |
            (static_cast<uint64_t>(buf[2]) << 16) | (static_cast<uint64_t>(buf[3]) << 24) |
            (static_cast<uint64_t>(buf[4]) << 32) | (static_cast<uint64_t>(buf[5]) << 40) |

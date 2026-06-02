@@ -83,11 +83,9 @@ void UserQueryAsyncResult::submit() {
 
     // Presently we cannot return query results that originated from different czar
     if (_qInfo.czarId() != _czarId) {
-        // TODO: tell user which czar was it?
-        std::string message = "Query originated from different czar";
-        LOGS(_log, LOG_LVL_WARN, "UserQueryAsyncResult::submit giving up, message=" << message);
-        _messageStore->addErrorMessage("SYSTEM", message);
-        return;
+        LOGS(_log, LOG_LVL_WARN,
+             "UserQueryAsyncResult::submit Query originated from different czar=" << _qInfo.czarId()
+                                                                                  << " expected=" << _czarId);
     }
 
     // TODO: check user name, does not matter now as we are not keeping tack of users.
