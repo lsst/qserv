@@ -109,23 +109,27 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery,
         return;
     }
 
-    auto msgStore = userQuery->getMessageStore();
     int completeCount = 0;
     int cancelCount = 0;
     std::string multiErrStr = "";
     std::string severity = (querySuccess) ? "INFO" : "ERROR";
 
     // Collect information about the query and put it in the message table.
-    int msgCount = msgStore->messageCount();
-    for (int i = 0; i != msgCount; ++i) {
-        const qmeta::QueryMessage& qm = msgStore->getMessage(i);
-        std::string src = qm.msgSource;
-        if (src == "COMPLETE") {
-            ++completeCount;
-        } else if (src == "CANCEL") {
-            ++cancelCount;
-        } else if (src == "MULTIERROR") {
-            multiErrStr += qm.description + "\n";
+    {
+        auto msgStore = userQuery->getMessageStore();
+        if (msgStore != nullptr) {
+            int msgCount = msgStore->messageCount();
+            for (int i = 0; i != msgCount; ++i) {
+                const qmeta::QueryMessage& qm = msgStore->getMessage(i);
+                std::string src = qm.msgSource;
+                if (src == "COMPLETE") {
+                    ++completeCount;
+                } else if (src == "CANCEL") {
+                    ++cancelCount;
+                } else if (src == "MULTIERROR") {
+                    multiErrStr += qm.description + "\n";
+                }
+            }
         }
     }
     std::string cMsg("Completed chunks=");
