@@ -59,12 +59,16 @@ public:
     /// Create and lock the table
     void lock();
 
-    /// Release lock on message table so that proxy can proceed
+    /// Release lock on message table so that proxy can proceed. This will also
+    /// try to store messages in the message table before unlocking,
+    /// see _saveQueryMessages.
     void unlock(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess);
 
 protected:
 private:
-    /// store all messages from current session to the table
+    /// This will try to store messages in the message table.
+    /// If `querySuccess` is false, at least one message with severity ERROR will be
+    /// added to the table.
     void _saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery, bool querySuccess);
 
     std::string const _tableName;
