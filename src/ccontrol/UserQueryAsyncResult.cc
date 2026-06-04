@@ -36,6 +36,8 @@
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
 
+using namespace std;
+
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryAsyncResult");
 }
@@ -115,58 +117,53 @@ void UserQueryAsyncResult::submit() {
     auto const czarConfig = cconfig::CzarConfig::instance();
     auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
     sql::SqlErrorObject sqlErrObj;
-    if (!resultDbConn->tableExists(_qInfo.msgTableName(), sqlErrObj) or
-        !resultDbConn->tableExists(resultTableName, sqlErrObj)) {
-        std::string message = "Result or message table does not exist, result is likely expired.";
-        LOGS(_log, LOG_LVL_DEBUG, message);
+
+    if (!resultDbConn->tableExists(resultTableName, sqlErrObj)) {
+        string message = "Result table does not exist, result is likely expired.";
+        LOGS(_log, LOG_LVL_INFO,
+             message << " msgTable=" << _qInfo.msgTableName() << " resultTable=" << resultTableName);
         _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }
 
-    // all checks are OK, copy message table from original query
-    // into the message store, at this point original result table must be unlocked
-    std::string query = "SELECT chunkId, code, message, severity, timeStamp FROM " + _qInfo.msgTableName();
-    sql::SqlResults sqlResults;
-    if (!resultDbConn->runQuery(query, sqlResults, sqlErrObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to retrieve message table data: " << sqlErrObj.errMsg());
-        std::string message = "Failed to retrieve message table data.";
-        _messageStore->addErrorMessage("SYSTEM_SQL", message);
-        return;
-    }
-
-    // copy messages
-    int count = 0;
-    for (auto&& row : sqlResults) {
-        try {
-            int chunkId = boost::lexical_cast<int>(row[0].first);
-            int code = boost::lexical_cast<int>(row[1].first);
-            std::string message = row[2].first;
-            std::string sevStr = row[3].first;
-            int64_t timestampMilli = boost::lexical_cast<double>(row[4].first);
-            MessageSeverity sev = sevStr == "INFO" ? MSG_INFO : MSG_ERROR;
-            qmeta::JobStatus::Clock::duration duration = std::chrono::milliseconds(timestampMilli);
-            qmeta::JobStatus::TimeType timestamp(duration);
-            _messageStore->addMessage(chunkId, "DUPLICATE", code, message, sev, timestamp);
-        } catch (std::exception const& exc) {
-            LOGS(_log, LOG_LVL_ERROR, "Error reading message table data: " << exc.what());
-            std::string message = "Error reading message table data.";
-            _messageStore->addErrorMessage("SYSTEM", message);
+    if (resultDbConn->tableExists(_qInfo.msgTableName(), sqlErrObj)) {
+        // all checks are OK, copy message table from original query
+        // into the message store, at this point original result table must be unlocked
+        std::string query =
+                "SELECT chunkId, code, message, severity, timeStamp FROM " + _qInfo.msgTableName();
+        sql::SqlResults sqlResults;
+        if (!resultDbConn->runQuery(query, sqlResults, sqlErrObj)) {
+            LOGS(_log, LOG_LVL_ERROR, "Failed to retrieve message table data: " << sqlErrObj.errMsg());
+            std::string message = "Failed to retrieve message table data.";
+            _messageStore->addErrorMessage("SYSTEM_SQL", message);
             return;
         }
-        ++count;
-    }
-    LOGS(_log, LOG_LVL_DEBUG, "Copied " << count << " messages from " << _qInfo.msgTableName());
 
-    // Original message table is not useful any more because the result table
-    // will be deleted by proxy anyways. Until we have better lifetime management
-    // of results I'm going to drop this table now, meaning result can be only
-    // retrieved once.
-    query = "DROP TABLE " + _qInfo.msgTableName();
-    if (!resultDbConn->runQuery(query, sqlErrObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to drop message table: " << sqlErrObj.errMsg());
-        // Users do not care about this error, so don't send it upstream.
+        // copy messages
+        int count = 0;
+        for (auto&& row : sqlResults) {
+            try {
+                int chunkId = boost::lexical_cast<int>(row[0].first);
+                int code = boost::lexical_cast<int>(row[1].first);
+                std::string message = row[2].first;
+                std::string sevStr = row[3].first;
+                int64_t timestampMilli = boost::lexical_cast<double>(row[4].first);
+                MessageSeverity sev = sevStr == "INFO" ? MSG_INFO : MSG_ERROR;
+                qmeta::JobStatus::Clock::duration duration = std::chrono::milliseconds(timestampMilli);
+                qmeta::JobStatus::TimeType timestamp(duration);
+                _messageStore->addMessage(chunkId, "SYSTEM", code, message, sev, timestamp);
+            } catch (std::exception const& exc) {
+                LOGS(_log, LOG_LVL_ERROR, "Error reading message table data: " << exc.what());
+                std::string message = "Error reading message table data.";
+                _messageStore->addErrorMessage("SYSTEM", message);
+                return;
+            }
+            ++count;
+        }
+        LOGS(_log, LOG_LVL_DEBUG, "Copied " << count << " messages from " << _qInfo.msgTableName());
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Deleted message table " << _qInfo.msgTableName());
+        LOGS(_log, LOG_LVL_WARN,
+             "Message table " << _qInfo.msgTableName() << " does not exist, skipping message copy");
     }
 
     // done
