@@ -369,12 +369,9 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
         LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
         uq->submit();
         ccontrol::QueryState qState = uq->join();
-        // TODO: try to get the _messageStore error in the message table.
-        //       See UserQuerySelect::_qMetaUpdateMessages(). That should probably be moveded
-        //       to UserQuery, give everything a default _queryId of -1 or 0 until the value can be
-        //       set properly. Also, should this only be done when a query fails?
         bool querySuccess = (qState == ccontrol::QueryState::SUCCESS);
         try {
+            // This will try to save messages to the message table before unlocking.
             msgTable.unlock(uq, querySuccess);
             if (uq) uq->discard();
         } catch (std::exception const& exc) {
