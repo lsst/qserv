@@ -64,14 +64,17 @@ data:
     username = qsmaster
     password = file:/secrets/worker/mariadb-qsmaster-password
 
+    [czar]
+    ComNumHttpThreads = 100
+
     [scheduler]
-    thread_pool_size = 20
+    thread_pool_size = 70
     required_tasks_completed = 1
-    group_size = 10
-    maxActiveChunks_snail = 1
-    maxActiveChunks_slow = 4
-    maxActiveChunks_med = 4
-    maxActiveChunks_fast = 4
+    group_size = 20
+    maxActiveChunks_snail = 2
+    maxActiveChunks_slow = 6
+    maxActiveChunks_med = 6
+    maxActiveChunks_fast = 6
 
     [sqlconnections]
     maxsqlconn = 980
@@ -79,7 +82,7 @@ data:
 
     [results]
     dirname = /qserv/data/results
-    num_http_threads = 4
+    num_http_threads = 6
     clean_up_on_start = 1
 
     [replication]

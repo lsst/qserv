@@ -95,6 +95,7 @@ json HttpWorkerCzarModule::executeImpl(string const& subModuleName) {
     string const func = string(__func__) + "[sub-module='" + subModuleName + "']";
     enforceInstanceId(func, wconfig::WorkerConfig::instance()->replicationInstanceId());
     enforceWorkerId(func);
+    util::InstanceCount ic(string("HWoCz::execI:&&&:") + subModuleName);
     if (subModuleName == "/queryjob") return _queryJob();
     if (subModuleName == "/querystatus") return _queryStatus();
     if (subModuleName == "/chunkusecounts") return _chunkUseCounts();
