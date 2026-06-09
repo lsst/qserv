@@ -90,9 +90,12 @@ data:
     qMetaSecsBetweenChunkCompletionUpdates = 10
 
     [qdisppool]
-    poolSize = 250
+    poolSize = 800
     largestPriority = 3
-    vectRunSizes = 200:200:50:50
+    vectRunSizes = 700:700:100:90
+
+    [uberjob]
+    maxChunks = 1000
 
     [familymap]
     usingChunkSize = 1

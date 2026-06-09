@@ -35,6 +35,7 @@
 #include "sql/SqlConnection.h"
 #include "sql/SqlConnectionFactory.h"
 #include "sql/SqlResults.h"
+#include "util/InstanceCount.h"  //&&&
 
 using namespace std;
 
@@ -74,6 +75,7 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, CzarId czarId,
 }
 
 void UserQueryAsyncResult::submit() {
+    util::InstanceCount ic("UserQueryAsyncResult::submit&&&");
     _qState = ERROR;
 
     // if there are messages already it means the error was detected, stop right here

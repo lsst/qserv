@@ -212,6 +212,7 @@ string UserQuerySelect::getResultQuery() const {
 }
 
 void UserQuerySelect::submit() {
+    util::InstanceCount ic("UserQuerySelect::submit&&&");
     auto exec = _executive;
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::submit() executive is null at start");
