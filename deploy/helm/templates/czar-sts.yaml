@@ -149,8 +149,8 @@ spec:
               --password=$(cat /secrets/czar/mariadb-qsmaster-password)
               --config=/config/qserv-czar.cfg
               --port=4048
-              --threads=16
-              --worker-ingest-threads=16
+              --threads=100
+              --worker-ingest-threads=100
               --ssl-cert-file=/certs/czar/tls.crt
               --ssl-private-key-file=/certs/czar/tls.key
               --tmp-dir=/qserv/data/ingest

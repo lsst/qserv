@@ -54,10 +54,14 @@ void InstanceCount::_increment(std::string const& source) {
     auto ret = _icData._instances.insert(entry);
     auto iter = ret.first;
     iter->second += 1;
+#if 0  //&&&
     LOGS(_log, LOG_LVL_TRACE, "InstanceCount " << source << " " << iter->first << "=" << iter->second);
     if ((++(_icData._instanceLogLimiter)) % 10000 == 0) {
         LOGS(_log, LOG_LVL_DEBUG, "InstanceCount brief " << *this << " icD=" << (void*)(&_icData));
     }
+#else  //&&&
+    LOGS(_log, LOG_LVL_WARN, "&&& InstanceCount " << source << " " << iter->first << "=" << iter->second);
+#endif  //&&&
 }
 
 InstanceCount::~InstanceCount() {
@@ -78,11 +82,17 @@ InstanceCount::~InstanceCount() {
         iter->second -= 1;
         LOGS(_log, LOG_LVL_TRACE, "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
         int sec = iter->second;
+#if 0  //&&&
         if (sec == 0 || (sec <= 100000 && sec % 1000 == 0) || (sec > 100000 && sec % 100000 == 0)) {
             LOGS(_log, LOG_LVL_DEBUG,
                  "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this
                                    << " icD=" << (void*)(&_icData));
         }
+#else  //&&&
+        LOGS(_log, LOG_LVL_WARN,
+             "&&& ~InstanceCount " << iter->first << "=" << iter->second << " : " << *this
+                                   << " icD=" << (void*)(&_icData));
+#endif  //&&&
         if (sec == 0) {
             _icData._instances.erase(iter);
         }
