@@ -207,13 +207,12 @@ void QueryStatistics::setQueryBooted(bool booted, TIMEPOINT now) {
     _queryBootedTime = now;
 }
 
-bool QueryStatistics::addTaskCompleted(TIMEPOINT const now, double const taskDuration) {
+void QueryStatistics::addTaskCompleted(TIMEPOINT const now, double const taskDuration) {
     lock_guard<mutex> gs(_qStatsMtx);
     _touched = now;
     _tasksRunning -= 1;
     _tasksCompleted += 1;
     _totalTimeMinutes += taskDuration;
-    return _isMostlyDead();
 }
 
 vector<wbase::Task::Ptr> QueryStatistics::getRunningTasks() const {

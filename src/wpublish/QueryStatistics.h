@@ -78,6 +78,12 @@ public:
 
     void setQueryBooted(bool booted, TIMEPOINT now);
 
+    /// Return true if all tasks are completed.
+    bool isMostlyDead() const {
+        std::lock_guard<std::mutex> gs(_qStatsMtx);
+        return _isMostlyDead();
+    }
+
     /// Add statistics related to the running of the query in the task.
     /// If there are subchunks in the user query, several Tasks may be needed for one chunk.
     /// @param runTimeSeconds - How long it took to run the query.
@@ -98,7 +104,7 @@ public:
 
     void addTask(TIMEPOINT const now);
     void addTaskRunning(TIMEPOINT const now);
-    bool addTaskCompleted(TIMEPOINT const now, double const taskDuration);
+    void addTaskCompleted(TIMEPOINT const now, double const taskDuration);
     void addTaskBooted() {
         std::lock_guard<std::mutex> guard(_qStatsMtx);
         _tasksBooted += 1;
