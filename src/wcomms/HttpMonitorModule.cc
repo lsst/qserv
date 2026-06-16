@@ -61,7 +61,6 @@ json HttpMonitorModule::executeImpl(string const& subModuleName) {
     debug(func);
     enforceInstanceId(func, wconfig::WorkerConfig::instance()->replicationInstanceId());
     enforceWorkerId(func);
-    util::InstanceCount ic(string("HMonitor::execI:&&&:") + subModuleName);
     if (subModuleName == "CONFIG")
         return _config();
     else if (subModuleName == "MYSQL")

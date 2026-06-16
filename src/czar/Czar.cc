@@ -268,7 +268,6 @@ Czar::~Czar() {
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
     LOGS(_log, LOG_LVL_DEBUG, "New query: " << query << ", hints: " << util::printable(hints));
-    util::InstanceCount ic("Czar::submitQuery&&&");
 
     util::ConfigStore hintsConfigStore(hints);
 
