@@ -445,7 +445,6 @@ void QueriesAndChunks::buildCancelledAndDeletedLists(
 nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSelector) const {
     nlohmann::json status = nlohmann::json::object();
     {
-        util::InstanceCount icA("QandC::statToJ-lck1 &&&");
         auto bSched = _blendSched.lock();
         if (bSched == nullptr) {
             LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
@@ -455,17 +454,19 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
         }
     }
     /// TODO: This just shouldn't be a part of this at all. It's accrues data over time
-    ///       so frequent updates don't help and it's big.
+    ///       so frequent updates don't help and it's big. "histograms" is the worst offender,
+    ///       a similar argument could be made for "tasks". DM-55247
     status["query_stats"] = nlohmann::json::object();
-    if (false) {
-        util::InstanceCount icB("QandC::statToJ-lck12 &&&");
-        lock_guard<mutex> g(_queryStatsMapMtx);
-        for (auto&& itr : _queryStatsMap) {
-            string const qId = to_string(itr.first);  // forcing string type for the json object key
-            QueryStatistics::Ptr const& qStats = itr.second;
+    lock_guard<mutex> g(_queryStatsMapMtx);
+    for (auto&& itr : _queryStatsMap) {
+        string const qId = to_string(itr.first);  // forcing string type for the json object key
+        QueryStatistics::Ptr const& qStats = itr.second;
+        if (false) {
             status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
-            status["query_stats"][qId]["tasks"] = qStats->getJsonTasks(taskSelector);
+        } else {
+            status["query_stats"][qId]["histograms"] = nlohmann::json::object();
         }
+        status["query_stats"][qId]["tasks"] = qStats->getJsonTasks(taskSelector);
     }
     return status;
 }
