@@ -249,10 +249,8 @@ void QueriesAndChunks::removeDead() {
             if (statPtr->isDead(_deadAfter, now)) {
                 LOGS(_log, LOG_LVL_TRACE, "QueriesAndChunks::removeDead added to list");
                 deadList.push_back(statPtr);
-                iter = _deadQueries.erase(iter);
-            } else {
-                ++iter;
             }
+            iter = _deadQueries.erase(iter);
         }
     }
 
@@ -264,10 +262,8 @@ void QueriesAndChunks::removeDead() {
     {
         lock_guard<mutex> g(_queryStatsMapMtx);
         lock_guard<mutex> gd(_deadMtx);
-        for (auto const& elem : _queryStatsMap) {
-            auto const& statPtr = elem.second;
+        for (auto const& [qId, statPtr] : _queryStatsMap) {
             if (statPtr->isMostlyDead()) {
-                QueryId qId = statPtr->getQueryId();
                 _deadQueries[qId] = statPtr;
             }
         }
@@ -458,9 +454,8 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
     ///       a similar argument could be made for "tasks". DM-55247
     status["query_stats"] = nlohmann::json::object();
     lock_guard<mutex> g(_queryStatsMapMtx);
-    for (auto&& itr : _queryStatsMap) {
-        string const qId = to_string(itr.first);  // forcing string type for the json object key
-        QueryStatistics::Ptr const& qStats = itr.second;
+    for (auto const& [queryId, qStats] : _queryStatsMap) {
+        string const qId = to_string(queryId);  // forcing string type for the json object key
         if (false) {
             status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
         } else {

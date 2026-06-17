@@ -50,8 +50,15 @@ class UserQueryInfo;
 // This header declarations
 namespace lsst::qserv::wpublish {
 
-/// Statistics for a single user query.
-/// This class stores some statistics for each Task in the user query on this worker.
+/// Statistics and information for a single user query.
+/// This class stores some statistics for each Task in the user query on this worker
+/// as well as information for the query as a whole, including cancellation status.
+/// It has a complicated life cycle in that it will live on for a while even after
+/// all Tasks are completed. This allows the data to be accessed for a while after
+/// the query is done and that the data can be used with new incoming UberJobs.
+/// Late arriving UberJobs can be caused by network issues or a different worker
+/// dying and work being redistributed.
+/// Please see isMostlyDead(), isDead(), and QueriesAndChunks::removeDead().
 class QueryStatistics {
 public:
     using Ptr = std::shared_ptr<QueryStatistics>;
