@@ -244,6 +244,9 @@ public:
 
     std::vector<wbase::Task::Ptr> removeQueryFrom(QueryId const& qId,
                                                   std::shared_ptr<wsched::SchedulerBase> const& sched);
+
+    /// Identify and remove dead QueryStatistics objects from the map.
+    /// Please see QueryStatistics for more information about its life cycle.
     void removeDead();
     void removeDead(QueryStatistics::Ptr const& queryStats);
 
