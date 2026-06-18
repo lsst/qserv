@@ -50,8 +50,15 @@ class UserQueryInfo;
 // This header declarations
 namespace lsst::qserv::wpublish {
 
-/// Statistics for a single user query.
-/// This class stores some statistics for each Task in the user query on this worker.
+/// Statistics and information for a single user query.
+/// This class stores some statistics for each Task in the user query on this worker
+/// as well as information for the query as a whole, including cancellation status.
+/// It has a complicated life cycle in that it will live on for a while even after
+/// all Tasks are completed. This allows the data to be accessed for a while after
+/// the query is done and that the data can be used with new incoming UberJobs.
+/// Late arriving UberJobs can be caused by network issues or a different worker
+/// dying and work being redistributed.
+/// Please see isMostlyDead(), isDead(), and QueriesAndChunks::removeDead().
 class QueryStatistics {
 public:
     using Ptr = std::shared_ptr<QueryStatistics>;
@@ -78,6 +85,12 @@ public:
 
     void setQueryBooted(bool booted, TIMEPOINT now);
 
+    /// Return true if all tasks are completed.
+    bool isMostlyDead() const {
+        std::lock_guard<std::mutex> gs(_qStatsMtx);
+        return _isMostlyDead();
+    }
+
     /// Add statistics related to the running of the query in the task.
     /// If there are subchunks in the user query, several Tasks may be needed for one chunk.
     /// @param runTimeSeconds - How long it took to run the query.
@@ -98,7 +111,7 @@ public:
 
     void addTask(TIMEPOINT const now);
     void addTaskRunning(TIMEPOINT const now);
-    bool addTaskCompleted(TIMEPOINT const now, double const taskDuration);
+    void addTaskCompleted(TIMEPOINT const now, double const taskDuration);
     void addTaskBooted() {
         std::lock_guard<std::mutex> guard(_qStatsMtx);
         _tasksBooted += 1;

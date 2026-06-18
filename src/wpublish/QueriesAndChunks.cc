@@ -198,11 +198,7 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
     QueryId qId = task->getQueryId();
     QueryStatistics::Ptr stats = getStats(qId);
     if (stats != nullptr) {
-        bool mostlyDead = stats->addTaskCompleted(now, taskDuration);
-        if (mostlyDead) {
-            lock_guard<mutex> gd(_newlyDeadMtx);
-            (*_newlyDeadQueries)[qId] = stats;
-        }
+        stats->addTaskCompleted(now, taskDuration);
     }
     if (task->isBooted()) {
         // _bootedTaskTracker is only interested in system load.
@@ -210,7 +206,6 @@ void QueriesAndChunks::finishedTask(wbase::Task::Ptr const& task) {
         // on system load and needs to be removed from the tracker.
         _bootedTaskTracker.removeTask(task);
     }
-
     _finishedTaskForChunk(task, taskDuration);
 }
 
@@ -239,43 +234,45 @@ ChunkStatistics::Ptr QueriesAndChunks::getChunkStatistics(int chunkId) {
 
 /// Go through the list of possibly dead queries and remove those that are too old.
 void QueriesAndChunks::removeDead() {
-    vector<QueryStatistics::Ptr> dList;
+    vector<QueryStatistics::Ptr> deadList;
+    size_t deadQueriesSizeStart = 0;
+    size_t deadQueriesSizeEnd = 0;
+    size_t queryStatsMapSize = 0;
     auto now = chrono::system_clock::now();
     {
-        shared_ptr<DeadQueriesType> newlyDead;
-        {
-            lock_guard<mutex> gnd(_newlyDeadMtx);
-            newlyDead = _newlyDeadQueries;
-            _newlyDeadQueries.reset(new DeadQueriesType);
-        }
-
+        // Remove queries that have not been touched for a while.
         lock_guard<mutex> gd(_deadMtx);
-        // Copy newlyDead into dead.
-        for (auto const& elem : *newlyDead) {
-            _deadQueries[elem.first] = elem.second;
-        }
-        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::removeDead deadQueries size=" << _deadQueries.size());
+        deadQueriesSizeStart = _deadQueries.size();
         auto iter = _deadQueries.begin();
         while (iter != _deadQueries.end()) {
             auto const& statPtr = iter->second;
             if (statPtr->isDead(_deadAfter, now)) {
                 LOGS(_log, LOG_LVL_TRACE, "QueriesAndChunks::removeDead added to list");
-                dList.push_back(statPtr);
-                iter = _deadQueries.erase(iter);
-            } else {
-                ++iter;
+                deadList.push_back(statPtr);
             }
+            iter = _deadQueries.erase(iter);
         }
     }
 
-    for (auto const& dead : dList) {
+    for (auto const& dead : deadList) {
         removeDead(dead);
     }
-    if (LOG_CHECK_LVL(_log, LOG_LVL_DEBUG)) {
-        lock_guard<mutex> gdend(_deadMtx);
-        LOGS(_log, LOG_LVL_DEBUG,
-             "QueriesAndChunks::removeDead end deadQueries size=" << _deadQueries.size());
+
+    /// Find mostly dead queries and add them to the dead map to be checked next time.
+    {
+        lock_guard<mutex> g(_queryStatsMapMtx);
+        lock_guard<mutex> gd(_deadMtx);
+        for (auto const& [qId, statPtr] : _queryStatsMap) {
+            if (statPtr->isMostlyDead()) {
+                _deadQueries[qId] = statPtr;
+            }
+        }
+        deadQueriesSizeEnd = _deadQueries.size();
+        queryStatsMapSize = _queryStatsMap.size();
     }
+    LOGS(_log, LOG_LVL_INFO,
+         "removeDead queryStatsMapSize=" << queryStatsMapSize << " deadQueriesSize start="
+                                         << deadQueriesSizeStart << " end=" << deadQueriesSizeEnd);
 }
 
 /// Remove a statistics for a user query.
@@ -452,11 +449,15 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
             status["blend_scheduler"] = bSched->statusToJsonBlend();
         }
     }
+    /// TODO: This just shouldn't be a part of this at all. It's accrues data over time
+    ///       so frequent updates don't help and it's big. "histograms" is the worst offender,
+    ///       a similar argument could be made for "tasks" as this is just too
+    ///       much information to send every couple of seconds. DM-55247
     status["query_stats"] = nlohmann::json::object();
+    if (true) return status;  // TODO: DM-55247
     lock_guard<mutex> g(_queryStatsMapMtx);
-    for (auto&& itr : _queryStatsMap) {
-        string const qId = to_string(itr.first);  // forcing string type for the json object key
-        QueryStatistics::Ptr const& qStats = itr.second;
+    for (auto const& [queryId, qStats] : _queryStatsMap) {
+        string const qId = to_string(queryId);  // forcing string type for the json object key
         status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
         status["query_stats"][qId]["tasks"] = qStats->getJsonTasks(taskSelector);
     }
