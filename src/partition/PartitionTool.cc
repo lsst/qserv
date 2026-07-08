@@ -70,6 +70,8 @@ private:
     Chunker _chunker;
     std::vector<ChunkLocation> _locations;
     bool _disableChunks;
+    bool _skipRowsOnEmptyCoord = false;
+    bool _autoCorrectLat360 = false;
     /// The cached pointer to the "director" index for object ID partitioning.
     ObjectIndex* _objectIndex = nullptr;
 };
@@ -83,9 +85,11 @@ PartitionTool::Worker::Worker(ConfigStore const& config)
           _subChunkIdField(-1),
           _chunker(config),
           _disableChunks(config.flag("part.disable-chunks")),
+          _skipRowsOnEmptyCoord(config.flag("part.skip-rows-on-empty-coord")),
+          _autoCorrectLat360(config.flag("part.auto-correct-lat-360")),
           _objectIndex(config.objectIndex1().get()) {
     if (!config.has("part.pos") && !config.has("part.id")) {
-        throw std::runtime_error("Neither --part.pos not --part.id option were specified.");
+        throw std::runtime_error("Neither --part.pos nor --part.id option were specified.");
     }
     FieldNameResolver fields(_editor);
     if (config.has("part.pos")) {
@@ -134,7 +138,24 @@ void PartitionTool::Worker::map(char const* const begin, char const* const end,
             // the "secondary" index generation (if requested).
             sc.first = _editor.get<double>(_pos.first);
             sc.second = _editor.get<double>(_pos.second);
-            // Locate partitioning position and output a record for each location.
+            // Skip this record if the position is invalid (e.g. NaN, Inf, -Inf).
+            if (!std::isnormal(sc.first) || !std::isnormal(sc.second)) {
+                if (_skipRowsOnEmptyCoord) continue;
+                throw std::runtime_error("Invalid position values: " + std::to_string(sc.first) + ", " +
+                                         std::to_string(sc.second));
+            }
+            if (_autoCorrectLat360) {
+                sc.first = std::fmod(sc.first + 360.0, 360.0);
+                if (!std::isnormal(sc.first)) {
+                    if (_skipRowsOnEmptyCoord) continue;
+                    throw std::runtime_error("Invalid position values after auto-correction: " +
+                                             std::to_string(sc.first) + ", " + std::to_string(sc.second));
+                }
+                // Update the editor with the normalized RA value (if it was changed).
+                _editor.set(_pos.first, sc.first);
+            }
+
+            // - Locate partitioning position and output a record for each location.
             _locations.clear();
             _chunker.locate(sc, -1, _locations);
             assert(!_locations.empty());
@@ -158,7 +179,7 @@ void PartitionTool::Worker::map(char const* const begin, char const* const end,
             _editor.set(_subChunkIdField, subChunkId);
             if (!_disableChunks) silo.add(location, _editor);
         } else {
-            throw std::logic_error("Neither --part.pos not --part.id option were specified.");
+            throw std::logic_error("Neither --part.pos nor --part.id option were specified.");
         }
     }
 }
@@ -185,6 +206,13 @@ void PartitionTool::Worker::defineOptions(po::options_description& opts) {
                        "This flag if present would disable making chunk files in the output folder. "
                        "It's meant to run the tool in the 'dry run' mode, validating input files, "
                        "generating the objectId-to-chunk/sub-chunk index map.");
+    part.add_options()("part.skip-rows-on-empty-coord", po::bool_switch()->default_value(false),
+                       "This flag if present would skip rows with empty coordinates.");
+    part.add_options()(
+            "part.auto-correct-lat-360", po::bool_switch()->default_value(false),
+            "This flag if present would automatically correct latitude values using the following formula: "
+            "ra = (ra + 360.0) % 360.0. This correction may be needed to process input values within "
+            "the domain [-180, 180], which may be produced by some tools.");
     Chunker::defineOptions(part);
     opts.add(part);
     defineOutputOptions(opts);
