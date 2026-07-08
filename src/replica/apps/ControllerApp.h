@@ -112,11 +112,6 @@ private:
     uint64_t _sqlMaxRows = 0;  ///< To limit the maximum number of rows returned by a query
     size_t _sqlPageSize = 20;  ///< The number of rows in the table of a query result set (0 for no pages)
 
-    /// Allow requests which duplicate the previously made one. This applies
-    /// to requests which change the replica disposition at a worker, and only
-    /// for those requests which are still in the worker's queues.
-    bool _allowDuplicates = false;
-
     uint64_t _cancelDelayMilliseconds = 0;  ///< The delay for cancelling requests (if not 0)
     int _priority = 0;                      ///< The priority level of a request
     bool _doNotTrackRequest = false;        ///< Do not track requests waiting before they finish

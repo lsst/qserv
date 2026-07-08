@@ -264,6 +264,8 @@ json IngestDataHttpSvcMod::_syncProcessData() {
                         row.append(reinterpret_cast<char const*>(str.data()), str.size());
                         break;
                     }
+                    case http::BinaryEncodingMode::NONE:
+                        [[fallthrough]];
                     default:
                         _contrib.error = "unsupported binary encoding mode '" +
                                          http::binaryEncoding2string(binaryEncodingMode) + "'";

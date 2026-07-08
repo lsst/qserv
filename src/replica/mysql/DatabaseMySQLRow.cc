@@ -30,11 +30,13 @@
 
 // Qserv headers
 #include "replica/proto/protocol.pb.h"
+#include "util/String.h"
 
 // LSST headers
 #include "lsst/log/Log.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace {
 
@@ -202,6 +204,62 @@ void Row::exportRow(ProtocolResponseSqlRow* ptr) const {
             ptr->add_nulls(false);
         }
     }
+}
+
+json Row::toJson(http::BinaryEncodingMode binaryEncodingMode) const {
+    string const context = "Row::" + string(__func__) + "  ";
+    if (not isValid()) {
+        throw logic_error(context + "the object is not valid");
+    }
+    json result = json::object();
+    result["cells"] = json::array();
+    result["nulls"] = json::array();
+    json& cellsJson = result["cells"];
+    json& nullsJson = result["nulls"];
+    for (Cell const& cell : _index2cell) {
+        char const* ptr = cell.first;
+        size_t const length = cell.second;
+        if (nullptr == ptr) {
+            cellsJson.push_back(string());
+            nullsJson.push_back(1);
+        } else {
+            switch (binaryEncodingMode) {
+                case http::BinaryEncodingMode::HEX:
+                    cellsJson.push_back(util::String::toHex(ptr, length));
+                    break;
+                case http::BinaryEncodingMode::B64:
+                    cellsJson.push_back(util::String::toBase64(ptr, length));
+                    break;
+                case http::BinaryEncodingMode::ARRAY:
+                    // Notes on the std::u8string type and constructor:
+                    // 1. This string type is required for encoding binary data which is only
+                    // possible
+                    //    with the 8-bit encoding and not possible with the 7-bit ASCII
+                    //    representation.
+                    // 2. This from of string construction allows the line termination symbols \0
+                    //    within the binary data.
+                    //
+                    // ATTENTION: formally this way of type casting is wrong as it breaks strict
+                    // aliasing.
+                    //   However, for all practical purposes, char8_t is basically a unsigned char
+                    //   which makes such operation possible. The problem could be addressed
+                    //   either by redesigning Qserv's SQL library to report data as char8_t, or
+                    //   by explicitly copying and translating each byte from char to char8_t
+                    //   representation (which would not be terribly efficient for the large
+                    //   result sets).
+                    cellsJson.push_back(u8string(reinterpret_cast<char8_t const*>(ptr), length));
+                    break;
+                case http::BinaryEncodingMode::NONE:
+                    cellsJson.push_back(string(ptr, length));
+                    break;
+                default:
+                    throw logic_error(context + "unsupported binary encoding mode '" +
+                                      http::binaryEncoding2string(binaryEncodingMode) + "'");
+            }
+            nullsJson.push_back(0);
+        }
+    }
+    return result;
 }
 
 }  // namespace lsst::qserv::replica::database::mysql

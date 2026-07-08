@@ -52,7 +52,7 @@ public:
     bool has(nlohmann::json const& obj, std::string const& name) const;
 
     /**
-     * Check if thw specified parameter is present in the body.
+     * Check if the specified parameter is present in the body.
      * @param name  The name of a parameter.
      * @return  'true' if the parameter was found.
      * @throw invalid_argument  If the body is not the valid JSON object.
@@ -69,14 +69,31 @@ public:
      */
     template <typename T>
     static T required(nlohmann::json const& obj, std::string const& name) {
-        if (not obj.is_object()) {
+        if (!obj.is_object()) {
             throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
-                                        "<T>[static] parameter 'obj' is not a valid JSON object");
+                                        "<T>[static] - parameter 'obj' is not a valid JSON object");
         }
         if (obj.find(name) != obj.end()) return obj[name];
         throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
-                                    "<T>[static] required parameter " + name +
-                                    " is missing in the request body");
+                                    "<T>[static] - parameter '" + name + "' is missing in the request body");
+    }
+
+    /**
+     * The helper method for finding and returning a value of an optional parameter.
+     * @param obj  JSON object to be inspected.
+     * @param name  The name of a parameter.
+     * @param defaultValue  A value to be returned if the parameter wasn't found.
+     * @return  A value of the parameter.
+     * @throw invalid_argument  If the input structure is not the valid JSON object.
+     */
+    template <typename T>
+    static T optional(nlohmann::json const& obj, std::string const& name, T const& defaultValue) {
+        if (!obj.is_object()) {
+            throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
+                                        "<T>[static] - parameter 'obj' is not a valid JSON object");
+        }
+        if (obj.find(name) != obj.end()) return obj[name];
+        return defaultValue;
     }
 
     /**
@@ -90,11 +107,24 @@ public:
         return required<T>(objJson, name);
     }
 
-    // The following methods are used to extract the values of the parameters from the JSON object
-    // where they could be stored as a string or as a number. The methods will try to convert the
-    // value to the desired type if it's a string.
-    // The methods will throw an exception if the parameter wasn't found, or if its value
-    // is not an integer.
+    // The following methods are specialized for specific types of parameters which are commonly used
+    // in the request bodies.
+    //
+    // - Unlike the generic method they throw std::invalid_argument with an
+    //   an informative message if the parameter is found but has a value of an unexpected type.
+    //   The generic method throws an obscure exception json.exception.type_error.302 defined by
+    //   the underlying JSON library. This exception may change in the future if the library is
+    //   updated, and it doesn't provide any information about the parameter name and the expected
+    //   type of the parameter value.
+    // - The integer conversion methods (*UInt and *Int) also support string representations
+    //   of integers. This is needed to work with the form uploading clients clients which
+    //   may send integers as strings.
+
+    std::string requiredString(std::string const& name) const;
+    std::string optionalString(std::string const& name, std::string const& defaultValue = "") const;
+
+    bool requiredBool(std::string const& name) const;
+    bool optionalBool(std::string const& name, bool defaultValue = false) const;
 
     unsigned int requiredUInt(std::string const& name) const;
     unsigned int optionalUInt(std::string const& name, unsigned int defaultValue = 0) const;
@@ -115,7 +145,7 @@ public:
         auto const value = required<T>(objJson, name);
         if (_in(value, permitted)) return value;
         throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
-                                    "<T>(permitted) a value of parameter " + name + " is not allowed.");
+                                    "<T>(permitted) - a value of parameter '" + name + "' is not allowed.");
     }
 
     /**
@@ -143,7 +173,7 @@ public:
         auto const value = optional<T>(name, defaultValue);
         if (_in(value, permitted)) return value;
         throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
-                                    "<T>(permitted) a value of parameter " + name + " is not allowed.");
+                                    "<T>(permitted) - a value of parameter '" + name + "' is not allowed.");
     }
 
     /**
@@ -156,12 +186,12 @@ public:
     std::vector<T> requiredColl(std::string const& name) const {
         auto const itr = objJson.find(name);
         if (itr == objJson.end()) {
-            throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
-                                        "<T> required parameter " + name + " is missing in the request body");
+            throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) + "<T> - parameter '" +
+                                        name + "' is missing in the request body");
         }
-        if (not itr->is_array()) {
+        if (!itr->is_array()) {
             throw std::invalid_argument("RequestBodyJSON::" + std::string(__func__) +
-                                        "<T> a value of the required parameter " + name + " is not an array");
+                                        "<T> a value of the parameter '" + name + "' is not an array");
         }
         std::vector<T> coll;
         for (size_t i = 0, size = itr->size(); i < size; ++i) {
