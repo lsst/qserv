@@ -65,7 +65,15 @@ FUNCTION(ccontrol_tests)
 ENDFUNCTION()
 
 ccontrol_tests(
-    testAntlr4GeneratedIR
     testCControl
     testUserQueryType
 )
+if(QSERV_USE_HYRISE_SQL_PARSER)
+    ccontrol_tests(
+        testHyriseGeneratedIR
+    )
+else()
+    ccontrol_tests(
+        testAntlr4GeneratedIR
+    )
+endif()

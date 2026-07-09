@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
     std::string expected =
             "SELECT * FROM `LSST`.`Object_100` AS `LSST.Object` WHERE "
-            "`LSST.Object`.`someField`>" PARSER_EXPECTED("5", "5.0");
+            "`LSST.Object`.`someField`>5.0";
     BOOST_CHECK(qsTest.css);
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"someField"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -308,12 +308,7 @@ std::ostream& operator<<(std::ostream& os, ScisqlRestrictorTestCaseData const& i
     return os;
 }
 
-#ifdef QSERV_USE_HYRISE_SQL_PARSER
-// Hyrise collapses floats to their most compact representation:
-std::vector<std::string> const polyArgs = {"1", "3", "1.5", "2", "2", "4"};
-#else
 std::vector<std::string> const polyArgs = {"1.0", "3.0", "1.5", "2.0", "2.0", "4.0"};
-#endif
 
 static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CASE_DATA = {
         ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
@@ -365,13 +360,9 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
                 "select * from LSST.Object o, Source s "
                 "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 1.0, 3.0, 1.5, 2.0, 2.0, 4.0) = 1 "
                 "AND o.objectIdObjTest = s.objectIdSourceTest;",
-                PARSER_EXPECTED(
-                        "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
-                        "WHERE scisql_s2PtInCPoly(`o`.`ra_Test`,`o`.`decl_Test`,1,3,1.5,2,2,4)=1 "
-                        "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
-                        "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
-                        "WHERE scisql_s2PtInCPoly(`o`.`ra_Test`,`o`.`decl_Test`,1.0,3.0,1.5,2.0,2.0,4.0)=1 "
-                        "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`"),
+                "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                "WHERE scisql_s2PtInCPoly(`o`.`ra_Test`,`o`.`decl_Test`,1.0,3.0,1.5,2.0,2.0,4.0)=1 "
+                "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
                 std::make_shared<AreaRestrictorPoly>(polyArgs)),
 
         ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
@@ -1484,7 +1475,7 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
             "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS "
             "`o1`,`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2` "
             "WHERE scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`)<"
-            PARSER_EXPECTED("1e-05", "0.00001") " "
+            "0.00001 "
             "AND `o1`.`objectId`<>`o2`.`objectId` AND "
             "ABS((scisql_fluxToAbMag(`o1`.`gFlux_PS`)-scisql_fluxToAbMag(`o1`.`rFlux_PS`))-(scisql_"
             "fluxToAbMag(`o2`.`gFlux_PS`)-scisql_fluxToAbMag(`o2`.`rFlux_PS`)))<1";
@@ -1646,6 +1637,12 @@ BOOST_AUTO_TEST_CASE(Cross) {
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"bar"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
     BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+}
+
+BOOST_AUTO_TEST_CASE(CrossWithOn) {
+    std::string stmt = "SELECT * FROM Source s1 CROSS JOIN Source s2 ON s1.bar = s2.bar;";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source", {"bar"}}}}}));
+    BOOST_CHECK_THROW(queryAnaHelper.buildQuerySession(qsTest, stmt), std::runtime_error);
 }
 
 BOOST_AUTO_TEST_CASE(Using) {
@@ -1996,7 +1993,10 @@ BOOST_AUTO_TEST_CASE(AngSepNotEqualsAlongsideValidEdgeStillFilters) {
     BOOST_CHECK(context->hasChunks());
     BOOST_CHECK(context->hasSubChunks());
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
-    BOOST_CHECK(actual.find("!=5") != std::string::npos || actual.find("!= 5") != std::string::npos);
+    // Hyrise normalizes "!=" and "<>" to the same rendering ("<>"), regardless of which the user typed;
+    // ANTLR preserves "!=" as-is. Accept either so this test is backend-agnostic.
+    BOOST_CHECK(actual.find("!=5") != std::string::npos || actual.find("!= 5") != std::string::npos ||
+                actual.find("<>5") != std::string::npos || actual.find("<> 5") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(DirectorChildSpatialJoin) {
