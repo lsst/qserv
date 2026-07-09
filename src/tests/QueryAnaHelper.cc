@@ -40,7 +40,6 @@
 #include "lsst/log/Log.h"
 
 // Qserv headers
-#include "ccontrol/ParseRunner.h"
 #include "parser/ParseException.h"
 #include "qproc/ChunkSpec.h"
 #include "query/AreaRestrictor.h"
@@ -48,7 +47,6 @@
 #include "query/SecIdxRestrictor.h"
 #include "query/SelectStmt.h"
 
-using lsst::qserv::ccontrol::ParseRunner;
 using lsst::qserv::qproc::ChunkQuerySpec;
 using lsst::qserv::qproc::ChunkSpec;
 using lsst::qserv::qproc::QuerySession;
@@ -60,11 +58,6 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.tests.QueryAnaHelper");
 }
 
 namespace lsst::qserv::tests {
-
-ParseRunner::Ptr QueryAnaHelper::getParser(std::string const& stmt) {
-    auto p = std::make_shared<ParseRunner>(stmt);
-    return p;
-}
 
 std::shared_ptr<QuerySession> QueryAnaHelper::buildQuerySession(QuerySession::Test qsTest,
                                                                 std::string const& stmt, bool expectError) {

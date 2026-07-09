@@ -36,7 +36,6 @@
 #include <string>
 
 // Qserv headers
-#include "ccontrol/ParseRunner.h"
 #include "qproc/QuerySession.h"
 #include "util/IterableFormatter.h"
 
@@ -46,8 +45,6 @@ namespace lsst::qserv::tests {
  *  @brief Test tools used by qproc::testQueryAna* units tests
  */
 struct QueryAnaHelper {
-    static ccontrol::ParseRunner::Ptr getParser(const std::string& stmt);
-
     /**
      *  @brief Prepare the query session used to process SQL queries
      *  issued from MySQL client.

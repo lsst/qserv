@@ -43,6 +43,7 @@
 
 // Qserv headers
 #include "css/CssAccess.h"
+#include "tests/ParserExpected.h"
 #include "qproc/QuerySession.h"
 #include "query/SelectStmt.h"
 #include "sql/SqlConfig.h"
@@ -95,7 +96,7 @@ static const std::vector<Data> DATA = {
 
         Data("SELECT filterId FROM Filter ORDER BY filterId",
              "SELECT `LSST.Filter`.`filterId` AS `filterId` FROM `LSST`.`Filter` AS `LSST.Filter`", "",
-             "ORDER BY `filterId`",
+             PARSER_EXPECTED("ORDER BY `filterId` ASC", "ORDER BY `filterId`"),
              sql::SqlConfig(sql::SqlConfig::MockDbTableColumns({{defaultDb, {{"Filter", {"filterId"}}}}}))),
 
         // OrderByTwoField
@@ -104,7 +105,9 @@ static const std::vector<Data> DATA = {
              "ORDER BY objectId, taiMidPoint ASC",
              "SELECT `LSST.Source`.`objectId` AS `objectId`,`LSST.Source`.`taiMidPoint` AS `taiMidPoint` "
              "FROM `LSST`.`Source_100` AS `LSST.Source`",
-             "", "ORDER BY `objectId`, `taiMidPoint` ASC",
+             "",
+             PARSER_EXPECTED("ORDER BY `objectId` ASC, `taiMidPoint` ASC",
+                             "ORDER BY `objectId`, `taiMidPoint` ASC"),
              sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
                      {{defaultDb, {{"Source", {"objectId", "taiMidPoint"}}}}}))),
 
@@ -115,7 +118,9 @@ static const std::vector<Data> DATA = {
              "SELECT `LSST.Source`.`objectId` AS `objectId`,"
              "`LSST.Source`.`taiMidPoint` AS `taiMidPoint`,`LSST.Source`.`xFlux` AS `xFlux` "
              "FROM `LSST`.`Source_100` AS `LSST.Source`",
-             "", "ORDER BY `objectId`, `taiMidPoint`, `xFlux` DESC",
+             "",
+             PARSER_EXPECTED("ORDER BY `objectId` ASC, `taiMidPoint` ASC, `xFlux` DESC",
+                             "ORDER BY `objectId`, `taiMidPoint`, `xFlux` DESC"),
              sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
                      {{defaultDb, {{"Source", {"objectId", "taiMidPoint", "xFlux"}}}}}))),
 
@@ -143,7 +148,7 @@ static const std::vector<Data> DATA = {
              "SELECT `filterId` AS `filterId`,SUM(`QS1_SUM`) AS `SUM(photClam)` "
              "FROM `LSST`.`Filter` AS `LSST.Filter` "
              "GROUP BY `filterId`",
-             "ORDER BY `filterId`",
+             PARSER_EXPECTED("ORDER BY `filterId` ASC", "ORDER BY `filterId`"),
              sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
                      {{defaultDb, {{"Filter", {"filterId", "photClam"}}}}}))),
 
@@ -165,9 +170,9 @@ static const std::vector<Data> DATA = {
              "SELECT `LSST.Science_Ccd_Exposure`.`run` AS `run`,`LSST.Science_Ccd_Exposure`.`field` AS "
              "`field` "
              "FROM `LSST`.`Science_Ccd_Exposure` AS `LSST.Science_Ccd_Exposure` "
-             "ORDER BY `field` "
-             "LIMIT 2",
-             "", "ORDER BY `field`",
+             "ORDER BY `field`" PARSER_EXPECTED(" ASC", "") " "
+                                                            "LIMIT 2",
+             "", PARSER_EXPECTED("ORDER BY `field` ASC", "ORDER BY `field`"),
              sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
                      {{defaultDb, {{"Science_Ccd_Exposure", {"run", "field"}}}}}))),
 
@@ -194,12 +199,12 @@ static const std::vector<Data> DATA = {
              "SELECT `LSST.Filter`.`filterId` AS `filterId`,SUM(`LSST.Filter`.`photClam`) AS `QS1_SUM` "
              "FROM `LSST`.`Filter` AS `LSST.Filter` "
              "GROUP BY `filterId` "
-             "ORDER BY `filterId`",
+             "ORDER BY `filterId`" PARSER_EXPECTED(" ASC", ""),
              // FIXME merge query is not useful here, see DM-3166
              "SELECT `filterId` AS `filterId`,SUM(`QS1_SUM`) AS `SUM(photClam)` "
              "FROM `LSST`.`Filter` AS `LSST.Filter` "
-             "GROUP BY `filterId` ORDER BY `filterId` LIMIT 3",
-             "ORDER BY `filterId`",
+             "GROUP BY `filterId` ORDER BY `filterId`" PARSER_EXPECTED(" ASC", "") " LIMIT 3",
+             PARSER_EXPECTED("ORDER BY `filterId` ASC", "ORDER BY `filterId`"),
              sql::SqlConfig(sql::SqlConfig::MockDbTableColumns(
                      {{defaultDb, {{"Filter", {"filterId", "photClam"}}}}}))),
 };

@@ -39,4 +39,41 @@ BOOST_AUTO_TEST_CASE(testCallQueryType) {
     BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isCall("submit call QSERV_RESULT_DELETE foo"), false);
 }
 
+BOOST_AUTO_TEST_CASE(testResultDelete) {
+    std::string queryId;
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isResultDelete("CALL QSERV_RESULT_DELETE(1)", queryId), true);
+    BOOST_CHECK_EQUAL(queryId, "1");
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isResultDelete("call qserv_result_delete( 42 ) ;", queryId),
+                      true);
+    BOOST_CHECK_EQUAL(queryId, "42");
+    // Not QSERV_RESULT_DELETE: must not match (only supported CALL form).
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isResultDelete("CALL SOMETHING_ELSE(1)", queryId), false);
+}
+
+BOOST_AUTO_TEST_CASE(testSetQueryType) {
+    std::string varName, varValue;
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = 0", varName,
+                                                     varValue),
+                      true);
+    BOOST_CHECK_EQUAL(varName, "QSERV_ROW_COUNTER_OPTIMIZATION");
+    BOOST_CHECK_EQUAL(varValue, "0");
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSet("set global QSERV_ROW_COUNTER_OPTIMIZATION = 1;",
+                                                     varName, varValue),
+                      true);
+    BOOST_CHECK_EQUAL(varValue, "1");
+
+    // Boolean values are rejected
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = FALSE",
+                                                     varName, varValue),
+                      false);
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = TRUE",
+                                                     varName, varValue),
+                      false);
+
+    // GLOBAL is required
+    BOOST_CHECK_EQUAL(
+            ccontrol::UserQueryType::isSet("SET QSERV_ROW_COUNTER_OPTIMIZATION = 0", varName, varValue),
+            false);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
