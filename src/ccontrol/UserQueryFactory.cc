@@ -289,15 +289,14 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
 
         // Parse SELECT
 
-        ParseRunner::Ptr parser;
+        query::SelectStmt::Ptr stmt;
         try {
-            parser = std::make_shared<ParseRunner>(query);
+            stmt = ParseRunner::makeSelectStmt(query);
         } catch (parser::ParseException& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
-        auto stmt = parser->getSelectStmt();
 
-        std::lock_guard focatoryLock(_factoryMtx);
+        std::lock_guard factoryLock(_factoryMtx);
         // handle special database/table names
         if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
             return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
