@@ -25,6 +25,7 @@
 #include "ccontrol/ParseRunner.h"
 
 // Qserv headers
+#include "ccontrol/HyriseAdapter.h"
 #include "ccontrol/UserQuery.h"
 #include "parser/ParseException.h"
 #include "query/SelectStmt.h"
@@ -97,8 +98,12 @@ private:
 namespace lsst::qserv::ccontrol {
 
 std::shared_ptr<query::SelectStmt> ParseRunner::makeSelectStmt(std::string const& statement) {
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+    return HyriseAdapter::makeSelectStmt(statement);
+#else
     auto parser = std::make_shared<ParseRunner>(statement);
     return parser->getSelectStmt();
+#endif
 }
 
 ParseRunner::ParseRunner(std::string const& statement) : _statement(statement) { run(); }
