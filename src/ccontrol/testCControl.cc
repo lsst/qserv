@@ -34,6 +34,7 @@
 
 // Qserv headers
 #include "ccontrol/UserQueryType.h"
+#include "tests/ParserExpected.h"
 #include "parser/ParseException.h"
 #include "qproc/QuerySession.h"
 #include "query/AndTerm.h"
@@ -78,10 +79,15 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
         // "Expressions/functions in ORDER BY clauses are not allowed
         // In SQL92 ORDER BY is limited to actual table columns, thus expressions or functions in ORDER BY are
         // rejected. This is true for Qserv too.
-        ParseErrorQueryInfo("SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and "
-                            "0.1 ORDER BY ABS(iE1_SG)",
-                            "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not "
-                            "support functions in ORDER BY."),
+        ParseErrorQueryInfo(
+                "SELECT objectId, iE1_SG, ABS(iE1_SG) FROM Object WHERE iE1_SG between -0.1 and "
+                "0.1 ORDER BY ABS(iE1_SG)",
+                PARSER_EXPECTED(
+                        "ParseException:qserv does not support functions in ORDER BY. Select the "
+                        "expression under an alias and order by the alias instead, e.g. \"SELECT ..., "
+                        "f(x) AS fx ... ORDER BY fx\".",
+                        "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not "
+                        "support functions in ORDER BY.")),
 
         ParseErrorQueryInfo("SELECT foo from Filter f limit 5 garbage query !#$%!#$",
                             "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 "
@@ -101,6 +107,30 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
                 "with an underscore."),
 
         ParseErrorQueryInfo(
+                "SELECT objectId AS _objectId FROM Object;",
+                "ParseException:Error parsing query, near \"_objectId\", Identifiers in Qserv may not "
+                "start with an underscore."),
+
+        ParseErrorQueryInfo("SELECT _ra FROM Object;",
+                            "ParseException:Error parsing query, near \"_ra\", Identifiers in Qserv may not "
+                            "start with an underscore."),
+
+        ParseErrorQueryInfo(
+                "SELECT `_ra` FROM Object;",
+                PARSER_EXPECTED("ParseException:Error parsing query, near \"_ra\", Identifiers in Qserv "
+                                "may not start with an underscore.",
+                                "ParseException:Error parsing query, near \"`_ra`\", Identifiers in Qserv "
+                                "may not start with an underscore.")),
+
+        ParseErrorQueryInfo(
+                "SELECT objectId AS `_objectId` FROM Object;",
+                PARSER_EXPECTED(
+                        "ParseException:Error parsing query, near \"_objectId\", Identifiers in Qserv "
+                        "may not start with an underscore.",
+                        "ParseException:Error parsing query, near \"`_objectId`\", Identifiers in Qserv "
+                        "may not start with an underscore.")),
+
+        ParseErrorQueryInfo(
                 "LECT sce.filterName,sce.field "
                 "FROM LSST.Science_Ccd_Exposure AS sce "
                 "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
@@ -112,7 +142,10 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
                 "SELECT  COUNT(*) AS totalCount, "
                 "SUM(CASE WHEN (typeId=3) THEN 1 ELSE 0 END) AS galaxyCount "
                 "FROM Object WHERE rFlux_PS > 10;",
-                "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\""),
+                PARSER_EXPECTED("ParseException:qserv can not parse query: CASE expressions are not "
+                                "supported.",
+                                "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) "
+                                "THEN 1 ELSE 0 END\"")),
 };
 
 BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
@@ -120,6 +153,31 @@ BOOST_DATA_TEST_CASE(expected_parse_error, PARSE_ERROR_QUERIES, queryInfo) {
     auto selectStmt = querySession.parseQuery(queryInfo.query);
     BOOST_REQUIRE_EQUAL(selectStmt, nullptr);
     BOOST_REQUIRE_EQUAL(querySession.getError(), queryInfo.errorMessage);
+}
+
+// While underscores are not allowed in identifiers, we need to ensure the parser/adapter layers
+// do not simply reject the presence of an underscore in the SQL string.
+BOOST_AUTO_TEST_CASE(underscoreInStringLiteralIsAllowed) {
+    auto querySession = qproc::QuerySession();
+    auto selectStmt = querySession.parseQuery("SELECT objectId FROM Object WHERE description = '_chunkId'");
+    BOOST_REQUIRE(selectStmt != nullptr);
+    BOOST_REQUIRE(querySession.getError().empty());
+}
+
+// The parser/adapter should reject CASE WHEN, but this test ensures that it can still appear in a string.
+BOOST_AUTO_TEST_CASE(caseWhenInStringLiteralIsAllowed) {
+    auto querySession = qproc::QuerySession();
+    auto selectStmt = querySession.parseQuery(
+            "SELECT objectId FROM Object WHERE description = 'CASE WHEN this is text'");
+    BOOST_REQUIRE(selectStmt != nullptr);
+    BOOST_REQUIRE(querySession.getError().empty());
+}
+
+BOOST_AUTO_TEST_CASE(repeatedTrailingSemicolonsAreAllowed) {
+    auto querySession = qproc::QuerySession();
+    auto selectStmt = querySession.parseQuery("SELECT objectId FROM Object;;;  ");
+    BOOST_REQUIRE(selectStmt != nullptr);
+    BOOST_REQUIRE(querySession.getError().empty());
 }
 
 BOOST_AUTO_TEST_CASE(testSimpleCountStar) {

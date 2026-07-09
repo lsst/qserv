@@ -59,6 +59,7 @@
 #include "query/SecIdxRestrictor.h"
 #include "query/SelectStmt.h"
 #include "sql/SqlConfig.h"
+#include "tests/ParserExpected.h"
 #include "tests/QueryAnaFixture.h"
 
 using lsst::qserv::StringPair;
@@ -84,7 +85,7 @@ char const* const NOT_EVALUABLE_MSG =
         "AnalysisError:Query involves "
         "partitioned table joins that Qserv does not know how to evaluate "
         "using only partition-local data";
-}
+}  // namespace
 ////////////////////////////////////////////////////////////////////////
 // CppParser basic tests
 ////////////////////////////////////////////////////////////////////////
@@ -93,7 +94,8 @@ BOOST_FIXTURE_TEST_SUITE(CppParser, QueryAnaFixture)
 BOOST_AUTO_TEST_CASE(TrivialSub) {
     std::string stmt = "SELECT * FROM Object WHERE someField > 5.0;";
     std::string expected =
-            "SELECT * FROM `LSST`.`Object_100` AS `LSST.Object` WHERE `LSST.Object`.`someField`>5.0";
+            "SELECT * FROM `LSST`.`Object_100` AS `LSST.Object` WHERE "
+            "`LSST.Object`.`someField`>" PARSER_EXPECTED("5", "5.0");
     BOOST_CHECK(qsTest.css);
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"someField"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
@@ -255,7 +257,7 @@ BOOST_AUTO_TEST_CASE(Triple) {
     std::string expected =
             "SELECT * FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS "
             "`o1`,`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2`,`LSST`.`Source_100` AS `LSST.Source` "
-            "WHERE `o1`.`id`!=`o2`.`id` AND "
+            "WHERE `o1`.`id`" PARSER_EXPECTED("<>", "!=") "`o2`.`id` AND "
             "0.024>scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`) AND "
             "`LSST.Source`.`objectIdSourceTest`=`o2`.`objectIdObjTest`";
 
@@ -306,7 +308,12 @@ std::ostream& operator<<(std::ostream& os, ScisqlRestrictorTestCaseData const& i
     return os;
 }
 
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+// Hyrise collapses floats to their most compact representation:
+std::vector<std::string> const polyArgs = {"1", "3", "1.5", "2", "2", "4"};
+#else
 std::vector<std::string> const polyArgs = {"1.0", "3.0", "1.5", "2.0", "2.0", "4.0"};
+#endif
 
 static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CASE_DATA = {
         ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
@@ -358,9 +365,13 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
                 "select * from LSST.Object o, Source s "
                 "WHERE scisql_s2PtInCPoly(ra_Test, decl_Test, 1.0, 3.0, 1.5, 2.0, 2.0, 4.0) = 1 "
                 "AND o.objectIdObjTest = s.objectIdSourceTest;",
-                "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
-                "WHERE scisql_s2PtInCPoly(`o`.`ra_Test`,`o`.`decl_Test`,1.0,3.0,1.5,2.0,2.0,4.0)=1 "
-                "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                PARSER_EXPECTED(
+                        "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                        "WHERE scisql_s2PtInCPoly(`o`.`ra_Test`,`o`.`decl_Test`,1,3,1.5,2,2,4)=1 "
+                        "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                        "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                        "WHERE scisql_s2PtInCPoly(`o`.`ra_Test`,`o`.`decl_Test`,1.0,3.0,1.5,2.0,2.0,4.0)=1 "
+                        "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`"),
                 std::make_shared<AreaRestrictorPoly>(polyArgs)),
 
         ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
@@ -485,7 +496,12 @@ BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_C
         BOOST_REQUIRE(context->areaRestrictors);
         BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
         auto restrictorFunc = context->areaRestrictors->front();
-        BOOST_CHECK_EQUAL(*restrictorFunc, *queryData.expectedRestrictor);
+
+        std::ostringstream os1, os2;
+        os1 << *restrictorFunc;
+        os2 << *queryData.expectedRestrictor;
+
+        BOOST_CHECK_EQUAL(os1.str(), os2.str());
     } else {
         BOOST_CHECK_EQUAL(nullptr, context->areaRestrictors);
     }
@@ -1288,15 +1304,13 @@ BOOST_AUTO_TEST_CASE(UnpartLimit) {
 BOOST_AUTO_TEST_CASE(Subquery) {  // ticket #2053
     std::string stmt =
             "SELECT subQueryColumn FROM (SELECT * FROM Object WHERE filterId=4) WHERE rFlux_PS > 0.3;";
-    ParseRunner::Ptr p;
-    BOOST_CHECK_THROW(p = queryAnaHelper.getParser(stmt), lsst::qserv::parser::ParseException);
+    BOOST_CHECK_THROW(ParseRunner::makeSelectStmt(stmt), lsst::qserv::parser::ParseException);
     // Expected failure: Subqueries are unsupported.
 }
 
 BOOST_AUTO_TEST_CASE(FromParen) {  // Extra paren. Not supported by our grammar.
     std::string stmt = "SELECT * FROM (Object) WHERE rFlux_PS > 0.3;";
-    ParseRunner::Ptr p;
-    BOOST_CHECK_THROW(p = queryAnaHelper.getParser(stmt), lsst::qserv::parser::ParseException);
+    BOOST_CHECK_THROW(ParseRunner::makeSelectStmt(stmt), lsst::qserv::parser::ParseException);
 }
 
 BOOST_AUTO_TEST_CASE(NewParser) {
@@ -1317,7 +1331,7 @@ BOOST_AUTO_TEST_CASE(NewParser) {
     for (int i = 0; i < 8; ++i) {
         std::string stmt = stmts[i];
         BOOST_TEST_MESSAGE("----" << stmt << "----");
-        ParseRunner::Ptr p = queryAnaHelper.getParser(stmt);
+        BOOST_REQUIRE_NO_THROW(ParseRunner::makeSelectStmt(stmt));
     }
 }
 
@@ -1469,7 +1483,8 @@ BOOST_AUTO_TEST_CASE(FuncExprPred) {
             "SELECT `o1`.`objectId` AS `o1.objectId`,`o2`.`objectId` AS `objectId2` "
             "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS "
             "`o1`,`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2` "
-            "WHERE scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`)<0.00001 "
+            "WHERE scisql_angSep(`o1`.`ra_Test`,`o1`.`decl_Test`,`o2`.`ra_Test`,`o2`.`decl_Test`)<"
+            PARSER_EXPECTED("1e-05", "0.00001") " "
             "AND `o1`.`objectId`<>`o2`.`objectId` AND "
             "ABS((scisql_fluxToAbMag(`o1`.`gFlux_PS`)-scisql_fluxToAbMag(`o1`.`rFlux_PS`))-(scisql_"
             "fluxToAbMag(`o2`.`gFlux_PS`)-scisql_fluxToAbMag(`o2`.`rFlux_PS`)))<1";
@@ -1511,7 +1526,8 @@ BOOST_AUTO_TEST_CASE(MatchTableWithWhere) {
     std::string expected =
             "SELECT * FROM `LSST`.`RefObjMatch_100` AS `LSST.RefObjMatch` WHERE "
             "(`refObjectId` IS NULL OR `flags`<>2) "
-            "AND `LSST.RefObjMatch`.`foo`!=`LSST.RefObjMatch`.`bar` AND `LSST.RefObjMatch`.`baz`<3.14159";
+            "AND `LSST.RefObjMatch`.`foo`" PARSER_EXPECTED("<>", "!=") "`LSST.RefObjMatch`.`bar`"
+            " AND `LSST.RefObjMatch`.`baz`<3.14159";
     qsTest.sqlConfig =
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"RefObjMatch", {"foo", "bar", "baz"}}}}}));
 
@@ -1733,9 +1749,12 @@ BOOST_AUTO_TEST_CASE(Case01_1012) {
     qsTest.sqlConfig =
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    BOOST_CHECK_EQUAL(qs->getError(),
-                      "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not support "
-                      "functions in ORDER BY.");
+    char const* expectedErr = PARSER_EXPECTED(
+            "ParseException:qserv does not support functions in ORDER BY. Select the expression under "
+            "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".",
+            "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not support "
+            "functions in ORDER BY.");
+    BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
 
 BOOST_AUTO_TEST_CASE(Case01_1013) {
@@ -1748,9 +1767,12 @@ BOOST_AUTO_TEST_CASE(Case01_1013) {
     qsTest.sqlConfig =
             SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId", "iE1_SG"}}}}}));
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    BOOST_CHECK_EQUAL(qs->getError(),
-                      "ParseException:Error parsing query, near \"ROUND(ABS(iE1_SG), 3)\", qserv does not "
-                      "support functions in ORDER BY.");
+    char const* expectedErr = PARSER_EXPECTED(
+            "ParseException:qserv does not support functions in ORDER BY. Select the expression under "
+            "an alias and order by the alias instead, e.g. \"SELECT ..., f(x) AS fx ... ORDER BY fx\".",
+            "ParseException:Error parsing query, near \"ROUND(ABS(iE1_SG), 3)\", qserv does not "
+            "support functions in ORDER BY.");
+    BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }
 
 // ASC and maybe USING(...) syntax not supported currently.
@@ -1817,15 +1839,19 @@ BOOST_AUTO_TEST_CASE(Case01_1081) {
     std::string expected_100_subchunk_core =
             "SELECT count(*) AS `QS1_COUNT` "
             "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o` "
-            "INNER JOIN `LSST`.`RefObjMatch_100` AS `o2t` ON `o`.`objectIdObjTest`=`o2t`.`objectId` "
-            "INNER JOIN `Subchunks_LSST_100`.`SimRefObject_100_%S\007S%` AS `t` ON "
+            PARSER_EXPECTED("JOIN", "INNER JOIN") " `LSST`.`RefObjMatch_100` AS `o2t`"
+            " ON `o`.`objectIdObjTest`=`o2t`.`objectId` "
+            PARSER_EXPECTED("JOIN", "INNER JOIN") " `Subchunks_LSST_100`."
+            "`SimRefObject_100_%S\007S%` AS `t` ON "
             "`o2t`.`refObjectId`=`t`.`refObjectId` "
             "WHERE `o`.`closestToObj`=1 OR `o`.`closestToObj` IS NULL";
     std::string expected_100_subchunk_overlap =
             "SELECT count(*) AS `QS1_COUNT` "
             "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o` "
-            "INNER JOIN `LSST`.`RefObjMatch_100` AS `o2t` ON `o`.`objectIdObjTest`=`o2t`.`objectId` "
-            "INNER JOIN `Subchunks_LSST_100`.`SimRefObjectFullOverlap_100_%S\007S%` AS `t` ON "
+            PARSER_EXPECTED("JOIN", "INNER JOIN") " `LSST`.`RefObjMatch_100` AS `o2t`"
+            " ON `o`.`objectIdObjTest`=`o2t`.`objectId` "
+            PARSER_EXPECTED("JOIN", "INNER JOIN") " `Subchunks_LSST_100`."
+            "`SimRefObjectFullOverlap_100_%S\007S%` AS `t` ON "
             "`o2t`.`refObjectId`=`t`.`refObjectId` "
             "WHERE `o`.`closestToObj`=1 OR `o`.`closestToObj` IS NULL";
     qsTest.sqlConfig =
@@ -1929,8 +1955,9 @@ BOOST_AUTO_TEST_CASE(Case01_2004) {
             "FROM Object WHERE rFlux_PS > 10;";
 
     // CASE in column spec is illegal.
-    char const expectedErr[] =
-            "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\"";
+    char const* expectedErr = PARSER_EXPECTED(
+            "ParseException:qserv can not parse query: CASE expressions are not supported.",
+            "ParseException:qserv can not parse query, near \"CASE WHEN (typeId=3) THEN 1 ELSE 0 END\"");
     auto qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
 }

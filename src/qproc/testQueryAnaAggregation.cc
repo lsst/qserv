@@ -44,6 +44,7 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "tests/ParserExpected.h"
 #include "qproc/QuerySession.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"
@@ -72,7 +73,7 @@ BOOST_AUTO_TEST_CASE(Aggregate) {
             "COUNT(`LSST.Object`.`bMagF2`) AS `QS2_COUNT`,"
             "SUM(`LSST.Object`.`bMagF2`) AS `QS3_SUM` "
             "FROM `LSST`.`Object_100` AS `LSST.Object` "
-            "WHERE `LSST.Object`.`bMagF`>20.0 "
+            "WHERE `LSST.Object`.`bMagF`>" PARSER_EXPECTED("20", "20.0") " "
             "GROUP BY `chunkId`";
     qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
             {{"LSST", {{"Object", {"pm_declErr", "chunkId", "bMagF2", "bMagF"}}}}}));
@@ -99,7 +100,7 @@ BOOST_AUTO_TEST_CASE(Avg) {
             "COUNT(`LSST.Object`.`bMagF2`) AS `QS1_COUNT`,"
             "SUM(`LSST.Object`.`bMagF2`) AS `QS2_SUM` "
             "FROM `LSST`.`Object_100` AS `LSST.Object` "
-            "WHERE `LSST.Object`.`bMagF`>20.0";
+            "WHERE `LSST.Object`.`bMagF`>" PARSER_EXPECTED("20", "20.0");
     qsTest.sqlConfig = SqlConfig(
             SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"chunkId", "bMagF2", "bMagF"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
