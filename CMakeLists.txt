@@ -7,6 +7,11 @@ project(Qserv
 
 enable_testing()
 
+option(QSERV_USE_HYRISE_SQL_PARSER
+    "Use the Hyrise SQL parser to build query IR for SELECT statements, instead of the ANTLR-based parser"
+    ON
+)
+
 include(GNUInstallDirs)
 set(CMAKE_INSTALL_PREFIX ${PROJECT_BINARY_DIR}/install)
 
