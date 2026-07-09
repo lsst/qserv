@@ -7,6 +7,8 @@ target_include_directories(ccontrol PRIVATE
 )
 
 target_sources(ccontrol PRIVATE
+    HyriseAdapter.cc
+    HyriseDiagnostics.cc
     MergingHandler.cc
     ParseAdapters.cc
     ParseListener.cc
@@ -27,6 +29,9 @@ target_sources(ccontrol PRIVATE
 target_link_libraries(ccontrol PUBLIC
     boost_regex
     cconfig
+    css
+    global
+    hyrise_sql_parser::sqlparser
     log
     parser
     replica
@@ -35,9 +40,11 @@ target_link_libraries(ccontrol PUBLIC
     XrdCl
 )
 
-install(
-    TARGETS ccontrol
-)
+if(QSERV_USE_HYRISE_SQL_PARSER)
+    target_compile_definitions(ccontrol PUBLIC QSERV_USE_HYRISE_SQL_PARSER)
+endif()
+
+install(TARGETS ccontrol)
 
 FUNCTION(ccontrol_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
