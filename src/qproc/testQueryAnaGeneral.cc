@@ -356,6 +356,89 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
                                      "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
                                      nullptr),  // There should not be any qserv area restrictor, because
                                                 // there are 2 scisql_s2Pt... funcs in the query.
+
+        // scisql_angSep(lon, lat, centerLon, centerLat) < radius, with the constant center on the right,
+        // is equivalent to scisql_s2PtInCircle(lon, lat, centerLon, centerLat, radius) = 1.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) < 0.05 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2)<0.05 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     std::make_shared<AreaRestrictorCircle>("55.5", "-30.2", "0.05")),
+
+        // Same as above, but with the constant center on the left (scisql_angSep is symmetric in its two
+        // coordinate pairs) and an inclusive upper bound.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(55.5, -30.2, o.ra_Test, o.decl_Test) <= 0.05 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(55.5,-30.2,`o`.`ra_Test`,`o`.`decl_Test`)<=0.05 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     std::make_shared<AreaRestrictorCircle>("55.5", "-30.2", "0.05")),
+
+        // Same bound, but written with the radius on the left (radius > angSep(...)); the operator must be
+        // mirrored to recognize this as the same upper bound as scisql_angSep(...) < radius.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE 0.05 > scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE 0.05>scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2) "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     std::make_shared<AreaRestrictorCircle>("55.5", "-30.2", "0.05")),
+
+        // scisql_angSep(...) > radius is a lower bound: it selects points outside the cone, which is not
+        // expressible as a single area restrictor, so no restrictor should be produced.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) > 0.05 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2)>0.05 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
+
+        // Neither coordinate pair is constant, so this describes a spatial join, not an area restrictor;
+        // no restrictor should be produced (RelationGraph handles join predicates separately).
+        ScisqlRestrictorTestCaseData(
+                "select * from LSST.Object o, Source s "
+                "WHERE scisql_angSep(o.ra_Test, o.decl_Test, o.ra_Test, o.decl_Test) < 0.05 "
+                "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,`o`.`ra_Test`,`o`.`decl_Test`)<0.05 "
+                "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                nullptr),
+
+        // Both coordinate pairs are constant, so there is no way to tell which one is the center;
+        // no restrictor should be produced.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(1, 1, 55.5, -30.2) < 0.05 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(1,1,55.5,-30.2)<0.05 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
+
+        // scisql_s2PtInCircle(...) = 0 selects points OUTSIDE the circle, so it must not be treated as an
+        // area restrictor.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_s2PtInCircle(o.ra_Test, o.decl_Test, 1, 1, 1.3) = 0 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_s2PtInCircle(`o`.`ra_Test`,`o`.`decl_Test`,1,1,1.3)=0 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
+
+        // One scisql_angSep() area constraint and one scisql_s2PtInCircle() area constraint together are
+        // ambiguous; no restrictor should be produced.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) < 0.05 "
+                                     "AND scisql_s2PtInCircle(s.ra_Test, s.decl_Test, 1, 1, 1.3) = 1 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2)<0.05 "
+                                     "AND scisql_s2PtInCircle(`s`.`ra_Test`,`s`.`decl_Test`,1,1,1.3)=1 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
 };
 
 // Test that scisql area restrictors are translated into qserv_area_restrictors properly.

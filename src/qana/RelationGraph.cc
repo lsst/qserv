@@ -280,26 +280,6 @@ size_t addEqEdge(std::string const& ca, std::string const& cb, bool outer, Verte
     return 0;
 }
 
-/// `getNumericConst` returns the numeric constant embedded in the given
-/// value expression if there is one, and NaN otherwise.
-double getNumericConst(ValueExprPtr const& ve) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
-    if (!ve || ve->getFactorOps().size() != 1) {
-        return std::numeric_limits<double>::quiet_NaN();
-    }
-    ValueFactorPtr vf = ve->getFactorOps().front().factor;
-    if (!vf || vf->getType() != ValueFactor::CONST) {
-        return std::numeric_limits<double>::quiet_NaN();
-    }
-    char* e = nullptr;
-    double a = std::strtod(vf->getConstVal().c_str(), &e);
-    if (e == vf->getConstVal().c_str()) {
-        // conversion error - non-numeric constant
-        return std::numeric_limits<double>::quiet_NaN();
-    }
-    return a;
-}
-
 /// `getAngSepFunc` returns a pointer to the IR node for the `scisql_angSep`
 /// call embedded in the given value expression if there is one, and null
 /// otherwise.
@@ -560,11 +540,11 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
         case query::CompPredicate::LESS_THAN_OP:  // fallthrough
         case query::CompPredicate::LESS_THAN_OR_EQUALS_OP:
             fe = getAngSepFunc(cp->left);
-            angSep = getNumericConst(cp->right);
+            angSep = cp->right->getNumericConst();
             break;
         case query::CompPredicate::GREATER_THAN_OP:  // fallthrough
         case query::CompPredicate::GREATER_THAN_OR_EQUALS_OP:
-            angSep = getNumericConst(cp->left);
+            angSep = cp->left->getNumericConst();
             fe = getAngSepFunc(cp->right);
             break;
         case query::CompPredicate::EQUALS_OP:
@@ -576,10 +556,10 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
             // technically evaluable.
             fe = getAngSepFunc(cp->left);
             if (!fe) {
-                angSep = getNumericConst(cp->left);
+                angSep = cp->left->getNumericConst();
                 fe = getAngSepFunc(cp->right);
             } else {
-                angSep = getNumericConst(cp->right);
+                angSep = cp->right->getNumericConst();
             }
             break;
         default:
