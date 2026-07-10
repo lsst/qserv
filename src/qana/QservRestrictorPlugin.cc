@@ -33,6 +33,7 @@
 
 // System headers
 #include <algorithm>
+#include <cmath>
 #include <deque>
 #include <memory>
 #include <string>
@@ -145,35 +146,22 @@ bool isScisqlAreaFunc(query::ValueExpr const& valueExpr) {
 }
 
 /**
- * @brief If there is exactly one scisql area restrictor in the top level AND of the where clause,
- *        return it.
+ * @brief Determine if all area parameters of a scisql area function (everything after the leading longitude
+ *        and latitude) are constant values. If any parameters are non-constants then we have a spatial join
+ *        instead (see qana::RelationGraph).
  *
- * @param whereClause The WHERE clause to look in.
- * @return std::shared_ptr<const query::FuncExpr> The scisql area restrictor functio FuncExpr if there
- *         was exactly one, else nullptr.
+ * @param scisqlFunc The scisql area function to check.
+ * @return if true if all area parameters are constant, false otherwise.
  */
-std::shared_ptr<const query::FuncExpr> extractSingleScisqlAreaFunc(query::WhereClause const& whereClause) {
-    auto topLevelAnd = whereClause.getRootAndTerm();
-    std::shared_ptr<const query::FuncExpr> scisqlFunc;
-    if (nullptr == topLevelAnd) return nullptr;
-    for (auto const& boolTerm : topLevelAnd->_terms) {
-        auto boolFactor = std::dynamic_pointer_cast<const query::BoolFactor>(boolTerm);
-        if (nullptr == boolFactor) continue;
-        for (auto boolFactorTerm : boolFactor->_terms) {
-            auto compPredicate = std::dynamic_pointer_cast<const query::CompPredicate>(boolFactorTerm);
-            if (nullptr == compPredicate) continue;
-            if (compPredicate->op != query::CompPredicate::EQUALS_OP) continue;
-            for (auto const& valueExpr : {compPredicate->left, compPredicate->right}) {
-                if (isScisqlAreaFunc(*valueExpr)) {
-                    if (scisqlFunc != nullptr) {
-                        return nullptr;
-                    }
-                    scisqlFunc = valueExpr->getFunction();
-                }
-            }
+bool areaParamsAreConst(query::FuncExpr const& scisqlFunc) {
+    auto const& params = scisqlFunc.getParams();
+    if (params.size() <= 2) return false;
+    for (auto it = params.begin() + 2; it != params.end(); ++it) {
+        if ((*it)->isConstVal() == false) {
+            return false;
         }
     }
-    return scisqlFunc;
+    return true;
 }
 
 std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const& scisqlFunc) {
@@ -208,6 +196,141 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const&
         throw std::runtime_error("Wrong number of arguments for " + scisqlFunc.getName());
     }
     return nullptr;
+}
+
+/**
+ * @brief Convert an angular separation to area restrictor, IF exactly one of the two coordinate pairs is
+ *        constant. For instance, WHERE scisql_angSep(ra, dec, 55.5, -30.2) < 0.05 is
+ *        equivalent to WHERE scisql_s2PtInCircle(ra, dec, 55.5, -30.2, 0.05) = 1.
+ *
+ * @param compPredicate The comparison predicate to convert.
+ * @return std::shared_ptr<query::AreaRestrictor> Equivalent area restrictor, nullptr otherwise
+ */
+std::shared_ptr<query::AreaRestrictor> makeAreaRestrictorFromAngSep(
+        query::CompPredicate const& compPredicate) {
+    // If we have scisql_angSep(ra, dec, 55.5, -30.2) < 0.05, which side is func / radius?
+    // We assume the form for <,<=,>,>= since the opposites are invalid, but do additional validation below.
+    std::shared_ptr<query::ValueExpr> funcSide;
+    std::shared_ptr<query::ValueExpr> radiusSide;
+    switch (compPredicate.op) {
+        case query::CompPredicate::LESS_THAN_OP:
+        case query::CompPredicate::LESS_THAN_OR_EQUALS_OP:
+            funcSide = compPredicate.left;
+            radiusSide = compPredicate.right;
+            break;
+        case query::CompPredicate::GREATER_THAN_OP:
+        case query::CompPredicate::GREATER_THAN_OR_EQUALS_OP:
+            funcSide = compPredicate.right;
+            radiusSide = compPredicate.left;
+            break;
+        case query::CompPredicate::EQUALS_OP:
+        case query::CompPredicate::NULL_SAFE_EQUALS_OP:
+            // Either form is valid (angSep() == r, r == angSep()). There is a low likelihood that equality
+            // with angSep() will be useful, but since it is technically evaluable we support it.
+            if (compPredicate.left->isFunction()) {
+                funcSide = compPredicate.left;
+                radiusSide = compPredicate.right;
+            } else {
+                funcSide = compPredicate.right;
+                radiusSide = compPredicate.left;
+            }
+            break;
+        default:
+            return nullptr;
+    }
+
+    // Validate the scisql_angSep function and radius
+    if (not funcSide->isFunction()) return nullptr;
+    auto funcExpr = funcSide->getFunction();
+    if (funcExpr->getName() != "scisql_angSep" || funcExpr->getParams().size() != 4) {
+        return nullptr;
+    }
+    auto const& params = funcExpr->getParams();
+    double const radius = radiusSide->getNumericConst();
+    if (std::isnan(radius)) return nullptr;
+    if (radius < 0.0) {
+        throw qana::AnalysisError("scisql_angSep() comparison threshold must be a non-negative number, got " +
+                                  std::to_string(radius));
+    }
+
+    // Exactly one of the two coordinate pairs must consist of numeric constants. If neither is, then the
+    // predicate is a spatial join and will be handled in qana::RelationGraph.
+    bool const first = !std::isnan(params[0]->getNumericConst()) && !std::isnan(params[1]->getNumericConst());
+    bool const sec = !std::isnan(params[2]->getNumericConst()) && !std::isnan(params[3]->getNumericConst());
+    if (first == sec) return nullptr;
+
+    auto const& centerLon = first ? params[0] : params[2];
+    auto const& centerLat = first ? params[1] : params[3];
+    return std::make_shared<query::AreaRestrictorCircle>(centerLon->getConstVal(), centerLat->getConstVal(),
+                                                         radiusSide->getConstVal());
+}
+
+/**
+ * @brief If there is exactly one area constraint in the top level AND of the where clause,
+ *        return the corresponding area restrictor.
+ *
+ * @param whereClause WHERE clause to inspect
+ * @return std::shared_ptr<query::AreaRestrictor> Area restrictor if there was exactly one
+ *         area constraint, else nullptr.
+ */
+std::shared_ptr<query::AreaRestrictor> extractSingleAreaRestrictor(query::WhereClause const& whereClause) {
+    auto topLevelAnd = whereClause.getRootAndTerm();
+    if (topLevelAnd == nullptr) return nullptr;
+    std::shared_ptr<const query::FuncExpr> scisqlFunc;
+    std::shared_ptr<query::AreaRestrictor> angSepRestrictor;
+    size_t count = 0;  // how many area constraints we find below
+
+    // Scan each top-level AND predicate in the WHERE clause for an area constraint.
+    for (auto const& boolTerm : topLevelAnd->_terms) {
+        auto boolFactor = std::dynamic_pointer_cast<const query::BoolFactor>(boolTerm);
+        if (boolFactor == nullptr) continue;
+
+        // If our BoolFactor has a 'NOT', then it is querying *outside* the region specified, and can't be
+        // pruned to a single AreaRestrictor.
+        if (boolFactor->_hasNot) continue;
+
+        for (auto boolFactorTerm : boolFactor->_terms) {
+            auto compPredicate = std::dynamic_pointer_cast<const query::CompPredicate>(boolFactorTerm);
+            if (compPredicate == nullptr) continue;
+
+            // Try to handle this as an angSep. If it's not, we check area functions below.
+            auto restrictor = makeAreaRestrictorFromAngSep(*compPredicate);
+            if (restrictor != nullptr) {
+                // Success!
+                ++count;
+                angSepRestrictor = restrictor;
+                continue;
+            }
+
+            // Area functions must be of the form scisql_s2Pt*(...) = 1 (or <=> 1):
+            if (compPredicate->op != query::CompPredicate::EQUALS_OP &&
+                compPredicate->op != query::CompPredicate::NULL_SAFE_EQUALS_OP) {
+                continue;
+            }
+
+            // Check both sides of the '='
+            if (isScisqlAreaFunc(*compPredicate->left) &&
+                areaParamsAreConst(*compPredicate->left->getFunction()) &&
+                compPredicate->right->getNumericConst() == 1.0) {
+                ++count;
+                scisqlFunc = compPredicate->left->getFunction();
+            }
+            if (isScisqlAreaFunc(*compPredicate->right) &&
+                areaParamsAreConst(*compPredicate->right->getFunction()) &&
+                compPredicate->left->getNumericConst() == 1.0) {
+                ++count;
+                scisqlFunc = compPredicate->right->getFunction();
+            }
+        }
+    }
+
+    // We only support ONE area restrictor.
+    if (count != 1) return nullptr;
+
+    // If this was a scisql_s2PtIn* function, build and return the appropriate class
+    if (scisqlFunc != nullptr) return makeAreaRestrictor(*scisqlFunc);
+
+    return angSepRestrictor;
 }
 
 /**
@@ -483,16 +606,11 @@ void QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt, query::QueryCo
             addScisqlRestrictors(*restrictors, stmt.getFromList(), whereClause, context);
         }
     } else {
-        // Get scisql restrictor if there is exactly one of them
-        auto scisqlFunc = extractSingleScisqlAreaFunc(whereClause);
-        if (scisqlFunc != nullptr) {
-            // Attempt to convirt the scisql restrictor to an AreaRestrictor. This will fail if any parameter
-            // in the scisql function is NOT a const val.
-            auto areaRestrictor = makeAreaRestrictor(*scisqlFunc);
-            if (areaRestrictor != nullptr) {
-                LOGS(_log, LOG_LVL_TRACE, "Adding restrictor: " << *areaRestrictor);
-                context.addAreaRestrictors({areaRestrictor});
-            }
+        // Get the area restrictor if there is exactly one area constraint in the WHERE clause.
+        auto areaRestrictor = extractSingleAreaRestrictor(whereClause);
+        if (areaRestrictor != nullptr) {
+            LOGS(_log, LOG_LVL_TRACE, "Adding restrictor: " << *areaRestrictor);
+            context.addAreaRestrictors({areaRestrictor});
         }
     }
 
