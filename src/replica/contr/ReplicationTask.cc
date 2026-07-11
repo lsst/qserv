@@ -23,14 +23,18 @@
 #include "replica/contr/ReplicationTask.h"
 
 // System headers
+#include <stdexcept>
 #include <vector>
 
 // Qserv headers
+#include "cconfig/DataManagementEvent.h"
 #include "replica/jobs/FindAllJob.h"
 #include "replica/jobs/FixUpJob.h"
 #include "replica/jobs/ReplicateJob.h"
 #include "replica/jobs/RebalanceJob.h"
 #include "replica/jobs/PurgeJob.h"
+#include "replica/registry/Registry.h"
+#include "replica/qserv/PostEventQservCzarMgtRequest.h"
 #include "replica/services/ChunkMap.h"
 
 using namespace std;
@@ -89,10 +93,26 @@ ReplicationTask::ReplicationTask(Controller::Ptr const& controller,
           _purge(purge) {}
 
 void ReplicationTask::_updateChunkMap() {
-    if (!serviceProvider()->chunkMap()->update()) {
-        error("failed to update chunk map in the Czar database");
-    } else {
-        info("chunk map has been updated in the Czar database");
+    bool updated = serviceProvider()->chunkMap()->update();
+    if (!updated) return;
+
+    cconfig::DataManagementEvent event;
+    event.type = cconfig::DataManagementEvent::Type::CHUNK_MAP_REBUILT;
+
+    // This test prevents the Controller from exiting if the Registry is not available.
+    // This solution deals with the startup ordering of services in the Qserv deployments.
+    vector<ConfigCzar> czars;
+    try {
+        czars = serviceProvider()->registry()->czars();
+    } catch (exception const& ex) {
+        error("ReplicationTask::" + string(__func__) +
+              ": failed to get a list of czars from the Registry service, ex: " + string(ex.what()));
+        return;
+    }
+    for (auto const& czar : czars) {
+        // Do not wait before the notification is sent, the chunk disposition map is already
+        // updated in the database.
+        PostEventQservCzarMgtRequest::create(serviceProvider(), czar.name, event)->start();
     }
 }
 

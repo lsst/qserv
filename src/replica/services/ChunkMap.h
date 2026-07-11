@@ -95,7 +95,7 @@ private:
 
     // The internal representation of the current state of the chunk map.
 
-    std::shared_ptr<Chunks> _chunks;  ///< The the current state.
+    std::shared_ptr<Chunks> _chunks;  ///< The current state.
     mutable std::mutex _mtx;          ///< Mutex to protect access to the chunk map.
 };
 

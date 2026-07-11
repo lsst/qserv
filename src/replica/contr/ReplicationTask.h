@@ -81,7 +81,6 @@ private:
                     unsigned int qservSyncTimeoutSec, bool disableQservSync, bool forceQservSync,
                     bool qservChunkMapUpdate, unsigned int replicationIntervalSec, bool purge);
 
-    /// Update the chunk disposition map in QMeta when changes in the map are detected.
     void _updateChunkMap();
 
     /// The maximum number of seconds to be waited before giving up

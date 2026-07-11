@@ -34,6 +34,10 @@
 #include "replica/util/Common.h"
 
 // Forward declarations
+namespace lsst::qserv::cconfig {
+class DataManagementEvent;
+}  // namespace lsst::qserv::cconfig
+
 namespace lsst::qserv::replica {
 class DatabaseInfo;
 }  // namespace lsst::qserv::replica
@@ -182,7 +186,6 @@ private:
     /**
      * Grant SELECT authorizations for the new database to Qserv
      * MySQL account(s) at workers.
-     *
      * @param database database descriptor
      * @param allWorkers  'true' if all workers should be involved into the operation
      * @throws http::Error if the operation failed
@@ -192,7 +195,6 @@ private:
     /**
      * Enable this database in Qserv workers by adding an entry
      * to table 'qservw_worker.Dbs' at workers.
-     *
      * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws http::Error if the operation failed
@@ -205,7 +207,6 @@ private:
      * tables have chunks representations for all registered chunks, even though some
      * of the chunks may be empty. This stage enforces structural consistency across
      * partitioned tables.
-     *
      * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws http::Error if the operation failed
@@ -214,7 +215,6 @@ private:
 
     /**
      * Consolidate MySQL partitioned tables at workers by removing partitions.
-     *
      * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws http::Error if operation failed
@@ -235,7 +235,6 @@ private:
     /**
      * (Re-)build the empty chunks list (table) for the specified database.
      * The methods throws exceptions in case of any errors.
-     *
      * @param databaseName The name of a database.
      * @param force Rebuild the list if 'true'.
      * @return An object representing a result of the operation (empty chunk list
@@ -266,12 +265,17 @@ private:
      * It runs the Replication system's chunks scanner to register chunk info
      * in the persistent state of the system. It also registers (synchronizes)
      * new chunks at Qserv workers.
-     *
      * @param database database descriptor
      * @param allWorkers 'true' if all workers should be involved into the operation
      * @throws http::Error if the operation failed
      */
     void _qservSync(DatabaseInfo const& database, bool allWorkers) const;
+
+    /**
+     * Notify Czars about a data management event.
+     * @param event the event to be posted to Czars
+     */
+    void _notifyCzars(cconfig::DataManagementEvent const& event) const;
 
     // The name and a type of a special column for the super-transaction-based ingest
 

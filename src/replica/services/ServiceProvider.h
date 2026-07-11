@@ -33,12 +33,12 @@
 // Qserv headers
 #include "http/Auth.h"
 #include "replica/services/ChunkLocker.h"
-#include "replica/services/ChunkMap.h"
 #include "replica/util/Mutex.h"
 #include "replica/util/NamedMutexRegistry.h"
 
 // Forward declarations
 namespace lsst::qserv::replica {
+class ChunkMap;
 class Configuration;
 class DatabaseServices;
 class Messenger;
