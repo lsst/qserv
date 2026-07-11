@@ -37,10 +37,14 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
+#include "cconfig/DataManagementEvent.h"
+#include "cconfig/EventService.h"
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/UserQueryResources.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQueryType.h"
+#include "css/CssAccess.h"
+#include "css/EmptyChunks.h"
 #include "czar/CzarErrors.h"
 #include "czar/CzarThreads.h"
 #include "czar/HttpSvc.h"
@@ -168,11 +172,41 @@ Czar::Czar(string const& configFilePath, string const& czarName)
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
     }
 
+    // Start the event service for handling events posted by the Replication system.
+    _eventService = cconfig::EventService::create(_czarConfig->replicationNumEventThreads());
+    _eventService->start();
+    LOGS(_log, LOG_LVL_INFO, "Event service started.");
+
+    // Subscribe to events from the Replication system which may require invalidating
+    // the CSS cache of the Czar. W/o the invalidation, some of those events would
+    // require restarts of the Czar to be able to see the changes in the CSS.
+    //
+    // Note that the subscription is done via a weak pointer to the EmptyChunks object
+    // in order to avoid a situation where the Czar is not able to be destroyed because
+    // of a circular reference between the Czar and the EmptyChunks object.
+    _eventService->subscribe(
+            [emptyChunksWeakPtr = weak_ptr<css::EmptyChunks>(
+                     _uqFactory->userQuerySharedResources()->css->getEmptyChunks())](
+                    cconfig::DataManagementEvent event) {
+                if (auto emptyChunks = emptyChunksWeakPtr.lock(); emptyChunks) {
+                    switch (event.type) {
+                        case cconfig::DataManagementEvent::Type::DATABASE_PUBLISHED:
+                        case cconfig::DataManagementEvent::Type::DATABASE_DELETED:
+                        case cconfig::DataManagementEvent::Type::TABLE_DELETED:
+                            emptyChunks->clearCache(event.database);
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            },
+            "CSS Cache Invalidation");
+
     // Start the control server for processing Czar management requests sent
     // by the Replication System. Update the port number in the configuration
     // in case if the server is run on the dynamically allocated port.
-    _controlHttpSvc =
-            HttpSvc::create(_czarConfig->replicationHttpPort(), _czarConfig->replicationNumHttpThreads());
+    _controlHttpSvc = HttpSvc::create(_czarConfig->replicationHttpPort(),
+                                      _czarConfig->replicationNumHttpThreads(), _eventService);
     auto const port = _controlHttpSvc->start();
     _czarConfig->setReplicationHttpPort(port);
 

@@ -31,6 +31,12 @@
 // Third party headers
 #include "boost/asio.hpp"
 
+/// Forward declarations for classes used in HttpSvc.
+
+namespace lsst::qserv::cconfig {
+class EventService;
+}  // namespace lsst::qserv::cconfig
+
 namespace lsst::qserv::qhttp {
 class Server;
 }  // namespace lsst::qserv::qhttp
@@ -74,9 +80,12 @@ public:
      *
      * @param port The number of a port to bind to.
      * @param numThreads The number of BOOST ASIO threads.
+     * @param eventService The shared pointer to the event service handling events posted by the Replication
+     * system.
      * @return The shared pointer to the running server.
      */
-    static std::shared_ptr<HttpSvc> create(uint16_t port, unsigned int numThreads);
+    static std::shared_ptr<HttpSvc> create(uint16_t port, unsigned int numThreads,
+                                           std::shared_ptr<cconfig::EventService> const& eventService);
 
     HttpSvc() = delete;
     HttpSvc(HttpSvc const&) = delete;
@@ -112,12 +121,16 @@ private:
      * @param port The number of a port to bind to.
      * @param numThreads The number of BOOST ASIO threads.
      */
-    HttpSvc(uint16_t port, unsigned int numThreads);
+    HttpSvc(uint16_t port, unsigned int numThreads,
+            std::shared_ptr<cconfig::EventService> const& eventService);
 
     // Input parameters
 
     uint16_t const _port;            ///< The input port number (could be 0 to allow autoallocation).
     unsigned int const _numThreads;  ///< The number of the BOOST ASIO service threads.
+
+    ///< The event service handling events posted by the Replication system.
+    std::shared_ptr<cconfig::EventService> const _eventService;
 
     /// This mutex protects the object state.
     mutable std::mutex _mtx;

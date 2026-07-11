@@ -48,6 +48,7 @@
 
 namespace lsst::qserv::cconfig {
 class CzarConfig;
+class EventService;
 }  // namespace lsst::qserv::cconfig
 
 namespace lsst::qserv::czar {
@@ -159,6 +160,9 @@ private:
 
     /// Reloads the log configuration file on log config file change.
     std::shared_ptr<util::FileMonitor> _logFileMonitor;
+
+    /// The event service handling events posted by the Replication system.
+    std::shared_ptr<cconfig::EventService> _eventService;
 
     /// The HTTP server processing Czar management requests.
     std::shared_ptr<HttpSvc> _controlHttpSvc;

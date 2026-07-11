@@ -206,6 +206,7 @@ public:
     }
     uint16_t replicationHttpPort() const { return _replicationHttpPort->getVal(); }
     size_t replicationNumHttpThreads() const { return _replicationNumHttpThreads->getVal(); }
+    size_t replicationNumEventThreads() const { return _replicationNumEventThreads->getVal(); }
     std::string const& httpUser() const { return _httpUser->getVal(); }
     void setHttpUser(std::string const& user);
     std::string const& httpPassword() const { return _httpPassword->getVal(); }
@@ -386,6 +387,8 @@ private:
             util::ConfigValTInt::create(_configValMap, "replication", "http_port", notReq, 0);
     CVTUIntPtr _replicationNumHttpThreads =
             util::ConfigValTUInt::create(_configValMap, "replication", "num_http_threads", notReq, 2);
+    CVTUIntPtr _replicationNumEventThreads =
+            util::ConfigValTUInt::create(_configValMap, "replication", "num_event_threads", notReq, 2);
 
     // User and password for the HTTP frontend
     CVTStrPtr _httpUser = util::ConfigValTStr::create(_configValMap, "http", "user", notReq, "");

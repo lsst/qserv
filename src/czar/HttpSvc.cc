@@ -27,6 +27,8 @@
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
+#include "cconfig/EventService.h"
+#include "czar/HttpManagementModule.h"
 #include "czar/HttpMonitorModule.h"
 #include "http/MetaModule.h"
 #include "qhttp/Server.h"
@@ -47,11 +49,14 @@ string const serviceName = "CZAR-MANAGEMENT ";
 
 namespace lsst::qserv::czar {
 
-shared_ptr<HttpSvc> HttpSvc::create(uint16_t port, unsigned int numThreads) {
-    return shared_ptr<HttpSvc>(new HttpSvc(port, numThreads));
+shared_ptr<HttpSvc> HttpSvc::create(uint16_t port, unsigned int numThreads,
+                                    shared_ptr<cconfig::EventService> const& eventService) {
+    return shared_ptr<HttpSvc>(new HttpSvc(port, numThreads, eventService));
 }
 
-HttpSvc::HttpSvc(uint16_t port, unsigned int numThreads) : _port(port), _numThreads(numThreads) {}
+HttpSvc::HttpSvc(uint16_t port, unsigned int numThreads,
+                 shared_ptr<cconfig::EventService> const& eventService)
+        : _port(port), _numThreads(numThreads), _eventService(eventService) {}
 
 uint16_t HttpSvc::start() {
     string const context = "czar::HttpSvc::" + string(__func__) + " ";
@@ -89,6 +94,12 @@ uint16_t HttpSvc::start() {
             {{"GET", "/status",
               [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
                   HttpMonitorModule::process(::serviceName, req, resp, "STATUS");
+              }}});
+    _httpServerPtr->addHandlers(
+            {{"POST", "/event",
+              [self](shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp) {
+                  HttpManagementModule::process(::serviceName, req, resp, self->_eventService, "EVENT",
+                                                http::AuthType::REQUIRED);
               }}});
     _httpServerPtr->start();
 
