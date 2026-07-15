@@ -33,6 +33,7 @@
 // Qserv headers
 #include "http/Auth.h"
 #include "replica/services/ChunkLocker.h"
+#include "replica/services/ChunkMap.h"
 #include "replica/util/Mutex.h"
 #include "replica/util/NamedMutexRegistry.h"
 
@@ -160,10 +161,13 @@ public:
      */
     std::shared_ptr<replica::Mutex> getNamedMutex(std::string const& name);
 
+    /// @return a reference to the chunk map service
+    std::shared_ptr<ChunkMap> const& chunkMap();
+
 private:
     /// @see ServiceProvider::create()
-    explicit ServiceProvider(std::string const& configUrl, std::string const& instanceId,
-                             http::AuthContext const& httpAuthContext);
+    ServiceProvider(std::string const& configUrl, std::string const& instanceId,
+                    http::AuthContext const& httpAuthContext);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
@@ -202,6 +206,9 @@ private:
 
     /// Registry of unique mutexes.
     NamedMutexRegistry _namedMutexRegistry;
+
+    /// The map represents the information on the replica disposition across Qserv workers.
+    std::shared_ptr<ChunkMap> _chunkMap;
 
     /// The mutex for enforcing thread safety of the class's public API
     /// and internal operations.

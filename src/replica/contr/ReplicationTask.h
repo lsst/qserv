@@ -22,9 +22,7 @@
 #define LSST_QSERV_REPLICATIONTASK_H
 
 // System headers
-#include <cstdint>
-#include <map>
-#include <string>
+#include <memory>
 
 // Qserv headers
 #include "replica/contr/Task.h"
@@ -83,12 +81,6 @@ private:
                     unsigned int qservSyncTimeoutSec, bool disableQservSync, bool forceQservSync,
                     bool qservChunkMapUpdate, unsigned int replicationIntervalSec, bool purge);
 
-    /// Get info on known chunk replicas from the persistent store of the Replication system
-    /// and package those into the new chunk disposition map. Update the current map if the new one is
-    /// different from the current one.
-    /// @return 'true' if the map has been updated, 'false' otherwise.
-    bool _getChunkMap();
-
     /// Update the chunk disposition map in QMeta when changes in the map are detected.
     void _updateChunkMap();
 
@@ -101,18 +93,6 @@ private:
     bool const _qservChunkMapUpdate;  ///< Enable updating the chunk disposition map in Qserv's QMeta
                                       /// database if 'true'.
     bool const _purge;                ///< Purge excess replicas if 'true'.
-
-    /// [worker] -> [database] -> [baseTable] -> [chunk] -> size
-    ///
-    ///   The map represents the information on the replica disposition across Qserv workers.
-    ///   The information is obtained from the persistent state of the Replication system on each
-    ///   run of the task. The maps gets updated only if the new map is different from the current one.
-    ///
-    using ChunkMap =
-            std::map<std::string,
-                     std::map<std::string, std::map<std::string, std::map<unsigned int, std::uint64_t>>>>;
-
-    std::shared_ptr<ChunkMap> _chunkMap;  ///< The current chunk disposition map
 };
 
 }  // namespace lsst::qserv::replica
