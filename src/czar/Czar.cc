@@ -72,6 +72,7 @@
 #include "util/IterableFormatter.h"
 #include "util/QdispPool.h"
 #include "util/String.h"
+#include "util/TimeUtils.h"
 
 using namespace std;
 
@@ -97,54 +98,18 @@ Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName)
 
 void Czar::_monitor() {
     string const funcN("Czar::_monitor");
-    uint16_t loopCount = 0;  // unsigned to wrap around
     while (_monitorLoop) {
-        ++loopCount;
         this_thread::sleep_for(_monitorSleepTime);
         LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
-
-        /// Check database for changes in worker chunk assignments and aliveness
-        try {
-            // TODO:DM-53239 The read() is incredibly expensive until the database has
-            //         a "changed" field of some kind (preferably timestamp) to
-            //         indicate the last time it changed.
-            //         For Now, just do one read every few times through this loop.
-            if (loopCount % 10 == 0 || true) {
-                _czarFamilyMap->read();
-            }
-        } catch (ChunkMapException const& cmex) {
-            // There are probably chunks that don't exist on any alive worker,
-            // continue on in hopes that workers will show up with the missing chunks
-            // later.
-            LOGS(_log, LOG_LVL_ERROR, funcN << " family map read problems " << cmex.what());
-        }
 
         // Send appropriate messages to all ActiveWorkers. This will
         // check if workers have died by timeout.
         _czarRegistry->sendActiveWorkersMessages();
 
-        /// Create new UberJobs (if possible) for all jobs that are
-        /// unassigned for any reason.
-        map<QueryId, shared_ptr<qdisp::Executive>> execMap;
-        {
-            // Make a copy of all valid Executives
-            lock_guard<mutex> execMapLock(_executiveMapMtx);
-            // Use an iterator so it's easy/quick to delete dead weak pointers.
-            auto iter = _executiveMap.begin();
-            while (iter != _executiveMap.end()) {
-                auto qIdKey = iter->first;
-                shared_ptr<qdisp::Executive> exec = iter->second.lock();
-                if (exec == nullptr) {
-                    iter = _executiveMap.erase(iter);
-                } else {
-                    execMap[qIdKey] = exec;
-                    ++iter;
-                }
-            }
-        }
-        // Use the copy to create new UberJobs as needed
-        for (auto&& [qIdKey, execVal] : execMap) {
-            execVal->assignJobsToUberJobs();
+        // Check if the family map should be updated
+        bool const jobsAssigned = FamilyMapRead(TIMEPOINT(chrono::seconds(0)));
+        if (!jobsAssigned) {
+            _assignJobsToUberJobs();
         }
 
         // To prevent anything from slipping through the cracks:
@@ -157,6 +122,69 @@ void Czar::_monitor() {
     }
 }
 
+bool Czar::FamilyMapRead(TIMEPOINT const requestTime) {
+    string const funcN("Czar::FamilyMapRead");
+    bool familyMapRead = false;
+    LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
+    // Only one thread at a time should do this.
+    lock_guard familyUpdateLock(_latestFamilyUpdateMtx);
+    if (requestTime >= _latestFamilyUpdate || CLOCK::now() - _latestFamilyUpdate > _familyMapmaxUpdateWait) {
+        /// Check database for changes in worker chunk assignments and aliveness
+        try {
+            auto familyUpdateStart = CLOCK::now();
+            _czarFamilyMap->read();
+            _latestFamilyUpdate = familyUpdateStart;
+            familyMapRead = true;
+            //  A fresh family map may allow some unassigned jobs to be assigned to UberJobs.
+            _assignJobsToUberJobs();
+        } catch (ChunkMapException const& cmex) {
+            // There are probably chunks that don't exist on any alive worker,
+            // continue on in hopes that workers will show up with the missing chunks
+            // later.
+            LOGS(_log, LOG_LVL_ERROR, funcN << " family map read problems " << cmex.what());
+        }
+    } else {
+        LOGS(_log, LOG_LVL_DEBUG,
+             funcN << " family map read already completed since request time "
+                   << util::TimeUtils::timePointToDateTimeString(requestTime) << " latestFamilyUpdate="
+                   << util::TimeUtils::timePointToDateTimeString(_latestFamilyUpdate));
+    }
+    // To prevent anything from slipping through the cracks:
+    // Workers will keep trying to transmit results until they think the czar is dead.
+    // If a worker thinks the czar died, it will cancel all related jobs that it has,
+    // and if the czar sends a status message to that worker, that worker will send back
+    // a separate message (see WorkerCzarComIssue) saying it killed everything that this
+    // czar gave it. Upon getting this message from a worker, this czar will reassign
+    // everything it had sent to that worker.
+    return familyMapRead;
+}
+
+void Czar::_assignJobsToUberJobs() {
+    /// Create new UberJobs (if possible) for all jobs that are
+    /// unassigned for any reason.
+    map<QueryId, shared_ptr<qdisp::Executive>> execMap;
+    {
+        // Make a copy of all valid Executives
+        lock_guard<mutex> execMapLock(_executiveMapMtx);
+        // Use an iterator so it's easy/quick to delete dead weak pointers.
+        auto iter = _executiveMap.begin();
+        while (iter != _executiveMap.end()) {
+            auto qIdKey = iter->first;
+            shared_ptr<qdisp::Executive> exec = iter->second.lock();
+            if (exec == nullptr) {
+                iter = _executiveMap.erase(iter);
+            } else {
+                execMap[qIdKey] = exec;
+                ++iter;
+            }
+        }
+    }
+    // Use the copy to create new UberJobs as needed
+    for (auto&& [qIdKey, execVal] : execMap) {
+        execVal->assignJobsToUberJobs();
+    }
+}
+
 // Constructors
 Czar::Czar(string const& configFilePath, string const& czarName)
         : _czarName(czarName),
@@ -166,7 +194,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _clientToQuery(),
           _monitorSleepTime(_czarConfig->getMonitorSleepTimeMilliSec()),
           _activeWorkerMap(new ActiveWorkerMap(_czarConfig)),
-          _fqdn(util::get_current_host_fqdn_wait()) {
+          _fqdn(util::get_current_host_fqdn_wait()),
+          _familyMapmaxUpdateWait(std::chrono::seconds(_czarConfig->getFamilyMapMaxUpdateWaitSecs())) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);

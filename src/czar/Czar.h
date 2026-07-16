@@ -140,6 +140,13 @@ public:
 
     std::shared_ptr<CzarFamilyMap> getCzarFamilyMap() const { return _czarFamilyMap; }
 
+    /// Check if the family map has been updated since update time and if so, read the new family map.
+    /// @param requestTime The time of the request.
+    /// If the requestTime is > _latestFamilyUpdate (start of last read), the family map is out probably out
+    /// of date.
+    /// @return true if the family map was read.
+    bool FamilyMapRead(TIMEPOINT const requestTime);
+
     std::shared_ptr<CzarRegistry> getCzarRegistry() const { return _czarRegistry; }
 
     /// Add an Executive to the map of executives.
@@ -209,6 +216,9 @@ private:
 
     /// Periodically check for system changes and use those changes to try to finish queries.
     void _monitor();
+
+    /// Assign all unassigned Jobs to new UberJobs.
+    void _assignJobsToUberJobs();
 
     static Ptr _czar;  ///< Pointer to single instance of the Czar.
 
@@ -286,6 +296,15 @@ private:
     /// Key - <error type, worker id> - value - count of errors of that type for that worker.
     std::map<std::pair<std::string, std::string>, int> _commErrCountMap;
     mutable std::mutex _commErrCountMtx;  ///< protects _commErrCountMap
+
+    /// Limits Czar::FamilyMapRead() to one copy running at a time. FamilyMapRead() is expensive
+    /// and running multiple copies concurrently is not useful.
+    std::mutex _latestFamilyUpdateMtx;
+    /// The last time a family read was started. If the request time is less than this, the change has already
+    /// been read and the request can be safely ignored.
+    TIMEPOINT _latestFamilyUpdate;
+    /// If more than this time has past, check the family map.
+    std::chrono::seconds _familyMapmaxUpdateWait{600};
 };
 
 }  // namespace lsst::qserv::czar
