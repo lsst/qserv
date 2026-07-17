@@ -23,6 +23,7 @@ target_link_libraries(replica PUBLIC
     replica_util
     replica_worker
     css
+    cconfig
     xrdreq
     xrdsvc
     XrdCl

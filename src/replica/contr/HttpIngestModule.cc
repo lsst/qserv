@@ -35,6 +35,7 @@
 #include "boost/algorithm/string.hpp"
 
 // Qserv headers
+#include "cconfig/DataManagementEvent.h"
 #include "css/CssAccess.h"
 #include "css/CssError.h"
 #include "css/DbInterfaceMySql.h"
@@ -53,7 +54,10 @@
 #include "replica/jobs/SqlGrantAccessJob.h"
 #include "replica/jobs/SqlEnableDbJob.h"
 #include "replica/jobs/SqlRemoveTablePartitionsJob.h"
+#include "replica/qserv/PostEventQservCzarMgtRequest.h"
+#include "replica/registry/Registry.h"
 #include "replica/requests/SqlResultSet.h"
+#include "replica/services/ChunkMap.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "replica/util/ChunkedTable.h"
@@ -377,6 +381,12 @@ json HttpIngestModule::_publishDatabase() {
     // the Replication system.
     _qservSync(database, allWorkers);
 
+    // Notify Czars about the database publication event.
+    cconfig::DataManagementEvent dataManagementEvent;
+    dataManagementEvent.type = cconfig::DataManagementEvent::Type::DATABASE_PUBLISHED;
+    dataManagementEvent.database = database.name;
+    _notifyCzars(dataManagementEvent);
+
     ControllerEvent event;
     event.status = "PUBLISH DATABASE";
     event.kvInfo.emplace_back("database", database.name);
@@ -480,6 +490,12 @@ json HttpIngestModule::_deleteDatabase() {
     // persistent state.
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
     if (!error.empty()) throw http::Error(__func__, error);
+
+    // Notify Czars about the database removal event.
+    cconfig::DataManagementEvent dataManagementEvent;
+    dataManagementEvent.type = cconfig::DataManagementEvent::Type::DATABASE_DELETED;
+    dataManagementEvent.database = database.name;
+    _notifyCzars(dataManagementEvent);
 
     return json::object();
 }
@@ -744,6 +760,13 @@ json HttpIngestModule::_deleteTable() {
     // persistent state.
     error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
     if (!error.empty()) throw http::Error(__func__, error);
+
+    // Notify Czars about the table removal event.
+    cconfig::DataManagementEvent dataManagementEvent;
+    dataManagementEvent.type = cconfig::DataManagementEvent::Type::TABLE_DELETED;
+    dataManagementEvent.database = database.name;
+    dataManagementEvent.table = table.name;
+    _notifyCzars(dataManagementEvent);
 
     return json::object();
 }
@@ -1411,6 +1434,26 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
                            Job::state2string(qservSyncJob->state(), qservSyncJob->extendedState());
         debug(__func__, context + "  " + msg);
         throw http::Error(__func__, msg);
+    }
+}
+
+void HttpIngestModule::_notifyCzars(cconfig::DataManagementEvent const& event) const {
+    // The replica disposition map neeeds to be updated in the database before sending
+    // the notification to the czars.
+    controller()->serviceProvider()->chunkMap()->update();
+    // This test prevents the Controller from exiting if the Registry is not available.
+    // This solution deals with the startup ordering of services in the Qserv deployments.
+    vector<ConfigCzar> czars;
+    try {
+        czars = controller()->serviceProvider()->registry()->czars();
+    } catch (exception const& ex) {
+        warn(__func__, "failed to get a list of czars from the Registry service, ex: " + string(ex.what()));
+        return;
+    }
+    for (auto const& czar : czars) {
+        // Do not wait before the notification is sent, the chunk disposition map is already
+        // updated in the database.
+        PostEventQservCzarMgtRequest::create(controller()->serviceProvider(), czar.name, event)->start();
     }
 }
 

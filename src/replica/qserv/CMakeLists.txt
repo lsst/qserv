@@ -16,6 +16,7 @@ target_sources(replica_qserv PRIVATE
     QservMgtRequest.cc
     QservMgtServices.cc
     QservWorkerMgtRequest.cc
+    PostEventQservCzarMgtRequest.cc
     RemoveReplicaQservMgtRequest.cc
     SetReplicasQservMgtRequest.cc
     TestEchoQservMgtRequest.cc

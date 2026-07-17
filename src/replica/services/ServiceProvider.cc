@@ -31,6 +31,7 @@
 #include "replica/qserv/QservMgtServices.h"
 #include "replica/registry/Registry.h"
 #include "replica/requests/Messenger.h"
+#include "replica/services/ChunkMap.h"
 #include "replica/services/DatabaseServicesPool.h"
 
 // LSST headers
@@ -91,6 +92,14 @@ Registry::Ptr const& ServiceProvider::registry() {
 
 shared_ptr<replica::Mutex> ServiceProvider::getNamedMutex(string const& name) {
     return _namedMutexRegistry.get(name);
+}
+
+shared_ptr<ChunkMap> const& ServiceProvider::chunkMap() {
+    replica::Lock lock(_mtx, _context() + __func__);
+    if (_chunkMap == nullptr) {
+        _chunkMap = ChunkMap::create(shared_from_this());
+    }
+    return _chunkMap;
 }
 
 void ServiceProvider::run() {

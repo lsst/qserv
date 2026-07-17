@@ -111,6 +111,10 @@ CzarConfig::CzarConfig(util::ConfigStore const& configStore, std::string const& 
         throw util::ConfigException(ERR_LOC, " CzarConfig::" + std::string(__func__) +
                                                      ": 'replication.num_http_threads' can't be 0.");
     }
+    if (_replicationNumEventThreads->getVal() == 0) {
+        throw util::ConfigException(ERR_LOC, " CzarConfig::" + std::string(__func__) +
+                                                     ": 'replication.num_event_threads' can't be 0.");
+    }
 
     // Cache the cached version of the configuration in the JSON format. The JSON object
     // contains two collections of parameters: the "input" ones that were passed into
