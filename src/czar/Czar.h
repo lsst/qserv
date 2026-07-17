@@ -145,7 +145,7 @@ public:
     /// If the requestTime is > _latestFamilyUpdate (start of last read), the family map is out probably out
     /// of date.
     /// @return true if the family map was read.
-    bool FamilyMapRead(TIMEPOINT const requestTime);
+    bool familyMapRead(TIMEPOINT const requestTime);
 
     std::shared_ptr<CzarRegistry> getCzarRegistry() const { return _czarRegistry; }
 
@@ -304,7 +304,7 @@ private:
     /// been read and the request can be safely ignored.
     TIMEPOINT _latestFamilyUpdate;
     /// If more than this time has past, check the family map.
-    std::chrono::seconds _familyMapmaxUpdateWait{600};
+    std::chrono::seconds _familyMapMaxUpdateWait{600};
 };
 
 }  // namespace lsst::qserv::czar
