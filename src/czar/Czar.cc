@@ -107,7 +107,7 @@ void Czar::_monitor() {
         _czarRegistry->sendActiveWorkersMessages();
 
         // Check if the family map should be updated
-        bool const jobsAssigned = FamilyMapRead(TIMEPOINT(chrono::seconds(0)));
+        bool const jobsAssigned = familyMapRead(TIMEPOINT(chrono::seconds(0)));
         if (!jobsAssigned) {
             _assignJobsToUberJobs();
         }
@@ -122,19 +122,19 @@ void Czar::_monitor() {
     }
 }
 
-bool Czar::FamilyMapRead(TIMEPOINT const requestTime) {
+bool Czar::familyMapRead(TIMEPOINT const requestTime) {
     string const funcN("Czar::FamilyMapRead");
-    bool familyMapRead = false;
+    bool mapWasUpdated = false;
     LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
     // Only one thread at a time should do this.
     lock_guard familyUpdateLock(_latestFamilyUpdateMtx);
-    if (requestTime >= _latestFamilyUpdate || CLOCK::now() - _latestFamilyUpdate > _familyMapmaxUpdateWait) {
+    if (requestTime >= _latestFamilyUpdate || CLOCK::now() - _latestFamilyUpdate > _familyMapMaxUpdateWait) {
         /// Check database for changes in worker chunk assignments and aliveness
         try {
             auto familyUpdateStart = CLOCK::now();
             _czarFamilyMap->read();
             _latestFamilyUpdate = familyUpdateStart;
-            familyMapRead = true;
+            mapWasUpdated = true;
             //  A fresh family map may allow some unassigned jobs to be assigned to UberJobs.
             _assignJobsToUberJobs();
         } catch (ChunkMapException const& cmex) {
@@ -156,7 +156,7 @@ bool Czar::FamilyMapRead(TIMEPOINT const requestTime) {
     // a separate message (see WorkerCzarComIssue) saying it killed everything that this
     // czar gave it. Upon getting this message from a worker, this czar will reassign
     // everything it had sent to that worker.
-    return familyMapRead;
+    return mapWasUpdated;
 }
 
 void Czar::_assignJobsToUberJobs() {
@@ -195,7 +195,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
           _monitorSleepTime(_czarConfig->getMonitorSleepTimeMilliSec()),
           _activeWorkerMap(new ActiveWorkerMap(_czarConfig)),
           _fqdn(util::get_current_host_fqdn_wait()),
-          _familyMapmaxUpdateWait(std::chrono::seconds(_czarConfig->getFamilyMapMaxUpdateWaitSecs())) {
+          _familyMapMaxUpdateWait(std::chrono::seconds(_czarConfig->getFamilyMapMaxUpdateWaitSecs())) {
     // set id counter to milliseconds since the epoch, mod 1 year.
     struct timeval tv;
     gettimeofday(&tv, nullptr);
