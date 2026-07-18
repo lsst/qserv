@@ -77,7 +77,7 @@ protected:
      *  version check. The check will ensure that a version of the Protobuf library linked
      *  to an application is consistent with header files.
      * @param enableServiceProvider An optional flag which will inject configuration
-     *  option "--config=<url>", load the configuration into Configuration and initialize
+     *  option "--repl-db=<url>", load the configuration into Configuration and initialize
      *  the ServiceProvider with the configuration.
      */
     Application(int argc, const char* const argv[], std::string const& description = "",
@@ -100,16 +100,6 @@ protected:
      *  before Parser finishes processing command-line parameters.
      */
     ServiceProvider::Ptr const& serviceProvider() const;
-
-    /**
-     * @return The configuration URL, either its default value or the one that was
-     *   explicitly specified in a command line. This requires that a base class configured
-     *   the application with the option 'enableServiceProvider=true'.
-     * @throws std::logic_error If Configuration loading and ServiceProvider was
-     *   not enabled in the constructor of the class, or if the method was called
-     *   before Parser finishes processing command-line parameters.
-     */
-    std::string const& configUrl() const;
 
     /// @return The unique identifier of a Qserv instance served by the Replication System.
     std::string const& instanceId() const { return _instanceId; }
@@ -150,8 +140,8 @@ private:
     /// The standard flag which would turn on the debug output if requested
     bool _debugFlag;
 
-    /// Configuration URL
-    std::string _config;
+    /// Connection URL for the Replication database.
+    std::string _replDbUrl;
 
     /// A unique identifier of a Qserv instance served by the Replication System
     std::string _instanceId;

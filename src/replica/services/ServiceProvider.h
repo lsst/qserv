@@ -64,7 +64,7 @@ public:
     /**
      * Static factory for creating objects of the class
      *
-     * @param configUrl  A source of the application configuration parameters.
+     * @param replDbUrl  Connection URL for the Replication database
      * @param instanceId  A unique identifier of a Qserv instance served by
      *  the Replication System. Its value will be passed along various internal
      *  communication lines of the system to ensure that all services are related
@@ -74,7 +74,7 @@ public:
      * @param httpAuthContext  An authorization context for operations affecting the state of
      *  Qserv or the Replication/Ingest system.
      */
-    static ServiceProvider::Ptr create(std::string const& configUrl, std::string const& instanceId,
+    static ServiceProvider::Ptr create(std::string const& replDbUrl, std::string const& instanceId,
                                        http::AuthContext const& httpAuthContext);
 
     ~ServiceProvider() = default;
@@ -166,7 +166,7 @@ public:
 
 private:
     /// @see ServiceProvider::create()
-    ServiceProvider(std::string const& configUrl, std::string const& instanceId,
+    ServiceProvider(std::string const& replDbUrl, std::string const& instanceId,
                     http::AuthContext const& httpAuthContext);
 
     /// @return the context string for debugging and diagnostic printouts
