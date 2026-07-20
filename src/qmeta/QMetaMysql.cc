@@ -773,7 +773,7 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> cons
     }
 }
 
-QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> const& prevUpdateTime) {
+QMetaChunkMap QMetaMysql::getChunkMap() {
     lock_guard<mutex> lock(_dbMutex);
 
     QMetaChunkMap chunkMap;
@@ -786,16 +786,8 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
     auto const updateTime = _getChunkMapUpdateTime(lock);
     LOGS(_log, LOG_LVL_INFO,
          "QMetaMysql::getChunkMap updateTime=" << util::TimeUtils::timePointToDateTimeString(updateTime));
-    bool const force =
-            (prevUpdateTime == chrono::time_point<chrono::system_clock>()) || (prevUpdateTime < updateTime);
-    if (!force) {
-        trans->commit();
-        chunkMap.updateTime = prevUpdateTime;
-        return chunkMap;
-    }
 
     // Read the map itself
-
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
 
