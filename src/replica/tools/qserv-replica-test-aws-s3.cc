@@ -19,23 +19,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
- * @see ConfigTestApp
- */
-
 // System headers
 #include <iostream>
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/apps/ConfigTestApp.h"
+#include "replica/apps/TestAwsS3App.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
 
 int main(int argc, char* argv[]) {
     try {
-        auto app = ConfigTestApp::create(argc, argv);
+        auto const app = TestAwsS3App::create(argc, argv);
         return app->run();
     } catch (exception const& ex) {
         cerr << "main()  the application failed, exception: " << ex.what() << endl;

@@ -57,16 +57,10 @@ function(REPLICA_UTILS)
 endfunction()
 
 replica_utils(
-    qserv-replica-calc-cs
-    qserv-replica-config-test
-    qserv-replica-config
-    qserv-replica-controller-cmd
-    qserv-replica-file
-    qserv-replica-job
     qserv-replica-master-http
     qserv-replica-registry
-    qserv-replica-test
-    qserv-replica-worker-notify
+    qserv-replica-test-aws-s3
+    qserv-replica-test-xrootd-ssi
     qserv-replica-worker
 )
 
@@ -93,7 +87,6 @@ replica_tests(
     testChunkedTable
     testConnectionParams
     testCsv
-    testFileIngestApp
     testFileUtils
     testIngestRequestMgr
     testJson

@@ -63,11 +63,13 @@ namespace lsst::qserv::replica {
 
 using namespace database::mysql;
 
-WorkerApp::Ptr WorkerApp::create(int argc, char* argv[]) { return Ptr(new WorkerApp(argc, argv)); }
+shared_ptr<WorkerApp> WorkerApp::create(int argc, char* argv[]) {
+    return shared_ptr<WorkerApp>(new WorkerApp(argc, argv));
+}
 
 WorkerApp::WorkerApp(int argc, char* argv[])
-        : Application(argc, argv, description, injectDatabaseOptions, boostProtobufVersionCheck,
-                      enableServiceProvider),
+        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
+                      ::enableServiceProvider),
           _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
     parser().option("qserv-worker-db",
                     "A connection url for the MySQL service of the Qserv"

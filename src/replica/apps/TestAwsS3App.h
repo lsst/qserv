@@ -46,7 +46,6 @@ public:
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
-     *
      * @param argc The number of command-line arguments.
      * @param argv Ahe vector of command-line arguments.
      */
@@ -55,15 +54,12 @@ public:
     TestAwsS3App() = delete;
     TestAwsS3App(TestAwsS3App const&) = delete;
     TestAwsS3App& operator=(TestAwsS3App const&) = delete;
-
     virtual ~TestAwsS3App() override = default;
 
 protected:
-    /// @see Application::runImpl()
     virtual int runImpl() final;
 
 private:
-    /// @see TestAwsS3App::create()
     TestAwsS3App(int argc, char* argv[]);
 
     int _readObject(Aws::S3::S3Client& client);

@@ -22,6 +22,7 @@
 #define LSST_QSERV_REPLICA_QSERVXROOTDSSIAPP_H
 
 // System headers
+#include <cstdint>
 #include <memory>
 #include <string>
 
@@ -36,34 +37,27 @@ namespace lsst::qserv::replica {
  */
 class QservXrootdSsiApp : public Application {
 public:
-    /// The pointer type for instances of the class
-    typedef std::shared_ptr<QservXrootdSsiApp> Ptr;
-
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
-     *
      * @param argc The number of command-line arguments.
      * @param argv The vector of command-line arguments.
      */
-    static Ptr create(int argc, char* argv[]);
+    static std::shared_ptr<QservXrootdSsiApp> create(int argc, char* argv[]);
 
     QservXrootdSsiApp() = delete;
     QservXrootdSsiApp(QservXrootdSsiApp const&) = delete;
     QservXrootdSsiApp& operator=(QservXrootdSsiApp const&) = delete;
-
     virtual ~QservXrootdSsiApp() final = default;
 
 protected:
-    /// @see Application::runImpl()
     virtual int runImpl() final;
 
 private:
-    /// @see QservXrootdSsiApp::create()
     QservXrootdSsiApp(int argc, char* argv[]);
 
     std::string _url;              ///< The connection URL for the XROOTD/SSI services.
-    size_t _numThreads = 1;        ///< The number of threads for running the test.
+    std::size_t _numThreads = 1;   ///< The number of threads for running the test.
     int _reportIntervalMs = 1000;  ///< An interval for reporting the performance counters.
     bool _progress = false;        ///< For periodic progress reports on the requests.
     bool _verbose = false;         ///< For detailed report on the requests.
