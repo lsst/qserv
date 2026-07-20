@@ -109,7 +109,10 @@ void Czar::_monitor() {
         _czarRegistry->sendActiveWorkersMessages();
 
         // After one successful read, the czar will depend on EventService for updates.
-        if (!familyMapUpdated) { familyMapUpdated = familyMapRead(TIMEPOINT(chrono::seconds(0))); }
+        // TODO: After EventService is proven to work reliably, remove true.
+        if (!familyMapUpdated || true) {
+            familyMapUpdated = familyMapRead(TIMEPOINT(chrono::seconds(0)));
+        }
 
         _assignJobsToUberJobs();
 
