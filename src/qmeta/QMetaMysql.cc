@@ -782,6 +782,7 @@ QMetaChunkMap QMetaMysql::getChunkMap(chrono::time_point<chrono::system_clock> c
 
     // Check if the table needs to be read. Note that the default value of
     // the previous update timestamp always forces an attempt to read the map.
+    // NOTE: This only has one second resolution, so it is possible to miss an update.
     auto const updateTime = _getChunkMapUpdateTime(lock);
     LOGS(_log, LOG_LVL_INFO,
          "QMetaMysql::getChunkMap updateTime=" << util::TimeUtils::timePointToDateTimeString(updateTime));
