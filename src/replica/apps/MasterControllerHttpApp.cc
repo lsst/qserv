@@ -37,9 +37,12 @@
 #include "http/MetaModule.h"
 #include "http/Method.h"
 #include "replica/config/Configuration.h"
-#include "replica/contr/HttpProcessor.h"
+#include "replica/contr/Controller.h"
+#include "replica/contr/DeleteWorkerTask.h"
+#include "replica/contr/HealthMonitorTask.h"
 #include "replica/contr/HttpProcessor.h"
 #include "replica/contr/HttpProcessorConfig.h"
+#include "replica/contr/ReplicationTask.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
 #include "util/common.h"
@@ -98,8 +101,8 @@ bool const enableServiceProvider = true;
 
 namespace lsst::qserv::replica {
 
-MasterControllerHttpApp::Ptr MasterControllerHttpApp::create(int argc, char* argv[]) {
-    return Ptr(new MasterControllerHttpApp(argc, argv));
+shared_ptr<MasterControllerHttpApp> MasterControllerHttpApp::create(int argc, char* argv[]) {
+    return shared_ptr<MasterControllerHttpApp>(new MasterControllerHttpApp(argc, argv));
 }
 
 MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])

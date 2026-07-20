@@ -4,10 +4,6 @@ target_compile_options(replica PRIVATE
     -Wno-maybe-uninitialized
 )
 
-target_include_directories(replica PRIVATE
-    ${XROOTD_INCLUDE_DIRS}
-)
-
 target_link_libraries(replica PUBLIC
     replica_apps
     replica_config
@@ -45,7 +41,6 @@ function(REPLICA_UTILS)
     foreach(UTIL IN ITEMS ${ARGV})
         add_executable(${UTIL})
         target_sources(${UTIL} PRIVATE tools/${UTIL}.cc)
-        target_include_directories(${UTIL} PRIVATE ${XROOTD_INCLUDE_DIRS})
         target_link_libraries(${UTIL} PRIVATE
             replica
         )
@@ -54,16 +49,9 @@ function(REPLICA_UTILS)
 endfunction()
 
 replica_utils(
-    qserv-replica-calc-cs
-    qserv-replica-config-test
-    qserv-replica-config
-    qserv-replica-controller-cmd
-    qserv-replica-file
-    qserv-replica-job
     qserv-replica-master-http
     qserv-replica-registry
-    qserv-replica-test
-    qserv-replica-worker-notify
+    qserv-replica-test-aws-s3
     qserv-replica-worker
 )
 
@@ -88,7 +76,6 @@ replica_tests(
     testChunkedTable
     testConnectionParams
     testCsv
-    testFileIngestApp
     testFileUtils
     testIngestRequestMgr
     testJson
