@@ -51,7 +51,8 @@ struct TimeUtils {
     static std::string toDateTimeString(std::chrono::milliseconds const& millisecondsSinceEpoch);
 
     /// @return a human-readable time in a format 'YYYY-MM-DD HH:MM:SS'
-    static std::string timePointToDateTimeString(TIMEPOINT const& point);
+    /// @return format 'YYYY-MM-DD HH:MM:SS.mmm' if addMilliseconds is true.
+    static std::string timePointToDateTimeString(TIMEPOINT const& point, bool addMilliseconds=false);
 
     /**
      * @param tp The timepoint to be converted.

@@ -98,6 +98,8 @@ Czar::Ptr Czar::createCzar(string const& configFilePath, string const& czarName)
 
 void Czar::_monitor() {
     string const funcN("Czar::_monitor");
+
+    bool familyMapUpdated = false;
     while (_monitorLoop) {
         this_thread::sleep_for(_monitorSleepTime);
         LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
@@ -106,11 +108,10 @@ void Czar::_monitor() {
         // check if workers have died by timeout.
         _czarRegistry->sendActiveWorkersMessages();
 
-        // Check if the family map should be updated
-        bool const jobsAssigned = familyMapRead(TIMEPOINT(chrono::seconds(0)));
-        if (!jobsAssigned) {
-            _assignJobsToUberJobs();
-        }
+        // After one successful read, the czar will depend on EventService for updates.
+        if (!familyMapUpdated) { familyMapUpdated = familyMapRead(TIMEPOINT(chrono::seconds(0))); }
+
+        _assignJobsToUberJobs();
 
         // To prevent anything from slipping through the cracks:
         // Workers will keep trying to transmit results until they think the czar is dead.
@@ -146,8 +147,8 @@ bool Czar::familyMapRead(TIMEPOINT const requestTime) {
     } else {
         LOGS(_log, LOG_LVL_DEBUG,
              funcN << " family map read already completed since request time "
-                   << util::TimeUtils::timePointToDateTimeString(requestTime) << " latestFamilyUpdate="
-                   << util::TimeUtils::timePointToDateTimeString(_latestFamilyUpdate));
+                   << util::TimeUtils::timePointToDateTimeString(requestTime, true) << " latestFamilyUpdate="
+                   << util::TimeUtils::timePointToDateTimeString(_latestFamilyUpdate, true));
     }
     // To prevent anything from slipping through the cracks:
     // Workers will keep trying to transmit results until they think the czar is dead.
@@ -301,6 +302,24 @@ Czar::Czar(string const& configFilePath, string const& czarName)
                 }
             },
             "CSS Cache Invalidation");
+
+    _eventService->subscribe([](cconfig::DataManagementEvent event) {
+        auto czarPtr = Czar::getCzar();
+        if (czarPtr) {
+            switch (event.type) {
+            case cconfig::DataManagementEvent::Type::DATABASE_PUBLISHED:
+                LOGS(_log, LOG_LVL_INFO, "Received DATABASE_PUBLISHED event, FamilyMapUpdate.");
+                czarPtr->familyMapRead(CLOCK::now());
+                break;
+            case cconfig::DataManagementEvent::Type::CHUNK_MAP_REBUILT:
+                LOGS(_log, LOG_LVL_INFO, "Received CHUNK_MAP_REBUILT event, FamilyMapUpdate.");
+                czarPtr->familyMapRead(CLOCK::now());
+                break;
+            default:
+                break;
+            }
+        }
+    }, "FamilyMapUpdate");
 
     // Start the control server for processing Czar management requests sent
     // by the Replication System. Update the port number in the configuration
