@@ -67,7 +67,7 @@ bool CzarFamilyMap::_read() {
     // If replacing the map, this may take a bit of time, but it's probably
     // better to wait for new maps if something changed.
     std::lock_guard gLock(_familyMapMtx);
-    qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap(_lastUpdateTime);
+    qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap();
 
     // Make the new maps.
     auto czConfig = cconfig::CzarConfig::instance();
