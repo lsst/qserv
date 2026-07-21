@@ -124,10 +124,10 @@ public:
     static bool isSet(std::string const& query);
 
     /**
-     *  Returns true if query is `SET GLOBAL <varName> = <intValue>`. On a match, sets @p varName and
-     *  @p varValue. The value must be an integer literal.
+     *  Returns true if query is `SET GLOBAL <varName> = <value>`. On a match, sets @p varName and
+     *  @p varValue. The value is not validated here.
      */
-    static bool isSet(std::string const& query, std::string& varName, std::string& varValue);
+    static bool isSetGlobal(std::string const& query, std::string& varName, std::string& varValue);
 };
 
 }  // namespace lsst::qserv::ccontrol

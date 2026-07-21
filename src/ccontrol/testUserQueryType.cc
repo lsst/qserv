@@ -52,27 +52,34 @@ BOOST_AUTO_TEST_CASE(testResultDelete) {
 
 BOOST_AUTO_TEST_CASE(testSetQueryType) {
     std::string varName, varValue;
-    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = 0", varName,
-                                                     varValue),
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSetGlobal("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = 0",
+                                                           varName, varValue),
                       true);
     BOOST_CHECK_EQUAL(varName, "QSERV_ROW_COUNTER_OPTIMIZATION");
     BOOST_CHECK_EQUAL(varValue, "0");
-    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSet("set global QSERV_ROW_COUNTER_OPTIMIZATION = 1;",
-                                                     varName, varValue),
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSetGlobal("set global QSERV_ROW_COUNTER_OPTIMIZATION = 1;",
+                                                           varName, varValue),
                       true);
     BOOST_CHECK_EQUAL(varValue, "1");
 
-    // Boolean values are rejected
-    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = FALSE",
-                                                     varName, varValue),
-                      false);
-    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = TRUE",
-                                                     varName, varValue),
+    // Non-integer values are accepted here; value validation is left to the caller.
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSetGlobal("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = TRUE",
+                                                           varName, varValue),
+                      true);
+    BOOST_CHECK_EQUAL(varValue, "TRUE");
+    BOOST_CHECK_EQUAL(
+            ccontrol::UserQueryType::isSetGlobal("SET GLOBAL SOME_VAR = 'a string'", varName, varValue),
+            true);
+    BOOST_CHECK_EQUAL(varName, "SOME_VAR");
+    BOOST_CHECK_EQUAL(varValue, "'a string'");
+
+    // An empty value is not a match
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isSetGlobal("SET GLOBAL SOME_VAR = ", varName, varValue),
                       false);
 
     // GLOBAL is required
     BOOST_CHECK_EQUAL(
-            ccontrol::UserQueryType::isSet("SET QSERV_ROW_COUNTER_OPTIMIZATION = 0", varName, varValue),
+            ccontrol::UserQueryType::isSetGlobal("SET QSERV_ROW_COUNTER_OPTIMIZATION = 0", varName, varValue),
             false);
 }
 

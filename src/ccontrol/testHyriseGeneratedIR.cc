@@ -33,7 +33,6 @@
 
 // Qserv headers
 #include "ccontrol/ParseRunner.h"
-#include "ccontrol/UserQueryType.h"
 #include "parser/ParseException.h"
 #include "qproc/QuerySession.h"
 #include "query/AndTerm.h"
@@ -2381,27 +2380,6 @@ BOOST_DATA_TEST_CASE(hyrise_test, HYRISE_TEST_QUERIES, queryInfo) {
     std::string expectedSerializedQuery =
             (queryInfo.serializedQuery != "" ? queryInfo.serializedQuery : queryInfo.query);
     BOOST_REQUIRE_EQUAL(serializedQuery, expectedSerializedQuery);
-}
-
-BOOST_AUTO_TEST_CASE(set_session_var_test) {
-    std::string varName, varValue;
-
-    BOOST_REQUIRE(ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = 0;", varName,
-                                                 varValue));
-    BOOST_REQUIRE_EQUAL(varName, "QSERV_ROW_COUNTER_OPTIMIZATION");
-    BOOST_REQUIRE_EQUAL(varValue, "0");
-
-    BOOST_REQUIRE(ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = 1;", varName,
-                                                 varValue));
-    BOOST_REQUIRE_EQUAL(varName, "QSERV_ROW_COUNTER_OPTIMIZATION");
-    BOOST_REQUIRE_EQUAL(varValue, "1");
-
-    // Verify that bool vals (not handled) are explicitly rejected (to prevent a case where a
-    // non-zero value "FALSE" evaluates to ON)
-    BOOST_REQUIRE(!ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = FALSE;",
-                                                  varName, varValue));
-    BOOST_REQUIRE(!ccontrol::UserQueryType::isSet("SET GLOBAL QSERV_ROW_COUNTER_OPTIMIZATION = TRUE;",
-                                                  varName, varValue));
 }
 
 BOOST_AUTO_TEST_CASE(float_literal_text_preserved) {

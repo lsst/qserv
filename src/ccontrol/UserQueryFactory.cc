@@ -80,16 +80,15 @@ namespace lsst::qserv::ccontrol {
 using userQuerySharedResourcesPtr = std::shared_ptr<UserQuerySharedResources>;
 
 namespace {
-UserQuery::Ptr setBooleanSessionVariable(std::string const& varName, std::string const& varValue,
-                                         bool& sessionVariable) {
+UserQuery::Ptr setBooleanGlobalVariable(std::string const& varName, std::string const& varValue, bool& flag) {
     if (varValue == "0") {
-        sessionVariable = false;
+        flag = false;
     } else if (varValue == "1") {
-        sessionVariable = true;
+        flag = true;
     } else {
         return std::make_shared<UserQueryInvalid>("Unsupported value for " + varName + ": " + varValue);
     }
-    LOGS(_log, LOG_LVL_WARN, varName << "=" << (sessionVariable ? "1" : "0"));
+    LOGS(_log, LOG_LVL_WARN, varName << "=" << (flag ? "1" : "0"));
     return std::make_shared<UserQuerySet>(varName, varValue);
 }
 
@@ -426,7 +425,7 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     } else if (UserQueryType::isSet(query)) {
         std::string varName, varValue;
 #ifdef QSERV_USE_HYRISE_SQL_PARSER
-        if (!UserQueryType::isSet(query, varName, varValue)) {
+        if (!UserQueryType::isSetGlobal(query, varName, varValue)) {
             return std::make_shared<UserQueryInvalid>("Unsupported SET statement: " + query);
         }
 #else
@@ -442,11 +441,12 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         varValue = setQuery->varValue();
 #endif
         if (varName == "QSERV_ROW_COUNTER_OPTIMIZATION") {
-            return setBooleanSessionVariable(varName, varValue, _useQservRowCounterOptimization);
+            return setBooleanGlobalVariable(varName, varValue, _useQservRowCounterOptimization);
         } else if (varName == "QSERV_DEBUG_CZAR_NO_MERGE") {
-            return setBooleanSessionVariable(varName, varValue, _debugNoMerge);
+            return setBooleanGlobalVariable(varName, varValue, _debugNoMerge);
         }
-        return std::make_shared<UserQueryInvalid>("Unsupported SET variable: " + varName);
+        LOGS(_log, LOG_LVL_WARN, "Unsupported SET variable: " + varName);
+        return std::make_shared<UserQuerySet>(varName, varValue);
     } else {
         // something that we don't recognize
         auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
