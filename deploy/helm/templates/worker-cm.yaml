@@ -71,10 +71,10 @@ data:
     thread_pool_size = 70
     required_tasks_completed = 1
     group_size = 20
-    maxActiveChunks_snail = 2
-    maxActiveChunks_slow = 6
-    maxActiveChunks_med = 6
-    maxActiveChunks_fast = 6
+    maxactivechunks_snail = 5
+    maxactivechunks_slow = 12
+    maxactivechunks_med = 15
+    maxactivechunks_fast = 20
 
     [sqlconnections]
     maxsqlconn = 980
