@@ -312,7 +312,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
 
-        std::lock_guard factoryLock(_factoryMtx);
         // handle special database/table names
         if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
             return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
@@ -397,13 +396,11 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {
-        std::lock_guard factoryLock(_factoryMtx);
         auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _userQuerySharedResources->czarId,
                                                          _userQuerySharedResources->queryMetadata);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
         return uq;
     } else if (UserQueryType::isShowProcessList(query, full)) {
-        std::lock_guard factoryLock(_factoryMtx);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
         try {
             return std::make_shared<UserQueryProcessList>(full, _userQuerySharedResources->qMetaSelect,
@@ -413,7 +410,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
     } else if (UserQueryType::isCall(query)) {
-        std::lock_guard factoryLock(_factoryMtx);
 #ifdef QSERV_USE_HYRISE_SQL_PARSER
         std::string resultDeleteQueryId;
         if (!UserQueryType::isResultDelete(query, resultDeleteQueryId)) {
@@ -445,7 +441,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         varName = setQuery->varName();
         varValue = setQuery->varValue();
 #endif
-        std::lock_guard factoryLock(_factoryMtx);
         if (varName == "QSERV_ROW_COUNTER_OPTIMIZATION") {
             return setBooleanSessionVariable(varName, varValue, _useQservRowCounterOptimization);
         } else if (varName == "QSERV_DEBUG_CZAR_NO_MERGE") {
@@ -453,7 +448,6 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         }
         return std::make_shared<UserQueryInvalid>("Unsupported SET variable: " + varName);
     } else {
-        std::lock_guard factoryLock(_factoryMtx);
         // something that we don't recognize
         auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
         return uq;
