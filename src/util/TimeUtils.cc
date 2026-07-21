@@ -55,12 +55,16 @@ uint64_t TimeUtils::tp2ms(chrono::system_clock::time_point const& tp) {
     return chrono::duration_cast<chrono::milliseconds>(tp.time_since_epoch()).count();
 }
 
-string TimeUtils::timePointToDateTimeString(TIMEPOINT const& point) {
+string TimeUtils::timePointToDateTimeString(TIMEPOINT const& point, bool addMilliseconds) {
     auto const timer = chrono::system_clock::to_time_t(point);
     auto broken_time = *localtime(&timer);
 
     ostringstream ss;
     ss << put_time(&broken_time, "%Y-%m-%d %H:%M:%S");
+    if (addMilliseconds) {
+        auto ms = chrono::duration_cast<chrono::milliseconds>(point.time_since_epoch()).count() % 1000;
+        ss << '.' << setfill('0') << setw(3) << ms;
+    }
     return ss.str();
 }
 

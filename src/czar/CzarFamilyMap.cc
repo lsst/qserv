@@ -67,15 +67,7 @@ bool CzarFamilyMap::_read() {
     // If replacing the map, this may take a bit of time, but it's probably
     // better to wait for new maps if something changed.
     std::lock_guard gLock(_familyMapMtx);
-    qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap(_lastUpdateTime);
-    if (_lastUpdateTime == qChunkMap.updateTime) {
-        // If "_lastUpdateTime == qChunkMap.updateTime", qChunkMap is empty.
-        LOGS(_log, LOG_LVL_INFO,
-             cName(__func__) << " no need to read last="
-                             << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime)
-                             << " map=" << util::TimeUtils::timePointToDateTimeString(qChunkMap.updateTime));
-        return false;
-    }
+    qmeta::QMetaChunkMap qChunkMap = _qmeta->getChunkMap();
 
     // Make the new maps.
     auto czConfig = cconfig::CzarConfig::instance();
@@ -85,7 +77,7 @@ bool CzarFamilyMap::_read() {
     verify(familyMapPtr);
 
     for (auto const& [fam, ccMap] : *familyMapPtr) {
-        LOGS(_log, LOG_LVL_INFO, "{family=" << fam << "{" << ccMap->dumpChunkMap() << "}}");
+        LOGS(_log, LOG_LVL_DEBUG, "{family=" << fam << "{" << ccMap->dumpChunkMap() << "}}");
     }
 
     _familyMap = familyMapPtr;
@@ -94,9 +86,7 @@ bool CzarFamilyMap::_read() {
 
     LOGS(_log, LOG_LVL_INFO,
          cName(__func__) << " read and verified "
-                         << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime));
-
-    LOGS(_log, LOG_LVL_TRACE, "CzarChunkMap::_read() end");
+                         << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime, true));
     return true;
 }
 

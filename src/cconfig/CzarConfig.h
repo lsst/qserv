@@ -203,6 +203,8 @@ public:
     /// Return true if family map chunk distribution should depend on chunk size.
     bool getFamilyMapUsingChunkSize() const { return _familyMapUsingChunkSize->getVal(); }
 
+    int getFamilyMapMaxUpdateWaitSecs() const { return _familyMapMaxUpdateWaitSecs->getVal(); }
+
     // Parameters of the Czar management service
 
     std::string const& replicationInstanceId() const { return _replicationInstanceId->getVal(); }
@@ -422,6 +424,8 @@ private:
     // FamilyMap
     CVTBoolPtr _familyMapUsingChunkSize =
             util::ConfigValTBool::create(_configValMap, "familymap", "usingChunkSize", notReq, 0);
+    CVTIntPtr _familyMapMaxUpdateWaitSecs =  // 2min
+            util::ConfigValTInt::create(_configValMap, "familymap", "maxUpdateWaitSecs", notReq, 60 * 2);
 
     /// This may impact `_resultMaxHttpConnections` as too many connections may cause kernel memory issues.
     CVTIntPtr _commandMaxHttpConnections =
