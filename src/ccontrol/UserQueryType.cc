@@ -85,8 +85,9 @@ boost::regex _callRe(R"(^call\s+.+$)",
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _setRe(R"(^set\s+.+$)", boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
-// regex extracting `SET GLOBAL <varName> = <intValue>` (GLOBAL required; integer value only)
-boost::regex _setGlobalRe(R"(^set\s+global\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([-+]?\d+)\s*;?\s*$)",
+// regex extracting `SET GLOBAL <varName> = <value>`. GLOBAL is required, but the
+// value is intentionally not validated (left to the caller).
+boost::regex _setGlobalRe(R"(^set\s+global\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\S.*?)\s*;?\s*$)",
                           boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
 // regex extracting the argument of `CALL QSERV_RESULT_DELETE(<queryId>)`
@@ -228,14 +229,14 @@ bool UserQueryType::isSet(std::string const& query) {
     return match;
 }
 
-bool UserQueryType::isSet(std::string const& query, std::string& varName, std::string& varValue) {
-    LOGS(_log, LOG_LVL_TRACE, "isSet (extract): " << query);
+bool UserQueryType::isSetGlobal(std::string const& query, std::string& varName, std::string& varValue) {
+    LOGS(_log, LOG_LVL_TRACE, "isSetGlobal (extract): " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _setGlobalRe);
     if (match) {
         varName = sm.str(1);
         varValue = sm.str(2);
-        LOGS(_log, LOG_LVL_TRACE, "isSet: " << varName << "=" << varValue);
+        LOGS(_log, LOG_LVL_TRACE, "isSetGlobal: " << varName << "=" << varValue);
     }
     return match;
 }
