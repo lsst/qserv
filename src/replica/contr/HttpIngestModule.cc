@@ -1438,9 +1438,12 @@ void HttpIngestModule::_qservSync(DatabaseInfo const& database, bool allWorkers)
 }
 
 void HttpIngestModule::_notifyCzars(cconfig::DataManagementEvent const& event) const {
-    // The replica disposition map neeeds to be updated in the database before sending
-    // the notification to the czars.
-    controller()->serviceProvider()->chunkMap()->update();
+    if (qservChunkMapUpdate()) {
+        // The replica disposition map neeeds to be updated in the database before sending
+        // the notification to the czars.
+        controller()->serviceProvider()->chunkMap()->update();
+    }
+
     // This test prevents the Controller from exiting if the Registry is not available.
     // This solution deals with the startup ordering of services in the Qserv deployments.
     vector<ConfigCzar> czars;

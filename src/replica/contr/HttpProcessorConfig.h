@@ -39,12 +39,14 @@ public:
                                  unsigned int workerResponseTimeoutSec_ = 0,
                                  unsigned int qservSyncTimeoutSec_ = 0,
                                  unsigned int workerReconfigTimeoutSec_ = 0,
-                                 std::string const& httpRoot_ = std::string())
+                                 std::string const& httpRoot_ = std::string(),
+                                 bool qservChunkMapUpdate_ = false)
             : czarResponseTimeoutSec(czarResponseTimeoutSec_),
               workerResponseTimeoutSec(workerResponseTimeoutSec_),
               qservSyncTimeoutSec(qservSyncTimeoutSec_),
               workerReconfigTimeoutSec(workerReconfigTimeoutSec_),
-              httpRoot(httpRoot_) {}
+              httpRoot(httpRoot_),
+              qservChunkMapUpdate(qservChunkMapUpdate_) {}
     HttpProcessorConfig(HttpProcessorConfig const&) = default;
     HttpProcessorConfig& operator=(HttpProcessorConfig const&) = default;
 
@@ -72,6 +74,10 @@ public:
     /// The root folder for the static content to be served by the built-in
     /// HTTP service.
     std::string httpRoot;
+
+    /// The flag which would result in updating the chunk disposition map
+    /// in Qserv's QMeta database.
+    bool qservChunkMapUpdate = false;
 };
 
 }  // namespace lsst::qserv::replica

@@ -78,6 +78,7 @@ protected:
     unsigned int workerResponseTimeoutSec() const { return _processorConfig.workerResponseTimeoutSec; }
     unsigned int qservSyncTimeoutSec() const { return _processorConfig.qservSyncTimeoutSec; }
     unsigned int workerReconfigTimeoutSec() const { return _processorConfig.workerReconfigTimeoutSec; }
+    bool qservChunkMapUpdate() const { return _processorConfig.qservChunkMapUpdate; }
 
     /// @see http::Module::context()
     virtual std::string context() const final;
