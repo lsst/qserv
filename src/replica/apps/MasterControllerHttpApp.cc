@@ -234,7 +234,7 @@ int MasterControllerHttpApp::runImpl() {
     auto const httpProcessor = HttpProcessor::create(
             _controller,
             HttpProcessorConfig(_czarResponseTimeoutSec, _workerResponseTimeoutSec, _qservSyncTimeoutSec,
-                                _workerReconfigTimeoutSec, _httpRoot),
+                                _workerReconfigTimeoutSec, _httpRoot, _qservChunkMapUpdate),
             _healthMonitorTask);
     thread ingestHttpSvrThread([httpProcessor]() { httpProcessor->run(); });
 
