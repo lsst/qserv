@@ -69,8 +69,8 @@ void DirTableInfo::dump(std::ostream& os) const {
 }
 
 void ChildTableInfo::dump(std::ostream& os) const {
-    os << "CTI(" << database << "." << table << " kind=" << kind << " fk=" << fk << " director=(" << *director
-       << "))";
+    os << "CTI(" << database << "." << table << " kind=" << kind << " fk=" << fk << " lon=" << lon
+       << " lat=" << lat << " director=(" << *director << "))";
 }
 
 void MatchTableInfo::dump(std::ostream& os) const {
@@ -90,8 +90,13 @@ std::vector<ColumnRefConstPtr> const DirTableInfo::makeColumnRefs(std::string co
 
 std::vector<ColumnRefConstPtr> const ChildTableInfo::makeColumnRefs(std::string const& tableAlias) const {
     std::vector<ColumnRefConstPtr> refs;
-    refs.reserve(3);
+    bool const spatial = hasSpatialCols();
+    refs.reserve(spatial ? 9 : 3);
     appendColumnRefs(fk, database, table, tableAlias, refs);
+    if (spatial) {
+        appendColumnRefs(lon, database, table, tableAlias, refs);
+        appendColumnRefs(lat, database, table, tableAlias, refs);
+    }
     return refs;
 }
 

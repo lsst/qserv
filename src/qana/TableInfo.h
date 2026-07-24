@@ -94,8 +94,10 @@ struct TableInfo {
     std::string const database;
     std::string const table;
     Kind const kind;
+    int32_t partitioningId;  /// Used to check for partitioning compatibility during joins
 
-    TableInfo(std::string const& db, std::string const& t, Kind k) : database(db), table(t), kind(k) {}
+    TableInfo(std::string const& db, std::string const& t, Kind k)
+            : database(db), table(t), kind(k), partitioningId(0) {}
 
     virtual ~TableInfo() {}
 
@@ -149,16 +151,23 @@ inline std::ostream& operator<<(std::ostream& os, TableInfo const& ti) {
     return os;
 }
 
+/// Tables that can be spatially joined
+struct SpatialTableInfo : TableInfo {
+    std::string lon;  ///< Name of the longitude column, empty if none
+    std::string lat;  ///< Name of the latitude column, empty if none
+
+    SpatialTableInfo(std::string const& db, std::string const& t, Kind k) : TableInfo(db, t, k) {}
+
+    bool hasSpatialCols() const { return !lon.empty() && !lat.empty(); }
+};
+
 /// `DirTableInfo` contains metadata for director tables.
-struct DirTableInfo : TableInfo {
-    std::string pk;   ///< `pk` is the name of the director's primary key column.
-    std::string lon;  ///< `lon` is the name of the director's longitude column.
-    std::string lat;  ///< `lat` is the name of the director's latitude column.
-    int32_t partitioningId;
+struct DirTableInfo : SpatialTableInfo {
+    std::string pk;  ///< `pk` is the name of the director's primary key column.
     double overlap;  ///< overlap value for partitioning of this table
 
     DirTableInfo(std::string const& db, std::string const& t, double o)
-            : TableInfo(db, t, DIRECTOR), partitioningId(0), overlap(o) {}
+            : SpatialTableInfo(db, t, DIRECTOR), overlap(o) {}
 
     std::vector<ColumnRefConstPtr> const makeColumnRefs(std::string const& tableAlias) const override;
 
@@ -177,14 +186,15 @@ struct DirTableInfo : TableInfo {
 };
 
 /// `ChildTableInfo` contains metadata for child tables.
-struct ChildTableInfo : TableInfo {
+struct ChildTableInfo : SpatialTableInfo {
     /// `director` is an unowned pointer to the metadata
     /// for the director table referenced by `fk`.
     DirTableInfo const* director;
     /// `fk` is the name of the foreign key column referencing `director->pk`.
     std::string fk;
 
-    ChildTableInfo(std::string const& db, std::string const& t) : TableInfo(db, t, CHILD), director(0) {}
+    ChildTableInfo(std::string const& db, std::string const& t)
+            : SpatialTableInfo(db, t, CHILD), director(0) {}
 
     std::vector<ColumnRefConstPtr> const makeColumnRefs(std::string const& tableAlias) const override;
 
