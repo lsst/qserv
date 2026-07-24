@@ -455,50 +455,47 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
     DbTableSet const& sTables = queryMapping.getSubChunkTables();
     cQSpec->subChunkTables = sTables;
     // Build queries.
+    bool const compareT = false; //&&&
     if (!_context->hasSubChunks()) {
-        cQSpec->queries = _buildChunkQueries(queryTemplates, chunkSpec);
-    } else {
-        if (chunkSpec.shouldSplit()) {
-            ChunkSpecFragmenter frag(chunkSpec);
-            ChunkSpec s = frag.get();
-            cQSpec->queries = _buildChunkQueries(queryTemplates, s);
-            cQSpec->subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
-            frag.next();
-            cQSpec->nextFragment = _buildFragment(queryTemplates, frag);
+        if (!_chunkQueries->wasSet()){
+            _chunkQueries->setTemplates(_buildChunkQueries(queryTemplates, chunkSpec));
         } else {
-            cQSpec->queries = _buildChunkQueries(queryTemplates, chunkSpec);
-            cQSpec->subChunkIds.assign(chunkSpec.subChunks.begin(), chunkSpec.subChunks.end());
+            if (compareT && !_chunkQueries->compareQueries(_buildChunkQueries(queryTemplates, chunkSpec))) {
+                cQSpec->queries = _chunkQueries;
+                throw util::Bug(ERR_LOC, "QuerySession::buildChunkQuerySpec: _chunkQueries mismatch "
+                        + _chunkQueries->getTemplates().front() + " chunkId=" +to_string(chunkSpec.chunkId));
+            }
         }
+        cQSpec->queries = _chunkQueries;
+    } else {
+        if (!_chunkQueriesWithSubchunks->wasSet()) {
+            _chunkQueriesWithSubchunks->setTemplates(_buildChunkQueries(queryTemplates, chunkSpec));
+        } else {
+            if (compareT && !_chunkQueriesWithSubchunks->compareQueries(_buildChunkQueries(queryTemplates, chunkSpec))){
+                cQSpec->queries = _chunkQueriesWithSubchunks;
+                throw util::Bug(ERR_LOC, "QuerySession::buildChunkQuerySpec: _chunkQueriesWithSubchunks mismatch "
+                        + _chunkQueries->getTemplates().front() + " chunkId=" +to_string(chunkSpec.chunkId));
+            }
+        }
+        cQSpec->queries = _chunkQueriesWithSubchunks;
+        cQSpec->subChunkIds.assign(chunkSpec.subChunks.begin(), chunkSpec.subChunks.end());
     }
-    // For a unit test, replace the CHUNK_TAG string with the chunk id number.
+
+    // For a unit test, and only for unit tests, replace the CHUNK_TAG string with the chunk id number.
     if (fillInChunkIdTag) {
         string chunkIdStr = to_string(chunkSpec.chunkId);
-        for (auto&& qs : cQSpec->queries) {
+        // Need to make a chunk specific template to fill in the chunk id values.
+        std::vector<std::string> localTemplates = cQSpec->queries->getTemplates();
+        for (auto&& qs : localTemplates) {
             boost::algorithm::replace_all(qs, CHUNK_TAG, chunkIdStr);
             LOGS(_log, LOG_LVL_DEBUG, "QuerySession::" << __func__ << " " << qs);
         }
+        // The query wide `queries` object cannot be used for the chunk specific queries.
+        ChunkQueries::Ptr filledInQueries = std::make_shared<ChunkQueries>();
+        filledInQueries->setTemplates(localTemplates);
+        cQSpec->queries = filledInQueries;
     }
     return cQSpec;
-}
-
-std::shared_ptr<ChunkQuerySpec> QuerySession::_buildFragment(query::QueryTemplate::Vect const& queryTemplates,
-                                                             ChunkSpecFragmenter& f) const {
-    std::shared_ptr<ChunkQuerySpec> first;
-    std::shared_ptr<ChunkQuerySpec> last;
-    while (!f.isDone()) {
-        if (last.get()) {
-            last->nextFragment = std::make_shared<ChunkQuerySpec>();
-            last = last->nextFragment;
-        } else {
-            last = std::make_shared<ChunkQuerySpec>();
-            first = last;
-        }
-        ChunkSpec s = f.get();
-        last->subChunkIds.assign(s.subChunks.begin(), s.subChunks.end());
-        last->queries = _buildChunkQueries(queryTemplates, s);
-        f.next();
-    }
-    return first;
 }
 
 }  // namespace lsst::qserv::qproc

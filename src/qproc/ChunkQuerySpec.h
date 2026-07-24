@@ -43,6 +43,35 @@
 
 namespace lsst::qserv::qproc {
 
+class ChunkQueries {
+public:
+    using Ptr = std::shared_ptr<ChunkQueries>;
+
+    ChunkQueries() = default;
+
+    bool wasSet() const {
+        std::lock_guard<std::mutex> lck(_cqMtx);
+        return _wasSet;
+    }
+
+    void setTemplates(std::vector<std::string> const& templates);
+
+    std::vector<std::string> const& getTemplates() const {
+        std::lock_guard<std::mutex> lck(_cqMtx);
+        return _templates;
+    }
+
+    bool compareQueries(std::vector<std::string> const& other) const {
+        std::lock_guard<std::mutex> lck(_cqMtx);
+        return _templates == other;
+    }
+
+private:
+    std::vector<std::string> _templates; ///< Query templates to send to workers.
+    bool _wasSet = false;  ///< true if it was set.
+    mutable std::mutex _cqMtx;  ///< Protects _templates and _wasSet
+};
+
 /// ChunkQuerySpec is a value class that bundles a set of queries with their
 /// dependent db, chunkId, and set of subChunkIds. It has a pointer to another
 /// ChunkQuerySpec as a means of allowing Specs to be easily fragmented for
@@ -66,7 +95,7 @@ public:
     bool scanInteractive{false};
     DbTableSet subChunkTables;
     std::vector<int> subChunkIds;
-    std::vector<std::string> queries;
+    ChunkQueries::Ptr queries;  ///< queries to be run on the worker for this chunk
     std::vector<std::string> queryTemplates;
     // Consider promoting the concept of container of ChunkQuerySpec
     // in the hopes of increased code cleanliness.

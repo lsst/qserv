@@ -212,6 +212,7 @@ string UserQuerySelect::getResultQuery() const {
 }
 
 void UserQuerySelect::submit() {
+    auto submitTmStart = CLOCK::now();
     auto exec = _executive;
     if (exec == nullptr) {
         LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::submit() executive is null at start");
@@ -248,7 +249,7 @@ void UserQuerySelect::submit() {
 
     string dbName("");
     bool dbNameSet = false;
-
+    auto submitTmBuildJobsStart = CLOCK::now();
     for (auto i = _qSession->cQueryBegin(), e = _qSession->cQueryEnd(); i != e && !exec->getCancelled();
          ++i) {
         auto& chunkSpec = *i;
@@ -284,15 +285,25 @@ void UserQuerySelect::submit() {
         auto job = exec->add(jobDesc);
         ++sequence;
     }
+    auto submitTmBuildJobsEnd = CLOCK::now();
 
     /// At this point the executive has a map of all jobs with the chunkIds as the key.
     // This is needed to prevent Czar::_monitor from starting things before they are ready.
     exec->setAllJobsCreated();
     buildAndSendUberJobs();
+    auto submitTmUberJobsBuilt = CLOCK::now();
 
     LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     // Waiting for all jobs to start seems to provide more consistent results.
     exec->waitForAllJobsToStart();
+    auto submitTmEnd = CLOCK::now();
+
+    LOGS(_log, LOG_LVL_INFO, "UserQuerySelect::submit() times ms QID:" << _queryId
+       << " total=" << chrono::duration_cast<chrono::milliseconds>(submitTmEnd - submitTmStart).count()
+       << " setup=" << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsStart - submitTmStart).count()
+       << " jobs=" << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsEnd - submitTmBuildJobsStart).count()
+       << " UberJobs=" << chrono::duration_cast<chrono::milliseconds>(submitTmUberJobsBuilt - submitTmBuildJobsEnd).count()
+       << " allStarted=" << chrono::duration_cast<chrono::milliseconds>(submitTmUberJobsBuilt - submitTmEnd).count());
 }
 
 bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWorker,

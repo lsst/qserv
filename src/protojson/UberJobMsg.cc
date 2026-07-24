@@ -321,14 +321,14 @@ JobFragment::VectPtr JobFragment::createVect(qproc::ChunkQuerySpec const& chunkQ
             LOGS(_log, LOG_LVL_TRACE, "nextFragment");
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
-            _addFragment(*jFragments, chunkQuerySpec.subChunkTables, sPtr->subChunkIds, sPtr->queries,
+            _addFragment(*jFragments, chunkQuerySpec.subChunkTables, sPtr->subChunkIds, sPtr->queries->getTemplates(),
                          jobSubQueryTempMap, jobDbTablesMap);
             sPtr = sPtr->nextFragment.get();
         }
     } else {
         LOGS(_log, LOG_LVL_TRACE, "no nextFragment");
         _addFragment(*jFragments, chunkQuerySpec.subChunkTables, chunkQuerySpec.subChunkIds,
-                     chunkQuerySpec.queries, jobSubQueryTempMap, jobDbTablesMap);
+                     chunkQuerySpec.queries->getTemplates(), jobSubQueryTempMap, jobDbTablesMap);
     }
 
     return jFragments;

@@ -39,9 +39,19 @@
 #include <iterator>
 
 // Qserv headers
+#include "util/Bug.h"
 #include "util/IterableFormatter.h"
 
+using namespace std;
+
 namespace lsst::qserv::qproc {
+
+void ChunkQueries::setTemplates(vector<string> const& templates) {
+    lock_guard lck(_cqMtx);
+    if (_wasSet) throw util::Bug(ERR_LOC, "ChunkQueries::setTemplates already set");
+    _templates = templates;
+    _wasSet = true;
+}
 
 ////////////////////////////////////////////////////////////////////////
 // class ChunkQuerySpec
@@ -50,7 +60,7 @@ std::ostream& operator<<(std::ostream& os, ChunkQuerySpec const& c) {
     for (ChunkQuerySpec const* frag = &c; frag != nullptr; frag = frag->nextFragment.get()) {
         os << "ChunkQuerySpec(db=" << frag->db << ", chunkId=" << frag->chunkId << ", ";
         os << "sTables=" << util::printable(frag->subChunkTables) << ", ";
-        os << "queries=" << util::printable(frag->queries) << ", ";
+        os << "queries=" << util::printable(frag->queries->getTemplates()) << ", ";
         os << "subChunkIds=" << util::printable(frag->subChunkIds);
         os << ")";
     }

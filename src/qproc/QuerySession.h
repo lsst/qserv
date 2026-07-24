@@ -221,8 +221,6 @@ private:
 
     std::vector<std::string> _buildChunkQueries(query::QueryTemplate::Vect const& queryTemplates,
                                                 ChunkSpec const& chunkSpec) const;
-    std::shared_ptr<ChunkQuerySpec> _buildFragment(query::QueryTemplate::Vect const& queryTemplates,
-                                                   ChunkSpecFragmenter& f) const;
 
     // Fields
     std::shared_ptr<css::CssAccess> _css;                    ///< Metadata access
@@ -286,6 +284,12 @@ private:
     /// that construct QuerySessions without CSS access, and thus can't validate the dominant
     /// databases, and false for all other use cases.
     bool const _skipDominatDbsValidation = false;
+
+    /// The queries to be run on the worker for each chunk. This is set when the
+    /// chunk queries are built, and is used to avoid rebuilding them if they are
+    /// requested again.
+    ChunkQueries::Ptr _chunkQueries{new ChunkQueries()};
+    ChunkQueries::Ptr _chunkQueriesWithSubchunks{new ChunkQueries()};
 };
 
 /**

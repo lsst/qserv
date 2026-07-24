@@ -129,8 +129,6 @@ void normalize(ChunkSpecVector& specs) {
 ////////////////////////////////////////////////////////////////////////
 // ChunkSpec
 ////////////////////////////////////////////////////////////////////////
-bool ChunkSpec::shouldSplit() const { return subChunks.size() > (unsigned)GOOD_SUBCHUNK_COUNT; }
-
 ChunkSpec ChunkSpec::intersect(ChunkSpec const& cs) const {
     ChunkSpec output(*this);
     output.normalize();
