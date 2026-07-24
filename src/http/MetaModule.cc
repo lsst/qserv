@@ -36,7 +36,7 @@ lsst::qserv::http::AuthContext const authContext;
 
 namespace lsst::qserv::http {
 
-unsigned int const MetaModule::version = 57;
+unsigned int const MetaModule::version = 58;
 
 void MetaModule::process(string const& context, nlohmann::json const& info,
                          shared_ptr<qhttp::Request> const& req, shared_ptr<qhttp::Response> const& resp,
