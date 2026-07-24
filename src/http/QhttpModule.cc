@@ -57,7 +57,8 @@ void QhttpModule::getRequestBody(string& content, string const& requiredContentT
     }
 }
 
-void QhttpModule::sendResponse(string const& content, string const& contentType) {
+void QhttpModule::sendResponse(string const& content, string const& contentType, unsigned int httpCode) {
+    _resp->status = static_cast<qhttp::Status>(httpCode);
     _resp->send(content, contentType);
 }
 

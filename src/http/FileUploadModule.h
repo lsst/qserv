@@ -107,7 +107,8 @@ protected:
     virtual std::unordered_map<std::string, std::string> params() const;
     virtual RequestQuery query() const;
     virtual std::string headerEntry(std::string const& key) const;
-    virtual void sendResponse(std::string const& content, std::string const& contentType);
+    virtual void sendResponse(std::string const& content, std::string const& contentType,
+                              unsigned int httpCode = 200);
 
     // The following methods are required to be implemented by the subclasses
     // to handle the file uploading. The methods are expected to throw exceptions
