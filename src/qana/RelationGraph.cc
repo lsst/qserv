@@ -663,27 +663,33 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
         }
         v[i] = vv.front();
     }
+
     // For the predicate to be admissible, the columns in each coordinate
     // pair must come from the same table reference. Additionally, the two
     // coordinate pairs must come from different table references.
     if (v[0] != v[1] || v[2] != v[3] || v[0] == v[2]) {
         return 0;
     }
-    // Check that both column pairs were found in director tables
-    DirTableInfo const* d1 = dynamic_cast<DirTableInfo const*>(v[0]->info);
-    DirTableInfo const* d2 = dynamic_cast<DirTableInfo const*>(v[2]->info);
-    if (!d1 || !d2) {
+
+    // Check that both column pairs were found in tables that can be joined
+    // (either director, OR child with spatial coordinates).
+    SpatialTableInfo const* t1 = dynamic_cast<SpatialTableInfo const*>(v[0]->info);
+    SpatialTableInfo const* t2 = dynamic_cast<SpatialTableInfo const*>(v[2]->info);
+    if (!t1 || !t2 || !t1->hasSpatialCols() || !t2->hasSpatialCols()) {
         return 0;
     }
-    // Check that the arguments map to the proper director spatial columns
-    if (cr[0]->getColumn() != d1->lon || cr[1]->getColumn() != d1->lat || cr[2]->getColumn() != d2->lon ||
-        cr[3]->getColumn() != d2->lat) {
+
+    // Check that the arguments map to the proper spatial columns
+    if (cr[0]->getColumn() != t1->lon || cr[1]->getColumn() != t1->lat || cr[2]->getColumn() != t2->lon ||
+        cr[3]->getColumn() != t2->lat) {
         return 0;
     }
-    // Check that both directors have the same partitioning
-    if (d1->partitioningId != d2->partitioningId) {
+
+    // Check that both tables share the same partitioning
+    if (t1->partitioningId != t2->partitioningId) {
         return 0;
     }
+
     // Finally, add an edge between v[0] and v[2].
     v[0]->insert(Edge(v[2], angSep));
     v[2]->insert(Edge(v[0], angSep));

@@ -104,6 +104,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
                                     " relates two director tables with"
                                     " different partitionings!");
         }
+        infoPtr->partitioningId = infoPtr->director.first->partitioningId;
         auto ret = _insert(std::move(infoPtr));
         LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
         return ret;
@@ -120,7 +121,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
         // use per-table or per-database overlap value
         double overlap = partParam.overlap != 0.0 ? partParam.overlap : dbStriping.overlap;
         std::unique_ptr<DirTableInfo> infoPtr(new DirTableInfo(db_, table, overlap));
-        std::vector<std::string> v = _css.getPartTableParams(db, table).partitionCols();
+        std::vector<std::string> const v = partParam.partitionCols();
         if (v.size() != 3 || v[0].empty() || v[1].empty() || v[2].empty() || v[0] == v[1] || v[1] == v[2] ||
             v[0] == v[2]) {
             throw InvalidTableError("Director table " + db_ + "." + table +
@@ -152,12 +153,25 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
                                 " is a child table, but"
                                 " does not reference a director table!");
     }
+    // A child row shares its director row's chunk, so it also shares its partitioning id.
+    infoPtr->partitioningId = infoPtr->director->partitioningId;
     infoPtr->fk = partParam.dirColName;
     if (infoPtr->fk.empty()) {
         throw InvalidTableError("Child table " + db_ + "." + table +
                                 " metadata"
                                 " does not contain a director column name!");
     }
+    // Only reject a collision when lon/lat are both configured -- a single empty coordinate
+    // already leaves the child with no usable position (see hasSpatialCols()) regardless of fk.
+    if (!partParam.lonColName.empty() && !partParam.latColName.empty() &&
+        (partParam.lonColName == partParam.latColName || partParam.lonColName == infoPtr->fk ||
+         partParam.latColName == infoPtr->fk)) {
+        throw InvalidTableError("Child table " + db_ + "." + table +
+                                " metadata contains non-distinct"
+                                " longitude/latitude/director column names");
+    }
+    infoPtr->lon = partParam.lonColName;
+    infoPtr->lat = partParam.latColName;
 
     auto ret = _insert(std::move(infoPtr));
     LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
