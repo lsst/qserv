@@ -179,8 +179,10 @@ protected:
      * Send a response back to a requester of a service.
      * @param content The content to be sent back.
      * @param contentType The type of the content to be sent back.
+     * @param httpCode (optional) The HTTP code to be sent back to a client.
      */
-    virtual void sendResponse(std::string const& content, std::string const& contentType) = 0;
+    virtual void sendResponse(std::string const& content, std::string const& contentType,
+                              unsigned int httpCode = 200) = 0;
 
     /**
      * Inspect the body of a request or a presence of a user-supplied authorization key.
@@ -204,9 +206,12 @@ protected:
      * @param func The name of a context from which the operation was initiated.
      * @param errorMsg An error condition to be reported.
      * @param errorExt (optional) The additional information on the error.
+     * @param httpCode (optional) The HTTP code to be sent back to a client.
+     *   The default value of 200 is used to indicate that the HTTP request was
+     *   successfully processed, but the operation itself failed.
      */
     void sendError(std::string const& func, std::string const& errorMsg,
-                   nlohmann::json const& errorExt = nlohmann::json::object());
+                   nlohmann::json const& errorExt = nlohmann::json::object(), unsigned int httpCode = 200);
 
     /**
      * Report a result back to a requester of a service upon its successful

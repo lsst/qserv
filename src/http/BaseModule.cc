@@ -110,14 +110,15 @@ void BaseModule::warn(string const& msg) const {
 
 void BaseModule::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
 
-void BaseModule::sendError(string const& func, string const& errorMsg, json const& errorExt) {
+void BaseModule::sendError(string const& func, string const& errorMsg, json const& errorExt,
+                           unsigned int httpCode) {
     error(func, errorMsg);
     json result;
     result["success"] = 0;
     result["error"] = errorMsg;
     result["error_ext"] = errorExt.is_null() ? json::object() : errorExt;
     result["warning"] = ::packWarnings(_warnings);
-    sendResponse(result.dump(), "application/json");
+    sendResponse(result.dump(), "application/json", httpCode);
 }
 
 void BaseModule::sendData(json& result) {
