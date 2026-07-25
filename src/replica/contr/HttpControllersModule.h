@@ -31,6 +31,11 @@
 // Qserv headers
 #include "replica/contr/HttpModule.h"
 
+// Forward declarations
+namespace lsst::qserv::replica {
+class ControllerInfo;
+}  // namespace lsst::qserv::replica
+
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -73,6 +78,8 @@ private:
     nlohmann::json _controllers();
     nlohmann::json _oneController();
     nlohmann::json _eventLogDict();
+
+    ControllerInfo _getControllerFromParamOrThrow404(std::string const& func);
 };
 
 }  // namespace lsst::qserv::replica

@@ -65,19 +65,16 @@ json HttpExportModule::executeImpl(string const& subModuleName) {
 
 json HttpExportModule::_getDatabaseConfig() {
     debug(__func__);
-    checkApiVersion(__func__, 53);
+    checkApiVersion(__func__, 58);
 
-    auto const databaseName = params().at("database");
-    debug(__func__, "database=" + databaseName);
-
-    auto const config = controller()->serviceProvider()->config();
-    auto const database = config->databaseInfo(databaseName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
     if (!database.isPublished) {
         throw http::Error(__func__, "database '" + database.name + "' is not PUBLISHED");
     }
+    auto const config = controller()->serviceProvider()->config();
     auto const family = config->databaseFamilyInfo(database.family);
 
-    // Note the version number of the API coresponds to the actual version of the database
+    // Note the version number of the API corresponds to the actual version of the database
     // registration service that existed at a time this generator was written. It is not related
     // to the version of the generator. The version number could be further adjusted
     // by the ingest workflow if needed.
@@ -92,25 +89,18 @@ json HttpExportModule::_getDatabaseConfig() {
 
 json HttpExportModule::_getTableConfig() {
     debug(__func__);
-    checkApiVersion(__func__, 53);
+    checkApiVersion(__func__, 58);
 
-    auto const databaseName = params().at("database");
-    auto const tableName = params().at("table");
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
-
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const config = controller()->serviceProvider()->config();
-    auto const database = config->databaseInfo(databaseName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
+    auto const table = getTableFromParamOrThrow404(__func__, database);
     if (!database.isPublished) {
         throw http::Error(__func__, "database '" + database.name + "' is not PUBLISHED");
     }
-    auto const table = database.findTable(tableName);
     if (!table.isPublished) {
-        throw http::Error(__func__, "table '" + tableName + "' of " + database.name + " is not PUBLISHED");
+        throw http::Error(__func__, "table '" + table.name + "' of " + database.name + " is not PUBLISHED");
     }
 
-    // Note the version number of the API coresponds to the actual version of the table
+    // Note the version number of the API corresponds to the actual version of the table
     // registration service that existed at a time this generator was written. It is not related
     // to the version of the generator. The version number could be further adjusted
     // by the ingest workflow if needed.
@@ -149,23 +139,18 @@ json HttpExportModule::_getTableConfig() {
 
 json HttpExportModule::_getTableLocations() {
     debug(__func__);
-    checkApiVersion(__func__, 53);
+    checkApiVersion(__func__, 58);
 
-    auto const databaseName = params().at("database");
-    auto const tableName = params().at("table");
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
-
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const config = controller()->serviceProvider()->config();
-    auto const database = config->databaseInfo(databaseName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
+    auto const table = getTableFromParamOrThrow404(__func__, database);
     if (!database.isPublished) {
         throw http::Error(__func__, "database '" + database.name + "' is not PUBLISHED");
     }
-    auto const table = database.findTable(tableName);
     if (!table.isPublished) {
-        throw http::Error(__func__, "table '" + tableName + "' of " + database.name + " is not PUBLISHED");
+        throw http::Error(__func__, "table '" + table.name + "' of " + database.name + " is not PUBLISHED");
     }
+
+    auto const config = controller()->serviceProvider()->config();
     auto workerLocation = [&config](string const& workerName) -> json {
         auto const worker = config->worker(workerName);
         return json::object({{"worker", worker.name},
@@ -185,6 +170,7 @@ json HttpExportModule::_getTableLocations() {
         json chunk2locations = json::object();
         bool const enabledWorkersOnly = true;
         vector<unsigned int> chunks;
+        auto const databaseServices = controller()->serviceProvider()->databaseServices();
         databaseServices->findDatabaseChunks(chunks, database.name, enabledWorkersOnly);
         for (auto const chunk : chunks) {
             bool const includeFileInfo = true;  // to see the names of the base tables

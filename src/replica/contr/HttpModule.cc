@@ -140,4 +140,36 @@ DatabaseInfo HttpModule::getDatabaseInfo(string const& func, bool throwIfPublish
     return databaseInfo;
 }
 
+TableInfo HttpModule::getTableInfo(string const& func) {
+    auto const database = getDatabaseFromParamOrThrow404(func);
+    return getTableFromParamOrThrow404(func, database);
+}
+
+DatabaseInfo HttpModule::getDatabaseFromParamOrThrow404(string const& func) {
+    auto const databaseName = params().at("database");
+    debug(func, "database=" + databaseName);
+    try {
+        return controller()->serviceProvider()->config()->databaseInfo(databaseName);
+    } catch (ConfigUnknownDatabase const&) {
+        const string message =
+                "the database was not found in the Replication System's Configuration: " + databaseName;
+        error(func, message);
+        throw http::ErrorNotFound404(func, message);
+    }
+}
+
+TableInfo HttpModule::getTableFromParamOrThrow404(string const& func, DatabaseInfo const& database) {
+    auto const tableName = params().at("table");
+    debug(func, "table=" + tableName);
+    try {
+        return database.findTable(tableName);
+    } catch (ConfigUnknownTable const&) {
+        const string message =
+                "the table was not found in the Replication System's Configuration: " + tableName +
+                " of the database: " + database.name;
+        error(func, message);
+        throw http::ErrorNotFound404(func, message);
+    }
+}
+
 }  // namespace lsst::qserv::replica

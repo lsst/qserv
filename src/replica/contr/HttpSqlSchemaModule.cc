@@ -70,17 +70,10 @@ json HttpSqlSchemaModule::executeImpl(string const& subModuleName) {
 
 json HttpSqlSchemaModule::_getTableSchema() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
-    string const databaseName = params().at("database");
-    string const tableName = params().at("table");
-
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
-
-    auto const config = controller()->serviceProvider()->config();
-    auto const database = config->databaseInfo(databaseName);
-    auto const table = database.findTable(tableName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
+    auto const table = getTableFromParamOrThrow404(__func__, database);
 
     json schemaJson = json::array();
     if (database.isPublished) {
@@ -100,25 +93,19 @@ json HttpSqlSchemaModule::_getTableSchema() {
 
 json HttpSqlSchemaModule::_alterTableSchema() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
-    string const databaseName = params().at("database");
-    string const tableName = params().at("table");
     string const spec = body().required<string>("spec");
-
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
     debug(__func__, "spec=" + spec);
 
-    auto const config = controller()->serviceProvider()->config();
-    auto const database = config->databaseInfo(databaseName);
-    auto const table = database.findTable(tableName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
+    auto const table = getTableFromParamOrThrow404(__func__, database);
 
     // This safeguard is needed since database/table definition doesn't exist in Qserv
     // master until the catalog is published. It's unsafe to modifying table schema while
-    // they data are still being ingested as it would reault in all sorts of data corruptions
+    // the data are still being ingested as it would result in all sorts of data corruptions
     // or inconsistencies.
-    if (not database.isPublished) {
+    if (!database.isPublished) {
         throw http::Error(__func__, "database '" + database.name + "' is not published");
     }
 
@@ -141,7 +128,7 @@ json HttpSqlSchemaModule::_alterTableSchema() {
             // ATTENTION: in the current implementation of the Qserv Ingest System, default values
             // other than NULL aren't supported in the column definitions. All table contributions
             // are required to explicitly provide values for all fields or NULL. The only exception
-            // allowed here is to either restrict teh values to be NULL or have NULL as the default
+            // allowed here is to either restrict the values to be NULL or have NULL as the default
             // value.
             newCssTableSchema += g.id(row.getAs<string>("COLUMN_NAME")).str + " " +
                                  row.getAs<string>("COLUMN_TYPE") +
@@ -170,9 +157,10 @@ json HttpSqlSchemaModule::_alterTableSchema() {
     // Modify all relevant tables at all Qserv workers
     bool const allWorkers = true;
     string const noParentJobId;
-    auto const job = SqlAlterTablesJob::create(
-            database.name, table.name, spec, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog-management-priority-level"));
+    auto const job = SqlAlterTablesJob::create(database.name, table.name, spec, allWorkers, controller(),
+                                               noParentJobId, nullptr,
+                                               controller()->serviceProvider()->config()->get<int>(
+                                                       "controller", "catalog-management-priority-level"));
     job->start();
     logJobStartedEvent(SqlAlterTablesJob::typeName(), job, database.family);
     job->wait();
