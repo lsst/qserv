@@ -163,7 +163,7 @@ json HttpIngestTransModule::_getTransactions() {
 
 json HttpIngestTransModule::_getTransaction() {
     debug(__func__);
-    checkApiVersion(__func__, 37);
+    checkApiVersion(__func__, 58);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -209,7 +209,7 @@ json HttpIngestTransModule::_getTransaction() {
     DatabaseInfo database;
     vector<TransactionInfo> transactions;
     if (transactionId != 0) {
-        auto transaction = databaseServices->transaction(transactionId, includeContext, includeLog);
+        auto const transaction = _getTransactionOrThrow404(transactionId, includeContext, includeLog);
         database = config->databaseInfo(transaction.database);
         if (!databaseName.empty() && (databaseName != database.name)) {
             throw http::Error(__func__, "transaction id=" + to_string(transactionId) +
@@ -332,7 +332,7 @@ json HttpIngestTransModule::_beginTransaction() {
 
 json HttpIngestTransModule::_endTransaction() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
     auto const config = controller()->serviceProvider()->config();
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
@@ -349,12 +349,12 @@ json HttpIngestTransModule::_endTransaction() {
     // over transaction states. This mechanism prevents race conditions in the transaction
     // management operations performed by the module.
     string const lockName = "transaction:" + to_string(transactionId);
-    debug(__func__, "begin acquiring transient management lock on mutex '" + lockName = "'");
+    debug(__func__, "begin acquiring transient management lock on mutex '" + lockName + "'");
     replica::Lock const lock(_transactionMutexRegistry.get(lockName));
     debug(__func__, "transient management lock on mutex '" + lockName + "' acquired");
 
     // At this point the transaction state is guaranteed not to be changed by others.
-    TransactionInfo transaction = databaseServices->transaction(transactionId);
+    TransactionInfo transaction = _getTransactionOrThrow404(transactionId);
     auto const operationIsAllowed = TransactionInfo::stateTransitionIsAllowed(
             transaction.state,
             abort ? TransactionInfo::State::IS_ABORTING : TransactionInfo::State::IS_FINISHING);
@@ -506,7 +506,7 @@ json HttpIngestTransModule::_endTransaction() {
 
 json HttpIngestTransModule::_getContribution() {
     debug(__func__);
-    checkApiVersion(__func__, 37);
+    checkApiVersion(__func__, 58);
 
     unsigned int const id = stoul(params().at("id"));
     bool const includeExtensions = query().optionalUInt64("include_extensions", 1) != 0;
@@ -518,13 +518,15 @@ json HttpIngestTransModule::_getContribution() {
     debug(__func__, "include_warnings=" + bool2str(includeWarnings));
     debug(__func__, "include_retries=" + bool2str(includeRetries));
 
-    auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const contrib =
-            databaseServices->transactionContrib(id, includeExtensions, includeWarnings, includeRetries);
-
-    json result;
-    result["contribution"] = contrib.toJson();
-    return result;
+    try {
+        auto const contrib = controller()->serviceProvider()->databaseServices()->transactionContrib(
+                id, includeExtensions, includeWarnings, includeRetries);
+        json result;
+        result["contribution"] = contrib.toJson();
+        return result;
+    } catch (DatabaseServicesNotFound const& ex) {
+        throw http::ErrorNotFound404(__func__, "no such transaction contribution id=" + to_string(id));
+    }
 }
 
 void HttpIngestTransModule::_logTransactionMgtEvent(string const& operation, string const& status,
@@ -796,6 +798,16 @@ set<TransactionContribInfo::Status> HttpIngestTransModule::_parseContribStatusSe
         }
     }
     return result;
+}
+
+TransactionInfo HttpIngestTransModule::_getTransactionOrThrow404(TransactionId transactionId,
+                                                                 bool includeContext, bool includeLog) const {
+    auto const databaseServices = controller()->serviceProvider()->databaseServices();
+    try {
+        return databaseServices->transaction(transactionId, includeContext, includeLog);
+    } catch (DatabaseServicesNotFound const&) {
+        throw http::ErrorNotFound404(__func__, "no such transaction id=" + to_string(transactionId));
+    }
 }
 
 }  // namespace lsst::qserv::replica

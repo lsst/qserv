@@ -41,7 +41,9 @@
 #include "qmeta/UserTables.h"
 #include "qmeta/UserTableIngestRequest.h"
 #include "replica/config/Configuration.h"
+#include "replica/config/ConfigCzar.h"
 #include "replica/config/ConfigDatabase.h"
+#include "replica/config/ConfigWorker.h"
 #include "replica/jobs/QservStatusJob.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLTypes.h"
@@ -245,21 +247,20 @@ json HttpQservMonitorModule::_workers() {
 
 json HttpQservMonitorModule::_worker() {
     debug(__func__);
-    checkApiVersion(__func__, 19);
+    checkApiVersion(__func__, 58);
 
-    auto const config = controller()->serviceProvider()->config();
-    auto const worker = params().at("worker");
+    auto const workerName = _getWorkerFromParamOrThrow404(__func__).name;
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
     bool const keepResources = query().optionalUInt("keep_resources", 0) != 0;
     wbase::TaskSelector const taskSelector = _translateTaskSelector(__func__);
 
-    debug(__func__, "worker=" + worker);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
+    debug(__func__, "keep_resources=" + to_string(keepResources ? 1 : 0));
 
     string const noParentJobId;
     GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
     auto const request = controller()->serviceProvider()->qservMgtServices()->status(
-            worker, noParentJobId, taskSelector, onFinish, timeoutSec);
+            workerName, noParentJobId, taskSelector, onFinish, timeoutSec);
     request->wait();
 
     json result = json::object();
@@ -270,27 +271,26 @@ json HttpQservMonitorModule::_worker() {
 
     bool const success = request->extendedState() == QservMgtRequest::ExtendedState::SUCCESS;
     json const& info = success ? request->info() : json();
-    _processWorkerInfo(worker, keepResources, info, result["status"], schedulers2chunks, chunks);
+    _processWorkerInfo(workerName, keepResources, info, result["status"], schedulers2chunks, chunks);
     result["schedulers_to_chunks"] = _schedulers2chunks2json(schedulers2chunks);
     result["chunks"] = _chunkInfo(chunks);
-    result["czar_ids"] = ::czarIdsToJson(config->czarIds());
+    result["czar_ids"] = ::czarIdsToJson(controller()->serviceProvider()->config()->czarIds());
     return result;
 }
 
 json HttpQservMonitorModule::_workerConfig() {
     debug(__func__);
-    checkApiVersion(__func__, 26);
+    checkApiVersion(__func__, 58);
 
-    auto const worker = params().at("worker");
+    auto const workerName = _getWorkerFromParamOrThrow404(__func__).name;
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
 
-    debug(__func__, "worker=" + worker);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     string const noParentJobId;
     GetConfigQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->config(worker, noParentJobId,
-                                                                                     onFinish, timeoutSec);
+    auto const request = controller()->serviceProvider()->qservMgtServices()->config(
+            workerName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -299,18 +299,17 @@ json HttpQservMonitorModule::_workerConfig() {
 
 json HttpQservMonitorModule::_workerDb() {
     debug(__func__);
-    checkApiVersion(__func__, 24);
+    checkApiVersion(__func__, 58);
 
-    auto const worker = params().at("worker");
+    auto const workerName = _getWorkerFromParamOrThrow404(__func__).name;
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
 
-    debug(__func__, "worker=" + worker);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     string const noParentJobId;
     GetDbStatusQservMgtRequest::CallbackType const onFinish = nullptr;
     auto const request = controller()->serviceProvider()->qservMgtServices()->databaseStatus(
-            worker, noParentJobId, onFinish, timeoutSec);
+            workerName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -319,15 +318,13 @@ json HttpQservMonitorModule::_workerDb() {
 
 json HttpQservMonitorModule::_workerFiles() {
     debug(__func__);
-    checkApiVersion(__func__, 28);
+    checkApiVersion(__func__, 58);
 
-    auto const config = controller()->serviceProvider()->config();
-    auto const worker = params().at("worker");
+    auto const workerName = _getWorkerFromParamOrThrow404(__func__).name;
     auto const queryIds = query().optionalVectorUInt64("query_ids");
     auto const maxFiles = query().optionalUInt("max_files", 0);
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", workerResponseTimeoutSec());
 
-    debug(__func__, "worker=" + worker);
     debug(__func__, "query_ids=" + util::String::toString(queryIds));
     debug(__func__, "max_files=" + to_string(maxFiles));
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
@@ -335,29 +332,28 @@ json HttpQservMonitorModule::_workerFiles() {
     string const noParentJobId;
     GetResultFilesQservMgtRequest::CallbackType const onFinish = nullptr;
     auto const request = controller()->serviceProvider()->qservMgtServices()->resultFiles(
-            worker, noParentJobId, queryIds, maxFiles, onFinish, timeoutSec);
+            workerName, noParentJobId, queryIds, maxFiles, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
     json result = json::object();
     result["status"] = request->info();
-    result["czar_ids"] = ::czarIdsToJson(config->czarIds());
+    result["czar_ids"] = ::czarIdsToJson(controller()->serviceProvider()->config()->czarIds());
     return result;
 }
 
 json HttpQservMonitorModule::_czar() {
     debug(__func__);
-    checkApiVersion(__func__, 29);
+    checkApiVersion(__func__, 58);
 
-    auto const czar = params().at("czar");
+    auto const czarName = _getCzarFromParamOrThrow404(__func__).name;
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
-    debug(__func__, "czar=" + czar);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     string const noParentJobId;
     GetStatusQservCzarMgtRequest::CallbackType const onFinish = nullptr;
     auto const request = controller()->serviceProvider()->qservMgtServices()->czarStatus(
-            czar, noParentJobId, onFinish, timeoutSec);
+            czarName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -366,17 +362,16 @@ json HttpQservMonitorModule::_czar() {
 
 json HttpQservMonitorModule::_czarConfig() {
     debug(__func__);
-    checkApiVersion(__func__, 29);
+    checkApiVersion(__func__, 58);
 
-    auto const czar = params().at("czar");
+    auto const czarName = _getCzarFromParamOrThrow404(__func__).name;
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
-    debug(__func__, "czar=" + czar);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
 
     string const noParentJobId;
     GetConfigQservCzarMgtRequest::CallbackType const onFinish = nullptr;
     auto const request = controller()->serviceProvider()->qservMgtServices()->czarConfig(
-            czar, noParentJobId, onFinish, timeoutSec);
+            czarName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -449,9 +444,9 @@ void HttpQservMonitorModule::_processWorkerInfo(string const& worker, bool keepR
 json HttpQservMonitorModule::_schedulers2chunks2json(map<string, set<int>> const& schedulers2chunks) const {
     json result;
     for (auto itr : schedulers2chunks) {
-        string const& scheduerName = itr.first;
+        string const& schedulerName = itr.first;
         for (int const chunk : itr.second) {
-            result[scheduerName].push_back(chunk);
+            result[schedulerName].push_back(chunk);
         }
     }
     return result;
@@ -481,13 +476,13 @@ json HttpQservMonitorModule::_activeQueries() {
             auto info = status.info.at(worker);
             auto&& schedulers = info["processor"]["queries"]["blend_scheduler"]["schedulers"];
             for (auto&& scheduler : schedulers) {
-                string const scheduerName = scheduler["name"];
+                string const schedulerName = scheduler["name"];
                 for (auto&& queryId2count : scheduler["query_id_to_count"]) {
                     QueryId const queryId = queryId2count[0];
                     // Keep the name of the "SchedSnail" scheduler to indicate the worst case scenario
                     // for the query.
                     if (queryId2scheduler[queryId] != "SchedSnail") {
-                        queryId2scheduler[queryId] = scheduerName;
+                        queryId2scheduler[queryId] = schedulerName;
                     }
                 }
             }
@@ -509,15 +504,14 @@ json HttpQservMonitorModule::_activeQueries() {
 
 json HttpQservMonitorModule::_activeQueriesProgress() {
     debug(__func__);
-    checkApiVersion(__func__, 29);
+    checkApiVersion(__func__, 58);
 
-    auto const czar = params().at("czar");
+    auto const czarName = _getCzarFromParamOrThrow404(__func__).name;
     unsigned int const timeoutSec = query().optionalUInt("timeout_sec", czarResponseTimeoutSec());
     auto const queryIds = query().optionalVectorUInt64("query_ids");
     unsigned int const lastSeconds = query().optionalUInt("last_seconds", 0);
     string const queryStatus = query().optionalString("query_status");
 
-    debug(__func__, "czar=" + czar);
     debug(__func__, "timeout_sec=" + to_string(timeoutSec));
     debug(__func__, "query_ids=" + util::String::toString(queryIds));
     debug(__func__, "last_seconds=" + to_string(lastSeconds));
@@ -526,7 +520,7 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
     string const noParentJobId;
     GetQueryProgressQservCzarMgtRequest::CallbackType const onFinish = nullptr;
     auto const request = controller()->serviceProvider()->qservMgtServices()->czarQueryProgress(
-            czar, noParentJobId, queryIds, lastSeconds, queryStatus, onFinish, timeoutSec);
+            czarName, noParentJobId, queryIds, lastSeconds, queryStatus, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -614,9 +608,8 @@ json HttpQservMonitorModule::_pastQueries() {
 
 json HttpQservMonitorModule::_userQuery() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
-    auto const config = controller()->serviceProvider()->config();
     auto const queryId = stoull(params().at("id"));
     bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
     debug(__func__, "id=" + to_string(queryId));
@@ -635,7 +628,10 @@ json HttpQservMonitorModule::_userQuery() {
         result["queries_past"] =
                 _pastUserQueries(conn, g.eq("queryId", queryId), limit4past, includeMessages);
     });
-    result["czar_ids"] = ::czarIdsToJson(config->czarIds());
+    if (result["queries_past"].empty()) {
+        throw http::ErrorNotFound404(__func__, "no query with id=" + to_string(queryId));
+    }
+    result["czar_ids"] = ::czarIdsToJson(controller()->serviceProvider()->config()->czarIds());
     return result;
 }
 
@@ -790,32 +786,22 @@ json HttpQservMonitorModule::_css() {
 
 json HttpQservMonitorModule::_cssUpdate() {
     debug(__func__);
-    checkApiVersion(__func__, 45);
-
-    auto const databaseName = params().at("database");
-    auto const tableName = params().at("table");
+    checkApiVersion(__func__, 58);
 
     css::ScanTableParams params;
     params.scanRating = body().required<int>("scanRating");
-
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
     debug(__func__, "scanRating=" + to_string(params.scanRating));
 
-    auto const config = controller()->serviceProvider()->config();
-
-    // These methods will throw exceptions if the database or the table are not found.
-    auto const database = config->databaseInfo(databaseName);
-    auto const table = database.findTable(tableName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
+    auto const table = getTableFromParamOrThrow404(__func__, database);
     if (!(table.isPartitioned && !table.isRefMatch())) {
         throw invalid_argument(context() + "::" + string(__func__) +
-                               "  the table must be partitioned and not a reference match: " + databaseName +
-                               "." + tableName);
+                               "  the table must be partitioned and not a reference match: " + database.name +
+                               "." + table.name);
     }
-
     auto const cssAccess = qservCssAccess();
-    cssAccess->setScanTableParams(databaseName, tableName, params);
-    return _cssSharedScanParams(config, cssAccess);
+    cssAccess->setScanTableParams(database.name, table.name, params);
+    return _cssSharedScanParams(controller()->serviceProvider()->config(), cssAccess);
 }
 
 json HttpQservMonitorModule::_userTables() {
@@ -951,6 +937,26 @@ json HttpQservMonitorModule::_chunkInfo(set<int> const& chunks) const {
         }
     }
     return result;
+}
+
+ConfigCzar HttpQservMonitorModule::_getCzarFromParamOrThrow404(string const& func) const {
+    auto const czarName = params().at("czar");
+    debug(__func__, "czar=" + czarName);
+    try {
+        return controller()->serviceProvider()->config()->czar(czarName);
+    } catch (ConfigUnknownCzar const& ex) {
+        throw http::ErrorNotFound404(func, "no such czar found, name: " + czarName);
+    }
+}
+
+ConfigWorker HttpQservMonitorModule::_getWorkerFromParamOrThrow404(string const& func) const {
+    auto const workerName = params().at("worker");
+    debug(__func__, "worker=" + workerName);
+    try {
+        return controller()->serviceProvider()->config()->worker(workerName);
+    } catch (ConfigUnknownWorker const& ex) {
+        throw http::ErrorNotFound404(func, "no such worker found, name: " + workerName);
+    }
 }
 
 }  // namespace lsst::qserv::replica

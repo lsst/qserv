@@ -90,7 +90,7 @@ json HttpJobsModule::_jobs() {
 
 json HttpJobsModule::_oneJob() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
     auto const id = params().at("id");
     try {
@@ -99,7 +99,7 @@ json HttpJobsModule::_oneJob() {
         return result;
 
     } catch (DatabaseServicesNotFound const& ex) {
-        throw http::Error(__func__, "no such job found");
+        throw http::ErrorNotFound404(__func__, "no such job found, id: " + id);
     }
 }
 

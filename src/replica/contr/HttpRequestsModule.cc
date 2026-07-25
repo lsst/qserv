@@ -86,7 +86,7 @@ json HttpRequestsModule::_requests() {
 
 json HttpRequestsModule::_oneRequest() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
     auto const id = params().at("id");
     try {
@@ -94,7 +94,7 @@ json HttpRequestsModule::_oneRequest() {
         result["request"] = controller()->serviceProvider()->databaseServices()->request(id).toJson();
         return result;
     } catch (DatabaseServicesNotFound const& ex) {
-        throw http::Error(__func__, "no such request found");
+        throw http::ErrorNotFound404(__func__, "no such request found, id: " + id);
     }
 }
 

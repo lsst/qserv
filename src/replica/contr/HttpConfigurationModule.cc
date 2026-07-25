@@ -33,6 +33,8 @@
 #include "http/RequestQuery.h"
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigDatabase.h"
+#include "replica/config/ConfigWorker.h"
+#include "replica/config/ConfigurationExceptions.h"
 #include "replica/config/ConfigurationSchema.h"
 #include "replica/services/DatabaseServices.h"
 #include "replica/services/ServiceProvider.h"
@@ -136,7 +138,7 @@ json HttpConfigurationModule::_updateGeneral() {
 
 json HttpConfigurationModule::_updateWorker() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
     auto const config = controller()->serviceProvider()->config();
     auto const workerName = params().at("worker");
@@ -156,18 +158,26 @@ json HttpConfigurationModule::_updateWorker() {
     updateBool(__func__, "is-enabled", worker.isEnabled);
     updateBool(__func__, "is-read-only", worker.isReadOnly);
 
-    json result;
-    result["config"]["workers"][workerName] = config->updateWorker(worker).toJson();
-    return result;
+    try {
+        json result;
+        result["config"]["workers"][workerName] = config->updateWorker(worker).toJson();
+        return result;
+    } catch (ConfigUnknownWorker const& ex) {
+        throw http::ErrorNotFound404(__func__, "no such worker found, name: " + workerName);
+    }
 }
 
 json HttpConfigurationModule::_deleteWorker() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
     auto const workerName = params().at("worker");
-    controller()->serviceProvider()->config()->deleteWorker(workerName);
-    return json::object();
+    try {
+        controller()->serviceProvider()->config()->deleteWorker(workerName);
+    } catch (ConfigUnknownWorker const& ex) {
+        throw http::ErrorNotFound404(__func__, "no such worker found, name: " + workerName);
+    }
+    return {};
 }
 
 json HttpConfigurationModule::_addWorker() {
@@ -191,7 +201,7 @@ json HttpConfigurationModule::_addWorker() {
 
 json HttpConfigurationModule::_deleteFamily() {
     debug(__func__);
-    checkApiVersion(__func__, 44);
+    checkApiVersion(__func__, 58);
 
     auto const familyName = params().at("family");
     bool const force = query().optionalInt("force", 0) != 0;
@@ -199,8 +209,12 @@ json HttpConfigurationModule::_deleteFamily() {
     debug(__func__, "family=" + familyName);
     debug(__func__, "force=" + to_string(force ? 1 : 0));
 
-    controller()->serviceProvider()->config()->deleteDatabaseFamily(familyName, force);
-    return json::object();
+    try {
+        controller()->serviceProvider()->config()->deleteDatabaseFamily(familyName, force);
+    } catch (ConfigUnknownDatabaseFamily const& ex) {
+        throw http::ErrorNotFound404(__func__, "no such database family found, name: " + familyName);
+    }
+    return {};
 }
 
 json HttpConfigurationModule::_addFamily() {
@@ -241,11 +255,11 @@ json HttpConfigurationModule::_addFamily() {
 
 json HttpConfigurationModule::_deleteDatabase() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
-    auto const database = params().at("database");
-    controller()->serviceProvider()->config()->deleteDatabase(database);
-    return json::object();
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
+    controller()->serviceProvider()->config()->deleteDatabase(database.name);
+    return {};
 }
 
 json HttpConfigurationModule::_addDatabase() {
@@ -266,39 +280,36 @@ json HttpConfigurationModule::_addDatabase() {
 
 json HttpConfigurationModule::_unpublishDatabase() {
     debug(__func__);
-    auto const database = params().at("database");
-    bool const publish = body().optional<int>("publish", 0) != 0;
-    debug(__func__, "database=" + database);
-    debug(__func__, "publish=" + bool2str(publish));
-
-    // The publish parameter was introduced in API version 34.
-    checkApiVersion(__func__, publish ? 34 : 12);
+    checkApiVersion(__func__, 58);
 
     if (!isAdmin()) {
         throw http::Error(__func__, "administrator's privileges are required to (un-)publish databases.");
     }
+    bool const publish = body().optional<int>("publish", 0) != 0;
+    debug(__func__, "publish=" + bool2str(publish));
+
+    auto database = getDatabaseFromParamOrThrow404(__func__);
     auto const config = controller()->serviceProvider()->config();
-    DatabaseInfo const databaseInfo =
-            publish ? config->publishDatabase(database) : config->unPublishDatabase(database);
-    // This step is needed to get workers' Configuration in-sync with its
-    // persistent state.
+    database = publish ? config->publishDatabase(database.name) : config->unPublishDatabase(database.name);
+
+    // This step is needed to get workers' Configuration in-sync with its persistent state.
     bool const allWorkers = true;
-    string const error = reconfigureWorkers(databaseInfo, allWorkers, workerReconfigTimeoutSec());
-    if (not error.empty()) throw http::Error(__func__, error);
+    string const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    if (!error.empty()) throw http::Error(__func__, error);
     json result;
-    result["config"]["databases"][database] = databaseInfo.toJson();
+    result["config"]["databases"][database.name] = database.toJson();
     return result;
 }
 
 json HttpConfigurationModule::_deleteTable() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
-    auto const database = params().at("database");
-    auto const table = params().at("table");
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
+    auto const table = getTableFromParamOrThrow404(__func__, database);
     json result;
-    result["config"]["databases"][database] =
-            controller()->serviceProvider()->config()->deleteTable(database, table).toJson();
+    result["config"]["databases"][database.name] =
+            controller()->serviceProvider()->config()->deleteTable(database.name, table.name).toJson();
     return result;
 }
 
