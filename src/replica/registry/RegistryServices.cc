@@ -22,58 +22,69 @@
 // Class header
 #include "replica/registry/RegistryServices.h"
 
+// Qserv headers
+#include "http/Exceptions.h"
+
 // System headers
 #include <stdexcept>
 
 using namespace std;
 using json = nlohmann::json;
 
-#define CONTEXT_ ("RegistryServices::" + string(__func__) + " ")
+#define CONTEXT_ ("RegistryServices::" + string(__func__))
 
 namespace lsst::qserv::replica {
 
-void RegistryServices::updateWorker(string const& name, json const& workerInfo) {
-    if (name.empty()) throw invalid_argument(CONTEXT_ + "worker name is empty.");
-    if (!workerInfo.is_object()) throw invalid_argument(CONTEXT_ + "not a valid JSON object.");
-    replica::Lock const lock(_mtx, CONTEXT_);
-    if (!_services["workers"].contains(name)) _services["workers"][name] = json::object();
-    json& worker = _services["workers"][name];
-    for (auto&& [key, val] : workerInfo.items()) {
-        worker[key] = val;
-    }
+void RegistryServices::updateWorker(string const& id, json const& desc) {
+    _update(CONTEXT_, "workers", id, desc);
 }
 
-void RegistryServices::removeWorker(string const& name) {
-    if (name.empty()) throw invalid_argument(CONTEXT_ + "worker name is empty.");
-    replica::Lock const lock(_mtx, CONTEXT_);
-    _services["workers"].erase(name);
+void RegistryServices::removeWorker(string const& id) { _remove(CONTEXT_, "workers", id); }
+
+void RegistryServices::updateCzar(string const& id, json const& desc) {
+    _update(CONTEXT_, "czars", id, desc);
 }
 
-void RegistryServices::updateCzar(string const& name, json const& czarInfo) {
-    if (!czarInfo.is_object()) throw invalid_argument(CONTEXT_ + "not a valid JSON object.");
-    replica::Lock const lock(_mtx, CONTEXT_);
-    _services["czars"][name] = czarInfo;
+void RegistryServices::removeCzar(std::string const& id) { _remove(CONTEXT_, "czars", id); }
+
+void RegistryServices::updateController(string const& id, json const& desc) {
+    _update(CONTEXT_, "controllers", id, desc);
 }
 
-void RegistryServices::removeCzar(std::string const& name) {
-    replica::Lock const lock(_mtx, CONTEXT_);
-    _services["czars"].erase(name);
-}
-
-void RegistryServices::updateController(string const& name, json const& controllerInfo) {
-    if (!controllerInfo.is_object()) throw invalid_argument(CONTEXT_ + "not a valid JSON object.");
-    replica::Lock const lock(_mtx, CONTEXT_);
-    _services["controllers"][name] = controllerInfo;
-}
-
-void RegistryServices::removeController(string const& name) {
-    replica::Lock const lock(_mtx, CONTEXT_);
-    _services["controllers"].erase(name);
-}
+void RegistryServices::removeController(string const& id) { _remove(CONTEXT_, "controllers", id); }
 
 json RegistryServices::toJson() const {
     replica::Lock const lock(_mtx, CONTEXT_);
     return _services;
+}
+
+void RegistryServices::_update(string const& func, string const& serviceType, string const& serviceId,
+                               json const& desc) {
+    if (serviceId.empty()) {
+        throw invalid_argument(func + ": serviceId is empty for serviceType=" + serviceType);
+    }
+    if (!desc.is_object()) {
+        throw invalid_argument(func + ": the descriptor for serviceId=" + serviceId +
+                               " of serviceType=" + serviceType + " is not a valid JSON object.");
+    }
+    replica::Lock const lock(_mtx, func);
+    if (!_services[serviceType].contains(serviceId)) {
+        _services[serviceType][serviceId] = json::object();
+    }
+    json& entry = _services[serviceType][serviceId];
+    for (auto&& [key, val] : desc.items()) {
+        entry[key] = val;
+    }
+}
+
+void RegistryServices::_remove(string const& func, string const& serviceType, string const& serviceId) {
+    if (serviceId.empty())
+        throw invalid_argument(func + ": serviceId is empty for serviceType=" + serviceType);
+    replica::Lock const lock(_mtx, func);
+    if (_services[serviceType].erase(serviceId) == 0) {
+        throw http::ErrorNotFound404(func, "no entry for serviceId=" + serviceId + " of serviceType=" +
+                                                   serviceType + " was found in the Registry");
+    }
 }
 
 }  // namespace lsst::qserv::replica
