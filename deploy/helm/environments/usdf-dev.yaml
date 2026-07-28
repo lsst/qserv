@@ -1,4 +1,4 @@
-qservImageName: ghcr.io/lsst/qserv:2026.7.1-rc1-73-gd759241b2
+qservImageName: ghcr.io/lsst/qserv:2026.7.1-rc1-73-gd470889e8
 mariadbImageName: ghcr.io/lsst/qserv-mariadb:2026.7.1-rc1
 sslProxyImageName: qserv/mysql-proxy-ssl:latest
 ingestHelperImageName: ghcr.io/lsst/qserv-build-base:2026.7.1-rc1-1-ga7a3dbc68

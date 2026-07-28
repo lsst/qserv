@@ -455,28 +455,11 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
     DbTableSet const& sTables = queryMapping.getSubChunkTables();
     cQSpec->subChunkTables = sTables;
     // Build queries.
-    bool const compareT = false; //&&&
     if (!_context->hasSubChunks()) {
-        if (!_chunkQueries->wasSet()){
-            _chunkQueries->setTemplates(_buildChunkQueries(queryTemplates, chunkSpec));
-        } else {
-            if (compareT && !_chunkQueries->compareQueries(_buildChunkQueries(queryTemplates, chunkSpec))) {
-                cQSpec->queries = _chunkQueries;
-                throw util::Bug(ERR_LOC, "QuerySession::buildChunkQuerySpec: _chunkQueries mismatch "
-                        + _chunkQueries->getTemplates().front() + " chunkId=" +to_string(chunkSpec.chunkId));
-            }
-        }
+        _chunkQueries->setTemplatesIfNeeded(_buildChunkQueries(queryTemplates, chunkSpec));
         cQSpec->queries = _chunkQueries;
     } else {
-        if (!_chunkQueriesWithSubchunks->wasSet()) {
-            _chunkQueriesWithSubchunks->setTemplates(_buildChunkQueries(queryTemplates, chunkSpec));
-        } else {
-            if (compareT && !_chunkQueriesWithSubchunks->compareQueries(_buildChunkQueries(queryTemplates, chunkSpec))){
-                cQSpec->queries = _chunkQueriesWithSubchunks;
-                throw util::Bug(ERR_LOC, "QuerySession::buildChunkQuerySpec: _chunkQueriesWithSubchunks mismatch "
-                        + _chunkQueries->getTemplates().front() + " chunkId=" +to_string(chunkSpec.chunkId));
-            }
-        }
+        _chunkQueriesWithSubchunks->setTemplatesIfNeeded(_buildChunkQueries(queryTemplates, chunkSpec));
         cQSpec->queries = _chunkQueriesWithSubchunks;
         cQSpec->subChunkIds.assign(chunkSpec.subChunks.begin(), chunkSpec.subChunks.end());
     }

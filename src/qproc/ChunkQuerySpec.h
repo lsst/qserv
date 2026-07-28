@@ -54,7 +54,9 @@ public:
         return _wasSet;
     }
 
-    void setTemplates(std::vector<std::string> const& templates);
+    /// Set the _templates if they have not been set.
+    /// @return true if the templates were set in this function.
+    bool setTemplatesIfNeeded(std::vector<std::string> const& templates);
 
     std::vector<std::string> const& getTemplates() const {
         std::lock_guard<std::mutex> lck(_cqMtx);
@@ -65,6 +67,8 @@ public:
         std::lock_guard<std::mutex> lck(_cqMtx);
         return _templates == other;
     }
+
+    void setTemplates(std::vector<std::string> const& templates);
 
 private:
     std::vector<std::string> _templates; ///< Query templates to send to workers.
