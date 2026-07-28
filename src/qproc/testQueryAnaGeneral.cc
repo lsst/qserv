@@ -335,6 +335,16 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
                                      "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
                                      std::make_shared<AreaRestrictorCircle>("1", "1", "1.3")),
 
+        // The partitioning columns of a chunked child table are also usable as an area restrictor.
+        ScisqlRestrictorTestCaseData(
+                "select * from LSST.Object o, Source s "
+                "WHERE scisql_s2PtInCircle(s.raObjectTest, s.declObjectTest, 1, 1, 1.3) = 1 "
+                "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                "WHERE scisql_s2PtInCircle(`s`.`raObjectTest`,`s`.`declObjectTest`,1,1,1.3)=1 "
+                "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                std::make_shared<AreaRestrictorCircle>("1", "1", "1.3")),
+
         ScisqlRestrictorTestCaseData(
                 "select * from LSST.Object o, Source s "
                 "WHERE scisql_s2PtInEllipse(ra_Test, decl_Test, 1.2, 3.2, 2500, 1500, 0.2) = 1 "
@@ -459,10 +469,11 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
 
 // Test that scisql area restrictors are translated into qserv_area_restrictors properly.
 BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_CASE_DATA, queryData) {
-    qsTest.sqlConfig = SqlConfig(
-            SqlConfig::MockDbTableColumns({{"LSST",
-                                            {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
-                                             {"Source", {"objectIdSourceTest", "ra_Test", "decl_Test"}}}}}));
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
+               {"Source",
+                {"objectIdSourceTest", "ra_Test", "decl_Test", "raObjectTest", "declObjectTest"}}}}}));
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, queryData.stmt);
     std::shared_ptr<QueryContext> context = qs->dbgGetContext();
     BOOST_CHECK(context);
@@ -481,6 +492,77 @@ BOOST_DATA_TEST_CASE(ObjectSourceJoin_ScisqlRestrictor, SCISQL_RESTRICTOR_TEST_C
     BOOST_CHECK_EQUAL(nullptr, context->secIdxRestrictors);
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(actual, queryData.expectedStmt);
+}
+
+static const std::vector<std::string> UNSAFE_SCISQL_RESTRICTOR_TEST_CASE_DATA = {
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInCircle(ra_Test, decl_Test + 5.0, 1.8, 0.0, 0.05) = 1",
+
+        // The position is a pair of real columns, but not the ones the table is partitioned on.
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInCircle(ra_SG, decl_SG, 1.8, 0.0, 0.05) = 1",
+
+        // Only the latitude column is not a partitioning column.
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInCircle(ra_Test, decl_SG, 1.8, 0.0, 0.05) = 1",
+
+        // The partitioning columns, but passed in the wrong order (lat where lon is expected).
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInCircle(decl_Test, ra_Test, 1.8, 0.0, 0.05) = 1",
+
+        // The position is a constant rather than a column.
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInCircle(1.8, 0.0, 1.8, 0.0, 0.05) = 1",
+
+        // The longitude and latitude come from two different tables.
+        "SELECT * FROM LSST.Object o, LSST.Source s "
+        "WHERE scisql_s2PtInCircle(o.ra_Test, s.declObjectTest, 1.8, 0.0, 0.05) = 1 "
+        "AND o.objectIdObjTest = s.objectIdSourceTest",
+
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInCircle(ra_SG + 5.0, decl_SG, 6.8, -5.0, 0.05) = 1",
+
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInBox(ra_Test + 5.0, decl_Test, 6.82, -5.04, 6.87, -4.99) = 1",
+
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInEllipse("
+        "ra_Test + 5.0, decl_Test, 6.8, -5.0, 180.0, 180.0, 0.0) = 1",
+
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_s2PtInCPoly("
+        "ra_Test + 5.0, decl_Test, "
+        "6.82, -5.04, 6.87, -5.04, 6.87, -4.99, 6.82, -4.99) = 1",
+
+        // scisql_angSep() is subject to the same partition-column requirement as the
+        // scisql_s2PtIn* functions above
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_angSep(ra_SG, decl_SG, 1.8, 0.0) < 0.05",
+
+        // Same as above, with the constant center on the left.
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_angSep(1.8, 0.0, ra_SG, decl_SG) < 0.05",
+
+        // Only the latitude column is not a partitioning column.
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_angSep(ra_Test, decl_SG, 1.8, 0.0) < 0.05",
+
+        // The partitioning columns, but passed in the wrong order (lat where lon is expected).
+        "SELECT * FROM LSST.Object "
+        "WHERE scisql_angSep(decl_Test, ra_Test, 1.8, 0.0) < 0.05",
+};
+
+// A scisql predicate can only be used as an area restrictor when its lat/lon are the table's
+// partitioning columns. The scenarios above should be rejected as invalid area restrictors.
+BOOST_DATA_TEST_CASE(UnsafeScisqlPositionIsNotAreaRestrictor, UNSAFE_SCISQL_RESTRICTOR_TEST_CASE_DATA, stmt) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test", "ra_SG", "decl_SG"}},
+               {"Source", {"objectIdSourceTest", "raObjectTest", "declObjectTest"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_REQUIRE(context);
+    BOOST_CHECK_EQUAL(nullptr, context->areaRestrictors);
 }
 
 BOOST_AUTO_TEST_CASE(ScisqlWrongNumberOfParameters) {
@@ -772,13 +854,13 @@ BOOST_AUTO_TEST_CASE(PtInCircleJoinWithConeRestrictor) {
 BOOST_AUTO_TEST_CASE(AngSepAsConeRestrictor) {
     // scisql_angSep() with a constant center, bounded above, is equivalent to scisql_s2PtInCircle() = 1
     std::vector<std::string> const predicates = {
-            "scisql_angSep(ra_PS, decl_PS, 1.5, 3) < 0.1", "scisql_angSep(ra_PS, decl_PS, 1.5, 3) <= 0.1",
-            "0.1 > scisql_angSep(ra_PS, decl_PS, 1.5, 3)", "scisql_angSep(1.5, 3, ra_PS, decl_PS) < 0.1",
-            "scisql_angSep(ra_PS, decl_PS, 1.5, 3) = 0.1", "scisql_angSep(ra_PS, decl_PS, 1.5, 3) <=> 0.1"};
+            "scisql_angSep(ra_Test, decl_Test, 1.5, 3) < 0.1", "scisql_angSep(ra_Test, decl_Test, 1.5, 3) <= 0.1",
+            "0.1 > scisql_angSep(ra_Test, decl_Test, 1.5, 3)", "scisql_angSep(1.5, 3, ra_Test, decl_Test) < 0.1",
+            "scisql_angSep(ra_Test, decl_Test, 1.5, 3) = 0.1", "scisql_angSep(ra_Test, decl_Test, 1.5, 3) <=> 0.1"};
     for (auto const& predicate : predicates) {
         std::string stmt = "select * from Object where " + predicate;
         qsTest.sqlConfig =
-                SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}}));
+                SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
         std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
         BOOST_CHECK_EQUAL(qs->getError(), "");
         std::shared_ptr<QueryContext> context = qs->dbgGetContext();
