@@ -43,7 +43,11 @@ Error reporting when calling the services
 
     The error reporting mechanism implemented in the System serves as a foundation for building reliable workflows.
 
-All services explained in the document adhere to the usual conventions adopted by the Web community for designing and using the REST APIs. In particular, HTTP code 200 is returned if a request is well-formed and accepted by the corresponding service. Any other code shall be treated as an error. However, the implementation of the System further extends the error reporting mechanism by guaranteeing that all services did the fine-grain error reporting in the response objects. All services of the API are guaranteed to return an JSON object if the HTTP code is 200. The objects would have the following mandatory attributes (other attributes depend on a request):
+All services explained in the document adhere to the usual conventions adopted by the Web community for designing and using the REST APIs.
+In particular, HTTP code ``200`` is returned if a request is well-formed and accepted by the corresponding service. Any other code shall
+be treated as an error. However, the implementation of the System further extends the error reporting mechanism by guaranteeing that
+all services did the fine-grain error reporting in the response objects. All services of the API are guaranteed to return a JSON object
+if the HTTP code is ``200`` or ``404``. The objects would have the following mandatory attributes (other attributes depend on a request):
 
 .. code-block::
 
@@ -58,10 +62,13 @@ All services explained in the document adhere to the usual conventions adopted b
 Therefore, even if a request is completed with HTTP code ``200``, a client (a workflow) must inspect the above-mentioned
 fields in the returned object. These are the rules for inspecting the status attributes:
 
-- Successful completion of a request is indicated by having success=1 in the response. In these cases, the other
+- Successful completion of a request is indicated by having ``success=1`` in the response. In these cases, the other
   two fields should be ignored.
-- Otherwise, a human-readable explanation of a problem would be found in the error field.
-- Request-specific extended information on errors is optionally provided in the error_ext field.
+- Otherwise, a human-readable explanation of a problem would be found in the ``error`` field.
+- Request-specific extended information on errors is optionally provided in the ``error_ext`` field.
+
+The attribute ``success=0`` is always present in responses with HTTP code ``404``. The other two attributes are also
+guaranteed to be present in the response object.
 
 Optional warnings
 ^^^^^^^^^^^^^^^^^
