@@ -24,6 +24,7 @@
 
 // Qserv header
 #include "http/Auth.h"
+#include "http/Exceptions.h"
 #include "http/Method.h"
 #include "replica/ingest/IngestRequest.h"
 #include "replica/ingest/IngestRequestMgr.h"
@@ -91,7 +92,7 @@ json IngestHttpSvcMod::_syncProcessRequest() const {
 
 json IngestHttpSvcMod::_syncProcessRetry() const {
     debug(__func__);
-    checkApiVersion(__func__, 16);
+    checkApiVersion(__func__, 58);
 
     auto const request = _createRetry();
     request->process();
@@ -110,7 +111,7 @@ json IngestHttpSvcMod::_asyncSubmitRequest() const {
 
 json IngestHttpSvcMod::_asyncSubmitRetry() const {
     debug(__func__);
-    checkApiVersion(__func__, 16);
+    checkApiVersion(__func__, 58);
 
     bool const async = true;
     auto const request = _createRetry(async);
@@ -120,31 +121,44 @@ json IngestHttpSvcMod::_asyncSubmitRetry() const {
 
 json IngestHttpSvcMod::_asyncRequest() const {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 58);
 
     auto const id = stoul(params().at("id"));
-    auto const contrib = _ingestRequestMgr->find(id);
-    return json::object({{"contrib", contrib.toJson()}});
+    try {
+        auto const contrib = _ingestRequestMgr->find(id);
+        return json::object({{"contrib", contrib.toJson()}});
+    } catch (IngestRequestNotFound const& ex) {
+        throw http::ErrorNotFound404(__func__, ex.what());
+    }
 }
 
 json IngestHttpSvcMod::_asyncCancelRequest() const {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 58);
 
     auto const id = stoul(params().at("id"));
-    _ingestRequestMgr->cancel(id);
-    return json::object({{"contrib", _ingestRequestMgr->find(id).toJson()}});
+    try {
+        _ingestRequestMgr->cancel(id);
+        return json::object({{"contrib", _ingestRequestMgr->find(id).toJson()}});
+    } catch (IngestRequestNotFound const& ex) {
+        throw http::ErrorNotFound404(__func__, ex.what());
+    }
 }
 
 json IngestHttpSvcMod::_asyncTransRequests() const {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 58);
 
     TransactionId const transactionId = stoul(params().at("id"));
     string const anyTable;
     set<TransactionContribInfo::Status> const anyStatus;
-    auto const contribs = _serviceProvider->databaseServices()->transactionContribs(
-            transactionId, anyTable, _workerName, anyStatus, TransactionContribInfo::TypeSelector::ASYNC);
+    vector<TransactionContribInfo> contribs;
+    try {
+        contribs = _serviceProvider->databaseServices()->transactionContribs(
+                transactionId, anyTable, _workerName, anyStatus, TransactionContribInfo::TypeSelector::ASYNC);
+    } catch (DatabaseServicesNotFound const& ex) {
+        throw http::ErrorNotFound404(__func__, ex.what());
+    }
     json contribsJson = json::array();
     for (auto& contrib : contribs) {
         contribsJson.push_back(contrib.toJson());
@@ -154,13 +168,18 @@ json IngestHttpSvcMod::_asyncTransRequests() const {
 
 json IngestHttpSvcMod::_asyncTransCancelRequests() const {
     debug(__func__);
-    checkApiVersion(__func__, 13);
+    checkApiVersion(__func__, 58);
 
     TransactionId const transactionId = stoul(params().at("id"));
     string const anyTable;
     set<TransactionContribInfo::Status> const anyStatus;
-    auto const contribs = _serviceProvider->databaseServices()->transactionContribs(
-            transactionId, anyTable, _workerName, anyStatus, TransactionContribInfo::TypeSelector::ASYNC);
+    vector<TransactionContribInfo> contribs;
+    try {
+        contribs = _serviceProvider->databaseServices()->transactionContribs(
+                transactionId, anyTable, _workerName, anyStatus, TransactionContribInfo::TypeSelector::ASYNC);
+    } catch (DatabaseServicesNotFound const& ex) {
+        throw http::ErrorNotFound404(__func__, ex.what());
+    }
     json contribsJson = json::array();
     for (auto& contrib : contribs) {
         try {
@@ -225,7 +244,11 @@ shared_ptr<IngestRequest> IngestHttpSvcMod::_createRequest(bool async) const {
 shared_ptr<IngestRequest> IngestHttpSvcMod::_createRetry(bool async) const {
     unsigned int const id = stoul(params().at("id"));
     debug(__func__, "id: " + to_string(id));
-    return IngestRequest::createRetry(_serviceProvider, _workerName, id, async);
+    try {
+        return IngestRequest::createRetry(_serviceProvider, _workerName, id, async);
+    } catch (IngestRequestContribNotFound const& ex) {
+        throw http::ErrorNotFound404(__func__, ex.what());
+    }
 }
 
 }  // namespace lsst::qserv::replica
