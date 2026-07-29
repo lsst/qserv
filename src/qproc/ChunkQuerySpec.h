@@ -29,6 +29,7 @@
  */
 
 // System headers
+#include <mutex>
 #include <ostream>
 #include <string>
 #include <vector>
@@ -56,7 +57,7 @@ public:
 
     /// Set the _templates if they have not been set.
     /// @return true if the templates were set in this function.
-    bool setTemplatesIfNeeded(std::vector<std::string> const& templates);
+    bool setTemplatesIfNeeded(std::function<std::vector<std::string>()> const& templateFunc);
 
     std::vector<std::string> const& getTemplates() const {
         std::lock_guard<std::mutex> lck(_cqMtx);
@@ -99,7 +100,7 @@ public:
     bool scanInteractive{false};
     DbTableSet subChunkTables;
     std::vector<int> subChunkIds;
-    ChunkQueries::Ptr queries;  ///< queries to be run on the worker for this chunk
+    ChunkQueries::Ptr queries{new ChunkQueries()};  ///< queries to be run on the worker for this chunk
     std::vector<std::string> queryTemplates;
     // Consider promoting the concept of container of ChunkQuerySpec
     // in the hopes of increased code cleanliness.

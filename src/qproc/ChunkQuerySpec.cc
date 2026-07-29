@@ -53,10 +53,10 @@ void ChunkQueries::setTemplates(vector<string> const& templates) {
     _wasSet = true;
 }
 
-bool ChunkQueries::setTemplatesIfNeeded(vector<string> const& templates) {
+bool ChunkQueries::setTemplatesIfNeeded(std::function<std::vector<std::string>()> const& templateFunc) {
     lock_guard lck(_cqMtx);
     if (!_wasSet) {
-        _templates = templates;
+        _templates = templateFunc();
         _wasSet = true;
         return true;
     }

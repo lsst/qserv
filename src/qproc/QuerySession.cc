@@ -455,11 +455,14 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
     DbTableSet const& sTables = queryMapping.getSubChunkTables();
     cQSpec->subChunkTables = sTables;
     // Build queries.
+    auto templateBuildFunc = [&]() -> std::vector<std::string> {
+        return _buildChunkQueries(queryTemplates, chunkSpec);
+    };
     if (!_context->hasSubChunks()) {
-        _chunkQueries->setTemplatesIfNeeded(_buildChunkQueries(queryTemplates, chunkSpec));
+        _chunkQueries->setTemplatesIfNeeded(templateBuildFunc);
         cQSpec->queries = _chunkQueries;
     } else {
-        _chunkQueriesWithSubchunks->setTemplatesIfNeeded(_buildChunkQueries(queryTemplates, chunkSpec));
+        _chunkQueriesWithSubchunks->setTemplatesIfNeeded(templateBuildFunc);
         cQSpec->queries = _chunkQueriesWithSubchunks;
         cQSpec->subChunkIds.assign(chunkSpec.subChunks.begin(), chunkSpec.subChunks.end());
     }
