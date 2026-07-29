@@ -57,8 +57,6 @@ public:
     /// Subchunks of interest; empty indicates all subchunks are involved.
     Int32Vector subChunks;
 
-    bool shouldSplit() const;
-
     /// @return the intersection with the chunk.
     /// If both ChunkSpecs have non-empty subChunks, but do not intersect,
     /// chunkId is set to be invalid (-1)
