@@ -303,7 +303,7 @@ void UserQuerySelect::submit() {
        << " setup=" << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsStart - submitTmStart).count()
        << " jobs=" << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsEnd - submitTmBuildJobsStart).count()
        << " UberJobs=" << chrono::duration_cast<chrono::milliseconds>(submitTmUberJobsBuilt - submitTmBuildJobsEnd).count()
-       << " allStarted=" << chrono::duration_cast<chrono::milliseconds>(submitTmUberJobsBuilt - submitTmEnd).count());
+       << " allStarted=" << chrono::duration_cast<chrono::milliseconds>(submitTmEnd - submitTmUberJobsBuilt).count());
 }
 
 bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWorker,
