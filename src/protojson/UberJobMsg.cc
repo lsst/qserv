@@ -98,8 +98,10 @@ json UberJobMsg::toJson() const {
 UberJobMsg::Ptr UberJobMsg::createFromJson(nlohmann::json const& ujmJson) {
     LOGS(_log, LOG_LVL_TRACE, "UberJobMsg::createFromJson ujmJson=" << ujmJson);
     try {
-        if (ujmJson["version"] != http::MetaModule::version) {
-            LOGS(_log, LOG_LVL_ERROR, "UberJobMsg::createFromJson bad version " << ujmJson["version"]);
+        const int minVersion = 57; // Minimum required http::MetaModule::version for parsing.
+        if (ujmJson["version"] < minVersion ) {
+            LOGS(_log, LOG_LVL_ERROR, "UberJobMsg::createFromJson version too old " << ujmJson["version"]
+                 << " required minimum version=" << minVersion);
             return nullptr;
         }
 
