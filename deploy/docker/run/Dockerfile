@@ -11,7 +11,7 @@
 # can be overridden by passing '--build-arg QSERV_RUN_BASE=...' to 'docker build'.
 #-------------------------------------------------------------------------------------------------------------
 
-ARG QSERV_RUN_BASE=ghcr.io/lsst/qserv-run-base:latest
+ARG QSERV_RUN_BASE=ghcr.io/lsst/qserv-xrd-run-base:latest
 FROM ${QSERV_RUN_BASE} AS qserv
 
 COPY --chown=qserv:qserv bin/ /usr/local/bin/
