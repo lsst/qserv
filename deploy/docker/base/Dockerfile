@@ -29,6 +29,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         apr-devel \
         apr-util-devel \
         bash-completion \
+        bison \
         boost-devel \
         clang \
         clang-tools-extra \
