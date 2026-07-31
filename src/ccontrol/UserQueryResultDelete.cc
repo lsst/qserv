@@ -33,7 +33,7 @@
 #include <nlohmann/json.hpp>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -60,7 +60,7 @@ UserQueryResultDelete::UserQueryResultDelete(shared_ptr<UserQueryResources> cons
         : _value(value), _queryResources(queryResources), _messageStore(make_shared<qmeta::MessageStore>()) {}
 
 void UserQueryResultDelete::submit() {
-    LOGS(_log, LOG_LVL_DEBUG, "UserQueryResultDelete::submit: " << _value);
+    LOGQ(_log, LOG_LVL_DEBUG, "UserQueryResultDelete::submit: " << _value);
 
     // The current implementation requires exactly one numeric argument
     // which is the query ID of a query whose result needs to be deleted.
@@ -69,7 +69,7 @@ void UserQueryResultDelete::submit() {
         queryId = boost::lexical_cast<QueryId>(_value);
     } catch (boost::bad_lexical_cast const& ex) {
         string const message = "failed to convert queryId: " + _value;
-        LOGS(_log, LOG_LVL_ERROR, message);
+        LOGQ(_log, LOG_LVL_ERROR, message);
         _messageStore->addMessage(-1, "SQL", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
         return;
@@ -79,18 +79,18 @@ void UserQueryResultDelete::submit() {
     qmeta::QInfo qInfo;
     try {
         qInfo = _queryResources->queryMetadata->getQueryInfo(queryId);
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              "found QMeta record: czar=" << qInfo.czarId() << " queryId=" << queryId << " status="
                                          << qInfo.queryStatus() << " resultLoc=" << qInfo.resultLocation()
                                          << " msgTableName=" << qInfo.msgTableName());
     } catch (qmeta::QueryIdError const& exc) {
         string message = "No query found for ID=" + to_string(queryId);
-        LOGS(_log, LOG_LVL_DEBUG, message);
+        LOGQ(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
         _qState = ERROR;
         return;
     } catch (exception const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
         string message = "Internal failure, error in querying QMeta: ";
         message += exc.what();
         _messageStore->addErrorMessage("SYSTEM", message);
@@ -101,7 +101,7 @@ void UserQueryResultDelete::submit() {
     // If query has not finished yet return error
     if (qInfo.queryStatus() != qmeta::QInfo::COMPLETED) {
         string message = "Query is still executing (or FAILED)";
-        LOGS(_log, LOG_LVL_DEBUG, message);
+        LOGQ(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
         _qState = ERROR;
         return;
@@ -110,7 +110,7 @@ void UserQueryResultDelete::submit() {
     // Can only return results from mysql tables
     if (qInfo.resultLocation().compare(0, 6, "table:") != 0) {
         string message = "Cannot delete result as it is not stored in table.";
-        LOGS(_log, LOG_LVL_DEBUG, message);
+        LOGQ(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }
@@ -128,11 +128,11 @@ void UserQueryResultDelete::submit() {
     for (auto const& tableName : {qInfo.msgTableName(), resultTableName}) {
         string const query = "DROP TABLE " + tableName;
         if (!resultDbConn->runQuery(query, sqlErrObj)) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "QID=" << queryId << " Failed to delete table: " << tableName
                         << ", error: " << sqlErrObj.errMsg());
         } else {
-            LOGS(_log, LOG_LVL_DEBUG, "QID=" << queryId << " Deleted table: " << tableName);
+            LOGQ(_log, LOG_LVL_DEBUG, "QID=" << queryId << " Deleted table: " << tableName);
         }
     }
     _qState = SUCCESS;

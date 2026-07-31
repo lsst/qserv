@@ -44,7 +44,7 @@
 #include "boost/algorithm/string/predicate.hpp"  // string iequal
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "query/FromList.h"

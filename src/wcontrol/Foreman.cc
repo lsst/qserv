@@ -30,7 +30,7 @@
 #include <thread>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qhttp/Request.h"
@@ -68,12 +68,12 @@ qhttp::Status removeResultFile(std::string const& fileName) {
     std::error_code ec;
     fs::remove_all(filePath, ec);
     if (ec.value() != 0) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              context << "failed to remove the result file: " << fileName << ", code: " << ec.value()
                      << ", error:" << ec.message());
         return qhttp::STATUS_INTERNAL_SERVER_ERR;
     }
-    LOGS(_log, LOG_LVL_DEBUG, context << "result file removed: " << fileName);
+    LOGQ(_log, LOG_LVL_DEBUG, context << "result file removed: " << fileName);
     return qhttp::STATUS_OK;
 }
 }  // namespace
@@ -126,7 +126,7 @@ Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int pool
 
     assert(_scheduler);  // Cannot operate without scheduler.
 
-    LOGS(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize << " maxPoolThreads=" << maxPoolThreads);
+    LOGQ(_log, LOG_LVL_DEBUG, "poolSize=" << poolSize << " maxPoolThreads=" << maxPoolThreads);
     _pool = util::ThreadPool::newThreadPool(poolSize, maxPoolThreads, _scheduler);
 
     _workerCommandQueue = make_shared<util::CommandQueue>();
@@ -138,7 +138,7 @@ Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int pool
 
     vector<int> vectRunSizes = util::String::parseToVectInt(vectRunSizesStr, ":", 1);
     vector<int> vectMinRunningSizes = util::String::parseToVectInt(vectMinRunningSizesStr, ":", 0);
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          "INFO wPool config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
                                         << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
                                         << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
@@ -150,7 +150,7 @@ Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int pool
     std::error_code ec;
     fs::create_directories(workerConfig->resultsDirname(), ec);
     if (ec)
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "Failed to create results directory " << workerConfig->resultsDirname()
                                                    << ", error: " << ec.message());
     _httpServer->addStaticContent("/*", workerConfig->resultsDirname());
@@ -170,11 +170,11 @@ Foreman::Foreman(wsched::BlendScheduler::Ptr const& scheduler, unsigned int pool
         std::thread t([this]() { _io_service.run(); });
         t.detach();
     }
-    LOGS(_log, LOG_LVL_DEBUG, "qhttp started on port=" << _httpServer->getPort());
+    LOGQ(_log, LOG_LVL_DEBUG, "qhttp started on port=" << _httpServer->getPort());
 }
 
 Foreman::~Foreman() {
-    LOGS(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
+    LOGQ(_log, LOG_LVL_DEBUG, "Foreman::~Foreman()");
     // It will take significant effort to have qserv shutdown cleanly and this will never get called
     // until that happens.
     _pool->shutdownPool();

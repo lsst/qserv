@@ -43,7 +43,7 @@
 #include "http/ChttpMetaModule.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace nlohmann;
 using namespace std;
@@ -132,7 +132,7 @@ void HttpCzarSvc::_createAndConfigure() {
         ::throwIf<runtime_error>(!bound, context + "Failed to bind the server to the port: " +
                                                  to_string(_httpCzarConfig.port));
     }
-    LOGS(_log, LOG_LVL_INFO, context + "started on port " + to_string(_httpCzarConfig.port));
+    LOGQ(_log, LOG_LVL_INFO, context + "started on port " + to_string(_httpCzarConfig.port));
 }
 
 void HttpCzarSvc::_registerHandlers() {

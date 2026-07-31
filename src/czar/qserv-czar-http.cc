@@ -34,7 +34,7 @@
 #include "boost/program_options.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -150,7 +150,7 @@ int main(int argc, char* argv[]) {
        << ::context << " Number of BOOST ASIO threads: " << httpCzarConfig.numBoostAsioThreads << "\n"
        << ::context << " HTTP user: " << httpUser << "\n"
        << ::context << " HTTP password: ******" << endl;
-    LOGS(_log, LOG_LVL_INFO, " czar-http startup " << os.str());
+    LOGQ(_log, LOG_LVL_INFO, " czar-http startup " << os.str());
 
     if (verbose) {
         cout << os.str();

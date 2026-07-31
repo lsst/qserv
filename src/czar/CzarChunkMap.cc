@@ -27,7 +27,7 @@
 #include <sstream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qmeta/QMeta.h"
@@ -48,7 +48,7 @@ namespace lsst::qserv::czar {
 
 CzarChunkMap::CzarChunkMap() {}
 
-CzarChunkMap::~CzarChunkMap() { LOGS(_log, LOG_LVL_DEBUG, "CzarChunkMap::~CzarChunkMap()"); }
+CzarChunkMap::~CzarChunkMap() { LOGQ(_log, LOG_LVL_DEBUG, "CzarChunkMap::~CzarChunkMap()"); }
 
 void CzarChunkMap::calcChunkMap(ChunkMap const& chunkMap, ChunkVector& chunksSortedBySize) {
     // Calculate total bytes for all chunks.
@@ -85,21 +85,21 @@ void CzarChunkMap::verify(string const& familyName) const {
 
     for (auto const& [chunkId, chunkDataPtr] : chunkMap) {
         if (chunkDataPtr == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) << " family=" << familyName << " chunkId=" << chunkId << " had nullptr");
             ++errorCount;
             continue;
         }
         auto primeScanWkr = chunkDataPtr->_primaryScanWorker.lock();
         if (primeScanWkr == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) << " family=" << familyName << " chunkId=" << chunkId
                                  << " missing primaryScanWorker");
             ++errorCount;
             continue;
         }
         if (primeScanWkr->_sharedScanChunkMap.find(chunkId) == primeScanWkr->_sharedScanChunkMap.end()) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) << " family=" << familyName << " chunkId=" << chunkId
                                  << " should have been (and was not) in the sharedScanChunkMap for "
                                  << primeScanWkr->_workerId);
@@ -110,7 +110,7 @@ void CzarChunkMap::verify(string const& familyName) const {
         if (iter != allChunkIds.end()) {
             allChunkIds.erase(iter);
         } else {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) << " family=" << familyName << " chunkId=" << chunkId
                                  << " chunkId was not in allChunks list");
             ++errorCount;
@@ -124,7 +124,7 @@ void CzarChunkMap::verify(string const& familyName) const {
         for (auto const& cId : allChunkIds) {
             allMissingIds += to_string(cId) + ",";
         }
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              cName(__func__) << " There were " << missing << " missing chunks from the scan list "
                              << allMissingIds);
         ++errorCount;
@@ -136,7 +136,7 @@ void CzarChunkMap::verify(string const& familyName) const {
         throw ChunkMapException(ERR_LOC, "verification failed with " + to_string(errorCount) + " errors " +
                                                  " family=" + familyName);
     }
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " family=" << familyName << " verified");
+    LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " family=" << familyName << " verified");
 }
 
 string CzarChunkMap::dumpChunkMap() const {
@@ -206,11 +206,11 @@ shared_ptr<CzarChunkMap::ChunkVector> CzarChunkMap::organize() {
         for (auto&& [wkrId, wkrDataWeak] : chunkData->_workerHasThisMap) {
             auto wkrData = wkrDataWeak.lock();
             if (wkrData == nullptr) {
-                LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " unexpected null weak ptr for " << wkrId);
+                LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " unexpected null weak ptr for " << wkrId);
                 continue;  // maybe the next one will be okay.
             }
 
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  cName(__func__) << " wkrId=" << wkrData << " tsz=" << wkrData->_sharedScanTotalSize
                                  << " smallest=" << smallest);
             if (wkrData->_sharedScanTotalSize < smallest) {
@@ -219,14 +219,14 @@ shared_ptr<CzarChunkMap::ChunkVector> CzarChunkMap::organize() {
             }
         }
         if (smallestWkr == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) + " no smallesWkr found for chunk=" + to_string(chunkData->_chunkId));
             missingChunks->push_back(chunkData);
         } else {
             smallestWkr->_sharedScanChunkMap[chunkData->_chunkId] = chunkData;
             smallestWkr->_sharedScanTotalSize += chunkData->_totalBytes;
             chunkData->_primaryScanWorker = smallestWkr;
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  " chunk=" << chunkData->_chunkId << " assigned to scan on " << smallestWkr->_workerId);
         }
     }
@@ -255,25 +255,25 @@ bool CzarChunkMap::WorkerChunksData::isDead() {
         // At startup, these may not be available
         auto czarPtr = Czar::getCzar();
         if (czarPtr == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) << " czarPtr is null, this should only happen in unit test.");
             return false;
         }
         auto awMap = Czar::getCzar()->getActiveWorkerMap();
         if (awMap == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " awMap is null.");
+            LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " awMap is null.");
             return true;
         }
         _activeWorker = awMap->getActiveWorker(_workerId);
         if (_activeWorker == nullptr) {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " activeWorker not found.");
+            LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " activeWorker not found.");
             return true;
         }
     }
     auto wState = _activeWorker->getState();
     bool dead = wState == ActiveWorker::DEAD;
     if (dead) {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " is dead");
+        LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " is dead");
     }
     return dead;
 }

@@ -37,7 +37,7 @@
 #include "boost/regex.hpp"
 
 // Local headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 #include "qhttp/AjaxEndpoint.h"
 #include "qhttp/LogHelpers.h"
 #include "qhttp/StaticContent.h"
@@ -141,7 +141,7 @@ void Server::_accept() {
                 LOGLS_ERROR(_log, logger(self) << "accept failed: " << ec.message());
             }
         } catch (boost::system::system_error const& bEx) {
-            LOGS(_log, LOG_LVL_ERROR, "qhttp::Server::_accept lambda threw " << bEx.what());
+            LOGQ(_log, LOG_LVL_ERROR, "qhttp::Server::_accept lambda threw " << bEx.what());
         }
         self->_accept();  // start accept again for the next incoming connection
     });
@@ -217,7 +217,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
             [self, socket, startTime, reuseSocket](boost::system::error_code const& ec, std::size_t sent) {
                 chrono::duration<double, std::milli> elapsed = chrono::steady_clock::now() - startTime;
                 string logStr;
-                if (LOG_CHECK_LVL(_log, LOG_LVL_INFO)) {
+                if (LOGQ_CHECK_LVL(_log, LOG_LVL_INFO)) {
                     logStr = string("request duration ") + to_string(elapsed.count()) + "ms";
                 }
                 if (!ec && *reuseSocket) {
@@ -245,7 +245,7 @@ void Server::_readRequest(std::shared_ptr<ip::tcp::socket> socket) {
                     // "End of file" happens very frequently and shouldn't be logged as an error.
                     auto logLvl = LOG_LVL_ERROR;
                     if (ec == asio::error::eof) logLvl = LOG_LVL_INFO;
-                    LOGS(_log, logLvl,
+                    LOGQ(_log, logLvl,
                          logger(self) << logger(socket) << "header read failed: " << ec.message());
                 }
                 timer->cancel();

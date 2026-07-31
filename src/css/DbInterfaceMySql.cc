@@ -34,7 +34,7 @@
 #include <stdexcept>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "css/CssError.h"
@@ -88,16 +88,16 @@ set<int> DbInterfaceMySql::getEmptyChunks(string const& dbName) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string const query = "SELECT chunkId FROM `" + getEmptyChunksTableName(dbName) + "`";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, funcName << " SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, funcName << " SQL query failed: " << query);
         throw CssError(ERR_LOC, errObj);
     }
 
     // get results of the query
     vector<string> emptyChunks;
     if (not results.extractFirstColumn(emptyChunks, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, funcName << "Failed to extract empty chunks from query result");
+        LOGQ(_log, LOG_LVL_ERROR, funcName << "Failed to extract empty chunks from query result");
         throw CssError(ERR_LOC, errObj);
     }
 
@@ -110,7 +110,7 @@ set<int> DbInterfaceMySql::getEmptyChunks(string const& dbName) {
             emptyChunkSet.insert(std::stoi(j));
         } catch (std::logic_error const& e) {
             string eMsg(funcName + " failed conversion " + j + " " + e.what());
-            LOGS(_log, LOG_LVL_ERROR, eMsg);
+            LOGQ(_log, LOG_LVL_ERROR, eMsg);
             throw CssError(ERR_LOC, eMsg);
         }
     }

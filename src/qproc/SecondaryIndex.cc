@@ -35,7 +35,7 @@
 #include <algorithm>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Third-party headers
 #include "boost/format.hpp"
@@ -81,7 +81,7 @@ public:
                     _buildIndexTableName(secondaryIndexCol->getDb(), secondaryIndexCol->getTable());
             auto sql = secIdxRestrictor->getSecIdxLookupQuery(SEC_INDEX_DB, index_table, CHUNK_COLUMN,
                                                               SUB_CHUNK_COLUMN);
-            LOGS(_log, LOG_LVL_TRACE, "secondary lookup sql:" << sql);
+            LOGQ(_log, LOG_LVL_TRACE, "secondary lookup sql:" << sql);
             _sqlLookup(output, sql);
         }
         normalize(output);

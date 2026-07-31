@@ -42,7 +42,7 @@
 #include "util/String.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using json = nlohmann::json;
@@ -101,7 +101,7 @@ json HttpCzarWorkerModule::_workerCzarComIssue() {
 
 json HttpCzarWorkerModule::_handleJobError(string const& func) {
     string const fName("HttpCzarWorkerModule::_handleJobError");
-    LOGS(_log, LOG_LVL_DEBUG, fName << " start");
+    LOGQ(_log, LOG_LVL_DEBUG, fName << " start");
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then kill the UberJob.
@@ -111,7 +111,7 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
         auto importRes = czar::Czar::getCzar()->handleUberJobErrorMsg(jrMsg, fName);
         return importRes->toJson();
     } catch (std::invalid_argument const& iaEx) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleJobError received "
                      << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         protojson::ExecutiveRespMsg respMsg(false, false, 0, 0, 0, "parse", iaEx.what());
@@ -121,7 +121,7 @@ json HttpCzarWorkerModule::_handleJobError(string const& func) {
 
 json HttpCzarWorkerModule::_handleJobReady(string const& func) {
     string const fName = "HttpCzarWorkerModule::_handleJobReady";
-    LOGS(_log, LOG_LVL_DEBUG, fName << " start");
+    LOGQ(_log, LOG_LVL_DEBUG, fName << " start");
     // Metadata-only responses for the file-based protocol should not have any data
 
     // Parse and verify the json message and then have the uberjob import the file.
@@ -131,7 +131,7 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
         auto importRes = czar::Czar::getCzar()->handleUberJobReadyMsg(jrMsg, fName);
         return importRes->toJson();
     } catch (std::invalid_argument const& iaEx) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleJobReady received "
                      << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         protojson::ExecutiveRespMsg respMsg(false, false, 0, 0, 0, "parse", iaEx.what());
@@ -141,7 +141,7 @@ json HttpCzarWorkerModule::_handleJobReady(string const& func) {
 
 json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
     string const fName("HttpCzarWorkerModule::_handleWorkerCzarComIssue");
-    LOGS(_log, LOG_LVL_DEBUG, fName << " start");
+    LOGQ(_log, LOG_LVL_DEBUG, fName << " start");
     // Parse and verify the json message and then deal with the problems.
     string wId = "unknown";
     try {
@@ -152,7 +152,7 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
 
         wId = wccIssue->getWorkerInfo()->wId;
         if (wccIssue->getThoughtCzarWasDeadTime() > 0) {
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  "HttpCzarWorkerModule::_handleWorkerCzarComIssue worker="
                          << wId << " thought czar was dead and killed related uberjobs.");
 
@@ -191,11 +191,11 @@ json HttpCzarWorkerModule::_handleWorkerCzarComIssue(string const& func) {
             }
         }
         auto jsRet = wccIssue->responseToJson(wccIssue->getThoughtCzarWasDeadTime(), execRespMsgs);
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "HttpCzarWorkerModule::_handleWorkerCzarComIssue jsRet=" << protojson::pwHide(jsRet));
         return jsRet;
     } catch (std::invalid_argument const& iaEx) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "HttpCzarWorkerModule::_handleWorkerCzarComIssue received "
                      << iaEx.what() << " js=" << protojson::pwHide(body().objJson));
         // This is very bad as there's no way to know what is going wrong. Just one of these is surviveable,

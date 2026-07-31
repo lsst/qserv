@@ -34,7 +34,7 @@
 #include "parser/QSMySqlParser.h"
 #include "parser/QSMySqlParserListener.h"
 
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"  // includes "lsst/log/Log.h"
 
 #include "ccontrol/ParseAdapters.h"
 #include "ccontrol/ParseHelpers.h"
@@ -55,12 +55,12 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.ParseListener");
 // stack), and the exit function pops the adapter from the top of the stack.
 #define ENTER_EXIT_PARENT(NAME)                                                        \
     void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) {               \
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " '" << getQueryString(ctx) << "'"); \
         pushAdapterStack<NAME##CBH, NAME##Adapter, QSMySqlParser::NAME##Context>(ctx); \
     }                                                                                  \
                                                                                        \
     void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {                \
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);                                       \
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);                                       \
         popAdapterStack<NAME##Adapter>(ctx);                                           \
     }
 
@@ -70,7 +70,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.ParseListener");
 // parsing will abort.
 #define UNHANDLED(NAME)                                                                                      \
     void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) {                                     \
-        LOGS(_log, LOG_LVL_ERROR, __FUNCTION__ << " is UNHANDLED for '" << getQueryString(ctx) << "'");      \
+        LOGQ(_log, LOG_LVL_ERROR, __FUNCTION__ << " is UNHANDLED for '" << getQueryString(ctx) << "'");      \
         throw parser::adapter_order_error("qserv can not parse query, near \"" + getQueryString(ctx) + '"'); \
     }                                                                                                        \
                                                                                                              \
@@ -81,23 +81,23 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.ParseListener");
 // appropraite.
 #define IGNORED(NAME)                                                    \
     void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) { \
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED");        \
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED");        \
     }                                                                    \
                                                                          \
     void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {  \
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED");        \
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " is IGNORED");        \
     }
 
 // This macro is similar to IGNORED, but allows the enter message to log a specific warning message when it is
 // called.
 #define IGNORED_WARN(NAME, WARNING)                                                                  \
     void ParseListener::enter##NAME(QSMySqlParser::NAME##Context* ctx) {                             \
-        LOGS(_log, LOG_LVL_WARN,                                                                     \
+        LOGQ(_log, LOG_LVL_WARN,                                                                     \
              __FUNCTION__ << " is IGNORED, in '" << getQueryString(ctx) << "' warning:" << WARNING); \
     }                                                                                                \
                                                                                                      \
     void ParseListener::exit##NAME(QSMySqlParser::NAME##Context* ctx) {                              \
-        LOGS(_log, LOG_LVL_TRACE,                                                                    \
+        LOGQ(_log, LOG_LVL_TRACE,                                                                    \
              __FUNCTION__ << " is IGNORED, see warning in enter-function log entry, above.");        \
     }
 
@@ -114,7 +114,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.ParseListener");
 #define ASSERT_EXECUTION_CONDITION(CONDITION, MESSAGE_STRING, CTX)                                           \
     if (not(CONDITION)) {                                                                                    \
         auto queryString = getQueryString(CTX);                                                              \
-        LOGS(_log, LOG_LVL_ERROR,                                                                            \
+        LOGQ(_log, LOG_LVL_ERROR,                                                                            \
              "Execution condition assertion failure:"                                                        \
                      << getTypeName(this) << "::" << __FUNCTION__ << " messsage:\"" << MESSAGE_STRING << '"' \
                      << ", in query:" << getStatementString() << ", in or around query segment: '"           \

@@ -28,7 +28,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -71,15 +71,15 @@ bool DatabaseModels::applySql(string const& sql, sql::SqlResults& results, sql::
     lock_guard<mutex> lg(_sqlMutex);
 
     if (not _sqlConnLocal->connectToDb(errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "DatabaseModels could not connect " << errObj.printErrMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "DatabaseModels could not connect " << errObj.printErrMsg());
         return false;
     }
     if (not _sqlConnLocal->runQuery(sql, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "DatabaseModels applySql error: " << errObj.printErrMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "DatabaseModels applySql error: " << errObj.printErrMsg());
         // TODO: connect to master and check for the database
         return false;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "DatabaseModels query success: " << sql);
+    LOGQ(_log, LOG_LVL_DEBUG, "DatabaseModels query success: " << sql);
     return true;
 }
 
@@ -88,7 +88,7 @@ vector<string> DatabaseModels::listColumns(string const& dbName, string const& t
         lock_guard<mutex> lg(_sqlMutex);
         return _sqlConnLocal->listColumns(dbName, tableName);
     } catch (sql::SqlException const& ex) {
-        LOGS(_log, LOG_LVL_WARN, "listColumn failure " << ex.what());
+        LOGQ(_log, LOG_LVL_WARN, "listColumn failure " << ex.what());
         lock_guard<mutex> lg(_sqlMutex);
         /// TODO: instead of returning results from master, update local tables.
         return _sqlConnMaster->listColumns(dbName, tableName);

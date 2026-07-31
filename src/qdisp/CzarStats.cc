@@ -34,7 +34,7 @@
 #include "util/TimeUtils.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace std::chrono_literals;
@@ -104,20 +104,20 @@ void CzarStats::endQueryRespConcurrentProcessing(TIMEPOINT start, TIMEPOINT end)
 
 void CzarStats::addDataRecvRate(double bytesPerSec) {
     _histDataRecvRate->addEntry(bytesPerSec);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histDataRecvRate->getString(""));
 }
 
 void CzarStats::addMergeRate(double bytesPerSec) {
     _histMergeRate->addEntry(bytesPerSec);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histMergeRate->getString("")
                        << " jsonA=" << getTransmitStatsJson() << " jsonB=" << getQdispStatsJson());
 }
 
 void CzarStats::addFileReadRate(double bytesPerSec) {
     _histFileReadRate->addEntry(bytesPerSec);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "CzarStats::" << __func__ << " " << bytesPerSec << " " << _histFileReadRate->getString(""));
 }
 

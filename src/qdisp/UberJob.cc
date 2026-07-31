@@ -46,7 +46,7 @@
 #include "util/QdispPool.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -76,7 +76,7 @@ UberJob::UberJob(Executive::Ptr const& executive, std::shared_ptr<ResponseHandle
           _respHandler(respHandler),
           _rowLimit(executive->getUjRowLimit()),
           _familyMapTimestamp(familyMapTimestamp_) {
-    LOGS(_log, LOG_LVL_TRACE, _idStr << " created");
+    LOGQ(_log, LOG_LVL_TRACE, _idStr << " created");
 }
 
 UberJob::~UberJob() {
@@ -98,20 +98,20 @@ bool UberJob::addJob(JobQuery::Ptr const& job) {
         success = true;
     }
     if (!success) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              cName(__func__) << " job already in UberJob job=" << job->dump() << " uberJob=" << *this);
     }
     return success;
 }
 
 void UberJob::runUberJob() {
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
+    LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
     // Build the uberjob payload for each job.
     nlohmann::json uj;
     unique_lock<mutex> jobsLock(_jobsMtx);
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive shutdown");
+        LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " executive shutdown");
         return;
     }
 
@@ -138,9 +138,9 @@ void UberJob::runUberJob() {
 
     jobsLock.unlock();  // unlock so other _jobsMtx threads can advance while this waits for transmit
 
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " REQ " << request);
+    LOGQ(_log, LOG_LVL_TRACE, cName(__func__) << " REQ " << request);
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          cName(__func__) << " czarPost url=" << url << " request=" << request.dump()
                          << " headers=" << headers[0]);
 
@@ -155,20 +155,20 @@ void UberJob::runUberJob() {
     bool transmitSuccess = false;
     string exceptionWhat;
     try {
-        LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " sending");
+        LOGQ(_log, LOG_LVL_TRACE, cName(__func__) << " sending");
         json const response = client.readAsJson();
-        LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " worker recv");
+        LOGQ(_log, LOG_LVL_TRACE, cName(__func__) << " worker recv");
         if (0 != response.at("success").get<int>()) {
             transmitSuccess = true;
         } else {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << " ujresponse success=0");
+            LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " ujresponse success=0");
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, requestContext + " ujresponse failed, ex: " + ex.what());
+        LOGQ(_log, LOG_LVL_WARN, requestContext + " ujresponse failed, ex: " + ex.what());
         exceptionWhat = ex.what();
     }
     if (!transmitSuccess) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure, try to send jobs elsewhere");
+        LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " transmit failure, try to send jobs elsewhere");
         _unassignJobs();  // locks _jobsMtx
         setStatusIfOk(qmeta::JobStatus::RESPONSE_ERROR,
                       cName(__func__) + " not transmitSuccess " + exceptionWhat);
@@ -179,23 +179,23 @@ void UberJob::runUberJob() {
 }
 
 void UberJob::_unassignJobs() {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));
+    LOGQ(_log, LOG_LVL_INFO, cName(__func__));
     lock_guard<mutex> lck(_jobsMtx);
     auto exec = _executive.lock();
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " exec is null");
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " exec is null");
         return;
     }
     for (auto&& job : _jobs) {
         string jid = job->getIdStr();
         if (!job->unassignFromUberJob(getUjId())) {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " could not unassign job=" << jid << " cancelling");
+            LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " could not unassign job=" << jid << " cancelling");
             exec->addMultiError(util::Error::INTERNAL, util::Error::RETRY_UNASSIGN,
                                 "unable to unassign " + jid, true);
             exec->squash("_unassignJobs failure");
             return;
         }
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              cName(__func__) << " job=" << jid << " attempts=" << job->getAttemptCount());
     }
     _jobs.clear();
@@ -207,7 +207,7 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
     // Setting the same state twice indicates that the system is trying to do something it
     // has already done, so doing it a second time would be an error.
     if (newState <= currentState) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              cName(__func__) << " could not change from state=" << _jobStatus->stateStr(currentState)
                              << " to " << _jobStatus->stateStr(newState));
         return false;
@@ -215,7 +215,7 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
 
     // Overwriting errors is probably not a good idea.
     if (currentState >= qmeta::JobStatus::CANCEL && currentState < qmeta::JobStatus::COMPLETE) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              cName(__func__) << " already error current=" << _jobStatus->stateStr(currentState)
                              << " new=" << _jobStatus->stateStr(newState));
         return false;
@@ -229,7 +229,7 @@ bool UberJob::_setStatusIfOk(qmeta::JobStatus::State newState, string const& msg
 }
 
 void UberJob::callMarkCompleteFunc(bool success) {
-    LOGS(_log, LOG_LVL_DEBUG, "UberJob::callMarkCompleteFunc success=" << success);
+    LOGQ(_log, LOG_LVL_DEBUG, "UberJob::callMarkCompleteFunc success=" << success);
 
     lock_guard<mutex> lck(_jobsMtx);
     // Need to set this uberJob's status, however exec->markCompleted will set
@@ -254,17 +254,17 @@ void UberJob::callMarkCompleteFunc(bool success) {
 }
 
 protojson::ExecutiveRespMsg::Ptr UberJob::importResultFile(protojson::FileUrlInfo const& fileUrlInfo_) {
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << fileUrlInfo_.dump());
+    LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << fileUrlInfo_.dump());
 
     auto exec = _executive.lock();
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) + " no executive");
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) + " no executive");
         return protojson::ExecutiveRespMsg::create(true, true, _queryId, _uberJobId, _czarId, "cancelled",
                                                    "Query cancelled no executive");
     }
 
     if (exec->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " import job was cancelled.");
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " import job was cancelled.");
         return protojson::ExecutiveRespMsg::create(true, true, _queryId, _uberJobId, _czarId, "cancelled",
                                                    "Query cancelled");
     }
@@ -272,24 +272,24 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultFile(protojson::FileUrlInf
     if (exec->isRowLimitComplete()) {
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
-            LOGS(_log, LOG_LVL_INFO,
+            LOGQ(_log, LOG_LVL_INFO,
                  "UberJob ignoring, enough rows already " << "dataIgnored=" << dataIgnored);
         }
         return protojson::ExecutiveRespMsg::create(true, false, _queryId, _uberJobId, _czarId, "rowLimited",
                                                    "Enough rows already");
     }
 
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileUrlInfo_.fileSize);
+    LOGQ(_log, LOG_LVL_TRACE, cName(__func__) << " fileSize=" << fileUrlInfo_.fileSize);
     bool const statusSet =
             setStatusIfOk(qmeta::JobStatus::RESPONSE_READY, getIdStr() + " " + fileUrlInfo_.fileUrl);
     // During flaky communications, it's possible to get messages out of order, which can make for a real
     // mess. Going to err on the side of caution and give up if things are not as expected.
     if (!statusSet) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " setStatusFail could not set status to RESPONSE_READY");
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " setStatusFail could not set status to RESPONSE_READY");
         // If this UberJob has not started merging, this will kill it. If it has started merging,
         // a previous message worked and everything should be okay.
         bool killed = killUberJob();
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              cName(__func__) << " killUberJob "
                              << (killed ? "stopped before merge" : "already merging or merged"));
         // Since things are strange, don't flag the worker result file as obsolete at this point.
@@ -304,13 +304,13 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultFile(protojson::FileUrlInf
     auto fileCollectFunc = [ujThis, fileUrlInfo_, idStr](util::CmdData*) {
         auto ujPtr = ujThis.lock();
         if (ujPtr == nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  "UberJob::fileCollectFunction uberjob ptr is null " << idStr << " " << fileUrlInfo_.fileUrl);
             return;
         }
         auto exec = ujPtr->getExecutive();
         if (exec == nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  "UberJob::fileCollectFunction exec ptr is null " << idStr << " " << fileUrlInfo_.fileUrl);
             return;
         }
@@ -327,11 +327,11 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultFile(protojson::FileUrlInf
 }
 
 void UberJob::workerError(util::MultiError const& multiErr_, protojson::ExecutiveRespMsg& execRespMsg) {
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " multiErr=" << multiErr_);
+    LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " multiErr=" << multiErr_);
 
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled " << multiErr_);
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled " << multiErr_);
         execRespMsg.success = true;
         execRespMsg.dataObsolete = true;
         execRespMsg.errorType = "queryEnded";
@@ -342,7 +342,7 @@ void UberJob::workerError(util::MultiError const& multiErr_, protojson::Executiv
     if (exec->isRowLimitComplete()) {
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
-            LOGS(_log, LOG_LVL_INFO,
+            LOGQ(_log, LOG_LVL_INFO,
                  cName(__func__) << " ignoring, enough rows already "
                                  << "dataIgnored=" << dataIgnored);
         }
@@ -375,7 +375,7 @@ void UberJob::workerError(util::MultiError const& multiErr_, protojson::Executiv
                 break;
             }
             default:
-                LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " other err code=" << err.getCode());
+                LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " other err code=" << err.getCode());
                 otherErrors = true;
         }
     }
@@ -412,11 +412,11 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultError(bool shouldCancel, s
 
     auto exec = _executive.lock();
     if (exec != nullptr) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              cName(__func__) << " shouldCancel=" << shouldCancel << " errorType=" << errorType << " "
                              << note);
         if (shouldCancel) {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failing jobs");
+            LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " failing jobs");
             callMarkCompleteFunc(false);  // all jobs failed, no retry
             exec->squash(string("_importResultError shouldCancel"));
         } else {
@@ -425,12 +425,12 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultError(bool shouldCancel, s
             ///   against the attempt limit.
             /// - executive needs to be told to make new UberJobs until all
             ///   JobQueries are being handled by an UberJob.
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " reassigning jobs");
+            LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " reassigning jobs");
             _unassignJobs();
             exec->assignJobsToUberJobs();
         }
     } else {
-        LOGS(_log, LOG_LVL_INFO,
+        LOGQ(_log, LOG_LVL_INFO,
              cName(__func__) << " already cancelled shouldCancel=" << shouldCancel
                              << " errorType=" << errorType << " " << note);
     }
@@ -438,7 +438,7 @@ protojson::ExecutiveRespMsg::Ptr UberJob::importResultError(bool shouldCancel, s
 }
 
 bool UberJob::importResultFinish() {
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
+    LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " start");
 
     /// If this is called, the file has been collected and the worker should delete it
     ///
@@ -460,7 +460,7 @@ void UberJob::_workerErrorFinish(protojson::ExecutiveRespMsg& execRespMsg, std::
     // Return error message received "success:1" json message to be sent to the worker.
     auto exec = _executive.lock();
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
+        LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " executive is null");
         execRespMsg.success = true;
         execRespMsg.dataObsolete = true;
         execRespMsg.errorType = "cancelled_QID";
@@ -474,18 +474,18 @@ void UberJob::_workerErrorFinish(protojson::ExecutiveRespMsg& execRespMsg, std::
 
 bool UberJob::killUberJob() {
     // Usually called when a worker has effectively died.
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " stopping this UberJob and re-assigning jobs.");
+    LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " stopping this UberJob and re-assigning jobs.");
 
     auto exec = _executive.lock();
     if (exec == nullptr || exec->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled");
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " no executive or cancelled");
         return true;
     }
 
     if (exec->isRowLimitComplete()) {
         int dataIgnored = exec->incrDataIgnoredCount();
         if ((dataIgnored - 1) % 1000 == 0) {
-            LOGS(_log, LOG_LVL_INFO, cName(__func__) << " ignoring, enough rows already.");
+            LOGQ(_log, LOG_LVL_INFO, cName(__func__) << " ignoring, enough rows already.");
         }
         return true;
     }

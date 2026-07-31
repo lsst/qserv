@@ -48,7 +48,7 @@
 #include "util/TimeUtils.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -86,7 +86,7 @@ size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
     if (ec.value() != 0) {
         string const err = context + "failed to open the results folder '" + dirPath.string() +
                            "', ec: " + to_string(ec.value()) + ".";
-        LOGS(_log, LOG_LVL_ERROR, err);
+        LOGQ(_log, LOG_LVL_ERROR, err);
         throw runtime_error(err);
     }
     for (auto&& entry : boost::make_iterator_range(itr, {})) {
@@ -97,10 +97,10 @@ size_t cleanUpResultsImpl(string const& context, fs::path const& dirPath,
         if (removeIsCleared) {
             fs::remove_all(filePath, ec);
             if (ec.value() != 0) {
-                LOGS(_log, LOG_LVL_WARN,
+                LOGQ(_log, LOG_LVL_WARN,
                      context << "failed to remove result file " << filePath << ", ec: " << ec << ".");
             } else {
-                LOGS(_log, LOG_LVL_INFO, context << "removed result file " << filePath << ".");
+                LOGQ(_log, LOG_LVL_INFO, context << "removed result file " << filePath << ".");
                 ++numFilesRemoved;
             }
         }
@@ -117,7 +117,7 @@ mutex FileChannelShared::_resultsDirCleanupMtx;
 void FileChannelShared::cleanUpResultsOnCzarRestart(uint32_t czarId, QueryId queryId) {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     fs::path const dirPath = wconfig::WorkerConfig::instance()->resultsDirname();
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          context << "removing result files from " << dirPath << " for czarId=" << czarId
                  << " queryId=" << queryId << " or older.");
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
@@ -127,29 +127,29 @@ void FileChannelShared::cleanUpResultsOnCzarRestart(uint32_t czarId, QueryId que
                     auto const fileAttributes = util::ResultFileName(fileName);
                     return (fileAttributes.czarId() == czarId) && (fileAttributes.queryId() <= queryId);
                 } catch (exception const& ex) {
-                    LOGS(_log, LOG_LVL_WARN,
+                    LOGQ(_log, LOG_LVL_WARN,
                          context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
                 }
                 return false;
             });
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
 }
 
 void FileChannelShared::cleanUpResultsOnWorkerRestart() {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     fs::path const dirPath = wconfig::WorkerConfig::instance()->resultsDirname();
-    LOGS(_log, LOG_LVL_INFO, context << "removing all result files from " << dirPath << ".");
+    LOGQ(_log, LOG_LVL_INFO, context << "removing all result files from " << dirPath << ".");
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
     size_t const numFilesRemoved = ::cleanUpResultsImpl(context, dirPath);
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
 }
 
 void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId) {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     fs::path const dirPath = wconfig::WorkerConfig::instance()->resultsDirname();
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          context << "removing result files from " << dirPath << " for czarId=" << czarId
                  << " and queryId=" << queryId << ".");
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
@@ -159,19 +159,19 @@ void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId) {
                     auto const fileAttributes = util::ResultFileName(fileName);
                     return (fileAttributes.czarId() == czarId) && (fileAttributes.queryId() == queryId);
                 } catch (exception const& ex) {
-                    LOGS(_log, LOG_LVL_WARN,
+                    LOGQ(_log, LOG_LVL_WARN,
                          context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
                 }
                 return false;
             });
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
 }
 
 void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId, UberJobId ujId) {
     string const context = "FileChannelShared::" + string(__func__) + " ";
     fs::path const dirPath = wconfig::WorkerConfig::instance()->resultsDirname();
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          context << "removing result files from " << dirPath << " for czarId=" << czarId
                  << ", queryId=" << queryId << ", and ujId=" << ujId << ".");
     lock_guard<mutex> const lock(_resultsDirCleanupMtx);
@@ -182,12 +182,12 @@ void FileChannelShared::cleanUpResults(uint32_t czarId, QueryId queryId, UberJob
                     return (fileAttributes.czarId() == czarId) && (fileAttributes.queryId() == queryId) &&
                            (fileAttributes.ujId() == ujId);
                 } catch (exception const& ex) {
-                    LOGS(_log, LOG_LVL_WARN,
+                    LOGQ(_log, LOG_LVL_WARN,
                          context << "failed to parse the file name " << fileName << ", ex: " << ex.what());
                 }
                 return false;
             });
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          context << "removed " << numFilesRemoved << " result files from " << dirPath << ".");
 }
 
@@ -220,7 +220,7 @@ json FileChannelShared::statusToJson() {
         result["num_result_files"] = numResultFiles;
         result["size_result_files_bytes"] = sizeResultFilesBytes;
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              context << "failed to get folder stats for " << dirPath << ", ex: " << ex.what());
     }
     return result;
@@ -265,13 +265,13 @@ json FileChannelShared::filesToJson(vector<QueryId> const& queryIds, unsigned in
                                                   {"current_time_ms", util::TimeUtils::now()},
                                                   {"task", jsonTask}}));
                 } catch (exception const& ex) {
-                    LOGS(_log, LOG_LVL_WARN,
+                    LOGQ(_log, LOG_LVL_WARN,
                          context << "failed to get info on files at " << dirPath << ", ex: " << ex.what());
                 }
             }
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              context << "failed to iterate over files at " << dirPath << ", ex: " << ex.what());
     }
     return json::object({{"files", files}, {"num_selected", numSelected}, {"num_total", numTotal}});
@@ -284,11 +284,11 @@ FileChannelShared::Ptr FileChannelShared::create(std::shared_ptr<wbase::UberJobD
 
 FileChannelShared::FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData)
         : _sendChannel(nullptr), _uberJobData(uberJobData), _uberJobId(uberJobData->getUberJobId()) {
-    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared created ujId=" << _uberJobId);
+    LOGQ(_log, LOG_LVL_TRACE, "FileChannelShared created ujId=" << _uberJobId);
 }
 
 FileChannelShared::~FileChannelShared() {
-    LOGS(_log, LOG_LVL_TRACE, "~FileChannelShared ujId=" << _uberJobId);
+    LOGQ(_log, LOG_LVL_TRACE, "~FileChannelShared ujId=" << _uberJobId);
     // Normally, the channel should not be dead at this time. If it's already
     // dead it means there was a problem to process a query or send back a response
     // to Czar. In either case, the file would be useless and it has to be deleted
@@ -345,7 +345,7 @@ void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared
                                               bool cancelled) {
     lock_guard<mutex> const tMtxLock(_tMtx);
     if (_rowLimitComplete) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              __func__ << " already enough rows, this call likely a side effect" << task->getIdStr());
         return;
     }
@@ -381,7 +381,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         // while data is loading.
         lock_guard<mutex> const tMtxLockA(_tMtx);
         if (_rowLimitComplete) {
-            LOGS(_log, LOG_LVL_DEBUG, __func__ << " already enough rows, returning " << task->getIdStr());
+            LOGQ(_log, LOG_LVL_DEBUG, __func__ << " already enough rows, returning " << task->getIdStr());
             // Deleting the file now could be risky.
             return erred;
         }
@@ -393,7 +393,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         _writeToFile(tMtxLockA, task, mResult, bytes, rows, multiErr);
         _rowcount += rows;
         _transmitsize += bytes;
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              __func__ << " " << task->getIdStr() << " bytesT=" << bytes << " _tsz=" << _transmitsize);
 
         bufferFillT.stop();
@@ -402,13 +402,13 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         uint64_t const maxTableSize = task->getMaxTableSize();
         // Fail the operation if the amount of data in the result set exceeds the requested
         // "large result" limit (in case one was specified).
-        LOGS(_log, LOG_LVL_TRACE, "bytesWritten=" << _bytesWritten << " max=" << maxTableSize);
+        LOGQ(_log, LOG_LVL_TRACE, "bytesWritten=" << _bytesWritten << " max=" << maxTableSize);
         if (maxTableSize > 0 && _bytesWritten > maxTableSize) {
             string const err = "The result set size " + to_string(_bytesWritten) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
                                " bytes, task: " + task->getIdStr();
             multiErr.insert(util::Error(util::Error::WORKER_RESULT_TOO_LARGE, util::Error::NONE, err));
-            LOGS(_log, LOG_LVL_ERROR, err);
+            LOGQ(_log, LOG_LVL_ERROR, err);
             erred = true;
             return erred;
         }
@@ -418,7 +418,7 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         if (ujRowLimit > 0 && _rowcount >= ujRowLimit) {
             // There are enough rows to satisfy the query, so stop reading
             rowLimitComplete = true;
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  __func__ << " enough rows for query rows=" << _rowcount << " " << task->getIdStr());
         }
 
@@ -433,24 +433,24 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 
             // Only the last ("summary") message, w/o any rows, is sent to the Czar to notify
             // it about the completion of the request.
-            LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared " << task->cName(__func__) << " sending start");
+            LOGQ(_log, LOG_LVL_DEBUG, "FileChannelShared " << task->cName(__func__) << " sending start");
             if (!_sendResponse(tMtxLockA, task, cancelled, multiErr, rowLimitComplete)) {
-                LOGS(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
+                LOGQ(_log, LOG_LVL_ERROR, "Could not transmit the request completion message to Czar.");
                 erred = true;
             } else {
-                LOGS(_log, LOG_LVL_TRACE, __func__ << " " << task->getIdStr() << " sending done!!!");
+                LOGQ(_log, LOG_LVL_TRACE, __func__ << " " << task->getIdStr() << " sending done!!!");
             }
-            LOGS(_log, LOG_LVL_TRACE, "FileChannelShared " << task->cName(__func__) << " sending done!!!");
+            LOGQ(_log, LOG_LVL_TRACE, "FileChannelShared " << task->cName(__func__) << " sending done!!!");
         }
     }
     transmitT.stop();
     double timeSeconds = transmitT.getElapsed();
     auto qStats = task->getQueryStats();
     if (qStats == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "No statistics for " << task->getIdStr());
+        LOGQ(_log, LOG_LVL_ERROR, "No statistics for " << task->getIdStr());
     } else {
         qStats->addTaskTransmit(timeSeconds, bytes, rows, bufferFillSecs);
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "TaskTransmit time=" << timeSeconds << " bufferFillSecs=" << bufferFillSecs);
     }
 
@@ -467,10 +467,10 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
 }
 
 bool FileChannelShared::_kill(lock_guard<mutex> const& streamMutexLock, string const& note) {
-    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared::" << __func__ << " " << note);
+    LOGQ(_log, LOG_LVL_TRACE, "FileChannelShared::" << __func__ << " " << note);
     bool oldVal = _dead.exchange(true);
     if (!oldVal) {
-        LOGS(_log, LOG_LVL_WARN, "FileChannelShared::" << __func__ << " first kill call " << note);
+        LOGQ(_log, LOG_LVL_WARN, "FileChannelShared::" << __func__ << " first kill call " << note);
     }
     return oldVal;
 }
@@ -521,16 +521,16 @@ void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
 }
 
 void FileChannelShared::_removeFile(lock_guard<mutex> const& tMtxLock) {
-    LOGS(_log, LOG_LVL_TRACE, "FileChannelShared::_removeFile " << _fileName);
+    LOGQ(_log, LOG_LVL_TRACE, "FileChannelShared::_removeFile " << _fileName);
     if (!_fileName.empty()) {
         if (_file.is_open()) {
             _file.close();
         }
         boost::system::error_code ec;
-        LOGS(_log, LOG_LVL_DEBUG, "FileChannelShared::" << __func__ << " removing " << _fileName);
+        LOGQ(_log, LOG_LVL_DEBUG, "FileChannelShared::" << __func__ << " removing " << _fileName);
         fs::remove_all(fs::path(_fileName), ec);
         if (ec.value() != 0) {
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  "FileChannelShared::" << __func__ << " failed to remove the result file '" << _fileName
                                        << "', ec: " << ec << ".");
             return;
@@ -552,7 +552,7 @@ bool FileChannelShared::_sendResponse(lock_guard<mutex> const& tMtxLock, shared_
     QSERV_LOGCONTEXT_QUERY_JOB(queryId, jId);
 
     if (isDead() && !mustSend) {
-        LOGS(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");
+        LOGQ(_log, LOG_LVL_INFO, __func__ << ": aborting transmit since sendChannel is dead.");
         return false;
     }
 

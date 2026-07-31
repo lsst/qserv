@@ -41,7 +41,7 @@
 #include <nlohmann/json.hpp>
 
 // LSST headers
-#include "global/LogQ.h"  // includes "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "http/Client.h"
@@ -83,7 +83,7 @@ int dummyInitMDC = LOG_MDC_INIT(initMDC);
 std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(string const& workerName,
                                                              mysql::MySqlConfig const& mySqlConfig) {
     if (!mySqlConfig.dbName.empty()) {
-        LOGS(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
+        LOGQ(_log, LOG_LVL_FATAL, "dbName must be empty to prevent accidental context");
         throw runtime_error("dbName must be empty to prevent accidental context");
     }
     auto conn = sql::SqlConnectionFactory::make(mySqlConfig);
@@ -92,7 +92,7 @@ std::shared_ptr<wpublish::ChunkInventory> makeChunkInventory(string const& worke
     ostringstream os;
     os << "Paths exported: ";
     inventory->dbgPrint(os);
-    LOGS(_log, LOG_LVL_DEBUG, os.str());
+    LOGQ(_log, LOG_LVL_DEBUG, os.str());
     return inventory;
 }
 
@@ -183,8 +183,8 @@ WorkerMain::WorkerMain() {
     int const maxSqlConn = workerConfig->getMaxSqlConnections();
     int const resvInteractiveSqlConn = workerConfig->getReservedInteractiveSqlConnections();
     auto sqlConnMgr = make_shared<wcontrol::SqlConnMgr>(maxSqlConn, maxSqlConn - resvInteractiveSqlConn);
-    LOGS(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
-    LOGS(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
+    LOGQ(_log, LOG_LVL_WARN, "config sqlConnMgr" << *sqlConnMgr);
+    LOGQ(_log, LOG_LVL_WARN, "maxPoolThreads=" << maxPoolThreads);
 
     int qPoolSize = workerConfig->getQPoolSize();
     int maxPriority = workerConfig->getQPoolMaxPriority();
@@ -200,10 +200,10 @@ WorkerMain::WorkerMain() {
     // configuration file is in use.
     string logConfigFile = std::getenv("LSST_LOG_CONFIG");
     if (logConfigFile == "") {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
+        LOGQ(_log, LOG_LVL_ERROR, "logConfigFile=" << logConfigFile);
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
     }
 
@@ -243,7 +243,7 @@ void WorkerMain::terminate() {
 }
 
 WorkerMain::~WorkerMain() {
-    LOGS(_log, LOG_LVL_INFO, "WorkerMain shutdown.");
+    LOGQ(_log, LOG_LVL_INFO, "WorkerMain shutdown.");
     terminate();
     _registryUpdateThread.join();
 }
@@ -281,10 +281,10 @@ void WorkerMain::_registryUpdateLoop() {
             json const response = client.readAsJson();
             if (0 == response.at("success").get<int>()) {
                 string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_WARN, requestContext + " was denied, error: '" + error + "'.");
+                LOGQ(_log, LOG_LVL_WARN, requestContext + " was denied, error: '" + error + "'.");
             }
         } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+            LOGQ(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
         }
         this_thread::sleep_for(chrono::seconds(max(1U, workerConfig->replicationRegistryHearbeatIvalSec())));
     }

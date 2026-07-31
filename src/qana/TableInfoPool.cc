@@ -35,7 +35,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "css/CssAccess.h"
@@ -66,7 +66,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
     std::unique_ptr<TableInfo const> t(new TableInfo(db, table, TableInfo::DIRECTOR));
     auto range = std::equal_range(_pool.begin(), _pool.end(), t, TableInfoLt());
     if (range.first != range.second) {
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "get returning " << *range.first->get() << " for db:" << db << ", table:" << table);
         return range.first->get();
     }
@@ -76,7 +76,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
     int const chunkLevel = partParam.chunkLevel();
     // unpartitioned table
     if (chunkLevel == 0) {
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "get returning nullptr for unchunked table db:" << db << ", table:" << table);
         return nullptr;
     }
@@ -105,7 +105,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
                                     " different partitionings!");
         }
         auto ret = _insert(std::move(infoPtr));
-        LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
+        LOGQ(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
         return ret;
     }
     std::string const& dirTable = partParam.dirTable;
@@ -133,7 +133,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
         infoPtr->lat = v[1];
         infoPtr->partitioningId = dbStriping.partitioningId;
         auto ret = _insert(std::move(infoPtr));
-        LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
+        LOGQ(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
         return ret;
     }
     // child table
@@ -160,7 +160,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
     }
 
     auto ret = _insert(std::move(infoPtr));
-    LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
+    LOGQ(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
     return ret;
 }
 

@@ -24,7 +24,7 @@
 #include "ccontrol/UserQueryAsyncResult.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -52,21 +52,21 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, CzarId czarId,
           _czarId(czarId),
           _qMeta(qMeta),
           _messageStore(std::make_shared<qmeta::MessageStore>()) {
-    LOGS(_log, LOG_LVL_DEBUG, "UserQueryAsyncResult: QID=" << queryId);
+    LOGQ(_log, LOG_LVL_DEBUG, "UserQueryAsyncResult: QID=" << queryId);
 
     // get query info from QMeta
     try {
         _qInfo = qMeta->getQueryInfo(queryId);
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              "found QMeta record: czar=" << _qInfo.czarId() << " status=" << _qInfo.queryStatus()
                                          << " resultLoc=" << _qInfo.resultLocation()
                                          << " msgTableName=" << _qInfo.msgTableName());
     } catch (qmeta::QueryIdError const& exc) {
         std::string message = "No job found for ID=" + std::to_string(queryId);
-        LOGS(_log, LOG_LVL_DEBUG, message);
+        LOGQ(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
     } catch (std::exception const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
         std::string message = "Internal failure, error in querying QMeta: ";
         message += exc.what();
         _messageStore->addErrorMessage("SYSTEM", message);
@@ -78,7 +78,7 @@ void UserQueryAsyncResult::submit() {
 
     // if there are messages already it means the error was detected, stop right here
     if (_messageStore->messageCount() > 0) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              "UserQueryAsyncResult::" << __func__
                                       << " submit giving up, messageCount=" << _messageStore->messageCount());
         return;
@@ -86,7 +86,7 @@ void UserQueryAsyncResult::submit() {
 
     // Presently we cannot return query results that originated from different czar
     if (_qInfo.czarId() != _czarId) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              "UserQueryAsyncResult::submit Query originated from different czar=" << _qInfo.czarId()
                                                                                   << " expected=" << _czarId);
     }
@@ -99,7 +99,7 @@ void UserQueryAsyncResult::submit() {
     // TODO: there may be more info available if status is FAILED or ABORTED
     if (_qInfo.queryStatus() != qmeta::QInfo::COMPLETED) {
         std::string message = "Query is still executing (or FAILED)";
-        LOGS(_log, LOG_LVL_DEBUG, message);
+        LOGQ(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }
@@ -107,7 +107,7 @@ void UserQueryAsyncResult::submit() {
     // Can only return results from mysql tables
     if (_qInfo.resultLocation().compare(0, 6, "table:") != 0) {
         std::string message = "Cannot return result as it is not stored in table.";
-        LOGS(_log, LOG_LVL_DEBUG, message);
+        LOGQ(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
         return;
     }
@@ -120,7 +120,7 @@ void UserQueryAsyncResult::submit() {
 
     if (!resultDbConn->tableExists(resultTableName, sqlErrObj)) {
         string message = "Result table does not exist, result is likely expired.";
-        LOGS(_log, LOG_LVL_INFO,
+        LOGQ(_log, LOG_LVL_INFO,
              message << " msgTable=" << _qInfo.msgTableName() << " resultTable=" << resultTableName);
         _messageStore->addErrorMessage("SYSTEM", message);
         return;
@@ -133,7 +133,7 @@ void UserQueryAsyncResult::submit() {
                 "SELECT chunkId, code, message, severity, timeStamp FROM " + _qInfo.msgTableName();
         sql::SqlResults sqlResults;
         if (!resultDbConn->runQuery(query, sqlResults, sqlErrObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "Failed to retrieve message table data: " << sqlErrObj.errMsg());
+            LOGQ(_log, LOG_LVL_ERROR, "Failed to retrieve message table data: " << sqlErrObj.errMsg());
             std::string message = "Failed to retrieve message table data.";
             _messageStore->addErrorMessage("SYSTEM_SQL", message);
             return;
@@ -153,16 +153,16 @@ void UserQueryAsyncResult::submit() {
                 qmeta::JobStatus::TimeType timestamp(duration);
                 _messageStore->addMessage(chunkId, "SYSTEM", code, message, sev, timestamp);
             } catch (std::exception const& exc) {
-                LOGS(_log, LOG_LVL_ERROR, "Error reading message table data: " << exc.what());
+                LOGQ(_log, LOG_LVL_ERROR, "Error reading message table data: " << exc.what());
                 std::string message = "Error reading message table data.";
                 _messageStore->addErrorMessage("SYSTEM", message);
                 return;
             }
             ++count;
         }
-        LOGS(_log, LOG_LVL_DEBUG, "Copied " << count << " messages from " << _qInfo.msgTableName());
+        LOGQ(_log, LOG_LVL_DEBUG, "Copied " << count << " messages from " << _qInfo.msgTableName());
     } else {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              "Message table " << _qInfo.msgTableName() << " does not exist, skipping message copy");
     }
 

@@ -24,7 +24,7 @@
 #include "qmeta/QMetaSelect.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "Exceptions.h"
@@ -45,10 +45,10 @@ QMetaSelect::QMetaSelect(mysql::MySqlConfig const& mysqlConf)
 std::unique_ptr<sql::SqlResults> QMetaSelect::select(std::string const& query) {
     sql::SqlErrorObject errObj;
     std::unique_ptr<sql::SqlResults> results(new sql::SqlResults);
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     std::lock_guard<std::mutex> const lock(_connMtx);
     if (!_conn->runQuery(query, *results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw qmeta::SqlError(ERR_LOC, errObj);
     }
     return results;

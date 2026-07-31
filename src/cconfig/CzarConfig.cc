@@ -30,7 +30,7 @@
 // Third party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"  // includes "lsst/log/Log.h"
 
 // Qserv headers
 #include "http/Auth.h"

@@ -32,7 +32,7 @@
 #include "util/TimeUtils.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -62,7 +62,7 @@ CzarContactInfo::Ptr CzarContactInfo::createFromJson(nlohmann::json const& czJso
         auto czStartupTime_ = http::RequestBodyJSON::required<uint64_t>(czJson, "czar-startup-time");
         return create(czName_, czId_, czPort_, czHostName_, czStartupTime_);
     } catch (invalid_argument const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, string("CzarContactInfo::createJson invalid ") << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, string("CzarContactInfo::createJson invalid ") << exc.what());
     }
     return nullptr;
 }
@@ -105,7 +105,7 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonRegistry(string const& w
 
         return create(wId_, wHost_, wManagementHost_, wPort_, updateTime_);
     } catch (invalid_argument const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, string("CWorkerContactInfo::createJson invalid ") << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, string("CWorkerContactInfo::createJson invalid ") << exc.what());
     }
     return nullptr;
 }
@@ -120,7 +120,7 @@ WorkerContactInfo::Ptr WorkerContactInfo::createFromJsonWorker(nlohmann::json co
 
         return create(wId_, wHost_, wManagementHost_, wPort_, updateTime_);
     } catch (invalid_argument const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, string("CWorkerContactInfo::createJson invalid ") << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, string("CWorkerContactInfo::createJson invalid ") << exc.what());
     }
     return nullptr;
 }
@@ -133,7 +133,7 @@ bool WorkerContactInfo::operator==(WorkerContactInfo const& other) const {
 void WorkerContactInfo::setRegUpdateTime(TIMEPOINT updateTime) {
     std::lock_guard lg(_rMtx);
     _regUpdateTime = updateTime;
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " " << _dump());
+    LOGQ(_log, LOG_LVL_TRACE, cName(__func__) << " " << _dump());
 }
 
 string WorkerContactInfo::dump() const {
@@ -165,7 +165,7 @@ shared_ptr<json> WorkerQueryStatusData::toJson(double maxLifetime) {
             jsWorkerR["workerinfo"] = _wInfo->toJson();
             jsWorkerR["worker"] = _wInfo->wId;
         } else {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " wInfo is null");
+            LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " wInfo is null");
         }
     }
 
@@ -269,14 +269,14 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
                                                                  TIMEPOINT updateTm_) {
     try {
         if (jsWorkerReq["version"] != http::MetaModule::version) {
-            LOGS(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson bad version");
+            LOGQ(_log, LOG_LVL_ERROR, "WorkerQueryStatusData::createJson bad version");
             return nullptr;
         }
 
         auto czInfo_ = CzarContactInfo::createFromJson(jsWorkerReq["czarinfo"]);
         auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsWorkerReq["workerinfo"], updateTm_);
         if (czInfo_ == nullptr || wInfo_ == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "WorkerQueryStatusData::createJson czar or worker info could not be parsed in "
                          << jsWorkerReq);
             return nullptr;
@@ -295,7 +295,7 @@ WorkerQueryStatusData::Ptr WorkerQueryStatusData::createFromJson(nlohmann::json 
         }
         return wqsData;
     } catch (invalid_argument const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, string("WorkerQueryStatusData::createJson invalid ") << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, string("WorkerQueryStatusData::createJson invalid ") << exc.what());
     }
     return nullptr;
 }
@@ -353,7 +353,7 @@ void WorkerQueryStatusData::setWInfo(WorkerContactInfo::Ptr const& wInfo_) {
         // This only changes host and port values of _wInfo.
         _wInfo->changeBaseInfo(*wInfo_);
     }
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " " << _wInfo->dump());
+    LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " " << _wInfo->dump());
 }
 
 void WorkerQueryStatusData::addDeadUberJob(QueryId qId, UberJobId ujId, TIMEPOINT tm) {
@@ -427,9 +427,9 @@ bool WorkerQueryStatusData::handleResponseJson(nlohmann::json const& jsResp) {
 
     bool workerRestarted = false;
     auto workerStartupTime = http::RequestBodyJSON::required<uint64_t>(jsResp, "w-startup-time");
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " workerStartupTime=" << workerStartupTime);
+    LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " workerStartupTime=" << workerStartupTime);
     if (!_wInfo->checkWStartupTime(workerStartupTime)) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              cName(__func__) << " startup time for worker=" << _wInfo->dump()
                              << " changed to=" << workerStartupTime << " Assuming worker restarted");
         workerRestarted = true;

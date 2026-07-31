@@ -40,7 +40,7 @@
 #include "boost/format.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/constants.h"
@@ -84,7 +84,7 @@ std::ostream& operator<<(std::ostream& os, ChunkResource::Info const& i) {
 ChunkResource::ChunkResource(ChunkResourceMgr* mgr) : _mgr{mgr} {}
 
 ChunkResource::ChunkResource(ChunkResourceMgr* mgr, ChunkResource::Info* info) : _mgr{mgr}, _info{info} {
-    LOGS(_log, LOG_LVL_TRACE, "ChunkResource info=" << *info);
+    LOGQ(_log, LOG_LVL_TRACE, "ChunkResource info=" << *info);
     _mgr->acquireUnit(*_info);
 }
 ChunkResource::ChunkResource(ChunkResource const& cr) : _mgr{cr._mgr}, _info{new Info(*cr._info)} {
@@ -157,7 +157,7 @@ public:
         std::lock_guard<std::mutex> lock(_mutex);
         backend->memLockRequireOwnership();
         ++_refCount;  // Increase usage count
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "Subchunk acquire refC=" << _refCount << " db=" << db << " tables["
                                       << util::printable(dbTableSet) << "]"
                                       << " sc[" << util::printable(sc) << "]");
@@ -194,7 +194,7 @@ public:
         std::lock_guard<std::mutex> lock(_mutex);
         backend->memLockRequireOwnership();
         StringVector::const_iterator ti, te;
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "SubChunk release refC=" << _refCount << " db=" << db << " dbTableSet["
                                       << util::printable(dbTableSet) << "]"
                                       << " sc[" << util::printable(sc) << "]");
@@ -275,7 +275,7 @@ ChunkResourceMgr::Ptr ChunkResourceMgr::newMgr(SQLBackend::Ptr const& backend) {
 
 ChunkResource ChunkResourceMgr::acquire(std::string const& db, int chunkId, DbTableSet const& tables) {
     // Make sure that the chunk is ready. (NOP right now.)
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "acquire db=" << db << " chunkId=" << chunkId << " tables=" << util::printable(tables));
     ChunkResource cr(this, new ChunkResource::Info(db, chunkId, tables));
     return cr;
@@ -299,7 +299,7 @@ void ChunkResourceMgr::acquireUnit(ChunkResource::Info const& i) {
     Map& map = _getMap(i.db);  // Select db
     ChunkEntry& ce = _getChunkEntry(map, i.chunkId);
     // Actually acquire
-    LOGS(_log, LOG_LVL_TRACE, "acquireUnit info=" << i);
+    LOGQ(_log, LOG_LVL_TRACE, "acquireUnit info=" << i);
     ce.acquire(i.db, i.tables, i.subChunkIds, _backend);
 }
 

@@ -28,7 +28,7 @@
 #include "boost/lexical_cast.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -74,7 +74,7 @@ UserTableIngestRequest UserTables::registerRequest(UserTableIngestRequest const&
     for (auto const& query : queries) {
         sql::SqlErrorObject errObj;
         if (!_conn->runQuery(query, errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+            LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw qmeta::SqlError(ERR_LOC, errObj);
         }
     }
@@ -140,7 +140,7 @@ std::list<UserTableIngestRequest> UserTables::findRequests(std::string const& da
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     if (!_conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw qmeta::SqlError(ERR_LOC, errObj);
     }
     for (sql::SqlResults::iterator rowIter = results.begin(); rowIter != results.end(); ++rowIter) {
@@ -188,7 +188,7 @@ UserTableIngestRequest UserTables::ingestFinished(std::uint32_t id, UserTableIng
             " WHERE `id` = " + std::to_string(id);
     sql::SqlErrorObject errObj;
     if (!_conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw qmeta::SqlError(ERR_LOC, errObj);
     }
     trans->commit();
@@ -203,7 +203,7 @@ void UserTables::databaseDeleted(std::string const& database) {
             "UPDATE `UserTables` SET `delete_time`=" + std::to_string(util::TimeUtils::now()) +
             " WHERE `database`='" + _conn->escapeString(database) + "'";
     if (!_conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw qmeta::SqlError(ERR_LOC, errObj);
     }
     trans->commit();
@@ -227,7 +227,7 @@ UserTableIngestRequest UserTables::tableDeleted(std::uint32_t id) {
             "',`delete_time`=" + std::to_string(request.deleteTime) + " WHERE `id`=" + std::to_string(id);
     sql::SqlErrorObject errObj;
     if (!_conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw qmeta::SqlError(ERR_LOC, errObj);
     }
     trans->commit();
@@ -246,12 +246,12 @@ UserTableIngestRequest UserTables::_findOneRequestBy(std::string const& cond, bo
             "WHERE " +
             cond;
     if (!_conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw qmeta::SqlError(ERR_LOC, errObj);
     }
     sql::SqlResults::iterator rowIter = results.begin();
     if (rowIter == results.end()) {
-        LOGS(_log, LOG_LVL_ERROR, "Unknown request: " << cond);
+        LOGQ(_log, LOG_LVL_ERROR, "Unknown request: " << cond);
         throw qmeta::IngestRequestNotFound(ERR_LOC, cond);
     }
     sql::SqlResults::value_type const& row = *rowIter;
@@ -285,7 +285,7 @@ UserTableIngestRequest UserTables::_findOneRequestBy(std::string const& cond, bo
     // Query the parameters table to get the key-value pairs.
     query = "SELECT `key`,`val` FROM `UserTablesParams` WHERE `id`=" + std::to_string(request.id);
     if (!_conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw qmeta::SqlError(ERR_LOC, errObj);
     }
     for (sql::SqlResults::iterator rowIter = results.begin(); rowIter != results.end(); ++rowIter) {
@@ -303,7 +303,7 @@ UserTableIngestRequest UserTables::_findOneRequestBy(std::string const& cond, bo
             request.extended = nlohmann::json::parse(row[1].first);
             continue;
         }
-        LOGS(_log, LOG_LVL_WARN, "Unknown parameter key: " << key);
+        LOGQ(_log, LOG_LVL_WARN, "Unknown parameter key: " << key);
     }
     return request;
 }

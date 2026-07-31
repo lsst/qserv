@@ -36,7 +36,7 @@
 #include "util/TimeUtils.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -65,7 +65,7 @@ json WorkerCzarComIssue::toJson() {
     json jsCzarR;
     lock_guard _lgWciMtx(_wciMtx);
     if (_wInfo == nullptr || _czInfo == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _wInfo or _czInfo was null");
+        LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " _wInfo or _czInfo was null");
         return jsCzarR;
     }
 
@@ -99,10 +99,10 @@ json WorkerCzarComIssue::toJson() {
 WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const& jsCzarReq,
                                                            AuthContext const& authContext_) {
     string const fName("WorkerCzarComIssue::createFromJson");
-    LOGS(_log, LOG_LVL_DEBUG, fName);
+    LOGQ(_log, LOG_LVL_DEBUG, fName);
     try {
         if (jsCzarReq["version"] != http::MetaModule::version) {
-            LOGS(_log, LOG_LVL_ERROR, fName << " bad version");
+            LOGQ(_log, LOG_LVL_ERROR, fName << " bad version");
             return nullptr;
         }
 
@@ -110,7 +110,7 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
         auto now = CLOCK::now();
         auto wInfo_ = WorkerContactInfo::createFromJsonWorker(jsCzarReq["workerinfo"], now);
         if (czInfo_ == nullptr || wInfo_ == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, fName << " or worker info could not be parsed in " << jsCzarReq);
+            LOGQ(_log, LOG_LVL_ERROR, fName << " or worker info could not be parsed in " << jsCzarReq);
         }
         auto wccIssue = create(authContext_);
         wccIssue->setContactInfo(wInfo_, czInfo_);
@@ -138,12 +138,12 @@ WorkerCzarComIssue::Ptr WorkerCzarComIssue::createFromJson(nlohmann::json const&
                 wccIssue->addFailedTransmit(qId, ujId, ujMsg);
             } catch (std::invalid_argument const& ex) {
                 // skip to next element
-                LOGS(_log, LOG_LVL_WARN, fName << " failed to read failedTransmit:" << jsElem);
+                LOGQ(_log, LOG_LVL_WARN, fName << " failed to read failedTransmit:" << jsElem);
             }
         }
         return wccIssue;
     } catch (invalid_argument const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, string("WorkerQueryStatusData::createJson invalid ") << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, string("WorkerQueryStatusData::createJson invalid ") << exc.what());
     }
     return nullptr;
 }
@@ -184,7 +184,7 @@ void WorkerCzarComIssue::_addFailedTransmit(QueryId qId, UberJobId ujId,
                                             std::shared_ptr<protojson::UberJobStatusMsg> const& ujMsg) {
     auto key = make_pair(qId, ujId);
     (*_failedTransmits)[key] = ujMsg;
-    LOGS(_log, LOG_LVL_WARN, cName(__func__) << " failedTransmits sz=" << _failedTransmits->size());
+    LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " failedTransmits sz=" << _failedTransmits->size());
 }
 
 json WorkerCzarComIssue::responseToJson(uint64_t msgThoughtCzarWasDeadTime,
@@ -206,13 +206,13 @@ tuple<size_t, vector<UberJobIdentType>, vector<UberJobIdentType>> WorkerCzarComI
     vector<UberJobIdentType> ujParseErrorList;
     size_t count = 0;
     if (!response.contains("execRespMsgs")) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              cName(__func__) << " response did not have 'execRespMsgs' " << pwHide(response));
         return {count, ujDataObsoleteList, ujParseErrorList};
     }
     auto const& jsExecRespMsgs = response["execRespMsgs"];
     if (!jsExecRespMsgs.is_array()) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              cName(__func__) << " response 'execRespMsgs' is not array " << pwHide(response));
         return {count, ujDataObsoleteList, ujParseErrorList};
     }
@@ -220,7 +220,7 @@ tuple<size_t, vector<UberJobIdentType>, vector<UberJobIdentType>> WorkerCzarComI
     lock_guard _lgWciMtx(_wciMtx);
     for (auto const& elem : jsExecRespMsgs) {
         if (!(elem.contains("qId") && elem.contains("ujId"))) {
-            LOGS(_log, LOG_LVL_WARN, cName(__func__) << "elem missing qId or ujId elem=" << elem);
+            LOGQ(_log, LOG_LVL_WARN, cName(__func__) << "elem missing qId or ujId elem=" << elem);
             continue;
         }
         QueryId qId = elem["qId"];
@@ -229,7 +229,7 @@ tuple<size_t, vector<UberJobIdentType>, vector<UberJobIdentType>> WorkerCzarComI
         try {
             auto execRespMsg = ExecutiveRespMsg::createFromJson(elem);
             if (execRespMsg == nullptr) {
-                LOGS(_log, LOG_LVL_WARN,
+                LOGQ(_log, LOG_LVL_WARN,
                      cName(__func__) << " failed to parse execRespMsg elem=" << pwHide(elem));
                 continue;
             }
@@ -245,12 +245,12 @@ tuple<size_t, vector<UberJobIdentType>, vector<UberJobIdentType>> WorkerCzarComI
                 // file back to the czar. Delete the result file.
                 ujParseErrorList.emplace_back(_czInfo, qId, ujId);
             }
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  cName(__func__) << " removing qId=" << qId << "_ujId=" << ujId << " from map");
             _failedTransmits->erase(make_pair(qId, ujId));
             count++;
         } catch (std::invalid_argument const& ex) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) << " failed to parse execRespMsg elem=" << elem
                                  << " exception: " << ex.what());
             // This should never happen as all messages should parse.
@@ -288,7 +288,7 @@ void WorkerCzarComIssue::clearFailedTransmitsForQids(std::map<QueryId, TIMEPOINT
         endSize = _failedTransmits->size();
     }
     if (startSize > 0) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " startSize=" << startSize << " endSize=" << endSize);
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " startSize=" << startSize << " endSize=" << endSize);
     }
 }
 

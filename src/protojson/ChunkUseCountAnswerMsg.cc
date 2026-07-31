@@ -30,7 +30,7 @@
 #include "wpublish/QueriesAndChunks.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;

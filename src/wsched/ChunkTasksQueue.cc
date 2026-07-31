@@ -27,7 +27,7 @@
 #include "util/Bug.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 
@@ -54,7 +54,7 @@ void ChunkTasksQueue::queueTask(std::vector<wbase::Task::Ptr> const& tasks) {
                 // Correct ChunkTask wasn't found, make a new one.
                 std::pair<int, ChunkTasks::Ptr> ele(chunkId, std::make_shared<ChunkTasks>(chunkId));
                 auto res = _chunkMap.insert(ele);  // insert should fail if the key already exists.
-                LOGS(_log, LOG_LVL_TRACE, " queueTask chunk=" << chunkId << " created=" << res.second);
+                LOGQ(_log, LOG_LVL_TRACE, " queueTask chunk=" << chunkId << " created=" << res.second);
                 iter = res.first;
             }
         }
@@ -95,7 +95,7 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
 
     // If the _activeChunk is invalid, start at the beginning.
     if (_activeChunk == _chunkMap.end()) {
-        LOGS(_log, LOG_LVL_DEBUG, "ChunkTasksQueue::_ready _activeChunk invalid, reset");
+        LOGQ(_log, LOG_LVL_DEBUG, "ChunkTasksQueue::_ready _activeChunk invalid, reset");
         _activeChunk = _chunkMap.begin();
         _activeChunk->second->setActive();  // Flag tasks on active so new Tasks added wont be run.
     }
@@ -108,7 +108,7 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
 
     // Should the active chunk be advanced?
     if (_activeChunk->second->readyToAdvance()) {
-        LOGS(_log, LOG_LVL_TRACE, "ChunkTasksQueue::_ready advancing chunk");
+        LOGQ(_log, LOG_LVL_TRACE, "ChunkTasksQueue::_ready advancing chunk");
         auto newActive = _activeChunk;
         ++newActive;
         if (newActive == _chunkMap.end()) {
@@ -137,7 +137,7 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
     // Advance through chunks until READY found, or until entire list scanned.
     auto iter = _activeChunk;
     ChunkTasks::ReadyState chunkState = iter->second->ready(useFlexibleLock);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "_ready loopA state=" << ChunkTasks::toStr(chunkState) << " iter=" << iter->first << " "
                                << iter->second->cInfo());
     while (chunkState != ChunkTasks::ReadyState::READY) {
@@ -158,7 +158,7 @@ bool ChunkTasksQueue::_ready(bool useFlexibleLock) {
         }
         chunkState = iter->second->ready(useFlexibleLock);
     }
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "_ready loopB state=" << ChunkTasks::toStr(chunkState) << " iter=" << iter->first << " "
                                << iter->second->cInfo());
 
@@ -198,7 +198,7 @@ int ChunkTasksQueue::getActiveChunkId() {
 }
 
 wbase::Task::Ptr ChunkTasksQueue::removeTask(wbase::Task::Ptr const& task) {
-    LOGS(_log, LOG_LVL_DEBUG, __func__ << task->getIdStr());
+    LOGQ(_log, LOG_LVL_DEBUG, __func__ << task->getIdStr());
     // Find the correct chunk
     auto chunkId = task->getChunkId();
     std::lock_guard<std::mutex> lock(_mapMx);
@@ -248,7 +248,7 @@ std::string ChunkTasks::toStr(ReadyState state) {
 /// @return a pointer to the removed task or
 wbase::Task::Ptr ChunkTasks::removeTask(wbase::Task::Ptr const& task) {
     // This function isn't called often, so logging changes can be useful.
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " " << cInfo());
+    LOGQ(_log, LOG_LVL_DEBUG, "removeTask " << task->getIdStr() << " " << cInfo());
 
     auto eraseFunc = [this, &task](std::vector<wbase::Task::Ptr>& vect) -> wbase::Task::Ptr {
         auto queryId = task->getQueryId();
@@ -269,13 +269,13 @@ wbase::Task::Ptr ChunkTasks::removeTask(wbase::Task::Ptr const& task) {
     result = eraseFunc(_activeTasks._tasks);
     if (result != nullptr) {
         _activeTasks.heapify();
-        LOGS(_log, LOG_LVL_DEBUG, "removeTask act " << cInfo());
+        LOGQ(_log, LOG_LVL_DEBUG, "removeTask act " << cInfo());
         return result;
     }
 
     // Is it in _pendingTasks?
     result = eraseFunc(_pendingTasks);
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask pend " << cInfo());
+    LOGQ(_log, LOG_LVL_DEBUG, "removeTask pend " << cInfo());
     return result;
 }
 
@@ -307,21 +307,21 @@ void ChunkTasks::queTask(wbase::Task::Ptr const& a) {
         _activeTasks.push(a);
         state = "ACTIVE";
     }
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "ChunkTasks::queTask tid=" << a->getIdStr() << " chunkId=" << _chunkId << " state=" << state
                                     << " active.sz=" << _activeTasks._tasks.size()
                                     << " pend.sz=" << _pendingTasks.size() << cInfo());
     if (_activeTasks.empty()) {
-        LOGS(_log, LOG_LVL_TRACE, "Top of ACTIVE is now: (empty)");
+        LOGQ(_log, LOG_LVL_TRACE, "Top of ACTIVE is now: (empty)");
     } else {
-        LOGS(_log, LOG_LVL_TRACE, "Top of ACTIVE is now: " << _activeTasks.top()->getIdStr());
+        LOGQ(_log, LOG_LVL_TRACE, "Top of ACTIVE is now: " << _activeTasks.top()->getIdStr());
     }
 }
 
 /// Set this chunk as the active chunk and move pending jobs to active if needed.
 void ChunkTasks::setActive(bool active) {
     if (_active != active) {
-        LOGS(_log, LOG_LVL_TRACE, "ChunkTasks " << _chunkId << " active changed to " << active);
+        LOGQ(_log, LOG_LVL_TRACE, "ChunkTasks " << _chunkId << " active changed to " << active);
         if (_active && !active) {
             movePendingToActive();
         }
@@ -332,7 +332,7 @@ void ChunkTasks::setActive(bool active) {
 /// Move all pending Tasks to the active heap.
 void ChunkTasks::movePendingToActive() {
     for (auto const& t : _pendingTasks) {
-        LOGS(_log, LOG_LVL_TRACE, "ChunkTasks " << _chunkId << " pending->active " << t->getIdStr());
+        LOGQ(_log, LOG_LVL_TRACE, "ChunkTasks " << _chunkId << " pending->active " << t->getIdStr());
         _activeTasks.push(t);
     }
     _pendingTasks.clear();
@@ -345,7 +345,7 @@ bool ChunkTasks::empty() const { return _activeTasks.empty() && _pendingTasks.em
 bool ChunkTasks::readyToAdvance() {
     // There is a rare case where _activeTasks and _inFlightTasks are empty but _readyTask in not null.
     bool advance = _activeTasks.empty() && _inFlightTasks.empty() && _readyTask == nullptr;
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "ChunkTasks::readyToAdvance chunkId=" << _chunkId << " _activeTasks.sz=" << _activeTasks.size()
                                                << " _inFlightTasks.sz=" << _inFlightTasks.size()
                                                << " _readyTask==null=" << (_readyTask == nullptr)
@@ -357,7 +357,7 @@ bool ChunkTasks::readyToAdvance() {
 // ChunkTasks does not have its own mutex and depends on its owner for thread safety.
 // If a Task is ready to be run, _readyTask will not be nullptr.
 ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
-    LOGS(_log, LOG_LVL_TRACE, "ready start " << cInfo());
+    LOGQ(_log, LOG_LVL_TRACE, "ready start " << cInfo());
 
     if (_readyTask != nullptr) {
         return ChunkTasks::ReadyState::READY;
@@ -370,7 +370,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
     // There is a Task to run at this point, pull it off the heap to avoid confusion.
     _activeTasks.pop();
     _readyTask = task;
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "ready pop t=" << task->getIdStr() << " top="
                         << ((_activeTasks.top() == nullptr) ? "NULL" : _activeTasks.top()->getIdStr()) << " "
                         << cInfo());
@@ -381,7 +381,7 @@ ChunkTasks::ReadyState ChunkTasks::ready(bool useFlexibleLock) {
 /// ChunkTasks relies on its owner for thread safety.
 wbase::Task::Ptr ChunkTasks::getTask(bool useFlexibleLock) {
     if (ready(useFlexibleLock) != ReadyState::READY) {
-        LOGS(_log, LOG_LVL_DEBUG, "ChunkTasks " << _chunkId << " denying task");
+        LOGQ(_log, LOG_LVL_DEBUG, "ChunkTasks " << _chunkId << " denying task");
         return nullptr;
     }
     // Return and clear _readyTask so it isn't called more than once.
@@ -390,7 +390,7 @@ wbase::Task::Ptr ChunkTasks::getTask(bool useFlexibleLock) {
     if (task->getChunkId() == _chunkId) {
         _inFlightTasks.insert(task.get());
     } else {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "ChunkTasks::getTask chunkId mismatch task=" << task->getIdStr() << "(" << task->getChunkId()
                                                           << ")"
                                                           << " chunkid=" << _chunkId);

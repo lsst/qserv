@@ -41,7 +41,7 @@
 #include <iostream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.JobStatus");
@@ -59,7 +59,7 @@ void JobStatus::updateInfo(std::string const& idMsg, JobStatus::State s, std::st
 
 void JobStatus::_updateInfo(std::string const& idMsg, JobStatus::State s, std::string const& source, int code,
                             std::string const& desc, MessageSeverity severity) {
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGQ(_log, LOG_LVL_DEBUG,
          idMsg << " Updating state to: " << s << " code=" << code << " " << desc << " src=" << source);
     _info.stateTime = getNow();
     _info.state = s;

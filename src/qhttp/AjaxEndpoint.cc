@@ -27,7 +27,7 @@
 #include "qhttp/AjaxEndpoint.h"
 
 // Local headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 #include "qhttp/LogHelpers.h"
 #include "qhttp/Request.h"
 #include "qhttp/Response.h"

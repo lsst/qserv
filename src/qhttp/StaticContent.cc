@@ -31,7 +31,7 @@
 #include "boost/algorithm/string.hpp"
 
 // Local headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 #include "qhttp/LogHelpers.h"
 #include "qhttp/Status.h"
 

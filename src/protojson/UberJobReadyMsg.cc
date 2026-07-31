@@ -32,7 +32,7 @@
 #include "util/TimeUtils.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -54,7 +54,7 @@ UberJobStatusMsg::UberJobStatusMsg(AuthContext const& authContext_, unsigned int
           uberJobId(uberJobId_) {
     if (version != http::MetaModule::version) {
         string eMsg = cName(__func__) + " UberJobStatusMsg constructor bad version " + to_string(version);
-        LOGS(_log, LOG_LVL_ERROR, eMsg);
+        LOGQ(_log, LOG_LVL_ERROR, eMsg);
         throw invalid_argument(eMsg);
     }
 }
@@ -114,7 +114,7 @@ std::ostream& UberJobReadyMsg::dump(std::ostream& os) const {
 
 UberJobReadyMsg::Ptr UberJobReadyMsg::createFromJson(json const& jsWReq) {
     string const fName("UberJobReadyMsg::createFromJson");
-    LOGS(_log, LOG_LVL_DEBUG, fName);
+    LOGQ(_log, LOG_LVL_DEBUG, fName);
     try {
         // If replication identifiers were wrong, it wouldn't have gotten this far.
         AuthContext authContext_(http::RequestBodyJSON::required<string>(jsWReq, "instance_id"),
@@ -131,7 +131,7 @@ UberJobReadyMsg::Ptr UberJobReadyMsg::createFromJson(json const& jsWReq) {
                 http::RequestBodyJSON::required<UberJobId>(jsWReq, "uberjobid"), fileUrlInfo_));
         return jrMsg;
     } catch (invalid_argument const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, string("UberJobReadyMsg::createJson invalid ") << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, string("UberJobReadyMsg::createJson invalid ") << exc.what());
     }
     return nullptr;
 }

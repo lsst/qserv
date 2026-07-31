@@ -36,7 +36,7 @@
 #include "wcomms/HttpWorkerCzarModule.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace nlohmann;
 using namespace std;
@@ -160,7 +160,7 @@ uint16_t HttpSvc::start() {
         _threads.push_back(make_unique<thread>([self]() { self->_io_service.run(); }));
     }
     auto const actualPort = _httpServerPtr->getPort();
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          context + "started on port " + to_string(actualPort) + " numThreads=" + to_string(_numThreads));
     return actualPort;
 }
@@ -181,7 +181,7 @@ void HttpSvc::stop() {
         t->join();
     }
     _threads.clear();
-    LOGS(_log, LOG_LVL_INFO, context + "stopped");
+    LOGQ(_log, LOG_LVL_INFO, context + "stopped");
 }
 
 }  // namespace lsst::qserv::wcomms

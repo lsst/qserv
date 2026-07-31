@@ -26,7 +26,7 @@
 #include "boost/lexical_cast.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -78,7 +78,7 @@ void UserQuerySelectCountStar::submit() {
     try {
         results = _qMetaSelect->select(query);
     } catch (std::exception const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed while querying QMeta: " << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, "Failed while querying QMeta: " << exc.what());
         _messageStore->addMessage(-1, "COUNTSTAR", 1051, "Internal error querying metadata.",
                                   MessageSeverity::MSG_ERROR);
         _qState = ERROR;
@@ -89,7 +89,7 @@ void UserQuerySelectCountStar::submit() {
     std::vector<std::string> values;
     sql::SqlErrorObject errObj;
     if (not results->extractFirstColumn(values, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "Failed to extract chunk row counts from query result: " << errObj.errMsg());
         _messageStore->addMessage(-1, "COUNTSTAR", 1051, "Internal error extracting chunk row counts.",
                                   MessageSeverity::MSG_ERROR);
@@ -103,7 +103,7 @@ void UserQuerySelectCountStar::submit() {
         try {
             auto add_rows = lexical_cast<uint64_t>(value);
             if (UINT64_MAX - row_count < add_rows) {
-                LOGS(_log, LOG_LVL_ERROR, "The number of rows exceeded capacity.");
+                LOGQ(_log, LOG_LVL_ERROR, "The number of rows exceeded capacity.");
                 _messageStore->addMessage(-1, "COUNTSTAR", 1051, "The number of rows exceeded capacity.",
                                           MessageSeverity::MSG_ERROR);
                 _qState = ERROR;
@@ -111,7 +111,7 @@ void UserQuerySelectCountStar::submit() {
             }
             row_count += add_rows;
         } catch (bad_lexical_cast const& exc) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "Failed to convert chunk row count \"" << value << "\" to unsigned int: " << exc.what(););
             _messageStore->addMessage(-1, "COUNTSTAR", 1051,
                                       "Internal error converting chunk row count to unsigned int.",
@@ -123,11 +123,11 @@ void UserQuerySelectCountStar::submit() {
 
     // Create a result table, with one column (row_count) and one row (the total number of rows):
     std::string createTable = "CREATE TABLE " + _resultTable + "(row_count BIGINT UNSIGNED)";
-    LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
+    LOGQ(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
     auto const czarConfig = cconfig::CzarConfig::instance();
     auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
     if (!resultDbConn->runQuery(createTable, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to create result table: " << errObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to create result table: " << errObj.errMsg());
         _messageStore->addMessage(-1, "COUNTSTAR", 1051, "Internal error, failed to create result table.",
                                   MessageSeverity::MSG_ERROR);
         _qState = ERROR;
@@ -139,7 +139,7 @@ void UserQuerySelectCountStar::submit() {
     try {
         insertRow += lexical_cast<std::string>(row_count);
     } catch (bad_lexical_cast const& exc) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "Failed to convert the row count \"" << row_count << "\" to string: " << exc.what());
         _messageStore->addMessage(-1, "COUNTSTAR", 1051,
                                   "Internal error converting total row count to string.",
@@ -148,9 +148,9 @@ void UserQuerySelectCountStar::submit() {
         return;
     }
     insertRow += ")";
-    LOGS(_log, LOG_LVL_DEBUG, "inserting row count into result table: " << insertRow);
+    LOGQ(_log, LOG_LVL_DEBUG, "inserting row count into result table: " << insertRow);
     if (!resultDbConn->runQuery(insertRow, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to insert row count into result table: " << errObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to insert row count into result table: " << errObj.errMsg());
         _messageStore->addMessage(-1, "COUNTSTAR", 1051,
                                   "Internal failure, failed to insert the row count into the result table.",
                                   MessageSeverity::MSG_ERROR);

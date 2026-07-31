@@ -29,7 +29,7 @@
 #include "util/String.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // System headers
 #include <stdexcept>
@@ -99,18 +99,18 @@ void BaseModule::enforceInstanceId(string const& func, string const& requiredIns
     }
 }
 
-void BaseModule::trace(string const& msg) const { LOGS(_log, LOG_LVL_TRACE, context() << msg); }
+void BaseModule::trace(string const& msg) const { LOGQ(_log, LOG_LVL_TRACE, context() << msg); }
 
-void BaseModule::info(string const& msg) const { LOGS(_log, LOG_LVL_INFO, context() << msg); }
+void BaseModule::info(string const& msg) const { LOGQ(_log, LOG_LVL_INFO, context() << msg); }
 
-void BaseModule::debug(string const& msg) const { LOGS(_log, LOG_LVL_DEBUG, context() << msg); }
+void BaseModule::debug(string const& msg) const { LOGQ(_log, LOG_LVL_DEBUG, context() << msg); }
 
 void BaseModule::warn(string const& msg) const {
-    LOGS(_log, LOG_LVL_WARN, context() << msg);
+    LOGQ(_log, LOG_LVL_WARN, context() << msg);
     _warnings.push_back(msg);
 }
 
-void BaseModule::error(string const& msg) const { LOGS(_log, LOG_LVL_ERROR, context() << msg); }
+void BaseModule::error(string const& msg) const { LOGQ(_log, LOG_LVL_ERROR, context() << msg); }
 
 void BaseModule::sendError(string const& func, string const& errorMsg, json const& errorExt,
                            unsigned int httpCode) {

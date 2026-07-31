@@ -43,7 +43,7 @@
 #include <stdexcept>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "ccontrol/ParseRunner.h"
@@ -92,7 +92,7 @@ std::string printParallel(lsst::qserv::query::SelectStmtPtrVector const& p) {
 }
 
 #define LOG_STATEMENTS(LEVEL, PRETEXT)                                                                      \
-    LOGS(_log, LEVEL,                                                                                       \
+    LOGQ(_log, LEVEL,                                                                                       \
          '\n' << "  " << PRETEXT << '\n'                                                                    \
               << "    stmt:" << (_stmt != nullptr ? _stmt->getQueryTemplate().sqlFragment() : "nullptr")    \
               << '\n'                                                                                       \
@@ -116,7 +116,7 @@ std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const& s
     try {
         parser = std::make_shared<ccontrol::ParseRunner>(statement);
     } catch (parser::ParseException const& e) {
-        LOGS(_log, LOG_LVL_DEBUG, "parse exception: " << e.what());
+        LOGQ(_log, LOG_LVL_DEBUG, "parse exception: " << e.what());
         _original = statement;
         _error = std::string("ParseException:") + e.what();
         return nullptr;
@@ -137,8 +137,8 @@ void QuerySession::analyzeQuery(std::string const& sql, std::shared_ptr<query::S
         _generateConcrete();
         _applyConcretePlugins();
 
-        LOGS(_log, LOG_LVL_TRACE, "Query Plugins applied: " << *this);
-        LOGS(_log, LOG_LVL_TRACE, "ORDER BY clause for result query: " << getResultOrderBy());
+        LOGQ(_log, LOG_LVL_TRACE, "Query Plugins applied: " << *this);
+        LOGQ(_log, LOG_LVL_TRACE, "ORDER BY clause for result query: " << getResultOrderBy());
 
         // Besides analysing an explicit result of the operation, allow catching CSS exceptions
         // that may be thrown by the method.
@@ -187,12 +187,12 @@ std::string QuerySession::getResultOrderBy() const {
     if (_stmt->hasOrderBy()) {
         orderBy = _stmt->getOrderBy().sqlFragment();
     }
-    LOGS(_log, LOG_LVL_TRACE, "getResultOrderBy: " << orderBy);
+    LOGQ(_log, LOG_LVL_TRACE, "getResultOrderBy: " << orderBy);
     return orderBy;
 }
 
 void QuerySession::addChunk(ChunkSpec const& cs) {
-    LOGS(_log, LOG_LVL_TRACE, "Add chunk: " << cs);
+    LOGQ(_log, LOG_LVL_TRACE, "Add chunk: " << cs);
     _context->chunkCount += 1;
     _chunks.push_back(cs);
 }
@@ -222,13 +222,13 @@ bool QuerySession::containsTable(std::string const& dbName, std::string const& t
 
 bool QuerySession::_validateDominantDbs() const {
     if (_skipDominatDbsValidation) {
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              "QuerySession::" << __func__ << ": Skipping dominant DB validation in unit test");
         return true;
     }
 
     if (_context->dominantDbs.empty()) {
-        LOGS(_log, LOG_LVL_WARN, "QuerySession::" << __func__ << ": no dominant dbs specified");
+        LOGQ(_log, LOG_LVL_WARN, "QuerySession::" << __func__ << ": no dominant dbs specified");
         return false;
     }
     std::string prevDb;
@@ -237,7 +237,7 @@ bool QuerySession::_validateDominantDbs() const {
         if (_context->containsDb(dbName)) {
             css::StripingParams const striping = _context->css->getDbStriping(dbName);
             if (!prevStriping.isDefaultConstructed() && (striping != prevStriping)) {
-                LOGS(_log, LOG_LVL_WARN,
+                LOGQ(_log, LOG_LVL_WARN,
                      "QuerySession::"
                              << __func__ << ": dominant db " << dbName
                              << " has incompatible striping parameters compared to other dominant db "
@@ -246,7 +246,7 @@ bool QuerySession::_validateDominantDbs() const {
             }
             prevStriping = striping;
         } else {
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  "QuerySession::" << __func__ << ": dominant db " << dbName << " not in CSS");
             return false;
         }
@@ -259,15 +259,15 @@ css::StripingParams QuerySession::getDbStriping() const { return _context->getDb
 
 std::shared_ptr<IntSet const> QuerySession::getEmptyChunks() {
     if (_css == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "QuerySession::" << __func__ << " no _css");
+        LOGQ(_log, LOG_LVL_WARN, "QuerySession::" << __func__ << " no _css");
         return nullptr;
     }
     std::shared_ptr<IntSet> result = std::make_shared<IntSet>();
     for (auto const& dbName : _context->dominantDbs) {
-        LOGS(_log, LOG_LVL_TRACE, "QuerySession::" << __func__ << " " << dbName);
+        LOGQ(_log, LOG_LVL_TRACE, "QuerySession::" << __func__ << " " << dbName);
         std::shared_ptr<IntSet const> const dbResult = _css->getEmptyChunks()->getEmpty(dbName);
         if (dbResult == nullptr) {
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  "QuerySession::" << __func__ << " no empty chunk info for db " << dbName);
             continue;
         }
@@ -360,14 +360,14 @@ void QuerySession::_generateConcrete() {
     auto parallelStmt = _stmt->clone();
     parallelStmt->setHaving(nullptr);
     _stmtParallel.push_back(parallelStmt);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "Parallel statement initialized with: \"" << _stmtParallel[0]->getQueryTemplate() << "\"");
 
     // Copy SelectList and Mods, but not FROM, and perhaps not
     // WHERE(???). Conceptually, we want to copy the parts that are
     // needed during merging and aggregation.
     _stmtMerge = _stmt->copyMerge();
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "Merge statement initialized with: \"" << _stmtMerge->getQueryTemplate() << "\" " << *_stmtMerge);
 
     LOG_STATEMENTS(LOG_LVL_TRACE, "did generateConcrete:");
@@ -474,7 +474,7 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
         std::vector<std::string> localTemplates = cQSpec->queries->getTemplates();
         for (auto&& qs : localTemplates) {
             boost::algorithm::replace_all(qs, CHUNK_TAG, chunkIdStr);
-            LOGS(_log, LOG_LVL_DEBUG, "QuerySession::" << __func__ << " " << qs);
+            LOGQ(_log, LOG_LVL_DEBUG, "QuerySession::" << __func__ << " " << qs);
         }
         // The query wide `queries` object cannot be used for the chunk specific queries.
         ChunkQueries::Ptr filledInQueries = std::make_shared<ChunkQueries>();

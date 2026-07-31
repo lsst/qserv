@@ -32,7 +32,7 @@
 #include <sstream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "mysql/MySqlConnection.h"
@@ -122,13 +122,13 @@ bool MySqlConnection::connectToDb(SqlErrorObject& errObj) {
     if (_connection->connected()) {
         int rc = mysql_ping(_connection->getMySql());
         if (rc == 0) return true;
-        LOGS(_log, LOG_LVL_WARN, "connectToDb ping=" << rc);
+        LOGQ(_log, LOG_LVL_WARN, "connectToDb ping=" << rc);
         _connection->closeMySqlConn();
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "connectToDb trying to connect " << _connection->dump());
+    LOGQ(_log, LOG_LVL_DEBUG, "connectToDb trying to connect " << _connection->dump());
     if (!_connection->connect()) {
-        LOGS(_log, LOG_LVL_ERROR, "connectToDb failed to connect! " << _connection->dump());
+        LOGQ(_log, LOG_LVL_ERROR, "connectToDb failed to connect! " << _connection->dump());
         _setErrorObject(errObj);
         return false;
     }
@@ -154,7 +154,7 @@ bool MySqlConnection::selectDb(std::string const& dbName, SqlErrorObject& errObj
 bool MySqlConnection::runQuery(char const* query, int qSize, SqlResults& results, SqlErrorObject& errObj) {
     std::string queryPiece(query, qSize);
     if (!connectToDb(errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "runQuery failed connectToDb: " << queryPiece);
+        LOGQ(_log, LOG_LVL_ERROR, "runQuery failed connectToDb: " << queryPiece);
         return false;
     }
     if (mysql_real_query(_connection->getMySql(), query, qSize) != 0) {

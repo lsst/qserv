@@ -34,7 +34,7 @@
 #include "http/Exceptions.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 namespace asio = boost::asio;
@@ -406,13 +406,13 @@ void AsyncReq::_assertState(lock_guard<mutex> const& lock, string const& context
 }
 
 void AsyncReq::_logError(string const& prefix, boost::system::error_code const& ec) const {
-    LOGS(_log, LOG_LVL_WARN,
+    LOGQ(_log, LOG_LVL_WARN,
          prefix << " method: " << _method << " host: " << _hostPort.host << " port: " << _hostPort.port
                 << " target: " << _target << " ec: " << ec.value() << " [" << ec.message() << "]");
 }
 
 void AsyncReq::_logError(string const& prefix, string const& message) const {
-    LOGS(_log, LOG_LVL_WARN,
+    LOGQ(_log, LOG_LVL_WARN,
          prefix << " method: " << _method << " host: " << _hostPort.host << " port: " << _hostPort.port
                 << " target: " << _target << " [" << message << "]");
 }

@@ -32,7 +32,7 @@
 #include <utility>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qana/QueryNotEvaluableError.h"
@@ -55,7 +55,7 @@ void ColumnVertexMap::Entry::swap(Entry& e) {
 }
 
 ColumnVertexMap::ColumnVertexMap(Vertex& v) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     std::vector<ColumnRefConstPtr> c = v.info->makeColumnRefs(v.tr.getAlias());
     _init(v, c.begin(), c.end());
 }
@@ -76,7 +76,7 @@ std::vector<Vertex*> const& ColumnVertexMap::find(query::ColumnRef const& c) con
 }
 
 void ColumnVertexMap::fuse(ColumnVertexMap& m, bool natural, std::vector<std::string> const& cols) {
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " " << m << ", natural:" << natural << ", cols:" << util::printable(cols)
                       << " into this:" << *this);
     typedef std::vector<Entry>::iterator EntryIter;
@@ -132,7 +132,7 @@ void ColumnVertexMap::fuse(ColumnVertexMap& m, bool natural, std::vector<std::st
 }
 
 std::vector<std::string> const ColumnVertexMap::computeCommonColumns(ColumnVertexMap const& m) const {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::vector<Entry>::const_iterator EntryIter;
     std::vector<std::string> cols;
     // The entries for this map and m are both sorted, so we can find

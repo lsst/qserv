@@ -34,7 +34,7 @@
 #include <mysql/mysql.h>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "mysql/LocalInfileError.h"

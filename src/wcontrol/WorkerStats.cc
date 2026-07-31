@@ -32,7 +32,7 @@
 #include "util/Histogram.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 
@@ -81,7 +81,7 @@ void WorkerStats::startQueryRespConcurrentQueued(TIMEPOINT created) {
     ++_queueCount;
 
     _histConcurrentQueuedBuffers->addEntry(created, _queueCount);
-    LOGS(_log, LOG_LVL_TRACE, "startQueryRespConcurrentQueued: " << getSendStatsJson());
+    LOGQ(_log, LOG_LVL_TRACE, "startQueryRespConcurrentQueued: " << getSendStatsJson());
 }
 
 void WorkerStats::endQueryRespConcurrentQueued(TIMEPOINT created, TIMEPOINT start) {
@@ -92,7 +92,7 @@ void WorkerStats::endQueryRespConcurrentQueued(TIMEPOINT created, TIMEPOINT star
     _histXrootdOwnedBuffers->addEntry(start, _xrootdCount);
     _histConcurrentQueuedBuffers->addEntry(start, _queueCount);
 
-    LOGS(_log, LOG_LVL_TRACE, "endQueryRespConcurrentQueued: " << getSendStatsJson());
+    LOGQ(_log, LOG_LVL_TRACE, "endQueryRespConcurrentQueued: " << getSendStatsJson());
 }
 
 void WorkerStats::endQueryRespConcurrentXrootd(TIMEPOINT start, TIMEPOINT end) {
@@ -101,7 +101,7 @@ void WorkerStats::endQueryRespConcurrentXrootd(TIMEPOINT start, TIMEPOINT end) {
     _histXrootdOwnedBuffers->addEntry(start, _xrootdCount);
     _histXrootdOwnedBuffers->addEntry(end, _queueCount);
 
-    LOGS(_log, LOG_LVL_TRACE, "endQueryRespConcurrentXrootd: " << getSendStatsJson());
+    LOGQ(_log, LOG_LVL_TRACE, "endQueryRespConcurrentXrootd: " << getSendStatsJson());
 }
 
 nlohmann::json WorkerStats::getSendStatsJson() const {

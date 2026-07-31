@@ -35,7 +35,7 @@
 #include <stdexcept>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qana/QueryNotEvaluableError.h"
@@ -114,7 +114,7 @@ std::ostream& operator<<(std::ostream& out, Edge const& edge) {
 // Vertex implementation
 
 void Vertex::insert(Edge const& e) {
-    LOGS(_log, LOG_LVL_TRACE, "Vertex::" << __FUNCTION__ << "(" << this << ")" << e);
+    LOGQ(_log, LOG_LVL_TRACE, "Vertex::" << __FUNCTION__ << "(" << this << ")" << e);
     typedef std::vector<Edge>::iterator Iter;
     // Look for an existing edge incident to the same vertex as e using
     // binary search.
@@ -165,7 +165,7 @@ namespace {
 /// or OrTerm with multiple children, a BoolFactor, or an UnknownTerm, and may
 /// just be the input tree.
 BoolTerm::Ptr findFirstNonTrivialChild(BoolTerm::Ptr tree) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     while (true) {
         AndTerm* at = dynamic_cast<AndTerm*>(tree.get());
         OrTerm* ot = dynamic_cast<OrTerm*>(tree.get());
@@ -177,26 +177,26 @@ BoolTerm::Ptr findFirstNonTrivialChild(BoolTerm::Ptr tree) {
             break;
         }
     }
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << *tree);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << *tree);
     return tree;
 }
 
 bool isOuterJoin(JoinRef::Type jt) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     return jt == JoinRef::LEFT || jt == JoinRef::RIGHT || jt == JoinRef::FULL;
 }
 
 /// `getColumnRef` returns the ColumnRef in `ve` if there is one.
 ColumnRef::Ptr getColumnRef(ValueExprPtr const& ve) {
     if (not ve || not ve->isColumnRef()) {
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning nullptr");
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning nullptr");
         return nullptr;
     }
     auto cr = ve->getColumnRef();
     if (nullptr == cr) {
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning nullptr");
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning nullptr");
     } else {
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << *cr);
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << *cr);
     }
     return cr;
 }
@@ -204,7 +204,7 @@ ColumnRef::Ptr getColumnRef(ValueExprPtr const& ve) {
 // `verifyColumnRef` checks that a column reference has a column name and a table alias, because at this
 // stage the ColumnRef's table should have been assigned an alias.
 void verifyColumnRef(ColumnRef const& c) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     if (c.getColumn().empty()) {
         throw std::logic_error("Parser/query analysis bug: ColumnRef with an empty column name.");
     }
@@ -218,7 +218,7 @@ void verifyColumnRef(ColumnRef const& c) {
 /// `verifyJoin` throws an exception if the given join parameters are invalid
 /// or unsupported.
 void verifyJoin(JoinRef::Type joinType, bool natural, JoinSpec::Ptr const& joinSpec) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     switch (joinType) {
         case JoinRef::UNION:
             // "table1 UNION JOIN table2" is probably the same thing as
@@ -259,7 +259,7 @@ void verifyJoin(JoinRef::Type joinType, bool natural, JoinSpec::Ptr const& joinS
 /// adds corresponding `Edge` objects to each vertex if so. The number of
 /// edges added, 0 or 1, is returned.
 size_t addEqEdge(std::string const& ca, std::string const& cb, bool outer, Vertex* a, Vertex* b) {
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " columnA:" << ca << ", columnB:" << cb << ", outer:" << outer << ", vertexA:" << a
                       << ", vertexB:" << b);
     if (a == b) {
@@ -268,22 +268,22 @@ size_t addEqEdge(std::string const& ca, std::string const& cb, bool outer, Verte
     }
     TableInfo const& ta = *(a->info);
     TableInfo const& tb = *(b->info);
-    LOGS(_log, LOG_LVL_TRACE, "addEqEdge a=" << *a->info << " b=" << *b->info);
+    LOGQ(_log, LOG_LVL_TRACE, "addEqEdge a=" << *a->info << " b=" << *b->info);
     if (ta.isEqPredAdmissible(tb, ca, cb, outer)) {
         // Add a pair of Edge objects, a → b and b → a.
-        LOGS(_log, LOG_LVL_TRACE, "addEqEdge true for (" << ca << "," << cb << ")");
+        LOGQ(_log, LOG_LVL_TRACE, "addEqEdge true for (" << ca << "," << cb << ")");
         a->insert(Edge(b, std::numeric_limits<double>::quiet_NaN()));
         b->insert(Edge(a, std::numeric_limits<double>::quiet_NaN()));
         return 1;
     }
-    LOGS(_log, LOG_LVL_TRACE, "addEqEdge false for (" << ca << "," << cb << ")");
+    LOGQ(_log, LOG_LVL_TRACE, "addEqEdge false for (" << ca << "," << cb << ")");
     return 0;
 }
 
 /// `getNumericConst` returns the numeric constant embedded in the given
 /// value expression if there is one, and NaN otherwise.
 double getNumericConst(ValueExprPtr const& ve) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     if (!ve || ve->getFactorOps().size() != 1) {
         return std::numeric_limits<double>::quiet_NaN();
     }
@@ -304,7 +304,7 @@ double getNumericConst(ValueExprPtr const& ve) {
 /// call embedded in the given value expression if there is one, and null
 /// otherwise.
 FuncExpr::Ptr getAngSepFunc(ValueExprPtr const& ve) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     FuncExpr::Ptr fe;
     if (!ve || ve->getFactorOps().size() != 1) {
         return fe;
@@ -324,30 +324,30 @@ FuncExpr::Ptr getAngSepFunc(ValueExprPtr const& ve) {
 /// predicate embedded in the given boolean factor. If that is not what
 /// the given boolean term corresponds to, a pair of nulls is returned instead.
 std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(BoolTerm::Ptr const& bt) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     std::pair<ColumnRef::Ptr, ColumnRef::Ptr> p;
     // Look for a BoolFactor containing a single CompPredicate.
     BoolFactor::Ptr bf = std::dynamic_pointer_cast<BoolFactor>(bt);
     if (!bf || bf->_terms.size() != 1) {
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
         return p;
     }
     CompPredicate::Ptr cp = std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
     if (!cp || cp->op != query::CompPredicate::EQUALS_OP) {
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
         return p;
     }
     // Extract column references (if they exist)
     ColumnRef::Ptr l = getColumnRef(cp->left);
     ColumnRef::Ptr r = getColumnRef(cp->right);
     if (!l || !r) {
-        LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
+        LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << p.first << ", " << p.second);
         return p;
     }
     verifyColumnRef(*l);
     verifyColumnRef(*r);
     auto ret = std::make_pair(l, r);
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << ret.first << ", " << ret.second);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning " << ret.first << ", " << ret.second);
     return ret;
 }
 
@@ -357,7 +357,7 @@ std::pair<ColumnRef::Ptr, ColumnRef::Ptr> const getEqColumnRefs(BoolTerm::Ptr co
 /// predicate extracted from the ON clause of the join between table references
 /// in this graph and `g`. The number of admissible predicates is returned.
 size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on, bool outer, RelationGraph& g) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " " << *on << ", outer:" << outer);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " " << *on << ", outer:" << outer);
     size_t numEdges = 0;
     on = findFirstNonTrivialChild(on);
     AndTerm::Ptr at = std::dynamic_pointer_cast<AndTerm>(on);
@@ -376,16 +376,16 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on, bool outer, RelationGraph&
     }
     // Lookup column references in graphs being joined together
     std::vector<Vertex*> const& a1 = _map.find(*c.first);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " found vertex a1 " << util::printable(a1) << " for column:" << *c.first);
     std::vector<Vertex*> const& b1 = g._map.find(*c.first);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " found vertex b1 " << util::printable(b1) << " for column:" << *c.first);
     std::vector<Vertex*> const& a2 = _map.find(*c.second);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " found vertex a2 " << util::printable(a2) << " for column:" << *c.second);
     std::vector<Vertex*> const& b2 = g._map.find(*c.second);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " found vertex b2 " << util::printable(b2) << " for column:" << *c.second);
     if ((!a1.empty() && !b1.empty()) || (!a2.empty() && !b2.empty())) {
         // At least one column reference was found in both graphs
@@ -437,7 +437,7 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on, bool outer, RelationGraph&
         }
     }
 
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning numEdges:" << numEdges);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " returning numEdges:" << numEdges);
     return numEdges;
 }
 
@@ -445,7 +445,7 @@ size_t RelationGraph::_addOnEqEdges(BoolTerm::Ptr on, bool outer, RelationGraph&
 /// predicate in the natural join between table references from this graph and
 /// `g`. The number of admissible predicates is returned.
 size_t RelationGraph::_addNaturalEqEdges(bool outer, RelationGraph& g) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::vector<std::string>::const_iterator ColIter;
     typedef std::vector<Vertex*>::const_iterator VertIter;
 
@@ -473,7 +473,7 @@ size_t RelationGraph::_addNaturalEqEdges(bool outer, RelationGraph& g) {
 /// implied by the USING clause of a join between table references from this
 /// graph and `g`. The number of admissible predicates is returned.
 size_t RelationGraph::_addUsingEqEdges(ColumnRef const& c, bool outer, RelationGraph& g) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::vector<Vertex*>::const_iterator VertIter;
 
     if (!c.getDb().empty() || !c.getTable().empty()) {
@@ -496,7 +496,7 @@ size_t RelationGraph::_addUsingEqEdges(ColumnRef const& c, bool outer, RelationG
 /// predicate extracted from the WHERE clause of a query. The number of
 /// admissible predicates is returned.
 size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << ", where:" << *where);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << ", where:" << *where);
     size_t numEdges = 0;
     where = findFirstNonTrivialChild(where);
     AndTerm::Ptr at = std::dynamic_pointer_cast<AndTerm>(where);
@@ -513,7 +513,7 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where) {
         // where is not an equality predicate between two column references
         return 0;
     }
-    LOGS(_log, LOG_LVL_TRACE, "_addWhereEqEdges first=" << *(c.first) << " second=" << *(c.second));
+    LOGQ(_log, LOG_LVL_TRACE, "_addWhereEqEdges first=" << *(c.first) << " second=" << *(c.second));
     // Lookup the vertices for each column reference,
     // and add edges for each possible vertex pair.
     std::vector<Vertex*> const& v1 = _map.find(*c.first);
@@ -531,7 +531,7 @@ size_t RelationGraph::_addWhereEqEdges(BoolTerm::Ptr where) {
 /// predicate extracted from the given boolean term. The number of admissible
 /// predicates is returned.
 size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__ << " boolTerm:" << *bt);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__ << " boolTerm:" << *bt);
     size_t numEdges = 0;
     bt = findFirstNonTrivialChild(bt);
     AndTerm::Ptr at = std::dynamic_pointer_cast<AndTerm>(bt);
@@ -640,7 +640,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
 /// parameters. `g` is emptied as a result.
 void RelationGraph::_fuse(JoinRef::Type joinType, bool natural, JoinSpec::Ptr const& joinSpec,
                           RelationGraph& g) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     if (this == &g) {
         throw std::logic_error("A RelationGraph cannot be join()ed with itself.");
     }
@@ -695,7 +695,7 @@ void RelationGraph::_fuse(JoinRef::Type joinType, bool natural, JoinSpec::Ptr co
         throw QueryNotEvaluableError("Unable to evaluate query by joining only partition-local data");
     }
     // Splice g into this graph.
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          __FUNCTION__ << " (" << this << ") splicing in verticies from (" << &g
                       << "): " << util::printable(g._vertices));
     _vertices.splice(_vertices.end(), g._vertices);
@@ -715,13 +715,13 @@ RelationGraph::RelationGraph(TableRef& tr, TableInfo const* info) : _query(0) {
     if (!info) {
         return;
     } else if (info->kind != TableInfo::MATCH) {
-        LOGS(_log, LOG_LVL_TRACE, "RelationGraph ctor: non-match table tr=\"" << tr << "\" info=" << *info);
+        LOGQ(_log, LOG_LVL_TRACE, "RelationGraph ctor: non-match table tr=\"" << tr << "\" info=" << *info);
         _vertices.push_back(Vertex(tr, info));
         ColumnVertexMap m(_vertices.front());
         _map.swap(m);
     } else {
         double matchAngSep = static_cast<MatchTableInfo const&>(*info).angSep;
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "RelationGraph ctor: match table tr=\"" << tr << "\" info=" << *info
                                                      << " matchAngSep=" << matchAngSep);
         // Decompose match table references into a pair of vertices - one for
@@ -761,7 +761,7 @@ RelationGraph::RelationGraph(TableRef::Ptr const& tr, TableInfoPool& pool) : _qu
                 "Parser/query analysis bug: NULL TableRef pointer "
                 "passed to RelationGraph constructor.");
     }
-    LOGS(_log, LOG_LVL_TRACE, "RelationGraph ctor: tr=" << *tr);
+    LOGQ(_log, LOG_LVL_TRACE, "RelationGraph ctor: tr=" << *tr);
 
     // Create a graph for the left-most table in a join sequence.
     RelationGraph g(*tr, pool.get(tr->getDb(), tr->getTable()));
@@ -826,18 +826,18 @@ struct VertexQueue {
 
 /// dump graph
 void dumpGraph(std::list<Vertex> const& vertices) {
-    if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
-        LOGS(_log, LOG_LVL_TRACE, "RelationGraph:");
+    if (LOGQ_CHECK_LVL(_log, LOG_LVL_TRACE)) {
+        LOGQ(_log, LOG_LVL_TRACE, "RelationGraph:");
         std::map<Vertex const*, int> vtxId;
         for (auto&& vtx : vertices) {
             int id = vtxId.size();
             vtxId[&vtx] = id;
-            LOGS(_log, LOG_LVL_TRACE,
+            LOGQ(_log, LOG_LVL_TRACE,
                  "   vertex " << id << " info=" << *vtx.info << " overlap=" << vtx.overlap);
         }
         for (auto&& vtx : vertices) {
             for (auto&& edge : vtx.edges) {
-                LOGS(_log, LOG_LVL_TRACE,
+                LOGQ(_log, LOG_LVL_TRACE,
                      "   edge " << vtxId[&vtx] << " <-> " << vtxId[edge.vertex] << " angSep=" << edge.angSep);
             }
         }
@@ -847,14 +847,14 @@ void dumpGraph(std::list<Vertex> const& vertices) {
 /// `computeMinimumOverlap` visits every vertex linked to `v` via one or more
 /// paths and computes its minimum required overlap.
 void computeMinimumOverlap(Vertex& vtx) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::vector<Edge>::const_iterator Iter;
 
     VertexQueue q;
     // The required overlap for the initial vertex is 0.
     vtx.overlap = 0;
     for (Vertex* v = &vtx; v != nullptr; v = q.dequeue()) {
-        LOGS(_log, LOG_LVL_TRACE, "Node " << v->info->table << " current=" << v->overlap);
+        LOGQ(_log, LOG_LVL_TRACE, "Node " << v->info->table << " current=" << v->overlap);
         // Loop over edges incident to v.
         for (Iter e = v->edges.begin(), end = v->edges.end(); e != end; ++e) {
             Vertex* u = e->vertex;
@@ -880,7 +880,7 @@ void computeMinimumOverlap(Vertex& vtx) {
             if (e->isSpatial()) {
                 requiredOverlap += e->angSep;
             }
-            LOGS(_log, LOG_LVL_TRACE,
+            LOGQ(_log, LOG_LVL_TRACE,
                  " to " << u->info->table << " available=" << availableOverlap
                         << " required=" << requiredOverlap);
             // If requiredOverlap is greater than or equal to the previously
@@ -902,7 +902,7 @@ void computeMinimumOverlap(Vertex& vtx) {
                 // vertex visitation queue.
                 u->overlap = requiredOverlap;
                 q.enqueue(u);
-                LOGS(_log, LOG_LVL_TRACE, " (updated and queued)");
+                LOGQ(_log, LOG_LVL_TRACE, " (updated and queued)");
             }
         }
     }
@@ -910,22 +910,22 @@ void computeMinimumOverlap(Vertex& vtx) {
 
 /// `isEvaluable` returns `true` if no graph vertex requires infinite overlap.
 bool isEvaluable(std::list<Vertex> const& vertices) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     dumpGraph(vertices);
     typedef std::list<Vertex>::const_iterator Iter;
     for (Iter v = vertices.begin(), e = vertices.end(); v != e; ++v) {
         if ((boost::math::isinf)(v->overlap)) {
-            LOGS(_log, LOG_LVL_TRACE, "Evaluable: FALSE vertex=" << v->info->table);
+            LOGQ(_log, LOG_LVL_TRACE, "Evaluable: FALSE vertex=" << v->info->table);
             return false;
         }
     }
-    LOGS(_log, LOG_LVL_TRACE, "Evaluable: TRUE");
+    LOGQ(_log, LOG_LVL_TRACE, "Evaluable: TRUE");
     return true;
 }
 
 /// `resetVertices` sets the required overlap of all graph vertices to ∞.
 void resetVertices(std::list<Vertex>& vertices) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::list<Vertex>::iterator Iter;
     for (Iter v = vertices.begin(), e = vertices.end(); v != e; ++v) {
         v->overlap = std::numeric_limits<double>::infinity();
@@ -937,7 +937,7 @@ void resetVertices(std::list<Vertex>& vertices) {
 /// `_validate` searches for a graph traversal that proves the input query
 /// is evaluable.
 bool RelationGraph::_validate() {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     size_t numStarts = 0;
     for (Vertex& vtx : _vertices) {
         if (vtx.info->kind != TableInfo::MATCH) {
@@ -962,7 +962,7 @@ bool RelationGraph::_validate() {
 }
 
 RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) : _query(&stmt) {
-    LOGS(_log, LOG_LVL_TRACE, "RelationGraph ctor: stmt=" << stmt.getQueryTemplate());
+    LOGQ(_log, LOG_LVL_TRACE, "RelationGraph ctor: stmt=" << stmt.getQueryTemplate());
 
     // Check that at least one thing is being selected.
     if (!stmt.getSelectList().getValueExprList() || stmt.getSelectList().getValueExprList()->empty()) {
@@ -986,13 +986,13 @@ RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) : _query(&st
     // WHERE clause
     if (stmt.hasWhereClause()) {
         BoolTerm::Ptr where = stmt.getWhereClause().getRootTerm();
-        LOGS(_log, LOG_LVL_TRACE, "Before _addWhereEqEdges");
+        LOGQ(_log, LOG_LVL_TRACE, "Before _addWhereEqEdges");
         g._dumpGraph();
         g._addWhereEqEdges(where);
-        LOGS(_log, LOG_LVL_TRACE, "After _addWhereEqEdges");
+        LOGQ(_log, LOG_LVL_TRACE, "After _addWhereEqEdges");
         g._dumpGraph();
         g._addSpEdges(where);
-        LOGS(_log, LOG_LVL_TRACE, "After _addSpEdges");
+        LOGQ(_log, LOG_LVL_TRACE, "After _addSpEdges");
         g._dumpGraph();
     }
 
@@ -1010,21 +1010,21 @@ RelationGraph::RelationGraph(SelectStmt& stmt, TableInfoPool& pool) : _query(&st
 void RelationGraph::_dumpGraph() const { dumpGraph(_vertices); }
 
 void RelationGraph::rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     typedef std::list<Vertex>::iterator ListIter;
 
     if (!_query) {
         return;
     }
     if (empty()) {
-        LOGS(_log, LOG_LVL_TRACE, "Input query only involves unpartitioned tables");
+        LOGQ(_log, LOG_LVL_TRACE, "Input query only involves unpartitioned tables");
         // The input query only involves unpartitioned tables -
         // there is nothing to do.
         outputs.push_back(_query->clone());
         return;
     }
 
-    LOGS(_log, LOG_LVL_TRACE, "Inserting chunk entry in QueryMapping");
+    LOGQ(_log, LOG_LVL_TRACE, "Inserting chunk entry in QueryMapping");
     mapping.insertChunkEntry(CHUNK_TAG);
     // Find directors for which overlap is required. At the same time, rewrite
     // all table references as their corresponding chunk templates.
@@ -1067,7 +1067,7 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping)
                 i->rewriteAsSubChunkTemplate();
             }
             DbTable dbTable(i->info->database, i->info->table);
-            LOGS(_log, LOG_LVL_TRACE, "rewrite db=" << dbTable.db << " table=" << dbTable.table);
+            LOGQ(_log, LOG_LVL_TRACE, "rewrite db=" << dbTable.db << " table=" << dbTable.table);
             mapping.insertSubChunkTable(dbTable);
         }
     }
@@ -1095,7 +1095,7 @@ void RelationGraph::rewrite(SelectStmtPtrVector& outputs, QueryMapping& mapping)
 }
 
 void RelationGraph::swap(RelationGraph& g) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
+    LOGQ(_log, LOG_LVL_TRACE, __FUNCTION__);
     _vertices.swap(g._vertices);
     _map.swap(g._map);
 }

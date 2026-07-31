@@ -27,7 +27,7 @@
 #include "wbase/UberJobData.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 
@@ -50,7 +50,7 @@ size_t UserQueryInfo::addTemplate(std::string const& templateStr) {
         }
         _templates.emplace_back(templateStr);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "QueryInfo:" << _qId << " j=" << j << " Added:" << templateStr);
+    LOGQ(_log, LOG_LVL_DEBUG, "QueryInfo:" << _qId << " j=" << j << " Added:" << templateStr);
     return j;
 }
 
@@ -71,12 +71,12 @@ void UserQueryInfo::addUberJob(std::shared_ptr<UberJobData> const& ujData) {
 
 void UserQueryInfo::cancelFromCzar() {
     if (_cancelledByCzar.exchange(true)) {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " already cancelledByCzar");
+        LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " already cancelledByCzar");
         return;
     }
     lock_guard<mutex> lockUq(_uberJobMapMtx);
     for (auto const& [ujId, weakUjPtr] : _uberJobMap) {
-        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " cancelling ujId=" << ujId);
+        LOGQ(_log, LOG_LVL_INFO, cName(__func__) << " cancelling ujId=" << ujId);
         auto ujPtr = weakUjPtr.lock();
         if (ujPtr != nullptr) {
             ujPtr->cancelAllTasks();
@@ -85,7 +85,7 @@ void UserQueryInfo::cancelFromCzar() {
 }
 
 void UserQueryInfo::cancelUberJob(UberJobId ujId) {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__) << " cancelling ujId=" << ujId);
+    LOGQ(_log, LOG_LVL_INFO, cName(__func__) << " cancelling ujId=" << ujId);
     lock_guard<mutex> lockUq(_uberJobMapMtx);
     _deadUberJobSet.insert(ujId);
     auto iter = _uberJobMap.find(ujId);

@@ -38,7 +38,7 @@
 #include "boost/asio.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 

@@ -36,7 +36,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
@@ -106,10 +106,10 @@ namespace lsst::qserv::mysql {
 bool MySqlConnection::checkConnection(mysql::MySqlConfig const& config) {
     MySqlConnection conn(config);
     if (conn.connect()) {
-        LOGS(_log, LOG_LVL_DEBUG, "Successful MySQL connection check: " << config);
+        LOGQ(_log, LOG_LVL_DEBUG, "Successful MySQL connection check: " << config);
         return true;
     } else {
-        LOGS(_log, LOG_LVL_WARN, "Unsuccessful MySQL connection check: " << config);
+        LOGQ(_log, LOG_LVL_WARN, "Unsuccessful MySQL connection check: " << config);
         return false;
     }
 }
@@ -151,7 +151,7 @@ MySqlConnection::CancelStatus MySqlConnection::cancel() {
     int const rc = mysql_real_query(killMysql, killSql.c_str(), killSql.size());
     mysql_close(killMysql);
     if (rc) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              "failed to kill MySQL thread: " << threadId << ", error: " << std::string(mysql_error(killMysql))
                                              << ", errno: " << std::to_string(mysql_errno(killMysql)));
         return CancelStatus::CANCEL_FAILED;

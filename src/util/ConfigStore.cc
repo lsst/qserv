@@ -39,7 +39,7 @@
 #include "boost/property_tree/ptree.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace fs = std::filesystem;
 

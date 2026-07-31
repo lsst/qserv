@@ -28,7 +28,7 @@
 #include <stdexcept>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "http/Auth.h"
@@ -74,7 +74,7 @@ WorkerConfig::WorkerConfig()
     // source passed into this c-tor.
     _populateJsonConfig("input");
     _populateJsonConfig("actual");
-    LOGS(_log, LOG_LVL_INFO, "WorkerConfig::" << __func__ << *this);
+    LOGQ(_log, LOG_LVL_INFO, "WorkerConfig::" << __func__ << *this);
 }
 
 WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
@@ -118,7 +118,7 @@ WorkerConfig::WorkerConfig(const util::ConfigStore& configStore)
     _populateJsonConfig("actual");
     bool const useDefault = true;
     _populateJsonConfig("default", useDefault);
-    LOGS(_log, LOG_LVL_INFO, "WorkerConfig::" << __func__ << *this);
+    LOGQ(_log, LOG_LVL_INFO, "WorkerConfig::" << __func__ << *this);
 }
 
 void WorkerConfig::setReplicationHttpPort(uint16_t port) {

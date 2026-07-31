@@ -7,7 +7,7 @@
 #include <iostream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 
@@ -43,10 +43,10 @@ void InstanceCount::_increment(std::string const& source) {
     static InstanceCountData* icD = nullptr;
     if (first.exchange(false) == true) {
         icD = &_icData;
-        LOGS(_log, LOG_LVL_DEBUG, "InstanceCount::_increment first icd changed to " << (void*)icD);
+        LOGQ(_log, LOG_LVL_DEBUG, "InstanceCount::_increment first icd changed to " << (void*)icD);
     } else {
         if (icD != &_icData) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "InstanceCount::_increment icd changed to " << (void*)&_icData << " from " << (void*)icD);
         }
     }
@@ -54,9 +54,9 @@ void InstanceCount::_increment(std::string const& source) {
     auto ret = _icData._instances.insert(entry);
     auto iter = ret.first;
     iter->second += 1;
-    LOGS(_log, LOG_LVL_TRACE, "InstanceCount " << source << " " << iter->first << "=" << iter->second);
+    LOGQ(_log, LOG_LVL_TRACE, "InstanceCount " << source << " " << iter->first << "=" << iter->second);
     if ((++(_icData._instanceLogLimiter)) % 10000 == 0) {
-        LOGS(_log, LOG_LVL_DEBUG, "InstanceCount brief " << *this << " icD=" << (void*)(&_icData));
+        LOGQ(_log, LOG_LVL_DEBUG, "InstanceCount brief " << *this << " icD=" << (void*)(&_icData));
     }
 }
 
@@ -66,20 +66,20 @@ InstanceCount::~InstanceCount() {
     static InstanceCountData* icD = nullptr;
     if (first.exchange(false) == true) {
         icD = &_icData;
-        LOGS(_log, LOG_LVL_DEBUG, "~InstanceCount first icd changed to " << (void*)icD);
+        LOGQ(_log, LOG_LVL_DEBUG, "~InstanceCount first icd changed to " << (void*)icD);
     } else {
         if (icD != &_icData) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "~InstanceCount icd changed to " << (void*)&_icData << " from " << (void*)icD);
         }
     }
     auto iter = _icData._instances.find(_className);
     if (iter != _icData._instances.end()) {
         iter->second -= 1;
-        LOGS(_log, LOG_LVL_TRACE, "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
+        LOGQ(_log, LOG_LVL_TRACE, "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this);
         int sec = iter->second;
         if (sec == 0 || (sec <= 100000 && sec % 1000 == 0) || (sec > 100000 && sec % 100000 == 0)) {
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  "~InstanceCount " << iter->first << "=" << iter->second << " : " << *this
                                    << " icD=" << (void*)(&_icData));
         }
@@ -87,7 +87,7 @@ InstanceCount::~InstanceCount() {
             _icData._instances.erase(iter);
         }
     } else {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "~InstanceCount " << _className << " was not found! : " << *this
                                << " icD=" << (void*)(&_icData));
     }

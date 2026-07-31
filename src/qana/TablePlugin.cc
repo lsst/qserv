@@ -49,7 +49,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "css/CssAccess.h"
@@ -88,7 +88,7 @@ void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T& clause
     for (auto&& valueExprRef : valueExprRefs) {
         auto&& valueExprMatch = context.getValueExprMatch(valueExprRef.get());
         if (nullptr != valueExprMatch) {
-            LOGS(_log, LOG_LVL_TRACE,
+            LOGQ(_log, LOG_LVL_TRACE,
                  __FUNCTION__ << " replacing valueExpr " << *valueExprRef.get() << " in " << clause
                               << " with " << *valueExprMatch);
             valueExprRef.get() = valueExprMatch;
@@ -112,7 +112,7 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
                 throw std::logic_error(os.str());
             }
         } else {
-            LOGS(_log, LOG_LVL_TRACE,
+            LOGQ(_log, LOG_LVL_TRACE,
                  __FUNCTION__ << " replacing tableRef in " << *columnRef << " with " << *tableRefMatch);
             columnRef->setTable(tableRefMatch);
         }
@@ -154,7 +154,7 @@ namespace lsst::qserv::qana {
 // TablePlugin implementation
 ////////////////////////////////////////////////////////////////////////
 void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& context) {
-    LOGS(_log, LOG_LVL_TRACE, "applyLogical begin:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
+    LOGQ(_log, LOG_LVL_TRACE, "applyLogical begin:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
     query::FromList& fromList = stmt.getFromList();
     context.collectTopLevelTableSchema(fromList);
 
@@ -245,7 +245,7 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
         matchValueExprs(context, stmt.getHaving(), false);
     }
 
-    LOGS(_log, LOG_LVL_TRACE, "OnClauses of Join:");
+    LOGQ(_log, LOG_LVL_TRACE, "OnClauses of Join:");
     // and in the on clauses of all join specifications.
     for (auto const& tableRef : fromListTableRefs) {
         for (auto const& joinRef : tableRef->getJoins()) {
@@ -261,7 +261,7 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
             }
         }
     }
-    LOGS(_log, LOG_LVL_TRACE, "applyLogical end:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
+    LOGQ(_log, LOG_LVL_TRACE, "applyLogical end:\n\t" << stmt.getQueryTemplate() << "\n\t" << stmt);
 }
 
 void TablePlugin::applyPhysical(QueryPlugin::Plan& p, query::QueryContext& context) {
@@ -274,7 +274,7 @@ void TablePlugin::applyPhysical(QueryPlugin::Plan& p, query::QueryContext& conte
         auto stmt = p.stmtParallel.front();
         p.stmtPreFlight = std::make_shared<query::SelectStmt>(stmt->getSelectList().clone(),
                                                               stmt->getFromList().clone());
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "set local worker query:" << p.stmtPreFlight->getQueryTemplate().sqlFragment());
     }
 
@@ -309,7 +309,7 @@ void TablePlugin::_setAlias(std::shared_ptr<query::TableRef> const& tableRef, qu
         }
         tableRef->setAlias(alias);
     }
-    LOGS(_log, LOG_LVL_TRACE, "adding used table ref:" << *tableRef);
+    LOGQ(_log, LOG_LVL_TRACE, "adding used table ref:" << *tableRef);
     if (not context.addUsedTableRef(tableRef)) {
         throw std::logic_error("could not set alias for " + tableRef->sqlFragment());
     }

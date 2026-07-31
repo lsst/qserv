@@ -35,7 +35,7 @@
 #include <thread>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.WorkQueue");
@@ -58,7 +58,7 @@ public:
             (*c)();
             _c = 0;
             c = _w.getNextCallable();
-            LOGS(_log, LOG_LVL_DEBUG, "Runner running job");
+            LOGQ(_log, LOG_LVL_DEBUG, "Runner running job");
         }  // Keep running until we get poisoned.
         _w.signalDeath(this);
     }

@@ -33,7 +33,7 @@
 #include "boost/uuid/uuid_io.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/constants.h"
@@ -87,7 +87,7 @@ bool SQLBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
                                      .str();
 
         if (!_sqlConn->runQuery(create, err)) {
-            LOGS(_log, LOG_LVL_ERROR, "sql query err=" << err.errMsg() << " with '" << create << "'");
+            LOGQ(_log, LOG_LVL_ERROR, "sql query err=" << err.errMsg() << " with '" << create << "'");
             _discard(v.begin(), i);
             return false;
         }
@@ -131,7 +131,7 @@ void SQLBackend::_discard(ScTableVector::const_iterator begin, ScTableVector::co
 /// Run the 'query'. If it fails, terminate the program.
 void SQLBackend::_execLockSql(std::string const& query) {
     // Must hold _mtx
-    LOGS(_log, LOG_LVL_DEBUG, "execLockSql " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "execLockSql " << query);
     sql::SqlErrorObject err;
     if (!_sqlConn->runQuery(query, err)) {
         _exitDueToConflict("Lock failed, exiting. query=" + query + " err=" + err.printErrMsg());
@@ -147,18 +147,18 @@ SQLBackend::LockStatus SQLBackend::_memLockStatus() {
     if (!_sqlConn->runQuery(sql, results, err)) {
         // Assuming UNLOCKED should be safe as either it must be LOCKED_OURS to continue
         // or we are about to try to lock. Failure to lock will cause the program to exit.
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              "memLockStatus query failed, assuming UNLOCKED. " << sql << " err=" << err.printErrMsg());
         return UNLOCKED;
     }
     std::string uidStr;
     if (!results.extractFirstValue(uidStr, err)) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              "memLockStatus unexpected results, assuming LOCKED_OTHER. err=" << err.printErrMsg());
         return LOCKED_OTHER;
     }
     if (uidStr != _uid) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              "memLockStatus LOCKED_OTHER wrong uid. Expected " << _uid << " got " << uidStr
                                                                << " err=" << err.printErrMsg());
         return LOCKED_OTHER;
@@ -175,12 +175,12 @@ void SQLBackend::_memLockAcquire() {
     _lockDbTbl = _lockDb + "." + _lockTbl;
     LockStatus mls = _memLockStatus();
     if (mls != UNLOCKED) {
-        LOGS(_log, LOG_LVL_WARN, "Memory tables were not released cleanly! LockStatus=" << mls);
+        LOGQ(_log, LOG_LVL_WARN, "Memory tables were not released cleanly! LockStatus=" << mls);
         // Drop the database to clear the table.
         std::string sql = "DROP DATABASE " + _lockDb + ";";
         sql::SqlErrorObject err;
         if (!_sqlConn->runQuery(sql, err)) {
-            LOGS(_log, LOG_LVL_WARN, "Could not drop memLockDB " << _lockDb << " " << err.printErrMsg());
+            LOGQ(_log, LOG_LVL_WARN, "Could not drop memLockDB " << _lockDb << " " << err.printErrMsg());
         }
     }
 
@@ -230,10 +230,10 @@ void SQLBackend::_memLockAcquire() {
 /// Delete the memory lock database and everything in it.
 void SQLBackend::_memLockRelease() {
     // Must hold _mtx
-    LOGS(_log, LOG_LVL_DEBUG, "memLockRelease");
+    LOGQ(_log, LOG_LVL_DEBUG, "memLockRelease");
     if (_lockAcquired && !_lockConflict) {
         // Only attempt to release tables if the lock on the db was acquired.
-        LOGS(_log, LOG_LVL_DEBUG, "memLockRelease releasing lock.");
+        LOGQ(_log, LOG_LVL_DEBUG, "memLockRelease releasing lock.");
         std::string sql = "DROP DATABASE " + _lockDb + ";";
         _execLockSql(sql);
     }
@@ -244,7 +244,7 @@ void SQLBackend::_exitDueToConflict(const std::string& msg) {
     // This will likely not be a clean exit.
     // TODO:Maybe try for a clean exit by calling WorkerMain::terminate().
     _lockConflict = true;
-    LOGS(_log, LOG_LVL_ERROR, msg);
+    LOGQ(_log, LOG_LVL_ERROR, msg);
     exit(EXIT_FAILURE);
 }
 
@@ -254,7 +254,7 @@ bool FakeBackend::load(ScTableVector const& v, sql::SqlErrorObject& err) {
     os << "Pretending to load:";
     std::copy(v.begin(), v.end(), std::ostream_iterator<ScTable>(os, ","));
     os << std::endl;
-    LOGS(_log, LOG_LVL_DEBUG, os.str());
+    LOGQ(_log, LOG_LVL_DEBUG, os.str());
     for (auto& scTbl : v) {
         std::string key = makeFakeKey(scTbl);
         fakeSet.insert(key);
@@ -273,7 +273,7 @@ void FakeBackend::_discard(ScTableVector::const_iterator begin, ScTableVector::c
     std::ostringstream os;
     os << "Pretending to discard:";
     std::copy(begin, end, std::ostream_iterator<ScTable>(os, ","));
-    LOGS(_log, LOG_LVL_DEBUG, os.str());
+    LOGQ(_log, LOG_LVL_DEBUG, os.str());
 }
 
 }  // namespace lsst::qserv::wdb

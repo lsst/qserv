@@ -29,7 +29,7 @@
 #include "global/clock_defs.h"
 #include "util/Bug.h"
 
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 

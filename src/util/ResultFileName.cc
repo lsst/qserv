@@ -26,7 +26,7 @@
 #include "boost/filesystem.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "util/String.h"

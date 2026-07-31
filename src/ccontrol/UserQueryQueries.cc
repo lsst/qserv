@@ -30,7 +30,7 @@
 #include <sstream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -101,7 +101,7 @@ void UserQueryQueries::submit() {
     try {
         results = _qMetaSelect->select(_query);
     } catch (std::exception const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, "error in querying QMeta: " << exc.what());
         std::string message = "Internal failure, error in querying QMeta: ";
         message += exc.what();
         _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
@@ -113,7 +113,7 @@ void UserQueryQueries::submit() {
     sql::SqlErrorObject errObj;
     auto schema = results->makeSchema(errObj);
     if (errObj.isSet()) {
-        LOGS(_log, LOG_LVL_ERROR, "failed to extract schema from result: " << errObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "failed to extract schema from result: " << errObj.errMsg());
         std::string message = "Internal failure, failed to extract schema from result: " + errObj.errMsg();
         _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
@@ -133,11 +133,11 @@ void UserQueryQueries::submit() {
         if (col.colType.sqlType == "TIMESTAMP") createTable += " NULL";
     }
     createTable += ')';
-    LOGS(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
+    LOGQ(_log, LOG_LVL_DEBUG, "creating result table: " << createTable);
     auto const czarConfig = cconfig::CzarConfig::instance();
     auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
     if (!resultDbConn->runQuery(createTable, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "failed to create result table: " << errObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "failed to create result table: " << errObj.errMsg());
         std::string message = "Internal failure, failed to create result table: " + errObj.errMsg();
         _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;
@@ -175,7 +175,7 @@ void UserQueryQueries::submit() {
         }
 
         if (!bulkInsert.addRow(values, errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
+            LOGQ(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
             std::string message = "Internal failure, error updating result table: " + errObj.errMsg();
             _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
             _qState = ERROR;
@@ -183,7 +183,7 @@ void UserQueryQueries::submit() {
         }
     }
     if (!bulkInsert.flush(errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "error updating result table: " << errObj.errMsg());
         std::string message = "Internal failure, error updating result table: " + errObj.errMsg();
         _messageStore->addMessage(-1, "QUERIES", 1051, message, MessageSeverity::MSG_ERROR);
         _qState = ERROR;

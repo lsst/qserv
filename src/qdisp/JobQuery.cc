@@ -29,7 +29,7 @@
 #include "qdisp/JobQuery.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/LogContext.h"
@@ -50,24 +50,24 @@ JobQuery::JobQuery(Executive::Ptr const& executive, JobDescription::Ptr const& j
           _jobStatus(jobStatus),
           _qid(qid),
           _idStr(QueryIdHelper::makeIdStr(qid, getJobId())) {
-    LOGS(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
+    LOGQ(_log, LOG_LVL_TRACE, "JobQuery desc=" << _jobDescription);
 }
 
-JobQuery::~JobQuery() { LOGS(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }
+JobQuery::~JobQuery() { LOGQ(_log, LOG_LVL_TRACE, "~JobQuery QID=" << _idStr); }
 
 /// Cancel response handling. Return true if this is the first time cancel has been called.
 bool JobQuery::cancel(bool superfluous, bool logLvlErr) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     if (_cancelled.exchange(true) == false) {
-        LOGS(_log, LOG_LVL_TRACE, "JobQuery::cancel() " << superfluous);
+        LOGQ(_log, LOG_LVL_TRACE, "JobQuery::cancel() " << superfluous);
         VMUTEX_NOT_HELD(_jqMtx);
         lock_guard lock(_jqMtx);
 
         string const context = _idStr + " job cancel";
-        LOGS(_log, LOG_LVL_DEBUG, context);
+        LOGQ(_log, LOG_LVL_DEBUG, context);
         auto exec = _executive.lock();
         if (exec == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
+            LOGQ(_log, LOG_LVL_ERROR, " can't markComplete cancelled, executive == nullptr");
             return false;
         }
         if (!superfluous) {
@@ -76,7 +76,7 @@ bool JobQuery::cancel(bool superfluous, bool logLvlErr) {
         exec->markCompleted(getJobId(), false);
         return true;
     }
-    LOGS(_log, LOG_LVL_TRACE, "JobQuery::cancel, skipping, already cancelled.");
+    LOGQ(_log, LOG_LVL_TRACE, "JobQuery::cancel, skipping, already cancelled.");
     return false;
 }
 
@@ -88,7 +88,7 @@ bool JobQuery::isQueryCancelled() {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     auto exec = _executive.lock();
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "_executive == nullptr");
+        LOGQ(_log, LOG_LVL_WARN, "_executive == nullptr");
         return true;  // Safer to assume the worst.
     }
     return exec->getCancelled();
@@ -98,7 +98,7 @@ bool JobQuery::_setUberJobId(UberJobId ujId) {
     QSERV_LOGCONTEXT_QUERY_JOB(getQueryId(), getJobId());
     VMUTEX_HELD(_jqMtx);
     if (_uberJobId >= 0 && ujId != _uberJobId) {
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              __func__ << " couldn't change UberJobId as ujId=" << ujId << " is owned by " << _uberJobId);
         return false;
     }
@@ -111,11 +111,11 @@ bool JobQuery::unassignFromUberJob(UberJobId ujId) {
     VMUTEX_NOT_HELD(_jqMtx);
     lock_guard lock(_jqMtx);
     if (_uberJobId < 0) {
-        LOGS(_log, LOG_LVL_INFO, __func__ << " UberJobId already unassigned. attempt by ujId=" << ujId);
+        LOGQ(_log, LOG_LVL_INFO, __func__ << " UberJobId already unassigned. attempt by ujId=" << ujId);
         return true;
     }
     if (_uberJobId != ujId) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              __func__ << " couldn't change UberJobId as ujId=" << ujId << " is owned by " << _uberJobId);
         return false;
     }

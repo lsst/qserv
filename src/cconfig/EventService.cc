@@ -27,7 +27,7 @@
 #include "cconfig/DataManagementEvent.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"  // includes "lsst/log/Log.h"
 
 using namespace std;
 
@@ -51,7 +51,7 @@ EventService::EventService(size_t numThreads) : _numThreads(numThreads) {
 
 EventService::~EventService() noexcept {
     if (isRunning()) {
-        LOGS(_log, LOG_LVL_WARN, _CONTEXT << "service is still running during destruction. Stopping it.");
+        LOGQ(_log, LOG_LVL_WARN, _CONTEXT << "service is still running during destruction. Stopping it.");
         try {
             stop();
         } catch (...) {
@@ -66,13 +66,13 @@ void EventService::postEvent(DataManagementEvent const& event) {
     }
     lock_guard<mutex> lock(_mtx);
     if (_threads.empty()) {
-        LOGS(_log, LOG_LVL_WARN, _CONTEXT << "service is not running, event ignored.");
+        LOGQ(_log, LOG_LVL_WARN, _CONTEXT << "service is not running, event ignored.");
         return;
     }
     for (auto const& [id, callback] : _subscriptions) {
         _io_service->post([callback, event]() { callback(event); });
     }
-    LOGS(_log, LOG_LVL_INFO, _CONTEXT << "event posted: " << DataManagementEvent::type2str(event.type));
+    LOGQ(_log, LOG_LVL_INFO, _CONTEXT << "event posted: " << DataManagementEvent::type2str(event.type));
 }
 
 bool EventService::isRunning() const {
@@ -89,7 +89,7 @@ void EventService::subscribe(EventService::OnEventCallback const& callback, stri
         throw EventServiceException(_CONTEXT + "subscription ID already exists: " + subscriptionId);
     }
     _subscriptions[subscriptionId] = callback;
-    LOGS(_log, LOG_LVL_INFO, _CONTEXT << "new subscription added with ID " << subscriptionId);
+    LOGQ(_log, LOG_LVL_INFO, _CONTEXT << "new subscription added with ID " << subscriptionId);
 }
 
 void EventService::unsubscribe(string const& subscriptionId) {
@@ -102,7 +102,7 @@ void EventService::unsubscribe(string const& subscriptionId) {
         throw EventServiceException(_CONTEXT + "subscription ID not found: " + subscriptionId);
     }
     _subscriptions.erase(it);
-    LOGS(_log, LOG_LVL_INFO, _CONTEXT << "subscription removed with ID " << subscriptionId);
+    LOGQ(_log, LOG_LVL_INFO, _CONTEXT << "subscription removed with ID " << subscriptionId);
 }
 
 void EventService::start() {
@@ -119,7 +119,7 @@ void EventService::start() {
     for (unsigned int i = 0; i < _numThreads; ++i) {
         _threads.push_back(make_unique<thread>([self]() { self->_io_service->run(); }));
     }
-    LOGS(_log, LOG_LVL_INFO, _CONTEXT << "event service started with " << _numThreads << " threads.");
+    LOGQ(_log, LOG_LVL_INFO, _CONTEXT << "event service started with " << _numThreads << " threads.");
 }
 
 void EventService::stop() {
@@ -135,7 +135,7 @@ void EventService::stop() {
         }
     }
     _threads.clear();
-    LOGS(_log, LOG_LVL_INFO, _CONTEXT << "event service stopped.");
+    LOGQ(_log, LOG_LVL_INFO, _CONTEXT << "event service stopped.");
 }
 
 }  // namespace lsst::qserv::cconfig

@@ -32,7 +32,7 @@
 #include <boost/algorithm/string/replace.hpp>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/stringUtil.h"
@@ -120,16 +120,16 @@ CzarId QMetaMysql::getCzarID(string const& name) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string const query = "SELECT czarId FROM QCzar WHERE czar = '" + name + "'";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -137,13 +137,13 @@ CzarId QMetaMysql::getCzarID(string const& name) {
 
     // check number of results and convert to integer
     if (ids.empty()) {
-        LOGS(_log, LOG_LVL_DEBUG, "Result set is empty");
+        LOGQ(_log, LOG_LVL_DEBUG, "Result set is empty");
         return 0;
     } else if (ids.size() > 1) {
         throw ConsistencyError(
                 ERR_LOC, "More than one czar ID found for czar name " + name + ": " + to_string(ids.size()));
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Found czar ID: " << ids[0]);
+        LOGQ(_log, LOG_LVL_DEBUG, "Found czar ID: " << ids[0]);
         return boost::lexical_cast<CzarId>(ids[0]);
     }
 }
@@ -158,16 +158,16 @@ CzarId QMetaMysql::registerCzar(string const& name) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     string query = "SELECT czarId FROM QCzar WHERE czar = '" + name + "'";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to extract czar ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -178,29 +178,29 @@ CzarId QMetaMysql::registerCzar(string const& name) {
                 ERR_LOC, "More than one czar ID found for czar name " + name + ": " + to_string(ids.size()));
     } else if (ids.empty()) {
         // no such czar, make new one
-        LOGS(_log, LOG_LVL_DEBUG, "Create new czar with name: " << name);
+        LOGQ(_log, LOG_LVL_DEBUG, "Create new czar with name: " << name);
         results.freeResults();
         query = "INSERT INTO QCzar (czar, active) VALUES ('" + name + "', b'1')";
-        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
         if (not _conn->runQuery(query, results, errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+            LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
         auto newId = _conn->getInsertId();
-        LOGS(_log, LOG_LVL_DEBUG, "Created czar ID: " << newId);
+        LOGQ(_log, LOG_LVL_DEBUG, "Created czar ID: " << newId);
         czarId = static_cast<CzarId>(newId);
 
     } else {
         // its exists, get its ID
         czarId = boost::lexical_cast<CzarId>(ids[0]);
-        LOGS(_log, LOG_LVL_DEBUG, "Use existing czar with ID: " << czarId);
+        LOGQ(_log, LOG_LVL_DEBUG, "Use existing czar with ID: " << czarId);
 
         // make sure it's active
         results.freeResults();
         query = "UPDATE QCzar SET active = b'1' WHERE czarId = " + ids[0];
-        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
         if (not _conn->runQuery(query, results, errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+            LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
     }
@@ -221,9 +221,9 @@ void QMetaMysql::setCzarActive(CzarId czarId, bool active) {
     sql::SqlResults results;
     string const query = "UPDATE QCzar SET active = b'" + string(active ? "1" : "0") +
                          "' WHERE czarId = " + to_string(czarId);
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -266,9 +266,9 @@ void QMetaMysql::_executeQueries(vector<string> const& queries) {
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     for (const auto& query : queries) {
-        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
         if (!_conn->runQuery(query, results, errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+            LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
     }
@@ -320,9 +320,9 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
     query += ")";
 
     // run query
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -341,15 +341,15 @@ QueryId QMetaMysql::registerQuery(QInfo const& qInfo, TableNames const& tables) 
         query += _conn->escapeString(itr->second);
         query += "')";
 
-        LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
         if (not _conn->runQuery(query, errObj)) {
-            LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+            LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
             throw SqlError(ERR_LOC, errObj);
         }
     }
 
     trans->commit();
-    LOGS(_log, LOG_LVL_DEBUG, "assigned to UserQuery:" << qInfo.queryText());
+    LOGQ(_log, LOG_LVL_DEBUG, "assigned to UserQuery:" << qInfo.queryText());
 
     return queryId;
 }
@@ -370,11 +370,11 @@ void QMetaMysql::completeQuery(QueryId queryId, QInfo::QStatus qStatus, int64_t 
     query += " WHERE queryId = ";
     query += to_string(queryId);
 
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -399,11 +399,11 @@ void QMetaMysql::finishQuery(QueryId queryId) {
     string query = "UPDATE QInfo SET returned = NOW() WHERE queryId = ";
     query += to_string(queryId);
 
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -467,16 +467,16 @@ vector<QueryId> QMetaMysql::findQueries(CzarId czarId, QInfo::QType qType, strin
         }
         query += *itr;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -503,16 +503,16 @@ vector<QueryId> QMetaMysql::getPendingQueries(CzarId czarId) {
     string query = "SELECT queryId FROM QInfo WHERE czarId = ";
     query += to_string(czarId);
     query += " AND returned IS NULL";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -540,9 +540,9 @@ QInfo QMetaMysql::getQueryInfo(QueryId queryId) {
             " messageTable, resultLocation, chunkCount"
             " FROM QInfo WHERE queryId = ";
     query += to_string(queryId);
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -599,16 +599,16 @@ vector<QueryId> QMetaMysql::getQueriesForDb(string const& dbName) {
     string query = "SELECT QInfo.queryId FROM QInfo NATURAL JOIN QTable WHERE QTable.dbName = '";
     query += _conn->escapeString(dbName);
     query += "' AND QInfo.completed IS NULL";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -637,16 +637,16 @@ vector<QueryId> QMetaMysql::getQueriesForTable(string const& dbName, string cons
     query += "' AND QTable.tblName = '";
     query += _conn->escapeString(tableName);
     query += "' AND QInfo.completed IS NULL";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
     // get results of the query
     vector<string> ids;
     if (not results.extractFirstColumn(ids, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to extract query ID from query result");
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -667,7 +667,7 @@ void QMetaMysql::_checkDb() {
     sql::SqlErrorObject errObj;
     if (not _conn->listTables(tables, errObj)) {
         // likely failed to connect to server or database is missing
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "Failed to connect to query metadata database, check that "
              "server is running and database "
                      << _conn->getActiveDbName() << " exists");
@@ -680,7 +680,7 @@ void QMetaMysql::_checkDb() {
     for (int i = 0; i != nTables; ++i) {
         char const* const table = requiredTables[i];
         if (std::find(tables.begin(), tables.end(), table) == tables.end()) {
-            LOGS(_log, LOG_LVL_ERROR, "Query metadata table is missing: " << table);
+            LOGQ(_log, LOG_LVL_ERROR, "Query metadata table is missing: " << table);
             throw MissingTableError(ERR_LOC, table);
         }
     }
@@ -689,7 +689,7 @@ void QMetaMysql::_checkDb() {
     sql::SqlResults results;
     string query = "SELECT value FROM QMetadata WHERE metakey = 'version'";
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -717,11 +717,11 @@ void QMetaMysql::saveResultQuery(QueryId queryId, string const& query) {
     sqlQuery += "\" WHERE queryId = ";
     sqlQuery += to_string(queryId);
 
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << sqlQuery);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << sqlQuery);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     if (not _conn->runQuery(sqlQuery, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << sqlQuery);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << sqlQuery);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -747,7 +747,7 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> cons
         try {
             _addQueryMessage(queryId, qMsg, cancelCount, completeCount, execFailCount, msgCountMap);
         } catch (qmeta::SqlError const& ex) {
-            LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
+            LOGQ(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed " << ex.what());
         }
     }
     // Add the total number of cancel messages received.
@@ -784,7 +784,7 @@ QMetaChunkMap QMetaMysql::getChunkMap() {
     // the previous update timestamp always forces an attempt to read the map.
     // NOTE: This only has one second resolution, so it is possible to miss an update.
     auto const updateTime = _getChunkMapUpdateTime(lock);
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          "QMetaMysql::getChunkMap updateTime=" << util::TimeUtils::timePointToDateTimeString(updateTime));
 
     // Read the map itself
@@ -793,9 +793,9 @@ QMetaChunkMap QMetaMysql::getChunkMap() {
 
     string const tableName = "chunkMap";
     string const query = "SELECT `worker`,`database`,`table`,`chunk`,`size` FROM `" + tableName + "`";
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (!_conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
     vector<vector<string>> const rows = results.extractFirstNColumns(5);
@@ -809,7 +809,7 @@ QMetaChunkMap QMetaMysql::getChunkMap() {
             unsigned int chunk = lsst::qserv::stoui(row[3]);
             size_t const size = stoull(row[4]);
             chunkMap.workers[worker][database][table].push_back(QMetaChunkMap::ChunkInfo{chunk, size});
-            LOGS(_log, LOG_LVL_TRACE,
+            LOGQ(_log, LOG_LVL_TRACE,
                  "QMetaInsrt{worker=" << worker << " dbN=" << database << " tblN=" << table
                                       << " chunk=" << chunk << " sz=" << size);
         }
@@ -828,25 +828,25 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
     string const query = "SELECT UNIX_TIMESTAMP(`update_time`) FROM `" + tableName +
                          "` ORDER BY `update_time` DESC LIMIT 1";
 
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (!_conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
     vector<string> updateTime;
     if (!results.extractFirstColumn(updateTime, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract result set of query " + query);
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to extract result set of query " + query);
         throw SqlError(ERR_LOC, errObj);
     }
     if (updateTime.empty()) {
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "QMetaMysql::_getChunkMapUpdateTime empty chunkMapStatus; returning default");
         return chrono::time_point<chrono::system_clock>();
     } else if (updateTime.size() > 1) {
         throw ConsistencyError(ERR_LOC, "Too many rows in result set of query " + query);
     }
     try {
-        LOGS(_log, LOG_LVL_TRACE, "QMetaMysql::_getChunkMapUpdateTime " << updateTime[0]);
+        LOGQ(_log, LOG_LVL_TRACE, "QMetaMysql::_getChunkMapUpdateTime " << updateTime[0]);
         return chrono::time_point<chrono::system_clock>() + chrono::seconds(stol(updateTime[0]));
     } catch (exception const& ex) {
         string const msg = "Failed to parse result set of query " + query + ", ex: " + string(ex.what());
@@ -920,9 +920,9 @@ void QMetaMysql::_addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qM
     query += ")";
     // run query
     sql::SqlErrorObject errObj;
-    LOGS(_log, LOG_LVL_DEBUG, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Executing query: " << query);
     if (not _conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL addQueryMessage query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL addQueryMessage query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 

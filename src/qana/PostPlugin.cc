@@ -42,7 +42,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/constants.h"
@@ -76,7 +76,7 @@ void PostPlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& cont
 void PostPlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext& context) {
     // Idea: If a limit is available in the user query, compose a
     // merge statement (if one is not available)
-    LOGS(_log, LOG_LVL_TRACE, "Apply physical");
+    LOGQ(_log, LOG_LVL_TRACE, "Apply physical");
 
     // If the parallel statement has GROUP BY or HAVING then it must not have a LIMIT.
     if (not plan.stmtParallel.empty()) {
@@ -92,13 +92,13 @@ void PostPlugin::applyPhysical(QueryPlugin::Plan& plan, query::QueryContext& con
         // [ORDER BY ...] LIMIT ... is a special case which require sort on worker and sort/aggregation on
         // czar
         if (context.hasChunks()) {
-            LOGS(_log, LOG_LVL_TRACE, "Add merge operation");
+            LOGQ(_log, LOG_LVL_TRACE, "Add merge operation");
             context.needsMerge = true;
         }
     } else if (_orderBy) {
         // If there is no LIMIT clause, remove ORDER BY clause from all Czar queries because it is performed
         // by mysql-proxy (mysql doesn't garantee result order for non ORDER BY queries)
-        LOGS(_log, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \"" << *_orderBy << "\"");
+        LOGQ(_log, LOG_LVL_TRACE, "Remove ORDER BY from parallel and merge queries: \"" << *_orderBy << "\"");
         for (auto i = plan.stmtParallel.begin(), e = plan.stmtParallel.end(); i != e; ++i) {
             (**i).setOrderBy(nullptr);
         }

@@ -41,7 +41,7 @@
 #include "boost/pointer_cast.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "css/CssAccess.h"
@@ -245,7 +245,7 @@ void addScisqlRestrictors(std::vector<std::shared_ptr<query::AreaRestrictor>> co
                     areaRestrictor->asSciSqlFactor(chunkedTable.alias, chunkedTable.chunkColumns));
         }
     }
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "for restrictors: " << util::printable(areaRestrictors) << " adding: " << newTerm);
     whereClause.prependAndTerm(newTerm);
 }
@@ -287,7 +287,7 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
         if (dirTable.empty()) {
             dirTable = columnRef->getTable();
             if (!dirDb.empty() && dirDb != columnRef->getDb()) {
-                LOGS(_log, LOG_LVL_ERROR,
+                LOGQ(_log, LOG_LVL_ERROR,
                      "dirTable missing, but dirDb is set inconsistently for " << columnRef->getDb() << "."
                                                                               << columnRef->getTable());
                 return nullptr;
@@ -300,11 +300,11 @@ query::ColumnRef::Ptr getCorrespondingDirectorColumn(query::QueryContext const& 
             // Lookup the name of the director column in the director table
             dirCol = context.css->getPartTableParams(dirDb, dirTable).dirColName;
             if (dirCol.empty()) {
-                LOGS(_log, LOG_LVL_ERROR, "dirCol missing for " << dirDb << "." << dirTable);
+                LOGQ(_log, LOG_LVL_ERROR, "dirCol missing for " << dirDb << "." << dirTable);
                 return nullptr;
             }
         }
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "Restrictor dirDb " << dirDb << ", dirTable " << dirTable << ", dirCol " << dirCol
                                  << " as sIndex for " << columnRef->getDb() << "." << columnRef->getTable()
                                  << "." << columnRef->getColumn());
@@ -328,7 +328,7 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(query::I
     if (isSecIndexCol(context, inPredicate.value->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, inPredicate.value->getColumnRef());
         if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "Failed to get director column for " << inPredicate.value->getColumnRef());
             return nullptr;
         }
@@ -352,7 +352,7 @@ std::shared_ptr<query::SecIdxInRestrictor> makeSecondaryIndexRestrictor(query::I
     if (isSecIndexCol(context, betweenPredicate.value->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, betweenPredicate.value->getColumnRef());
         if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "Failed to get director column for " << betweenPredicate.value->getColumnRef());
             return nullptr;
         }
@@ -377,7 +377,7 @@ std::shared_ptr<query::SecIdxCompRestrictor> makeSecondaryIndexRestrictor(
     if (compPredicate.right->isConstVal() && isSecIndexCol(context, compPredicate.left->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.left->getColumnRef());
         if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "Failed to get director column for " << compPredicate.left->getColumnRef());
             return nullptr;
         }
@@ -388,7 +388,7 @@ std::shared_ptr<query::SecIdxCompRestrictor> makeSecondaryIndexRestrictor(
                isSecIndexCol(context, compPredicate.right->getColumnRef())) {
         auto dirCol = getCorrespondingDirectorColumn(context, compPredicate.right->getColumnRef());
         if (nullptr == dirCol) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "Failed to get director column for " << compPredicate.right->getColumnRef());
             return nullptr;
         }
@@ -426,7 +426,7 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
                 }
             }
             if (restrictor) {
-                LOGS(_log, LOG_LVL_TRACE, "Add restrictor: " << *restrictor << " for " << factorTerm);
+                LOGQ(_log, LOG_LVL_TRACE, "Add restrictor: " << *restrictor << " for " << factorTerm);
                 result.push_back(restrictor);
             }
         }
@@ -490,7 +490,7 @@ void QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt, query::QueryCo
             // in the scisql function is NOT a const val.
             auto areaRestrictor = makeAreaRestrictor(*scisqlFunc);
             if (areaRestrictor != nullptr) {
-                LOGS(_log, LOG_LVL_TRACE, "Adding restrictor: " << *areaRestrictor);
+                LOGQ(_log, LOG_LVL_TRACE, "Adding restrictor: " << *areaRestrictor);
                 context.addAreaRestrictors({areaRestrictor});
             }
         }

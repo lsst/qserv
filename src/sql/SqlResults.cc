@@ -31,10 +31,7 @@
 #include <stdexcept>
 
 // LSST headers
-#include "lsst/log/Log.h"
-
-// LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "mysql/SchemaFactory.h"
@@ -132,7 +129,7 @@ bool SqlResults::extractFirstXColumns(std::vector<std::vector<std::string>*> con
     size_t rsz = _results.size();
     size_t expectedCols = vectorRef.size();
     if (rsz > 0 && mysql_num_fields(_results[0]) < expectedCols) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "extractFirstXColumns had too few columns expected=" << rsz << " found="
                                                                   << mysql_num_fields(_results[0]));
         return false;

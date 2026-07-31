@@ -27,7 +27,7 @@
 #include <sstream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qmeta/QMeta.h"
@@ -57,13 +57,13 @@ bool CzarFamilyMap::read() {
     try {
         mapsSet = _read();
     } catch (qmeta::QMetaError const& qExc) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) + " could not read DB " << qExc.what());
+        LOGQ(_log, LOG_LVL_ERROR, cName(__func__) + " could not read DB " << qExc.what());
     }
     return mapsSet;
 }
 
 bool CzarFamilyMap::_read() {
-    LOGS(_log, LOG_LVL_TRACE, "CzarFamilyMap::_read() start");
+    LOGQ(_log, LOG_LVL_TRACE, "CzarFamilyMap::_read() start");
     // If replacing the map, this may take a bit of time, but it's probably
     // better to wait for new maps if something changed.
     std::lock_guard gLock(_familyMapMtx);
@@ -77,14 +77,14 @@ bool CzarFamilyMap::_read() {
     verify(familyMapPtr);
 
     for (auto const& [fam, ccMap] : *familyMapPtr) {
-        LOGS(_log, LOG_LVL_DEBUG, "{family=" << fam << "{" << ccMap->dumpChunkMap() << "}}");
+        LOGQ(_log, LOG_LVL_DEBUG, "{family=" << fam << "{" << ccMap->dumpChunkMap() << "}}");
     }
 
     _familyMap = familyMapPtr;
 
     _lastUpdateTime = qChunkMap.updateTime;
 
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          cName(__func__) << " read and verified "
                          << util::TimeUtils::timePointToDateTimeString(_lastUpdateTime, true));
     return true;
@@ -96,7 +96,7 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
     std::shared_ptr<FamilyMapType> newFamilyMap = make_shared<FamilyMapType>();
 
     // Workers -> Databases map
-    LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " workers.sz=" << qChunkMap.workers.size());
+    LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " workers.sz=" << qChunkMap.workers.size());
     for (auto const& [workerId, dbs] : qChunkMap.workers) {
         // Databases -> Tables map
         for (auto const& [dbName, tables] : dbs) {
@@ -110,7 +110,7 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
                         if (usingChunkSize) {
                             sz = chunkInfo.size;
                         }
-                        LOGS(_log, LOG_LVL_DEBUG,
+                        LOGQ(_log, LOG_LVL_DEBUG,
                              cName(__func__) << "workerdId=" << workerId << " db=" << dbName << " table="
                                              << tableName << " chunk=" << chunkNum << " sz=" << sz);
                         _insertIntoMaps(newFamilyMap, workerId, dbName, tableName, chunkNum, sz);
@@ -132,7 +132,7 @@ std::shared_ptr<CzarFamilyMap::FamilyMapType> CzarFamilyMap::makeNewMaps(
 
     // This needs to be done for each CzarChunkMap in the family map.
     for (auto&& [familyName, chunkMapPtr] : *newFamilyMap) {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " working on " << familyName);
+        LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " working on " << familyName);
         auto missing = chunkMapPtr->organize();
         if (missing != nullptr && !missing->empty()) {
             // TODO:DM-53240 Some element of the dashboard should be made aware of this. Also,
@@ -157,7 +157,7 @@ void CzarFamilyMap::_insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFam
                                     int64_t chunkIdNum, CzarChunkMap::SizeT sz) {
     // Get the CzarChunkMap for this family
     auto familyName = getFamilyNameFromDbName(dbName);
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          cName(__func__) << " familyInsrt{w=" << workerId << " fN=" << familyName << " dbN=" << dbName
                          << " tblN=" << tableName << " chunk=" << chunkIdNum << " sz=" << sz << "}");
     auto& nfMap = *newFamilyMap;
@@ -207,7 +207,7 @@ void CzarFamilyMap::_insertIntoMaps(std::shared_ptr<FamilyMapType> const& newFam
         auto const& dbN = dbTbl.first;
         auto const& tblN = dbTbl.second;
         if (dbName != dbN || tblN != tableName || tblSz != sz) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) << " data mismatch for " << dbName << "." << tableName << "=" << sz << " vs "
                                  << dbN << "." << tblN << "=" << tblSz);
         }

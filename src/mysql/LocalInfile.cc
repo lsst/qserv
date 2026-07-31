@@ -35,7 +35,7 @@
 #include <mysql/mysql.h>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "mysql/LocalInfileError.h"
@@ -77,7 +77,7 @@ LocalInfile::LocalInfile(char const* filename, std::shared_ptr<CsvBuffer> csvBuf
 }
 
 LocalInfile::~LocalInfile() {
-    LOGS(_log, LOG_LVL_TRACE, "~LocalInfile");
+    LOGQ(_log, LOG_LVL_TRACE, "~LocalInfile");
     if (_buffer) {
         delete[] _buffer;
     }
@@ -146,7 +146,7 @@ void LocalInfile::Mgr::prepareSrc(std::string const& filename, MYSQL_RES* result
 std::string LocalInfile::Mgr::prepareSrc(MYSQL_RES* result) { return insertBuffer(newResCsvBuffer(result)); }
 
 std::string LocalInfile::Mgr::prepareSrc(std::shared_ptr<CsvBuffer> const& csvBuffer) {
-    LOGS(_log, LOG_LVL_TRACE, "csvBuffer=" << csvBuffer->dump());
+    LOGQ(_log, LOG_LVL_TRACE, "csvBuffer=" << csvBuffer->dump());
     return insertBuffer(csvBuffer);
 }
 

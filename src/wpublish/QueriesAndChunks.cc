@@ -39,7 +39,7 @@
 #include "wsched/ScanScheduler.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 namespace wbase = lsst::qserv::wbase;
@@ -88,7 +88,7 @@ QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds ex
     _removalThread = move(td);
 
     if (_examineAfter.count() == 0) {
-        LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks turning off examineThread");
+        LOGQ(_log, LOG_LVL_DEBUG, "QueriesAndChunks turning off examineThread");
         _loopExamine = false;
     }
 
@@ -119,7 +119,7 @@ QueriesAndChunks::~QueriesAndChunks() {
         _removalThread.join();
         _examineThread.join();
     } catch (system_error const& e) {
-        LOGS(_log, LOG_LVL_ERROR, "~QueriesAndChunks " << e.what());
+        LOGQ(_log, LOG_LVL_ERROR, "~QueriesAndChunks " << e.what());
     }
 }
 
@@ -185,7 +185,7 @@ void QueriesAndChunks::startedTask(wbase::Task::Ptr const& task) {
     if (stats != nullptr) {
         stats->addTaskRunning(now);
     } else {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " stats was nullptr");
+        LOGQ(_log, LOG_LVL_ERROR, __func__ << " stats was nullptr");
     }
 }
 
@@ -247,7 +247,7 @@ void QueriesAndChunks::removeDead() {
         while (iter != _deadQueries.end()) {
             auto const& statPtr = iter->second;
             if (statPtr->isDead(_deadAfter, now)) {
-                LOGS(_log, LOG_LVL_TRACE, "QueriesAndChunks::removeDead added to list");
+                LOGQ(_log, LOG_LVL_TRACE, "QueriesAndChunks::removeDead added to list");
                 deadList.push_back(statPtr);
             }
             iter = _deadQueries.erase(iter);
@@ -270,7 +270,7 @@ void QueriesAndChunks::removeDead() {
         deadQueriesSizeEnd = _deadQueries.size();
         queryStatsMapSize = _queryStatsMap.size();
     }
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          "removeDead queryStatsMapSize=" << queryStatsMapSize << " deadQueriesSize start="
                                          << deadQueriesSizeStart << " end=" << deadQueriesSizeEnd);
 }
@@ -280,7 +280,7 @@ void QueriesAndChunks::removeDead() {
 /// a qId multiple times from _queryStats should be harmless.
 void QueriesAndChunks::removeDead(QueryStatistics::Ptr const& queryStats) {
     QueryId qId = queryStats->getQueryId();
-    LOGS(_log, LOG_LVL_TRACE, "Queries::removeDead " << qId);
+    LOGQ(_log, LOG_LVL_TRACE, "Queries::removeDead " << qId);
 
     _bootedTaskTracker.removeQuery(qId);
     lock_guard<mutex> gQ(_queryStatsMapMtx);
@@ -298,7 +298,7 @@ QueryStatistics::Ptr QueriesAndChunks::_getStats(QueryId const& qId) const {
     if (iter != _queryStatsMap.end()) {
         return iter->second;
     }
-    LOGS(_log, LOG_LVL_WARN, "QueriesAndChunks::getStats could not find qId=" << qId);
+    LOGQ(_log, LOG_LVL_WARN, "QueriesAndChunks::getStats could not find qId=" << qId);
     return nullptr;
 }
 
@@ -331,7 +331,7 @@ void QueriesAndChunks::examineAll() {
         lock_guard<mutex> g(_queryStatsMapMtx);
         for (auto const& [statsQId, qStatsPtr] : _queryStatsMap) {
             uqStatList.push_back(qStatsPtr);
-            LOGS(_log, LOG_LVL_TRACE, __func__ << " read stats for " << statsQId);
+            LOGQ(_log, LOG_LVL_TRACE, __func__ << " read stats for " << statsQId);
         }
     }
 
@@ -361,7 +361,7 @@ void QueriesAndChunks::examineAll() {
             string const& slowestTable = begin->db + ":" + begin->table;
             auto iterTbl = scanTblSums.find(slowestTable);
             if (iterTbl != scanTblSums.end()) {
-                LOGS(_log, LOG_LVL_DEBUG,
+                LOGQ(_log, LOG_LVL_DEBUG,
                      "examineAll a " << slowestTable << " chunkId=" << task->getChunkId() << " "
                                      << task->getIdStr());
                 ScanTableSums& tblSums = iterTbl->second;
@@ -381,7 +381,7 @@ void QueriesAndChunks::examineAll() {
                     iterChunk = tblSums.chunkPercentages.begin();
                 }
                 if (iterChunk != tblSums.chunkPercentages.end()) {
-                    LOGS(_log, LOG_LVL_DEBUG,
+                    LOGQ(_log, LOG_LVL_DEBUG,
                          "examineAll c " << slowestTable << " chunkId=" << task->getChunkId() << " "
                                          << task->getIdStr());
                     // We can only make the check if there's data on past chunks/tables.
@@ -394,13 +394,13 @@ void QueriesAndChunks::examineAll() {
                     double runTimeMinutes = (double)runTimeMilli.count() / 60000.0;
                     bool booting = runTimeMinutes > maxTimeChunk && valid;
                     auto lvl = booting ? LOG_LVL_WARN : LOG_LVL_DEBUG;
-                    LOGS(_log, lvl,
+                    LOGQ(_log, lvl,
                          "examineAll " << (booting ? "booting" : "keeping") << " task " << task->getIdStr()
                                        << "maxTimeChunk(" << maxTimeChunk << ")=percent(" << percent
                                        << ")*schedMaxTime(" << schedMaxTime << ")"
                                        << " runTimeMinutes=" << runTimeMinutes << " valid=" << valid);
                     if (booting && !task->atMaxThreadCount()) {
-                        LOGS(_log, lvl,
+                        LOGQ(_log, lvl,
                              __func__ << " booting runtime=" << runTimeMinutes << " max=" << maxTimeChunk
                                       << " " << task->getIdStr());
                         _bootTask(uqStatElem, task, sched);
@@ -412,8 +412,8 @@ void QueriesAndChunks::examineAll() {
 
     _bootUserQueries();
 
-    LOGS(_log, LOG_LVL_WARN, util::HoldTrack::CheckKeySet());
-    LOGS(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
+    LOGQ(_log, LOG_LVL_WARN, util::HoldTrack::CheckKeySet());
+    LOGQ(_log, LOG_LVL_DEBUG, "QueriesAndChunks::examineAll end");
 }
 
 void QueriesAndChunks::buildCancelledAndDeletedLists(
@@ -443,7 +443,7 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
     {
         auto bSched = _blendSched.lock();
         if (bSched == nullptr) {
-            LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
+            LOGQ(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
             status["blend_scheduler"] = nlohmann::json::object();
         } else {
             status["blend_scheduler"] = bSched->statusToJsonBlend();
@@ -542,20 +542,20 @@ QueriesAndChunks::ScanTableSumsMap QueriesAndChunks::_calcScanTableSums() {
 
 void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Ptr const& task,
                                  wsched::SchedulerBase::Ptr const& sched) {
-    LOGS(_log, LOG_LVL_INFO, "taking too long, booting from " << sched->getName());
+    LOGQ(_log, LOG_LVL_INFO, "taking too long, booting from " << sched->getName());
     auto bSched = _blendSched.lock();
     if (bSched == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " blendSched==null, can't boot task=" << task->getIdStr());
+        LOGQ(_log, LOG_LVL_WARN, __func__ << " blendSched==null, can't boot task=" << task->getIdStr());
         return;
     }
     if (bSched->isScanSnail(sched)) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " can't boot task, already on snail " << task->getIdStr());
+        LOGQ(_log, LOG_LVL_WARN, __func__ << " can't boot task, already on snail " << task->getIdStr());
         return;
     }
     sched->removeTask(task, true);
     bool alreadyBooted = task->setBooted();
     if (alreadyBooted) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << task->getIdStr() << " was already booted");
+        LOGQ(_log, LOG_LVL_WARN, __func__ << task->getIdStr() << " was already booted");
         return;
     }
     uq->addTaskBooted();
@@ -566,7 +566,7 @@ void QueriesAndChunks::_bootTask(QueryStatistics::Ptr const& uq, wbase::Task::Pt
 void QueriesAndChunks::_bootUserQueries() {
     auto bSched = _blendSched.lock();
     if (bSched == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
+        LOGQ(_log, LOG_LVL_WARN, "blendSched undefined, can't check user query");
         return;
     }
     // Track the total number of Tasks that are running while booted
@@ -582,7 +582,7 @@ void QueriesAndChunks::_bootUserQueries() {
             // If enough UserQueries have been booted to get under the Task limit,
             // stop booting UserQueries.
             bool enoughTasksBooted = (bootedTaskCount - uqBootedTasksSum) <= _maxDarkTasks;
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  __func__ << " a uq=" << countQId.qId << " enough=" << enoughTasksBooted
                           << " bootedTaskCount=" << bootedTaskCount
                           << " uqBootedTasksSum=" << uqBootedTasksSum
@@ -597,13 +597,13 @@ void QueriesAndChunks::_bootUserQueries() {
             if (queryToBoot != nullptr) {
                 if (_bootUserQuery(queryToBoot, bSched)) {
                     uqBootedTasksSum += countQId.count;
-                    LOGS(_log, LOG_LVL_DEBUG,
+                    LOGQ(_log, LOG_LVL_DEBUG,
                          __func__ << " a booted uq=" << countQId.qId << ":count=" << countQId.count
                                   << " uqBootedTasksSum=" << uqBootedTasksSum);
                 }
             } else {
                 // This really should never happen.
-                LOGS(_log, LOG_LVL_ERROR, __func__ << " queryToBoot is nullptr qIdToBoot=" << countQId.qId);
+                LOGQ(_log, LOG_LVL_ERROR, __func__ << " queryToBoot is nullptr qIdToBoot=" << countQId.qId);
             }
         }
     }
@@ -615,7 +615,7 @@ void QueriesAndChunks::_bootUserQueries() {
         // Get query info
         QueryStatistics::Ptr queryToCheck = getStats(qIdToCheck);
         if (queryToCheck == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, __func__ << " Couldn't locate qIdToCheck=" << qIdToCheck);
+            LOGQ(_log, LOG_LVL_ERROR, __func__ << " Couldn't locate qIdToCheck=" << qIdToCheck);
             // Probably never happens, but may be a possibility during query cancellation.
             // Try to boot the next query in the list.
             continue;
@@ -623,14 +623,14 @@ void QueriesAndChunks::_bootUserQueries() {
 
         if (!queryToCheck->getQueryBooted()) {
             auto tasksBooted = queryToCheck->getTasksBooted();
-            LOGS(_log, LOG_LVL_DEBUG,
+            LOGQ(_log, LOG_LVL_DEBUG,
                  __func__ << " b check uq=" << countQId.qId << " tasksBooted=" << tasksBooted
                           << " max=" << (_maxTasksBooted));
             if (tasksBooted > _maxTasksBooted) {
                 QueryStatistics::Ptr queryToBoot = getStats(qIdToCheck);
                 if (_bootUserQuery(queryToBoot, bSched)) {
                     uqBootedTasksSum += countQId.count;
-                    LOGS(_log, LOG_LVL_DEBUG,
+                    LOGQ(_log, LOG_LVL_DEBUG,
                          __func__ << " b booted uq=" << countQId.qId << ":count=" << countQId.count
                                   << " tasksBooted=" << tasksBooted
                                   << " uqBootedTasksSum=" << uqBootedTasksSum);
@@ -645,7 +645,7 @@ bool QueriesAndChunks::_bootUserQuery(QueryStatistics::Ptr queryToBoot,
                                       wsched::BlendScheduler::Ptr const& bSched) {
     // Get query info
     if (queryToBoot == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " queryToBoot is nullptr");
+        LOGQ(_log, LOG_LVL_ERROR, __func__ << " queryToBoot is nullptr");
         // Probably never happens, but may be a possibility during query cancellation.
         return false;
     }
@@ -662,19 +662,19 @@ bool QueriesAndChunks::_bootUserQuery(QueryStatistics::Ptr queryToBoot,
     for (auto const& [key, schedInfo] : schedTaskMap) {
         wsched::SchedulerBase::Ptr schedTarget = schedInfo.scheduler.lock();
         if (schedTarget == nullptr) {
-            LOGS(_log, LOG_LVL_ERROR, __func__ << " schedTarg was nullptr for key=" << key);
+            LOGQ(_log, LOG_LVL_ERROR, __func__ << " schedTarg was nullptr for key=" << key);
             continue;
         }
         if (bSched->isScanSnail(schedTarget)) {
-            LOGS(_log, LOG_LVL_DEBUG, __func__ << " schedTarg was snailScan for key=" << key);
+            LOGQ(_log, LOG_LVL_DEBUG, __func__ << " schedTarg was snailScan for key=" << key);
             continue;
         }
 
-        LOGS(_log, LOG_LVL_INFO, "Booting uq queryId=" << queryToBoot->queryId);
+        LOGQ(_log, LOG_LVL_INFO, "Booting uq queryId=" << queryToBoot->queryId);
         queryToBoot->setQueryBooted(true, CLOCK::now());
         bSched->moveUserQueryToSnail(queryToBoot->queryId, schedTarget);
         queryWasBooted = true;
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " uq=" << queryToBoot->queryId);
+        LOGQ(_log, LOG_LVL_DEBUG, __func__ << " uq=" << queryToBoot->queryId);
     }
     return queryWasBooted;
 }
@@ -692,7 +692,7 @@ vector<wbase::Task::Ptr> QueriesAndChunks::removeQueryFrom(QueryId const& qId,
     // Find the user query.
     auto query = getStats(qId);
     if (query == nullptr) {
-        LOGS(_log, LOG_LVL_DEBUG, "was not found by removeQueryFrom");
+        LOGQ(_log, LOG_LVL_DEBUG, "was not found by removeQueryFrom");
         return removedList;
     }
 
@@ -758,7 +758,7 @@ protojson::ChunkUseCountAnswerMsg::DbChunkCountMapPtr QueriesAndChunks::getDbChu
             totalUseCount += useCount;
         }
     }
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          string(__func__) << " dbChunkStats size=" << _dbChunkStats.size()
                           << " totalUseCount=" << totalUseCount);
     return dbChunkCountMap;
@@ -835,7 +835,7 @@ void ChunkStatistics::decrDbUseCount(string const& dbName) {
             _dbStatsMap.erase(iter);
         }
     } else {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " decrDbUseCount could not find dbName=" << dbName);
+        LOGQ(_log, LOG_LVL_WARN, __func__ << " decrDbUseCount could not find dbName=" << dbName);
     }
 }
 
@@ -857,7 +857,7 @@ void ChunkTableStats::addTaskFinished(double minutes) {
     } else {
         _data.avgCompletionTime = minutes;
     }
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "ChkId=" << _chunkId << ":tbl=" << _scanTableName << " completed=" << _data.tasksCompleted
                   << " avgCompletionTime=" << _data.avgCompletionTime);
 }
@@ -911,7 +911,7 @@ pair<int, vector<BootedTaskTracker::CountQId>> BootedTaskTracker::getTotalBooted
         for (auto const& cQId : countQId) {
             msg += " (qId=" + to_string(cQId.qId) + " count=" + to_string(cQId.count) + ")";
         }
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " total=" << taskCount << " order " << msg);
+        LOGQ(_log, LOG_LVL_DEBUG, __func__ << " total=" << taskCount << " order " << msg);
     }
     return {taskCount, countQId};
 }

@@ -38,7 +38,7 @@
 #include "wsched/ScanScheduler.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 namespace wbase = lsst::qserv::wbase;
@@ -169,7 +169,7 @@ void QueryStatistics::addTaskRunQuery(double runTimeSeconds, double subchunkRunT
 void QueryStatistics::tasksAddedToScheduler(std::shared_ptr<wsched::SchedulerBase> const& sched,
                                             int numberOfTasksAdded) {
     if (sched == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "QueryStatistics::tasksAddedToScheduler sched == nullptr");
+        LOGQ(_log, LOG_LVL_ERROR, "QueryStatistics::tasksAddedToScheduler sched == nullptr");
         return;
     }
     string schedName = sched->getName();
@@ -224,7 +224,7 @@ vector<wbase::Task::Ptr> QueryStatistics::getRunningTasks() const {
                 auto const& tSched = dynamic_pointer_cast<wsched::ScanScheduler>(task->getTaskScheduler());
                 if (tSched != nullptr) {
                     runningTasks.push_back(task);
-                    LOGS(_log, LOG_LVL_DEBUG,
+                    LOGQ(_log, LOG_LVL_DEBUG,
                          __func__ << " task=" << task->getIdStr() << " running=" << task->isRunning());
                 }
             }

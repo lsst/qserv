@@ -49,7 +49,7 @@
 #include "boost/lexical_cast.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qana/CheckAggregation.h"
@@ -198,7 +198,7 @@ bool ValueExpr::addOp(query::ValueExpr::Op op) {
 }
 
 void ValueExpr::setAlias(std::string const& alias) {
-    LOGS(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
+    LOGQ(_log, LOG_LVL_TRACE, *this << "; set alias:" << alias);
     _alias = alias;
 }
 

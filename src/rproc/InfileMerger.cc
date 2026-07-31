@@ -51,7 +51,7 @@
 #include "boost/regex.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -142,7 +142,7 @@ InfileMerger::InfileMerger(rproc::InfileMergerConfig const& c,
 
     // The DEBUG level is good here since this report will be made onces per query,
     // not per each chunk.
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGQ(_log, LOG_LVL_DEBUG,
          "InfileMerger maxResultTableSizeBytes=" << _maxResultTableSizeBytes
                                                  << " maxSqlConnexctionAttempts=" << _maxSqlConnectionAttempts
                                                  << " debugNoMerge=" << (_config.debugNoMerge ? "1" : " 0"));
@@ -213,7 +213,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     ret = _applyMysqlMyIsam(infileStatement, fileSize);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
+    LOGQ(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
     if (ret) {
         lock_guard<mutex> resultSzLock(_mtxResultSizeMtx);
         _totalResultSize += fileSize;
@@ -224,14 +224,14 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
             string str = queryIdJobStr + " cancelling the query, queryResult table " + _mergeTable +
                          " is too large at " + to_string(tResultSize) + " bytes, max allowed size is " +
                          to_string(_maxResultTableSizeBytes) + " bytes";
-            LOGS(_log, LOG_LVL_ERROR, str);
+            LOGQ(_log, LOG_LVL_ERROR, str);
             _error = util::Error(util::Error::CZAR_RESULT_TOO_LARGE, util::Error::NONE, str);
             return false;
         }
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
+        LOGQ(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
     }
-    LOGS(_log, LOG_LVL_TRACE, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
+    LOGQ(_log, LOG_LVL_TRACE, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
     return ret;
 }
 
@@ -246,7 +246,7 @@ bool InfileMerger::_applyMysqlMyIsam(std::string const& query, size_t resultSize
                 sleep(1);
                 lock.lock();
             } else {
-                LOGS(_log, LOG_LVL_ERROR,
+                LOGQ(_log, LOG_LVL_ERROR,
                      "InfileMerger::_applyMysqlMyIsam _setupConnectionMyIsam() failed!!!");
                 return false;  // Reconnection failed. This is an error.
             }
@@ -266,7 +266,7 @@ bool InfileMerger::_applyMysqlMyIsam(std::string const& query, size_t resultSize
         mergeRateTracker.setSuccess();
         return true;
     }
-    LOGS(_log, LOG_LVL_ERROR,
+    LOGQ(_log, LOG_LVL_ERROR,
          "InfileMerger::_applyMysqlMyIsam mysql_real_query() " + ::lastMysqlError(_mysqlConn.getMySql()));
     return false;
 }
@@ -279,15 +279,15 @@ bool InfileMerger::finalize(size_t& collectedBytes, int64_t& rowCount) {
     lock_guard lgFinal(_finalMergeMtx);  // block on other merges
     // TODO: Should check for error condition before continuing.
     if (_isFinished) {
-        LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");
+        LOGQ(_log, LOG_LVL_ERROR, "InfileMerger::finalize(), but _isFinished == true");
     }
     if (_mergeTable != _config.targetTable) {
         // Aggregation needed: Do the aggregation.
         std::string mergeSelect = _config.mergeStmt->getQueryTemplate().sqlFragment();
         // Using MyISAM as single thread writing with no need to recover from errors.
         std::string createMerge = "CREATE TABLE " + _config.targetTable + " ENGINE=MyISAM " + mergeSelect;
-        LOGS(_log, LOG_LVL_TRACE, "Prepping merging w/" << *_config.mergeStmt);
-        LOGS(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
+        LOGQ(_log, LOG_LVL_TRACE, "Prepping merging w/" << *_config.mergeStmt);
+        LOGQ(_log, LOG_LVL_DEBUG, "Merging w/" << createMerge);
         finalizeOk = _applySqlLocal(createMerge, "createMerge");
 
         // Find the number of rows in the new table.
@@ -300,13 +300,13 @@ bool InfileMerger::finalize(size_t& collectedBytes, int64_t& rowCount) {
             vector<string> counts;
             if (countRowsResults.extractFirstColumn(counts, countRowsErrObj) && counts.size() > 0) {
                 rowCount = std::stoll(counts[0]);
-                LOGS(_log, LOG_LVL_DEBUG, "rowCount=" << rowCount << " " << countRowsSql);
+                LOGQ(_log, LOG_LVL_DEBUG, "rowCount=" << rowCount << " " << countRowsSql);
             } else {
-                LOGS(_log, LOG_LVL_ERROR, "Failed to extract row count result");
+                LOGQ(_log, LOG_LVL_ERROR, "Failed to extract row count result");
                 rowCount = 0;  // Return 0 rows since there was a problem.
             }
         } else {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "InfileMerger::finalize countRows query failed " << countRowsErrObj.printErrMsg());
             rowCount = 0;  // Return 0 rows since there was a problem.
         }
@@ -314,19 +314,19 @@ bool InfileMerger::finalize(size_t& collectedBytes, int64_t& rowCount) {
         // Cleanup merge table.
         sql::SqlErrorObject eObj;
         // Don't report failure on not exist
-        LOGS(_log, LOG_LVL_TRACE, "Cleaning up " << _mergeTable);
+        LOGQ(_log, LOG_LVL_TRACE, "Cleaning up " << _mergeTable);
 #if 1  // Set to 0 when we want to retain mergeTables for debugging.
         bool cleanupOk = _sqlConn->dropTable(_mergeTable, eObj, false, _config.mySqlConfig.dbName);
 #else
         bool cleanupOk = true;
 #endif
         if (!cleanupOk) {
-            LOGS(_log, LOG_LVL_WARN, "Failure cleaning up table " << _mergeTable);
+            LOGQ(_log, LOG_LVL_WARN, "Failure cleaning up table " << _mergeTable);
         }
     } else {
         rowCount = -1;  // rowCount is meaningless since there was no postprocessing.
     }
-    LOGS(_log, LOG_LVL_TRACE, "Merged " << _mergeTable << " into " << _config.targetTable);
+    LOGQ(_log, LOG_LVL_TRACE, "Merged " << _mergeTable << " into " << _config.targetTable);
     _isFinished = true;
     return finalizeOk;
 }
@@ -345,20 +345,20 @@ bool InfileMerger::getSchemaForQueryResults(query::SelectStmt const& stmt, sql::
     std::string query = stmt.getQueryTemplate().sqlFragment();
     bool ok = _databaseModels->applySql(query, results, getSchemaErrObj);
     if (not ok) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to get schema:" << getSchemaErrObj.errMsg());
         _error = util::Error(util::Error::RESULT_SCHEMA, util::Error::NONE,
                              "Failed to get schema: " + getSchemaErrObj.errMsg());
         return false;
     }
     sql::SqlErrorObject errObj;
     if (errObj.isSet()) {
-        LOGS(_log, LOG_LVL_ERROR, "Failed to extract schema from result: " << errObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "Failed to extract schema from result: " << errObj.errMsg());
         _error = util::Error(util::Error::RESULT_SCHEMA, util::Error::NONE,
                              "Failed to extract schema from result: " + errObj.errMsg());
         return false;
     }
     schema = results.makeSchema(errObj);
-    LOGS(_log, LOG_LVL_TRACE, "InfileMerger extracted schema: " << schema);
+    LOGQ(_log, LOG_LVL_TRACE, "InfileMerger extracted schema: " << schema);
     return true;
 }
 
@@ -368,12 +368,12 @@ bool InfileMerger::makeResultsTableForQuery(query::SelectStmt const& stmt) {
         return false;
     }
     std::string const createStmt = sql::formCreateTable(_mergeTable, schema) + " ENGINE=MyISAM";
-    LOGS(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
+    LOGQ(_log, LOG_LVL_TRACE, "InfileMerger make results table query: " << createStmt);
     if (not _applySqlLocal(createStmt, "makeResultsTableForQuery")) {
         _error = util::Error(util::Error::RESULT_CREATETABLE, util::Error::NONE,
                              "Error creating table:" + _mergeTable + ": " + _error.getMsg());
         _isFinished = true;  // Cannot continue.
-        LOGS(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "InfileMerger sql error: " << _error.getMsg());
         return false;
     }
     return true;
@@ -384,7 +384,7 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, std::string const& log
     auto begin = std::chrono::system_clock::now();
     bool success = _applySqlLocal(sql, results);
     auto end = std::chrono::system_clock::now();
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          logMsg << " success=" << success << " microseconds="
                 << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count());
     return success;
@@ -411,10 +411,10 @@ bool InfileMerger::_applySqlLocal(std::string const& sql, sql::SqlResults& resul
     if (not _sqlConn->runQuery(sql, results, errObj)) {
         _error = util::Error(util::Error::RESULT_SQL, errObj.errNo(),
                              "Error applying sql: " + errObj.printErrMsg());
-        LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
         return false;
     }
-    LOGS(_log, LOG_LVL_TRACE, "InfileMerger query success: " << sql);
+    LOGQ(_log, LOG_LVL_TRACE, "InfileMerger query success: " << sql);
     return true;
 }
 
@@ -425,10 +425,10 @@ bool InfileMerger::_sqlConnect(sql::SqlErrorObject& errObj) {
             _error = util::Error(util::Error::RESULT_CONNECT, errObj.errNo(),
                                  "Error connecting to db: " + errObj.printErrMsg());
             _sqlConn.reset();
-            LOGS(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
+            LOGQ(_log, LOG_LVL_ERROR, "InfileMerger error: " << _error.getMsg());
             return false;
         }
-        LOGS(_log, LOG_LVL_TRACE, "InfileMerger " << (void*)this << " connected to db");
+        LOGQ(_log, LOG_LVL_TRACE, "InfileMerger " << (void*)this << " connected to db");
     }
     return true;
 }

@@ -26,7 +26,7 @@
 // System headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "wsched/BlendScheduler.h"
@@ -60,7 +60,7 @@ SchedulerBase::SchedulerBase(std::string const& name, int maxThreads, int maxRes
     _histRecentlyCompletedTasks =
             std::make_shared<util::HistogramRolling>("recentlyCompletedTasks", bucketMaxVals, 1h, maxSize);
 
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          "Scheduler name=" << name << " maxThreads=" << _maxThreads << " maxThreads=" << _maxThreads
                            << " priority=" << _priority);
 }
@@ -87,7 +87,7 @@ int SchedulerBase::_decrCountForUserQuery(QueryId queryId) {
         count = --(iter->second);
         if (count <= 0) {
             _userQueryCounts.erase(iter);
-            LOGS(_log, LOG_LVL_TRACE, queryId << " uqCount=0, erased");
+            LOGQ(_log, LOG_LVL_TRACE, queryId << " uqCount=0, erased");
         }
     }
     return count;

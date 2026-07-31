@@ -28,7 +28,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "sql/Schema.h"
@@ -80,7 +80,7 @@ std::shared_ptr<InsertColumnVector> newInsertColumnVector(Schema const& s) {
 
 std::string formLoadInfile(std::string const& table, std::string const& virtFile) {
     auto sql = "LOAD DATA LOCAL INFILE '" + virtFile + "' INTO TABLE " + table + " FIELDS ENCLOSED BY '\\\''";
-    LOGS(getLogger(), LOG_LVL_TRACE, "Load query: " << sql);
+    LOGQ(getLogger(), LOG_LVL_TRACE, "Load query: " << sql);
     return sql;
 }
 

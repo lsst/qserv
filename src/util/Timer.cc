@@ -30,7 +30,7 @@
 #include <set>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Timer");

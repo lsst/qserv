@@ -38,7 +38,7 @@
 #include "boost/system/error_code.hpp"
 
 // Local headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 #include "qhttp/LogHelpers.h"
 
 namespace asio = boost::asio;

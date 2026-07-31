@@ -68,7 +68,7 @@
 #include <boost/algorithm/string/replace.hpp>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -139,7 +139,7 @@ string UserQuerySelect::getError() const {
 }
 
 void UserQuerySelect::kill() {
-    LOGS(_log, LOG_LVL_INFO, "UserQuerySelect KILL");
+    LOGQ(_log, LOG_LVL_INFO, "UserQuerySelect KILL");
     lock_guard<mutex> lock(_killMutex);
     if (!_killed) {
         _killed = true;
@@ -207,7 +207,7 @@ string UserQuerySelect::getResultQuery() const {
     if (not orderBy.empty()) {
         resultQuery += " " + orderBy;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "made result query:" << resultQuery);
+    LOGQ(_log, LOG_LVL_DEBUG, "made result query:" << resultQuery);
     return resultQuery;
 }
 
@@ -215,14 +215,14 @@ void UserQuerySelect::submit() {
     auto submitTmStart = CLOCK::now();
     auto exec = _executive;
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::submit() executive is null at start");
+        LOGQ(_log, LOG_LVL_ERROR, "UserQuerySelect::submit() executive is null at start");
         return;
     }
     _qSession->finalize();
 
     // Using the QuerySession, generate query specs (text, db, chunkId) and then
     // create query messages and send them to the async query manager.
-    LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
+    LOGQ(_log, LOG_LVL_DEBUG, "UserQuerySelect beginning submission");
     assert(_infileMerger);
 
     _ttn = make_shared<TmpTableName>(_queryId, _qSession->getOriginal());
@@ -231,7 +231,7 @@ void UserQuerySelect::submit() {
     JobId sequence = 0;
 
     auto queryTemplates = _qSession->makeQueryTemplates();
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGQ(_log, LOG_LVL_DEBUG,
          "first query template:" << (queryTemplates.size() > 0 ? queryTemplates[0].sqlFragment()
                                                                : "none produced."));
 
@@ -241,7 +241,7 @@ void UserQuerySelect::submit() {
     try {
         _queryProgress->insert(_queryId, _qSession->getChunksSize());
     } catch (qmeta::SqlError const& e) {
-        LOGS(_log, LOG_LVL_WARN, "Failed QProgress::insert, ex: " << e.what());
+        LOGQ(_log, LOG_LVL_WARN, "Failed QProgress::insert, ex: " << e.what());
     }
 
     exec->setScanInteractive(_qSession->getScanInteractive());
@@ -270,7 +270,7 @@ void UserQuerySelect::submit() {
         // This should only need to be set once as all jobs should have the same database name.
         if (cs->db != dbName) {
             if (dbNameSet) {
-                LOGS(_log, LOG_LVL_ERROR, "dbName change from " << dbName << " to " << cs->db);
+                LOGQ(_log, LOG_LVL_ERROR, "dbName change from " << dbName << " to " << cs->db);
                 return;
             }
             dbName = cs->db;
@@ -293,12 +293,12 @@ void UserQuerySelect::submit() {
     buildAndSendUberJobs();
     auto submitTmUberJobsBuilt = CLOCK::now();
 
-    LOGS(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
+    LOGQ(_log, LOG_LVL_DEBUG, "total jobs in query=" << sequence);
     // Waiting for all jobs to start seems to provide more consistent results.
     exec->waitForAllJobsToStart();
     auto submitTmEnd = CLOCK::now();
 
-    LOGS(_log, LOG_LVL_INFO, "UserQuerySelect::submit() times ms QID:" << _queryId
+    LOGQ(_log, LOG_LVL_INFO, "UserQuerySelect::submit() times ms QID:" << _queryId
        << " total=" << chrono::duration_cast<chrono::milliseconds>(submitTmEnd - submitTmStart).count()
        << " setup=" << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsStart - submitTmStart).count()
        << " jobs=" << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsEnd - submitTmBuildJobsStart).count()
@@ -318,38 +318,38 @@ bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWork
 
 void UserQuerySelect::buildAndSendUberJobs() {
     string const funcN("UserQuerySelect::" + string(__func__) + " QID=" + to_string(_queryId));
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
+    LOGQ(_log, LOG_LVL_DEBUG, funcN << " start " << _uberJobMaxChunks);
 
     // Ensure `_monitor()` doesn't do anything until everything is ready.
     auto exec = _executive;
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, funcN << " called with null exec " << getQueryIdString());
+        LOGQ(_log, LOG_LVL_ERROR, funcN << " called with null exec " << getQueryIdString());
         return;
     }
 
     if (!exec->isAllJobsCreated()) {
-        LOGS(_log, LOG_LVL_INFO, funcN << " executive isn't ready to generate UberJobs.");
+        LOGQ(_log, LOG_LVL_INFO, funcN << " executive isn't ready to generate UberJobs.");
         return;
     }
 
     if (exec->getSuperfluous()) {
-        LOGS(_log, LOG_LVL_INFO, funcN << " executive superfluous, result already found.");
+        LOGQ(_log, LOG_LVL_INFO, funcN << " executive superfluous, result already found.");
         return;
     }
     if (exec->getCancelled()) {
-        LOGS(_log, LOG_LVL_INFO, funcN << " executive cancelled.");
+        LOGQ(_log, LOG_LVL_INFO, funcN << " executive cancelled.");
         return;
     }
 
     // Only one thread should be generating UberJobs for this user query at any given time.
     lock_guard fcLock(_buildUberJobMtx);
-    LOGS(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << exec->getTotalJobs());
+    LOGQ(_log, LOG_LVL_DEBUG, "UserQuerySelect::" << __func__ << " totalJobs=" << exec->getTotalJobs());
 
     vector<qdisp::UberJob::Ptr> uberJobs;
 
     qdisp::Executive::ChunkIdJobMapType unassignedChunksInQuery = exec->unassignedChunksInQuery();
     if (unassignedChunksInQuery.empty()) {
-        LOGS(_log, LOG_LVL_DEBUG, funcN << " no unassigned Jobs");
+        LOGQ(_log, LOG_LVL_DEBUG, funcN << " no unassigned Jobs");
         return;
     }
 
@@ -362,7 +362,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
     auto const wContactMap = czRegistry->waitForWorkerContactMap();
 
     if (czChunkMap == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, funcN << " no map found for queryDbName=" << _queryDbName);
+        LOGQ(_log, LOG_LVL_ERROR, funcN << " no map found for queryDbName=" << _queryDbName);
         // Make an empty chunk map so all jobs are flagged as needing to be reassigned.
         // There's a chance that a family will be replicated by the registry.
         czChunkMap = czar::CzarChunkMap::create();
@@ -414,7 +414,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         auto lambdaMissingChunk = [&](string const& msg) {
             missingChunks.push_back(chunkId);
             auto logLvl = (missingChunks.size() % 1000 == 1) ? LOG_LVL_WARN : LOG_LVL_TRACE;
-            LOGS(_log, logLvl, msg);
+            LOGQ(_log, logLvl, msg);
         };
 
         auto iter = chunkMapPtr->find(chunkId);
@@ -426,7 +426,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
         auto targetWorker = chunkData->getPrimaryScanWorker().lock();
         bool avoidWorker = avoidThisWorker(targetWorker, wContactMap, jqPtr, czFamilyMap);
         if (targetWorker == nullptr || targetWorker->isDead() || avoidWorker) {
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  funcN << " No primary scan worker for chunk=" + chunkData->dump()
                        << ((targetWorker == nullptr) ? " targ was null" : " targ was dead"));
             // Try to assign a different worker to this job
@@ -440,7 +440,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
                     if (!avoidWorker) {
                         targetWorker = maybeTarg;
                         found = true;
-                        LOGS(_log, LOG_LVL_WARN,
+                        LOGQ(_log, LOG_LVL_WARN,
                              funcN << " Alternate worker=" << targetWorker->getWorkerId()
                                    << " found for chunk=" << chunkData->dump());
                     }
@@ -461,7 +461,7 @@ void UserQuerySelect::buildAndSendUberJobs() {
             if (iter == wContactMap->end()) {
                 // This should never happen. However, if the worker contact info isn't found in the DB,
                 // the attempt count for this job will eventually reach max and the job will cancel itself.
-                LOGS(_log, LOG_LVL_ERROR,
+                LOGQ(_log, LOG_LVL_ERROR,
                      funcN << " workerId=" << workerId << " could not be found in wContactMap.");
                 break;
             }
@@ -502,11 +502,11 @@ void UserQuerySelect::buildAndSendUberJobs() {
             }
         }
         errStr += " All will be retried later. Total missing=" + to_string(missingChunks.size());
-        LOGS(_log, LOG_LVL_ERROR, errStr);
+        LOGQ(_log, LOG_LVL_ERROR, errStr);
     }
 
     if (attemptCountIncreased > 0) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              funcN << " increased attempt count for " << attemptCountIncreased << " Jobs");
     }
 
@@ -520,13 +520,13 @@ void UserQuerySelect::buildAndSendUberJobs() {
         }
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " " << exec->dumpUberJobCounts());
+    LOGQ(_log, LOG_LVL_DEBUG, funcN << " " << exec->dumpUberJobCounts());
 }
 
 QueryState UserQuerySelect::join() {
     auto exec = _executive;
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::join() called with null exec " << getQueryIdString());
+        LOGQ(_log, LOG_LVL_ERROR, "UserQuerySelect::join() called with null exec " << getQueryIdString());
         return ERROR;
     }
     bool successful = exec->join();  // Wait for all data
@@ -536,7 +536,7 @@ QueryState UserQuerySelect::join() {
     bool const resultSizeLimitExceeded = exec->resultSizeLimitExceeded();
     if (!_infileMerger->finalize(collectedBytes, finalRows)) {
         successful = false;
-        LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
+        LOGQ(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
         // Error: 1105 SQLSTATE: HY000 (ER_UNKNOWN_ERROR) Message: Unknown error
         _messageStore->addMessage(-1, "MERGE", 1105, "Failure while merging result",
                                   MessageSeverity::MSG_ERROR);
@@ -550,7 +550,7 @@ QueryState UserQuerySelect::join() {
     } catch (exception const& exc) {
         // exception here means error in qserv logic, we do not want to leak
         // it or expose it to user, just dump it to log
-        LOGS(_log, LOG_LVL_ERROR, "exception from _discardMerger: " << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, "exception from _discardMerger: " << exc.what());
     }
 
     // Update the permanent message table.
@@ -564,15 +564,15 @@ QueryState UserQuerySelect::join() {
     QueryState state = SUCCESS;
     if (successful) {
         _qMetaUpdateStatus(qmeta::QInfo::COMPLETED, collectedRows, collectedBytes, finalRows);
-        LOGS(_log, LOG_LVL_INFO, "Joined everything (success) QID=" << getQueryId());
+        LOGQ(_log, LOG_LVL_INFO, "Joined everything (success) QID=" << getQueryId());
     } else if (_killed) {
         // status is already set to ABORTED
-        LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed) QID=" << getQueryId());
+        LOGQ(_log, LOG_LVL_ERROR, "Joined everything (killed) QID=" << getQueryId());
         state = ERROR;
     } else {
         auto const status = resultSizeLimitExceeded ? qmeta::QInfo::FAILED_LR : qmeta::QInfo::FAILED;
         _qMetaUpdateStatus(status, collectedRows, collectedBytes, finalRows);
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "Joined everything (failure!) QID=" << getQueryId() << " status=" << status);
         state = ERROR;
     }
@@ -600,7 +600,7 @@ void UserQuerySelect::discard() {
 
     auto exec = _executive;
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::discard called with null exec " << getQueryIdString());
+        LOGQ(_log, LOG_LVL_ERROR, "UserQuerySelect::discard called with null exec " << getQueryIdString());
         return;
     }
 
@@ -618,14 +618,14 @@ void UserQuerySelect::discard() {
         // Silence merger discarding errors, because this object is being released.
         // client no longer cares about merger errors.
     }
-    LOGS(_log, LOG_LVL_INFO, "Discarded UserQuerySelect");
+    LOGQ(_log, LOG_LVL_INFO, "Discarded UserQuerySelect");
 }
 
 void UserQuerySelect::setupMerger() {
-    LOGS(_log, LOG_LVL_TRACE, "Setup merger");
+    LOGQ(_log, LOG_LVL_TRACE, "Setup merger");
     _infileMergerConfig->targetTable = _resultTable;
     _infileMergerConfig->mergeStmt = _qSession->getMergeStmt();
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGQ(_log, LOG_LVL_DEBUG,
          "setting mergeStmt:" << (_infileMergerConfig->mergeStmt != nullptr
                                           ? _infileMergerConfig->mergeStmt->getQueryTemplate().sqlFragment()
                                           : "nullptr"));
@@ -681,18 +681,18 @@ void UserQuerySelect::_expandSelectStarInMergeStatment(shared_ptr<query::SelectS
 void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_queryId, getResultQuery()); }
 
 void UserQuerySelect::_setupChunking() {
-    LOGS(_log, LOG_LVL_TRACE, "Setup chunking");
+    LOGQ(_log, LOG_LVL_TRACE, "Setup chunking");
     std::shared_ptr<qproc::IndexMap> im;
     std::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
     {
         eSet = _qSession->getEmptyChunks();
         if (!eSet) {
             eSet = make_shared<IntSet>();
-            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
+            LOGQ(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
         }
     }
     // FIXME add operator<< for QuerySession
-    LOGS(_log, LOG_LVL_TRACE, "_qSession: " << _qSession);
+    LOGQ(_log, LOG_LVL_TRACE, "_qSession: " << _qSession);
     if (_qSession->hasChunks()) {
         auto areaRestrictors = _qSession->getAreaRestrictors();
         auto secIdxRestrictors = _qSession->getSecIdxRestrictors();
@@ -704,13 +704,13 @@ void UserQuerySelect::_setupChunking() {
         } else {  // Unrestricted: full-sky
             csv = im->getAllChunks();
         }
-        LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
+        LOGQ(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
 
         // Filter out empty chunks
         std::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
         if (!eSet) {
             eSet = std::make_shared<IntSet const>();
-            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
+            LOGQ(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
         }
         for (qproc::ChunkSpecVector::const_iterator i = csv.begin(), e = csv.end(); i != e; ++i) {
             if (eSet->count(i->chunkId) == 0) {  // chunk not in empty?
@@ -718,7 +718,7 @@ void UserQuerySelect::_setupChunking() {
             }
         }
     } else {
-        LOGS(_log, LOG_LVL_TRACE, "No chunks added, QuerySession will add dummy chunk");
+        LOGQ(_log, LOG_LVL_TRACE, "No chunks added, QuerySession will add dummy chunk");
     }
     _qSession->setScanInteractive();
 }
@@ -782,7 +782,7 @@ void UserQuerySelect::qMetaRegister(string const& resultLocation, string const& 
     _queryIdStr = QueryIdHelper::makeIdStr(_queryId);
     // Add logging context with query ID
     QSERV_LOGCONTEXT_QUERY(_queryId);
-    LOGS(_log, LOG_LVL_DEBUG, "UserQuery registered " << _qSession->getOriginal());
+    LOGQ(_log, LOG_LVL_DEBUG, "UserQuery registered " << _qSession->getOriginal());
 
     // update #QID# with actual query ID
     boost::replace_all(_resultLoc, "#QID#", to_string(_queryId));
@@ -801,7 +801,7 @@ void UserQuerySelect::qMetaRegister(string const& resultLocation, string const& 
     if (exec != nullptr) {
         exec->setQueryId(_queryId);
     } else {
-        LOGS(_log, LOG_LVL_WARN, "No Executive, assuming invalid query");
+        LOGQ(_log, LOG_LVL_WARN, "No Executive, assuming invalid query");
     }
 
     // Note that ordering is important here, this check must happen after
@@ -829,7 +829,7 @@ void UserQuerySelect::_qMetaUpdateStatus(qmeta::QInfo::QStatus qStatus, size_t r
     try {
         _queryProgress->remove(_queryId);
     } catch (qmeta::SqlError const&) {
-        LOGS(_log, LOG_LVL_WARN, "QProgress::remove failed, queryId: " << _queryIdStr);
+        LOGQ(_log, LOG_LVL_WARN, "QProgress::remove failed, queryId: " << _queryIdStr);
     }
 }
 
@@ -837,7 +837,7 @@ void UserQuerySelect::_qMetaUpdateMessages() {
     try {
         _queryMetadata->addQueryMessages(_queryId, _messageStore);
     } catch (qmeta::SqlError const& ex) {
-        LOGS(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
+        LOGQ(_log, LOG_LVL_ERROR, "UserQuerySelect::_qMetaUpdateMessages failed, ex: " << ex.what());
     }
 }
 

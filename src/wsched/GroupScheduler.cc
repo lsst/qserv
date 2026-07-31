@@ -38,7 +38,7 @@
 #include <sstream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/LogContext.h"
@@ -96,7 +96,7 @@ void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup
     // Caller must hold util::CommandQueue::_mx
     wbase::Task::Ptr t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
+        LOGQ(_log, LOG_LVL_WARN, getName() << " queCmd could not be converted to Task or was nullptr");
         return;
     }
     QSERV_LOGCONTEXT_QUERY_JOB(t->getQueryId(), t->getJobId());
@@ -114,7 +114,7 @@ void GroupScheduler::_queCmd(util::Command::Ptr const& cmd, bool keepInThisGroup
         _queue.push_back(group);
     }
     auto uqCount = _incrCountForUserQuery(t->getQueryId(), 1);
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGQ(_log, LOG_LVL_DEBUG,
          getName() << " queCmd uqCount=" << uqCount << " rating=" << t->getScanInfo()->scanRating
                    << " interactive=" << t->getScanInteractive());
     util::CommandQueue::_cv.notify_one();
@@ -153,7 +153,7 @@ util::Command::Ptr GroupScheduler::getCmd(bool wait) {
     ++_inFlight;  // Considered inFlight as soon as it's off the queue.
     _decrCountForUserQuery(task->getQueryId());
     _incrChunkTaskCount(task->getChunkId());
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGQ(_log, LOG_LVL_DEBUG,
          "GroupSched tskStart task=" << task->getIdStr() << " chunk=" << task->getChunkId());
     return task;
 }
@@ -163,7 +163,7 @@ void GroupScheduler::commandFinish(util::Command::Ptr const& cmd) {
     ++_recentlyCompleted;
     auto t = std::dynamic_pointer_cast<wbase::Task>(cmd);
     if (t != nullptr) _decrChunkTaskCount(t->getChunkId());
-    LOGS(_log, LOG_LVL_DEBUG, "GroupSched tskEnd task=" << t->getIdStr() << " chunk=" << t->getChunkId());
+    LOGQ(_log, LOG_LVL_DEBUG, "GroupSched tskEnd task=" << t->getIdStr() << " chunk=" << t->getChunkId());
 }
 
 /// MaxActiveChunks and resource limitations (aside from available threads) are ignored by the GroupScheduler.

@@ -31,7 +31,7 @@
 #include <boost/algorithm/string/replace.hpp>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qmeta/Exceptions.h"
@@ -60,9 +60,9 @@ void QProgress::insert(QueryId queryId, int totalChunks) const {
             "INSERT INTO `QProgress` (`queryId`,`totalChunks`,`completedChunks`,`queryBegin`,`lastUpdate`) "
             "VALUES ( " +
             to_string(queryId) + ", " + to_string(totalChunks) + ",0,NOW(),NOW())";
-    LOGS(_log, LOG_LVL_TRACE, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_TRACE, "Executing query: " << query);
     if (!_conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
 
@@ -75,9 +75,9 @@ void QProgress::update(QueryId queryId, int completedChunks) const {
     sql::SqlErrorObject errObj;
     string const query = "UPDATE `QProgress` SET `completedChunks`=" + to_string(completedChunks) +
                          ", `lastUpdate`=NOW() WHERE `queryId`=" + to_string(queryId);
-    LOGS(_log, LOG_LVL_TRACE, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_TRACE, "Executing query: " << query);
     if (!_conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
     trans->commit();
@@ -94,14 +94,14 @@ QProgressData QProgress::get(QueryId queryId) const {
             "lastUpdate`) "
             "FROM `QProgress` WHERE `queryId`=" +
             to_string(queryId);
-    LOGS(_log, LOG_LVL_TRACE, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_TRACE, "Executing query: " << query);
     if (!_conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
     sql::SqlResults::iterator rowIter = results.begin();
     if (rowIter == results.end()) {
-        LOGS(_log, LOG_LVL_ERROR, "Unknown query: " << queryId);
+        LOGQ(_log, LOG_LVL_ERROR, "Unknown query: " << queryId);
         throw QueryIdError(ERR_LOC, queryId);
     }
     sql::SqlResults::value_type const& row = *rowIter;
@@ -119,9 +119,9 @@ void QProgress::remove(QueryId queryId) const {
     auto trans = QMetaTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     string const query = "DELETE FROM `QProgress` WHERE `queryId`=" + to_string(queryId);
-    LOGS(_log, LOG_LVL_TRACE, "Executing query: " << query);
+    LOGQ(_log, LOG_LVL_TRACE, "Executing query: " << query);
     if (!_conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
     trans->commit();

@@ -28,7 +28,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "Exceptions.h"
@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.qmeta.QMetaTransaction");
 namespace lsst::qserv::qmeta {
 
 void QMetaTransaction::throwException(util::Issue::Context const& ctx, std::string const& msg) {
-    LOGS(_log, LOG_LVL_WARN, " QMetaTransaction::throwException " + msg);
+    LOGQ(_log, LOG_LVL_WARN, " QMetaTransaction::throwException " + msg);
     throw SqlError(ctx, errObj);
 }
 

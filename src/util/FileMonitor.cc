@@ -31,7 +31,7 @@
 #include <sys/inotify.h>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Project headers
 #include "util/Bug.h"

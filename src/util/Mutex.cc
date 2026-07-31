@@ -27,7 +27,7 @@
 #include <cassert>
 
 // Qserv headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 #include "util/IterableFormatter.h"
 
 using namespace std;

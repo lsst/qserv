@@ -32,7 +32,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.EventThread");
@@ -90,13 +90,13 @@ EventThreadJoiner::EventThreadJoiner() {
 
 EventThreadJoiner::~EventThreadJoiner() {
     if (_continue) {
-        LOGS(_log, LOG_LVL_ERROR, "~EventThreadJoiner() called without shutdownJoiner() being called");
+        LOGQ(_log, LOG_LVL_ERROR, "~EventThreadJoiner() called without shutdownJoiner() being called");
     }
 }
 
 void EventThreadJoiner::shutdownJoin() {
     _continue = false;
-    LOGS(_log, LOG_LVL_DEBUG, "Waiting for joiner thread to finish.");
+    LOGQ(_log, LOG_LVL_DEBUG, "Waiting for joiner thread to finish.");
     _tJoiner.join();
 }
 
@@ -111,14 +111,14 @@ void EventThreadJoiner::joinLoop() {
             pet->join();
             pet.reset();
             _count--;
-            LOGS(_log, LOG_LVL_DEBUG, "joined count=" << _count);
+            LOGQ(_log, LOG_LVL_DEBUG, "joined count=" << _count);
         } else {
             if (!_continue) break;
             ulock.unlock();
             std::this_thread::sleep_for(_sleepTime);
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG, "join loop exiting");
+    LOGQ(_log, LOG_LVL_DEBUG, "join loop exiting");
 }
 
 void EventThreadJoiner::addThread(EventThread::Ptr const& eventThread) {

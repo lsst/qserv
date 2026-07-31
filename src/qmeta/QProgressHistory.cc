@@ -28,7 +28,7 @@
 #include "boost/lexical_cast.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qmeta/Exceptions.h"
@@ -165,7 +165,7 @@ json QProgressHistory::_readFromDatabase(QueryId queryId) const {
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
     if (!_conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
     for (sql::SqlResults::iterator rowIter = results.begin(); rowIter != results.end(); ++rowIter) {
@@ -193,7 +193,7 @@ void QProgressHistory::_readFromDatabase(json& result, uint64_t minTimeMs,
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
     if (!_conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "SQL query failed: " << query);
         throw SqlError(ERR_LOC, errObj);
     }
     for (sql::SqlResults::iterator rowIter = results.begin(); rowIter != results.end(); ++rowIter) {
@@ -235,7 +235,7 @@ void QProgressHistory::_writeToDatabase(QueryId queryId, json const& history) {
             to_string(endTimeMs) + "," + to_string(totalPoints) + ")";
     sql::SqlErrorObject errObj;
     if (!_conn->runQuery(query, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "SQL query failed to store the history of query ID: "
                      << queryIdStr << ",  beginTimeMs: " << beginTimeMs << ", endTimeMs: " << endTimeMs
                      << ", totalPoints: " << totalPoints);

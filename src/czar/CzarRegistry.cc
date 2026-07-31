@@ -37,7 +37,7 @@
 #include "util/common.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -88,22 +88,22 @@ void CzarRegistry::_registryUpdateLoop() {
                                          {"management-port", _czarConfig->replicationHttpPort()},
                                          {"host-name", util::get_current_host_fqdn()}}}});
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          __func__ << " czarPost url=" << url << " request=" << request.dump() << " headers=" << headers[0]);
     http::Client client(method, url, request.dump(), headers);
     while (_loop) {
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              __func__ << " loop url=" << url << " request=" << request.dump() << " headers=" << headers[0]);
         try {
             json const response = client.readAsJson();
             if (0 == response.at("success").get<int>()) {
                 string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                LOGQ(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
                 // TODO: Controlled shutdown would be nice instead of abort.
                 abort();
             }
         } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+            LOGQ(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
         }
         this_thread::sleep_for(chrono::seconds(max(1U, _czarConfig->replicationRegistryHearbeatIvalSec())));
     }
@@ -122,14 +122,14 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                        to_string(_czarConfig->replicationRegistryPort()) +
                        "/services?instance_id=" + _czarConfig->replicationInstanceId();
     string const requestContext = "Czar: '" + http::method2string(method) + "' request to '" + url + "'";
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " url=" << url);
+    LOGQ(_log, LOG_LVL_TRACE, __func__ << " url=" << url);
     http::Client client(method, url, string(), headers);
     while (_loop) {
         try {
             json const response = client.readAsJson();
             if (0 == response.at("success").get<int>()) {
                 string const error = response.at("error").get<string>();
-                LOGS(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
+                LOGQ(_log, LOG_LVL_ERROR, requestContext + " was denied, error: '" + error + "'.");
                 // TODO: Is there a better thing to do than just log this here?
             } else {
                 protojson::WorkerContactInfo::WCMapPtr wMap = _buildMapFromJson(response);
@@ -146,9 +146,9 @@ void CzarRegistry::_registryWorkerInfoLoop() {
                     }
                 }
             }
-            LOGS(_log, LOG_LVL_TRACE, __func__ << " resp=" << response);
+            LOGQ(_log, LOG_LVL_TRACE, __func__ << " resp=" << response);
         } catch (exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
+            LOGQ(_log, LOG_LVL_WARN, requestContext + " failed, ex: " + ex.what());
         }
         this_thread::sleep_for(chrono::seconds(15));
     }
@@ -160,17 +160,17 @@ protojson::WorkerContactInfo::WCMapPtr CzarRegistry::_buildMapFromJson(nlohmann:
     auto wMap = protojson::WorkerContactInfo::WCMapPtr(new protojson::WorkerContactInfo::WCMap());
     for (auto const& [key, value] : jsWorkers.items()) {
         auto const& jsQserv = value.at("qserv");
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " key=" << key << " jsQ=" << jsQserv);
+        LOGQ(_log, LOG_LVL_DEBUG, __func__ << " key=" << key << " jsQ=" << jsQserv);
 
         // The names for items here are different than the names used by workers.
         auto wInfo = protojson::WorkerContactInfo::createFromJsonRegistry(key, jsQserv);
 
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " wInfot=" << wInfo->dump());
+        LOGQ(_log, LOG_LVL_DEBUG, __func__ << " wInfot=" << wInfo->dump());
         auto iter = wMap->find(key);
         if (iter != wMap->end()) {
-            LOGS(_log, LOG_LVL_ERROR, __func__ << " duplicate key " << key << " in " << response);
+            LOGQ(_log, LOG_LVL_ERROR, __func__ << " duplicate key " << key << " in " << response);
             if (!wInfo->isSameContactInfo(*(iter->second))) {
-                LOGS(_log, LOG_LVL_ERROR, __func__ << " incongruent key " << key << " in " << response);
+                LOGQ(_log, LOG_LVL_ERROR, __func__ << " incongruent key " << key << " in " << response);
                 return nullptr;
             }
             // ignore the duplicate, since it matches the previous one.
@@ -212,7 +212,7 @@ protojson::WorkerContactInfo::WCMapPtr CzarRegistry::waitForWorkerContactMap() c
         }
         if (contMap == nullptr) {
             // This should only ever happen at startup if there's trouble getting data.
-            LOGS(_log, LOG_LVL_WARN, "waitForWorkerContactMap() _contactMap unavailable waiting for info");
+            LOGQ(_log, LOG_LVL_WARN, "waitForWorkerContactMap() _contactMap unavailable waiting for info");
             this_thread::sleep_for(1s);
         }
     }

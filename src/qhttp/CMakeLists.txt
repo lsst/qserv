@@ -22,6 +22,7 @@ add_executable(testqhttp testqhttp.cc)
 
 target_link_libraries(testqhttp PUBLIC
     curl
+    global
     qhttp
     Boost::unit_test_framework
     Threads::Threads

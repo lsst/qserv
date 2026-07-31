@@ -33,7 +33,7 @@
 #include <thread>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/constants.h"
@@ -61,12 +61,12 @@ void fetchDbs(string const& instanceName, SqlConnection& sc, C& dbs) {
     shared_ptr<SqlResultIter> resultP;
     // TODO we probably want a more elegant backoff mechanism than this.
     while (true) {
-        LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "Launching query: " << query);
         resultP = sc.getQueryIter(query);
         assert(resultP.get());
         if (resultP->getErrorObject().isSet()) {
             SqlErrorObject& seo = resultP->getErrorObject();
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  "Waiting to get list of publishable dbs: " << seo.errNo() << ": " << seo.errMsg());
             this_thread::sleep_for(1s);
         } else {
@@ -79,7 +79,7 @@ void fetchDbs(string const& instanceName, SqlConnection& sc, C& dbs) {
         dbs.push_back((**resultP)[0]);
         nothing = false;
     }
-    if (nothing) LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find databases to export");
+    if (nothing) LOGQ(_log, LOG_LVL_WARN, "ChunkInventory couldn't find databases to export");
 }
 
 /// Fetch a list of chunks published for a database
@@ -87,15 +87,15 @@ void fetchChunks(string const& instanceName, string const& db, SqlConnection& sc
                  ChunkInventory::ChunkMap& chunkMap) {
     string const query = "SELECT db,chunk FROM qservw_" + instanceName + ".Chunks WHERE db='" + db + "'";
 
-    LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
     shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
     assert(resultP.get());
 
     if (resultP->getErrorObject().isSet()) {
         SqlErrorObject& seo = resultP->getErrorObject();
-        LOGS(_log, LOG_LVL_ERROR, "ChunkInventory failed to get a list of published chunks for db: " << db);
-        LOGS(_log, LOG_LVL_ERROR, seo.printErrMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "ChunkInventory failed to get a list of published chunks for db: " << db);
+        LOGQ(_log, LOG_LVL_ERROR, seo.printErrMsg());
         return;
     }
     bool nothing = true;
@@ -104,7 +104,7 @@ void fetchChunks(string const& instanceName, string const& db, SqlConnection& sc
         chunkMap.insert(chunk);
         nothing = false;
     }
-    if (nothing) LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any published chunks for db: " << db);
+    if (nothing) LOGQ(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any published chunks for db: " << db);
 }
 
 /// Fetch a unique identifier of a worker
@@ -113,22 +113,22 @@ void fetchId(string const& instanceName, SqlConnection& sc, string& id) {
     // FIXME: perhaps we should allow multiple identifiers?
     string const query = "SELECT id FROM qservw_" + instanceName + ".Id WHERE `type`='UUID'";
 
-    LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
     shared_ptr<SqlResultIter> resultP = sc.getQueryIter(query);
     assert(resultP.get());
 
     if (resultP->getErrorObject().isSet()) {
         SqlErrorObject& seo = resultP->getErrorObject();
-        LOGS(_log, LOG_LVL_ERROR, "ChunkInventory failed to get a unique identifier of the worker");
-        LOGS(_log, LOG_LVL_ERROR, seo.printErrMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "ChunkInventory failed to get a unique identifier of the worker");
+        LOGQ(_log, LOG_LVL_ERROR, seo.printErrMsg());
         return;
     }
     for (; !resultP->done(); ++(*resultP)) {
         id = (**resultP)[0];
         return;
     }
-    LOGS(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any a unique identifier of the worker");
+    LOGQ(_log, LOG_LVL_WARN, "ChunkInventory couldn't find any a unique identifier of the worker");
 }
 
 }  // anonymous namespace
@@ -156,7 +156,7 @@ void ChunkInventory::rebuild(string const& name, mysql::MySqlConfig const& mySql
 void ChunkInventory::add(string const& db, int chunk) {
     lock_guard<mutex> lock(_mtx);
 
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
+    LOGQ(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
 
     // Adding unconditionally. if the database key doesn't exist then it will
     // be automatically added by this operation.
@@ -166,7 +166,7 @@ void ChunkInventory::add(string const& db, int chunk) {
 void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
     lock_guard<mutex> lock(_mtx);
 
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
+    LOGQ(_log, LOG_LVL_DEBUG, "ChunkInventory::add()  db: " << db << ", chunk: " << chunk);
 
     auto sc = SqlConnectionFactory::make(mySqlConfig);
 
@@ -177,7 +177,7 @@ void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& 
 
     if (find(dbs.begin(), dbs.end(), db) == dbs.end()) {
         string const error = "ChunkInventory::add()  invalid database: " + db;
-        LOGS(_log, LOG_LVL_ERROR, error);
+        LOGQ(_log, LOG_LVL_ERROR, error);
         throw InvalidParamError(error);
     }
 
@@ -186,12 +186,12 @@ void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& 
             "INSERT INTO qservw_" + _name + ".Chunks (db,chunk) VALUES ('" + db + "'," + to_string(chunk) +
                     ")"};
     for (auto const& query : queries) {
-        LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
 
         SqlErrorObject seo;
         if (not sc->runQuery(query, seo)) {
             string const error = "ChunkInventory failed to add a chunk, error: " + seo.printErrMsg();
-            LOGS(_log, LOG_LVL_ERROR, error);
+            LOGQ(_log, LOG_LVL_ERROR, error);
             throw QueryError(error);
         }
     }
@@ -204,7 +204,7 @@ void ChunkInventory::add(string const& db, int chunk, mysql::MySqlConfig const& 
 void ChunkInventory::remove(string const& db, int chunk) {
     lock_guard<mutex> lock(_mtx);
 
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
+    LOGQ(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
 
     // If no such database or a chunk exsist in the map then simply
     // quite and make no fuss about it.
@@ -222,7 +222,7 @@ void ChunkInventory::remove(string const& db, int chunk) {
 void ChunkInventory::remove(string const& db, int chunk, mysql::MySqlConfig const& mySqlConfig) {
     lock_guard<mutex> lock(_mtx);
 
-    LOGS(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
+    LOGQ(_log, LOG_LVL_DEBUG, "ChunkInventory::remove()  db: " << db << ", chunk: " << chunk);
 
     vector<string> const queries = {"DELETE FROM qservw_" + _name + ".Chunks WHERE db='" + db +
                                     "' AND chunk=" + to_string(chunk)};
@@ -230,12 +230,12 @@ void ChunkInventory::remove(string const& db, int chunk, mysql::MySqlConfig cons
     auto sc = SqlConnectionFactory::make(mySqlConfig);
 
     for (auto const& query : queries) {
-        LOGS(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "Launching query:\n" << query);
 
         SqlErrorObject seo;
         if (not sc->runQuery(query, seo)) {
             string const error = "ChunkInventory failed to remove a chunk, error: " + seo.printErrMsg();
-            LOGS(_log, LOG_LVL_ERROR, error);
+            LOGQ(_log, LOG_LVL_ERROR, error);
             throw QueryError(error);
         }
     }
@@ -321,13 +321,13 @@ void ChunkInventory::_rebuild(SqlConnection& sc) {
                     "          AND TABLE_NAME REGEXP '_[0-9]*$'"};
 
     for (auto const& query : queries) {
-        LOGS(_log, LOG_LVL_DEBUG, "Launching query: " << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "Launching query: " << query);
 
         SqlErrorObject seo;
         if (not sc.runQuery(query, seo)) {
             string const error = "ChunkInventory failed to rebuild a list of published chunks, error: " +
                                  seo.printErrMsg();
-            LOGS(_log, LOG_LVL_ERROR, error);
+            LOGQ(_log, LOG_LVL_ERROR, error);
             throw QueryError(error);
         }
     }

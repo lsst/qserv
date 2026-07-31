@@ -43,7 +43,7 @@
 #include "boost/lexical_cast.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 #include "lsst/sphgeom/Chunker.h"
 
 // Qserv headers
@@ -148,7 +148,7 @@ ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestr
     bool hasRegion = true;
     if (secIdxRestrictors != nullptr) {
         indexSpecs = _si->lookup(*secIdxRestrictors);
-        LOGS(_log, LOG_LVL_TRACE, "Index specs: " << util::printable(indexSpecs));
+        LOGQ(_log, LOG_LVL_TRACE, "Index specs: " << util::printable(indexSpecs));
     } else {
         hasIndex = false;
     }
@@ -172,8 +172,8 @@ ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestr
     }
     ChunkSpecVector regionSpecs;
     std::transform(scv.begin(), scv.end(), std::back_inserter(regionSpecs), convertSgSubChunks);
-    LOGS(_log, LOG_LVL_TRACE, "indexSpecs subChunks " << util::printable(indexSpecs));
-    LOGS(_log, LOG_LVL_TRACE, "regionSpecs subChunks " << util::printable(regionSpecs));
+    LOGQ(_log, LOG_LVL_TRACE, "indexSpecs subChunks " << util::printable(indexSpecs));
+    LOGQ(_log, LOG_LVL_TRACE, "regionSpecs subChunks " << util::printable(regionSpecs));
 
     // FIXME: Index and spatial lookup are supported in AND format only right now.
     if (hasIndex && hasRegion) {
@@ -181,7 +181,7 @@ ChunkSpecVector IndexMap::getChunks(query::AreaRestrictorVecPtr const& areaRestr
         normalize(indexSpecs);
         normalize(regionSpecs);
         intersectSorted(indexSpecs, regionSpecs);
-        LOGS(_log, LOG_LVL_TRACE, "merged subChunks=" << util::printable(regionSpecs));
+        LOGQ(_log, LOG_LVL_TRACE, "merged subChunks=" << util::printable(regionSpecs));
         return indexSpecs;
     } else if (hasIndex) {
         return indexSpecs;

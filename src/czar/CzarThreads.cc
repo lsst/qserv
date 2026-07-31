@@ -36,7 +36,7 @@
 #include <nlohmann/json.hpp>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -56,9 +56,9 @@ using namespace std::chrono_literals;
 using namespace nlohmann;
 
 #define CONTEXT_ ("Czar::" + string(__func__) + " ")
-#define DEBUG_(arg) LOGS(_log, LOG_LVL_DEBUG, CONTEXT_ << arg)
-#define ERROR_(arg) LOGS(_log, LOG_LVL_ERROR, CONTEXT_ << arg)
-#define WARN_(arg) LOGS(_log, LOG_LVL_WARN, CONTEXT_ << arg)
+#define DEBUG_(arg) LOGQ(_log, LOG_LVL_DEBUG, CONTEXT_ << arg)
+#define ERROR_(arg) LOGQ(_log, LOG_LVL_ERROR, CONTEXT_ << arg)
+#define WARN_(arg) LOGQ(_log, LOG_LVL_WARN, CONTEXT_ << arg)
 
 namespace {
 // Messages are logged in the same way as in the Czar class (see Czar.cc).

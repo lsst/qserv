@@ -41,7 +41,7 @@
 #include "boost/algorithm/string/case_conv.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "qana/AnalysisError.h"
@@ -71,7 +71,7 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
 
     util::MultiError multiError;
 
-    LOGS(_log, LOG_LVL_TRACE, "Looking for duplicate fields in: " << util::printable(v));
+    LOGQ(_log, LOG_LVL_TRACE, "Looking for duplicate fields in: " << util::printable(v));
 
     MultiMap mm;
     int pos;
@@ -96,12 +96,12 @@ util::MultiError DuplSelectExprPlugin::getDuplicateAndPosition(StringVector cons
         }
     }
 
-    if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
+    if (LOGQ_CHECK_LVL(_log, LOG_LVL_TRACE)) {
         std::string msg;
         if (!multiError.empty()) {
-            LOGS(_log, LOG_LVL_TRACE, "Duplicate select fields found:\n" << multiError);
+            LOGQ(_log, LOG_LVL_TRACE, "Duplicate select fields found:\n" << multiError);
         } else {
-            LOGS(_log, LOG_LVL_TRACE, "No duplicate select field.");
+            LOGQ(_log, LOG_LVL_TRACE, "No duplicate select field.");
         }
     }
     return multiError;
@@ -111,8 +111,8 @@ util::MultiError DuplSelectExprPlugin::getDuplicateSelectErrors(query::SelectStm
     query::SelectList const& selectList = stmt.getSelectList();
     query::ValueExprPtrVector valueExprList = *(selectList.getValueExprList());
 
-    if (LOG_CHECK_LVL(_log, LOG_LVL_TRACE)) {
-        LOGS(_log, LOG_LVL_TRACE, "Input stmt: " << selectList);
+    if (LOGQ_CHECK_LVL(_log, LOG_LVL_TRACE)) {
+        LOGQ(_log, LOG_LVL_TRACE, "Input stmt: " << selectList);
     }
 
     StringVector selectExprNormalizedNames;

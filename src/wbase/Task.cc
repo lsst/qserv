@@ -39,7 +39,7 @@
 #include <boost/algorithm/string/replace.hpp>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/constants.h"
@@ -156,10 +156,10 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
         auto scanInfo = _ujData->getScanInfo();
         for (auto const& scanTbl : scanInfo->infoTables) {
             dbTbls_.emplace(scanTbl.db, scanTbl.table);
-            LOGS(_log, LOG_LVL_TRACE,
+            LOGQ(_log, LOG_LVL_TRACE,
                  "Task::Task scanTbl.db=" << scanTbl.db << " scanTbl.table=" << scanTbl.table);
         }
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "fragment a db=" << _db << ":" << _chunkId << " dbTbls=" << util::printable(dbTbls_));
     } else {
         for (TaskDbTbl const& fDbTbl : fragSubTables) {
@@ -167,12 +167,12 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
             /// FUTURE: It may save space to store these in UserQueryInfo as it seems
             ///         database and table names are consistent across chunks.
             dbTbls_.emplace(fDbTbl.db, fDbTbl.tbl);
-            LOGS(_log, LOG_LVL_TRACE,
+            LOGQ(_log, LOG_LVL_TRACE,
                  "Task::Task subchunk fDbTbl.db=" << fDbTbl.db << " fDbTbl.tbl=" << fDbTbl.tbl);
         }
         subchunksVect_ = fragSubchunkIds;
 
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "fragment b db=" << _db << ":" << _chunkId << " dbTableSet" << util::printable(dbTbls_)
                               << " subChunks=" << util::printable(subchunksVect_));
     }
@@ -194,7 +194,7 @@ Task::Task(UberJobData::Ptr const& ujData, int jobId, int attemptCount, int chun
 
     _dbTblsAndSubchunks = make_unique<DbTblsAndSubchunks>(dbTbls_, subchunksVect_);
 
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " created");
+    LOGQ(_log, LOG_LVL_TRACE, cName(__func__) << " created");
 }
 
 Task::~Task() {}
@@ -384,12 +384,12 @@ FileChannelShared::Ptr Task::getSendChannel() const { return _ujData->getFileCha
 void Task::action(util::CmdData* data) {
     string tIdStr = getIdStr();
     if (_queryStarted.exchange(true)) {
-        LOGS(_log, LOG_LVL_WARN, "task was already started " << tIdStr);
+        LOGQ(_log, LOG_LVL_WARN, "task was already started " << tIdStr);
         return;
     }
 
     if (_unitTest) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              __func__ << " Command::_func has been set, this should only happen in unit tests.");
         _func(data);
         return;
@@ -402,13 +402,13 @@ void Task::action(util::CmdData* data) {
     try {
         success = qr->runQuery(errStr);
     } catch (UnsupportedError const& e) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " runQuery threw UnsupportedError " << e.what() << tIdStr);
+        LOGQ(_log, LOG_LVL_ERROR, __func__ << " runQuery threw UnsupportedError " << e.what() << tIdStr);
         errStr += string(" exception:") + e.what();
     }
     if (not success) {
-        LOGS(_log, _logLvlET, "runQuery failed " << tIdStr);
+        LOGQ(_log, _logLvlET, "runQuery failed " << tIdStr);
         if (not getSendChannel()->kill("Task::action")) {
-            LOGS(_log, _logLvlWT, "runQuery sendChannel already killed " << tIdStr);
+            LOGQ(_log, _logLvlWT, "runQuery sendChannel already killed " << tIdStr);
         }
         // This is what gets sent if a more specific error has not been sent already.
         util::MultiError multiErr;
@@ -424,7 +424,7 @@ void Task::action(util::CmdData* data) {
 string Task::getQueryString() const {
     auto qStats = _queryStats.lock();
     if (qStats == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _queryStats could not be locked");
+        LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " _queryStats could not be locked");
         return string("");
     }
 
@@ -432,14 +432,14 @@ string Task::getQueryString() const {
     string qs = uQInfo->getTemplate(_templateId);
     boost::algorithm::replace_all(qs, CHUNK_TAG, to_string(_chunkId));
     boost::algorithm::replace_all(qs, SUBCHUNK_TAG, to_string(_subchunkId));
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " qs=" << qs);
+    LOGQ(_log, LOG_LVL_TRACE, cName(__func__) << " qs=" << qs);
     return qs;
 }
 
 wpublish::QueryStatistics::Ptr Task::getQueryStats() const {
     auto qStats = _queryStats.lock();
     if (qStats == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, "Task::getQueryStats() _queryStats==null " << getIdStr());
+        LOGQ(_log, LOG_LVL_ERROR, "Task::getQueryStats() _queryStats==null " << getIdStr());
     }
     return qStats;
 }
@@ -453,9 +453,9 @@ void Task::cancel(bool logIt) {
 
     if (logIt) {
         if (!_ujData->getCancelled()) {
-            LOGS(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr() << " UberJob still live.");
+            LOGQ(_log, LOG_LVL_DEBUG, "Task::cancel " << getIdStr() << " UberJob still live.");
         } else {
-            LOGS(_log, LOG_LVL_TRACE, "Task::cancel " << getIdStr());
+            LOGQ(_log, LOG_LVL_TRACE, "Task::cancel " << getIdStr());
         }
     }
     auto qr = _taskQueryRunner;  // Need a copy in case _taskQueryRunner is reset.
@@ -489,7 +489,7 @@ void Task::freeTaskQueryRunner(wdb::QueryRunner* tqr) {
     if (_taskQueryRunner.get() == tqr) {
         _taskQueryRunner.reset();
     } else {
-        LOGS(_log, LOG_LVL_WARN, "Task::freeTaskQueryRunner pointer didn't match!");
+        LOGQ(_log, LOG_LVL_WARN, "Task::freeTaskQueryRunner pointer didn't match!");
     }
     lock_guard taskUseVectMtxLock(_taskUseVectMtx);
     _taskUseVect.clear();
@@ -515,21 +515,21 @@ bool Task::isRunning() const {
 }
 
 void Task::started(chrono::system_clock::time_point const& now) {
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << getIdStr() << " started");
+    LOGQ(_log, LOG_LVL_TRACE, __func__ << " " << getIdStr() << " started");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::STARTED;
     _startTime = now;
 }
 
 void Task::queryExecutionStarted() {
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << getIdStr() << " executing");
+    LOGQ(_log, LOG_LVL_TRACE, __func__ << " " << getIdStr() << " executing");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::EXECUTING_QUERY;
     _queryExecTime = chrono::system_clock::now();
 }
 
 void Task::queried() {
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << getIdStr() << " reading");
+    LOGQ(_log, LOG_LVL_TRACE, __func__ << " " << getIdStr() << " reading");
     lock_guard<mutex> guard(_stateMtx);
     _state = TaskState::READING_DATA;
     _queryTime = chrono::system_clock::now();
@@ -541,7 +541,7 @@ void Task::queried() {
 /// Set values associated with the Task being finished.
 /// @return milliseconds to complete the Task, system clock time.
 chrono::milliseconds Task::finished(chrono::system_clock::time_point const& now) {
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << getIdStr() << " finished");
+    LOGQ(_log, LOG_LVL_TRACE, __func__ << " " << getIdStr() << " finished");
     chrono::milliseconds duration;
     {
         lock_guard<mutex> guard(_stateMtx);
@@ -553,7 +553,7 @@ chrono::milliseconds Task::finished(chrono::system_clock::time_point const& now)
     if (duration.count() < 1) {
         duration = chrono::milliseconds{1};
     }
-    LOGS(_log, LOG_LVL_TRACE, "processing millisecs=" << duration.count());
+    LOGQ(_log, LOG_LVL_TRACE, "processing millisecs=" << duration.count());
     return duration;
 }
 

@@ -40,7 +40,7 @@
 #include <sstream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/LogContext.h"
@@ -71,14 +71,14 @@ ScanScheduler::ScanScheduler(string const& name, int maxThreads, int maxReserve,
 void ScanScheduler::commandStart(util::Command::Ptr const& cmd) {
     _infoChanged = true;
     auto logLvl = LOG_LVL_TRACE;
-    if (LOG_CHECK_LVL(_log, logLvl)) {
+    if (LOGQ_CHECK_LVL(_log, logLvl)) {
         wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
         if (task == nullptr) {
-            LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
+            LOGQ(_log, LOG_LVL_WARN, "ScanScheduler::commandStart cmd failed conversion " << getName());
             return;
         }
         QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-        LOGS(_log, logLvl, "commandStart " << getName() << " task=" << task->getIdStr());
+        LOGQ(_log, logLvl, "commandStart " << getName() << " task=" << task->getIdStr());
     }
     // task was registered Inflight when getCmd() was called.
 }
@@ -87,23 +87,23 @@ void ScanScheduler::commandFinish(util::Command::Ptr const& cmd) {
     wbase::Task::Ptr task = dynamic_pointer_cast<wbase::Task>(cmd);
     _infoChanged = true;
     if (task == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion " << getName());
+        LOGQ(_log, LOG_LVL_WARN, "ScanScheduler::commandFinish cmd failed conversion " << getName());
         return;
     }
 
     QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-    LOGS(_log, LOG_LVL_TRACE, __func__ << " " << getName() << " task=" << task->getIdStr());
+    LOGQ(_log, LOG_LVL_TRACE, __func__ << " " << getName() << " task=" << task->getIdStr());
 
     _taskQueue->taskComplete(task);  // does not need _mx protection.
     {
         lock_guard<mutex> guard(util::CommandQueue::_mx);
         --_inFlight;
         ++_recentlyCompleted;
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "commandFinish " << getName() << " inFlight=" << _inFlight << " " << task->getIdStr());
         _decrChunkTaskCount(task->getChunkId());
     }
-    LOGS(_log, LOG_LVL_TRACE, "tskEnd chunk=" << task->getChunkId() << " " << task->getIdStr());
+    LOGQ(_log, LOG_LVL_TRACE, "tskEnd chunk=" << task->getChunkId() << " " << task->getIdStr());
     // Whenever a Task finishes, sleeping threads need to check if resources
     // are available to run new Tasks.
     _cv.notify_one();
@@ -127,7 +127,7 @@ bool ScanScheduler::_ready() {
     if (_infoChanged) {
         _infoChanged = false;
         logStuff = true;
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              getName() << " ScanScheduler::_ready "
                        << " inFlight=" << _inFlight << " maxThreads=" << _maxThreads
                        << " adj=" << _maxThreadsAdj << " activeChunks=" << getActiveChunkCount()
@@ -135,7 +135,7 @@ bool ScanScheduler::_ready() {
     }
     if (_inFlight >= maxInFlight()) {
         if (logStuff) {
-            LOGS(_log, LOG_LVL_TRACE, getName() << " ScanScheduler::_ready too many in flight " << _inFlight);
+            LOGQ(_log, LOG_LVL_TRACE, getName() << " ScanScheduler::_ready too many in flight " << _inFlight);
         }
         return false;
     }
@@ -153,7 +153,7 @@ size_t ScanScheduler::getSize() const {
 
 util::Command::Ptr ScanScheduler::getCmd(bool wait) {
     unique_lock<mutex> lock(util::CommandQueue::_mx);
-    LOGS(_log, LOG_LVL_TRACE, "start getCmd " << getName() << " " << _taskQueue->queueInfo());
+    LOGQ(_log, LOG_LVL_TRACE, "start getCmd " << getName() << " " << _taskQueue->queueInfo());
     if (wait) {
         util::CommandQueue::_cv.wait(lock, [this]() { return _ready(); });
     } else if (!_ready()) {
@@ -164,7 +164,7 @@ util::Command::Ptr ScanScheduler::getCmd(bool wait) {
     if (task != nullptr) {
         ++_inFlight;  // in flight as soon as it is off the queue.
         QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
-        LOGS(_log, LOG_LVL_TRACE,
+        LOGQ(_log, LOG_LVL_TRACE,
              "getCmd " << getName() << " tskStart chunk=" << task->getChunkId() << " tid=" << task->getIdStr()
                        << " inflight=" << _inFlight << _taskQueue->queueInfo());
         _infoChanged = true;
@@ -183,7 +183,7 @@ void ScanScheduler::queCmd(util::Command::Ptr const& cmd) {
 }
 
 void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
-    LOGS(_log, LOG_LVL_TRACE, "ScanScheduler::queCmd cmds.sz=" << cmds.size());
+    LOGQ(_log, LOG_LVL_TRACE, "ScanScheduler::queCmd cmds.sz=" << cmds.size());
     std::vector<wbase::Task::Ptr> tasks;
     bool first = true;
     QueryId qid;
@@ -204,7 +204,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
                 string eMsg("Mismatch multiple query/job ids in single queCmd ");
                 eMsg += " expected QID=" + to_string(qid) + " got=" + to_string(tsk->getQueryId());
                 eMsg += " expected JID=" + to_string(qid) + " got=" + to_string(tsk->getJobId());
-                LOGS(_log, LOG_LVL_ERROR, eMsg);
+                LOGQ(_log, LOG_LVL_ERROR, eMsg);
                 // This could cause difficult to detect problems later on.
                 throw util::Bug(ERR_LOC, eMsg);
                 return;
@@ -212,13 +212,13 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
         }
 
         tasks.push_back(tsk);
-        LOGS(_log, LOG_LVL_TRACE, getName() << " queCmd " << tsk->getIdStr());
+        LOGQ(_log, LOG_LVL_TRACE, getName() << " queCmd " << tsk->getIdStr());
     }
     // Queue the tasks
     {
         lock_guard<mutex> lock(util::CommandQueue::_mx);
         auto uqCount = _incrCountForUserQuery(qid, tasks.size());
-        LOGS(_log, LOG_LVL_TRACE, getName() << " queCmd " << " uqCount=" << uqCount);
+        LOGQ(_log, LOG_LVL_TRACE, getName() << " queCmd " << " uqCount=" << uqCount);
         _taskQueue->queueTask(tasks);
         _infoChanged = true;
     }
@@ -239,28 +239,28 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
 bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning) {
     QSERV_LOGCONTEXT_QUERY_JOB(task->getQueryId(), task->getJobId());
 
-    LOGS(_log, LOG_LVL_INFO, __func__ << " " << getName());
+    LOGQ(_log, LOG_LVL_INFO, __func__ << " " << getName());
     // Check if task is in the queue.
     // _taskQueue has its own mutex to protect this.
     auto rmTask = _taskQueue->removeTask(task);
     bool inQueue = rmTask != nullptr;
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask inQueue=" << inQueue);
+    LOGQ(_log, LOG_LVL_DEBUG, "removeTask inQueue=" << inQueue);
     if (inQueue) {
-        LOGS(_log, LOG_LVL_INFO, "removeTask moving task on queue");
+        LOGQ(_log, LOG_LVL_INFO, "removeTask moving task on queue");
         _decrCountForUserQuery(task->getQueryId());
         return true;
     }
 
-    LOGS(_log, LOG_LVL_DEBUG, "removeTask not in queue");
+    LOGQ(_log, LOG_LVL_DEBUG, "removeTask not in queue");
     // Wasn't in the queue, could be in flight.
     if (!removeRunning) {
-        LOGS(_log, LOG_LVL_DEBUG, "removeTask not removing running tasks");
+        LOGQ(_log, LOG_LVL_DEBUG, "removeTask not removing running tasks");
         return false;
     }
 
     /// Don't remove the task if there are already too many threads in existence.
     if (task->atMaxThreadCount()) {
-        LOGS(_log, LOG_LVL_WARN, "removeTask couldn't move as too many threads existing");
+        LOGQ(_log, LOG_LVL_WARN, "removeTask couldn't move as too many threads existing");
         return false;
     }
 
@@ -268,10 +268,10 @@ bool ScanScheduler::removeTask(wbase::Task::Ptr const& task, bool removeRunning)
     /// it is safe to move the running task according to the test above.
     auto poolThread = task->getAndNullPoolEventThread();
     if (poolThread != nullptr) {
-        LOGS(_log, LOG_LVL_INFO, "removeTask moving running task");
+        LOGQ(_log, LOG_LVL_INFO, "removeTask moving running task");
         return poolThread->leavePool(task);
     } else {
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              "removeTask PoolEventThread was null, "
              "presumably already moved for large result.");
     }

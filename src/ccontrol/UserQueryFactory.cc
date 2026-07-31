@@ -33,7 +33,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -132,7 +132,7 @@ std::shared_ptr<UserQuery> _makeUserQueryProcessList(query::SelectStmt::Ptr& stm
         // no point supporting async for these
         return std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
+    LOGQ(_log, LOG_LVL_DEBUG, "SELECT query is a PROCESSLIST");
     try {
         return std::make_shared<UserQueryProcessList>(stmt, sharedResources->qMetaSelect,
                                                       sharedResources->czarId, userQueryId, resultDb);
@@ -160,7 +160,7 @@ std::shared_ptr<UserQuery> _makeUserQueryQueries(query::SelectStmt::Ptr& stmt,
         // no point supporting async for these
         return std::make_shared<UserQueryInvalid>("SUBMIT is not allowed with query: " + aQuery);
     }
-    LOGS(_log, LOG_LVL_DEBUG, "SELECT query is a QUERIES");
+    LOGQ(_log, LOG_LVL_DEBUG, "SELECT query is a QUERIES");
     try {
         return std::make_shared<UserQueryQueries>(stmt, sharedResources->qMetaSelect, sharedResources->czarId,
                                                   userQueryId, resultDb);
@@ -200,7 +200,7 @@ bool qmetaHasDataForSelectCountStarQuery(query::SelectStmt::Ptr const& stmt,
     auto cnx = sql::SqlConnectionFactory::make(cconfig::CzarConfig::instance()->getMySqlQmetaConfig());
     sql::SqlErrorObject err;
     auto tableExists = cnx->tableExists(rowsTable, err);
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGQ(_log, LOG_LVL_DEBUG,
          *stmt << " rows table: " << rowsTable << (tableExists ? " exists" : " does not exist"));
     if (not tableExists) rowsTable = "";
     return tableExists;
@@ -316,12 +316,12 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         /// * It is a COUNT(*) query but is too complex for the simple optimization.
         std::string rowsTable;
         std::string countSpelling;
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              "UseQservRowCounterOptimization: is " << (_useQservRowCounterOptimization ? "on" : "off")
                                                    << ".");
         if (_useQservRowCounterOptimization && UserQueryType::isSimpleCountStar(stmt, countSpelling) &&
             qmetaHasDataForSelectCountStarQuery(stmt, _userQuerySharedResources, defaultDb, rowsTable)) {
-            LOGS(_log, LOG_LVL_DEBUG, "make UserQuerySelectCountStar");
+            LOGQ(_log, LOG_LVL_DEBUG, "make UserQuerySelectCountStar");
             auto uq = std::make_shared<UserQuerySelectCountStar>(
                     query, _userQuerySharedResources->qMetaSelect, _userQuerySharedResources->queryMetadata,
                     userQueryId, rowsTable, resultDb, countSpelling, _userQuerySharedResources->czarId,
@@ -340,13 +340,13 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             qs->analyzeQuery(query, stmt);
         } catch (...) {
             errorExtra = "Unknown failure occurred setting up QuerySession (query is invalid).";
-            LOGS(_log, LOG_LVL_ERROR, errorExtra);
+            LOGQ(_log, LOG_LVL_ERROR, errorExtra);
             sessionValid = false;
         }
         if (!qs->getError().empty()) {
             // The `qs` object is passed to the UserQuerySelect object below,
             // so the errors do not need to be added to `errorExtra`.
-            LOGS(_log, LOG_LVL_ERROR, "Invalid query: " << qs->getError());
+            LOGQ(_log, LOG_LVL_ERROR, "Invalid query: " << qs->getError());
             sessionValid = false;
         }
 
@@ -385,11 +385,11 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         std::lock_guard factoryLock(_factoryMtx);
         auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _userQuerySharedResources->czarId,
                                                          _userQuerySharedResources->queryMetadata);
-        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
+        LOGQ(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
         return uq;
     } else if (UserQueryType::isShowProcessList(query, full)) {
         std::lock_guard factoryLock(_factoryMtx);
-        LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
+        LOGQ(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
         try {
             return std::make_shared<UserQueryProcessList>(full, _userQuerySharedResources->qMetaSelect,
                                                           _userQuerySharedResources->czarId, userQueryId,
@@ -414,11 +414,11 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         auto setQuery = std::static_pointer_cast<UserQuerySet>(uq);
         if (setQuery->varName() == "QSERV_ROW_COUNTER_OPTIMIZATION") {
             _useQservRowCounterOptimization = setQuery->varValue() != "0";
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  "QSERV_ROW_COUNTER_OPTIMIZATION=" << (_useQservRowCounterOptimization ? "1" : "0"));
         } else if (setQuery->varName() == "QSERV_DEBUG_CZAR_NO_MERGE") {
             _debugNoMerge = setQuery->varValue() != "0";
-            LOGS(_log, LOG_LVL_WARN, "QSERV_DEBUG_CZAR_NO_MERGE=" << (_debugNoMerge ? "1" : "0"));
+            LOGQ(_log, LOG_LVL_WARN, "QSERV_DEBUG_CZAR_NO_MERGE=" << (_debugNoMerge ? "1" : "0"));
         }
         return uq;
     } else {

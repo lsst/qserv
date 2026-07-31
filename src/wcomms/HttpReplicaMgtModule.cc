@@ -28,7 +28,7 @@
 #include <vector>
 
 // Third party headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "http/Exceptions.h"

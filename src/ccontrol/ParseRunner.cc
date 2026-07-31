@@ -38,7 +38,7 @@
 #include "parser/QSMySqlParser.h"
 
 // must come after QSMySqlLexer & Parser because of namespace collision
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 
@@ -53,14 +53,14 @@ public:
 
 private:
     void recover(antlr4::Parser* recognizer, std::exception_ptr e) override {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              __FUNCTION__ << " antlr4 could not make a parse tree out of the input statement:" << _statement);
         throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") +
                                                   _statement + '"');
     }
 
     antlr4::Token* recoverInline(antlr4::Parser* recognizer) override {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              __FUNCTION__ << " antlr4 could not make a parse tree out of the input statement:" << _statement);
         throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") +
                                                   _statement + '"');
@@ -83,7 +83,7 @@ public:
 
 private:
     virtual void recover(const antlr4::LexerNoViableAltException& e) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              __FUNCTION__ << "antlr4 could not tokenize the input statement:" << _statement);
         throw lsst::qserv::parser::ParseException(std::string("Failed to instantiate query: \"") +
                                                   _statement + '"');
@@ -116,7 +116,7 @@ void ParseRunner::run() {
     NonRecoveringQSMySqlLexer lexer(&input, _statement);
     CommonTokenStream tokens(&lexer);
     tokens.fill();
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "Parsed tokens:" << util::printable(ParseListener::getTokenPairs(tokens, lexer)));
     QSMySqlParser parser(&tokens);
     parser.setErrorHandler(std::make_shared<Antlr4ErrorStrategy>(_statement));

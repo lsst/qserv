@@ -32,7 +32,7 @@
 #include "util/TimeUtils.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -59,7 +59,7 @@ UberJobErrorMsg::Ptr UberJobErrorMsg::create(AuthContext const& authContext_, un
 
 UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWReq) {
     string const fName("UberJobErrorMsg::createFromJson");
-    LOGS(_log, LOG_LVL_DEBUG, fName);
+    LOGQ(_log, LOG_LVL_DEBUG, fName);
     try {
         AuthContext const authContext_(http::RequestBodyJSON::required<string>(jsWReq, "instance_id"),
                                        http::RequestBodyJSON::required<string>(jsWReq, "auth_key"));
@@ -75,7 +75,7 @@ UberJobErrorMsg::Ptr UberJobErrorMsg::createFromJson(nlohmann::json const& jsWRe
                 http::RequestBodyJSON::required<UberJobId>(jsWReq, "uberjobid"), multiErr_));
         return jrMsg;
     } catch (invalid_argument const& exc) {
-        LOGS(_log, LOG_LVL_ERROR, string("UberJobErrorMsg::createJson invalid ") << exc.what());
+        LOGQ(_log, LOG_LVL_ERROR, string("UberJobErrorMsg::createJson invalid ") << exc.what());
     }
     return nullptr;
 }
@@ -100,7 +100,7 @@ util::MultiError UberJobErrorMsg::multiErrorFromJson(nlohmann::json const& jsMEr
             multiErr_.insert(err);
         } catch (invalid_argument const& ex) {
             // skip to next element
-            LOGS(_log, LOG_LVL_WARN, "UberJobErrorMsg::multiErrorFromJson failed to read Error:" << jsElem);
+            LOGQ(_log, LOG_LVL_WARN, "UberJobErrorMsg::multiErrorFromJson failed to read Error:" << jsElem);
         }
     }
     return multiErr_;

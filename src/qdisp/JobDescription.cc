@@ -30,7 +30,7 @@
 #include <sstream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "util/Bug.h"
@@ -64,10 +64,10 @@ bool JobDescription::incrAttemptCount(std::shared_ptr<Executive> const& exec, bo
     if (exec != nullptr) {
         int maxAttempts = exec->getMaxAttempts();
         if (_attemptCount > 0) {
-            LOGS(_log, LOG_LVL_TRACE, cName(__func__) << " attempts=" << _attemptCount);
+            LOGQ(_log, LOG_LVL_TRACE, cName(__func__) << " attempts=" << _attemptCount);
         }
         if (_attemptCount > maxAttempts) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  cName(__func__) << " attempts(" << _attemptCount << ") > maxAttempts(" << maxAttempts
                                  << ") cancelling");
             exec->addMultiError(util::Error::RETRY_FAILS, util::Error::NONE,

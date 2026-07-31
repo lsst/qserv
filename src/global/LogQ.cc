@@ -59,7 +59,7 @@ void LogQ::setLogLevelStr(std::string const& levelStr) {
 
 void LogQ::setLogLevel(int level) {
     _logLevel = level;
-    LOGS(_log, LOG_LVL_ERROR, "LogQ::setLogLevel: " << getLogLevelStr(level));
+    LOGQ(_log, LOG_LVL_ERROR, "LogQ::setLogLevel: " << getLogLevelStr(level));
 }
 
 

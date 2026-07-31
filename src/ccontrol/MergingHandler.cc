@@ -36,7 +36,7 @@
 #include "curl/curl.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"  // includes "lsst/log/Log.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -89,7 +89,7 @@ string readHttpFileAndMerge(lsst::qserv::qdisp::UberJob::Ptr const& uberJob, str
                             shared_ptr<http::ClientConnPool> const& httpConnPool) {
     string const context = "MergingHandler::" + string(__func__) + " ";
 
-    LOGS(_log, LOG_LVL_DEBUG, context << "httpUrl=" << httpUrl);
+    LOGQ(_log, LOG_LVL_DEBUG, context << "httpUrl=" << httpUrl);
 
     // Track the file while the control flow is staying within the function.
     ResultFileTracker const resultFileTracker;
@@ -146,7 +146,7 @@ string readHttpFileAndMerge(lsst::qserv::qdisp::UberJob::Ptr const& uberJob, str
     } catch (exception const& ex) {
         string const errMsg = "failed to open/read: " + httpUrl + ", fileSize: " + to_string(fileSize) +
                               ", offset: " + to_string(offset) + ", ex: " + string(ex.what());
-        LOGS(_log, LOG_LVL_ERROR, context << errMsg);
+        LOGQ(_log, LOG_LVL_ERROR, context << errMsg);
         return errMsg;
     }
 
@@ -156,7 +156,7 @@ string readHttpFileAndMerge(lsst::qserv::qdisp::UberJob::Ptr const& uberJob, str
         http::Client remover(http::Method::DELETE, httpUrl);
         remover.read([](char const* inBuf, size_t inBufSize) { return inBufSize; });
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, context << "failed to remove " << httpUrl << ", ex: " << ex.what());
+        LOGQ(_log, LOG_LVL_WARN, context << "failed to remove " << httpUrl << ", ex: " << ex.what());
     }
 
     return string();
@@ -182,13 +182,13 @@ MergingHandler::MergingHandler(std::shared_ptr<rproc::InfileMerger> const& merge
                                std::shared_ptr<qdisp::Executive> const& exec)
         : _infileMerger(merger), _executive(exec) {}
 
-MergingHandler::~MergingHandler() { LOGS(_log, LOG_LVL_TRACE, __func__); }
+MergingHandler::~MergingHandler() { LOGQ(_log, LOG_LVL_TRACE, __func__); }
 
 void MergingHandler::errorFlush(std::string const& msg, int code) {
     _setError(code, util::Error::NONE, msg);
     // Might want more info from result service.
     // Do something about the error. FIXME.
-    LOGS(_log, LOG_LVL_ERROR, "Error receiving result.");
+    LOGQ(_log, LOG_LVL_ERROR, "Error receiving result.");
 }
 
 std::ostream& MergingHandler::print(std::ostream& os) const {
@@ -241,31 +241,31 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     csvMemDisk->transferDataFromWorker(transferFunc);
     if (csvMemDisk->isCancelled()) {
         // Since csvMemDisk was cancelled, avoid merging to avoid risks of contamination.
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " csvMemDisk cancelled");
+        LOGQ(_log, LOG_LVL_DEBUG, __func__ << " csvMemDisk cancelled");
         return qdisp::MergeEndStatus(false);
     }
 
     bool mergeOk = _startMerge();
     if (!mergeOk) {
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " merge cancelled");
+        LOGQ(_log, LOG_LVL_DEBUG, __func__ << " merge cancelled");
         return qdisp::MergeEndStatus(false);
     }
 
     // Attempt the actual merge.
     bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvMemDisk);
     if (!fileMergeSuccess) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
+        LOGQ(_log, LOG_LVL_WARN, __func__ << " merge failed");
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, err.getMsg());
     }
     if (csvMemDisk->getContaminated()) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
+        LOGQ(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
         fileMergeSuccess = false;
         _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, "merge stream contaminated");
     }
 
     if (!fileReadErrorMsg.empty()) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " result file read failed");
+        LOGQ(_log, LOG_LVL_WARN, __func__ << " result file read failed");
         _setError(ccontrol::MSG_HTTP_RESULT, util::Error::RESULT_IMPORT, fileReadErrorMsg);
     }
     _flushed = true;
@@ -308,7 +308,7 @@ bool MergingHandler::_startMerge() {
 }
 
 void MergingHandler::_setError(int code, int subError, std::string const& msg) {
-    LOGS(_log, LOG_LVL_DEBUG, "_setError: code: " << code << ", message: " << msg);
+    LOGQ(_log, LOG_LVL_DEBUG, "_setError: code: " << code << ", message: " << msg);
     auto exec = _executive.lock();
     if (exec == nullptr) return;
     exec->addMultiError(code, subError, msg, true);
@@ -319,11 +319,11 @@ qdisp::MergeEndStatus MergingHandler::flushHttp(string const& fileUrl, uint64_t 
     // of the operation to prevent inconsistency within the application.
     auto const uberJob = getUberJob().lock();
     if (uberJob == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, uberJob was NULL");
+        LOGQ(_log, LOG_LVL_ERROR, __func__ << " failed, uberJob was NULL");
         return qdisp::MergeEndStatus(false);
     }
 
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "MergingHandler::" << __func__ << " uberJob=" << uberJob->getIdStr() << " fileUrl=" << fileUrl);
 
     qdisp::MergeEndStatus mergeStatus = _mergeHttp(uberJob, fileUrl, fileSize);

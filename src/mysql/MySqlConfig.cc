@@ -31,7 +31,7 @@
 #include <stdexcept>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "sql/SqlConnection.h"

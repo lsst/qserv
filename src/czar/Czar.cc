@@ -33,8 +33,7 @@
 #include "boost/format.hpp"
 
 // LSST headers
-//&&&#include "lsst/log/Log.h"
-#include "global/LogQ.h"  // includes "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -103,7 +102,7 @@ void Czar::_monitor() {
     bool familyMapUpdated = false;
     while (_monitorLoop) {
         this_thread::sleep_for(_monitorSleepTime);
-        LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
+        LOGQ(_log, LOG_LVL_DEBUG, funcN << " start0");
 
         // Send appropriate messages to all ActiveWorkers. This will
         // check if workers have died by timeout.
@@ -130,7 +129,7 @@ void Czar::_monitor() {
 bool Czar::familyMapRead(TIMEPOINT const requestTime) {
     string const funcN("Czar::FamilyMapRead");
     bool mapWasUpdated = false;
-    LOGS(_log, LOG_LVL_DEBUG, funcN << " start0");
+    LOGQ(_log, LOG_LVL_DEBUG, funcN << " start0");
     // Only one thread at a time should do this.
     lock_guard familyUpdateLock(_latestFamilyUpdateMtx);
     if (requestTime >= _latestFamilyUpdate || CLOCK::now() - _latestFamilyUpdate > _familyMapMaxUpdateWait) {
@@ -146,10 +145,10 @@ bool Czar::familyMapRead(TIMEPOINT const requestTime) {
             // There are probably chunks that don't exist on any alive worker,
             // continue on in hopes that workers will show up with the missing chunks
             // later.
-            LOGS(_log, LOG_LVL_ERROR, funcN << " family map read problems " << cmex.what());
+            LOGQ(_log, LOG_LVL_ERROR, funcN << " family map read problems " << cmex.what());
         }
     } else {
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              funcN << " family map read already completed since request time "
                    << util::TimeUtils::timePointToDateTimeString(requestTime, true) << " latestFamilyUpdate="
                    << util::TimeUtils::timePointToDateTimeString(_latestFamilyUpdate, true));
@@ -239,7 +238,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
             QueryId lastQId = _lastQueryIdBeforeRestart();
             _activeWorkerMap->setCzarCancelAfterRestart(_czarConfig->id(), lastQId);
         } catch (std::exception const& ex) {
-            LOGS(_log, LOG_LVL_WARN, ex.what());
+            LOGQ(_log, LOG_LVL_WARN, ex.what());
         }
     }
 
@@ -252,7 +251,7 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     string vectMinRunningSizesStr = _czarConfig->getQdispVectMinRunningSizes();
     vector<int> vectMinRunningSizes = util::String::parseToVectInt(vectMinRunningSizesStr, ":", 0);
 
-    LOGS(_log, LOG_LVL_INFO,
+    LOGQ(_log, LOG_LVL_INFO,
          " qdisp config qPoolSize=" << qPoolSize << " maxPriority=" << maxPriority << " vectRunSizes="
                                     << vectRunSizesStr << " -> " << util::prettyCharList(vectRunSizes)
                                     << " vectMinRunningSizes=" << vectMinRunningSizesStr << " -> "
@@ -264,25 +263,25 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     _commandHttpPool = shared_ptr<http::ClientConnPool>(
             new http::ClientConnPool(_czarConfig->getCommandMaxHttpConnections()));
 
-    LOGS(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
-    LOGS(_log, LOG_LVL_INFO, "Czar config: " << *_czarConfig);
+    LOGQ(_log, LOG_LVL_INFO, "Creating czar instance with name " << czarName);
+    LOGQ(_log, LOG_LVL_INFO, "Czar config: " << *_czarConfig);
 
     // Watch to see if the log configuration is changed.
     // If LSST_LOG_CONFIG is not defined, there's no good way to know what log
     // configuration file is in use.
     string logConfigFile = std::getenv("LSST_LOG_CONFIG");
     if (logConfigFile.empty()) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "FileMonitor LSST_LOG_CONFIG was blank, no log configuration file to watch.");
     } else {
-        LOGS(_log, LOG_LVL_WARN, "logConfigFile=" << logConfigFile);
+        LOGQ(_log, LOG_LVL_WARN, "logConfigFile=" << logConfigFile);
         _logFileMonitor = make_shared<util::FileMonitor>(logConfigFile);
     }
 
     // Start the event service for handling events posted by the Replication system.
     _eventService = cconfig::EventService::create(_czarConfig->replicationNumEventThreads());
     _eventService->start();
-    LOGS(_log, LOG_LVL_INFO, "Event service started.");
+    LOGQ(_log, LOG_LVL_INFO, "Event service started.");
 
     // Subscribe to events from the Replication system which may require invalidating
     // the CSS cache of the Czar. W/o the invalidation, some of those events would
@@ -314,11 +313,11 @@ Czar::Czar(string const& configFilePath, string const& czarName)
         if (czarPtr) {
             switch (event.type) {
             case cconfig::DataManagementEvent::Type::DATABASE_PUBLISHED:
-                LOGS(_log, LOG_LVL_INFO, "Received DATABASE_PUBLISHED event, FamilyMapUpdate.");
+                LOGQ(_log, LOG_LVL_INFO, "Received DATABASE_PUBLISHED event, FamilyMapUpdate.");
                 czarPtr->familyMapRead(CLOCK::now());
                 break;
             case cconfig::DataManagementEvent::Type::CHUNK_MAP_REBUILT:
-                LOGS(_log, LOG_LVL_INFO, "Received CHUNK_MAP_REBUILT event, FamilyMapUpdate.");
+                LOGQ(_log, LOG_LVL_INFO, "Received CHUNK_MAP_REBUILT event, FamilyMapUpdate.");
                 czarPtr->familyMapRead(CLOCK::now());
                 break;
             default:
@@ -348,14 +347,14 @@ Czar::Czar(string const& configFilePath, string const& czarName)
 }
 
 Czar::~Czar() {
-    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
+    LOGQ(_log, LOG_LVL_DEBUG, "Czar::~Czar()");
     _monitorLoop = false;
     _monitorThrd.join();
-    LOGS(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
+    LOGQ(_log, LOG_LVL_DEBUG, "Czar::~Czar() end");
 }
 
 SubmitResult Czar::submitQuery(string const& query, map<string, string> const& hints) {
-    LOGS(_log, LOG_LVL_DEBUG, "New query: " << query << ", hints: " << util::printable(hints));
+    LOGQ(_log, LOG_LVL_DEBUG, "New query: " << query << ", hints: " << util::printable(hints));
 
     util::ConfigStore hintsConfigStore(hints);
 
@@ -368,11 +367,11 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     int threadId = hintsConfigStore.getInt("server_thread_id", -1);
 
     string defaultDb = hintsConfigStore.get("db");
-    LOGS(_log, LOG_LVL_DEBUG, "Default database is \"" << defaultDb << "\"");
+    LOGQ(_log, LOG_LVL_DEBUG, "Default database is \"" << defaultDb << "\"");
 
     // make message table name
     string userQueryId = to_string(_idCounter++);
-    LOGS(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
+    LOGQ(_log, LOG_LVL_DEBUG, "userQueryId: " << userQueryId);
     string resultDb = _czarConfig->getMySqlResultConfig().dbName;
     string const msgTableName = "message_" + userQueryId;
     string const lockName = resultDb + "." + msgTableName;
@@ -400,7 +399,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
     // Generate a log message with the QueryId and the full user query so that problems in the log
     // can be traced back to the source query without accessing the database.
-    LOGS(_log, LOG_LVL_WARN,
+    LOGQ(_log, LOG_LVL_WARN,
          "New query:" << query << ", hints:" << util::printable(hints) << " defaultDb:" << defaultDb
                       << " message_table:" << msgTableName);
 
@@ -420,7 +419,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
         string qidstr = to_string(uq->getQueryId());
         // Add logging context with query ID
         QSERV_LOGCONTEXT_QUERY(uq->getQueryId());
-        LOGS(_log, LOG_LVL_DEBUG, "submitting new query");
+        LOGQ(_log, LOG_LVL_DEBUG, "submitting new query");
         uq->submit();
         ccontrol::QueryState qState = uq->join();
         bool querySuccess = (qState == ccontrol::QueryState::SUCCESS);
@@ -431,11 +430,11 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
             // will likely hang because table may still be locked.
-            LOGS(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): " << exc.what());
+            LOGQ(_log, LOG_LVL_ERROR, "Query finalization failed (client likely hangs): " << exc.what());
         }
         uq.reset();
     };
-    LOGS(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
+    LOGQ(_log, LOG_LVL_DEBUG, "starting finalizer thread for query");
     thread finalThread(finalizer);
     finalThread.detach();
 
@@ -470,7 +469,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
             result.resultQuery = resultQuery;
         }
     }
-    LOGS(_log, LOG_LVL_DEBUG,
+    LOGQ(_log, LOG_LVL_DEBUG,
          "returning result to proxy: resultTable=" << result.resultTable
                                                    << " messageTable=" << result.messageTable
                                                    << " resultQuery=" << result.resultQuery);
@@ -478,7 +477,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
 }
 
 void Czar::killQuery(string const& query, string const& clientId) {
-    LOGS(_log, LOG_LVL_INFO, "KILL query: " << query << ", clientId: " << clientId);
+    LOGQ(_log, LOG_LVL_INFO, "KILL query: " << query << ", clientId: " << clientId);
 
     // the query can be one of:
     //   "KILL QUERY NNN" - kills currently running query in thread NNN
@@ -494,25 +493,25 @@ void Czar::killQuery(string const& query, string const& clientId) {
     int threadId;
     QueryId queryId;
     if (ccontrol::UserQueryType::isKill(query, threadId)) {
-        LOGS(_log, LOG_LVL_INFO, "KILL thread ID: " << threadId);
+        LOGQ(_log, LOG_LVL_INFO, "KILL thread ID: " << threadId);
         lock_guard<mutex> lock(_mutex);
 
         // find it in the client map based in client/thread id
         ClientThreadId ctId(clientId, threadId);
         auto iter = _clientToQuery.find(ctId);
         if (iter == _clientToQuery.end()) {
-            LOGS(_log, LOG_LVL_INFO, "KILL Cannot find client thread id: " << threadId);
+            LOGQ(_log, LOG_LVL_INFO, "KILL Cannot find client thread id: " << threadId);
             throw std::runtime_error("KILL Unknown thread ID: " + query);
         }
         uq = iter->second.lock();
     } else if (ccontrol::UserQueryType::isCancel(query, queryId)) {
-        LOGS(_log, LOG_LVL_INFO, "KILL query ID: " << queryId);
+        LOGQ(_log, LOG_LVL_INFO, "KILL query ID: " << queryId);
         lock_guard<mutex> lock(_mutex);
 
         // find it in the client map based in client/thread id
         auto iter = _idToQuery.find(queryId);
         if (iter == _idToQuery.end()) {
-            LOGS(_log, LOG_LVL_INFO, "KILL Cannot find query id: " << queryId);
+            LOGQ(_log, LOG_LVL_INFO, "KILL Cannot find query id: " << queryId);
             throw std::runtime_error("KILL unknown or finished query ID: " + query);
         }
         uq = iter->second.lock();
@@ -522,16 +521,16 @@ void Czar::killQuery(string const& query, string const& clientId) {
 
     // assume this cannot fail or throw
     if (uq) {
-        LOGS(_log, LOG_LVL_INFO, "KILLing query: " << uq->getQueryId());
+        LOGQ(_log, LOG_LVL_INFO, "KILLing query: " << uq->getQueryId());
         // query killing can potentially take very long and we do now want to block
         // proxy from serving other requests so run it in a detached thread
         thread killThread([uq]() {
             uq->kill();
-            LOGS(_log, LOG_LVL_INFO, "Finished KILLing query: " << uq->getQueryId());
+            LOGQ(_log, LOG_LVL_INFO, "Finished KILLing query: " << uq->getQueryId());
         });
         killThread.detach();
     } else {
-        LOGS(_log, LOG_LVL_INFO, "KILL query has expired/finished: " << query);
+        LOGQ(_log, LOG_LVL_INFO, "KILL query has expired/finished: " << query);
         throw std::runtime_error("KILL query has already finished: " + query);
     }
 }
@@ -570,13 +569,13 @@ void Czar::_updateQueryHistory(string const& clientId, int threadId, ccontrol::U
     // remember query (weak pointer) in case we want to kill query
     if (uq->getQueryId() != QueryId(0)) {
         _idToQuery.insert(make_pair(uq->getQueryId(), uq));
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              "Remembering query ID: " << uq->getQueryId() << " (new map size: " << _idToQuery.size() << ")");
     }
     if (not clientId.empty() and threadId >= 0) {
         ClientThreadId ctId(clientId, threadId);
         _clientToQuery.insert(make_pair(ctId, uq));
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              "Remembering query: (" << clientId << ", " << threadId
                                     << ") (new map size: " << _clientToQuery.size() << ")");
     }
@@ -584,13 +583,13 @@ void Czar::_updateQueryHistory(string const& clientId, int threadId, ccontrol::U
 
 void Czar::_makeAsyncResult(string const& asyncResultTable, QueryId queryId, string const& resultLoc) {
     auto sqlConn = sql::SqlConnectionFactory::make(_czarConfig->getMySqlResultConfig());
-    LOGS(_log, LOG_LVL_DEBUG, "creating async result table " << asyncResultTable);
+    LOGQ(_log, LOG_LVL_DEBUG, "creating async result table " << asyncResultTable);
 
     sql::SqlErrorObject sqlErr;
     string resultLocEscaped;
     if (not sqlConn->escapeString(resultLoc, resultLocEscaped, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure in escapString", sqlErr);
-        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        LOGQ(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 
@@ -606,7 +605,7 @@ void Czar::_makeAsyncResult(string const& asyncResultTable, QueryId queryId, str
 
     if (not sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure creating async result table", sqlErr);
-        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        LOGQ(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 }
@@ -794,7 +793,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobReadyMsg(
 
     qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
     if (exec == nullptr) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              note << " null exec QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
         // This means the user query is done and the results on the worker won't be needed
         throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No executive for qid=") +
@@ -803,7 +802,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobReadyMsg(
 
     qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
     if (uj == nullptr) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              note << " null uj QID:" << queryId << " ujId=" << uberJobId << " cz=" << czarId);
         throw invalid_argument(string("HttpCzarWorkerModule::_handleJobReady No UberJob for qid=") +
                                to_string(queryId) + " ujId=" + to_string(uberJobId) +
@@ -822,7 +821,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobReadyMsgNoThrow(
     try {
         execRespMsg = handleUberJobReadyMsg(jrMsg, note);
     } catch (invalid_argument const& ex) {
-        LOGS(_log, LOG_LVL_WARN, note << " exception: " << ex.what());
+        LOGQ(_log, LOG_LVL_WARN, note << " exception: " << ex.what());
         // The message was parsed, but this UberJob is no longer needed by the czar.
         execRespMsg = protojson::ExecutiveRespMsg::create(false, true, jrMsg->queryId, jrMsg->uberJobId,
                                                           jrMsg->czarId, "uberJobEnded", ex.what());
@@ -843,7 +842,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobErrorMsg(
     qdisp::Executive::Ptr exec = czar::Czar::getCzar()->getExecutiveFromMap(queryId);
     if (exec == nullptr) {
         // exec==nullptr just means this czar no longer has any use for any data associated with this QID.
-        LOGS(_log, LOG_LVL_WARN, note << " No executive for " << idMsg);
+        LOGQ(_log, LOG_LVL_WARN, note << " No executive for " << idMsg);
         execRespMsg->success = true;
         execRespMsg->dataObsolete = true;
         execRespMsg->errorType = "queryEnded";
@@ -852,7 +851,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobErrorMsg(
     }
     qdisp::UberJob::Ptr uj = exec->findUberJob(uberJobId);
     if (uj == nullptr) {
-        LOGS(_log, LOG_LVL_WARN, note << " No UberJob for " << idMsg);
+        LOGQ(_log, LOG_LVL_WARN, note << " No UberJob for " << idMsg);
         execRespMsg->success = true;
         execRespMsg->dataObsolete = true;
         execRespMsg->errorType = "uberJobEnded";
@@ -865,7 +864,7 @@ protojson::ExecutiveRespMsg::Ptr Czar::handleUberJobErrorMsg(
 }
 
 void Czar::incrCommErrCount(std::string const& type, std::string const& worker, std::string const& note) {
-    LOGS(_log, LOG_LVL_WARN, "Czar::incrCommErrCount " << type << " worker=" << worker << " " << note);
+    LOGQ(_log, LOG_LVL_WARN, "Czar::incrCommErrCount " << type << " worker=" << worker << " " << note);
     stringstream os;
     lock_guard lg(_commErrCountMtx);
     auto key = std::make_pair(type, worker);
@@ -877,10 +876,10 @@ void Czar::incrCommErrCount(std::string const& type, std::string const& worker, 
     }
     os << "Czar::incrCommErrCount {";
     for (auto const& [key, val] : _commErrCountMap) {
-        LOGS(_log, LOG_LVL_WARN, "(" << key.first << " worker=" << key.second << " count=" << val << ")");
+        LOGQ(_log, LOG_LVL_WARN, "(" << key.first << " worker=" << key.second << " count=" << val << ")");
     }
     os << "}";
-    LOGS(_log, LOG_LVL_WARN, os.str());
+    LOGQ(_log, LOG_LVL_WARN, os.str());
 }
 
 }  // namespace lsst::qserv::czar

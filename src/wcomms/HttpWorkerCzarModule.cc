@@ -28,7 +28,7 @@
 #include <vector>
 
 // Third party headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "http/Exceptions.h"
@@ -164,7 +164,7 @@ json HttpWorkerCzarModule::_handleQueryJob(string const& func) {
         protojson::ResponseMsg respMsg(true);
         jsRet = respMsg.toJson();
     } catch (wbase::TaskException const& texp) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "HttpWorkerCzarModule::_handleQueryJob wbase::TaskException received " << texp.what());
         protojson::ResponseMsg respMsg(false, "parse", texp.what());
         jsRet = respMsg.toJson();
@@ -180,7 +180,7 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
                                        shared_ptr<wcontrol::Foreman> const& foremanPtr,
                                        string const& authKeyStr, wbase::UberJobData::Ptr const& ujData) {
     try {
-        LOGS(_log, LOG_LVL_TRACE, __func__ << " qid=" << ujQueryId << "ujId=" << ujId);
+        LOGQ(_log, LOG_LVL_TRACE, __func__ << " qid=" << ujQueryId << "ujId=" << ujId);
         util::Timer timerParse;
         timerParse.start();
         auto czarId = ujCzInfo->czId;
@@ -202,11 +202,11 @@ void HttpWorkerCzarModule::_buildTasks(UberJobId ujId, QueryId ujQueryId,
         foremanPtr->processTasks(ujTasks);  // Queues tasks to be run later.
         timer.stop();
 
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              __func__ << " Enqueued UberJob time=" << timer.getElapsed()
                       << " parseTime=" << timerParse.getElapsed() << " " << uberJobMsg->getIdStr());
     } catch (wbase::TaskException const& texp) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "HttpWorkerCzarModule::_buildTasks wbase::TaskException received " << texp.what());
         // Send a message back saying this UberJobFailed
         util::MultiError multiErr;
@@ -236,7 +236,7 @@ json HttpWorkerCzarModule::_handleQueryStatus(std::string const& func) {
     auto wqsData = protojson::WorkerQueryStatusData::createFromJson(jsReq, authContext, now);
 
     auto const czInfo = wqsData->getCzInfo();
-    LOGS(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
+    LOGQ(_log, LOG_LVL_TRACE, " HttpWorkerCzarModule::_handleQueryStatus req=" << jsReq.dump());
     CzarId const czId = czInfo->czId;
     wcontrol::WCzarInfoMap::Ptr wCzarMap = foreman()->getWCzarInfoMap();
     wcontrol::WCzarInfo::Ptr wCzarInfo = wCzarMap->getWCzarInfo(czId);

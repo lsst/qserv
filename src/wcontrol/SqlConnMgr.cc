@@ -28,7 +28,7 @@
 #include "util/Bug.h"
 #include "wbase/FileChannelShared.h"
 
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.wcontrol.SqlConnMgr");
@@ -52,7 +52,7 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
                                        shared_ptr<wbase::FileChannelShared> const& channelShared,
                                        bool firstChannelSqlConn) {
     ++_totalCount;
-    LOGS(_log, LOG_LVL_TRACE, "SqlConnMgr take " << dump());
+    LOGQ(_log, LOG_LVL_TRACE, "SqlConnMgr take " << dump());
     unique_lock<mutex> uLock(_mtx);
 
     SqlConnMgr::ConnType connType = SCAN;
@@ -100,7 +100,7 @@ SqlConnMgr::ConnType SqlConnMgr::_take(bool scanQuery,
     // requestor got its sql connection, increment counts
     if (channelShared != nullptr) {
         int newCount = channelShared->incrSqlConnectionCount();
-        LOGS(_log, LOG_LVL_TRACE, "SqlConnMgr::_take newCount=" << newCount);
+        LOGQ(_log, LOG_LVL_TRACE, "SqlConnMgr::_take newCount=" << newCount);
     }
 
     if (connType == SCAN) {
@@ -120,7 +120,7 @@ void SqlConnMgr::_release(SqlConnMgr::ConnType connType) {
     // causing _take() to block when it really should not.
     // When the FileChannelShared is finished, it is thrown away, effectively
     // clearing its count.
-    LOGS(_log, LOG_LVL_TRACE, "SqlConnMgr release " << dump());
+    LOGQ(_log, LOG_LVL_TRACE, "SqlConnMgr release " << dump());
     if (connType == SCAN) {
         --_sqlScanConnCount;
     } else {

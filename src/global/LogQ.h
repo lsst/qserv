@@ -60,6 +60,14 @@ public:
         return log.isEnabledFor(level);
     }
 
+    static bool checkLvl(lsst::log::Log const& logger, int level) {
+        if (!lsst::qserv::LogQ::isEnabledFor(level)) {
+            return false;
+        }
+        lsst::log::Log log(lsst::log::Log::getLogger(logger));
+        return log.isEnabledFor(level);
+    }
+
     static std::string getLogLevelStr(int level);
 
     std::string getLogLevelStr() const {
@@ -100,9 +108,6 @@ private:
         } \
     } while (false)
 
-
-#define LOG_CHECK_LVL(logger, level) \
-    lsst::log::Log::getLogger(logger).isEnabledFor(level)
 
 #define LOGQ_CHECK_LVL(logger, level) \
     lsst::qserv::LogQ::checkLvl(logger, level)

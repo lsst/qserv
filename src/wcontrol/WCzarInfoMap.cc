@@ -44,7 +44,7 @@
 #include "wpublish/QueriesAndChunks.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 
@@ -69,7 +69,7 @@ void WCzarInfo::czarMsgReceived(TIMEPOINT tm) {
         uniLock.unlock();
         auto msSinceEpoch = std::chrono::duration_cast<std::chrono::milliseconds>(tm.time_since_epoch());
         uint64_t msDeadNowAliveTime = msSinceEpoch.count();
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " was dead and is now alive ms=" << msDeadNowAliveTime);
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " was dead and is now alive ms=" << msDeadNowAliveTime);
         _workerCzarComIssue->setThoughtCzarWasDeadTime(msDeadNowAliveTime);
     }
 }
@@ -82,7 +82,7 @@ void WCzarInfo::sendWorkerCzarComIssueIfNeeded(protojson::WorkerContactInfo::Ptr
         // could cause race issues and it would be a problem if it was
         // stuck in a queue, so it gets its own thread.
         if (_msgThreadRunning.exchange(true) == true) {
-            LOGS(_log, LOG_LVL_INFO, cName(__func__) << " message thread already running");
+            LOGQ(_log, LOG_LVL_INFO, cName(__func__) << " message thread already running");
             return;
         }
         _workerCzarComIssue->setContactInfo(wInfo_, czInfo_);
@@ -90,7 +90,7 @@ void WCzarInfo::sendWorkerCzarComIssueIfNeeded(protojson::WorkerContactInfo::Ptr
         auto thrdFunc = [selfPtr]() {
             auto sPtr = selfPtr.lock();
             if (sPtr == nullptr) {
-                LOGS(_log, LOG_LVL_WARN, "WCzarInfo::sendWorkerCzarComIssueIfNeeded thrdFunc sPtr was null");
+                LOGQ(_log, LOG_LVL_WARN, "WCzarInfo::sendWorkerCzarComIssueIfNeeded thrdFunc sPtr was null");
                 return;
             }
             sPtr->_sendMessage();
@@ -117,7 +117,7 @@ void WCzarInfo::_sendMessage() {
     // If thoughtCzarWasDead is set now, it needs to be cleared on successful reception from czar.
     auto czInfo = _workerCzarComIssue->getCzarInfo();
     if (czInfo == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " czar info was null");
+        LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " czar info was null");
         return;
     }
     vector<string> const headers = {"Content-Type: application/json"};
@@ -135,9 +135,9 @@ void WCzarInfo::_sendMessage() {
     vector<protojson::UberJobIdentType> ujDataObsoleteList;
     vector<protojson::UberJobIdentType> ujIdNotFoundErrorList;
     try {
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read start");
+        LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " read start");
         nlohmann::json const response = client.readAsJson();
-        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
+        LOGQ(_log, LOG_LVL_DEBUG, cName(__func__) << " read end");
         auto respMsg = protojson::WorkerCzarComRespMsg::createFromJson(response);
 
         // `response` json was created by WorkerCzarComRespMsg::toJson on the czar.
@@ -157,7 +157,7 @@ void WCzarInfo::_sendMessage() {
                     _workerCzarComIssue->setThoughtCzarWasDeadTime(0);
                     cleared = true;
                 }
-                LOGS(_log, LOG_LVL_WARN,
+                LOGQ(_log, LOG_LVL_WARN,
                      cName(__func__) << " ThoughtCzarWasDeadTime check local=" << localDeadTime
                                      << " resp=" << respDeadTime << " cleared=" << cleared);
             }
@@ -166,7 +166,7 @@ void WCzarInfo::_sendMessage() {
 
         } else {
             ++_czarSentFailCount;
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  cName(__func__) << " Transmit czarSentFailCount=" << _czarSentFailCount
                                  << " msg=" << *respMsg);
             // There's no point in re-sending as the czar got the message and didn't like
@@ -176,14 +176,14 @@ void WCzarInfo::_sendMessage() {
         }
     } catch (exception const& ex) {
         ++_parseErrorCount;
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              cName(__func__) << " " << protojson::pwHide(jsReq)
                              << " failed, parseErrorCount=" << _parseErrorCount << " ex:" << ex.what());
     }
 
     if (!transmitSuccess) {
         // If transmit fails, the czar will send another message eventually.
-        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " failed to send message");
+        LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " failed to send message");
         return;
     }
 
@@ -194,13 +194,13 @@ void WCzarInfo::_sendMessage() {
 
     // Set these files as obsolete (at this point they are just deleted, but that may change).
     for (auto const& ujIdent : ujDataObsoleteList) {
-        LOGS(_log, LOG_LVL_INFO,
+        LOGQ(_log, LOG_LVL_INFO,
              cName(__func__) << " marking qId=" << ujIdent.qId << "_ujId=" << ujIdent.ujId << " as obsolete");
         wbase::FileChannelShared::cleanUpResults(ujIdent.czInfo->czId, ujIdent.qId, ujIdent.ujId);
     }
     // Delete files where there were parse errors.
     for (auto const& ujIdent : ujIdNotFoundErrorList) {
-        LOGS(_log, LOG_LVL_INFO,
+        LOGQ(_log, LOG_LVL_INFO,
              cName(__func__) << " deleting qId=" << ujIdent.qId << "_ujId=" << ujIdent.ujId
                              << " due to parse error");
         wbase::FileChannelShared::cleanUpResults(ujIdent.czInfo->czId, ujIdent.qId, ujIdent.ujId);
@@ -214,7 +214,7 @@ bool WCzarInfo::checkAlive(TIMEPOINT tmMark) {
         std::chrono::seconds deadTime(wconfig::WorkerConfig::instance()->getCzarDeadTimeSec());
         if (timeSinceContact >= deadTime) {
             // Contact with the czar has timed out.
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " czar timeout");
+            LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " czar timeout");
             _alive = false;
             // Kill all queries from this czar
             auto fMan = Foreman::getForeman();
@@ -233,7 +233,7 @@ WCzarInfo::Ptr WCzarInfoMap::getWCzarInfo(CzarId czId) {
     std::lock_guard lg(_wczMapMtx);
     auto iter = _wczMap.find(czId);
     if (iter == _wczMap.end()) {
-        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " new czar contacted " << czId);
+        LOGQ(_log, LOG_LVL_INFO, cName(__func__) << " new czar contacted " << czId);
         auto const newCzInfo = WCzarInfo::create(czId);
         _wczMap[czId] = newCzInfo;
         return newCzInfo;

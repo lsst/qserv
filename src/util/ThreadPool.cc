@@ -32,7 +32,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.ThreadPool");
@@ -49,12 +49,12 @@ PoolEventThread::Ptr PoolEventThread::newPoolEventThread(std::shared_ptr<ThreadP
 
 PoolEventThread::PoolEventThread(std::shared_ptr<ThreadPool> const& threadPool, CommandQueue::Ptr const& q)
         : EventThread(q), _threadPool(threadPool) {
-    LOGS(_log, LOG_LVL_TRACE, "PoolEventThread::PoolEventThread() " << this);
+    LOGQ(_log, LOG_LVL_TRACE, "PoolEventThread::PoolEventThread() " << this);
     _threadPool->_incrPoolThreadCount();
 }
 
 PoolEventThread::~PoolEventThread() {
-    LOGS(_log, LOG_LVL_TRACE,
+    LOGQ(_log, LOG_LVL_TRACE,
          "PoolEventThread::~PoolEventThread() " << this
                                                 << " _threadPool.use_count=" << _threadPool.use_count());
     _threadPool->_decrPoolThreadCount();
@@ -77,10 +77,10 @@ void PoolEventThread::specialActions(Command::Ptr const& cmd) {
 bool PoolEventThread::leavePool(Command::Ptr const& cmd) {
     // This thread will stop accepting commands
     _loop = false;
-    LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool " << this);
+    LOGQ(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool " << this);
 
     if (cmd.get() != getCurrentCommand()) {
-        LOGS(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool different command" << this);
+        LOGQ(_log, LOG_LVL_DEBUG, "PoolEventThread::leavePool different command" << this);
         // cmd must have finished before the event loop stopped.
         // The current command will complete normally, and the pool
         // should replace this thread with a new one when finishup()
@@ -110,15 +110,15 @@ bool PoolEventThread::atMaxThreadCount() { return _threadPool->atMaxThreadPoolCo
 
 void PoolEventThread::finishup() {
     if (_finishupOnce.exchange(true) == false) {
-        LOGS(_log, LOG_LVL_DEBUG, "Releasing this PoolEventThread");
+        LOGQ(_log, LOG_LVL_DEBUG, "Releasing this PoolEventThread");
         if (!_threadPool->release(this)) {
-            LOGS(_log, LOG_LVL_WARN, "The pool failed to find this PoolEventThread.");
+            LOGQ(_log, LOG_LVL_WARN, "The pool failed to find this PoolEventThread.");
         }
     }
 }
 
 CommandForThreadPool::~CommandForThreadPool() {
-    LOGS(_log, LOG_LVL_TRACE, "~CommandForThreadPool::CommandForThreadPool()");
+    LOGQ(_log, LOG_LVL_TRACE, "~CommandForThreadPool::CommandForThreadPool()");
 }
 
 /// Set _poolEventThread pointer to the thread running this command.
@@ -170,15 +170,15 @@ ThreadPool::ThreadPool(unsigned int thrdCount, unsigned int maxPoolThreads, Comm
 
 ThreadPool::~ThreadPool() {
     if (!_shutdown) {
-        LOGS(_log, LOG_LVL_WARN, "~ThreadPool called without shutdownPool being called first.");
+        LOGQ(_log, LOG_LVL_WARN, "~ThreadPool called without shutdownPool being called first.");
     }
-    LOGS(_log, LOG_LVL_DEBUG, "~ThreadPool " << this);
+    LOGQ(_log, LOG_LVL_DEBUG, "~ThreadPool " << this);
 }
 
 /// Wait for all threads to complete. The ThreadPool should not be used after this function is called.
 /// This includes threads that were removed from the pool and not detached.
 void ThreadPool::shutdownPool() {
-    LOGS(_log, LOG_LVL_DEBUG, "shutdownPool begin" << this);
+    LOGQ(_log, LOG_LVL_DEBUG, "shutdownPool begin" << this);
     _shutdown = true;
     endAll();
     waitForResize(0);
@@ -196,11 +196,11 @@ bool ThreadPool::release(PoolEventThread* thrd) {
         std::lock_guard<std::mutex> lock(_poolMutex);
         auto iter = std::find_if(_pool.begin(), _pool.end(), func);
         if (iter == _pool.end()) {
-            LOGS(_log, LOG_LVL_WARN, "ThreadPool::release thread not found " << thrd);
+            LOGQ(_log, LOG_LVL_WARN, "ThreadPool::release thread not found " << thrd);
             return false;
         } else {
             thrdPtr = *iter;
-            LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::release erasing " << thrd);
+            LOGQ(_log, LOG_LVL_DEBUG, "ThreadPool::release erasing " << thrd);
             _pool.erase(iter);
         }
         _joinerThread->addThread(thrdPtr);  // Add to list of threads to join.
@@ -212,14 +212,14 @@ bool ThreadPool::release(PoolEventThread* thrd) {
 /// Change the size of the thread pool.
 void ThreadPool::resize(unsigned int targetThrdCount) {
     {
-        LOGS(_log, LOG_LVL_INFO, "ThreadPool::resize " << targetThrdCount);
+        LOGQ(_log, LOG_LVL_INFO, "ThreadPool::resize " << targetThrdCount);
         {
             std::lock_guard<std::mutex> lockPool(_mxPool);
             /// This is not expected to happen in cases where low CPU usage threads
             /// are removed from the pool. In those cases, the targetThrdCount is expected to be
             /// less than 100 while _maxThreadCount would be several thousand.
             if (targetThrdCount >= _maxThreadCount) {
-                LOGS(_log, LOG_LVL_WARN,
+                LOGQ(_log, LOG_LVL_WARN,
                      "ThreadPool::resize target count " << targetThrdCount << " is >= than max "
                                                         << _maxThreadCount);
                 // Need at least one thread available to deal with released threads.
@@ -244,7 +244,7 @@ void ThreadPool::_resize() {
     std::lock_guard<std::mutex> lock(_poolMutex);
     auto target = getTargetThrdCount();
     while (target > _pool.size()) {
-        LOGS(_log, LOG_LVL_TRACE, "ThreadPool::_resize creating new PoolEventThread");
+        LOGQ(_log, LOG_LVL_TRACE, "ThreadPool::_resize creating new PoolEventThread");
         auto t = PoolEventThread::newPoolEventThread(shared_from_this(), _q);
         _pool.push_back(t);
         t->run();
@@ -255,13 +255,13 @@ void ThreadPool::_resize() {
     if (target < _pool.size()) {
         auto thrd = _pool.front();
         if (thrd != nullptr) {
-            LOGS(_log, LOG_LVL_DEBUG, "ThreadPool::_resize sending thrd->queEnd()");
+            LOGQ(_log, LOG_LVL_DEBUG, "ThreadPool::_resize sending thrd->queEnd()");
             thrd->queEnd();  // Since all threads share the same queue, this could be answered by any thread.
         } else {
-            LOGS(_log, LOG_LVL_WARN, "ThreadPool::_resize thrd == nullptr");
+            LOGQ(_log, LOG_LVL_WARN, "ThreadPool::_resize thrd == nullptr");
         }
     }
-    LOGS(_log, LOG_LVL_TRACE, "_resize target=" << target << " size=" << _pool.size());
+    LOGQ(_log, LOG_LVL_TRACE, "_resize target=" << target << " size=" << _pool.size());
     {
         std::unique_lock<std::mutex> countlock(_countMutex);
         _countCV.notify_all();
@@ -285,7 +285,7 @@ void ThreadPool::waitForResize(int millisecs) {
 void ThreadPool::_incrPoolThreadCount() {
     std::lock_guard<std::mutex> lockPool(_mxPool);
     ++_poolThreadCount;
-    LOGS(_log, LOG_LVL_DEBUG, "incr _poolThreadCount=" << _poolThreadCount);
+    LOGQ(_log, LOG_LVL_DEBUG, "incr _poolThreadCount=" << _poolThreadCount);
 }
 
 void ThreadPool::_decrPoolThreadCount() {
@@ -293,7 +293,7 @@ void ThreadPool::_decrPoolThreadCount() {
         std::lock_guard<std::mutex> lockPool(_mxPool);
         --_poolThreadCount;
     }
-    LOGS(_log, LOG_LVL_DEBUG, "decr _poolThreadCount=" << _poolThreadCount);
+    LOGQ(_log, LOG_LVL_DEBUG, "decr _poolThreadCount=" << _poolThreadCount);
     _cvPool.notify_one();
 }
 
@@ -303,7 +303,7 @@ void ThreadPool::_waitIfAtMaxThreadPoolCount() {
     if (_poolThreadCount >= _maxThreadCount) {
         logLvl = LOG_LVL_WARN;
     }
-    LOGS(_log, logLvl, "wait before _poolThreadCount=" << _poolThreadCount);
+    LOGQ(_log, logLvl, "wait before _poolThreadCount=" << _poolThreadCount);
     _cvPool.wait(lockPool, [this]() { return (_poolThreadCount <= _maxThreadCount); });
 }
 
@@ -311,7 +311,7 @@ bool ThreadPool::atMaxThreadPoolCount() {
     std::unique_lock<std::mutex> lockPool(_mxPool);
     bool atMax = _poolThreadCount > _maxThreadCount;
     if (atMax) {
-        LOGS(_log, LOG_LVL_WARN,
+        LOGQ(_log, LOG_LVL_WARN,
              "atMaxThreadPoolCount current=" << _poolThreadCount << " max=" << _maxThreadCount);
     }
     return atMax;

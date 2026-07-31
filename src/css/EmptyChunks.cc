@@ -30,7 +30,7 @@
 #include <memory>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "css/CssError.h"
@@ -75,21 +75,21 @@ bool EmptyChunks::isEmpty(string const& db, int chunk) {
 void EmptyChunks::clearCache(string const& db) {
     lock_guard<mutex> lock(_mtx);
     if (db.empty()) {
-        LOGS(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for all databases");
+        LOGQ(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for all databases");
         _sets.clear();
     } else {
-        LOGS(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for database " << db);
+        LOGQ(_log, LOG_LVL_DEBUG, "Clearing empty chunks cache for database " << db);
         _sets.erase(db);
     }
 }
 
 set<int> EmptyChunks::_populate(string const& db) {
-    LOGS(_log, LOG_LVL_DEBUG, "populate " << db);
+    LOGQ(_log, LOG_LVL_DEBUG, "populate " << db);
     try {
         return _databaseInterface->getEmptyChunks(db);
     } catch (CssError const& e) {
         string const eMsg("Failed to read empty chunks from table. Trying file. " + db + " " + e.what());
-        LOGS(_log, LOG_LVL_ERROR, eMsg);
+        LOGQ(_log, LOG_LVL_ERROR, eMsg);
         throw CssError(ERR_LOC, eMsg);
     }
 }

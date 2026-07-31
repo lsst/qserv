@@ -37,7 +37,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/stringTypes.h"
@@ -67,7 +67,7 @@ void ScanTablePlugin::applyFinal(query::QueryContext& context) {
     if (context.chunkCount < scanThreshold) {
         context.scanInfo->infoTables.clear();
         context.scanInfo->scanRating = 0;
-        LOGS(_log, LOG_LVL_INFO, "ScanInfo Squash full table scan tables: <" << scanThreshold << " chunks.");
+        LOGQ(_log, LOG_LVL_INFO, "ScanInfo Squash full table scan tables: <" << scanThreshold << " chunks.");
     }
 }
 
@@ -175,17 +175,17 @@ protojson::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stm
     StringPairVector scanTables;
     if (hasSelectColumnRef) {
         if (hasSecondaryKey) {
-            LOGS(_log, LOG_LVL_TRACE, "**** Not a scan ****");
+            LOGQ(_log, LOG_LVL_TRACE, "**** Not a scan ****");
             // Not a scan? Leave scanTables alone
         } else {
-            LOGS(_log, LOG_LVL_TRACE, "**** SCAN (column ref, non-spatial-idx)****");
+            LOGQ(_log, LOG_LVL_TRACE, "**** SCAN (column ref, non-spatial-idx)****");
             // Scan tables = all partitioned tables
             scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
         }
     } else if (hasWhereColumnRef) {
         // No column ref in SELECT, still a scan for non-trivial WHERE
         // count(*): still a scan with a non-trivial where.
-        LOGS(_log, LOG_LVL_TRACE, "**** SCAN (filter) ****");
+        LOGQ(_log, LOG_LVL_TRACE, "**** SCAN (filter) ****");
         scanTables = filterPartitioned(stmt.getFromList().getTableRefList());
     }
 
@@ -200,7 +200,7 @@ protojson::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stm
         scanInfo->infoTables.push_back(info);
         scanInfo->scanRating = std::max(scanInfo->scanRating, info.scanRating);
         scanInfo->scanRating = std::min(scanInfo->scanRating, static_cast<int>(protojson::ScanInfo::SLOWEST));
-        LOGS(_log, LOG_LVL_INFO,
+        LOGQ(_log, LOG_LVL_INFO,
              "ScanInfo " << info.db << "." << info.table << " lockInMemory=" << info.lockInMemory
                          << " rating=" << info.scanRating);
     }

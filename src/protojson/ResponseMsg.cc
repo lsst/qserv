@@ -29,7 +29,7 @@
 #include "protojson/PwHideJson.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 using namespace nlohmann;
@@ -142,7 +142,7 @@ WorkerCzarComRespMsg::Ptr WorkerCzarComRespMsg::createFromJson(nlohmann::json co
             // Can anything be done beyond logging the error?
             // The worker is probably going to send this until the qId/ujId is killed.
             // This error message should never show up, but good to know if it happens.
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  "WorkerCzarComRespMsg::createFromJson failed to read execRespMsg:"
                          << protojson::pwHide(jsExecRespMsg) << " exception: " << ex.what());
         }

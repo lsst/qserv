@@ -28,7 +28,7 @@
 #include "boost/filesystem.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "http/Client.h"
@@ -113,13 +113,13 @@ void UberJobData::setTasks(std::vector<std::shared_ptr<wbase::Task>> const& task
 }
 
 void UberJobData::responseFileReady(protojson::FileUrlInfo const& fileUrlInfo_) {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__) << fileUrlInfo_.dump());
+    LOGQ(_log, LOG_LVL_INFO, cName(__func__) << fileUrlInfo_.dump());
 
     // Latch to prevent errors from being transmitted.
     // NOTE: Calls to responseError() and responseFileReady() are protected by the
     //       mutex in FileChannelShared (_tMtx).
     if (_responseState.exchange(SENDING_FILEURL) != NOTHING) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              cName(__func__) << " _responseState was " << _responseState << " instead of NOTHING");
     }
 
@@ -141,7 +141,7 @@ shared_ptr<protojson::UberJobReadyMsg> UberJobData::responseFileReadyBuild(
         workerIdStr = _foreman->chunkInventory()->id();
     } else {
         workerIdStr = "dummyWorkerIdStr";
-        LOGS(_log, LOG_LVL_INFO,
+        LOGQ(_log, LOG_LVL_INFO,
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
@@ -153,13 +153,13 @@ shared_ptr<protojson::UberJobReadyMsg> UberJobData::responseFileReadyBuild(
 }
 
 void UberJobData::responseError(util::MultiError& multiErr, int chunkId, bool cancelled, int logLvl) {
-    LOGS(_log, logLvl, cName(__func__));
+    LOGQ(_log, logLvl, cName(__func__));
     // NOTE: Calls to responseError() and responseFileReady() are protected by the
     //       mutex in FileChannelShared (_tMtx).
     if (_responseState == NOTHING) {
         _responseState = SENDING_ERROR;
     } else {
-        LOGS(_log, LOG_LVL_DEBUG,
+        LOGQ(_log, LOG_LVL_DEBUG,
              cName(__func__) << " Already sending a different message. NOT sending [" << multiErr << "]");
         return;
     }
@@ -184,7 +184,7 @@ shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(
         workerIdStr = _foreman->chunkInventory()->id();
     } else {
         workerIdStr = "dummyWorkerIdStr";
-        LOGS(_log, LOG_LVL_INFO,
+        LOGQ(_log, LOG_LVL_INFO,
              cName(__func__) << " _foreman was null, which should only happen in unit tests");
     }
 
@@ -192,7 +192,7 @@ shared_ptr<protojson::UberJobErrorMsg> UberJobData::responseErrorBuild(
         util::Error err(util::Error::CANCEL, util::Error::NONE, "cancelled");
         multiErr.insert(err);
     }
-    LOGS(_log, logLvl,
+    LOGQ(_log, logLvl,
          cName(__func__) + " error(s) in result for chunk #" + to_string(chunkId) + ":" +
                  multiErr.toOneLineString());
     unsigned int const version = http::MetaModule::version;
@@ -243,7 +243,7 @@ std::string UberJobData::resultFileHttpUrl() const {
 }
 
 void UberJobData::cancelAllTasks() {
-    LOGS(_log, LOG_LVL_INFO, cName(__func__));
+    LOGQ(_log, LOG_LVL_INFO, cName(__func__));
     int count = 0;
     if (_cancelled.exchange(true) == false) {
         lock_guard<mutex> lg(_ujTasksMtx);
@@ -254,7 +254,7 @@ void UberJobData::cancelAllTasks() {
                 ++count;
             }
         }
-        LOGS(_log, LOG_LVL_INFO, cName(__func__) << " cancelled " << count << " Tasks");
+        LOGQ(_log, LOG_LVL_INFO, cName(__func__) << " cancelled " << count << " Tasks");
     }
 }
 
@@ -265,7 +265,7 @@ string UJTransmitCmd::cName(const char* funcN) const {
 }
 
 void UJTransmitCmd::action(util::CmdData* data) {
-    LOGS(_log, LOG_LVL_TRACE, cName(__func__));
+    LOGQ(_log, LOG_LVL_TRACE, cName(__func__));
     // Make certain _selfPtr is reset before leaving this function.
     // If a retry is needed, duplicate() is called.
     class ResetSelf {
@@ -279,7 +279,7 @@ void UJTransmitCmd::action(util::CmdData* data) {
     _attemptCount++;
     auto ujPtr = _ujData.lock();
     if (ujPtr == nullptr || ujPtr->getCancelled()) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " UberJob was cancelled " << _attemptCount);
         return;
     }
     auto request = _ujMsg->toJson();
@@ -300,10 +300,10 @@ void UJTransmitCmd::action(util::CmdData* data) {
             }
             string note = response.at("note");
             if (!note.empty()) {
-                LOGS(_log, LOG_LVL_INFO, protojson::pwHide(response));
+                LOGQ(_log, LOG_LVL_INFO, protojson::pwHide(response));
             }
         } else {
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  cName(__func__) << " Transmit success=0 " << protojson::pwHide(response));
             respMsg->failedUpdateUberJobData(ujPtr->getCzarId(), ujPtr->getQueryId(), ujPtr->getUberJobId());
             // There's no point in re-sending as the czar got the message and didn't like
@@ -311,14 +311,14 @@ void UJTransmitCmd::action(util::CmdData* data) {
             return;
         }
     } catch (exception const& ex) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " " << _requestContext << " failed, ex: " << ex.what());
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " " << _requestContext << " failed, ex: " << ex.what());
     }
     if (!transmitSuccess) {
-        LOGS(_log, LOG_LVL_WARN, cName(__func__) << " Transmit failed, adding to WorkerCzarComIssue");
+        LOGQ(_log, LOG_LVL_WARN, cName(__func__) << " Transmit failed, adding to WorkerCzarComIssue");
         auto sPtr = _selfPtr;
         if (_foreman != nullptr && sPtr != nullptr) {
             // Do not reset _selfPtr as re-queuing may be needed several times.
-            LOGS(_log, LOG_LVL_WARN,
+            LOGQ(_log, LOG_LVL_WARN,
                  cName(__func__) << " no response for transmit, putting on failed transmit queue.");
             auto wCzInfo = _foreman->getWCzarInfoMap()->getWCzarInfo(_czarId);
             // This will check if the czar is believed to be alive and try the queue the query to be tried
@@ -331,13 +331,13 @@ void UJTransmitCmd::action(util::CmdData* data) {
                 wcComIssue->addFailedTransmit(_queryId, _uberJobId, _ujMsg);
             }
         } else {
-            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " _selfPtr was null, assuming job killed.");
+            LOGQ(_log, LOG_LVL_ERROR, cName(__func__) << " _selfPtr was null, assuming job killed.");
         }
     }
 }
 
 void UJTransmitCmd::kill() {
-    LOGS(_log, LOG_LVL_WARN, cName(__func__));
+    LOGQ(_log, LOG_LVL_WARN, cName(__func__));
     auto sPtr = _selfPtr;
     _selfPtr.reset();
     if (sPtr == nullptr) {

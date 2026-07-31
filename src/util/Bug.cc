@@ -24,7 +24,7 @@
 #include "util/Bug.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 

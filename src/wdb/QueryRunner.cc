@@ -43,7 +43,7 @@
 #include "wdb/QueryRunner.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 #include "global/DbTable.h"
 #include "global/LogContext.h"
 #include "global/UnsupportedError.h"
@@ -105,13 +105,13 @@ bool QueryRunner::_initConnection() {
     mysql::MySqlConfig localMySqlConfig(_mySqlConfig);
     localMySqlConfig.username = _task->user;  // Override with czar-passed username.
     if (_mysqlConn != nullptr) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "QueryRunner::_initConnection _mysqlConn not nullptr _mysqlConn=" << _mysqlConn.get());
     }
     _mysqlConn.reset(new mysql::MySqlConnection(localMySqlConfig));
 
     if (not _mysqlConn->connect()) {
-        LOGS(_log, LOG_LVL_ERROR, "Unable to connect to MySQL: " << localMySqlConfig);
+        LOGQ(_log, LOG_LVL_ERROR, "Unable to connect to MySQL: " << localMySqlConfig);
         util::Error error(util::Error::WORKER_SQL_CONNECT, util::Error::NONE,
                           "Unable to connect to MySQL; " + localMySqlConfig.toString());
         _multiError.insert(error);
@@ -124,7 +124,7 @@ bool QueryRunner::_initConnection() {
 bool QueryRunner::runQuery(std::string& errMsg) {
     util::HoldTrack::Mark runQueryMarkA(ERR_LOC, "runQuery " + to_string(_task->getQueryId()));
     QSERV_LOGCONTEXT_QUERY_JOB(_task->getQueryId(), _task->getJobId());
-    LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__));
+    LOGQ(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__));
 
     // Start tracking the task.
     auto now = chrono::system_clock::now();
@@ -149,7 +149,7 @@ bool QueryRunner::runQuery(std::string& errMsg) {
     Release release(_task, this, _queriesAndChunks);
 
     if (_task->checkCancelled()) {
-        LOGS(_log, LOG_LVL_TRACE, "runQuery, task was cancelled before it started." << _task->getIdStr());
+        LOGQ(_log, LOG_LVL_TRACE, "runQuery, task was cancelled before it started." << _task->getIdStr());
         errMsg += "already cancelled";
         return false;
     }
@@ -229,16 +229,16 @@ bool QueryRunner::_dispatchChannel(string& errMsg) {
             util::Timer primeT;
             primeT.start();
             _task->queryExecutionStarted();
-            LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__) << " sql start");
+            LOGQ(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__) << " sql start");
             MYSQL_RES* res = _primeResult(query);  // This runs the SQL query, throws SqlErrorObj on failure.
-            LOGS(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__) << " sql end");
+            LOGQ(_log, LOG_LVL_TRACE, "QueryRunner " << _task->cName(__func__) << " sql end");
             primeT.stop();
             needToFreeRes = true;
             if (taskSched != nullptr) {
                 taskSched->histTimeOfRunningTasks->addEntry(primeT.getElapsed());
-                LOGS(_log, LOG_LVL_TRACE, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
+                LOGQ(_log, LOG_LVL_TRACE, "QR " << taskSched->histTimeOfRunningTasks->getString("run"));
             } else {
-                LOGS(_log, LOG_LVL_ERROR, "QR runtaskSched == nullptr");
+                LOGQ(_log, LOG_LVL_ERROR, "QR runtaskSched == nullptr");
             }
             double runTimeSeconds = primeT.getElapsed();
             double subchunkRunTimeSeconds = subChunkT.getElapsed();
@@ -259,7 +259,7 @@ bool QueryRunner::_dispatchChannel(string& errMsg) {
         }
     } catch (sql::SqlErrorObject const& e) {
         errMsg = e.errMsg() + " " + errMsg;
-        LOGS(_log, LOG_LVL_ERROR, "dispatchChannel " << errMsg << " " << _task->getIdStr());
+        LOGQ(_log, LOG_LVL_ERROR, "dispatchChannel " << errMsg << " " << _task->getIdStr());
         util::Error worker_err(util::Error::WORKER_SQL, e.errNo(), {_task->getChunkId()}, {_task->getJobId()},
                                errMsg);
         _multiError.insert(worker_err);
@@ -275,7 +275,7 @@ bool QueryRunner::_dispatchChannel(string& errMsg) {
     }
     // Transmit errors, if needed.
     if (!_cancelled && _multiError.size() > 0) {
-        LOGS(_log, LOG_LVL_WARN, "Transmitting error " << _task->getIdStr());
+        LOGQ(_log, LOG_LVL_WARN, "Transmitting error " << _task->getIdStr());
         erred = true;
         // Send results. This needs to happen after the error check.
         // If any errors were found, send an error back.
@@ -287,32 +287,32 @@ bool QueryRunner::_dispatchChannel(string& errMsg) {
 void QueryRunner::cancel() {
     // QueryRunner::cancel() should only be called by Task::cancel()
     // to keep the bookkeeping straight.
-    LOGS(_log, LOG_LVL_TRACE, "Trying QueryRunner::cancel() call " << _task->getIdStr());
+    LOGQ(_log, LOG_LVL_TRACE, "Trying QueryRunner::cancel() call " << _task->getIdStr());
 
     bool alreadyCancelled = _cancelled.exchange(true);
     if (alreadyCancelled) {
-        LOGS(_log, LOG_LVL_WARN, "already cancelled" << _task->getIdStr());
+        LOGQ(_log, LOG_LVL_WARN, "already cancelled" << _task->getIdStr());
         return;
     }
 
     if (_mysqlConn == nullptr) {
-        LOGS(_log, LOG_LVL_TRACE, "QueryRunner::cancel() no MysqlConn");
+        LOGQ(_log, LOG_LVL_TRACE, "QueryRunner::cancel() no MysqlConn");
     } else {
         switch (_mysqlConn->cancel()) {
             case -1:
-                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
+                LOGQ(_log, LOG_LVL_ERROR, "QueryRunner::cancel() NOP");
                 break;
             case 0:
-                LOGS(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
+                LOGQ(_log, LOG_LVL_WARN, "QueryRunner::cancel() success");
                 break;
             case 1:
-                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
+                LOGQ(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error connecting to kill query.");
                 break;
             case 2:
-                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
+                LOGQ(_log, LOG_LVL_ERROR, "QueryRunner::cancel() Error processing kill query.");
                 break;
             default:
-                LOGS(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
+                LOGQ(_log, LOG_LVL_ERROR, "QueryRunner::cancel() unknown error");
                 break;
         }
     }

@@ -41,7 +41,7 @@
 #include "parser/QSMySqlParserListener.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"  // includes "lsst/log/Log.h"
 
 // Qserv headers
 #include "ccontrol/ParseAdaptersCBH.h"
@@ -150,7 +150,7 @@ public:
         msg << ", in query:" << getStatementString();
         msg << ", std::string tree:" << getStringTree();
         msg << ", tokens:" << getTokens();
-        LOGS(_log, LOG_LVL_ERROR, msg.str());
+        LOGQ(_log, LOG_LVL_ERROR, msg.str());
         throw parser::adapter_execution_error("Error parsing query, near \"" + getQueryString(ctx) + "\", " +
                                               message);
     }
@@ -178,7 +178,7 @@ protected:
             msg << ", with adapter stack:" << adapterStackToString();
             msg << ", string tree:" << getStringTree();
             msg << ", tokens:" << getTokens();
-            LOGS(_log, LOG_LVL_ERROR, msg.str());
+            LOGQ(_log, LOG_LVL_ERROR, msg.str());
             throw parser::adapter_execution_error("Error parsing query, near \"" + queryString + '"');
         }
     }
@@ -188,7 +188,7 @@ protected:
     // passed in to CALLBACK_INFO
     template <typename CALLBACK_INFO>
     void trace_callback_info(std::string const& function, CALLBACK_INFO const& callbackInfo) {
-        LOGS(_log, LOG_LVL_TRACE, name() << function << " " << callbackInfo);
+        LOGQ(_log, LOG_LVL_TRACE, name() << function << " " << callbackInfo);
     }
 
     static LOG_LOGGER _log;
@@ -1706,7 +1706,7 @@ public:
         } else if (_ctx->functionNameBase() != nullptr) {
             return;
         } else if (_ctx->keywordsCanBeId() != nullptr) {
-            LOGS(_log, LOG_LVL_WARN, __FUNCTION__ << " reusing keyword as ID: " << _ctx->getText());
+            LOGQ(_log, LOG_LVL_WARN, __FUNCTION__ << " reusing keyword as ID: " << _ctx->getText());
             return;
         }
         assertNotSupported(__FUNCTION__, false, "Unsupported SimpleId", _ctx);

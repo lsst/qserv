@@ -29,7 +29,7 @@
 #include "boost/format.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "ccontrol/ConfigMap.h"
@@ -70,10 +70,10 @@ MessageTable::MessageTable(std::string const& tableName, mysql::MySqlConfig cons
 void MessageTable::create() {
     std::string query = (boost::format(::createTmpl) % _tableName).str();
     sql::SqlErrorObject sqlErr;
-    LOGS(_log, LOG_LVL_DEBUG, "creating message table " << _tableName);
+    LOGQ(_log, LOG_LVL_DEBUG, "creating message table " << _tableName);
     if (not _sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure creating message table", sqlErr);
-        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        LOGQ(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 }
@@ -82,10 +82,10 @@ void MessageTable::create() {
 void MessageTable::lock() {
     std::string query = (boost::format(::createAndLockTmpl) % _tableName).str();
     sql::SqlErrorObject sqlErr;
-    LOGS(_log, LOG_LVL_DEBUG, "locking message table " << _tableName);
+    LOGQ(_log, LOG_LVL_DEBUG, "locking message table " << _tableName);
     if (not _sqlConn->runQuery(query, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure locking message table", sqlErr);
-        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        LOGQ(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 }
@@ -95,10 +95,10 @@ void MessageTable::unlock(ccontrol::UserQuery::Ptr const& userQuery, bool queryS
     _saveQueryMessages(userQuery, querySuccess);
 
     sql::SqlErrorObject sqlErr;
-    LOGS(_log, LOG_LVL_DEBUG, "unlocking message table " << _tableName);
+    LOGQ(_log, LOG_LVL_DEBUG, "unlocking message table " << _tableName);
     if (not _sqlConn->runQuery(::unlockTmpl, sqlErr)) {
         SqlError exc(ERR_LOC, "Failure unlocking message table", sqlErr);
-        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        LOGQ(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 }
@@ -135,7 +135,7 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery,
     std::string cMsg("Completed chunks=");
     cMsg += std::to_string(completeCount) + " cancelled chunks=" + std::to_string(cancelCount) + "\n";
     cMsg += multiErrStr;
-    LOGS(_log, LOG_LVL_DEBUG, " MULTIERROR:" << cMsg);
+    LOGQ(_log, LOG_LVL_DEBUG, " MULTIERROR:" << cMsg);
     std::string const writeTmpl(
             "INSERT INTO %1% (chunkId, code, message, severity, timeStamp) "
             "VALUES (%2%, %3%, '%4$." MAX_MESSAGE_LEN "s', '%5%', %6%)");
@@ -145,7 +145,7 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery,
     sql::SqlErrorObject sqlE;
     if (not _sqlConn->runQuery(summaryQ, sqlE)) {
         SqlError exc(ERR_LOC, "Failure updating message table", sqlE);
-        LOGS(_log, LOG_LVL_ERROR, exc.message());
+        LOGQ(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
 }

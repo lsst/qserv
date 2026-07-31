@@ -52,7 +52,7 @@
 #include "mysql/mysqld_error.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "css/CssError.h"
@@ -160,7 +160,7 @@ void KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* ha
     // possibility the values have been tampered with and the first delimiter removed. It's easy enough to
     // check for that condition here, so do a quick sanity check:
     if (childKvKey == "/" or 0 != childKvKey.find_first_of(KEY_PATH_DELIMITER)) {
-        LOGS(_log, LOG_LVL_ERROR, "_findParentId - badly formatted childKvKey:" << childKvKey);
+        LOGQ(_log, LOG_LVL_ERROR, "_findParentId - badly formatted childKvKey:" << childKvKey);
         throw CssError(ERR_LOC, "_findParentId - invalid childKvKey");
     }
 
@@ -171,7 +171,7 @@ void KvInterfaceImplMySql::_findParentId(std::string const& childKvKey, bool* ha
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "_findParentId - query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "_findParentId - query failed: " << query);
         throw CssError(ERR_LOC, errObj);
     } else {
         // If the key is not found then the parent does not exist; create it.
@@ -208,11 +208,11 @@ std::string KvInterfaceImplMySql::create(std::string const& key, std::string con
         // run query
         sql::SqlErrorObject errObj;
         sql::SqlResults results;
-        LOGS(_log, LOG_LVL_DEBUG, "create - executing query: " << query);
+        LOGQ(_log, LOG_LVL_DEBUG, "create - executing query: " << query);
         if (not _conn->runQuery(query, results, errObj)) {
             std::stringstream ss;
             ss << "create - " << query << " failed with err: " << errObj.errMsg() << std::ends;
-            LOGS(_log, LOG_LVL_ERROR, ss.str());
+            LOGQ(_log, LOG_LVL_ERROR, ss.str());
             throw CssError(ERR_LOC, ss.str());
         }
 
@@ -226,7 +226,7 @@ std::string KvInterfaceImplMySql::create(std::string const& key, std::string con
                 if (val > uniqueId) uniqueId = val;
             }
         }
-        LOGS(_log, LOG_LVL_DEBUG, "create - last used unique id: " << uniqueId);
+        LOGQ(_log, LOG_LVL_DEBUG, "create - last used unique id: " << uniqueId);
 
         // try to create key until succeed
         while (true) {
@@ -284,14 +284,14 @@ unsigned int KvInterfaceImplMySql::_create(std::string const& key, std::string c
                 break;
 
             case ER_DUP_ENTRY:
-                LOGS(_log, LOG_LVL_ERROR, "_create - SQL INSERT INTO failed: " << query);
+                LOGQ(_log, LOG_LVL_ERROR, "_create - SQL INSERT INTO failed: " << query);
                 throw KeyExistsError(ERR_LOC, errObj);
                 break;
         }
     }
 
     unsigned int kvId = _conn->getInsertId();
-    LOGS(_log, LOG_LVL_DEBUG, "_create - executed query: " << query << ", kvId is:" << kvId);
+    LOGQ(_log, LOG_LVL_DEBUG, "_create - executed query: " << query << ", kvId is:" << kvId);
     return kvId;
 }
 
@@ -312,11 +312,11 @@ bool KvInterfaceImplMySql::exists(std::string const& key) {
             str(boost::format("SELECT COUNT(*) FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    LOGS(_log, LOG_LVL_DEBUG, "exists - executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "exists - executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "exists - " << query << " failed with err: " << errObj.errMsg() << std::ends;
-        LOGS(_log, LOG_LVL_ERROR, ss.str());
+        LOGQ(_log, LOG_LVL_ERROR, ss.str());
         throw CssError(ERR_LOC, ss.str());
     }
 
@@ -353,11 +353,11 @@ std::map<std::string, std::string> KvInterfaceImplMySql::getMany(std::vector<std
     auto transaction = KvTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    LOGS(_log, LOG_LVL_DEBUG, "getMany - executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "getMany - executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "getMany - " << query << " failed with err: " << errObj.errMsg() << std::ends;
-        LOGS(_log, LOG_LVL_ERROR, ss.str());
+        LOGQ(_log, LOG_LVL_ERROR, ss.str());
         throw CssError(ERR_LOC, ss.str());
     }
 
@@ -415,11 +415,11 @@ std::map<std::string, std::string> KvInterfaceImplMySql::getChildrenValues(std::
             str(boost::format("SELECT kvKey, kvVal FROM kvData WHERE parentKvId='%1%'") % parentId);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    LOGS(_log, LOG_LVL_DEBUG, "getChildrenValues - executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "getChildrenValues - executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "getChildrenValues - " << query << " failed with err: " << errObj.errMsg() << std::ends;
-        LOGS(_log, LOG_LVL_ERROR, ss.str());
+        LOGQ(_log, LOG_LVL_ERROR, ss.str());
         throw CssError(ERR_LOC, ss.str());
     }
 
@@ -465,11 +465,11 @@ std::vector<std::string> KvInterfaceImplMySql::_getChildrenFullPath(std::string 
     std::string query = str(boost::format("SELECT kvKey FROM kvData WHERE parentKvId='%1%'") % parentId);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    LOGS(_log, LOG_LVL_DEBUG, "_getChildrenFullPath - executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "_getChildrenFullPath - executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "_getChildrenFullPath - " << query << " failed with err: " << errObj.errMsg() << std::ends;
-        LOGS(_log, LOG_LVL_ERROR, ss.str());
+        LOGQ(_log, LOG_LVL_ERROR, ss.str());
         throw CssError(ERR_LOC, ss.str());
     }
 
@@ -479,7 +479,7 @@ std::vector<std::string> KvInterfaceImplMySql::_getChildrenFullPath(std::string 
         std::stringstream ss;
         ss << "_getChildrenFullPath - failed to extract children from " << query
            << " failed with err: " << errObj.errMsg() << std::ends;
-        LOGS(_log, LOG_LVL_ERROR, ss.str());
+        LOGQ(_log, LOG_LVL_ERROR, ss.str());
         throw CssError(ERR_LOC, ss.str());
     }
 
@@ -506,11 +506,11 @@ std::string KvInterfaceImplMySql::dumpKV(std::string const& key) {
     KvTransaction::Ptr transaction = KvTransaction::create(*_conn);
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
-    LOGS(_log, LOG_LVL_DEBUG, "dumpKV - executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "dumpKV - executing query: " << query);
     if (not _conn->runQuery(query, results, errObj)) {
         std::stringstream ss;
         ss << "dumpKV - " << query << " failed with err: " << errObj.errMsg() << std::ends;
-        LOGS(_log, LOG_LVL_ERROR, ss.str());
+        LOGQ(_log, LOG_LVL_ERROR, ss.str());
         throw CssError(ERR_LOC, ss.str());
     }
 
@@ -554,19 +554,19 @@ void KvInterfaceImplMySql::_delete(std::string const& key, KvTransaction const& 
     std::string query = str(boost::format("DELETE FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlErrorObject errObj;
     sql::SqlResults resultsObj;
-    LOGS(_log, LOG_LVL_DEBUG, "deleteKey - executing query: " << query);
+    LOGQ(_log, LOG_LVL_DEBUG, "deleteKey - executing query: " << query);
     if (not _conn->runQuery(query, resultsObj, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "deleteKey - " << query << " failed with err: " << errObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "deleteKey - " << query << " failed with err: " << errObj.errMsg());
         throw CssError(ERR_LOC, errObj);
     }
 
     // limit the row count to 1 - there should not be multiple rows for any key.
     auto affectedRows = resultsObj.getAffectedRows();
     if (affectedRows < 1) {
-        LOGS(_log, LOG_LVL_ERROR, "deleteKey - failed (no such key) running query:" << query);
+        LOGQ(_log, LOG_LVL_ERROR, "deleteKey - failed (no such key) running query:" << query);
         throw NoSuchKey(ERR_LOC, errObj);
     } else if (affectedRows > 1) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "deleteKey - failed (too many (" << affectedRows << ") rows deleted) running query: " << query);
         throw CssError(ERR_LOC, "deleteKey - unexpectedly deleted more than 1 row.");
     }
@@ -583,13 +583,13 @@ std::string KvInterfaceImplMySql::_get(std::string const& keyArg, std::string co
             str(boost::format("SELECT kvVal FROM kvData WHERE kvKey='%1%'") % _escapeSqlString(key));
     sql::SqlResults results;
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "_get - query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "_get - query failed: " << query);
         throw CssError(ERR_LOC, errObj);
     } else {
         errObj.reset();
         if (not results.extractFirstValue(val, errObj)) {
             if (throwIfKeyNotFound) {
-                LOGS(_log, LOG_LVL_ERROR, "_get - error extracting value: " << errObj.errMsg());
+                LOGQ(_log, LOG_LVL_ERROR, "_get - error extracting value: " << errObj.errMsg());
                 throw NoSuchKey(ERR_LOC, errObj);
             } else {
                 val = defaultValue;
@@ -612,7 +612,7 @@ bool KvInterfaceImplMySql::_getIdFromServer(std::string const& key, unsigned int
     sql::SqlResults results;
     sql::SqlErrorObject errObj;
     if (not _conn->runQuery(query, results, errObj)) {
-        LOGS(_log, LOG_LVL_ERROR, "_getIdFromServer - query failed: " << query);
+        LOGQ(_log, LOG_LVL_ERROR, "_getIdFromServer - query failed: " << query);
         throw CssError(ERR_LOC, errObj);
         return false;
     }
@@ -636,7 +636,7 @@ void KvInterfaceImplMySql::_validateKey(std::string const& key) {
     // - last character should not be a delimiter
     if (key.size() > KvInterface::MAX_KEY_LENGTH || key.find_first_of(KEY_PATH_DELIMITER) != 0 ||
         key.find_last_of(KEY_PATH_DELIMITER) == key.size() - 1) {
-        LOGS(_log, LOG_LVL_DEBUG, "create - rejecting key: " << key);
+        LOGQ(_log, LOG_LVL_DEBUG, "create - rejecting key: " << key);
         throw CssError(ERR_LOC, "invalid key");
     }
 }

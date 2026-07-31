@@ -31,7 +31,7 @@
 #include "util/Bug.h"
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 using namespace std;
 
@@ -103,7 +103,7 @@ double Histogram::_getAvg() const {
 int Histogram::getBucketCount(size_t index) const {
     lock_guard<VMutex> lock(_mtx);
     if (index > _buckets.size()) {
-        LOGS(_log, LOG_LVL_ERROR, "Histogram::getBucketCount out of range index=" << index);
+        LOGQ(_log, LOG_LVL_ERROR, "Histogram::getBucketCount out of range index=" << index);
         return 0;
     }
     if (index == _buckets.size()) {
@@ -116,7 +116,7 @@ double Histogram::getBucketMaxVal(size_t index) const {
     lock_guard<VMutex> lock(_mtx);
     if (index > _buckets.size()) {
         string eMsg = string("Histogram::getBucketCount out of range index=") + to_string(index);
-        LOGS(_log, LOG_LVL_ERROR, eMsg);
+        LOGQ(_log, LOG_LVL_ERROR, eMsg);
         return numeric_limits<double>::max();
     }
     if (index == _buckets.size()) {

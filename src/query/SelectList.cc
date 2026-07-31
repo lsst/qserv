@@ -51,7 +51,7 @@
 #include <string>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "query/QueryTemplate.h"

@@ -24,7 +24,7 @@
 // Class header
 #include "sql/SqlTransactionScope.h"
 
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 namespace {
 LOG_LOGGER _log = LOG_GET("lsst.qserv.util.SqlTransactionStd");
@@ -34,7 +34,7 @@ namespace lsst::qserv::sql {
 
 void SqlTransactionScope::verify() {
     if (errObj.isSet()) {
-        LOGS(_log, LOG_LVL_ERROR, "Constructor failed (" << errObj.errNo() << ") " << errObj.errMsg());
+        LOGQ(_log, LOG_LVL_ERROR, "Constructor failed (" << errObj.errNo() << ") " << errObj.errMsg());
         throwException(ERR_LOC, "Constructor failed");
     }
 }
@@ -44,7 +44,7 @@ SqlTransactionScope::~SqlTransactionScope() {
     // if error happens. We cannot throw here but we can print a message.
     if (trans.isActive()) {
         if (not trans.abort(errObj)) {
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "Failed to abort transaction: mysql error: (" << errObj.errNo() << ") " << errObj.errMsg());
         }
     }
@@ -56,7 +56,7 @@ void SqlTransactionScope::throwException(util::Issue::Context const& ctx, std::s
 
 void SqlTransactionScope::commit() {
     if (not trans.commit(errObj)) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "Failed to commit transaction: mysql error: (" << errObj.errNo() << ") " << errObj.errMsg());
         throwException(ERR_LOC, "Failed to commit transaction");
     }
@@ -64,7 +64,7 @@ void SqlTransactionScope::commit() {
 
 void SqlTransactionScope::abort() {
     if (not trans.abort(errObj)) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "Failed to abort transaction: mysql error: (" << errObj.errNo() << ")" << errObj.errMsg());
         throwException(ERR_LOC, "Failed to abort transaction");
     }

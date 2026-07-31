@@ -37,7 +37,7 @@
 #include <sstream>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "query/QueryTemplate.h"
@@ -76,7 +76,7 @@ public:
             _qt.append(", ");
         }
         term.renderTo(_qt);
-        LOGS(_log, LOG_LVL_TRACE, "Query Template: " << _qt);
+        LOGQ(_log, LOG_LVL_TRACE, "Query Template: " << _qt);
     }
     QueryTemplate& _qt;
     int _count;
@@ -182,7 +182,7 @@ void OrderByClause::renderTo(QueryTemplate& qt) const {
     if (_terms.get() && _terms->size() > 0) {
         OrderByTerm::render r(qt);
         for (auto& term : *_terms) {
-            LOGS(_log, LOG_LVL_TRACE, "Rendering term: " << term);
+            LOGQ(_log, LOG_LVL_TRACE, "Rendering term: " << term);
             r.applyToQT(term);
         }
     }

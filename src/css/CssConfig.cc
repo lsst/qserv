@@ -27,7 +27,7 @@
 // System headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "css/CssError.h"
@@ -51,13 +51,13 @@ CssConfig::CssConfig(util::ConfigStore const& configStore) try
                        configStore.getInt("port"), configStore.get("socket"), configStore.get("database")) {
     if (_technology.empty()) {
         std::string msg = "\"technology\" does not exist in configuration map";
-        LOGS(_log, LOG_LVL_ERROR, msg);
+        LOGQ(_log, LOG_LVL_ERROR, msg);
         throw ConfigError(ERR_LOC, msg);
     }
 
     if (not _data.empty() and not _file.empty()) {
         std::string msg = "\"data\"  and \"file\" keys are mutually exclusive";
-        LOGS(_log, LOG_LVL_ERROR, msg);
+        LOGQ(_log, LOG_LVL_ERROR, msg);
         throw ConfigError(ERR_LOC, msg);
     }
 } catch (util::ConfigStoreError const& e) {

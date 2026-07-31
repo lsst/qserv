@@ -34,7 +34,7 @@
 // Third-party headers
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "global/LogContext.h"
@@ -75,7 +75,7 @@ SendChannel::Ptr SendChannel::newStringChannel(string& d) {
 bool SendChannel::kill(std::string const& note) {
     bool oldVal = _dead.exchange(true);
     if (!oldVal && !_destroying) {
-        LOGS(_log, LOG_LVL_WARN, "SendChannel first kill call " << note);
+        LOGQ(_log, LOG_LVL_WARN, "SendChannel first kill call " << note);
     }
     return oldVal;
 }

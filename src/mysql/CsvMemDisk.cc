@@ -36,7 +36,7 @@
 #include <mysql/mysql.h>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"
 
 // Qserv headers
 #include "mysql/LocalInfileError.h"
@@ -65,7 +65,7 @@ void TransferTracker::setup(std::size_t max, string const& directory, std::size_
 bool TransferTracker::verifyDir(string const& dirName) {
     sfs::path dir = dirName;
     if (!(sfs::exists(dir) && sfs::is_directory(dir))) {
-        LOGS(_log, LOG_LVL_ERROR, "verifyDir, " + dirName + " is not a valid directory");
+        LOGQ(_log, LOG_LVL_ERROR, "verifyDir, " + dirName + " is not a valid directory");
         return false;
     }
     return true;
@@ -159,7 +159,7 @@ void CsvMemDisk::_writeToTmpfile(char const* data, std::size_t size) {
         _file.open(_filePath, fstream::out);
     }
     if (!_file.is_open() || _fState != OPEN_W) {
-        LOGS(_log, LOG_LVL_ERROR,
+        LOGQ(_log, LOG_LVL_ERROR,
              "CsvStrMemDisk::_writeTofile file isn't open " << _filePath << " or bad state=" << _fState);
         _fileError = true;
         return;
@@ -183,7 +183,7 @@ std::shared_ptr<std::string> CsvMemDisk::_readFromTmpFile() {
         // This is extremely unlikely and means something has gone wrong with the file system.
         // If something has gone wrong with the file system, a crash may be incoming.
         if (!getContaminated())
-            LOGS(_log, LOG_LVL_ERROR,
+            LOGQ(_log, LOG_LVL_ERROR,
                  "CsvStrMemDisk::_readFromfile file isn't open " << _filePath << " or bad state=" << _fState);
         _setContaminated();
         return make_shared<string>("$");
@@ -199,7 +199,7 @@ std::shared_ptr<std::string> CsvMemDisk::_readFromTmpFile() {
 
 CsvMemDisk::~CsvMemDisk() {
     if (_fState != INIT) {
-        LOGS(_log, LOG_LVL_INFO, "~CsvStrMemDisk() remove " << _filePath);
+        LOGQ(_log, LOG_LVL_INFO, "~CsvStrMemDisk() remove " << _filePath);
         _file.close();
         std::remove(_filePath.c_str());
     }
