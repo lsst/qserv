@@ -6,7 +6,7 @@ function(sqlFormatter,
          _) {
 
     class Common {
-        static RestAPIVersion = 57;
+        static RestAPIVersion = 58;
         static query2text(query, expanded) {
             if (expanded) {
                 if (query.length > Common._max_expanded_length) {

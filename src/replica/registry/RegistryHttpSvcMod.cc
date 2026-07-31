@@ -134,7 +134,7 @@ json RegistryHttpSvcMod::_addWorker(string const& kind) {
 }
 
 json RegistryHttpSvcMod::_deleteWorker() {
-    checkApiVersion(__func__, 52);
+    checkApiVersion(__func__, 58);
     string const name = params().at("name");
     debug(__func__, " name: " + name);
     _services.removeWorker(name);
@@ -168,7 +168,7 @@ json RegistryHttpSvcMod::_addCzar() {
 }
 
 json RegistryHttpSvcMod::_deleteCzar() {
-    checkApiVersion(__func__, 52);
+    checkApiVersion(__func__, 58);
     string const name = params().at("name");
     debug(__func__, " name: " + name);
     _services.removeCzar(name);
@@ -202,7 +202,7 @@ json RegistryHttpSvcMod::_addController() {
 }
 
 json RegistryHttpSvcMod::_deleteController() {
-    checkApiVersion(__func__, 52);
+    checkApiVersion(__func__, 58);
     string const name = params().at("name");
     debug(__func__, " name: " + name);
     _services.removeController(name);

@@ -80,6 +80,8 @@ void FileUploadModule::execute(string const& subModuleName, http::AuthType const
         sendData(result);
     } catch (AuthError const& ex) {
         sendError(__func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
+    } catch (http::ErrorNotFound404 const& ex) {
+        sendError(ex.func(), ex.what(), ex.errorExt(), 404);
     } catch (http::Error const& ex) {
         sendError(ex.func(), ex.what(), ex.errorExt());
     } catch (invalid_argument const& ex) {
@@ -109,7 +111,8 @@ string FileUploadModule::headerEntry(string const& key) const {
     return (it != _req.headers.end()) ? it->second : "";
 }
 
-void FileUploadModule::sendResponse(string const& content, string const& contentType) {
+void FileUploadModule::sendResponse(string const& content, string const& contentType, unsigned int httpCode) {
+    _resp.status = httpCode;
     _resp.set_content(content, contentType);
 }
 

@@ -352,17 +352,29 @@ json HttpCzarIngestModuleBase::_request(http::Method method, string const& url, 
     request->wait();
     if (request->state() == http::AsyncReq::State::FINISHED) {
         if (request->responseCode() != qhttp::STATUS_OK) {
-            throw http::Error(__func__,
-                              "request state: " + http::AsyncReq::state2str(request->state()) +
-                                      ", error: " + request->errorMessage() +
-                                      ", http_code: " + to_string(request->responseCode()),
-                              errorExt);
+            json errorMessageJson =
+                    json::object({{"request_state", http::AsyncReq::state2str(request->state())},
+                                  {"http_code", request->responseCode()}});
+            // In many cases the server error message is returned in the response body.
+            // Attempt to extract it and include it in the final error message.
+            if (request->responseBodySize() > 0) {
+                try {
+                    auto const response = json::parse(request->responseBody());
+                    errorMessageJson["server_error"] = response.at("error").get<string>();
+                } catch (exception const& ex) {
+                    errorMessageJson["failed_to_get_server_error"] = string(ex.what());
+                }
+            }
+            throw http::Error(__func__, errorMessageJson.dump(), errorExt);
         }
     } else {
-        throw http::Error(__func__,
-                          "request state: " + http::AsyncReq::state2str(request->state()) +
-                                  ", error: " + request->errorMessage(),
-                          errorExt);
+        // The client error message is expected to be available for requests which didn't finish
+        // successfully. The message may be empty if the request was aborted due to a timeout
+        // or some other reason.
+        json const errorMessageJson =
+                json::object({{"request_state", http::AsyncReq::state2str(request->state())},
+                              {"client_error", request->errorMessage()}});
+        throw http::Error(__func__, errorMessageJson.dump(), errorExt);
     }
 
     json response;
@@ -372,7 +384,7 @@ json HttpCzarIngestModuleBase::_request(http::Method method, string const& url, 
         throw http::Error(__func__, "ex: " + string(ex.what()), errorExt);
     }
     if (response.at("success").get<int>() == 0) {
-        throw http::Error(__func__, "error: " + response.at("error").get<string>(), errorExt);
+        throw http::Error(__func__, "server_error: " + response.at("error").get<string>(), errorExt);
     }
     return response;
 }

@@ -67,11 +67,12 @@ void ChttpModule::getRequestBody(string& content, string const& requiredContentT
     }
 }
 
-void ChttpModule::sendResponse(string const& content, string const& contentType) {
+void ChttpModule::sendResponse(string const& content, string const& contentType, unsigned int httpCode) {
     if (_sendCustomResponse) {
         // The module is expected to send responses on its own.
         return;
     }
+    _resp.status = httpCode;
     _resp.set_content(content, contentType);
 }
 

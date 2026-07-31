@@ -45,6 +45,8 @@ struct TaskSelector;
 }  // namespace lsst::qserv::wbase
 
 namespace lsst::qserv::replica {
+class ConfigCzar;
+class ConfigWorker;
 class Configuration;
 class QservMgtRequest;
 }  // namespace lsst::qserv::replica
@@ -264,6 +266,20 @@ private:
      * @return descriptors of chunks (including their spatial geometry)
      */
     nlohmann::json _chunkInfo(std::set<int> const& chunks) const;
+
+    /**
+     * @param func The calling context (for error reporting).
+     * @return A descriptor of a czar extracted from the request parameters.
+     * @throw http::ErrorNotFound404 If the specified czar is unknown to the configuration.
+     */
+    ConfigCzar _getCzarFromParamOrThrow404(std::string const& func) const;
+
+    /**
+     * @param func The calling context (for error reporting).
+     * @return A descriptor of a worker extracted from the request parameters.
+     * @throw http::ErrorNotFound404 If the specified worker is unknown to the configuration.
+     */
+    ConfigWorker _getWorkerFromParamOrThrow404(std::string const& func) const;
 };
 
 }  // namespace lsst::qserv::replica

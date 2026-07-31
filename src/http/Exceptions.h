@@ -60,6 +60,16 @@ private:
 };
 
 /**
+ * Class ErrorNotFound404 represents exceptions thrown by HTTP modules to instruct
+ * the REST service to return HTTP 404 error code to clients. The class is derived from Error
+ * to allow carrying additional information on the error in the same way as Error does.
+ */
+class ErrorNotFound404 : public Error {
+public:
+    using Error::Error;
+};
+
+/**
  * Report an error as an exception.
  * @note This method always throws and it never returns control back to a caller.
  *   The method is meant to be used by Ingest system workers to report error conditions

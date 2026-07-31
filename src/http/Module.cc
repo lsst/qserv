@@ -43,6 +43,8 @@ void Module::execute(string const& subModuleName, http::AuthType const authType)
         sendData(result);
     } catch (AuthError const& ex) {
         sendError(__func__, "failed to pass authorization requirements, ex: " + string(ex.what()));
+    } catch (http::ErrorNotFound404 const& ex) {
+        sendError(ex.func(), ex.what(), ex.errorExt(), 404);
     } catch (http::Error const& ex) {
         sendError(ex.func(), ex.what(), ex.errorExt());
     } catch (invalid_argument const& ex) {
