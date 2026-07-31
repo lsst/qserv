@@ -176,14 +176,6 @@ private:
     nlohmann::json _getRegular();
 
     /**
-     * @brief Retrieve and validate database and table names from the service's URL.
-     * @param func A scope from which the method is called (for logging and error reporting).
-     * @return The table descriptor.
-     * @throws std::invalid_argument For unknown databases or tables.
-     */
-    TableInfo _getTableInfo(std::string const& func);
-
-    /**
      * Grant SELECT authorizations for the new database to Qserv
      * MySQL account(s) at workers.
      * @param database database descriptor

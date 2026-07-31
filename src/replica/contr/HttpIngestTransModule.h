@@ -34,11 +34,6 @@
 #include "replica/services/DatabaseServices.h"
 #include "replica/util/Common.h"
 
-// Forward declarations
-namespace lsst::qserv::replica {
-class TransactionInfo;
-}  // namespace lsst::qserv::replica
-
 // This header declarations
 namespace lsst::qserv::replica {
 
@@ -179,6 +174,17 @@ private:
      * @throws std::invalid_argument If the string didn't match any known code.
      */
     std::set<TransactionContribInfo::Status> _parseContribStatusSelector(std::string const& param) const;
+
+    /**
+     * Get info on a transaction or throw an exception if no such transaction found.
+     * @param transactionId The unique identifier of the transaction.
+     * @param includeContext If 'true' then include info on the context of the transaction.
+     * @param includeLog If 'true' then include info on the log of the transaction.
+     * @return A descriptor of the transaction.
+     * @throws http::ErrorNotFound404 If no such transaction found.
+     */
+    TransactionInfo _getTransactionOrThrow404(TransactionId transactionId, bool includeContext = false,
+                                              bool includeLog = false) const;
 
     /// Named mutexes are used for acquiring exclusive transient locks on the transaction
     /// management operations performed by the module.

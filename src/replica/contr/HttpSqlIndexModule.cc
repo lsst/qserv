@@ -69,19 +69,13 @@ json HttpSqlIndexModule::executeImpl(string const& subModuleName) {
 
 json HttpSqlIndexModule::_getIndexes() {
     debug(__func__);
-    checkApiVersion(__func__, 17);
+    checkApiVersion(__func__, 58);
 
-    string const databaseName = params().at("database");
-    string const tableName = params().at("table");
     bool const overlap = query().optionalInt("overlap", 0) != 0;
-
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
     debug(__func__, "overlap=" + bool2str(overlap));
 
-    auto const config = controller()->serviceProvider()->config();
-    auto const database = config->databaseInfo(databaseName);
-    auto const table = database.findTable(tableName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
+    auto const table = getTableFromParamOrThrow404(__func__, database);
 
     // This safeguard is needed here because the index management job launched
     // doesn't have this restriction.
@@ -89,9 +83,10 @@ json HttpSqlIndexModule::_getIndexes() {
 
     bool const allWorkers = true;
     string const noParentJobId;
-    auto const job = SqlGetIndexesJob::create(
-            database.name, table.name, overlap, allWorkers, controller(), noParentJobId, nullptr,
-            config->get<int>("controller", "catalog-management-priority-level"));
+    auto const job = SqlGetIndexesJob::create(database.name, table.name, overlap, allWorkers, controller(),
+                                              noParentJobId, nullptr,
+                                              controller()->serviceProvider()->config()->get<int>(
+                                                      "controller", "catalog-management-priority-level"));
     job->start();
     logJobStartedEvent(SqlGetIndexesJob::typeName(), job, database.family);
     job->wait();

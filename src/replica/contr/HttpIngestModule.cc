@@ -295,21 +295,19 @@ json HttpIngestModule::_addDatabase() {
 
 json HttpIngestModule::_publishDatabase() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
     bool const allWorkers = true;
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
     auto const config = controller()->serviceProvider()->config();
 
-    auto const databaseName = params().at("database");
     bool const consolidateDirectorIndex = body().optional<int>("consolidate_secondary_index", 0) != 0;
     bool const rowCountersDeployAtQserv = body().optional<int>("row_counters_deploy_at_qserv", 0) != 0;
 
-    debug(__func__, "database=" + databaseName);
     debug(__func__, "consolidate_secondary_index=" + bool2str(consolidateDirectorIndex));
     debug(__func__, "row_counters_deploy_at_qserv=" + bool2str(rowCountersDeployAtQserv));
 
-    auto const database = config->databaseInfo(databaseName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
     if (database.isPublished) throw http::Error(__func__, "the database is already published");
 
     // Scan super-transactions to make sure none is still open
@@ -397,16 +395,13 @@ json HttpIngestModule::_publishDatabase() {
 
 json HttpIngestModule::_deleteDatabase() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
     auto const cssAccess = qservCssAccess();
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
-    auto const databaseName = params().at("database");
 
-    debug(__func__, "database=" + databaseName);
-
-    auto database = config->databaseInfo(databaseName);
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
     if (database.isPublished) {
         if (!isAdmin()) {
             throw http::Error(__func__, "deleting published databases requires administrator's privileges.");
@@ -502,15 +497,9 @@ json HttpIngestModule::_deleteDatabase() {
 
 json HttpIngestModule::_getTables() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
-    auto const config = controller()->serviceProvider()->config();
-    auto const databaseName = params().at("database");
-
-    debug(__func__, "database=" + databaseName);
-
-    auto const database = config->databaseInfo(databaseName);
-
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
     json tablesJson = json::array();
     for (auto&& tableName : database.partitionedTables()) {
         tablesJson.push_back({{"name", tableName}, {"is_partitioned", 1}});
@@ -680,20 +669,13 @@ json HttpIngestModule::_addTable() {
 
 json HttpIngestModule::_deleteTable() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
     auto const cssAccess = qservCssAccess();
     auto const config = controller()->serviceProvider()->config();
     bool const allWorkers = true;
-    auto const databaseName = params().at("database");
-    auto const tableName = params().at("table");
 
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
-
-    auto database = config->databaseInfo(databaseName);
-    auto table = database.findTable(tableName);
-
+    auto const database = getDatabaseFromParamOrThrow404(__func__);
     if (database.isPublished) {
         if (!isAdmin()) {
             throw http::Error(__func__,
@@ -701,6 +683,7 @@ json HttpIngestModule::_deleteTable() {
                               " privileges.");
         }
     }
+    auto const table = getTableFromParamOrThrow404(__func__, database);
 
     // Remove table entry from czar's databases if it's still there
     try {
@@ -967,9 +950,9 @@ json HttpIngestModule::_scanTableStatsImpl(string const& databaseName, string co
 
 json HttpIngestModule::_deleteTableStats() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
-    auto const table = _getTableInfo(__func__);
+    auto const table = getTableInfo(__func__);
     bool const qservOnly = body().optional<int>("qserv_only", 0) != 0;
     auto const overlapSelector =
             str2overlapSelector(body().optional<string>("overlap_selector", "CHUNK_AND_OVERLAP"));
@@ -1001,9 +984,9 @@ json HttpIngestModule::_deleteTableStats() {
 
 json HttpIngestModule::_tableStats() {
     debug(__func__);
-    checkApiVersion(__func__, 12);
+    checkApiVersion(__func__, 58);
 
-    auto const table = _getTableInfo(__func__);
+    auto const table = getTableInfo(__func__);
     TransactionId const transactionId = 0;  // Aggregate counters ingested across all transactions.
     return controller()
             ->serviceProvider()
@@ -1048,14 +1031,6 @@ json HttpIngestModule::_getRegular() {
     json result;
     result["locations"] = resultLocations;
     return result;
-}
-
-TableInfo HttpIngestModule::_getTableInfo(string const& func) {
-    auto const databaseName = params().at("database");
-    auto const tableName = params().at("table");
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
-    return controller()->serviceProvider()->config()->databaseInfo(databaseName).findTable(tableName);
 }
 
 void HttpIngestModule::_grantDatabaseAccess(DatabaseInfo const& database, bool allWorkers) const {

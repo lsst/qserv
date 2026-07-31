@@ -126,9 +126,9 @@ shared_ptr<IngestRequest> IngestRequest::resume(shared_ptr<ServiceProvider> cons
     TransactionContribInfo contrib;
     try {
         contrib = databaseServices->transactionContrib(contribId);
-    } catch (exception const& ex) {
-        throw runtime_error(context + "failed to locate the contribution id=" + to_string(contribId) +
-                            " in the database.");
+    } catch (DatabaseServicesNotFound const& ex) {
+        throw IngestRequestContribNotFound(context + "failed to locate the contribution id=" +
+                                           to_string(contribId) + " in the database.");
     }
     if (contrib.status != TransactionContribInfo::Status::IN_PROGRESS) {
         throw invalid_argument(
@@ -191,9 +191,9 @@ shared_ptr<IngestRequest> IngestRequest::createRetry(shared_ptr<ServiceProvider>
     TransactionContribInfo contrib;
     try {
         contrib = databaseServices->transactionContrib(contribId);
-    } catch (exception const& ex) {
-        throw runtime_error(context + "failed to locate the contribution id=" + to_string(contribId) +
-                            " in the database.");
+    } catch (DatabaseServicesNotFound const& ex) {
+        throw IngestRequestContribNotFound(context + "failed to locate the contribution id=" +
+                                           to_string(contribId) + " in the database.");
     }
     if (contrib.status != TransactionContribInfo::Status::READ_FAILED) {
         throw invalid_argument(

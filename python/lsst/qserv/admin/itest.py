@@ -1189,7 +1189,7 @@ def run_http_ingest(
     try:
         _http_delete_database(http_frontend_uri, user, password, database)
     except Exception as e:
-        _log.warning("Failed to delete user database: %s, error: %s", database, e)
+        _log.warning(e)
 
     # Create the table and ingest data using the JSON option. Then query the table.
     try:
@@ -1287,12 +1287,12 @@ def run_http_ingest(
             try:
                 _http_delete_table(http_frontend_uri, user, password, database, table)
             except Exception as e:
-                _log.error("Failed to delete table: %s from user database: %s, error: %s", table, database, e)
+                _log.error(e)
                 return False
         try:
             _http_delete_database(http_frontend_uri, user, password, database)
         except Exception as e:
-            _log.error("Failed to delete user database: %s, error: %s", database, e)
+            _log.error(e)
             return False
 
     # Create the database and table whose names deliberately violate the constraint of the REST API
@@ -1425,7 +1425,7 @@ def run_http_ingest(
         try:
             _http_delete_database(http_frontend_uri, user, password, database_dir)
         except Exception as e:
-            _log.error("Failed to delete user database: %s, error: %s", database_dir, e)
+            _log.error(e)
             return False
 
     # A similar test w/o specifying the PK. The frontend should assign a hidden PK column "qserv_id"
@@ -1558,27 +1558,24 @@ def run_http_ingest(
         try:
             _http_delete_table(http_frontend_uri, user, password, database_child, table_csv_child)
         except Exception as e:
-            _log.error("Failed to delete table: %s from user database: %s, error: %s", table_csv_child,
-                       database_child, e)
+            _log.error(e)
             return False
         try:
             _http_delete_database(http_frontend_uri, user, password, database_child)
         except Exception as e:
-            _log.error("Failed to delete user database: %s, error: %s", database_child, e)
+            _log.error(e)
             return False
 
         # Then delete the director table and database.
         try:
             _http_delete_table(http_frontend_uri, user, password, database_dir, table_csv_dir)
         except Exception as e:
-            _log.error(
-                "Failed to delete table: %s from user database: %s, error: %s", table_csv_dir, database_dir, e
-            )
+            _log.error(e)
             return False
         try:
             _http_delete_database(http_frontend_uri, user, password, database_dir)
         except Exception as e:
-            _log.error("Failed to delete user database: %s, error: %s", database_dir, e)
+            _log.error(e)
             return False
 
     return True
@@ -1605,13 +1602,19 @@ def _http_delete_database(
     """
     _log.debug("Deleting user database: %s", database)
     url = str(urljoin(http_frontend_uri, f"/ingest/database/{database}?version={repl_api_version}"))
-    req = requests.delete(url, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
-    req.raise_for_status()
-    res = req.json()
-    if res["success"] == 0:
-        error = res["error"]
-        raise FrontEndError(f"Failed to delete user database: {database}", error)
-
+    resp = requests.delete(url, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
+    if resp.status_code == 200:
+        resp_body = resp.json()
+        if resp_body["success"] == 0:
+            error = resp_body["error"]
+            raise FrontEndError(f"Failed to delete user database: {database}, http_code: {resp.status_code}", error)
+        return
+    elif resp.status_code == 404:
+        resp_body = resp.json()
+        error = resp_body["error"]
+        raise FrontEndError(f"Failed to delete user database: {database}, http_code: {resp.status_code}", error)
+    else:
+        resp.raise_for_status()
 
 def _http_delete_table(
     http_frontend_uri: str,
@@ -1637,13 +1640,19 @@ def _http_delete_table(
     """
     _log.debug("Deleting table: %s from user database: %s", table, database)
     url = str(urljoin(http_frontend_uri, f"/ingest/table/{database}/{table}?version={repl_api_version}"))
-    req = requests.delete(url, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
-    req.raise_for_status()
-    res = req.json()
-    if res["success"] == 0:
-        error = res["error"]
-        raise FrontEndError(f"Failed to delete table: {table} from user database: {database}", error)
-
+    resp = requests.delete(url, verify=False, auth=(requests.auth.HTTPBasicAuth(user, password)))
+    if resp.status_code == 200:
+        resp_body = resp.json()
+        if resp_body["success"] == 0:
+            error = resp_body["error"]
+            raise FrontEndError(f"Failed to delete table: {table} from user database: {database}, http_code: {resp.status_code}", error)
+        return
+    elif resp.status_code == 404:
+        resp_body = resp.json()
+        error = resp_body["error"]
+        raise FrontEndError(f"Failed to delete table: {table} from user database: {database}, http_code: {resp.status_code}", error)
+    else:
+        resp.raise_for_status()
 
 def _http_ingest_data_json(
     http_frontend_uri: str,

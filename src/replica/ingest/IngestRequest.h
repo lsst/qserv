@@ -59,6 +59,13 @@ class IngestRequestInterrupted : public std::runtime_error {
 };
 
 /**
+ * Class IngestRequestContribNotFound represents exceptions thrown when the contribution with a
+ * specified identifier is not found in the database (for example, from resume() or createRetry()).
+ */
+class IngestRequestContribNotFound : public std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+/**
  * Class IngestRequest encapsulates a state and algorithms needed for processing
  * ingest contributions.
  *
@@ -113,6 +120,8 @@ public:
      *   the Database service, etc.
      * @param workerName The name of a worker this service is acting upon.
      * @param contribId A unique identifier of an existing contribution request.
+     * @throw IngestRequestContribNotFound If the contribution with a specified identifier is not
+     *   found in the database.
      * @return A newly created instance of the request object.
      */
     static std::shared_ptr<IngestRequest> resume(std::shared_ptr<ServiceProvider> const& serviceProvider,
@@ -147,6 +156,8 @@ public:
      * @param workerName The name of a worker this service is acting upon.
      * @param contribId A unique identifier of an existing contribution request.
      * @param async The processing mode to be set at the request for bookkeeping purposes.
+     * @throw IngestRequestContribNotFound If the contribution with a specified identifier is not
+     *   found in the database.
      * @throw std::invalid_argument For non-existing request, or incorrect values of
      *   the input parameters.
      * @return A newly created instance of the request object.

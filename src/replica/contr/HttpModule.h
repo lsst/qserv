@@ -134,6 +134,31 @@ protected:
      */
     DatabaseInfo getDatabaseInfo(std::string const& func, bool throwIfPublished = true) const;
 
+    /**
+     * Retrieve and validate database and table names from the service's URL.
+     * @param func A scope from which the method is called (for logging and error reporting).
+     * @return The table descriptor.
+     * @throws http::ErrorNotFound404 if the database or table is not found.
+     */
+    TableInfo getTableInfo(std::string const& func);
+
+    /**
+     * Retrieve and validate database name from the service's URL.
+     * @param func A scope from which the method is called (for logging and error reporting).
+     * @return The database descriptor.
+     * @throws http::ErrorNotFound404 if the database is not found.
+     */
+    DatabaseInfo getDatabaseFromParamOrThrow404(std::string const& func);
+
+    /**
+     * Retrieve and validate table name from the service's URL.
+     * @param func A scope from which the method is called (for logging and error reporting).
+     * @param database The database descriptor.
+     * @return The table descriptor.
+     * @throws http::ErrorNotFound404 if the table is not found.
+     */
+    TableInfo getTableFromParamOrThrow404(std::string const& func, DatabaseInfo const& database);
+
 private:
     HttpProcessorConfig const _processorConfig;
 };

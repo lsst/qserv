@@ -78,7 +78,8 @@ protected:
     virtual RequestQuery query() const;
     virtual std::string headerEntry(std::string const& key) const;
     virtual void getRequestBody(std::string& content, std::string const& requiredContentType);
-    virtual void sendResponse(std::string const& content, std::string const& contentType);
+    virtual void sendResponse(std::string const& content, std::string const& contentType,
+                              unsigned int httpCode = 200);
 
 private:
     httplib::Request const& _req;
