@@ -79,6 +79,8 @@ public:
     WorkerConfig(WorkerConfig const&) = delete;
     WorkerConfig& operator=(WorkerConfig const&) = delete;
 
+    std::string getLogLevelStr() const { return _logLevelStr->getVal(); }
+
     /// @return thread pool size for shared scans
     unsigned int getThreadPoolSize() const { return _threadPoolSize->getVal(); }
 
@@ -277,6 +279,10 @@ private:
     bool const required = true;
     bool const notReq = false;
     bool const hidden = true;
+
+    /// Logging
+    CVTStrPtr _logLevelStr =
+                util::ConfigValTStr::create(_configValMap, "logging", "logLevelStr", notReq, "DEBUG");
 
     CVTUIntPtr _threadPoolSize =
             util::ConfigValTUInt::create(_configValMap, "scheduler", "thread_pool_size", notReq, 0);

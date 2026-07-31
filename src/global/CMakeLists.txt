@@ -3,6 +3,7 @@ add_library(global SHARED)
 target_sources(global PRIVATE
     DbTable.cc
     debugUtil.cc
+    LogQ.cc
     ResourceUnit.cc
     sqltoken.cc
     stringUtil.cc

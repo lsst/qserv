@@ -41,6 +41,9 @@ data:
     log4j.logger.lsst.qserv.ccontrol.MergingHandler=DEBUG
 
   qserv-czar.cfg: |
+    [logging]
+    logLevelStr = DEBUG
+
     [css]
     technology = mysql
     hostname = 127.0.0.1

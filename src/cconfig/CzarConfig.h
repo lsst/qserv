@@ -109,6 +109,8 @@ public:
     /// @return a structure containing CSS parameters
     std::map<std::string, std::string> getCssConfigMap() const;
 
+    std::string getLogLevelStr() const { return _logLevelStr->getVal(); }
+
     /* Get the maximum number of chunks that can be in an interactive query.
      * Queries that are not limited in area to a small number of chunks must
      * be part of a full table scan.
@@ -286,6 +288,10 @@ private:
     bool const required = true;
     bool const notReq = false;
     bool const hidden = true;
+
+    /// Logging
+    CVTStrPtr _logLevelStr =
+                util::ConfigValTStr::create(_configValMap, "logging", "logLevelStr", notReq, "DEBUG");
 
     /// mySqlResultConfig values
     CVTStrPtr _resultDbUser =

@@ -41,7 +41,7 @@
 #include <nlohmann/json.hpp>
 
 // LSST headers
-#include "lsst/log/Log.h"
+#include "global/LogQ.h"  // includes "lsst/log/Log.h"
 
 // Qserv headers
 #include "http/Client.h"
@@ -122,6 +122,9 @@ std::shared_ptr<WorkerMain> WorkerMain::get() {
 
 WorkerMain::WorkerMain() {
     auto const workerConfig = wconfig::WorkerConfig::instance();
+
+    LogQ::getLogQ()->setLogLevelStr(workerConfig->getLogLevelStr());
+
     auto const mySqlConfig = workerConfig->getMySqlConfig();
 
     // Set thread pool size.

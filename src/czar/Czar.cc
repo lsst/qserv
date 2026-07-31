@@ -33,7 +33,8 @@
 #include "boost/format.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
+//&&&#include "lsst/log/Log.h"
+#include "global/LogQ.h"  // includes "lsst/log/Log.h"
 
 // Qserv headers
 #include "cconfig/CzarConfig.h"
@@ -205,6 +206,8 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     gettimeofday(&tv, nullptr);
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
+
+    LogQ::getLogQ()->setLogLevelStr(_czarConfig->getLogLevelStr());
 
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());

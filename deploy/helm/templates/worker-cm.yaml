@@ -58,6 +58,9 @@ data:
     log4j.appender.CONSOLE.layout.ConversionPattern=%d{yyyy-MM-ddTHH:mm:ss.SSSZ}  LWP %-5X{LWP} %-5p  %m%n
 
   worker-svc.cf: |
+    [logging]
+    logLevelStr = DEBUG
+
     [mysql]
     hostname = 127.0.0.1
     port = 3306
