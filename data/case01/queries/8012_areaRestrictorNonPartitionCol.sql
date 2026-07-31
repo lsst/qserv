@@ -1,5 +1,5 @@
 -- Area restrictor chunk pruning regression test: Object is partitioned on
--- ra_PS/decl_PS, so a scisql area function over ra_SG/decl_SG should NOT be
+-- ra_PS/decl_PS, so a scisql area function over ra_SG/decl_SG should NOT
 -- prune chunks. Object 55559 is placed away from the rest of the data with
 -- _SG (185, 5) in a different chunk than its _PS.
 --

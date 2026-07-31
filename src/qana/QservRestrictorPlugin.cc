@@ -164,12 +164,63 @@ bool areaParamsAreConst(query::FuncExpr const& scisqlFunc) {
     return true;
 }
 
-std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const& scisqlFunc) {
+/**
+ * @brief An area restrictor can only be applied if its lon/lat are the partitioning columns for the table.
+ *
+ * @param lonColumnRef longitude column passed to the area function
+ * @param latColumnRef latitude column passed to the area function
+ * @param context query context used to look up the partitioning columns in CSS.
+ *
+ * @return true if lonColumnRef/latColumnRef are the partitioning columns of a chunked table, false otherwise
+ */
+bool isAdmissibleAreaRestrictor(query::ColumnRef const& lonColumnRef, query::ColumnRef const& latColumnRef,
+                                query::QueryContext const& context) {
+    // Check to make sure these columns come from the same db/table
+    std::string const& db = lonColumnRef.getDb();
+    std::string const& table = lonColumnRef.getTable();
+    if (db.empty() || table.empty() || db != latColumnRef.getDb() || table != latColumnRef.getTable() ||
+        lonColumnRef.getTableAlias() != latColumnRef.getTableAlias()) {
+        return false;
+    }
+
+    if (!context.css->containsDb(db) || !context.css->containsTable(db, table)) {
+        return false;
+    }
+
+    css::PartTableParams const partParam = context.css->getPartTableParams(db, table);
+    // check the table is chunked and that column args passed in are the partitioning columns
+    return partParam.isChunked() && !partParam.lonColName.empty() && !partParam.latColName.empty() &&
+           boost::iequals(lonColumnRef.getColumn(), partParam.lonColName) &&
+           boost::iequals(latColumnRef.getColumn(), partParam.latColName);
+}
+
+std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const& scisqlFunc,
+                                                          query::QueryContext const& context) {
+    auto const& funcParams = scisqlFunc.getParams();
+    if (funcParams.size() < 2) return nullptr;
+
+    auto const lonColumnRef = funcParams[0]->getColumnRef();
+    auto const latColumnRef = funcParams[1]->getColumnRef();
+    if (!lonColumnRef || !latColumnRef) {
+        // not plain column refs; can't be used as an area restrictor
+        return nullptr;
+    }
+
+    // Ensure the lon/lat passed to this function are the columns the table is partitioned by
+    if (!isAdmissibleAreaRestrictor(*lonColumnRef, *latColumnRef, context)) {
+        LOGS(_log, LOG_LVL_DEBUG,
+             "Not using " << scisqlFunc.getName() << " as an area restrictor; (" << lonColumnRef->getColumn()
+                          << ", " << latColumnRef->getColumn() << ") are not the partitioning columns of "
+                          << lonColumnRef->getDb() << "." << lonColumnRef->getTable());
+        return nullptr;
+    }
+
     std::vector<std::string> parameters;
     int counter(0);
     for (auto const& valueExpr : scisqlFunc.getParams()) {
         if (counter++ < 2) {
-            // The first 2 parameters are the ra and decl columns to test; these get thrown away.
+            // The first 2 parameters are the ra and decl columns to test; these get thrown away but were
+            // tested for validity above.
             continue;
         }
         if (valueExpr->isConstVal()) {
@@ -204,10 +255,11 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictor(query::FuncExpr const&
  *        equivalent to WHERE scisql_s2PtInCircle(ra, dec, 55.5, -30.2, 0.05) = 1.
  *
  * @param compPredicate The comparison predicate to convert.
- * @return std::shared_ptr<query::AreaRestrictor> Equivalent area restrictor, nullptr otherwise
+ * @param context query context used to check admissibility as an area restrictor
+ * @return std::shared_ptr<query::AreaRestrictor> Resulting area restrictor, nullptr otherwise
  */
-std::shared_ptr<query::AreaRestrictor> makeAreaRestrictorFromAngSep(
-        query::CompPredicate const& compPredicate) {
+std::shared_ptr<query::AreaRestrictor> makeAreaRestrictorFromAngSep(query::CompPredicate const& compPredicate,
+                                                                    query::QueryContext const& context) {
     // If we have scisql_angSep(ra, dec, 55.5, -30.2) < 0.05, which side is func / radius?
     // We assume the form for <,<=,>,>= since the opposites are invalid, but do additional validation below.
     std::shared_ptr<query::ValueExpr> funcSide;
@@ -261,8 +313,29 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictorFromAngSep(
             std::isfinite(params[2]->getNumericConst()) && std::isfinite(params[3]->getNumericConst());
     if (first == sec) return nullptr;
 
+    // which params are our center of the cone?
     auto const& centerLon = first ? params[0] : params[2];
     auto const& centerLat = first ? params[1] : params[3];
+
+    // which params are our position?
+    auto const& posLon = first ? params[2] : params[0];
+    auto const& posLat = first ? params[3] : params[1];
+
+    auto const lonColumnRef = posLon->getColumnRef();
+    auto const latColumnRef = posLat->getColumnRef();
+    if (!lonColumnRef || !latColumnRef) {
+        // not plain column refs; can't be used as an area restrictor
+        return nullptr;
+    }
+
+    if (!isAdmissibleAreaRestrictor(*lonColumnRef, *latColumnRef, context)) {
+        LOGS(_log, LOG_LVL_DEBUG,
+             "Not using " << funcExpr->getName() << " as an area restrictor; (" << lonColumnRef->getColumn()
+                          << ", " << latColumnRef->getColumn() << ") are not the partitioning columns of "
+                          << lonColumnRef->getDb() << "." << lonColumnRef->getTable());
+        return nullptr;
+    }
+
     return std::make_shared<query::AreaRestrictorCircle>(centerLon->getConstVal(), centerLat->getConstVal(),
                                                          radiusSide->getConstVal());
 }
@@ -272,10 +345,12 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictorFromAngSep(
  *        return the corresponding area restrictor.
  *
  * @param whereClause WHERE clause to inspect
+ * @param context The query context
  * @return std::shared_ptr<query::AreaRestrictor> Area restrictor if there was exactly one
  *         area constraint, else nullptr.
  */
-std::shared_ptr<query::AreaRestrictor> extractSingleAreaRestrictor(query::WhereClause const& whereClause) {
+std::shared_ptr<query::AreaRestrictor> extractSingleAreaRestrictor(query::WhereClause const& whereClause,
+                                                                   query::QueryContext const& context) {
     auto topLevelAnd = whereClause.getRootAndTerm();
     if (topLevelAnd == nullptr) return nullptr;
     std::shared_ptr<const query::FuncExpr> scisqlFunc;
@@ -296,7 +371,7 @@ std::shared_ptr<query::AreaRestrictor> extractSingleAreaRestrictor(query::WhereC
             if (compPredicate == nullptr) continue;
 
             // Try to handle this as an angSep. If it's not, we check area functions below.
-            auto restrictor = makeAreaRestrictorFromAngSep(*compPredicate);
+            auto restrictor = makeAreaRestrictorFromAngSep(*compPredicate, context);
             if (restrictor != nullptr) {
                 // Success!
                 ++count;
@@ -330,7 +405,7 @@ std::shared_ptr<query::AreaRestrictor> extractSingleAreaRestrictor(query::WhereC
     if (count != 1) return nullptr;
 
     // If this was a scisql_s2PtIn* function, build and return the appropriate class
-    if (scisqlFunc != nullptr) return makeAreaRestrictor(*scisqlFunc);
+    if (scisqlFunc != nullptr) return makeAreaRestrictor(*scisqlFunc, context);
 
     return angSepRestrictor;
 }
@@ -609,7 +684,7 @@ void QservRestrictorPlugin::applyLogical(query::SelectStmt& stmt, query::QueryCo
         }
     } else {
         // Get the area restrictor if there is exactly one area constraint in the WHERE clause.
-        auto areaRestrictor = extractSingleAreaRestrictor(whereClause);
+        auto areaRestrictor = extractSingleAreaRestrictor(whereClause, context);
         if (areaRestrictor != nullptr) {
             LOGS(_log, LOG_LVL_TRACE, "Adding restrictor: " << *areaRestrictor);
             context.addAreaRestrictors({areaRestrictor});
