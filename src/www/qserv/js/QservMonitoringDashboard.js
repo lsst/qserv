@@ -226,6 +226,21 @@ function(CSSLoader,
                 } else {
                     Fwk.show('Status', 'Active Queries Monitor');
                 }
+                function updateInstanceId() {
+                    Fwk.web_service_GET(
+                        "/meta/version",
+                        {},
+                        (data) => {
+                            if (data.instance_id) {
+                                $(".navbar-brand").text("Qserv (" + data.instance_id + ")");
+                                document.title = data.instance_id;
+                            }
+                        },
+                        (msg) => { console.log("Failed to load instance ID:", msg); }
+                    );
+                }
+                updateInstanceId();
+                setInterval(updateInstanceId, 10000);
             }
         );
     });
