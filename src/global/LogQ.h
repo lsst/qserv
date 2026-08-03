@@ -84,8 +84,8 @@ public:
     ///      Valid values are: 'T' for TRACE, 'D' for DEBUG, 'I' for INFO, 'W' for WARN, and 'E' for ERROR.
     ///      This is done to increase the likelihood of the string being recognized as a log level with
     ///      the expected behavior.
-    /// Log level defaults to DEBUG if the string is not recognized.
-    void setLogLevelStr(std::string const& levelStr);
+    /// @return true if the log level could be set using the input string, otherwise false.
+    bool setLogLevelStr(std::string const& levelStr);
 
     void setLogLevel(int level);
 

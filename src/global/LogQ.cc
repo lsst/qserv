@@ -31,29 +31,31 @@ namespace lsst::qserv {
 
 LogQ::Ptr LogQ::_logQ = make_shared<LogQ>();
 
-void LogQ::setLogLevelStr(std::string const& levelStr) {
+bool LogQ::setLogLevelStr(std::string const& levelStr) {
     char levelC = 'D';
     if (levelStr.length() > 0) {
         levelC = toupper(levelStr[0]);
+    } else {
+        return false;
     }
     switch (levelC) {
     case 'T':
         _logLevel = LOG_LVL_TRACE;
-        break;
+        return true;
     case 'D':
         _logLevel = LOG_LVL_DEBUG;
-        break;
+        return true;
     case 'I':
         _logLevel = LOG_LVL_INFO;
-        break;
+        return true;
     case 'W':
         _logLevel = LOG_LVL_WARN;
-        break;
+        return true;
     case 'E':
         _logLevel = LOG_LVL_ERROR;
-        break;
+        return true;
     default:
-        _logLevel = LOG_LVL_DEBUG;
+        return false;
     }
 }
 

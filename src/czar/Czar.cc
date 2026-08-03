@@ -206,7 +206,13 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     const int year = 60 * 60 * 24 * 365;
     _idCounter = uint64_t(tv.tv_sec % year) * 1000 + tv.tv_usec / 1000;
 
-    LogQ::getLogQ()->setLogLevelStr(_czarConfig->getLogLevelStr());
+    if (!LogQ::getLogQ()->setLogLevelStr(_czarConfig->getLogLevelStr())) {
+        LOGS(_log, LOG_LVL_ERROR, "Czar bad loglevel string in config: "
+                << _czarConfig->getLogLevelStr()
+                << " using default: " << LogQ::getLogQ()->getLogLevelStr());
+    } else {
+        LOGQ(_log, LOG_LVL_WARN, "Czar loglevel set to: " << LogQ::getLogQ()->getLogLevelStr());
+    }
 
     auto databaseModels = qproc::DatabaseModels::create(_czarConfig->getCssConfigMap(),
                                                         _czarConfig->getMySqlResultConfig());

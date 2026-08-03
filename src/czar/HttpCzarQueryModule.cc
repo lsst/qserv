@@ -41,6 +41,8 @@
 #include "sql/Schema.h"
 #include "util/String.h"
 
+#include "global/LogQ.h"
+
 using namespace std;
 using json = nlohmann::json;
 
@@ -77,6 +79,8 @@ json HttpCzarQueryModule::executeImpl(string const& subModuleName) {
         return _result();
     else if (subModuleName == "RESULT-DELETE")
         return _resultDelete();
+    else if (subModuleName == "SETLOGGING")
+        return _setLogging();
     throw invalid_argument(context() + func + " unsupported sub-module");
 }
 
@@ -419,6 +423,30 @@ json HttpCzarQueryModule::_rowsToJson(sql::SqlResults& results, json const& sche
         rowsJson.push_back(rowJson);
     }
     return rowsJson;
+}
+
+json HttpCzarQueryModule::_setLogging() {
+    debug(__func__);
+    checkApiVersion(__func__, 57);
+
+    json result;
+    result["success"] = 0;
+    result["targetlevel"] = "unknown";
+    result["loglevel"] = "unknown";
+
+    string const targetLevel = body().required<string>("loglevel");
+    result["targetlevel"] = targetLevel;
+    LogQ::Ptr logQ = LogQ::getLogQ();
+    if (logQ) {
+        if (logQ->setLogLevelStr(targetLevel)) {
+            result["success"] = 1;
+            result["loglevel"] = logQ->getLogLevelStr();
+        } else {
+            result["success"] = 0;
+            result["loglevel"] = logQ->getLogLevelStr();
+        }
+    }
+    return result;
 }
 
 }  // namespace lsst::qserv::czar

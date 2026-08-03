@@ -172,6 +172,16 @@ void HttpCzarSvc::_registerHandlers() {
                  [self, authType](httplib::Request const& req, httplib::Response& resp) {
                      HttpCzarQueryModule::process(::serviceName, req, resp, "RESULT-DELETE", authType);
                  });
+    /* TODO: This is basically a proof of concept and not a long term implementation.
+     *   There may be other items put in a "system" category aside from just logging,
+     *   and this is not an ideal location for this command is it's not available on
+     *   the proxy and something similar needs to be put on the workers. There's also
+     *   the matter of keeping this consistent across all workers and czars.
+     */
+    _svr->Post("/system/setlogging",
+            [self, authType](httplib::Request const& req, httplib::Response& resp) {
+                HttpCzarQueryModule::process(::serviceName, req, resp, "SETLOGGING", authType);
+    });
     _svr->Post("/ingest/csv", [self, authType](httplib::Request const& req, httplib::Response& resp,
                                                httplib::ContentReader const& contentReader) {
         HttpCzarIngestCsvModule::process(self->_io_service, ::serviceName, self->_httpCzarConfig.tmpDir, req,

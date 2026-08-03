@@ -124,6 +124,13 @@ WorkerMain::WorkerMain() {
     auto const workerConfig = wconfig::WorkerConfig::instance();
 
     LogQ::getLogQ()->setLogLevelStr(workerConfig->getLogLevelStr());
+    if (!LogQ::getLogQ()->setLogLevelStr(workerConfig->getLogLevelStr())) {
+        LOGS(_log, LOG_LVL_ERROR, "Worker bad loglevel string in config: "
+                << workerConfig->getLogLevelStr()
+                << " using default: " << LogQ::getLogQ()->getLogLevelStr());
+    } else {
+        LOGQ(_log, LOG_LVL_WARN, "worker loglevel set to: " << LogQ::getLogQ()->getLogLevelStr());
+    }
 
     auto const mySqlConfig = workerConfig->getMySqlConfig();
 

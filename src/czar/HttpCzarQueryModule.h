@@ -91,6 +91,7 @@ private:
     nlohmann::json _status();
     nlohmann::json _result();
     nlohmann::json _resultDelete();
+    nlohmann::json _setLogging();
 
     SubmitResult _getRequestParamsAndSubmit(std::string const& func, bool async);
     SubmitResult _getQueryInfo() const;
