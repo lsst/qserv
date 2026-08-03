@@ -217,7 +217,7 @@ function(CSSLoader,
             }
         ];
         Fwk.build(
-            'Qserv',
+            'Qserv XRD',
             apps,
             function() {
                 let menus = parseURLParameters();
@@ -232,7 +232,7 @@ function(CSSLoader,
                         {},
                         (data) => {
                             if (data.instance_id) {
-                                $(".navbar-brand").text("Qserv (" + data.instance_id + ")");
+                                $(".navbar-brand").text("Qserv XRD (" + data.instance_id + ")");
                                 document.title = data.instance_id;
                             }
                         },
