@@ -29,6 +29,7 @@
 
 // System headers
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -640,7 +641,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
     // If that fails, try equivalent point in circle: scisql_s2PtInCircle(lon1, lat1, lon2, lat2, radius) = 1.
     auto const [fe, angSep] = angSepJoin.first ? angSepJoin : getPtInCircleJoin(*cp);
 
-    if (!fe || boost::math::isnan(angSep)) {
+    if (!fe || std::isnan(angSep)) {
         // Not angSep or PtInCircle; give up
         return 0;
     }
@@ -975,7 +976,7 @@ bool isEvaluable(std::list<Vertex> const& vertices) {
     dumpGraph(vertices);
     typedef std::list<Vertex>::const_iterator Iter;
     for (Iter v = vertices.begin(), e = vertices.end(); v != e; ++v) {
-        if ((boost::math::isinf)(v->overlap)) {
+        if (std::isinf(v->overlap)) {
             LOGS(_log, LOG_LVL_TRACE, "Evaluable: FALSE vertex=" << v->info->table);
             return false;
         }
