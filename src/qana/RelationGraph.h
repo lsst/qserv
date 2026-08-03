@@ -471,14 +471,12 @@
 /// references.
 
 // System headers
+#include <cmath>
 #include <limits>
 #include <list>
 #include <memory>
 #include <string>
 #include <vector>
-
-// Third-party headers
-#include "boost/math/special_functions/fpclassify.hpp"  // for isnan, isinf
 
 // Local headers
 #include "ColumnVertexMap.h"
@@ -530,7 +528,7 @@ struct Edge {
     Edge() : vertex(0), angSep(0.0) {}
     Edge(Vertex* v, double a) : vertex(v), angSep(a) {}
 
-    bool isSpatial() const { return !(boost::math::isnan)(angSep); }
+    bool isSpatial() const { return !std::isnan(angSep); }
     bool operator<(Edge const& p) const { return vertex < p.vertex; }
     bool operator==(Edge const& p) const { return vertex == p.vertex; }
     bool operator!=(Edge const& p) const { return vertex != p.vertex; }

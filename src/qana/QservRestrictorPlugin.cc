@@ -39,7 +39,7 @@
 #include <string>
 
 // Third-party headers
-#include "boost/pointer_cast.hpp"
+#include "boost/algorithm/string/predicate.hpp"  // for iequals
 
 // LSST headers
 #include "lsst/log/Log.h"

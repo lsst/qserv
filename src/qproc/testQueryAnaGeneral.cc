@@ -41,9 +41,6 @@
 #include <string>
 #include <vector>
 
-// Third-party headers
-#include "boost/algorithm/string.hpp"
-
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnalysis
 #include <boost/test/unit_test.hpp>

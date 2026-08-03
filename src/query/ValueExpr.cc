@@ -47,9 +47,6 @@
 #include <sstream>
 #include <stdexcept>
 
-// Third-party headers
-#include "boost/lexical_cast.hpp"
-
 // LSST headers
 #include "lsst/log/Log.h"
 
@@ -387,7 +384,9 @@ std::string ValueExpr::sqlFragment(QueryTemplate::SetAliasMode aliasMode) const 
     QueryTemplate qt(aliasMode);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
-    return boost::lexical_cast<std::string>(qt);
+    std::ostringstream os;
+    os << qt;
+    return os.str();
 }
 
 std::string ValueExpr::sqlFragmentNoQuotes(QueryTemplate::SetAliasMode aliasMode) const {
@@ -395,7 +394,9 @@ std::string ValueExpr::sqlFragmentNoQuotes(QueryTemplate::SetAliasMode aliasMode
     qt.setQuoteIdentifiers(false);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
-    return boost::lexical_cast<std::string>(qt);
+    std::ostringstream os;
+    os << qt;
+    return os.str();
 }
 
 std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {
