@@ -247,7 +247,7 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictorFromAngSep(
     }
     auto const& params = funcExpr->getParams();
     double const radius = radiusSide->getNumericConst();
-    if (std::isnan(radius)) return nullptr;
+    if (!std::isfinite(radius)) return nullptr;
     if (radius < 0.0) {
         throw qana::AnalysisError("scisql_angSep() comparison threshold must be a non-negative number, got " +
                                   std::to_string(radius));
@@ -255,8 +255,10 @@ std::shared_ptr<query::AreaRestrictor> makeAreaRestrictorFromAngSep(
 
     // Exactly one of the two coordinate pairs must consist of numeric constants. If neither is, then the
     // predicate is a spatial join and will be handled in qana::RelationGraph.
-    bool const first = !std::isnan(params[0]->getNumericConst()) && !std::isnan(params[1]->getNumericConst());
-    bool const sec = !std::isnan(params[2]->getNumericConst()) && !std::isnan(params[3]->getNumericConst());
+    bool const first =
+            std::isfinite(params[0]->getNumericConst()) && std::isfinite(params[1]->getNumericConst());
+    bool const sec =
+            std::isfinite(params[2]->getNumericConst()) && std::isfinite(params[3]->getNumericConst());
     if (first == sec) return nullptr;
 
     auto const& centerLon = first ? params[0] : params[2];

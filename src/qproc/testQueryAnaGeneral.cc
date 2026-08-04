@@ -446,6 +446,15 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
                                      "AND scisql_s2PtInCircle(`s`.`ra_Test`,`s`.`decl_Test`,1,1,1.3)=1 "
                                      "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
                                      nullptr),
+
+        // Reject out of range literals to avoid producing an infinite radius
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) < 1e400 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2)<1e400 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
 };
 
 // Test that scisql area restrictors are translated into qserv_area_restrictors properly.
@@ -695,6 +704,20 @@ BOOST_AUTO_TEST_CASE(PtInCircleJoinUnsupportedOperators) {
     std::vector<std::string> const predicates = {
             "scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02) != 0",
             "0 < scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02)"};
+    for (auto const& predicate : predicates) {
+        std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 WHERE " + predicate;
+        qsTest.sqlConfig =
+                SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+        BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(SpatialJoinNonFiniteRadiusRejected) {
+    // strtod converts an out-of-range numeric literal to infinity. It must not establish a spatial edge.
+    std::vector<std::string> const predicates = {
+            "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 1e400",
+            "scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,1e400) = 1"};
     for (auto const& predicate : predicates) {
         std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 WHERE " + predicate;
         qsTest.sqlConfig =
