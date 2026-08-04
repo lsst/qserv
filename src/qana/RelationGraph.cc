@@ -641,7 +641,7 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
     // If that fails, try equivalent point in circle: scisql_s2PtInCircle(lon1, lat1, lon2, lat2, radius) = 1.
     auto const [fe, angSep] = angSepJoin.first ? angSepJoin : getPtInCircleJoin(*cp);
 
-    if (!fe || std::isnan(angSep)) {
+    if (!fe || !std::isfinite(angSep)) {
         // Not angSep or PtInCircle; give up
         return 0;
     }
