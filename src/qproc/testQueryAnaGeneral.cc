@@ -1964,6 +1964,26 @@ BOOST_AUTO_TEST_CASE(ChildNonDistinctColumnsRejected) {
                       "longitude/latitude/director column names");
 }
 
+BOOST_AUTO_TEST_CASE(ChildNonDistinctColumnsDifferingOnlyInCaseRejected) {
+    // Same as ChildNonDistinctColumnsRejected but the names differ on case only.
+    std::string stmt = "select * from LSST.Source6;";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source6", {}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:Child table LSST.Source6 metadata contains non-distinct "
+                      "longitude/latitude/director column names");
+}
+
+BOOST_AUTO_TEST_CASE(DirectorNonDistinctColumnsRejected) {
+    // Object3 is a director table configured with the same column for lat,lon; should be rejected.
+    std::string stmt = "select * from LSST.Object3;";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object3", {}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:Director table LSST.Object3 metadata does not contain non-empty "
+                      "and distinct director, longitude and latitude column names.");
+}
+
 BOOST_AUTO_TEST_CASE(ChildPartialSpatialColsTreatedAsNoCoords) {
     // Source5 is a child of Object configured with only a longitude column, so reject for spatial join.
     std::string stmt =
