@@ -29,6 +29,7 @@
 
 // System headers
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <memory>
@@ -280,30 +281,10 @@ size_t addEqEdge(std::string const& ca, std::string const& cb, bool outer, Verte
     return 0;
 }
 
-/// `getNumericConst` returns the numeric constant embedded in the given
-/// value expression if there is one, and NaN otherwise.
-double getNumericConst(ValueExprPtr const& ve) {
-    LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
-    if (!ve || ve->getFactorOps().size() != 1) {
-        return std::numeric_limits<double>::quiet_NaN();
-    }
-    ValueFactorPtr vf = ve->getFactorOps().front().factor;
-    if (!vf || vf->getType() != ValueFactor::CONST) {
-        return std::numeric_limits<double>::quiet_NaN();
-    }
-    char* e = nullptr;
-    double a = std::strtod(vf->getConstVal().c_str(), &e);
-    if (e == vf->getConstVal().c_str()) {
-        // conversion error - non-numeric constant
-        return std::numeric_limits<double>::quiet_NaN();
-    }
-    return a;
-}
-
-/// `getAngSepFunc` returns a pointer to the IR node for the `scisql_angSep`
-/// call embedded in the given value expression if there is one, and null
-/// otherwise.
-FuncExpr::Ptr getAngSepFunc(ValueExprPtr const& ve) {
+/// `getFunc` returns a pointer to the IR node for the call to the function
+/// with the given name and parameter count embedded in the given value
+/// expression if there is one, and null otherwise.
+FuncExpr::Ptr getFunc(ValueExprPtr const& ve, std::string const& name, size_t numParams) {
     LOGS(_log, LOG_LVL_TRACE, __FUNCTION__);
     FuncExpr::Ptr fe;
     if (!ve || ve->getFactorOps().size() != 1) {
@@ -314,10 +295,109 @@ FuncExpr::Ptr getAngSepFunc(ValueExprPtr const& ve) {
         return fe;
     }
     fe = vf->getFuncExpr();
-    if (!fe || fe->getName() != "scisql_angSep" || fe->params.size() != 4) {
+    if (!fe || fe->getName() != name || fe->params.size() != numParams) {
         return FuncExpr::Ptr();
     }
     return fe;
+}
+
+/// Helper to retrieve a scisql_angSep function from the given value expression
+FuncExpr::Ptr getAngSepFunc(ValueExprPtr const& ve) { return getFunc(ve, "scisql_angSep", 4); }
+
+/// Helper to retrieve a scisql_s2PtInCircle function from the given value expression
+FuncExpr::Ptr getPtInCircleFunc(ValueExprPtr const& ve) { return getFunc(ve, "scisql_s2PtInCircle", 5); }
+
+/**
+ * @brief Get `scisql_angSep` call and numeric threshold in the given comparison predicate.
+ *
+ * Handles `scisql_angSep(lon1, lat1, lon2, lat2) OP threshold` in either operand order.
+ *
+ * @param cp The comparison predicate to inspect.
+ * @return std::pair<FuncExpr::Ptr, double> Embedded scisql_angSep() and the threshold it
+ *         is compared against, or {nullptr, NaN} if inadmissible.
+ * @throws QueryNotEvaluableError if the threshold is a numeric constant but is negative.
+ */
+std::pair<FuncExpr::Ptr, double> getAngSepJoin(CompPredicate const& cp) {
+    FuncExpr::Ptr fe;
+    double angSep = std::numeric_limits<double>::quiet_NaN();
+    switch (cp.op) {
+        case query::CompPredicate::LESS_THAN_OP:  // fallthrough
+        case query::CompPredicate::LESS_THAN_OR_EQUALS_OP:
+            fe = getAngSepFunc(cp.left);
+            angSep = cp.right->getNumericConst();
+            break;
+        case query::CompPredicate::GREATER_THAN_OP:  // fallthrough
+        case query::CompPredicate::GREATER_THAN_OR_EQUALS_OP:
+            angSep = cp.left->getNumericConst();
+            fe = getAngSepFunc(cp.right);
+            break;
+        case query::CompPredicate::EQUALS_OP:
+        case query::CompPredicate::NULL_SAFE_EQUALS_OP:
+            fe = getAngSepFunc(cp.left);
+            if (!fe) {
+                angSep = cp.left->getNumericConst();
+                fe = getAngSepFunc(cp.right);
+            } else {
+                angSep = cp.right->getNumericConst();
+            }
+            break;
+        case query::CompPredicate::NOT_EQUALS_OP:
+        case query::CompPredicate::NOT_EQUALS_OP_ALT:
+            // We can't satisfy a not-equals join here ('!= r' or '<> r'), which would essentially be querying
+            // across almost everything, spanning outside chunk + overlap bounds. Since we can't evaluate this
+            // type of join and would provide incorrect results if we tried to, leave 'fe' null.
+            break;
+
+            // Intentionally leaving out the default case; we covered all operator types, so if a new one is
+            // added later, it will be flagged by -Wswitch to be handled here.
+    }
+
+    if (fe && angSep < 0.0) {
+        throw QueryNotEvaluableError(
+                "scisql_angSep() comparison threshold must be a non-negative "
+                "number, got " +
+                std::to_string(angSep));
+    }
+    return {fe, angSep};
+}
+
+/**
+ * @brief Get `scisql_s2PtInCircle` call and its radius embedded in the given comparison predicate.
+ *
+ * @param cp The comparison predicate to inspect.
+ * @return std::pair<FuncExpr::Ptr, double> Embedded scisql_s2PtInCircle() and its radius or {nullptr, NaN} if
+ *         the predicate is not admissible or the radius is not a numeric constant.
+ * @throws QueryNotEvaluableError if the radius is a numeric constant but is negative
+ */
+std::pair<FuncExpr::Ptr, double> getPtInCircleJoin(CompPredicate const& cp) {
+    auto const notFound = std::make_pair(FuncExpr::Ptr(), std::numeric_limits<double>::quiet_NaN());
+    if (cp.op != query::CompPredicate::EQUALS_OP && cp.op != query::CompPredicate::NULL_SAFE_EQUALS_OP) {
+        return notFound;
+    }
+    FuncExpr::Ptr fe = getPtInCircleFunc(cp.left);
+    double comparisonValue = std::numeric_limits<double>::quiet_NaN();
+    if (fe) {
+        comparisonValue = cp.right->getNumericConst();
+    } else {
+        fe = getPtInCircleFunc(cp.right);
+        if (!fe) {
+            return notFound;
+        }
+        comparisonValue = cp.left->getNumericConst();
+    }
+
+    if (comparisonValue != 1.0) {
+        // scisql_s2PtInCircle() only returns 0 or 1, and this is only admissible when = 1.
+        return notFound;
+    }
+
+    double const radius = fe->params.back()->getNumericConst();
+    if (radius < 0.0) {
+        throw QueryNotEvaluableError("scisql_s2PtInCircle() radius must be a non-negative number, got " +
+                                     std::to_string(radius));
+    }
+
+    return {fe, radius};
 }
 
 /// `getEqColumnRefs` returns the pair of column references in the equality
@@ -543,55 +623,31 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
         }
         return numEdges;
     }
-    // Look for a BoolFactor containing a single CompPredicate.
+
     BoolFactor::Ptr bf = std::dynamic_pointer_cast<BoolFactor>(bt);
-    if (!bf || bf->_terms.size() != 1) {
+    if (!bf || bf->_terms.size() != 1 || bf->_hasNot) {
+        // If our BoolFactor has a 'NOT', then it is querying *outside* the region specified, and we can't
+        // turn it into a join edge.
         return 0;
     }
     CompPredicate::Ptr cp = std::dynamic_pointer_cast<CompPredicate>(bf->_terms.front());
     if (!cp) {
         return 0;
     }
-    // Try to extract a scisql_angSep() call and a numeric constant
-    // from the comparison predicate.
-    FuncExpr::Ptr fe;
-    double angSep = std::numeric_limits<double>::quiet_NaN();
-    switch (cp->op) {
-        case query::CompPredicate::LESS_THAN_OP:  // fallthrough
-        case query::CompPredicate::LESS_THAN_OR_EQUALS_OP:
-            fe = getAngSepFunc(cp->left);
-            angSep = getNumericConst(cp->right);
-            break;
-        case query::CompPredicate::GREATER_THAN_OP:  // fallthrough
-        case query::CompPredicate::GREATER_THAN_OR_EQUALS_OP:
-            angSep = getNumericConst(cp->left);
-            fe = getAngSepFunc(cp->right);
-            break;
-        case query::CompPredicate::EQUALS_OP:
-        case query::CompPredicate::NULL_SAFE_EQUALS_OP:
-        case query::CompPredicate::NOT_EQUALS_OP:
-        case query::CompPredicate::NOT_EQUALS_OP_ALT:
-            // While this doesn't make much sense numerically (floating
-            // point numbers are being tested for equality), it is
-            // technically evaluable.
-            fe = getAngSepFunc(cp->left);
-            if (!fe) {
-                angSep = getNumericConst(cp->left);
-                fe = getAngSepFunc(cp->right);
-            } else {
-                angSep = getNumericConst(cp->right);
-            }
-            break;
-        default:
-            throw QueryNotEvaluableError("Unhandled comparison operator:" + std::to_string(cp->op));
-    }
-    if (!fe || boost::math::isnan(angSep)) {
-        // The scisql_angSep() call and/or numeric constant is missing,
-        // or the comparison operator is invalid (e.g.
-        // "angSep < scisql_angSep(...)")
+
+    // Try to extract a scisql_angSep() and numeric threshold from the comparison predicate.
+    std::pair<FuncExpr::Ptr, double> const angSepJoin = getAngSepJoin(*cp);
+
+    // If that fails, try equivalent point in circle: scisql_s2PtInCircle(lon1, lat1, lon2, lat2, radius) = 1.
+    auto const [fe, angSep] = angSepJoin.first ? angSepJoin : getPtInCircleJoin(*cp);
+
+    if (!fe || !std::isfinite(angSep)) {
+        // Not angSep or PtInCircle; give up
         return 0;
     }
-    // Extract column references from fe
+
+    // Extract column references from fe. Both scisql_angSep() and scisql_s2PtInCircle() take two
+    // coordinate pairs as their first four arguments.
     ValueExprPtrVector::const_iterator j = fe->params.begin();
     ColumnRef::Ptr cr[4];
     Vertex* v[4];
@@ -608,27 +664,33 @@ size_t RelationGraph::_addSpEdges(BoolTerm::Ptr bt) {
         }
         v[i] = vv.front();
     }
+
     // For the predicate to be admissible, the columns in each coordinate
     // pair must come from the same table reference. Additionally, the two
     // coordinate pairs must come from different table references.
     if (v[0] != v[1] || v[2] != v[3] || v[0] == v[2]) {
         return 0;
     }
-    // Check that both column pairs were found in director tables
-    DirTableInfo const* d1 = dynamic_cast<DirTableInfo const*>(v[0]->info);
-    DirTableInfo const* d2 = dynamic_cast<DirTableInfo const*>(v[2]->info);
-    if (!d1 || !d2) {
+
+    // Check that both column pairs were found in tables that can be joined
+    // (either director, OR child with spatial coordinates).
+    SpatialTableInfo const* t1 = dynamic_cast<SpatialTableInfo const*>(v[0]->info);
+    SpatialTableInfo const* t2 = dynamic_cast<SpatialTableInfo const*>(v[2]->info);
+    if (!t1 || !t2 || !t1->hasSpatialCols() || !t2->hasSpatialCols()) {
         return 0;
     }
-    // Check that the arguments map to the proper director spatial columns
-    if (cr[0]->getColumn() != d1->lon || cr[1]->getColumn() != d1->lat || cr[2]->getColumn() != d2->lon ||
-        cr[3]->getColumn() != d2->lat) {
+
+    // Check that the arguments map to the proper spatial columns
+    if (cr[0]->getColumn() != t1->lon || cr[1]->getColumn() != t1->lat || cr[2]->getColumn() != t2->lon ||
+        cr[3]->getColumn() != t2->lat) {
         return 0;
     }
-    // Check that both directors have the same partitioning
-    if (d1->partitioningId != d2->partitioningId) {
+
+    // Check that both tables share the same partitioning
+    if (t1->partitioningId != t2->partitioningId) {
         return 0;
     }
+
     // Finally, add an edge between v[0] and v[2].
     v[0]->insert(Edge(v[2], angSep));
     v[2]->insert(Edge(v[0], angSep));
@@ -914,7 +976,7 @@ bool isEvaluable(std::list<Vertex> const& vertices) {
     dumpGraph(vertices);
     typedef std::list<Vertex>::const_iterator Iter;
     for (Iter v = vertices.begin(), e = vertices.end(); v != e; ++v) {
-        if ((boost::math::isinf)(v->overlap)) {
+        if (std::isinf(v->overlap)) {
             LOGS(_log, LOG_LVL_TRACE, "Evaluable: FALSE vertex=" << v->info->table);
             return false;
         }
