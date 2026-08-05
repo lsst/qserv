@@ -123,13 +123,13 @@ std::shared_ptr<WorkerMain> WorkerMain::get() {
 WorkerMain::WorkerMain() {
     auto const workerConfig = wconfig::WorkerConfig::instance();
 
-    LogQ::getLogQ()->setLogLevelStr(workerConfig->getLogLevelStr());
-    if (!LogQ::getLogQ()->setLogLevelStr(workerConfig->getLogLevelStr())) {
+    auto const logQ = LogQ::getLogQ();
+    if (!logQ->setLogLevelStr(workerConfig->getLogLevelStr())) {
         LOGS(_log, LOG_LVL_ERROR, "Worker bad loglevel string in config: "
                 << workerConfig->getLogLevelStr()
-                << " using default: " << LogQ::getLogQ()->getLogLevelStr());
+                << " using default: " << logQ->getLogLevelStr());
     } else {
-        LOGQ(_log, LOG_LVL_WARN, "worker loglevel set to: " << LogQ::getLogQ()->getLogLevelStr());
+        LOGQ(_log, LOG_LVL_WARN, "worker loglevel set to: " << logQ->getLogLevelStr());
     }
 
     auto const mySqlConfig = workerConfig->getMySqlConfig();

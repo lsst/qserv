@@ -61,7 +61,7 @@ SchedulerBase::SchedulerBase(std::string const& name, int maxThreads, int maxRes
             std::make_shared<util::HistogramRolling>("recentlyCompletedTasks", bucketMaxVals, 1h, maxSize);
 
     LOGQ(_log, LOG_LVL_INFO,
-         "Scheduler name=" << name << " maxThreads=" << _maxThreads << " maxThreads=" << _maxThreads
+         "Scheduler name=" << name << " maxThreads=" << _maxThreads << " maxReserve=" << _maxReserve
                            << " priority=" << _priority);
 }
 

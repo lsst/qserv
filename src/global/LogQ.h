@@ -23,6 +23,10 @@
 
 // System headers
 #include <atomic>
+#include <cctype>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -47,6 +51,8 @@ public:
         return _logQ;
     }
 
+    static Ptr getLogQNoThrow() { return _logQ; }
+
     static bool isEnabledFor(int level) {
         if (!_logQ) return true;
         return _logQ->_isEnabledFor(level);
@@ -64,8 +70,7 @@ public:
         if (!lsst::qserv::LogQ::isEnabledFor(level)) {
             return false;
         }
-        lsst::log::Log log(lsst::log::Log::getLogger(logger));
-        return log.isEnabledFor(level);
+        return logger.isEnabledFor(level);
     }
 
     static std::string getLogLevelStr(int level);

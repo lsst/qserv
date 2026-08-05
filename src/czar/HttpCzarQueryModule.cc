@@ -436,7 +436,7 @@ json HttpCzarQueryModule::_setLogging() {
 
     string const targetLevel = body().required<string>("loglevel");
     result["targetlevel"] = targetLevel;
-    LogQ::Ptr logQ = LogQ::getLogQ();
+    LogQ::Ptr logQ = LogQ::getLogQNoThrow();
     if (logQ) {
         if (logQ->setLogLevelStr(targetLevel)) {
             result["success"] = 1;
