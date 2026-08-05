@@ -182,9 +182,10 @@ std::shared_ptr<std::string> CsvMemDisk::_readFromTmpFile() {
     if (!_file.is_open() || _fState != OPEN_R) {
         // This is extremely unlikely and means something has gone wrong with the file system.
         // If something has gone wrong with the file system, a crash may be incoming.
-        if (!getContaminated())
+        if (!getContaminated()) {
             LOGS(_log, LOG_LVL_ERROR,
                  "CsvStrMemDisk::_readFromfile file isn't open " << _filePath << " or bad state=" << _fState);
+        }
         _setContaminated();
         return make_shared<string>("$");
     }

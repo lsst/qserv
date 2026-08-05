@@ -123,6 +123,10 @@ public:
     /// Update UberJob status, return true if successful.
     bool importResultFinish();
 
+    void setContaminated();
+
+    bool getContaminated() const { return _contaminated; };
+
     /// Import and error from trying to collect results.
     protojson::ExecutiveRespMsg::Ptr importResultError(bool shouldCancel, std::string const& errorType,
                                                        std::string const& note);
@@ -164,6 +168,9 @@ private:
 
     /// Contact information for the target worker.
     protojson::WorkerContactInfo::Ptr _wContactInfo;
+
+    /// true if the result may have been contaminated during merging.
+    std::atomic<bool> _contaminated{false};
 
     /// Timestamp of the family map used to create this UberJob.
     TIMEPOINT _familyMapTimestamp;

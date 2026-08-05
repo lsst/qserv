@@ -135,10 +135,6 @@ InfileMerger::InfileMerger(rproc::InfileMergerConfig const& c,
           _maxSqlConnectionAttempts(cconfig::CzarConfig::instance()->getMaxSqlConnectionAttempts()),
           _maxResultTableSizeBytes(cconfig::CzarConfig::instance()->getMaxTableSizeMB() * MB_SIZE_BYTES) {
     _fixupTargetName();
-    if (!_setupConnectionMyIsam()) {
-        throw util::Error(util::Error::MYSQLCONNECT, util::Error::NONE,
-                          "InfileMerger mysql connect failure.");
-    }
 
     // The DEBUG level is good here since this report will be made onces per query,
     // not per each chunk.
@@ -213,7 +209,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
     ret = _applyMysqlMyIsam(infileStatement, fileSize);
     auto end = std::chrono::system_clock::now();
     auto mergeDur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    LOGS(_log, LOG_LVL_DEBUG, "mergeDur=" << mergeDur.count());
+    LOGS(_log, LOG_LVL_DEBUG, queryIdJobStr << " mergeDur=" << mergeDur.count());
     if (ret) {
         lock_guard<mutex> resultSzLock(_mtxResultSizeMtx);
         _totalResultSize += fileSize;
@@ -229,7 +225,9 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
             return false;
         }
     } else {
-        LOGS(_log, LOG_LVL_ERROR, "InfileMerger::merge mysql applyMysql failure");
+        LOGS(_log, LOG_LVL_ERROR, queryIdJobStr << " InfileMerger::merge mysql applyMysql failure, assuming contaminated");
+        uberJob->setContaminated();
+        return false;
     }
     LOGS(_log, LOG_LVL_TRACE, "virtFileT=" << virtFileT.getElapsed() << " mergeDur=" << mergeDur.count());
     return ret;
@@ -264,6 +262,7 @@ bool InfileMerger::_applyMysqlMyIsam(std::string const& query, size_t resultSize
     if (rc == 0) {
         mergeRateTracker.addToValue(resultSize);
         mergeRateTracker.setSuccess();
+        _mysqlConn.closeMySqlConn();
         return true;
     }
     LOGS(_log, LOG_LVL_ERROR,

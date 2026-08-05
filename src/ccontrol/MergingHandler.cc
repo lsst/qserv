@@ -241,31 +241,36 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     csvMemDisk->transferDataFromWorker(transferFunc);
     if (csvMemDisk->isCancelled()) {
         // Since csvMemDisk was cancelled, avoid merging to avoid risks of contamination.
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " csvMemDisk cancelled");
+        LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << uberJob->getIdStr() << " csvMemDisk cancelled");
         return qdisp::MergeEndStatus(false);
     }
 
     bool mergeOk = _startMerge();
     if (!mergeOk) {
-        LOGS(_log, LOG_LVL_DEBUG, __func__ << " merge cancelled");
+        LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << uberJob->getIdStr() << " merge cancelled");
         return qdisp::MergeEndStatus(false);
     }
 
     // Attempt the actual merge.
     bool fileMergeSuccess = _infileMerger->mergeHttp(uberJob, fileSize, csvMemDisk);
     if (!fileMergeSuccess) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " merge failed");
+        LOGS(_log, LOG_LVL_WARN, __func__ << " " << uberJob->getIdStr() << " merge failed");
         util::Error const& err = _infileMerger->getError();
         _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, err.getMsg());
     }
     if (csvMemDisk->getContaminated()) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " merge stream contaminated");
+        LOGS(_log, LOG_LVL_ERROR, __func__ << " " << uberJob->getIdStr() << " merge stream contaminated");
         fileMergeSuccess = false;
         _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, "merge stream contaminated");
     }
 
+    if (uberJob->getContaminated()) {
+        fileMergeSuccess = false;
+        _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, " database merge error");
+    }
+
     if (!fileReadErrorMsg.empty()) {
-        LOGS(_log, LOG_LVL_WARN, __func__ << " result file read failed");
+        LOGS(_log, LOG_LVL_WARN, __func__ << " " << uberJob->getIdStr() << " result file read failed");
         _setError(ccontrol::MSG_HTTP_RESULT, util::Error::RESULT_IMPORT, fileReadErrorMsg);
     }
     _flushed = true;
@@ -274,7 +279,8 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     if (!mergeEStatus.success) {
         // This error check needs to come after the csvThread.join() to ensure writing
         // is finished. If any bytes were written, the result table is ruined.
-        mergeEStatus.contaminated = csvMemDisk->getBytesFetched() > 0;
+        if (csvMemDisk->getBytesFetched() > 0) uberJob->setContaminated();
+        mergeEStatus.contaminated = uberJob->getContaminated();
     }
 
     return mergeEStatus;

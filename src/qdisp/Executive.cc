@@ -866,7 +866,7 @@ void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlIn
             // If any merging happened, the result table (and entire user query) is ruined.
             LOGS(_log, LOG_LVL_ERROR,
                  cName(__func__) << "ujId=" << ujPtr->getUjId()
-                                 << " flushHttp failed after merging, results ruined.");
+                                 << " flushHttp failed merging, results ruined.");
         } else {
             // Perhaps something went wrong with file collection, so it is worth trying the jobs again
             // by abandoning this UberJob.

@@ -453,6 +453,12 @@ bool UberJob::importResultFinish() {
     return statusSet;
 }
 
+void UberJob::setContaminated() {
+    if (_contaminated.exchange(true)) {
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " UberJob marked contaminated");
+    }
+}
+
 void UberJob::_workerErrorFinish(protojson::ExecutiveRespMsg& execRespMsg, std::string const& errorType,
                                  std::string const& note) {
     // If this is called, the error has been received and the worker should delete
