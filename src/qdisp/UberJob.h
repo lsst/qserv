@@ -22,6 +22,7 @@
 #define LSST_QSERV_QDISP_UBERJOB_H
 
 // System headers
+#include <atomic>
 
 // Qserv headers
 #include "czar/CzarChunkMap.h"

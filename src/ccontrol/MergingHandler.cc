@@ -266,7 +266,7 @@ bool MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const
 
     if (uberJob->getContaminated()) {
         fileMergeSuccess = false;
-        _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, " database merge error");
+        _setError(ccontrol::MSG_RESULT_ERROR, util::Error::RESULT_IMPORT, "database merge error");
     }
 
     if (!fileReadErrorMsg.empty()) {

@@ -447,7 +447,7 @@ bool UberJob::importResultFinish() {
 }
 
 void UberJob::setContaminated() {
-    if (_contaminated.exchange(true)) {
+    if (_contaminated.exchange(true) == false) {
         LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " UberJob marked contaminated");
     }
 }
