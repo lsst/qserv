@@ -40,13 +40,12 @@
 #include <cassert>
 #include <cctype>
 #include <cstddef>
+#include <cstdlib>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
-
-// Third-party headers
-#include "boost/lexical_cast.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -343,6 +342,18 @@ bool ValueExpr::isFunction() const { return getFunction() != nullptr; }
 
 bool ValueExpr::isConstVal() const { return _factorOps.size() == 1 && _factorOps[0].factor->isConstVal(); }
 
+double ValueExpr::getNumericConst() const {
+    if (!isConstVal()) return std::numeric_limits<double>::quiet_NaN();
+    std::string const val = getConstVal();
+    char* end = nullptr;
+    double d = std::strtod(val.c_str(), &end);
+    if (end == val.c_str()) return std::numeric_limits<double>::quiet_NaN();
+    // Trailing whitespace after the numeric text is fine; anything else (e.g. "1abc") is not.
+    while (*end != '\0' && std::isspace(static_cast<unsigned char>(*end))) ++end;
+    if (*end != '\0') return std::numeric_limits<double>::quiet_NaN();
+    return d;
+}
+
 ValueExprPtr ValueExpr::clone() const {
     // First, make a shallow copy
     ValueExprPtr expr = std::make_shared<ValueExpr>(*this);
@@ -373,7 +384,9 @@ std::string ValueExpr::sqlFragment(QueryTemplate::SetAliasMode aliasMode) const 
     QueryTemplate qt(aliasMode);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
-    return boost::lexical_cast<std::string>(qt);
+    std::ostringstream os;
+    os << qt;
+    return os.str();
 }
 
 std::string ValueExpr::sqlFragmentNoQuotes(QueryTemplate::SetAliasMode aliasMode) const {
@@ -381,7 +394,9 @@ std::string ValueExpr::sqlFragmentNoQuotes(QueryTemplate::SetAliasMode aliasMode
     qt.setQuoteIdentifiers(false);
     ValueExpr::render render(qt, false);
     render.applyToQT(this);
-    return boost::lexical_cast<std::string>(qt);
+    std::ostringstream os;
+    os << qt;
+    return os.str();
 }
 
 std::ostream& operator<<(std::ostream& os, ValueExpr const& ve) {

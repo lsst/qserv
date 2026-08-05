@@ -200,6 +200,13 @@ public:
     bool isConstVal() const;
 
     /**
+     * @brief Get the numeric value of this expression, if it is a numeric constant.
+     *
+     * @return The numeric value, or NaN if this ValueExpr is not a constant or is not numeric.
+     */
+    double getNumericConst() const;
+
+    /**
      * @brief Check if this ValueExpr represents a single factor.
      *
      * @return Returns true if there is exactly 1 factor.

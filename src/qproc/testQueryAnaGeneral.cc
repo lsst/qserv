@@ -41,9 +41,6 @@
 #include <string>
 #include <vector>
 
-// Third-party headers
-#include "boost/algorithm/string.hpp"
-
 // Boost unit test header
 #define BOOST_TEST_MODULE QueryAnalysis
 #include <boost/test/unit_test.hpp>
@@ -328,6 +325,16 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
                                      "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
                                      std::make_shared<AreaRestrictorCircle>("1", "1", "1.3")),
 
+        // "<=>" (null-safe equality) is equivalent to "=" here since scisql_s2PtInCircle() never
+        // evaluates to NULL.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_s2PtInCircle(o.ra_Test, o.decl_Test, 1, 1, 1.3) <=> 1 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_s2PtInCircle(`o`.`ra_Test`,`o`.`decl_Test`,1,1,1.3)<=>1 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     std::make_shared<AreaRestrictorCircle>("1", "1", "1.3")),
+
         ScisqlRestrictorTestCaseData(
                 "select * from LSST.Object o, Source s "
                 "WHERE scisql_s2PtInEllipse(ra_Test, decl_Test, 1.2, 3.2, 2500, 1500, 0.2) = 1 "
@@ -356,6 +363,98 @@ static const std::vector<ScisqlRestrictorTestCaseData> SCISQL_RESTRICTOR_TEST_CA
                                      "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
                                      nullptr),  // There should not be any qserv area restrictor, because
                                                 // there are 2 scisql_s2Pt... funcs in the query.
+
+        // scisql_angSep(lon, lat, centerLon, centerLat) < radius, with the constant center on the right,
+        // is equivalent to scisql_s2PtInCircle(lon, lat, centerLon, centerLat, radius) = 1.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) < 0.05 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2)<0.05 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     std::make_shared<AreaRestrictorCircle>("55.5", "-30.2", "0.05")),
+
+        // Same as above, but with the constant center on the left (scisql_angSep is symmetric in its two
+        // coordinate pairs) and an inclusive upper bound.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(55.5, -30.2, o.ra_Test, o.decl_Test) <= 0.05 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(55.5,-30.2,`o`.`ra_Test`,`o`.`decl_Test`)<=0.05 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     std::make_shared<AreaRestrictorCircle>("55.5", "-30.2", "0.05")),
+
+        // Same bound, but written with the radius on the left (radius > angSep(...)); the operator must be
+        // mirrored to recognize this as the same upper bound as scisql_angSep(...) < radius.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE 0.05 > scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE 0.05>scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2) "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     std::make_shared<AreaRestrictorCircle>("55.5", "-30.2", "0.05")),
+
+        // scisql_angSep(...) > radius is a lower bound: it selects points outside the cone, which is not
+        // expressible as a single area restrictor, so no restrictor should be produced.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) > 0.05 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2)>0.05 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
+
+        // Neither coordinate pair is constant, so this describes a spatial join, not an area restrictor;
+        // no restrictor should be produced (RelationGraph handles join predicates separately).
+        ScisqlRestrictorTestCaseData(
+                "select * from LSST.Object o, Source s "
+                "WHERE scisql_angSep(o.ra_Test, o.decl_Test, o.ra_Test, o.decl_Test) < 0.05 "
+                "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,`o`.`ra_Test`,`o`.`decl_Test`)<0.05 "
+                "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                nullptr),
+
+        // Both coordinate pairs are constant, so there is no way to tell which one is the center;
+        // no restrictor should be produced.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(1, 1, 55.5, -30.2) < 0.05 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(1,1,55.5,-30.2)<0.05 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
+
+        // scisql_s2PtInCircle(...) = 0 selects points OUTSIDE the circle, so it must not be treated as an
+        // area restrictor.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_s2PtInCircle(o.ra_Test, o.decl_Test, 1, 1, 1.3) = 0 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_s2PtInCircle(`o`.`ra_Test`,`o`.`decl_Test`,1,1,1.3)=0 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
+
+        // One scisql_angSep() area constraint and one scisql_s2PtInCircle() area constraint together are
+        // ambiguous; no restrictor should be produced.
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) < 0.05 "
+                                     "AND scisql_s2PtInCircle(s.ra_Test, s.decl_Test, 1, 1, 1.3) = 1 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2)<0.05 "
+                                     "AND scisql_s2PtInCircle(`s`.`ra_Test`,`s`.`decl_Test`,1,1,1.3)=1 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
+
+        // Reject out of range literals to avoid producing an infinite radius
+        ScisqlRestrictorTestCaseData("select * from LSST.Object o, Source s "
+                                     "WHERE scisql_angSep(o.ra_Test, o.decl_Test, 55.5, -30.2) < 1e400 "
+                                     "AND o.objectIdObjTest = s.objectIdSourceTest;",
+                                     "SELECT * FROM `LSST`.`Object_100` AS `o`,`LSST`.`Source_100` AS `s` "
+                                     "WHERE scisql_angSep(`o`.`ra_Test`,`o`.`decl_Test`,55.5,-30.2)<1e400 "
+                                     "AND `o`.`objectIdObjTest`=`s`.`objectIdSourceTest`",
+                                     nullptr),
 };
 
 // Test that scisql area restrictors are translated into qserv_area_restrictors properly.
@@ -548,6 +647,285 @@ BOOST_AUTO_TEST_CASE(ObjectSelfJoinDistance) {
     BOOST_CHECK(context->needsMerge);
     std::string actual = queryAnaHelper.buildFirstParallelQuery();
     BOOST_CHECK_EQUAL(actual, expected);
+}
+
+BOOST_AUTO_TEST_CASE(ObjectSelfJoinPtInCircle) {
+    // A spatial self-join expressed with point-in-circle syntax is equivalent to a scisql_angSep()
+    // comparison and should be recognized as a near-neighbor join.
+    std::string stmt =
+            "select count(*) from LSST.Object o1,LSST.Object o2 "
+            "WHERE qserv_areaspec_box(5.5, 5.5, 6.1, 6.1) AND "
+            "scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02) = 1";
+    std::string expected =
+            "SELECT count(*) AS `QS1_COUNT` "
+            "FROM `Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o1`,"
+            "`Subchunks_LSST_100`.`Object_100_%S\007S%` AS `o2` "
+            "WHERE scisql_s2PtInBox(`o1`.`ra_Test`,`o1`.`decl_Test`,5.5,5.5,6.1,6.1)=1 "
+            "AND scisql_s2PtInBox(`o2`.`ra_Test`,`o2`.`decl_Test`,5.5,5.5,6.1,6.1)=1 "
+            "AND scisql_s2PtInCircle(`o1`.`ra_Test`,`o1`.`decl_Test`,"
+            "`o2`.`ra_Test`,`o2`.`decl_Test`,0.02)=1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(nullptr == context->secIdxRestrictors);
+    BOOST_CHECK(nullptr != context->areaRestrictors);
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(context->hasSubChunks());
+    BOOST_CHECK(context->needsMerge);
+    std::string actual2 = queryAnaHelper.buildFirstParallelQuery();
+    BOOST_CHECK_EQUAL(actual2, expected);
+}
+
+BOOST_AUTO_TEST_CASE(PtInCircleJoinForms) {
+    // scisql_s2PtInCircle() call may appear on either side of "=" or "<=>"
+    std::vector<std::string> const predicates = {
+            "scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02) = 1",
+            "1 = scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02)",
+            "scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02) <=> 1",
+            "1 <=> scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02)"};
+    for (auto const& predicate : predicates) {
+        std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 WHERE " + predicate;
+        qsTest.sqlConfig =
+                SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+        BOOST_CHECK(context);
+        BOOST_CHECK(context->hasChunks());
+        BOOST_CHECK(context->hasSubChunks());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(PtInCircleJoinUnsupportedOperators) {
+    // scisql_s2PtInCircle() only ever returns 0 or 1, so only plain equality against 1 is recognized as a
+    // join predicate
+    std::vector<std::string> const predicates = {
+            "scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02) != 0",
+            "0 < scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02)"};
+    for (auto const& predicate : predicates) {
+        std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 WHERE " + predicate;
+        qsTest.sqlConfig =
+                SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+        BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(SpatialJoinNonFiniteRadiusRejected) {
+    // strtod converts an out-of-range numeric literal to infinity. It must not establish a spatial edge.
+    std::vector<std::string> const predicates = {
+            "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 1e400",
+            "scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,1e400) = 1"};
+    for (auto const& predicate : predicates) {
+        std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 WHERE " + predicate;
+        qsTest.sqlConfig =
+                SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+        BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(PtInCircleAntiJoin) {
+    // A point outside the circle selects distant pairs, which cannot be evaluated using partition-local data.
+    std::string stmt =
+            "select count(*) from LSST.Object o1,LSST.Object o2 "
+            "WHERE scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02) = 0";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+}
+
+BOOST_AUTO_TEST_CASE(NegatedPtInCircleJoinNotMisread) {
+    // Similar to PtInCircleAntiJoin, but with NOT.
+    std::string stmt =
+            "select count(*) from LSST.Object o1,LSST.Object o2 "
+            "WHERE NOT scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02) = 1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+}
+
+BOOST_AUTO_TEST_CASE(PtInCircleJoinWithConeRestrictor) {
+    // Join AND a spatial restrictor
+    std::string stmt =
+            "select count(*) from LSST.Object o1,LSST.Object o2 "
+            "WHERE scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,6,6,0.3) = 1 AND "
+            "scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,0.02) = 1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_REQUIRE(context->areaRestrictors);
+    BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->areaRestrictors->front());
+    BOOST_CHECK_EQUAL(*context->areaRestrictors->front(), AreaRestrictorCircle("6", "6", "0.3"));
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(context->hasSubChunks());
+}
+
+BOOST_AUTO_TEST_CASE(AngSepAsConeRestrictor) {
+    // scisql_angSep() with a constant center, bounded above, is equivalent to scisql_s2PtInCircle() = 1
+    std::vector<std::string> const predicates = {
+            "scisql_angSep(ra_PS, decl_PS, 1.5, 3) < 0.1", "scisql_angSep(ra_PS, decl_PS, 1.5, 3) <= 0.1",
+            "0.1 > scisql_angSep(ra_PS, decl_PS, 1.5, 3)", "scisql_angSep(1.5, 3, ra_PS, decl_PS) < 0.1",
+            "scisql_angSep(ra_PS, decl_PS, 1.5, 3) = 0.1", "scisql_angSep(ra_PS, decl_PS, 1.5, 3) <=> 0.1"};
+    for (auto const& predicate : predicates) {
+        std::string stmt = "select * from Object where " + predicate;
+        qsTest.sqlConfig =
+                SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}}));
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+        BOOST_CHECK(context);
+        BOOST_REQUIRE(context->areaRestrictors);
+        BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
+        BOOST_REQUIRE(context->areaRestrictors->front());
+        BOOST_CHECK_EQUAL(*context->areaRestrictors->front(), AreaRestrictorCircle("1.5", "3", "0.1"));
+        BOOST_CHECK(context->hasChunks());
+        BOOST_CHECK(!context->hasSubChunks());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(AngSepLowerBoundNoRestrictor) {
+    // Bounding scisql_angSep() from below selects points outside the cone; no restrictor produced
+    std::string stmt = "select * from Object where scisql_angSep(ra_PS, decl_PS, 1.5, 3) > 0.1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
+    BOOST_CHECK(context->hasChunks());
+}
+
+BOOST_AUTO_TEST_CASE(NegativeAngSepConeThresholdRejected) {
+    // A negative scisql_angSep() threshold can never be satisfied, so should error
+    std::string stmt = "select * from Object where scisql_angSep(ra_PS, decl_PS, 1.5, 3) < -0.1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:scisql_angSep() comparison threshold must be a non-negative "
+                      "number, got -0.100000");
+}
+
+BOOST_AUTO_TEST_CASE(AngSepConeRestrictorWithAngSepJoin) {
+    // Cone restrictor AND a spatial join, both via scisql_angSep()
+    std::string stmt =
+            "select count(*) from LSST.Object o1,LSST.Object o2 "
+            "WHERE scisql_angSep(o1.ra_Test, o1.decl_Test, 6, 6) < 0.3 AND "
+            "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) < 0.02";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_REQUIRE(context->areaRestrictors);
+    BOOST_CHECK_EQUAL(context->areaRestrictors->size(), 1U);
+    BOOST_REQUIRE(context->areaRestrictors->front());
+    BOOST_CHECK_EQUAL(*context->areaRestrictors->front(), AreaRestrictorCircle("6", "6", "0.3"));
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(context->hasSubChunks());
+}
+
+BOOST_AUTO_TEST_CASE(AngSepJoinUnsupportedOperators) {
+    // "!= r" and "<> r" match nearly everything regardless of separation, so can't be expressed as a bounded
+    // chunk-overlap join.
+    std::vector<std::string> const predicates = {
+            "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) != 0.02",
+            "scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) <> 0.02"};
+    for (auto const& predicate : predicates) {
+        std::string stmt = "select count(*) from LSST.Object o1,LSST.Object o2 WHERE " + predicate;
+        qsTest.sqlConfig =
+                SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+        BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(UnrelatedNegativeConstantNotMistakenForAngSep) {
+    // A "col < negative constant" predicate unrelated to scisql_angSep() must not be rejected
+    std::string stmt = "select * from LSST.Object o1 WHERE o1.mag < -5";
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test", "mag"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+}
+
+BOOST_AUTO_TEST_CASE(NegativeAngSepThresholdRejected) {
+    // A negative scisql_angSep() threshold can never be satisfied, so it should error
+    std::string stmt =
+            "select * from LSST.Object o, Source s "
+            "WHERE o.objectIdObjTest = s.objectIdSourceTest AND "
+            "scisql_angSep(o.ra_Test,o.decl_Test,s.ra_Test,s.decl_Test) < -0.5;";
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST",
+                                            {{"Object", {"objectIdObjTest", "ra_Test", "decl_Test"}},
+                                             {"Source", {"objectIdSourceTest", "ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:scisql_angSep() comparison threshold must be a non-negative "
+                      "number, got -0.500000");
+}
+
+BOOST_AUTO_TEST_CASE(NegativePtInCircleRadiusRejected) {
+    // A negative scisql_s2PtInCircle() radius can never be satisfied, so it should error
+    std::string stmt =
+            "select count(*) from LSST.Object o1,LSST.Object o2 "
+            "WHERE scisql_s2PtInCircle(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test,-0.5) = 1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:scisql_s2PtInCircle() radius must be a non-negative number, "
+                      "got -0.500000");
+}
+
+BOOST_AUTO_TEST_CASE(NegativePtInCircleRestrictorRadiusRejected) {
+    // Same as NegativePtInCircleRadiusRejected, but for the single-table restrictor form
+    std::string stmt =
+            "select * from LSST.Object o WHERE scisql_s2PtInCircle(o.ra_Test, o.decl_Test, 1, 1, -0.5) = 1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:scisql_s2PtInCircle() radius must be a non-negative number, "
+                      "got -0.500000");
+}
+
+BOOST_AUTO_TEST_CASE(NegatedPtInCircleRestrictorNotMisread) {
+    // "NOT scisql_s2PtInCircle(...) = 1" describes everything OUTSIDE the circle, which is not a bounded area
+    // constraint
+    std::string stmt =
+            "select * from LSST.Object o "
+            "WHERE NOT scisql_s2PtInCircle(o.ra_Test, o.decl_Test, 1, 1, 1.3) = 1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
+}
+
+BOOST_AUTO_TEST_CASE(NegatedAngSepRestrictorNotMisread) {
+    // Same as above, for the scisql_angSep() as restrictor
+    std::string stmt = "select * from Object where NOT scisql_angSep(ra_PS, decl_PS, 1.5, 3) < 0.1";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_PS", "decl_PS"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(nullptr == context->areaRestrictors);
 }
 
 BOOST_AUTO_TEST_CASE(SelfJoinAliased) {
@@ -1489,6 +1867,181 @@ BOOST_AUTO_TEST_CASE(Case01_2006) {
 #endif
     // std::cout << "--SAMPLING--" << spr->queryAnaHelper.getParseresult() << "\n";
     // % op in WHERE clause
+}
+
+BOOST_AUTO_TEST_CASE(AngSepNotEqualsAlongsideValidEdgeStillFilters) {
+    // "!= r" can't establish evaluability on its own (see AngSepJoinUnsupportedOperators), but
+    // *CAN* alongside another predicate that does establish a valid join edge
+    std::string stmt =
+            "select count(*) from LSST.Object o1,LSST.Object o2 "
+            "WHERE scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) <= 0.02 "
+            "AND scisql_angSep(o1.ra_Test,o1.decl_Test,o2.ra_Test,o2.decl_Test) != 5";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(context->hasSubChunks());
+    std::string actual = queryAnaHelper.buildFirstParallelQuery();
+    BOOST_CHECK(actual.find("!=5") != std::string::npos || actual.find("!= 5") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(DirectorChildSpatialJoin) {
+    std::string stmt =
+            "select count(*) from LSST.Object o, LSST.Source s "
+            "WHERE qserv_areaspec_box(5.5, 5.5, 6.1, 6.1) AND "
+            "scisql_angSep(o.ra_Test, o.decl_Test, s.raObjectTest, s.declObjectTest) < 0.02";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"ra_Test", "decl_Test"}}, {"Source", {"raObjectTest", "declObjectTest"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(context->hasSubChunks());
+    std::string actual = queryAnaHelper.buildFirstParallelQuery();
+    BOOST_CHECK(actual.find("`Subchunks_LSST_100`.`Object_100_") != std::string::npos);
+    BOOST_CHECK(actual.find("`LSST`.`Source_100` AS `s`") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(ChildFirstDirectorSecondSpatialJoin) {
+    // Same as above but with the child's coordinates written first and the director's second
+    std::string stmt =
+            "select count(*) from LSST.Object o, LSST.Source s "
+            "WHERE qserv_areaspec_box(5.5, 5.5, 6.1, 6.1) AND "
+            "scisql_angSep(s.raObjectTest, s.declObjectTest, o.ra_Test, o.decl_Test) < 0.02";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"ra_Test", "decl_Test"}}, {"Source", {"raObjectTest", "declObjectTest"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(context->hasSubChunks());
+    std::string actual = queryAnaHelper.buildFirstParallelQuery();
+    BOOST_CHECK(actual.find("`Subchunks_LSST_100`.`Object_100_") != std::string::npos);
+    BOOST_CHECK(actual.find("`LSST`.`Source_100` AS `s`") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(ChildChildSpatialJoinNotEvaluable) {
+    // Reject child joins when overlap cannot be established
+    std::string stmt =
+            "select count(*) from LSST.Source s, LSST.Source3 s3 "
+            "WHERE scisql_angSep(s.raObjectTest, s.declObjectTest, s3.ra3ObjectTest, s3.decl3ObjectTest) < "
+            "0.02";
+    qsTest.sqlConfig =
+            SqlConfig(SqlConfig::MockDbTableColumns({{"LSST",
+                                                      {{"Source", {"raObjectTest", "declObjectTest"}},
+                                                       {"Source3", {"ra3ObjectTest", "decl3ObjectTest"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+}
+
+BOOST_AUTO_TEST_CASE(ChildWithoutSpatialCoordsRejected) {
+    // Source2 was not configured in CSS with spatial coordinates. A spatial predicate naming its
+    // (non-partitioning) ra/decl columns must not be treated as an admissible join edge.
+    std::string stmt =
+            "select count(*) from LSST.Object o, LSST.Source2 s2 "
+            "WHERE scisql_angSep(o.ra_Test, o.decl_Test, s2.ra, s2.decl) < 0.02";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"Object", {"ra_Test", "decl_Test"}}, {"Source2", {"ra", "decl"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+}
+
+BOOST_AUTO_TEST_CASE(ChildNonDistinctColumnsRejected) {
+    // Source4 is a child of Object misconfigured in CSS with lonColName equal to its own
+    // director column name (dirColName)
+    std::string stmt = "select * from LSST.Source4;";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source4", {}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:Child table LSST.Source4 metadata contains non-distinct "
+                      "longitude/latitude/director column names");
+}
+
+BOOST_AUTO_TEST_CASE(ChildNonDistinctColumnsDifferingOnlyInCaseRejected) {
+    // Same as ChildNonDistinctColumnsRejected but the names differ on case only.
+    std::string stmt = "select * from LSST.Source6;";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Source6", {}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:Child table LSST.Source6 metadata contains non-distinct "
+                      "longitude/latitude/director column names");
+}
+
+BOOST_AUTO_TEST_CASE(DirectorNonDistinctColumnsRejected) {
+    // Object3 is a director table configured with the same column for lat,lon; should be rejected.
+    std::string stmt = "select * from LSST.Object3;";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object3", {}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(),
+                      "AnalysisError:Director table LSST.Object3 metadata does not contain non-empty "
+                      "and distinct director, longitude and latitude column names.");
+}
+
+BOOST_AUTO_TEST_CASE(ChildPartialSpatialColsTreatedAsNoCoords) {
+    // Source5 is a child of Object configured with only a longitude column, so reject for spatial join.
+    std::string stmt =
+            "select count(*) from LSST.Object o, LSST.Source5 s5 "
+            "WHERE scisql_angSep(o.ra_Test, o.decl_Test, s5.ra5ObjectTest, s5.someOtherCol) < 0.02";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"ra_Test", "decl_Test"}}, {"Source5", {"ra5ObjectTest", "someOtherCol"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+}
+
+BOOST_AUTO_TEST_CASE(MatchTableSpatialPredicateRejected) {
+    // Match table has no spatial columns; reject
+    std::string stmt =
+            "select count(*) from LSST.RefObjMatch m, LSST.Object o "
+            "WHERE scisql_angSep(m.refObjectId, m.refObjectId, o.ra_Test, o.decl_Test) < 0.02";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST", {{"RefObjMatch", {"refObjectId"}}, {"Object", {"ra_Test", "decl_Test"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
+}
+
+BOOST_AUTO_TEST_CASE(DirectorChildPtInCircleSpatialJoin) {
+    // The scisql_s2PtInCircle(...) = 1 form of a spatial join, not just scisql_angSep(...) <
+    // threshold, must also work between a director and a child with spatial coordinates.
+    std::string stmt =
+            "select count(*) from LSST.Object o, LSST.Source s "
+            "WHERE qserv_areaspec_box(5.5, 5.5, 6.1, 6.1) AND "
+            "scisql_s2PtInCircle(o.ra_Test, o.decl_Test, s.raObjectTest, s.declObjectTest, 0.02) = 1";
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"ra_Test", "decl_Test"}}, {"Source", {"raObjectTest", "declObjectTest"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
+    BOOST_CHECK_EQUAL(qs->getError(), "");
+    std::shared_ptr<QueryContext> context = qs->dbgGetContext();
+    BOOST_CHECK(context);
+    BOOST_CHECK(context->hasChunks());
+    BOOST_CHECK(context->hasSubChunks());
+    std::string actual = queryAnaHelper.buildFirstParallelQuery();
+    BOOST_CHECK(actual.find("`Subchunks_LSST_100`.`Object_100_") != std::string::npos);
+    BOOST_CHECK(actual.find("`LSST`.`Source_100` AS `s`") != std::string::npos);
+}
+
+BOOST_AUTO_TEST_CASE(ChildChildDifferentDirectorsSharedPartitioning) {
+    // Source (child of Object) and RefSource (child of SimRefObject) have different director tables but the
+    // same partition IDs. This will be allowed in _addSpEdges but rejected later in computeMinimumOverlap
+    // since there actually is no overlap.
+    std::string stmt =
+            "select count(*) from LSST.Source s, LSST.RefSource rs "
+            "WHERE scisql_angSep(s.raObjectTest, s.declObjectTest, rs.raRefSourceTest, "
+            "rs.declRefSourceTest) < 0.02";
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST",
+                                            {{"Source", {"raObjectTest", "declObjectTest"}},
+                                             {"RefSource", {"raRefSourceTest", "declRefSourceTest"}}}}}));
+    std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt, true);
+    BOOST_CHECK_EQUAL(qs->getError(), NOT_EVALUABLE_MSG);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

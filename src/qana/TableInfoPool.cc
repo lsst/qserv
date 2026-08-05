@@ -30,9 +30,12 @@
 // System headers
 #include <algorithm>
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 // Third-party headers
+#include "boost/algorithm/string/predicate.hpp"
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -54,6 +57,23 @@ struct TableInfoLt {
         return *t1 < *t2;
     }
 };
+
+/// Return true if every given column name is non-empty.
+bool columnsArePresent(std::vector<std::string> const& columns) {
+    return std::none_of(columns.begin(), columns.end(), [](auto const& c) { return c.empty(); });
+}
+
+/// Return true if the given column names are pairwise distinct, using a case-insensitive comparison.
+/// Empty names are skipped, so the caller should verify that works for their usage.
+bool columnsAreDistinct(std::vector<std::string> const& columns) {
+    for (auto i = columns.begin(); i != columns.end(); ++i) {
+        if (i->empty()) continue;
+        for (auto j = i + 1; j != columns.end(); ++j) {
+            if (!j->empty() && boost::iequals(*i, *j)) return false;
+        }
+    }
+    return true;
+}
 }  // namespace
 
 namespace lsst::qserv::qana {
@@ -104,6 +124,7 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
                                     " relates two director tables with"
                                     " different partitionings!");
         }
+        infoPtr->partitioningId = infoPtr->director.first->partitioningId;
         auto ret = _insert(std::move(infoPtr));
         LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);
         return ret;
@@ -120,9 +141,8 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
         // use per-table or per-database overlap value
         double overlap = partParam.overlap != 0.0 ? partParam.overlap : dbStriping.overlap;
         std::unique_ptr<DirTableInfo> infoPtr(new DirTableInfo(db_, table, overlap));
-        std::vector<std::string> v = _css.getPartTableParams(db, table).partitionCols();
-        if (v.size() != 3 || v[0].empty() || v[1].empty() || v[2].empty() || v[0] == v[1] || v[1] == v[2] ||
-            v[0] == v[2]) {
+        std::vector<std::string> const v = partParam.partitionCols();
+        if (v.size() != 3 || !columnsArePresent(v) || !columnsAreDistinct(v)) {
             throw InvalidTableError("Director table " + db_ + "." + table +
                                     " metadata does not contain non-empty and"
                                     " distinct director, longitude and"
@@ -152,12 +172,23 @@ TableInfo const* TableInfoPool::get(std::string const& db, std::string const& ta
                                 " is a child table, but"
                                 " does not reference a director table!");
     }
+    // A child row shares its director row's chunk, so it also shares its partitioning id.
+    infoPtr->partitioningId = infoPtr->director->partitioningId;
     infoPtr->fk = partParam.dirColName;
     if (infoPtr->fk.empty()) {
         throw InvalidTableError("Child table " + db_ + "." + table +
                                 " metadata"
                                 " does not contain a director column name!");
     }
+    // *IF* we have spatial columns, then we need to make sure they are distinct.
+    if (columnsArePresent({partParam.lonColName, partParam.latColName}) &&
+        !columnsAreDistinct({partParam.lonColName, partParam.latColName, infoPtr->fk})) {
+        throw InvalidTableError("Child table " + db_ + "." + table +
+                                " metadata contains non-distinct"
+                                " longitude/latitude/director column names");
+    }
+    infoPtr->lon = partParam.lonColName;
+    infoPtr->lat = partParam.latColName;
 
     auto ret = _insert(std::move(infoPtr));
     LOGS(_log, LOG_LVL_TRACE, "get returning " << *ret << " for db:" << db << ", table:" << table);

@@ -27,6 +27,7 @@
  */
 
 // System headers
+#include <cmath>
 #include <fstream>
 
 // list must be included before boost/test/data/test_case.hpp, because it is used there but not included.
@@ -117,6 +118,30 @@ BOOST_AUTO_TEST_CASE(renderValueExpr) {
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::USE_ALIAS), "`column`");
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::DEFINE_VALUE_ALIAS_USE_TABLE_ALIAS), "`column`");
     BOOST_CHECK_EQUAL(getRendered(valueExpr, QueryTemplate::NO_VALUE_ALIAS_USE_TABLE_ALIAS), "`column`");
+}
+
+BOOST_AUTO_TEST_CASE(getNumericConst) {
+    auto numericConst = [](std::string const& constVal) {
+        return ValueExpr::newSimple(ValueFactor::newConstFactor(constVal))->getNumericConst();
+    };
+    BOOST_CHECK_EQUAL(numericConst("5"), 5.0);
+    BOOST_CHECK_EQUAL(numericConst("-2.5"), -2.5);
+    BOOST_CHECK_EQUAL(numericConst("0"), 0.0);
+    // Not purely numeric: a numeric prefix followed by trailing garbage must be rejected, not
+    // silently truncated to the leading numeric portion.
+    BOOST_CHECK(std::isnan(numericConst("1abc")));
+    BOOST_CHECK(std::isnan(numericConst("abc")));
+    BOOST_CHECK(std::isnan(numericConst("")));
+    // Not a constant at all.
+    BOOST_CHECK(std::isnan(ValueExpr::newColumnExpr("column")->getNumericConst()));
+
+    // ValueFactor's string constructor trims trailing whitespace, so use setConstVal() to bypass
+    // that and confirm getNumericConst() itself also tolerates it.
+    auto factor = ValueFactor::newConstFactor("5");
+    factor->setConstVal("5   ");
+    BOOST_CHECK_EQUAL(ValueExpr::newSimple(factor)->getNumericConst(), 5.0);
+    factor->setConstVal("5  abc");
+    BOOST_CHECK(std::isnan(ValueExpr::newSimple(factor)->getNumericConst()));
 }
 
 BOOST_AUTO_TEST_CASE(clone) {
