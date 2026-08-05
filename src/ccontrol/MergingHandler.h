@@ -43,7 +43,6 @@ class CsvMemDisk;
 namespace lsst::qserv::qdisp {
 class Executive;
 class JobQuery;
-class MergeEndStatus;
 class UberJob;
 }  // namespace lsst::qserv::qdisp
 
@@ -71,8 +70,7 @@ public:
 
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
-    /// @see qdisp::MergeEndStatus
-    qdisp::MergeEndStatus flushHttp(std::string const& fileUrl, std::uint64_t fileSize) override;
+    bool flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, std::string const& fileUrl, std::uint64_t fileSize) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
@@ -86,7 +84,7 @@ public:
 
 private:
     /// Call InfileMerger to do the work of merging this data to the result.
-    qdisp::MergeEndStatus _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
+    bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
                                      std::string const& fileUrl, std::uint64_t fileSize);
 
     /// Set error code and string.

@@ -195,13 +195,13 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
     return os << "MergingRequester(flushed=" << (_flushed ? "true)" : "false)");
 }
 
-qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const& fileUrl,
+bool MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const& fileUrl,
                                                  uint64_t fileSize) {
     if (_flushed) {
         throw util::Bug(ERR_LOC, "already flushed");
     }
 
-    if (fileSize == 0) return qdisp::MergeEndStatus(true);
+    if (fileSize == 0) return true;
     auto csvMemDisk = mysql::CsvMemDisk::create(fileSize, uberJob->getQueryId(), uberJob->getUjId());
     _csvMemDisk = csvMemDisk;
 
@@ -209,7 +209,7 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     // race issues, and it needs to be before the thread starts.
     auto exec = uberJob->getExecutive();
     if (exec == nullptr || exec->getCancelled() || exec->isRowLimitComplete()) {
-        return qdisp::MergeEndStatus(true);
+        return true;
     }
 
     string fileReadErrorMsg;
@@ -242,13 +242,13 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     if (csvMemDisk->isCancelled()) {
         // Since csvMemDisk was cancelled, avoid merging to avoid risks of contamination.
         LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << uberJob->getIdStr() << " csvMemDisk cancelled");
-        return qdisp::MergeEndStatus(false);
+        return false;
     }
 
     bool mergeOk = _startMerge();
     if (!mergeOk) {
         LOGS(_log, LOG_LVL_DEBUG, __func__ << " " << uberJob->getIdStr() << " merge cancelled");
-        return qdisp::MergeEndStatus(false);
+        return false;
     }
 
     // Attempt the actual merge.
@@ -275,12 +275,11 @@ qdisp::MergeEndStatus MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uber
     }
     _flushed = true;
 
-    qdisp::MergeEndStatus mergeEStatus(fileMergeSuccess && fileReadErrorMsg.empty());
-    if (!mergeEStatus.success) {
+    bool mergeEStatus = fileMergeSuccess && fileReadErrorMsg.empty();
+    if (!mergeEStatus) {
         // This error check needs to come after the csvThread.join() to ensure writing
         // is finished. If any bytes were written, the result table is ruined.
         if (csvMemDisk->getBytesFetched() > 0) uberJob->setContaminated();
-        mergeEStatus.contaminated = uberJob->getContaminated();
     }
 
     return mergeEStatus;
@@ -320,19 +319,11 @@ void MergingHandler::_setError(int code, int subError, std::string const& msg) {
     exec->addMultiError(code, subError, msg, true);
 }
 
-qdisp::MergeEndStatus MergingHandler::flushHttp(string const& fileUrl, uint64_t fileSize) {
-    // This is needed to ensure the job query would be staying alive for the duration
-    // of the operation to prevent inconsistency within the application.
-    auto const uberJob = getUberJob().lock();
-    if (uberJob == nullptr) {
-        LOGS(_log, LOG_LVL_ERROR, __func__ << " failed, uberJob was NULL");
-        return qdisp::MergeEndStatus(false);
-    }
-
+bool MergingHandler::flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, string const& fileUrl, uint64_t fileSize) {
     LOGS(_log, LOG_LVL_TRACE,
          "MergingHandler::" << __func__ << " uberJob=" << uberJob->getIdStr() << " fileUrl=" << fileUrl);
 
-    qdisp::MergeEndStatus mergeStatus = _mergeHttp(uberJob, fileUrl, fileSize);
+    bool mergeStatus = _mergeHttp(uberJob, fileUrl, fileSize);
     return mergeStatus;
 }
 

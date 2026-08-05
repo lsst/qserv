@@ -140,9 +140,6 @@ protected:
             TIMEPOINT familyMapTimestamp);
 
 private:
-    /// Used to setup elements that can't be done in the constructor.
-    void _setup();
-
     /// @see setStatusIfOk
     /// note: _jobsMtx must be locked before calling.
     bool _setStatusIfOk(qmeta::JobStatus::State newState, std::string const& msg);

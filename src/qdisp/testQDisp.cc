@@ -83,9 +83,8 @@ public:
     }
 
     // virtual function that won't be needed
-
-    MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) override {
-        return MergeEndStatus(true);
+    bool flushHttp(std::shared_ptr<UberJob> const& uj, std::string const& fileUrl, uint64_t fileSize) override {
+        return true;
     }
     void errorFlush(std::string const& msg, int code) override {};
     bool cancelFileMerge() override { return cancelFileMergeRet; };
