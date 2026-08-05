@@ -279,7 +279,14 @@ bool MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const
     if (!mergeEStatus) {
         // This error check needs to come after the csvThread.join() to ensure writing
         // is finished. If any bytes were written, the result table is ruined.
-        if (csvMemDisk->getBytesFetched() > 0) uberJob->setContaminated();
+        if (csvMemDisk->getBytesFetched() > 0) {
+            LOGS(_log, LOG_LVL_ERROR, __func__ << " " << uberJob->getIdStr()
+                    << " bytes written to a merge that failed, results contaminated");
+            uberJob->setContaminated();
+        } else {
+            LOGS(_log, LOG_LVL_WARN, __func__ << " " << uberJob->getIdStr()
+                    << " no bytes written to a merge that failed, results okay");
+        }
     }
 
     return mergeEStatus;
