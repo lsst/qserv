@@ -841,6 +841,17 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
     }
 }
 
+void Executive::checkForResultFileSizeExceededErr(util::MultiError const& multiErr) {
+    for (auto const& err : multiErr.getVector()) {
+        if (err.getCode() == util::Error::WORKER_RESULT_TOO_LARGE) {
+            LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " worker result too large:" << err.dump());
+            _resultFileSizeExceeded = true;
+            break;
+        }
+    }
+}
+
+
 shared_ptr<lock_guard<mutex>> Executive::getLimitSquashLock() {
     shared_ptr<lock_guard<mutex>> ptr(new lock_guard<mutex>(_mtxLimitSquash));
     return ptr;
