@@ -454,11 +454,10 @@ nlohmann::json QueriesAndChunks::statusToJson(wbase::TaskSelector const& taskSel
     ///       a similar argument could be made for "tasks" as this is just too
     ///       much information to send every couple of seconds. DM-55247
     status["query_stats"] = nlohmann::json::object();
-    if (true) return status;  // TODO: DM-55247
     lock_guard<mutex> g(_queryStatsMapMtx);
     for (auto const& [queryId, qStats] : _queryStatsMap) {
         string const qId = to_string(queryId);  // forcing string type for the json object key
-        status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
+        if (false) status["query_stats"][qId]["histograms"] = qStats->getJsonHist();
         status["query_stats"][qId]["tasks"] = qStats->getJsonTasks(taskSelector);
     }
     return status;
