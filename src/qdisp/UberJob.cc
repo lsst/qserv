@@ -63,8 +63,6 @@ UberJob::Ptr UberJob::create(Executive::Ptr const& executive,
                              TIMEPOINT familyMapTimestamp) {
     auto uJob = UberJob::Ptr(
             new UberJob(executive, respHandler, uberJobId, czarId, workerContactInfo, familyMapTimestamp));
-
-    uJob->_setup();
     return uJob;
 }
 
@@ -83,11 +81,6 @@ UberJob::~UberJob() {
     // UberJobs are not deleted until the executive has been deleted, which means
     // the query is done before this is called.
     getRespHandler()->cancelFileMerge();
-}
-
-void UberJob::_setup() {
-    UberJob::Ptr ujPtr = static_pointer_cast<UberJob>(shared_from_this());
-    _respHandler->setUberJob(ujPtr);
 }
 
 bool UberJob::addJob(JobQuery::Ptr const& job) {
@@ -451,6 +444,12 @@ bool UberJob::importResultFinish() {
         callMarkCompleteFunc(success);  // sets status to COMPLETE
     }
     return statusSet;
+}
+
+void UberJob::setContaminated() {
+    if (_contaminated.exchange(true) == false) {
+        LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " UberJob marked contaminated");
+    }
 }
 
 void UberJob::_workerErrorFinish(protojson::ExecutiveRespMsg& execRespMsg, std::string const& errorType,

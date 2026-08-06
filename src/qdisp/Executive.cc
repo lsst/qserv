@@ -855,25 +855,25 @@ void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlIn
     if (_limitSquashApplies) {
         limitSquashL.reset(new lock_guard<mutex>(_mtxLimitSquash));
     }
-    MergeEndStatus flushStatus =
-            ujPtr->getRespHandler()->flushHttp(fileUrlInfo.fileUrl, fileUrlInfo.fileSize);
+    bool flushStatus = ujPtr->getRespHandler()->flushHttp(ujPtr, fileUrlInfo.fileUrl, fileUrlInfo.fileSize);
+    bool contaminated = ujPtr->getContaminated();
     LOGS(_log, LOG_LVL_TRACE,
-         cName(__func__) << "ujId=" << ujPtr->getUjId() << " success=" << flushStatus.success
-                         << " contaminated=" << flushStatus.contaminated);
-    if (!flushStatus.success) {
-        if (flushStatus.contaminated) {
+         cName(__func__) << "ujId=" << ujPtr->getUjId() << " success=" << flushStatus
+                         << " contaminated=" << contaminated);
+    if (!flushStatus || contaminated) {
+        if (contaminated) {
             // This would probably indicate malformed file+rowCount or writing the result table failed.
             // If any merging happened, the result table (and entire user query) is ruined.
             LOGS(_log, LOG_LVL_ERROR,
                  cName(__func__) << "ujId=" << ujPtr->getUjId()
-                                 << " flushHttp failed after merging, results ruined.");
+                                 << " flushHttp failed merging, results ruined.");
         } else {
             // Perhaps something went wrong with file collection, so it is worth trying the jobs again
             // by abandoning this UberJob.
             LOGS(_log, LOG_LVL_ERROR,
                  cName(__func__) << "ujId=" << ujPtr->getUjId() << " flushHttp failed, retrying Jobs.");
         }
-        ujPtr->importResultError(flushStatus.contaminated, "mergeError", "merging failed");
+        ujPtr->importResultError(contaminated, "mergeError", "merging failed");
         return;
     }
 

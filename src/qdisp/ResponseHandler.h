@@ -37,20 +37,6 @@ namespace lsst::qserv::qdisp {
 class JobQuery;
 class UberJob;
 
-/// Status of the merge at the end of merging.
-/// contaminated can be true only if success is false.
-class MergeEndStatus {
-public:
-    MergeEndStatus() = default;
-    explicit MergeEndStatus(bool success_) : success(success_) {}
-
-    /// True indicates the results were successfully merged
-    bool success = false;
-
-    /// True indicates merge results are ruined and this query should be abandoned.
-    bool contaminated = false;
-};
-
 /// ResponseHandler is an interface that handles result bytes. Tasks are
 /// submitted to an Executive instance naming a resource unit (what resource is
 /// required), a request string (task payload), and a handler for returning bytes.
@@ -63,16 +49,13 @@ public:
 
     typedef std::shared_ptr<ResponseHandler> Ptr;
     ResponseHandler() {}
-    void setUberJob(std::weak_ptr<UberJob> const& ujPtr) { _uberJob = ujPtr; }
     virtual ~ResponseHandler() {}
 
     /// Collect result data from the worker and merge it with the query result table.
-    /// If MergeEndStatus.success == true, then everything is fine.
-    /// If not .success, and not .contaminated, the user query can be saved by abandoning
-    /// this UberJob. If .contaminated is true, the result table is fouled and the user
-    /// query is ruined.
-    /// @return - @see MergeEndStatus
-    virtual MergeEndStatus flushHttp(std::string const& fileUrl, uint64_t fileSize) = 0;
+    /// @return true if everything is fine. Otherwise, the UberJob may have contaminated
+    /// the result table and the user query is ruined. Check the related UberJob.
+    virtual bool flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
+            std::string const& fileUrl, uint64_t fileSize) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
@@ -84,10 +67,6 @@ public:
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
 
-    std::weak_ptr<UberJob> getUberJob() { return _uberJob; }
-
-private:
-    std::weak_ptr<UberJob> _uberJob;
 };
 
 inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) { return r.print(os); }

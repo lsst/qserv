@@ -132,6 +132,11 @@ bool MySqlConnection::connect() {
     return false;
 }
 
+bool MySqlConnection::connected() const {
+    std::lock_guard<std::mutex> lock(_mtx);
+    return (nullptr != _mysql) && (mysql_ping(_mysql) == 0);
+}
+
 bool MySqlConnection::queryUnbuffered(std::string const& query) {
     std::lock_guard<std::mutex> lock(_mtx);
     if (_mysql == nullptr) return false;
