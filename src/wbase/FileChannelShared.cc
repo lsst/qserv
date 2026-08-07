@@ -402,9 +402,9 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         uint64_t const maxTableSize = task->getMaxTableSize();
         // Fail the operation if the amount of data in the result set exceeds the requested
         // "large result" limit (in case one was specified).
-        LOGS(_log, LOG_LVL_TRACE, "bytesWritten=" << _bytesWritten << " max=" << maxTableSize);
-        if (maxTableSize > 0 && _bytesWritten > maxTableSize) {
-            string const err = "The result set size " + to_string(_bytesWritten) +
+        LOGS(_log, LOG_LVL_TRACE, "transmitsize=" << _transmitsize << " max=" << maxTableSize);
+        if (maxTableSize > 0 && _transmitsize > maxTableSize) {
+            string const err = "The result set size " + to_string(_transmitsize) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
                                " bytes, task: " + task->getIdStr();
             multiErr.insert(util::Error(util::Error::WORKER_RESULT_TOO_LARGE, util::Error::NONE, err));
@@ -514,7 +514,6 @@ void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
         bytes += _writeStringToFile(rowEndsWith);
         ++rows;
     }
-    _bytesWritten += bytes;
     if (!(_file.is_open() && _file.good())) {
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
                             to_string(bytes) + " bytes into the file '" + _fileName + "'.");
