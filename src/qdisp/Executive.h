@@ -244,6 +244,8 @@ public:
     /// Return true if the result size limit has been exceeded.
     bool resultSizeLimitExceeded() const { return _resultFileSizeExceeded; }
 
+    void setResultSizeLimitExceeded() { _resultFileSizeExceeded = true; }
+
 protected:
     Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
               std::shared_ptr<util::QdispPool> const& sharedResources,

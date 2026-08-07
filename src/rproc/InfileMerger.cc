@@ -222,6 +222,7 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
                          to_string(_maxResultTableSizeBytes) + " bytes";
             LOGS(_log, LOG_LVL_ERROR, str);
             _error = util::Error(util::Error::CZAR_RESULT_TOO_LARGE, util::Error::NONE, str);
+            executive->setResultSizeLimitExceeded();
             return false;
         }
     } else {
