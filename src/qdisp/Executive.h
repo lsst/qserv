@@ -233,7 +233,7 @@ public:
 
     /// If any of the error messages are WORKER_RESULT_TOO_LARGE, set
     /// `_resultFileSizeExceeded`.
-    void checkForResultFileSizeExceededErr(util::MultiError const& multiErr);
+    void checkForResultFileSizeExceededErr(std::vector<util::Error> const& errors);
 
     /// Returns a pointer to a lock on _mtxLimitSquash.
     std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();

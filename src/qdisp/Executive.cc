@@ -841,7 +841,7 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
     }
 }
 
-void Executive::checkForResultFileSizeExceededErr(std::vector<util::Error> const& errors) {
+void Executive::checkForResultFileSizeExceededErr(vector<util::Error> const& errors) {
     for (auto const& err : errors) {
         if (err.getCode() == util::Error::WORKER_RESULT_TOO_LARGE) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " worker result too large:" << err.dump());

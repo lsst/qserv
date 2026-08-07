@@ -388,7 +388,7 @@ void UberJob::workerError(util::MultiError const& multiErr_, protojson::Executiv
     } else {
         // Error messages have already been added to the executive.
         // If the error was result file too large, then the executive needs to set a flag.
-        exec->checkForResultFileSizeExceededErr(multiErr_);
+        exec->checkForResultFileSizeExceededErr(errVect);
         exec->squash(string("UberJob::workerError ") + mErrMsg);
     }
 
