@@ -1622,6 +1622,74 @@ static const vector<Antlr4TestQueries> ANTLR4_TEST_QUERIES = {
                 },
                 "SELECT `s1`.`foo`,`s2`.`foo` AS `s2_foo` FROM `Source` AS `s1` NATURAL JOIN `Source` AS "
                 "`s2` WHERE `s1`.`bar`=`s2`.`bar`"),
+        // test LEFT JOIN ... ON
+        Antlr4TestQueries(
+                "SELECT o.objectId, s.objectId FROM Object o LEFT JOIN Source s ON o.objectId = s.objectId",
+                []() -> shared_ptr<query::SelectStmt> {
+                    return SelectStmt(
+                            SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o", "objectId")),
+                                                              query::ValueExpr::NONE)),
+                                       ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s", "objectId")),
+                                                              query::ValueExpr::NONE))),
+                            FromList(TableRef(
+                                    "", "Object", "o",
+                                    JoinRef(TableRef("", "Source", "s"), query::JoinRef::LEFT, NOT_NATURAL,
+                                            JoinSpec(
+                                                    nullptr,
+                                                    OrTerm(AndTerm(BoolFactor(
+                                                            IS,
+                                                            CompPredicate(
+                                                                    ValueExpr(
+                                                                            "",
+                                                                            FactorOp(ValueFactor(ColumnRef(
+                                                                                             "", "o",
+                                                                                             "objectId")),
+                                                                                     query::ValueExpr::NONE)),
+                                                                    query::CompPredicate::EQUALS_OP,
+                                                                    ValueExpr("",
+                                                                              FactorOp(ValueFactor(ColumnRef(
+                                                                                               "", "s",
+                                                                                               "objectId")),
+                                                                                       query::ValueExpr::
+                                                                                               NONE)))))))))),
+                            nullptr, nullptr, nullptr, nullptr, 0, -1);
+                },
+                "SELECT `o`.`objectId`,`s`.`objectId` FROM `Object` AS `o` LEFT OUTER JOIN `Source` AS `s` "
+                "ON `o`.`objectId`=`s`.`objectId`"),
+        // test RIGHT JOIN ... ON (opposite of the test above)
+        Antlr4TestQueries(
+                "SELECT o.objectId, s.objectId FROM Object o RIGHT JOIN Source s ON o.objectId = s.objectId",
+                []() -> shared_ptr<query::SelectStmt> {
+                    return SelectStmt(
+                            SelectList(ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "o", "objectId")),
+                                                              query::ValueExpr::NONE)),
+                                       ValueExpr("", FactorOp(ValueFactor(ColumnRef("", "s", "objectId")),
+                                                              query::ValueExpr::NONE))),
+                            FromList(TableRef(
+                                    "", "Object", "o",
+                                    JoinRef(TableRef("", "Source", "s"), query::JoinRef::RIGHT, NOT_NATURAL,
+                                            JoinSpec(
+                                                    nullptr,
+                                                    OrTerm(AndTerm(BoolFactor(
+                                                            IS,
+                                                            CompPredicate(
+                                                                    ValueExpr(
+                                                                            "",
+                                                                            FactorOp(ValueFactor(ColumnRef(
+                                                                                             "", "o",
+                                                                                             "objectId")),
+                                                                                     query::ValueExpr::NONE)),
+                                                                    query::CompPredicate::EQUALS_OP,
+                                                                    ValueExpr("",
+                                                                              FactorOp(ValueFactor(ColumnRef(
+                                                                                               "", "s",
+                                                                                               "objectId")),
+                                                                                       query::ValueExpr::
+                                                                                               NONE)))))))))),
+                            nullptr, nullptr, nullptr, nullptr, 0, -1);
+                },
+                "SELECT `o`.`objectId`,`s`.`objectId` FROM `Object` AS `o` RIGHT OUTER JOIN `Source` AS `s` "
+                "ON `o`.`objectId`=`s`.`objectId`"),
         // test CROSS JOIN
         Antlr4TestQueries(
                 "SELECT * FROM Source s1 CROSS JOIN Source s2 WHERE s1.bar = s2.bar;",
