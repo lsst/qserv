@@ -514,6 +514,7 @@ void FileChannelShared::_writeToFile(lock_guard<mutex> const& tMtxLock, shared_p
         bytes += _writeStringToFile(rowEndsWith);
         ++rows;
     }
+    _bytesWritten += bytes;
     if (!(_file.is_open() && _file.good())) {
         throw runtime_error("FileChannelShared::" + string(__func__) + " failed to write " +
                             to_string(bytes) + " bytes into the file '" + _fileName + "'.");
