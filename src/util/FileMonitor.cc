@@ -82,7 +82,7 @@ void FileMonitor::_checkLoop() {
 
         int i = 0;
         while (i < length) {
-            struct inotify_event *event = (struct inotify_event *)&buffer[i];
+            struct inotify_event* event = (struct inotify_event*)&buffer[i];
             LOGS(_log, LOG_LVL_DEBUG, "FileMonitor inotify event i=" << i << " event len=" << event->len);
             bool reread = false;
             string msg = "FileMonitor::checkLoop got event " + to_string(event->mask);

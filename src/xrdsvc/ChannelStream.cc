@@ -53,7 +53,7 @@ ChannelStream::ChannelStream() : XrdSsiStream(isActive), _closed(false), _seq(_s
 ChannelStream::~ChannelStream() { clearMsgs(); }
 
 /// Push in a data packet
-void ChannelStream::append(StreamBuffer::Ptr const &streamBuffer, bool last) {
+void ChannelStream::append(StreamBuffer::Ptr const& streamBuffer, bool last) {
     if (_closed) {
         throw util::Bug(ERR_LOC,
                         "ChannelStream::append: Stream closed, append(...,last=true) already received");
@@ -74,7 +74,7 @@ void ChannelStream::append(StreamBuffer::Ptr const &streamBuffer, bool last) {
 }
 
 /// Pull out a data packet as a Buffer object (called by XrdSsi code)
-XrdSsiStream::Buffer *ChannelStream::GetBuff(XrdSsiErrInfo &eInfo, int &dlen, bool &last) {
+XrdSsiStream::Buffer* ChannelStream::GetBuff(XrdSsiErrInfo& eInfo, int& dlen, bool& last) {
     ++_getBufCount;
     // This InstanceCount should be fairly quiet as there should only be one at a time.
     util::InstanceCount inst("GetBuf seq=" + to_string(_seq));

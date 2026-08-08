@@ -42,22 +42,22 @@ struct DynamicWorkQueue::Queue {
     // Queue creation time in seconds since the Epoch.
     double createTime;
     // Opaque handle used to look up the Queue for a session by DynamicWorkQueue.
-    void const *session;
+    void const* session;
     // Singly linked list of callables.
-    DynamicWorkQueue::Callable *head;
-    DynamicWorkQueue::Callable *tail;
+    DynamicWorkQueue::Callable* head;
+    DynamicWorkQueue::Callable* tail;
 
-    Queue(void const *handle) : numThreads(0), session(handle), head(nullptr), tail(nullptr) {
+    Queue(void const* handle) : numThreads(0), session(handle), head(nullptr), tail(nullptr) {
         struct ::timeval t;
         ::gettimeofday(&t, nullptr);
         createTime = t.tv_sec + 0.000001 * t.tv_usec;
     }
 
     ~Queue() {
-        Callable *c = head;
+        Callable* c = head;
         head = tail = nullptr;
         while (c) {
-            Callable *next = c->_next;
+            Callable* next = c->_next;
             delete c;
             c = next;
         }
@@ -66,7 +66,7 @@ struct DynamicWorkQueue::Queue {
     bool empty() const { return head == nullptr; }
 
     // Take ownership of a Callable and add it to the end of the queue.
-    void put(Callable *c) {
+    void put(Callable* c) {
         if (c) {
             if (tail) {
                 tail->_next = c;
@@ -79,10 +79,10 @@ struct DynamicWorkQueue::Queue {
 
     // Remove a Callable from the beginning of the queue and relinquish
     // ownership of it. If the queue is empty, nullptr is returned.
-    Callable *take() {
-        Callable *c = head;
+    Callable* take() {
+        Callable* c = head;
         if (c) {
-            Callable *next = c->_next;
+            Callable* next = c->_next;
             head = next;
             if (next == nullptr) {
                 tail = nullptr;
@@ -92,8 +92,8 @@ struct DynamicWorkQueue::Queue {
     }
 
     // Remove and relinquish ownership for all Callable objects in the queue.
-    Callable *takeAll() {
-        Callable *c = head;
+    Callable* takeAll() {
+        Callable* c = head;
         head = tail = nullptr;
         return c;
     }
@@ -101,8 +101,8 @@ struct DynamicWorkQueue::Queue {
 
 // Order queue pointers lexicographically by
 // (active thread count, queue creation time, queue memory address).
-bool DynamicWorkQueue::QueuePtrCmp::operator()(DynamicWorkQueue::Queue const *x,
-                                               DynamicWorkQueue::Queue const *y) const {
+bool DynamicWorkQueue::QueuePtrCmp::operator()(DynamicWorkQueue::Queue const* x,
+                                               DynamicWorkQueue::Queue const* y) const {
     if (x->numThreads < y->numThreads) {
         return true;
     } else if (x->numThreads == y->numThreads) {
@@ -117,9 +117,9 @@ bool DynamicWorkQueue::QueuePtrCmp::operator()(DynamicWorkQueue::Queue const *x,
 
 // Wraps a DynamicWorkQueue reference and implements the work scheduling loop.
 struct DynamicWorkQueue::Runner {
-    Runner(DynamicWorkQueue &queue) : wq(queue) {}
+    Runner(DynamicWorkQueue& queue) : wq(queue) {}
     void operator()();
-    DynamicWorkQueue &wq;
+    DynamicWorkQueue& wq;
 };
 
 void DynamicWorkQueue::Runner::operator()() {
@@ -134,7 +134,7 @@ void DynamicWorkQueue::Runner::operator()() {
         }
         // The first set element is the oldest of the queues with the smallest
         // active thread count.
-        Queue *q = *wq._nonEmptyQueues.begin();
+        Queue* q = *wq._nonEmptyQueues.begin();
         // Remove q from _nonEmptyQueues prior to updating it - this is
         // necessary because the queues may be reordered by the update.
         //
@@ -184,7 +184,7 @@ void DynamicWorkQueue::Runner::operator()() {
     }
 }
 
-void DynamicWorkQueue::_startRunner(DynamicWorkQueue &dwq) {
+void DynamicWorkQueue::_startRunner(DynamicWorkQueue& dwq) {
     Runner r(dwq);
     r();
 }
@@ -223,7 +223,7 @@ DynamicWorkQueue::~DynamicWorkQueue() {
     _sessions.clear();
 }
 
-void DynamicWorkQueue::add(void const *session, DynamicWorkQueue::Callable *callable) {
+void DynamicWorkQueue::add(void const* session, DynamicWorkQueue::Callable* callable) {
     std::lock_guard<std::mutex> lock(_mutex);
     if (_shouldIncreaseThreadCount()) {
         std::thread t(_startRunner, std::ref(*this));
@@ -247,7 +247,7 @@ void DynamicWorkQueue::add(void const *session, DynamicWorkQueue::Callable *call
         // thread is created, and Runner decrements it before exiting.
         _numThreads += 1;
     }
-    Queue *q = nullptr;
+    Queue* q = nullptr;
     SessionQueueMap::iterator i = _sessions.find(session);
     if (i != _sessions.end()) {
         // There is an existing queue for session.
@@ -272,13 +272,13 @@ void DynamicWorkQueue::add(void const *session, DynamicWorkQueue::Callable *call
     _workAvailable.notify_one();
 }
 
-void DynamicWorkQueue::cancelQueued(void const *session) {
-    Callable *c = nullptr;
+void DynamicWorkQueue::cancelQueued(void const* session) {
+    Callable* c = nullptr;
     {
         std::lock_guard<std::mutex> lock(_mutex);
         SessionQueueMap::iterator i = _sessions.find(session);
         if (i != _sessions.end()) {
-            Queue *q = i->second;
+            Queue* q = i->second;
             c = q->takeAll();
             _nonEmptyQueues.erase(q);
             if (q->numThreads == 0) {
@@ -289,7 +289,7 @@ void DynamicWorkQueue::cancelQueued(void const *session) {
         }
     }
     while (c) {
-        Callable *next = c->_next;
+        Callable* next = c->_next;
         c->cancel();  // TODO: what if cancel() throws?
         delete c;
         c = next;

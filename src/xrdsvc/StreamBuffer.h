@@ -58,13 +58,13 @@ public:
 
     // Copying this would be very confusing for something waiting for Recycle().
     StreamBuffer() = delete;
-    StreamBuffer(StreamBuffer const &) = delete;
-    StreamBuffer &operator=(StreamBuffer const &) = delete;
+    StreamBuffer(StreamBuffer const&) = delete;
+    StreamBuffer& operator=(StreamBuffer const&) = delete;
 
     /// Factory function, because this should be able to delete itself when Recycle() is called.
     /// The constructor uses move to avoid copying the string.
-    static StreamBuffer::Ptr createWithMove(std::string &input,
-                                            std::shared_ptr<wbase::Task> const &task = nullptr);
+    static StreamBuffer::Ptr createWithMove(std::string& input,
+                                            std::shared_ptr<wbase::Task> const& task = nullptr);
 
     size_t getSize() const { return _dataStr.size(); }
 
@@ -85,7 +85,7 @@ public:
 
 private:
     /// This constructor will invalidate 'input'.
-    explicit StreamBuffer(std::string &input, std::shared_ptr<wbase::Task> const &task);
+    explicit StreamBuffer(std::string& input, std::shared_ptr<wbase::Task> const& task);
 
     /// Pointer to the task for keeping statistics.
     /// NOTE: This will be nullptr for many things, so check before using.
