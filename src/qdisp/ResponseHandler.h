@@ -54,8 +54,8 @@ public:
     /// Collect result data from the worker and merge it with the query result table.
     /// @return true if everything is fine. Otherwise, the UberJob may have contaminated
     /// the result table and the user query is ruined. Check the related UberJob.
-    virtual bool flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
-            std::string const& fileUrl, uint64_t fileSize) = 0;
+    virtual bool flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, std::string const& fileUrl,
+                           uint64_t fileSize) = 0;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     virtual void errorFlush(std::string const& msg, int code) = 0;
@@ -66,7 +66,6 @@ public:
 
     /// Print a string representation of the receiver to an ostream
     virtual std::ostream& print(std::ostream& os) const = 0;
-
 };
 
 inline std::ostream& operator<<(std::ostream& os, ResponseHandler const& r) { return r.print(os); }
