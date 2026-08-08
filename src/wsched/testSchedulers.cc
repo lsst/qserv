@@ -66,7 +66,6 @@ using lsst::qserv::wbase::SendChannel;
 using lsst::qserv::wbase::Task;
 using lsst::qserv::wconfig::WorkerConfig;
 using lsst::qserv::wcontrol::SqlConnMgr;
-using lsst::qserv::wdb::ChunkResourceMgr;
 using lsst::qserv::wpublish::QueriesAndChunks;
 
 double const oneHr = 60.0;
@@ -75,9 +74,8 @@ bool const resetForTestingC = true;
 int const maxBootedC = 5;
 int const maxDarkTasksC = 25;
 
-shared_ptr<ChunkResourceMgr> crm;  // not used in this test, required by Task::createTasks
-MySqlConfig mySqlConfig;           // not used in this test, required by Task::createTasks
-SqlConnMgr::Ptr sqlConnMgr;        // not used in this test, required by Task::createTasks
+MySqlConfig mySqlConfig;     // not used in this test, required by Task::createTasks
+SqlConnMgr::Ptr sqlConnMgr;  // not used in this test, required by Task::createTasks
 
 auto workerCfg = lsst::qserv::wconfig::WorkerConfig::create();
 
@@ -88,7 +86,7 @@ Task::Ptr makeTask(std::shared_ptr<TaskMsg> tm, shared_ptr<QueriesAndChunks> con
     auto sendC = std::make_shared<SendChannel>();
     auto sc = FileChannelShared::create(sendC, tm->czarid());
     locSendSharedPtrs.push_back(sc);
-    auto taskVect = Task::createTasks(tm, sc, crm, mySqlConfig, sqlConnMgr, queries);
+    auto taskVect = Task::createTasks(tm, sc, mySqlConfig, sqlConnMgr, queries);
     Task::Ptr task = taskVect[0];
     return task;
 }

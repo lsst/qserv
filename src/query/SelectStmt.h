@@ -104,7 +104,7 @@ public:
 
     bool hasWhereClause() const { return static_cast<bool>(_whereClause); }
     WhereClause const& getWhereClause() const { return *_whereClause; }
-    WhereClause& getWhereClause() { return *_whereClause; }
+    WhereClause& getWhereClause(bool createIfMissing = false);
     void setWhereClause(std::shared_ptr<WhereClause> w) { _whereClause = w; }
 
     /**
