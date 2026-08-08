@@ -814,6 +814,10 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
          cName(__func__) << " sz=" << fileSize << " total=" << _totalResultFileSize
                          << " max=" << maxResultTableSizeBytes);
 
+    // Rows aren't tallied until after the file is read in `collectFile`, which may not happen for a while.
+    // This means that the size limit cannot be checked here for LIMIT queries as many
+    // of these bytes may be thrown away when writing the result table.
+    // The size limit is also checked while writing the result table in InfileMerger::mergeHttp.
     if ((fileSize > maxResultTableSizeBytes) ||
         (!_limitSquashApplies && _totalResultFileSize > maxResultTableSizeBytes)) {
         LOGS(_log, LOG_LVL_WARN,
@@ -903,6 +907,8 @@ void Executive::collectFile(std::shared_ptr<UberJob> ujPtr, protojson::FileUrlIn
         return;
     }
     addResultRows(fileUrlInfo.rowCount);
+    // It's difficult to relocate `checkLimitRowComplete()` safely due to timing issues
+    // with cancelling UberJobs.
     checkLimitRowComplete();
 }
 
