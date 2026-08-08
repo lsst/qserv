@@ -98,10 +98,11 @@ json UberJobMsg::toJson() const {
 UberJobMsg::Ptr UberJobMsg::createFromJson(nlohmann::json const& ujmJson) {
     LOGS(_log, LOG_LVL_TRACE, "UberJobMsg::createFromJson ujmJson=" << ujmJson);
     try {
-        const int minVersion = 57; // Minimum required http::MetaModule::version for parsing.
-        if (ujmJson["version"] < minVersion ) {
-            LOGS(_log, LOG_LVL_ERROR, "UberJobMsg::createFromJson version too old " << ujmJson["version"]
-                 << " required minimum version=" << minVersion);
+        const int minVersion = 57;  // Minimum required http::MetaModule::version for parsing.
+        if (ujmJson["version"] < minVersion) {
+            LOGS(_log, LOG_LVL_ERROR,
+                 "UberJobMsg::createFromJson version too old " << ujmJson["version"]
+                                                               << " required minimum version=" << minVersion);
             return nullptr;
         }
 
@@ -323,8 +324,8 @@ JobFragment::VectPtr JobFragment::createVect(qproc::ChunkQuerySpec const& chunkQ
             LOGS(_log, LOG_LVL_TRACE, "nextFragment");
             // Linked fragments will not have valid subChunkTables vectors,
             // So, we reuse the root fragment's vector.
-            _addFragment(*jFragments, chunkQuerySpec.subChunkTables, sPtr->subChunkIds, sPtr->queries->getTemplates(),
-                         jobSubQueryTempMap, jobDbTablesMap);
+            _addFragment(*jFragments, chunkQuerySpec.subChunkTables, sPtr->subChunkIds,
+                         sPtr->queries->getTemplates(), jobSubQueryTempMap, jobDbTablesMap);
             sPtr = sPtr->nextFragment.get();
         }
     } else {

@@ -72,9 +72,9 @@ public:
     void setTemplates(std::vector<std::string> const& templates);
 
 private:
-    std::vector<std::string> _templates; ///< Query templates to send to workers.
-    bool _wasSet = false;  ///< true if it was set.
-    mutable std::mutex _cqMtx;  ///< Protects _templates and _wasSet
+    std::vector<std::string> _templates;  ///< Query templates to send to workers.
+    bool _wasSet = false;                 ///< true if it was set.
+    mutable std::mutex _cqMtx;            ///< Protects _templates and _wasSet
 };
 
 /// ChunkQuerySpec is a value class that bundles a set of queries with their

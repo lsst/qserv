@@ -70,7 +70,8 @@ public:
 
     /// @see ResponseHandler::flushHttp
     /// @see MerginHandler::_mergeHttp
-    bool flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, std::string const& fileUrl, std::uint64_t fileSize) override;
+    bool flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, std::string const& fileUrl,
+                   std::uint64_t fileSize) override;
 
     /// Signal an unrecoverable error condition. No further calls are expected.
     void errorFlush(std::string const& msg, int code) override;
@@ -84,8 +85,8 @@ public:
 
 private:
     /// Call InfileMerger to do the work of merging this data to the result.
-    bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob,
-                                     std::string const& fileUrl, std::uint64_t fileSize);
+    bool _mergeHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, std::string const& fileUrl,
+                    std::uint64_t fileSize);
 
     /// Set error code and string.
     /// @see `util::Error` for information on parameters.

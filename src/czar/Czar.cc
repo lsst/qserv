@@ -306,23 +306,25 @@ Czar::Czar(string const& configFilePath, string const& czarName)
             },
             "CSS Cache Invalidation");
 
-    _eventService->subscribe([](cconfig::DataManagementEvent event) {
-        auto czarPtr = Czar::getCzar();
-        if (czarPtr) {
-            switch (event.type) {
-            case cconfig::DataManagementEvent::Type::DATABASE_PUBLISHED:
-                LOGS(_log, LOG_LVL_INFO, "Received DATABASE_PUBLISHED event, FamilyMapUpdate.");
-                czarPtr->familyMapRead(CLOCK::now());
-                break;
-            case cconfig::DataManagementEvent::Type::CHUNK_MAP_REBUILT:
-                LOGS(_log, LOG_LVL_INFO, "Received CHUNK_MAP_REBUILT event, FamilyMapUpdate.");
-                czarPtr->familyMapRead(CLOCK::now());
-                break;
-            default:
-                break;
-            }
-        }
-    }, "FamilyMapUpdate");
+    _eventService->subscribe(
+            [](cconfig::DataManagementEvent event) {
+                auto czarPtr = Czar::getCzar();
+                if (czarPtr) {
+                    switch (event.type) {
+                        case cconfig::DataManagementEvent::Type::DATABASE_PUBLISHED:
+                            LOGS(_log, LOG_LVL_INFO, "Received DATABASE_PUBLISHED event, FamilyMapUpdate.");
+                            czarPtr->familyMapRead(CLOCK::now());
+                            break;
+                        case cconfig::DataManagementEvent::Type::CHUNK_MAP_REBUILT:
+                            LOGS(_log, LOG_LVL_INFO, "Received CHUNK_MAP_REBUILT event, FamilyMapUpdate.");
+                            czarPtr->familyMapRead(CLOCK::now());
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            },
+            "FamilyMapUpdate");
 
     // Start the control server for processing Czar management requests sent
     // by the Replication System. Update the port number in the configuration

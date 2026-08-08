@@ -196,7 +196,7 @@ std::ostream& MergingHandler::print(std::ostream& os) const {
 }
 
 bool MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const& fileUrl,
-                                                 uint64_t fileSize) {
+                                uint64_t fileSize) {
     if (_flushed) {
         throw util::Bug(ERR_LOC, "already flushed");
     }
@@ -280,12 +280,14 @@ bool MergingHandler::_mergeHttp(qdisp::UberJob::Ptr const& uberJob, string const
         // This error check needs to come after the csvThread.join() to ensure writing
         // is finished. If any bytes were written, the result table is ruined.
         if (csvMemDisk->getBytesFetched() > 0) {
-            LOGS(_log, LOG_LVL_ERROR, __func__ << " " << uberJob->getIdStr()
-                    << " bytes written to a merge that failed, results contaminated");
+            LOGS(_log, LOG_LVL_ERROR,
+                 __func__ << " " << uberJob->getIdStr()
+                          << " bytes written to a merge that failed, results contaminated");
             uberJob->setContaminated();
         } else {
-            LOGS(_log, LOG_LVL_WARN, __func__ << " " << uberJob->getIdStr()
-                    << " no bytes written to a merge that failed, results okay");
+            LOGS(_log, LOG_LVL_WARN,
+                 __func__ << " " << uberJob->getIdStr()
+                          << " no bytes written to a merge that failed, results okay");
         }
     }
 
@@ -326,7 +328,8 @@ void MergingHandler::_setError(int code, int subError, std::string const& msg) {
     exec->addMultiError(code, subError, msg, true);
 }
 
-bool MergingHandler::flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, string const& fileUrl, uint64_t fileSize) {
+bool MergingHandler::flushHttp(std::shared_ptr<qdisp::UberJob> const& uberJob, string const& fileUrl,
+                               uint64_t fileSize) {
     LOGS(_log, LOG_LVL_TRACE,
          "MergingHandler::" << __func__ << " uberJob=" << uberJob->getIdStr() << " fileUrl=" << fileUrl);
 

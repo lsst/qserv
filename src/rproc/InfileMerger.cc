@@ -225,7 +225,8 @@ bool InfileMerger::mergeHttp(qdisp::UberJob::Ptr const& uberJob, uint64_t fileSi
             return false;
         }
     } else {
-        LOGS(_log, LOG_LVL_ERROR, queryIdJobStr << " InfileMerger::merge mysql applyMysql failure, assuming contaminated");
+        LOGS(_log, LOG_LVL_ERROR,
+             queryIdJobStr << " InfileMerger::merge mysql applyMysql failure, assuming contaminated");
         uberJob->setContaminated();
         return false;
     }

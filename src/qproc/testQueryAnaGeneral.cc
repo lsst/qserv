@@ -853,10 +853,12 @@ BOOST_AUTO_TEST_CASE(PtInCircleJoinWithConeRestrictor) {
 
 BOOST_AUTO_TEST_CASE(AngSepAsConeRestrictor) {
     // scisql_angSep() with a constant center, bounded above, is equivalent to scisql_s2PtInCircle() = 1
-    std::vector<std::string> const predicates = {
-            "scisql_angSep(ra_Test, decl_Test, 1.5, 3) < 0.1", "scisql_angSep(ra_Test, decl_Test, 1.5, 3) <= 0.1",
-            "0.1 > scisql_angSep(ra_Test, decl_Test, 1.5, 3)", "scisql_angSep(1.5, 3, ra_Test, decl_Test) < 0.1",
-            "scisql_angSep(ra_Test, decl_Test, 1.5, 3) = 0.1", "scisql_angSep(ra_Test, decl_Test, 1.5, 3) <=> 0.1"};
+    std::vector<std::string> const predicates = {"scisql_angSep(ra_Test, decl_Test, 1.5, 3) < 0.1",
+                                                 "scisql_angSep(ra_Test, decl_Test, 1.5, 3) <= 0.1",
+                                                 "0.1 > scisql_angSep(ra_Test, decl_Test, 1.5, 3)",
+                                                 "scisql_angSep(1.5, 3, ra_Test, decl_Test) < 0.1",
+                                                 "scisql_angSep(ra_Test, decl_Test, 1.5, 3) = 0.1",
+                                                 "scisql_angSep(ra_Test, decl_Test, 1.5, 3) <=> 0.1"};
     for (auto const& predicate : predicates) {
         std::string stmt = "select * from Object where " + predicate;
         qsTest.sqlConfig =

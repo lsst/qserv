@@ -298,12 +298,21 @@ void UserQuerySelect::submit() {
     exec->waitForAllJobsToStart();
     auto submitTmEnd = CLOCK::now();
 
-    LOGS(_log, LOG_LVL_INFO, "UserQuerySelect::submit() times ms QID:" << _queryId
-       << " total=" << chrono::duration_cast<chrono::milliseconds>(submitTmEnd - submitTmStart).count()
-       << " setup=" << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsStart - submitTmStart).count()
-       << " jobs=" << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsEnd - submitTmBuildJobsStart).count()
-       << " UberJobs=" << chrono::duration_cast<chrono::milliseconds>(submitTmUberJobsBuilt - submitTmBuildJobsEnd).count()
-       << " allStarted=" << chrono::duration_cast<chrono::milliseconds>(submitTmEnd - submitTmUberJobsBuilt).count());
+    LOGS(_log, LOG_LVL_INFO,
+         "UserQuerySelect::submit() times ms QID:"
+                 << _queryId << " total="
+                 << chrono::duration_cast<chrono::milliseconds>(submitTmEnd - submitTmStart).count()
+                 << " setup="
+                 << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsStart - submitTmStart)
+                            .count()
+                 << " jobs="
+                 << chrono::duration_cast<chrono::milliseconds>(submitTmBuildJobsEnd - submitTmBuildJobsStart)
+                            .count()
+                 << " UberJobs="
+                 << chrono::duration_cast<chrono::milliseconds>(submitTmUberJobsBuilt - submitTmBuildJobsEnd)
+                            .count()
+                 << " allStarted="
+                 << chrono::duration_cast<chrono::milliseconds>(submitTmEnd - submitTmUberJobsBuilt).count());
 }
 
 bool avoidThisWorker(czar::CzarChunkMap::WorkerChunksData::Ptr const& targetWorker,

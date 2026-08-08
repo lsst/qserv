@@ -240,7 +240,7 @@ jobs:
           --user-build-image ${{ needs.image-names.outputs.user-build-image }} \
           --pull-image \
           --push-image \
-          --clang-format OFF \
+          --clang-format CHECK \
           -j2
 
   compose-integration-tests:
