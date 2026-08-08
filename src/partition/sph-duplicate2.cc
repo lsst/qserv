@@ -57,7 +57,7 @@ namespace {
 class CmdLineOptions {
 private:
     template <typename T>
-    T _getMandatoryOption(std::string const &name, po::variables_map const &vm) {
+    T _getMandatoryOption(std::string const& name, po::variables_map const& vm) {
         if (!vm.count(name)) throw new std::invalid_argument("missing command line option: " + name);
 
         return vm[name].as<T>();
@@ -74,7 +74,7 @@ public:
     /**
      * @return 'false' if the appplication was run in the 'hel' mode.
      */
-    bool parse(int argc, char const *const *argv) {
+    bool parse(int argc, char const* const* argv) {
         po::options_description desc(
                 "\n"
                 "DESCRIPTION\n"
@@ -203,10 +203,10 @@ public:
 
 private:
     /// Copy constructor (not allowed)
-    CmdLineOptions(CmdLineOptions const &);
+    CmdLineOptions(CmdLineOptions const&);
 
     /// Assignment operator (ot allowed)
-    CmdLineOptions &operator=(CmdLineOptions const &);
+    CmdLineOptions& operator=(CmdLineOptions const&);
 
 public:
     bool verbose;
@@ -255,7 +255,7 @@ struct RaDecl {
  *
  * @return the translated coordinates
  */
-RaDecl transformRaDecl(double ra, double decl, part::SphericalBox const &box) {
+RaDecl transformRaDecl(double ra, double decl, part::SphericalBox const& box) {
     RaDecl coord{ra, decl};
 
     coord.ra += opt.raShift;
@@ -273,7 +273,7 @@ private:
 
 public:
     /// Construct the generator for the specified table
-    PrimaryKeyGenerator(CmdLineOptions const &opt, std::string const &table) : _opt(opt), _table(table) {}
+    PrimaryKeyGenerator(CmdLineOptions const& opt, std::string const& table) : _opt(opt), _table(table) {}
 
     ~PrimaryKeyGenerator() {}
 
@@ -295,7 +295,7 @@ public:
     }
 
     /// Allocate and return the next key in a series
-    uint64_t next(uint64_t const oldId, RaDecl const &coord) {
+    uint64_t next(uint64_t const oldId, RaDecl const& coord) {
         // Compute new ID for the shifted RA/DECL using the requested
         // algorithm.
 
@@ -366,10 +366,10 @@ private:
     PrimaryKeyGenerator();
 
     /// Assignment operator (is disabled)
-    PrimaryKeyGenerator &operator=(PrimaryKeyGenerator const &lhs);
+    PrimaryKeyGenerator& operator=(PrimaryKeyGenerator const& lhs);
 
 private:
-    CmdLineOptions const &_opt;
+    CmdLineOptions const& _opt;
     std::string _table;
 
     HtmIdMap _maxId;
@@ -393,7 +393,7 @@ public:
     virtual ~ColDef() {}
 
     /// Load column definitions from a file
-    void load(std::string const &filename) {
+    void load(std::string const& filename) {
         std::ifstream infile(filename, std::ifstream::in);
         std::string name;
         for (int colnum = 0; std::getline(infile, name); colnum++) {
@@ -410,7 +410,7 @@ protected:
     ColDef() : maxLen(0) {}
 
     /// Evaluate the column
-    virtual void _evaluateColumn(std::string const &name, int colnum) = 0;
+    virtual void _evaluateColumn(std::string const& name, int colnum) = 0;
 
     /// Validator for the definitions
     /**
@@ -420,10 +420,10 @@ protected:
 
 private:
     /// Copy constructor (is disabled)
-    ColDef(ColDef const &);
+    ColDef(ColDef const&);
 
     /// Assignment operator (is disabled)
-    ColDef &operator=(ColDef const &lhs);
+    ColDef& operator=(ColDef const& lhs);
 
 public:
     std::vector<std::string> columns;
@@ -442,7 +442,7 @@ public:
 
 protected:
     /// Evaluate the column
-    virtual void _evaluateColumn(std::string const &name, int colnum) {
+    virtual void _evaluateColumn(std::string const& name, int colnum) {
         if ("deepSourceId" == name) {
             idxDeepSourceId = colnum;
         } else if ("ra" == name) {
@@ -463,10 +463,10 @@ protected:
 
 private:
     /// Copy constructor (is disabled)
-    ColDefObject(ColDefObject const &);
+    ColDefObject(ColDefObject const&);
 
     /// Assignment operator (is disabled)
-    ColDefObject &operator=(ColDefObject const &lhs);
+    ColDefObject& operator=(ColDefObject const& lhs);
 
 public:
     int idxDeepSourceId;
@@ -499,7 +499,7 @@ public:
 
 protected:
     /// Evaluate the column
-    virtual void _evaluateColumn(std::string const &name, int colnum) {
+    virtual void _evaluateColumn(std::string const& name, int colnum) {
         if ("id" == name) {
             idxId = colnum;
         } else if ("coord_ra" == name) {
@@ -528,10 +528,10 @@ protected:
 
 private:
     /// Copy constructor (is disabled)
-    ColDefSource(ColDefSource const &);
+    ColDefSource(ColDefSource const&);
 
     /// Assignment operator (is disabled)
-    ColDefSource &operator=(ColDefSource const &lhs);
+    ColDefSource& operator=(ColDefSource const& lhs);
 
 public:
     int idxId;
@@ -557,7 +557,7 @@ public:
 
 protected:
     /// Evaluate the column
-    virtual void _evaluateColumn(std::string const &name, int colnum) {
+    virtual void _evaluateColumn(std::string const& name, int colnum) {
         if ("deepSourceId" == name) {
             idxDeepSourceId = colnum;
         } else if ("chunkId" == name) {
@@ -572,10 +572,10 @@ protected:
 
 private:
     /// Copy constructor (is disabled)
-    ColDefForcedSource(ColDefForcedSource const &);
+    ColDefForcedSource(ColDefForcedSource const&);
 
     /// Assignment operator (is disabled)
-    ColDefForcedSource &operator=(ColDefForcedSource const &lhs);
+    ColDefForcedSource& operator=(ColDefForcedSource const& lhs);
 
 public:
     int idxDeepSourceId;
@@ -587,7 +587,7 @@ public:
 ColDefForcedSource coldefForcedSource;
 
 /// Write a row into a stream
-void writeRow(std::vector<std::string> const &tokens, std::ofstream &os) {
+void writeRow(std::vector<std::string> const& tokens, std::ofstream& os) {
     if (opt.dryRun) return;
 
     for (size_t idx = 0; idx < tokens.size(); ++idx) {
@@ -609,7 +609,7 @@ ObjectIdTransformMap objIdTransformInput, objIdTransformDuplicate;
 std::set<uint64_t> objIdOutOfBox;
 
 /// Duplicate the next row of the chunk's Object table
-size_t duplicateObjectRow(std::string &line, part::SphericalBox const &box, std::ofstream &os) {
+size_t duplicateObjectRow(std::string& line, part::SphericalBox const& box, std::ofstream& os) {
     // Split the input line into tokens and store them
     // in a temporrary array at positions which are supposed to match
     // the correposnding ColDef
@@ -636,7 +636,7 @@ size_t duplicateObjectRow(std::string &line, part::SphericalBox const &box, std:
     double decl(0.);
 
     int idx = 0;
-    for (std::string const &token : tokens) {
+    for (std::string const& token : tokens) {
         if (coldefObject.idxDeepSourceId == idx) {
             deepSourceId = boost::lexical_cast<uint64_t>(token);
         } else if (coldefObject.idxRa == idx) {
@@ -712,7 +712,7 @@ size_t duplicateObjectRow(std::string &line, part::SphericalBox const &box, std:
 }
 
 /// Duplicate all rows of the chunk's Object table
-std::pair<size_t, size_t> duplicateObject(part::SphericalBox const &box) {
+std::pair<size_t, size_t> duplicateObject(part::SphericalBox const& box) {
     std::string const inFileName = opt.indir + "/Object_" + std::to_string(opt.chunkId) + ".txt",
                       outFileName = opt.outdir + "/Object_" + std::to_string(opt.chunkId) + ".txt";
 
@@ -733,7 +733,7 @@ std::pair<size_t, size_t> duplicateObject(part::SphericalBox const &box) {
 }
 
 /// Duplicate the next row of the chunk's Source table
-size_t duplicateSourceRow(std::string &line, part::SphericalBox const &box, std::ofstream &os) {
+size_t duplicateSourceRow(std::string& line, part::SphericalBox const& box, std::ofstream& os) {
     // Split the input line into tokens and store them
     // in a temporrary array at positions which are supposed to match
     // the correposnding ColDef
@@ -764,7 +764,7 @@ size_t duplicateSourceRow(std::string &line, part::SphericalBox const &box, std:
     double cluster_coord_decl(0.);
 
     int idx = 0;
-    for (std::string const &token : tokens) {
+    for (std::string const& token : tokens) {
         if (coldefSource.idxId == idx) {
             id = boost::lexical_cast<uint64_t>(token);
         } else if (coldefSource.idxCoordRa == idx) {
@@ -872,7 +872,7 @@ size_t duplicateSourceRow(std::string &line, part::SphericalBox const &box, std:
 }
 
 /// Duplicate all rows of the chunk's Source table
-std::pair<size_t, size_t> duplicateSource(part::SphericalBox const &box) {
+std::pair<size_t, size_t> duplicateSource(part::SphericalBox const& box) {
     std::string const inFileName = opt.indir + "/Source_" + std::to_string(opt.chunkId) + ".txt",
                       outFileName = opt.outdir + "/Source_" + std::to_string(opt.chunkId) + ".txt";
 
@@ -890,7 +890,7 @@ std::pair<size_t, size_t> duplicateSource(part::SphericalBox const &box) {
 }
 
 /// Duplicate the next row of the chunk's ForcedSource table
-size_t duplicateForcedSourceRow(std::string &line, part::SphericalBox const &box, std::ofstream &os) {
+size_t duplicateForcedSourceRow(std::string& line, part::SphericalBox const& box, std::ofstream& os) {
     // Split the input line into tokens and store them
     // in a temporrary array at positions which are supposed to match
     // the correposnding ColDef
@@ -915,7 +915,7 @@ size_t duplicateForcedSourceRow(std::string &line, part::SphericalBox const &box
     uint64_t deepSourceId(0ULL);
 
     int idx = 0;
-    for (std::string const &token : tokens) {
+    for (std::string const& token : tokens) {
         if (coldefForcedSource.idxDeepSourceId == idx) {
             deepSourceId = boost::lexical_cast<uint64_t>(token);
         }
@@ -966,7 +966,7 @@ size_t duplicateForcedSourceRow(std::string &line, part::SphericalBox const &box
 }
 
 /// Duplicate all rows of the chunk's ForcedSource table
-std::pair<size_t, size_t> duplicateForcedSource(part::SphericalBox const &box) {
+std::pair<size_t, size_t> duplicateForcedSource(part::SphericalBox const& box) {
     std::string const inFileName = opt.indir + "/ForcedSource_" + std::to_string(opt.chunkId) + ".txt",
                       outFileName = opt.outdir + "/ForcedSource_" + std::to_string(opt.chunkId) + ".txt";
 
@@ -992,7 +992,7 @@ void duplicate() {
     }
 
     part::Chunker chunker(opt.overlap, opt.numStripes, opt.numSubStripesPerStripe);
-    part::SphericalBox const &box(chunker.getChunkBounds(opt.chunkId));
+    part::SphericalBox const& box(chunker.getChunkBounds(opt.chunkId));
 
     if (opt.verbose)
         std::cout << "\n"
@@ -1023,7 +1023,7 @@ void duplicate() {
 }
 }  // namespace
 
-int main(int argc, char const *const *argv) {
+int main(int argc, char const* const* argv) {
     try {
         if (!::opt.parse(argc, argv)) return EXIT_FAILURE;
 
@@ -1035,7 +1035,7 @@ int main(int argc, char const *const *argv) {
         // Process the chunk(s)
         ::duplicate();
 
-    } catch (std::exception const &ex) {
+    } catch (std::exception const& ex) {
         std::cerr << ex.what() << std::endl;
         return EXIT_FAILURE;
     }

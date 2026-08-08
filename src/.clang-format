@@ -8,4 +8,6 @@ SortIncludes: false # reordering may break existing code
 ConstructorInitializerIndentWidth: 8
 ContinuationIndentWidth: 8
 CompactNamespaces: true
+DerivePointerAlignment: false
+PointerAlignment: Left
 ...

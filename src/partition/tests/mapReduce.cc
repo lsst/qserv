@@ -53,7 +53,7 @@ unsigned int const NUM_LINES = 1024 * 1024;
 
 /// Generate CSV files containing a total of NUM_LINES lines, where
 /// each line consists of a single line number.
-void buildInput(TempFile const &t1, TempFile const &t2) {
+void buildInput(TempFile const& t1, TempFile const& t2) {
     char buf[17];
     unsigned int line;
     BufferedAppender a(1 * MiB);
@@ -74,7 +74,7 @@ void buildInput(TempFile const &t1, TempFile const &t2) {
 struct Key {
     uint32_t line;
     uint32_t hash() const { return line; }
-    bool operator<(Key const &k) const { return line < k.line; }
+    bool operator<(Key const& k) const { return line < k.line; }
 };
 
 // 2-bits per line that indicate whether a line has been mapped/reduced.
@@ -99,7 +99,7 @@ public:
         _reduced[line] = true;
     }
 
-    void merge(Lines const &lines) {
+    void merge(Lines const& lines) {
         _failed = _failed || lines._failed;
         for (size_t i = 0; i < NUM_LINES; ++i) {
             if (lines._mapped[i]) {
@@ -134,9 +134,9 @@ private:
 
 class Worker : public WorkerBase<Key, Lines> {
 public:
-    Worker(ConfigStore const &config) : _editor(config), _lines(new Lines()) {}
+    Worker(ConfigStore const& config) : _editor(config), _lines(new Lines()) {}
 
-    void map(char const *beg, char const *end, Silo &silo) {
+    void map(char const* beg, char const* end, Silo& silo) {
         Key k;
         while (beg < end) {
             beg = _editor.readRecord(beg, end);
@@ -156,7 +156,7 @@ public:
 
     shared_ptr<Lines> const result() { return _lines; }
 
-    static void defineOptions(po::options_description &opts) { csv::Editor::defineOptions(opts); }
+    static void defineOptions(po::options_description& opts) { csv::Editor::defineOptions(opts); }
 
 private:
     csv::Editor _editor;
@@ -168,7 +168,7 @@ typedef Job<Worker> TestJob;
 }  // unnamed namespace
 
 BOOST_AUTO_TEST_CASE(MapReduceTest) {
-    char const *argv[4] = {
+    char const* argv[4] = {
             "dummy",
             "--in.csv.field=line",
             "--mr.pool-size=8",
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(MapReduceTest) {
         argv[3] = s.c_str();
         po::variables_map vm;
         // Older boost versions (1.41) require the const_cast.
-        po::store(po::parse_command_line(4, const_cast<char **>(argv), options), vm);
+        po::store(po::parse_command_line(4, const_cast<char**>(argv), options), vm);
         po::notify(vm);
         ConfigStore config;
         config.add(vm);

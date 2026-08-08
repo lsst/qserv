@@ -43,18 +43,18 @@ using namespace std;
 namespace lsst::qserv::xrdsvc {
 
 // Factory function, because this should be able to delete itself when Recycle() is called.
-StreamBuffer::Ptr StreamBuffer::createWithMove(std::string &input, std::shared_ptr<wbase::Task> const &task) {
+StreamBuffer::Ptr StreamBuffer::createWithMove(std::string& input, std::shared_ptr<wbase::Task> const& task) {
     Ptr ptr(new StreamBuffer(input, task));
     ptr->_selfKeepAlive = ptr;
     return ptr;
 }
 
-StreamBuffer::StreamBuffer(std::string &input, wbase::Task::Ptr const &task) : _task(task) {
+StreamBuffer::StreamBuffer(std::string& input, wbase::Task::Ptr const& task) : _task(task) {
     _dataStr = std::move(input);
     // TODO: try to make 'data' a const char* in xrootd code.
     // 'data' is not being changed after being passed, so hopefully not an issue.
     //_dataStr will not be used again, but this is ugly.
-    data = (char *)(_dataStr.data());
+    data = (char*)(_dataStr.data());
     next = 0;
 
     auto now = CLOCK::now();

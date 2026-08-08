@@ -41,9 +41,9 @@ class Executive;
  */
 class XrdSsiServiceMock : public XrdSsiService {
 public:
-    void ProcessRequest(XrdSsiRequest &reqRef, XrdSsiResource &resRef) override;
+    void ProcessRequest(XrdSsiRequest& reqRef, XrdSsiResource& resRef) override;
 
-    XrdSsiServiceMock(Executive *executive) {};
+    XrdSsiServiceMock(Executive* executive) {};
 
     virtual ~XrdSsiServiceMock() {}
 
@@ -61,7 +61,7 @@ public:
 
     static void setGo(bool go);
 
-    static void setRName(std::string const &rname) { _myRName = rname; }
+    static void setRName(std::string const& rname) { _myRName = rname; }
 
 private:
     static std::string _myRName;
