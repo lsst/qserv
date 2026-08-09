@@ -5,6 +5,10 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
 
   image-names:

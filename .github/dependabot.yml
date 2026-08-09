@@ -9,10 +9,8 @@ updates:
       actions:
         patterns:
           - "*"
-    labels:
-      - "dependencies"
     commit-message:
-      prefix: "ci"
+      prefix: "Dependabot"
     open-pull-requests-limit: 5
 
   - package-ecosystem: "github-actions"
@@ -24,8 +22,6 @@ updates:
       actions:
         patterns:
           - "*"
-    labels:
-      - "dependencies"
     commit-message:
-      prefix: "ci"
+      prefix: "Dependabot"
     open-pull-requests-limit: 5
