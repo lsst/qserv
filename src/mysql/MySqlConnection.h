@@ -84,7 +84,7 @@ public:
     /// @return 'true' if the operation was succesfull.
     bool connect();
 
-    bool connected() const { return nullptr != _mysql; }
+    bool connected() const;
 
     /// @note The identifier is set after making a connection, and it's reset
     ///   to 0 upon disconnects.
