@@ -1175,7 +1175,7 @@ def run_http_ingest(
     table_json_utf8 = "json-table-utf8"
     table_csv = "csv$table"
     table_csv_utf8 = "csv$table-utf8"
-    timeout = 30
+    timeout = 300
     charset = "utf8mb4"
     collation = "utf8mb4_uca1400_ai_ci"
 
@@ -1191,9 +1191,30 @@ def run_http_ingest(
     except Exception as e:
         _log.warning(e)
 
+    # Create the table with a very short timeout and ingest data using the JSON option.
+    # The request is required to fail with a timeout error. This is a test for an ability
+    # of the system to properly handle timeouts and report them to the user.
+    short_timeout=1
+    try:
+        _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows, short_timeout)
+        _log.error(
+            "The ingest request into table: %s of user database: %s didn't fail as expected", table_json, database
+        )
+        return False
+    except Exception as e:
+        _log.warning(
+            "[ EXPECTED ] Failed to ingest data into table: %s of user database: %s, error: %s", table_json, database, e
+        )
+
+    # Cleanup the last database and table to ensure that the next steps of the test can run without issues.
+    try:
+        _http_delete_database(http_frontend_uri, user, password, database)
+    except Exception as e:
+        _log.warning(e)
+
     # Create the table and ingest data using the JSON option. Then query the table.
     try:
-        _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows)
+        _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows, timeout)
     except Exception as e:
         _log.error(
             "Failed to ingest data into table: %s of user database: %s, error: %s", table_json, database, e
@@ -1206,6 +1227,7 @@ def run_http_ingest(
         _log.error("Failed to query table: %s of user database: %s, error: ", table_json, database, e)
         return False
 
+
     # Create the table and ingest data using the JSON option. Then query the table.
     try:
         _http_ingest_data_json(
@@ -1217,6 +1239,7 @@ def run_http_ingest(
             schema,
             indexes,
             rows,
+            timeout,
             charset,
             collation,
         )
@@ -1302,7 +1325,7 @@ def run_http_ingest(
     database = "user_test_db_012345678901234567890"  # 30 characters
     table_json = "user_table_0123456789012345"  # 27 characters
     try:
-        _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows)
+        _http_ingest_data_json(http_frontend_uri, user, password, database, table_json, schema, indexes, rows, timeout)
     except FrontEndError as e:
         _log.debug(
             "The attempt to ingest data into table: %s of user database: %s failed as expected, error: %s",
@@ -1663,6 +1686,7 @@ def _http_ingest_data_json(
     schema: list[dict[str, str]],
     indexes: list[dict[str, Sequence[Collection[str]]]],
     rows: list[list[Any]],
+    timeout: int,
     charset: str | None = None,
     collation: str | None = None,
 ) -> None:
@@ -1686,6 +1710,8 @@ def _http_ingest_data_json(
         The indexes of the table to be created.
     rows : `list` [`list` [`Any`]]
         The rows of data to be ingested into the table.
+    timeout : `int`
+        The timeout for the ingestion operation in seconds.
     charset : `str`, optional
         The character set to use for the table. If not provided, the default
         character set will be used.
@@ -1700,6 +1726,7 @@ def _http_ingest_data_json(
         "schema": schema,
         "indexes": indexes,
         "rows": rows,
+        "timeout": timeout,
     }
     if charset is not None:
         data["charset_name"] = charset
