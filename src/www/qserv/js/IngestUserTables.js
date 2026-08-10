@@ -15,9 +15,6 @@ function(CSSLoader,
 
     class IngestUserTables extends FwkApplication {
 
-        // Return the default number of the last seconds to track in the request history
-        static last_seconds() { return 15 * 60; }
-
         constructor(name) {
             super(name);
             this._data = undefined;
@@ -56,16 +53,6 @@ function(CSSLoader,
   <div class="col">
     <div class="form-row">
       <div class="form-group col-md-1">
-        <label for="last-seconds">Track last:</label>
-        <select id="last-seconds" class="form-control form-control-selector">
-          <option value=""></option>` +
-            _.reduce(lastMinutes, function (html, m)  { return html + `<option value="${m * 60}">${m} min</option>`; }, '') +
-            _.reduce(lastHours,   function (html, hr) { return html + `<option value="${hr * 3600}">${hr} hr</option>`; }, '') +
-            _.reduce(lastDays,    function (html, d)  { return html + `<option value="${d * 86400}">${d} day</option>`; }, '') +
-          `
-        </select>
-      </div>
-      <div class="form-group col-md-2">
         <label for="request-status">Status:</label>
         <select id="request-status" class="form-control form-control-selector">
           <option value="" selected>&lt;any&gt;</option>
@@ -74,6 +61,49 @@ function(CSSLoader,
           <option value="FAILED">FAILED</option>
           <option value="FAILED_LR">FAILED_LR</option>
         </select>
+      </div>
+      <div class="form-group col-md-2">
+        <label for="table-type">Type:</label>
+        <select id="table-type" class="form-control form-control-selector">
+          <option value="" selected>&lt;any&gt;</option>
+          <option value="FULLY_REPLICATED">FULLY_REPLICATED</option>
+          <option value="DIRECTOR">DIRECTOR</option>
+          <option value="CHILD">CHILD</option>
+          <option value="REF_MATCH">REF_MATCH</option>
+        </select>
+      </div>
+      <div class="form-group col-md-1">
+        <label for="table-deleted">Deleted:</label>
+        <select id="table-deleted" class="form-control form-control-selector">
+          <option value="0" selected>&lt;any&gt;</option>
+          <option value="1">Yes</option>
+          <option value="-1">No</option>
+        </select>
+      </div>
+      <div class="form-group col-md-2">
+        <label for="database-search-pattern">Database search pattern:</label>
+        <input type="text" id="database-search-pattern" class="form-control form-control-selector" value="">
+      </div>
+      <div class="form-group col-md-1">
+        <label for="database-search-mode">Search mode:</label>
+        <select id="database-search-mode" class="form-control form-control-selector">
+          <option value="LIKE" selected>LIKE</option>
+          <option value="REGEXP">REGEXP</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group col-md-1">
+        <label for="min-num-chunks">Min.chunks:</label>
+        <input type="number" id="min-num-chunks" class="form-control form-control-selector" value="0">
+      </div>
+      <div class="form-group col-md-1">
+        <label for="min-num-bytes">Min.bytes:</label>
+        <input type="number" id="min-num-bytes" class="form-control form-control-selector" value="0">
+      </div>
+      <div class="form-group col-md-1">
+        <label for="min-num-rows">Min.rows:</label>
+        <input type="number" id="min-num-rows" class="form-control form-control-selector" value="0">
       </div>
       <div class="form-group col-md-1">
         <label for="max-requests">Max.requests:</label>
@@ -115,6 +145,7 @@ function(CSSLoader,
           <th class="sticky right-aligned">Started</th>
           <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky right-aligned">Finished</th>
+          <th class="sticky right-aligned"><elem style="color:red;">&rarr;</elem></th>
           <th class="sticky right-aligned">Deleted</th>
           <th class="sticky right-aligned">Status</th>
           <th class="sticky right-aligned">Database</th>
@@ -133,14 +164,19 @@ function(CSSLoader,
   </div>
 </div>`;
             let cont = this.fwk_app_container.html(html);
-            this._set_last_seconds(IngestUserTables.last_seconds());
             cont.find(".form-control-selector").change(() => {
                 this._load();
             });
             cont.find("button#reset-form").click(() => {
                 this._set_update_interval_sec(10);
-                this._set_last_seconds(IngestUserTables.last_seconds());
                 this._set_request_status('');
+                this._set_table_type('');
+                this._set_table_deleted("0");
+                this._set_database_search_pattern('');
+                this._set_database_search_mode('LIKE');
+                this._set_min_num_chunks("0");
+                this._set_min_num_bytes("0");
+                this._set_min_num_rows("0");
                 this._set_max_requests("200");
                 this._disable_selectors();
                 this._load();
@@ -155,10 +191,22 @@ function(CSSLoader,
         }
         _update_interval_sec() { return this._form_control('select', 'update-interval').val(); }
         _set_update_interval_sec(val) { this._form_control('select', 'update-interval').val(val); }
-        _last_seconds() { return this._form_control('select', 'last-seconds').val(); }
-        _set_last_seconds(val) { this._form_control('select', 'last-seconds').val(val); }
         _request_status() { return this._form_control('select', 'request-status').val(); }
         _set_request_status(val) { this._form_control('select', 'request-status').val(val); }
+        _table_type() { return this._form_control('select', 'table-type').val(); }
+        _set_table_type(val) { this._form_control('select', 'table-type').val(val); }
+        _table_deleted() { return this._form_control('select', 'table-deleted').val(); }
+        _set_table_deleted(val) { this._form_control('select', 'table-deleted').val(val); }
+        _database_search_pattern() { return this._form_control('input', 'database-search-pattern').val(); }
+        _set_database_search_pattern(val) { this._form_control('input', 'database-search-pattern').val(val); }
+        _database_search_mode() { return this._form_control('select', 'database-search-mode').val(); }
+        _set_database_search_mode(val) { this._form_control('select', 'database-search-mode').val(val); }
+        _get_min_num_chunks() { return this._form_control('input', 'min-num-chunks').val(); }
+        _set_min_num_chunks(val) { this._form_control('input', 'min-num-chunks').val(val); }
+        _get_min_num_bytes() { return this._form_control('input', 'min-num-bytes').val(); }
+        _set_min_num_bytes(val) { this._form_control('input', 'min-num-bytes').val(val); }
+        _get_min_num_rows() { return this._form_control('input', 'min-num-rows').val(); }
+        _set_min_num_rows(val) { this._form_control('input', 'min-num-rows').val(val); }
         _get_max_requests()     { return this._form_control('select', 'max-requests').val(); }
         _set_max_requests(val)  { this._form_control('select', 'max-requests').val(val); }
         _table() {
@@ -174,8 +222,14 @@ function(CSSLoader,
             return this._status_obj;
         }
         _disable_selectors(disabled=true) {
-            this._form_control('select', 'last-seconds').prop('disabled', disabled);
             this._form_control('select', 'request-status').prop('disabled', disabled);
+            this._form_control('select', 'table-type').prop('disabled', disabled);
+            this._form_control('select', 'table-deleted').prop('disabled', disabled);
+            this._form_control('input', 'database-search-pattern').prop('disabled', disabled);
+            this._form_control('select', 'database-search-mode').prop('disabled', disabled);
+            this._form_control('input', 'min-num-chunks').prop('disabled', disabled);
+            this._form_control('input', 'min-num-bytes').prop('disabled', disabled);
+            this._form_control('input', 'min-num-rows').prop('disabled', disabled);
         }
         _load() {
             if (this._loading === undefined) this._loading = false;
@@ -187,8 +241,14 @@ function(CSSLoader,
                 "/replication/qserv/master/ingest-requests",
                 {   timeout_sec: 2,
                     version: Common.RestAPIVersion,
-                    begin_time_sec: Fwk.now().sec - this._last_seconds(),
                     status: this._request_status(),
+                    type: this._table_type(),
+                    deleted: this._table_deleted(),
+                    database_search_pattern: this._database_search_pattern(),
+                    database_search_regexp_mode: this._database_search_mode() === 'REGEXP' ? 1 : 0,
+                    min_num_chunks: this._get_min_num_chunks(),
+                    min_num_bytes: this._get_min_num_bytes(),
+                    min_num_rows: this._get_min_num_rows(),
                     limit: this._get_max_requests()
                 },
                 (data) => {
@@ -230,6 +290,7 @@ function(CSSLoader,
                 const endTimeStr  = req.end_time === 0 ? '' : (new Date(req.end_time)).toLocalTimeString('iso').split(' ')[1];
                 const endDeltaStr = req.begin_time && req.end_time ? ((req.end_time - req.begin_time) / 1000).toFixed(1) : '';
                 const deleteDateTimeStr =  req.delete_time === 0 ? '' : (new Date(req.delete_time)).toLocalTimeString('iso');
+                const deleteDeltaStr = req.end_time && req.delete_time ? ((req.delete_time - req.end_time) / 1000).toFixed(1) : '';
                 const isTemporaryStr = req.is_temporary ? 'yes' : 'no';
                 html += `
 <tr class="${statusCssClass}">
@@ -254,6 +315,7 @@ function(CSSLoader,
   <td class="right-aligned"><pre>${beginTimeStr}</pre></td>
   <th class="right-aligned"><pre>${endDeltaStr}</pre></th>
   <td class="right-aligned"><pre>${endTimeStr}</pre></td>
+  <th class="right-aligned"><pre>${deleteDeltaStr}</pre></th>
   <th class="right-aligned"><pre>${deleteDateTimeStr}</pre></th>
   <td class="right-aligned"><pre>${req.status}</pre></td>
   <th class="right-aligned"><pre>${req.database}</pre></th>
