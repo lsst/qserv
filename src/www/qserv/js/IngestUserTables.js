@@ -109,6 +109,7 @@ function(CSSLoader,
         <tr>
           <th class="sticky center-aligned"><i class="bi bi-info-circle-fill"></i></th>
           <th class="sticky center-aligned"><i class="bi bi-bar-chart-steps"></i></th>
+          <th class="sticky right-aligned">Q</th>
           <th class="sticky right-aligned">Id</th>
           <th class="sticky right-aligned"><elem style="color:red;">&darr;</elem></th>
           <th class="sticky right-aligned">Started</th>
@@ -213,6 +214,7 @@ function(CSSLoader,
         _display(requests) {
             const requestInspectTitle = 'Click to see extended parameters of the request';
             const contribInspectTitle = 'Click to see contributions made in a scope of the transaction';
+            const searchQservQueriesTitle = 'Click to see the Qserv queries which were referring this database and table';
             let html = '';
             for (let i in requests) {
                 let req = requests[i];
@@ -244,6 +246,9 @@ function(CSSLoader,
   </th>`;
                 }
                 html += `
+  <th class="controls" style="text-align:center; padding-top:0; padding-bottom:0">
+    <button class="btn btn-outline-info btn-sm queries" style="height:20px; margin:0px;" database="${req.database}" table="${req.table}" title="${searchQservQueriesTitle}"></button>
+  </th>
   <th class="right-aligned"><pre>${req.id}</pre></th>
   <th class="right-aligned"><pre>${beginDateStr}</pre></th>
   <td class="right-aligned"><pre>${beginTimeStr}</pre></td>
@@ -279,6 +284,14 @@ function(CSSLoader,
                     const status = '';  // Any status
                     Fwk.find("Ingest", "Contributions").search(worker, database, table, transactionId, status);
                     Fwk.show("Ingest", "Contributions");
+                }
+            );
+            tbody.find("button.queries").click(
+                (e) => {
+                    const database = $(e.currentTarget).attr("database");
+                    const table = $(e.currentTarget).attr("table");
+                    Fwk.find("Status", "Past Queries").search_queries_by(database, table);
+                    Fwk.show("Status", "Past Queries");
                 }
             );
             tbody.find("pre.database_table").click((e) => {

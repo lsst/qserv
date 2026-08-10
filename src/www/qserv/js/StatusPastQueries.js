@@ -58,6 +58,13 @@ function(CSSLoader,
             }
         }
 
+        /// Set the search parameters and load the queries matching the criteria.
+        search_queries_by(database, table) {
+            this._init();
+            this._reset(database, table);
+            this._load();
+        }
+
         /**
          * The first time initialization of the page's layout
          */
@@ -108,15 +115,12 @@ function(CSSLoader,
         </select>
       </div>
       <div class="form-group col-md-2">
-        <label for="query-search-pattern">Search pattern:</label>
-        <input type="text" id="query-search-pattern" class="form-control form-control-selector" value="">
+        <label for="query-search-database">Database:</label>
+        <input type="text" id="query-search-database" class="form-control form-control-selector" value="">
       </div>
-      <div class="form-group col-md-1">
-        <label for="query-search-mode">Search mode:</label>
-        <select id="query-search-mode" class="form-control form-control-selector">
-          <option value="LIKE" selected>LIKE</option>
-          <option value="REGEXP">REGEXP</option>
-        </select>
+      <div class="form-group col-md-2">
+        <label for="query-search-table">Table:</label>
+        <input type="text" id="query-search-table" class="form-control form-control-selector" value="">
       </div>
     </div>
     <div class="form-row">
@@ -194,18 +198,21 @@ function(CSSLoader,
                 this._load();
             });
             cont.find("button#reset-queries-form").click(() => {
-                this._set_query_age("0");
-                this._set_query_status("");
-                this._set_min_elapsed("0");
-                this._set_min_chunks("0");
-                this._set_min_bytes("0");
-                this._set_min_rows("0");
-                this._set_query_type("");
-                this._set_query_search_pattern("");
-                this._set_query_search_mode("LIKE");
-                this._set_max_queries("200");
+                this._reset("", "");
                 this._load();
             });
+        }
+        _reset(database, table) {
+            this._set_query_age("0");
+            this._set_query_status("");
+            this._set_min_elapsed("0");
+            this._set_min_chunks("0");
+            this._set_min_bytes("0");
+            this._set_min_rows("0");
+            this._set_query_type("");
+            this._set_query_search_database(database);
+            this._set_query_search_table(table);
+            this._set_max_queries("200");
         }
         _table() {
             if (this._table_obj === undefined) {
@@ -247,11 +254,10 @@ function(CSSLoader,
         _get_query_type()      { return this._form_control('select', 'query-type').val(); }
         _set_query_type(val)   { this._form_control('select', 'query-type').val(val); }
 
-        _get_query_search_pattern()    { return this._form_control('input', 'query-search-pattern').val(); }
-        _set_query_search_pattern(val) { this._form_control('input', 'query-search-pattern').val(val); }
-
-        _get_query_search_mode()    { return this._form_control('select', 'query-search-mode').val(); }
-        _set_query_search_mode(val) { this._form_control('select', 'query-search-mode').val(val); }
+        _get_query_search_database()    { return this._form_control('input', 'query-search-database').val(); }
+        _set_query_search_database(val) { this._form_control('input', 'query-search-database').val(val); }
+        _get_query_search_table()    { return this._form_control('input', 'query-search-table').val(); }
+        _set_query_search_table(val) { this._form_control('input', 'query-search-table').val(val); }
 
         _get_max_queries()     { return this._form_control('select', 'max-queries').val(); }
         _set_max_queries(val)  { this._form_control('select', 'max-queries').val(val); }
@@ -276,8 +282,8 @@ function(CSSLoader,
                     min_collected_bytes: this._get_min_bytes(),
                     min_final_rows: this._get_min_rows(),
                     query_type: this._get_query_type(),
-                    search_pattern: this._get_query_search_pattern(),
-                    search_regexp_mode: this._get_query_search_mode() == "REGEXP" ? 1 : 0,
+                    search_database: this._get_query_search_database(),
+                    search_table: this._get_query_search_table(),
                     limit4past: this._get_max_queries()
                 },
                 (data) => {
