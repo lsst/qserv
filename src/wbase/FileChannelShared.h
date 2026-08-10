@@ -275,7 +275,6 @@ private:
     std::atomic<bool> _rowLimitComplete;
     std::atomic<bool> _dead{false};  ///< Set to true when the contents of the file are no longer useful.
 
-    //&&&std::atomic<uint64_t> _bytesWritten{0};  ///< Total bytes written.
 };
 
 }  // namespace lsst::qserv::wbase

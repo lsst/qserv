@@ -840,6 +840,7 @@ void Executive::checkResultFileSize(uint64_t fileSize) {
                             "Incomplete result already too large " + to_string(total));
             _multiError.insert(err);
             _resultFileSizeExceeded = true;
+            _resultFileSizeErr = total;
             squash("czar, file too large");
         }
     }
@@ -850,6 +851,7 @@ void Executive::checkForResultFileSizeExceededErr(vector<util::Error> const& err
         if (err.getCode() == util::Error::WORKER_RESULT_TOO_LARGE) {
             LOGS(_log, LOG_LVL_ERROR, cName(__func__) << " worker result too large:" << err.dump());
             _resultFileSizeExceeded = true;
+            _resultFileSizeErr = err.getSubCode();
             break;
         }
     }

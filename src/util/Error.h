@@ -106,8 +106,8 @@ public:
         CANCEL
     };
 
-    Error(int code, int subCode, std::string const& msg = "", bool logLvlErr = true);
-    Error(int code, int subCode, std::set<int> const& chunkIds, std::set<int> const& jobIds,
+    Error(int code, int64_t subCode, std::string const& msg = "", bool logLvlErr = true);
+    Error(int code, int64_t subCode, std::set<int> const& chunkIds, std::set<int> const& jobIds,
           std::string const& msg, bool logLvlErr = true);
 
     Error() = default;
@@ -118,7 +118,7 @@ public:
     ~Error() = default;
 
     int getCode() const { return _code; }
-    int getSubCode() const { return _subCode; }
+    int64_t getSubCode() const { return _subCode; }
     std::vector<int> getChunkIdsVect() const;
     std::vector<int> getJobIdsVect() const;
 
@@ -140,7 +140,7 @@ private:
     int _code = NONE;
     /// Only used for certain cases, such as SQL error numbers, may have any value.
     /// A primary use is for reporting the SQL error code behind a WORKER_SQL error.
-    int _subCode = 0;
+    int64_t _subCode = 0;
     std::set<int> _jobIds;    /// Job ID number, when useful.
     std::set<int> _chunkIds;  /// Chunk ID number, when useful.
     std::string _msg;

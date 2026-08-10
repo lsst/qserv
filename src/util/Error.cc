@@ -40,7 +40,7 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.util.Error");
 
 namespace lsst::qserv::util {
 
-Error::Error(int code, int subCode, string const& msg, bool logLvlErr)
+Error::Error(int code, int64_t subCode, string const& msg, bool logLvlErr)
         : _code(code), _subCode(subCode), _msg(msg) {
     if (_code != NONE || _msg != "") {
         // Flushing output as it is likely that this exception will not be caught.
@@ -49,7 +49,7 @@ Error::Error(int code, int subCode, string const& msg, bool logLvlErr)
     }
 }
 
-Error::Error(int code, int subCode, set<int> const& chunkIds, set<int> const& jobIds, string const& msg,
+Error::Error(int code, int64_t subCode, set<int> const& chunkIds, set<int> const& jobIds, string const& msg,
              bool logLvlErr)
         : _code(code), _subCode(subCode), _msg(msg) {
     _chunkIds.insert(chunkIds.begin(), chunkIds.end());

@@ -242,9 +242,14 @@ public:
                      std::string const& idStr);
 
     /// Return true if the result size limit has been exceeded.
-    bool resultSizeLimitExceeded() const { return _resultFileSizeExceeded; }
+    bool isResultSizeLimitExceeded() const { return _resultFileSizeExceeded; }
 
-    void setResultSizeLimitExceeded() { _resultFileSizeExceeded = true; }
+    int64_t getResultFileSizeErr() const { return _resultFileSizeErr; }
+
+    void setResultSizeErr(int64_t resultFileSizeErr) {
+        _resultFileSizeExceeded = true;
+        _resultFileSizeErr = resultFileSizeErr;
+    }
 
 protected:
     Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
@@ -374,6 +379,8 @@ private:
 
     /// Set to true if the result file is too large.
     std::atomic<bool> _resultFileSizeExceeded{false};
+    /// The size of the result that that exceeded the limit.
+    std::atomic<int64_t> _resultFileSizeErr{0};
 };
 
 }  // namespace lsst::qserv::qdisp
