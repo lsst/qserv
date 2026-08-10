@@ -229,11 +229,15 @@ private:
      * @param limit4past The maximum number of queries to be reported.
      * @param includeMessages If the flag is set to 'true' then persistent
      *   messages reported by Czar for each query will be included into the result.
+     * @param searchDatabase The name of the database to search for.
+     * @param searchTable The name of the table to search for.
      * @return nlohmann::json A collection queries found in the database for
      *   the specified constraint.
      */
     nlohmann::json _pastUserQueries(database::mysql::Connection::Ptr& conn, std::string const& constraint,
-                                    unsigned int limit4past, bool includeMessages);
+                                    unsigned int limit4past, bool includeMessages,
+                                    std::string const& searchDatabase = std::string(),
+                                    std::string const& searchTable = std::string());
 
     /**
      * Find descriptions of queries

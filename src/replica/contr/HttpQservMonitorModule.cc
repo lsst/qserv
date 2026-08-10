@@ -530,7 +530,7 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
 
 json HttpQservMonitorModule::_pastQueries() {
     debug(__func__);
-    checkApiVersion(__func__, 36);
+    checkApiVersion(__func__, 59);
 
     auto const config = controller()->serviceProvider()->config();
     string const queryStatus = query().optionalString("query_status", string());
@@ -541,8 +541,8 @@ json HttpQservMonitorModule::_pastQueries() {
     unsigned int const minCollectedBytes = query().optionalUInt("min_collected_bytes", 0);
     unsigned int const minFinalRows = query().optionalUInt("min_final_rows", 0);
     unsigned int const limit4past = query().optionalUInt("limit4past", 1);
-    string const searchPattern = query().optionalString("search_pattern", string());
-    bool const searchRegexpMode = query().optionalUInt("search_regexp_mode", 0) != 0;
+    string const searchDatabase = query().optionalString("search_database", string());
+    string const searchTable = query().optionalString("search_table", string());
     bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
 
     debug(__func__, "query_status=" + queryStatus);
@@ -553,8 +553,8 @@ json HttpQservMonitorModule::_pastQueries() {
     debug(__func__, "min_collected_bytes=" + to_string(minCollectedBytes));
     debug(__func__, "min_final_rows=" + to_string(minFinalRows));
     debug(__func__, "limit4past=" + to_string(limit4past));
-    debug(__func__, "search_pattern=" + searchPattern);
-    debug(__func__, "search_regexp_mode=" + bool2str(searchRegexpMode));
+    debug(__func__, "search_database=" + searchDatabase);
+    debug(__func__, "search_table=" + searchTable);
     debug(__func__, "include_messages=" + bool2str(includeMessages));
 
     // Connect to the master database. Manage the new connection via the RAII-style
@@ -592,16 +592,10 @@ json HttpQservMonitorModule::_pastQueries() {
         string const cond = g.gt("finalRows", minFinalRows);
         g.packCond(constraints, cond);
     }
-    if (!searchPattern.empty()) {
-        if (searchRegexpMode) {
-            g.packCond(constraints, g.regexp("query", searchPattern));
-        } else {
-            g.packCond(constraints, g.like("query", "%" + searchPattern + "%"));
-        }
-    }
     json result;
     h.conn->executeInOwnTransaction([&](auto conn) {
-        result["queries_past"] = _pastUserQueries(conn, constraints, limit4past, includeMessages);
+        result["queries_past"] =
+                _pastUserQueries(conn, constraints, limit4past, includeMessages, searchDatabase, searchTable);
     });
     result["czar_ids"] = ::czarIdsToJson(config->czarIds());
     return result;
@@ -683,13 +677,31 @@ json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
 }
 
 json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string const& constraint,
-                                              unsigned int limit4past, bool includeMessages) {
+                                              unsigned int limit4past, bool includeMessages,
+                                              string const& searchDatabase, string const& searchTable) {
     json result = json::array();
     QueryGenerator const g(conn);
-    string const query = g.select(Sql::STAR, g.as(g.UNIX_TIMESTAMP("submitted"), "submitted_sec"),
+
+    // If either a database or a table is present then the query requires a join with the QTable table.
+    bool const hasConstraintOnDatabaseOrTable = !searchDatabase.empty() || !searchTable.empty();
+    string const fromTables = hasConstraintOnDatabaseOrTable ? g.from("QInfo", "QTable") : g.from("QInfo");
+    SqlId const qInfoSelector = hasConstraintOnDatabaseOrTable
+                                        ? DoNotProcess("DISTINCT " + g.id("QInfo", Sql::STAR).str)
+                                        : g.id("QInfo", Sql::STAR);
+    string adjustedConstraint = constraint;
+    if (!searchDatabase.empty()) {
+        g.packCond(adjustedConstraint, g.eq("dbName", searchDatabase));
+    }
+    if (!searchTable.empty()) {
+        g.packCond(adjustedConstraint, g.eq("tblName", searchTable));
+    }
+    if (hasConstraintOnDatabaseOrTable) {
+        g.packCond(adjustedConstraint, g.eq(g.id("QInfo", "queryId"), g.id("QTable", "queryId")));
+    }
+    string const query = g.select(qInfoSelector, g.as(g.UNIX_TIMESTAMP("submitted"), "submitted_sec"),
                                   g.as(g.UNIX_TIMESTAMP("completed"), "completed_sec"),
                                   g.as(g.UNIX_TIMESTAMP("returned"), "returned_sec")) +
-                         g.from("QInfo") + g.where(constraint) + g.orderBy(make_pair("submitted", "DESC")) +
+                         fromTables + g.where(adjustedConstraint) + g.orderBy(make_pair("queryId", "DESC")) +
                          g.limit(limit4past);
 
     conn->execute(query);
