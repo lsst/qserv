@@ -24,6 +24,7 @@
  */
 
 // System headers
+#include <filesystem>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -42,6 +43,7 @@
 #include "czar/HttpCzarSvc.h"
 
 using namespace std;
+namespace fs = std::filesystem;
 namespace po = boost::program_options;
 namespace cconfig = lsst::qserv::cconfig;
 namespace czar = lsst::qserv::czar;
@@ -134,6 +136,7 @@ int main(int argc, char* argv[]) {
         cout << argv[0] << " [options]\n\n" << ::help << "\n\n" << desc << endl;
         return 0;
     }
+
     bool const verbose = vm.count("verbose") > 0;
 
     std::stringstream os;
@@ -155,6 +158,18 @@ int main(int argc, char* argv[]) {
     if (verbose) {
         cout << os.str();
     }
+
+    std::error_code ec;
+    bool const created = fs::create_directories(httpCzarConfig.tmpDir, ec);
+    if (ec) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "Failed to create temporary directory " << httpCzarConfig.tmpDir << ", error: " << ec.message());
+        return EXIT_FAILURE;
+    }
+    if (created) {
+        LOGS(_log, LOG_LVL_INFO, "Created temporary directory " << httpCzarConfig.tmpDir);
+    }
+
     try {
         auto const czar = czar::Czar::createCzar(configFilePath, czarName);
         // Set the user and password for the HTTP service.

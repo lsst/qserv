@@ -24,6 +24,7 @@
 #include "czar/Czar.h"
 
 // System headers
+#include <filesystem>
 #include <stdexcept>
 #include <sys/time.h>
 #include <thread>
@@ -75,6 +76,7 @@
 #include "util/TimeUtils.h"
 
 using namespace std;
+namespace fs = std::filesystem;
 
 // This macro is used to convert empty strings into "0" in order to avoid
 // problems with calling std::atoi() when the string is empty.
@@ -215,13 +217,25 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // NOTE: This steps should be done after constructing the query factory where
     //       the name of the Czar gets translated into a numeric identifier.
     _czarConfig->setId(_uqFactory->userQuerySharedResources()->czarId);
-
     auto const czarId = _czarConfig->id();
+
     size_t const MB_SIZE_BYTES = 1024 * 1024;
     size_t maxResultTableSizeBytes = _czarConfig->getMaxTableSizeMB() * MB_SIZE_BYTES;
     size_t maxMemToUse = _czarConfig->getMaxTransferMemMB() * MB_SIZE_BYTES;
     string const transferDirectory = _czarConfig->getTransferDir();
     std::size_t const transferMinBytesInMem = _czarConfig->getTransferMinMBInMem() * MB_SIZE_BYTES;
+
+    std::error_code ec;
+    bool const created = fs::create_directories(transferDirectory, ec);
+    if (ec) {
+        LOGS(_log, LOG_LVL_ERROR,
+             "Failed to create transfer directory " << transferDirectory << ", error: " << ec.message());
+        throw std::system_error(ec, "Failed to create transfer directory " + transferDirectory);
+    }
+    if (created) {
+        LOGS(_log, LOG_LVL_INFO, "Created transfer directory " << transferDirectory);
+    }
+
     mysql::TransferTracker::setup(maxMemToUse, transferDirectory, transferMinBytesInMem,
                                   maxResultTableSizeBytes, czarId);
 
@@ -230,7 +244,6 @@ Czar::Czar(string const& configFilePath, string const& czarName)
     // The id will be used as the high-watermark for queries that need to be cancelled.
     // All queries that have identifiers that are strictly less than this one will
     // be affected by the operation.
-    //
     if (_czarConfig->notifyWorkersOnCzarRestart()) {
         try {
             QueryId lastQId = _lastQueryIdBeforeRestart();
