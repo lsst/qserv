@@ -45,6 +45,7 @@ base_image_build_subdir = "deploy/docker/base"
 user_build_image_subdir = "deploy/docker/build-user"
 run_image_build_subdir = "deploy/docker/run"
 mariadb_image_subdir = "deploy/docker/mariadb"
+ssl_proxy_image_subdir = "deploy/docker/ssl-proxy"
 
 mypy_cfg_file = "pyproject.toml"
 
@@ -646,6 +647,22 @@ def build_mariadb_image(
     )
     if push_image:
         images.push_image(mariadb_image, dry)
+
+
+def build_ssl_proxy_image(
+    ssl_proxy_image: str, qserv_root: str, dry: bool, push_image: bool, pull_image: bool
+) -> None:
+    """Build the ssl-proxy image."""
+    if pull_image and do_pull_image(ssl_proxy_image, dry):
+        return
+    images.build_image(
+        image_name=ssl_proxy_image,
+        run_dir=os.path.join(qserv_root, ssl_proxy_image_subdir),
+        target=None,
+        dry=dry,
+    )
+    if push_image:
+        images.push_image(ssl_proxy_image, dry)
 
 
 def bind_args(qserv_root: str, bind_names: list[str]) -> list[str]:
