@@ -100,15 +100,23 @@ public:
 
     /**
      * Finds user table ingest requests by the given criteria.
-     * @param database (optional) The name of the database.
-     * @param table (optional) The name of the table.
      * @param filterByStatus (optional) If 'true' then the search will be filtered by the status of the
      *   request.
      * @param status (optional) The status of the request to be matched if 'filterByStatus' is 'true'.
-     * @param beginTimeSec (optional) The beginning of the time range (inclusive) for the 'begin_time' field
-     *   of the request. A value of '0' disables filtering by the beginning of the time range.
-     * @param endTimeSec (optional) The end of the time range (inclusive) for the 'begin_time' field
-     *   of the request. A value of '0' disables filtering by the end of the time range.
+     * @param filterByTableType (optional) If 'true' then the search will be filtered by the type of the
+     *   table.
+     * @param tableType (optional) The type of the table to be matched if 'filterByTableType' is 'true'.
+     * @param deleteStatus (optional) The status of the table to be matched. A value of '-1' will match only
+     *   non-deleted tables, '0' will match any tables, and '1' will match only deleted tables.
+     * @param databaseSearchPattern (optional) A pattern to match the database name against.
+     * @param databaseSearchRegexpMode (optional) If 'true' then the 'databaseSearchPattern' will be treated
+     *   as a regular expression; otherwise, it will be treated as a simple wildcard pattern.
+     * @param minNumChunks (optional) The minimum number of chunks ingested. A value of '0' disables
+     *   filtering by the minimum number of chunks.
+     * @param minNumBytes (optional) The minimum number of bytes ingested. A value of '0' disables
+     *   filtering by the minimum number of bytes.
+     * @param minNumRows (optional) The minimum number of rows ingested. A value of '0' disables filtering
+     *   by the minimum number of rows.
      * @param limit (optional) The maximum number of requests to be returned. A value of '0' disables
      *   limiting the number of requests.
      * @param extended If true, fetch extended information.
@@ -118,11 +126,15 @@ public:
      * @throws qmeta::SqlError if a database error occurs.
      */
     std::list<UserTableIngestRequest> findRequests(
-            std::string const& database = std::string(), std::string const& table = std::string(),
             bool filterByStatus = false,
             UserTableIngestRequest::Status status = UserTableIngestRequest::Status::IN_PROGRESS,
-            std::uint64_t beginTimeSec = 0, std::uint64_t endTimeSec = 0, std::uint64_t limit = 0,
+            bool filterByTableType = false,
+            UserTableIngestRequest::TableType tableType = UserTableIngestRequest::TableType::FULLY_REPLICATED,
+            int deleteStatus = 0, std::string const& databaseSearchPattern = std::string(),
+            bool databaseSearchRegexpMode = false, unsigned int minNumChunks = 0,
+            unsigned int minNumBytes = 0, unsigned int minNumRows = 0, std::uint64_t limit = 0,
             bool extended = true) const;
+
     /**
      * Marks a user table ingest request as finished.
      * @note The persistent state (status, completion timestamp, counters and error code)
