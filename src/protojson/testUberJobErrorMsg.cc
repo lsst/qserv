@@ -52,7 +52,8 @@ unsigned int const version = lsst::qserv::http::MetaModule::version;
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-bool parseSerializeReparseCheck(string const& jsStr, string const& note, UberJobErrorMsg::Ptr const& ujeMsgSource) {
+bool parseSerializeReparseCheck(string const& jsStr, string const& note,
+                                UberJobErrorMsg::Ptr const& ujeMsgSource) {
     string fName("parseSerialize ");
     fName += note + " ";
     LOGS(_log, LOG_LVL_INFO, fName << " start " << jsStr);

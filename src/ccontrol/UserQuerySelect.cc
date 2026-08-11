@@ -587,7 +587,7 @@ QueryState UserQuerySelect::join() {
         }
         _qMetaUpdateStatus(status, collectedRows, errCollectedBytes, finalRows);
         LOGS(_log, LOG_LVL_ERROR,
-                "Joined everything (failure!) QID=" << getQueryId() << " status=" << status);
+             "Joined everything (failure!) QID=" << getQueryId() << " status=" << status);
         state = ERROR;
     }
     auto const czarConfig = cconfig::CzarConfig::instance();

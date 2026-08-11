@@ -857,7 +857,6 @@ void Executive::checkForResultFileSizeExceededErr(vector<util::Error> const& err
     }
 }
 
-
 shared_ptr<lock_guard<mutex>> Executive::getLimitSquashLock() {
     shared_ptr<lock_guard<mutex>> ptr(new lock_guard<mutex>(_mtxLimitSquash));
     return ptr;
