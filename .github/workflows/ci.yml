@@ -30,6 +30,7 @@ jobs:
       user-build-image: ${{ steps.image-names.outputs.user-build-image }}
       run-base-image: ${{ steps.image-names.outputs.run-base-image }}
       mariadb-image: ${{ steps.image-names.outputs.mariadb-image }}
+      ssl-proxy-image: ${{ steps.image-names.outputs.ssl-proxy-image }}
       qserv-image: ${{ steps.image-names.outputs.qserv-image }}
 
     steps:
@@ -62,6 +63,7 @@ jobs:
           QSERV_USER_BUILD_IMAGE=$(./bin/qserv env --user-build-image)
           QSERV_RUN_BASE_IMAGE=$(./bin/qserv env --run-base-image)
           QSERV_MARIADB_IMAGE=$(./bin/qserv env --mariadb-image)
+          QSERV_SSL_PROXY_IMAGE=$(./bin/qserv env --ssl-proxy-image)
           QSERV_IMAGE=$(./bin/qserv env --qserv-image)
 
           {
@@ -69,6 +71,7 @@ jobs:
             echo "user-build-image=$QSERV_USER_BUILD_IMAGE"
             echo "run-base-image=$QSERV_RUN_BASE_IMAGE"
             echo "mariadb-image=$QSERV_MARIADB_IMAGE"
+            echo "ssl-proxy-image=$QSERV_SSL_PROXY_IMAGE"
             echo "qserv-image=$QSERV_IMAGE"
           } >> "$GITHUB_OUTPUT"
 
@@ -78,13 +81,14 @@ jobs:
             echo "| Build      | \`$QSERV_BUILD_IMAGE\`      |"
             echo "| Run Base   | \`$QSERV_RUN_BASE_IMAGE\`   |"
             echo "| MariaDB    | \`$QSERV_MARIADB_IMAGE\`    |"
+            echo "| SSL Proxy  | \`$QSERV_SSL_PROXY_IMAGE\`  |"
             echo "| Qserv      | \`$QSERV_IMAGE\`            |"
             echo ""
             echo "To use this build with the helm chart, use the following in \`values.yaml\`:"
             echo "\`\`\`yaml"
             echo "qservImageName: $QSERV_IMAGE"
             echo "mariadbImageName: $QSERV_MARIADB_IMAGE"
-            echo "sslProxyImageName: qserv/mysql-proxy-ssl:latest"
+            echo "sslProxyImageName: $QSERV_SSL_PROXY_IMAGE"
             echo "ingestHelperImageName: $QSERV_BUILD_IMAGE"
             echo "\`\`\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -190,6 +194,45 @@ jobs:
             echo "rebuilt=True" >> "$GITHUB_OUTPUT"
           fi
 
+  update-ssl-proxy-image:
+    name: Update SSL proxy image
+    runs-on: ubuntu-22.04
+    needs: image-names
+    steps:
+
+      - name: Install python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.x'
+
+      - name: Install python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install click pyyaml requests
+
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.7
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # 0 is "all history and branch tags"
+
+      - name: Login to ghcr
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Rebuild and push ssl-proxy image if needed
+        run: |
+          if [[ $(./bin/qserv --log-level DEBUG image-exists ${{ needs.image-names.outputs.ssl-proxy-image }}) == "True" ]]; then
+            echo "SSL proxy image already in registry; skipping..."
+          else
+            ./bin/qserv --log-level DEBUG build-ssl-proxy-image --push-image --ssl-proxy-image ${{ needs.image-names.outputs.ssl-proxy-image }}
+          fi
+
   update-run-image:
     name: Update Qserv image
     runs-on: ubuntu-22.04
@@ -246,7 +289,7 @@ jobs:
   compose-integration-tests:
     name: Integration tests (compose)
     runs-on: ubuntu-22.04
-    needs: [image-names, update-mariadb-image, update-run-image]
+    needs: [image-names, update-mariadb-image, update-ssl-proxy-image, update-run-image]
     steps:
 
       - name: Install python
