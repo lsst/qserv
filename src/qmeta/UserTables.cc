@@ -107,36 +107,52 @@ UserTableIngestRequest UserTables::findRequest(std::string const& database, std:
     return request;
 }
 
-std::list<UserTableIngestRequest> UserTables::findRequests(std::string const& database,
-                                                           std::string const& table, bool filterByStatus,
-                                                           UserTableIngestRequest::Status status,
-                                                           std::uint64_t beginTimeMs, std::uint64_t endTimeMs,
-                                                           std::uint64_t limit, bool extended) const {
+std::list<UserTableIngestRequest> UserTables::findRequests(
+        bool filterByStatus, UserTableIngestRequest::Status status, bool filterByTableType,
+        UserTableIngestRequest::TableType tableType, int deleteStatus,
+        std::string const& databaseSearchPattern, bool databaseSearchRegexpMode, unsigned int minNumChunks,
+        unsigned int minNumBytes, unsigned int minNumRows, std::uint64_t limit, bool extended) const {
     std::lock_guard<std::mutex> sync(_dbMutex);
     auto trans = QMetaTransaction::create(*_conn);
     std::string cond;
-    if (!database.empty()) {
-        cond += "`database`='" + _conn->escapeString(database) + "'";
-    }
-    if (!table.empty()) {
-        if (!cond.empty()) cond += " AND ";
-        cond += "`table`='" + _conn->escapeString(table) + "'";
-    }
     if (filterByStatus) {
         if (!cond.empty()) cond += " AND ";
         cond += "`status`='" + UserTableIngestRequest::status2str(status) + "'";
     }
-    if (beginTimeMs > 0) {
+    if (filterByTableType) {
         if (!cond.empty()) cond += " AND ";
-        cond += "`begin_time`>=" + std::to_string(beginTimeMs);
+        cond += "`table_type`='" + UserTableIngestRequest::tableType2str(tableType) + "'";
     }
-    if (endTimeMs > 0) {
+    if (deleteStatus == -1) {
         if (!cond.empty()) cond += " AND ";
-        cond += "`begin_time`<=" + std::to_string(endTimeMs);
+        cond += "`delete_time`=0";
+    } else if (deleteStatus == 1) {
+        if (!cond.empty()) cond += " AND ";
+        cond += "`delete_time`!=0";
+    }
+    if (!databaseSearchPattern.empty()) {
+        if (!cond.empty()) cond += " AND ";
+        if (databaseSearchRegexpMode) {
+            cond += "`database` REGEXP '" + _conn->escapeString(databaseSearchPattern) + "'";
+        } else {
+            cond += "`database` LIKE '%" + _conn->escapeString(databaseSearchPattern) + "%'";
+        }
+    }
+    if (minNumChunks > 0) {
+        if (!cond.empty()) cond += " AND ";
+        cond += "`num_chunks`>=" + std::to_string(minNumChunks);
+    }
+    if (minNumBytes > 0) {
+        if (!cond.empty()) cond += " AND ";
+        cond += "`num_bytes`>=" + std::to_string(minNumBytes);
+    }
+    if (minNumRows > 0) {
+        if (!cond.empty()) cond += " AND ";
+        cond += "`num_rows`>=" + std::to_string(minNumRows);
     }
     std::list<UserTableIngestRequest> requests;
     std::string query = "SELECT `id` FROM `UserTables`" + (cond.empty() ? "" : " WHERE " + cond) +
-                        " ORDER BY `begin_time` DESC" + (limit > 0 ? " LIMIT " + std::to_string(limit) : "");
+                        " ORDER BY `id` DESC" + (limit > 0 ? " LIMIT " + std::to_string(limit) : "");
     sql::SqlErrorObject errObj;
     sql::SqlResults results;
     if (!_conn->runQuery(query, results, errObj)) {
