@@ -530,7 +530,7 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
 
 json HttpQservMonitorModule::_pastQueries() {
     debug(__func__);
-    checkApiVersion(__func__, 36);
+    checkApiVersion(__func__, 59);
 
     auto const config = controller()->serviceProvider()->config();
     string const queryStatus = query().optionalString("query_status", string());
@@ -541,8 +541,8 @@ json HttpQservMonitorModule::_pastQueries() {
     unsigned int const minCollectedBytes = query().optionalUInt("min_collected_bytes", 0);
     unsigned int const minFinalRows = query().optionalUInt("min_final_rows", 0);
     unsigned int const limit4past = query().optionalUInt("limit4past", 1);
-    string const searchPattern = query().optionalString("search_pattern", string());
-    bool const searchRegexpMode = query().optionalUInt("search_regexp_mode", 0) != 0;
+    string const searchDatabase = query().optionalString("search_database", string());
+    string const searchTable = query().optionalString("search_table", string());
     bool const includeMessages = query().optionalUInt("include_messages", 0) != 0;
 
     debug(__func__, "query_status=" + queryStatus);
@@ -553,8 +553,8 @@ json HttpQservMonitorModule::_pastQueries() {
     debug(__func__, "min_collected_bytes=" + to_string(minCollectedBytes));
     debug(__func__, "min_final_rows=" + to_string(minFinalRows));
     debug(__func__, "limit4past=" + to_string(limit4past));
-    debug(__func__, "search_pattern=" + searchPattern);
-    debug(__func__, "search_regexp_mode=" + bool2str(searchRegexpMode));
+    debug(__func__, "search_database=" + searchDatabase);
+    debug(__func__, "search_table=" + searchTable);
     debug(__func__, "include_messages=" + bool2str(includeMessages));
 
     // Connect to the master database. Manage the new connection via the RAII-style
@@ -592,16 +592,10 @@ json HttpQservMonitorModule::_pastQueries() {
         string const cond = g.gt("finalRows", minFinalRows);
         g.packCond(constraints, cond);
     }
-    if (!searchPattern.empty()) {
-        if (searchRegexpMode) {
-            g.packCond(constraints, g.regexp("query", searchPattern));
-        } else {
-            g.packCond(constraints, g.like("query", "%" + searchPattern + "%"));
-        }
-    }
     json result;
     h.conn->executeInOwnTransaction([&](auto conn) {
-        result["queries_past"] = _pastUserQueries(conn, constraints, limit4past, includeMessages);
+        result["queries_past"] =
+                _pastUserQueries(conn, constraints, limit4past, includeMessages, searchDatabase, searchTable);
     });
     result["czar_ids"] = ::czarIdsToJson(config->czarIds());
     return result;
@@ -683,13 +677,31 @@ json HttpQservMonitorModule::_currentUserQueries(Connection::Ptr& conn,
 }
 
 json HttpQservMonitorModule::_pastUserQueries(Connection::Ptr& conn, string const& constraint,
-                                              unsigned int limit4past, bool includeMessages) {
+                                              unsigned int limit4past, bool includeMessages,
+                                              string const& searchDatabase, string const& searchTable) {
     json result = json::array();
     QueryGenerator const g(conn);
-    string const query = g.select(Sql::STAR, g.as(g.UNIX_TIMESTAMP("submitted"), "submitted_sec"),
+
+    // If either a database or a table is present then the query requires a join with the QTable table.
+    bool const hasConstraintOnDatabaseOrTable = !searchDatabase.empty() || !searchTable.empty();
+    string const fromTables = hasConstraintOnDatabaseOrTable ? g.from("QInfo", "QTable") : g.from("QInfo");
+    SqlId const qInfoSelector = hasConstraintOnDatabaseOrTable
+                                        ? DoNotProcess("DISTINCT " + g.id("QInfo", Sql::STAR).str)
+                                        : g.id("QInfo", Sql::STAR);
+    string adjustedConstraint = constraint;
+    if (!searchDatabase.empty()) {
+        g.packCond(adjustedConstraint, g.eq("dbName", searchDatabase));
+    }
+    if (!searchTable.empty()) {
+        g.packCond(adjustedConstraint, g.eq("tblName", searchTable));
+    }
+    if (hasConstraintOnDatabaseOrTable) {
+        g.packCond(adjustedConstraint, g.eq(g.id("QInfo", "queryId"), g.id("QTable", "queryId")));
+    }
+    string const query = g.select(qInfoSelector, g.as(g.UNIX_TIMESTAMP("submitted"), "submitted_sec"),
                                   g.as(g.UNIX_TIMESTAMP("completed"), "completed_sec"),
                                   g.as(g.UNIX_TIMESTAMP("returned"), "returned_sec")) +
-                         g.from("QInfo") + g.where(constraint) + g.orderBy(make_pair("submitted", "DESC")) +
+                         fromTables + g.where(adjustedConstraint) + g.orderBy(make_pair("queryId", "DESC")) +
                          g.limit(limit4past);
 
     conn->execute(query);
@@ -807,7 +819,7 @@ json HttpQservMonitorModule::_cssUpdate() {
 
 json HttpQservMonitorModule::_userTables() {
     debug(__func__);
-    checkApiVersion(__func__, 50);
+    checkApiVersion(__func__, 59);
 
     qmeta::UserTables userTables(::czarQMetaConfig());
 
@@ -828,43 +840,48 @@ json HttpQservMonitorModule::_userTables() {
         requests.push_back(userTables.findRequest(id, extended).toJson());
         return json::object({{"requests", requests}});
     }
-
-    auto const databaseName = query().optionalString("database");
-    auto const tableName = query().optionalString("table");
-    bool filterByStatus = false;
-    qmeta::UserTableIngestRequest::Status status = qmeta::UserTableIngestRequest::Status::IN_PROGRESS;
-    auto const statusStr = query().optionalString("status");
-    if (!statusStr.empty()) {
+    auto requestStatus = qmeta::UserTableIngestRequest::Status::IN_PROGRESS;
+    auto const requestStatusStr = query().optionalString("status");
+    bool filterByStatus = !requestStatusStr.empty();
+    if (!requestStatusStr.empty()) {
         filterByStatus = true;
-        status = qmeta::UserTableIngestRequest::str2status(statusStr);
+        requestStatus = qmeta::UserTableIngestRequest::str2status(requestStatusStr);
     }
-    uint64_t const beginTimeSec = query().optionalUInt64("begin_time_sec", 0);
-    uint64_t const endTimeSec = query().optionalUInt64("end_time_sec", 0);
+    auto tableType = qmeta::UserTableIngestRequest::TableType::FULLY_REPLICATED;
+    auto const typeStr = query().optionalString("type");
+    bool const filterByTableType = !typeStr.empty();
+    if (filterByTableType) {
+        tableType = qmeta::UserTableIngestRequest::str2tableType(typeStr);
+    }
+    int const deleteStatus = query().optionalInt("deleted", 0);
+    string const databaseSearchPattern = query().optionalString("database_search_pattern", string());
+    bool const databaseSearchRegexpMode = query().optionalUInt("database_search_regexp_mode", 0) != 0;
+    unsigned int const minNumChunks = query().optionalUInt("min_num_chunks", 0);
+    unsigned int const minNumBytes = query().optionalUInt("min_num_bytes", 0);
+    unsigned int const minNumRows = query().optionalUInt("min_num_rows", 0);
     uint64_t const limit = query().optionalUInt64("limit", 1);
 
-    debug(__func__, "database=" + databaseName);
-    debug(__func__, "table=" + tableName);
     debug(__func__,
-          "status=" + (filterByStatus ? qmeta::UserTableIngestRequest::status2str(status) : string()));
-    debug(__func__, "begin_time_sec=" + to_string(beginTimeSec));
-    debug(__func__, "end_time_sec=" + to_string(endTimeSec));
+          "status=" + (filterByStatus ? qmeta::UserTableIngestRequest::status2str(requestStatus) : string()));
+    debug(__func__, "filterByTableType=" + bool2str(filterByTableType));
+    debug(__func__,
+          "type=" + (filterByTableType ? qmeta::UserTableIngestRequest::tableType2str(tableType) : string()));
+    debug(__func__, "deleted=" + to_string(deleteStatus) + " [ -1:not deleted, 0:any, 1:deleted ]");
+    debug(__func__, "database_search_pattern=" + databaseSearchPattern);
+    debug(__func__, "database_search_regexp_mode=" + bool2str(databaseSearchRegexpMode));
+    debug(__func__, "min_num_chunks=" + to_string(minNumChunks));
+    debug(__func__, "min_num_bytes=" + to_string(minNumBytes));
+    debug(__func__, "min_num_rows=" + to_string(minNumRows));
     debug(__func__, "limit=" + to_string(limit));
 
-    if (tableName.empty() && !databaseName.empty()) {
-        throw invalid_argument(context() + "::" + string(__func__) +
-                               "  the parameter 'table' is required if 'database' is specified");
+    json requestsJson = json::array();
+    auto const requests = userTables.findRequests(
+            filterByStatus, requestStatus, filterByTableType, tableType, deleteStatus, databaseSearchPattern,
+            databaseSearchRegexpMode, minNumChunks, minNumBytes, minNumRows, limit, extended);
+    for (auto&& entry : requests) {
+        requestsJson.push_back(entry.toJson());
     }
-    if (endTimeSec > 0 && beginTimeSec >= endTimeSec) {
-        throw invalid_argument(context() + "::" + string(__func__) +
-                               "  the value of parameter 'begin_time_sec' must be < 'end_time_sec'");
-    }
-
-    json requests = json::array();
-    for (auto&& entry : userTables.findRequests(databaseName, tableName, filterByStatus, status, beginTimeSec,
-                                                endTimeSec, limit, extended)) {
-        requests.push_back(entry.toJson());
-    }
-    return json::object({{"requests", requests}});
+    return json::object({{"requests", requestsJson}});
 }
 
 json HttpQservMonitorModule::_cssSharedScanParams(shared_ptr<Configuration> const& config,
