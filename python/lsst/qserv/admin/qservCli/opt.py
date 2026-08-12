@@ -184,8 +184,9 @@ class ImageName:
     user_dockerfile = "deploy/docker/build-user/Dockerfile"
     run_base_dockerfile = "deploy/docker/base/Dockerfile"
     mariadb_dockerfile = "deploy/docker/mariadb/Dockerfile"
+    ssl_proxy_dockerfile = "deploy/docker/ssl-proxy/Dockerfile"
 
-    image_types = ("qserv", "run-base", "mariadb", "build-base", "build-user")
+    image_types = ("qserv", "run-base", "mariadb", "build-base", "build-user", "ssl-proxy")
 
     def __init__(self, image: str):
         if image not in self.image_types:
@@ -237,6 +238,8 @@ class ImageName:
             return "ghcr.io/lsst/qserv-build-base"
         if self.image == "build-user":
             return f"ghcr.io/lsst/qserv-build-{getpass.getuser()}"
+        if self.image == "ssl-proxy":
+            return "ghcr.io/lsst/qserv-ssl-proxy"
         raise RuntimeError(f"Invalid image type: {self.image}")
 
     @property
@@ -273,6 +276,8 @@ class ImageName:
             return [self.base_dockerfile]
         if self.image == "build-user":
             return [self.base_dockerfile, self.user_dockerfile]
+        if self.image == "ssl-proxy":
+            return [self.ssl_proxy_dockerfile]
         raise RuntimeError(f"Invalid image type: {self.image}")
 
 
@@ -306,6 +311,11 @@ env_user_build_image = FlagEnvVal(
     "--user-build-image",
     "QSERV_USER_BUILD_IMAGE",
     ImageName("build-user").tagged_name,
+)
+env_ssl_proxy_image = FlagEnvVal(
+    "--ssl-proxy-image",
+    "QSERV_SSL_PROXY_IMAGE",
+    ImageName("ssl-proxy").tagged_name,
 )
 # qserv root default is derived by the relative path to the qserv folder from
 # the locaiton of this file.
@@ -515,6 +525,7 @@ qserv_env_vals = FlagEnvVals(
         env_user_build_image,
         env_run_base_image,
         env_mariadb_image,
+        env_ssl_proxy_image,
         env_qserv_root,
         env_qserv_build_root,
         env_project,
@@ -603,6 +614,14 @@ option_mariadb_image = partial(
     env_mariadb_image.opt,
     help=env_mariadb_image.help("The name of the mariadb image."),
     default=env_mariadb_image.val(),
+)
+
+
+option_ssl_proxy_image = partial(
+    click.option,
+    env_ssl_proxy_image.opt,
+    help=env_ssl_proxy_image.help("The name of the ssl-proxy image."),
+    default=env_ssl_proxy_image.val(),
 )
 
 
