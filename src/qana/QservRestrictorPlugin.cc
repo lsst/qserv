@@ -615,9 +615,11 @@ std::vector<std::shared_ptr<query::SecIdxRestrictor>> getSecIndexRestrictors(que
     for (auto&& term : andTerm->_terms) {
         auto factor = std::dynamic_pointer_cast<query::BoolFactor>(term);
         if (!factor) continue;
+        if (factor->_hasNot) continue;  // NOT (...) inverts the search; can't restrict
         for (auto factorTerm : factor->_terms) {
             std::shared_ptr<query::SecIdxRestrictor> restrictor;
             if (auto const inPredicate = std::dynamic_pointer_cast<query::InPredicate>(factorTerm)) {
+                if (inPredicate->hasNot) continue;  // NOT IN (...) also can't restrict
                 restrictor = makeSecondaryIndexRestrictor(*inPredicate, context);
             } else if (auto const compPredicate =
                                std::dynamic_pointer_cast<query::CompPredicate>(factorTerm)) {

@@ -95,7 +95,7 @@ public:
 
     // FIXME these members should be private, or at least protected. Jira issue DM-17306
     std::vector<std::shared_ptr<BoolFactorTerm>> _terms;
-    bool _hasNot;
+    bool _hasNot = false;
 
 protected:
     /// Serialize this instance to os for debug output.
