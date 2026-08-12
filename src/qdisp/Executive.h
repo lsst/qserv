@@ -231,6 +231,10 @@ public:
     /// cancel this user query.
     void checkResultFileSize(uint64_t fileSize = 0);
 
+    /// If any of the error messages are WORKER_RESULT_TOO_LARGE, set
+    /// `_resultFileSizeExceeded`.
+    void checkForResultFileSizeExceededErr(std::vector<util::Error> const& errors);
+
     /// Returns a pointer to a lock on _mtxLimitSquash.
     std::shared_ptr<std::lock_guard<std::mutex>> getLimitSquashLock();
 
@@ -238,7 +242,14 @@ public:
                      std::string const& idStr);
 
     /// Return true if the result size limit has been exceeded.
-    bool resultSizeLimitExceeded() const { return _resultFileSizeExceeded; }
+    bool isResultSizeLimitExceeded() const { return _resultFileSizeExceeded; }
+
+    int64_t getResultFileSizeErr() const { return _resultFileSizeErr; }
+
+    void setResultSizeErr(int64_t resultFileSizeErr) {
+        _resultFileSizeExceeded = true;
+        _resultFileSizeErr = resultFileSizeErr;
+    }
 
 protected:
     Executive(int secondsBetweenUpdates, std::shared_ptr<qmeta::MessageStore> const& ms,
@@ -368,6 +379,8 @@ private:
 
     /// Set to true if the result file is too large.
     std::atomic<bool> _resultFileSizeExceeded{false};
+    /// The size of the result that that exceeded the limit.
+    std::atomic<int64_t> _resultFileSizeErr{0};
 };
 
 }  // namespace lsst::qserv::qdisp

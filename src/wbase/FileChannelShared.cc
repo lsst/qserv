@@ -402,12 +402,14 @@ bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Ta
         uint64_t const maxTableSize = task->getMaxTableSize();
         // Fail the operation if the amount of data in the result set exceeds the requested
         // "large result" limit (in case one was specified).
-        LOGS(_log, LOG_LVL_TRACE, "bytesWritten=" << _bytesWritten << " max=" << maxTableSize);
-        if (maxTableSize > 0 && _bytesWritten > maxTableSize) {
-            string const err = "The result set size " + to_string(_bytesWritten) +
+        LOGS(_log, LOG_LVL_TRACE, "transmitsize=" << _transmitsize << " max=" << maxTableSize);
+        if (maxTableSize > 0 && _transmitsize > maxTableSize) {
+            string const err = "The result set size " + to_string(_transmitsize) +
                                " of a job exceeds the requested limit of " + to_string(maxTableSize) +
                                " bytes, task: " + task->getIdStr();
-            multiErr.insert(util::Error(util::Error::WORKER_RESULT_TOO_LARGE, util::Error::NONE, err));
+            // Given current hardware limitations, _transmitsize should always fit into an int64_t.
+            int64_t subCode = _transmitsize;
+            multiErr.insert(util::Error(util::Error::WORKER_RESULT_TOO_LARGE, subCode, err));
             LOGS(_log, LOG_LVL_ERROR, err);
             erred = true;
             return erred;

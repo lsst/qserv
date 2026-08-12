@@ -386,8 +386,9 @@ void UberJob::workerError(util::MultiError const& multiErr_, protojson::Executiv
         }
         _unassignJobs();
     } else {
-        // Get the error message to the user and kill the user query.
-        exec->addMultiError(multiErr_);
+        // Error messages have already been added to the executive.
+        // If the error was result file too large, then the executive needs to set a flag.
+        exec->checkForResultFileSizeExceededErr(errVect);
         exec->squash(string("UberJob::workerError ") + mErrMsg);
     }
 

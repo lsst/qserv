@@ -89,7 +89,7 @@ util::MultiError UberJobErrorMsg::multiErrorFromJson(nlohmann::json const& jsMEr
     for (auto const& jsElem : jsMErr) {
         try {
             auto const errCode = http::RequestBodyJSON::required<int>(jsElem, "eCode");
-            auto const subCode = http::RequestBodyJSON::required<int>(jsElem, "subCode");
+            auto const subCode = http::RequestBodyJSON::required<int64_t>(jsElem, "subCode");
             auto const count = http::RequestBodyJSON::required<int>(jsElem, "count");
             auto const eMsg = http::RequestBodyJSON::required<string>(jsElem, "eMsg");
             auto const& chunkIdsArray = jsElem["chunkIds"];
@@ -113,6 +113,7 @@ bool UberJobErrorMsg::equals(UberJobStatusMsg const& other) const {
             return equalsBase(other);
         }
     } catch (std::bad_cast& ex) {
+        LOGS(_log, LOG_LVL_DEBUG, cName(__func__) << " bad_cast exception=" << ex.what());
     }
     // different type
     return false;

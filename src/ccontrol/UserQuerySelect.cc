@@ -542,7 +542,6 @@ QueryState UserQuerySelect::join() {
     // Since all data are in, run final SQL commands like GROUP BY.
     size_t collectedBytes = 0;
     int64_t finalRows = 0;
-    bool const resultSizeLimitExceeded = exec->resultSizeLimitExceeded();
     if (!_infileMerger->finalize(collectedBytes, finalRows)) {
         successful = false;
         LOGS(_log, LOG_LVL_ERROR, "InfileMerger::finalize failed");
@@ -579,8 +578,14 @@ QueryState UserQuerySelect::join() {
         LOGS(_log, LOG_LVL_ERROR, "Joined everything (killed) QID=" << getQueryId());
         state = ERROR;
     } else {
-        auto const status = resultSizeLimitExceeded ? qmeta::QInfo::FAILED_LR : qmeta::QInfo::FAILED;
-        _qMetaUpdateStatus(status, collectedRows, collectedBytes, finalRows);
+        auto status = qmeta::QInfo::FAILED;
+        size_t errCollectedBytes = collectedBytes;
+        if (exec->isResultSizeLimitExceeded()) {
+            _errorExtra = "Query result size limit exceeded.";
+            status = qmeta::QInfo::FAILED_LR;
+            errCollectedBytes = exec->getResultFileSizeErr();
+        }
+        _qMetaUpdateStatus(status, collectedRows, errCollectedBytes, finalRows);
         LOGS(_log, LOG_LVL_ERROR,
              "Joined everything (failure!) QID=" << getQueryId() << " status=" << status);
         state = ERROR;
