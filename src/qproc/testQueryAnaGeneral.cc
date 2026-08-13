@@ -48,6 +48,8 @@
 
 // Qserv headers
 #include "ccontrol/ParseRunner.h"
+#include "css/CssAccess.h"
+#include "css/ScanTableParams.h"
 #include "mysql/MySqlConfig.h"
 #include "parser/ParseException.h"
 #include "qdisp/ChunkMeta.h"
@@ -2034,6 +2036,44 @@ BOOST_AUTO_TEST_CASE(NegatedSecondaryKeyPredicateNotUsedAsRestrictor) {
                 qsTest, "SELECT ra_Test FROM LSST.Object WHERE NOT (objectIdObjTest IN (1,2,3))");
         BOOST_CHECK_EQUAL(qs->getError(), "");
         BOOST_CHECK(qs->getSecIdxRestrictors() == nullptr);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(BareStarSelectIsClassifiedAsScan) {
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectId"}}}}}));
+    qsTest.css = lsst::qserv::css::CssAccess::createFromData(mapBuffer, /*readOnly=*/false);
+    qsTest.css->setScanTableParams("LSST", "Object", lsst::qserv::css::ScanTableParams(true, 1));
+
+    // "SELECT *" with no WHERE
+    {
+        std::shared_ptr<QuerySession> qs =
+                queryAnaHelper.buildQuerySession(qsTest, "SELECT * FROM LSST.Object");
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        auto const scanInfo = qs->getScanInfo();
+        BOOST_REQUIRE(scanInfo);
+        BOOST_CHECK_EQUAL(scanInfo->infoTables.size(), 1u);
+        BOOST_CHECK_EQUAL(scanInfo->scanRating, 1);
+    }
+
+    // Column list with no WHERE
+    {
+        std::shared_ptr<QuerySession> qs =
+                queryAnaHelper.buildQuerySession(qsTest, "SELECT objectId FROM LSST.Object");
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        auto const scanInfo = qs->getScanInfo();
+        BOOST_REQUIRE(scanInfo);
+        BOOST_CHECK_EQUAL(scanInfo->infoTables.size(), 1u);
+        BOOST_CHECK_EQUAL(scanInfo->scanRating, 1);
+    }
+
+    // COUNT(*) reads no specific columns and has no WHERE, so it's NOT a scan
+    {
+        std::shared_ptr<QuerySession> qs =
+                queryAnaHelper.buildQuerySession(qsTest, "SELECT COUNT(*) FROM LSST.Object");
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        auto const scanInfo = qs->getScanInfo();
+        BOOST_REQUIRE(scanInfo);
+        BOOST_CHECK_EQUAL(scanInfo->infoTables.size(), 0u);
     }
 }
 
