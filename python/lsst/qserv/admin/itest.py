@@ -55,7 +55,7 @@ class FrontEndError(Exception):
     frontend of Qserv. Inherits from Python's built-in Exception class.
     """
 
-    def __init__(self, context: str, error: str):
+    def __init__(self, context: str, error: str, subclass: str = "FrontEndError"):
         """
         Initializes the FrontEndError.
 
@@ -65,8 +65,10 @@ class FrontEndError(Exception):
             A descriptive error context.
         error : str
             A detailed error message.
+        subclass : str
+            The name of the subclass of FrontEndError. Defaults to "FrontEndError".
         """
-        super().__init__("FrontEndError")
+        super().__init__(subclass)
         self.message = f"{context}, error:{error}"
 
     def __str__(self) -> str:
@@ -74,6 +76,33 @@ class FrontEndError(Exception):
         Returns a string representation of the exception.
         """
         return self.message
+
+class FrontEndErrorNotFound404(FrontEndError):
+    """
+    A custom exception class for the http error code 404 reported by the REST API of the HTTP-based
+    frontend of Qserv. Inherits from Python's built-in Exception class.
+    """
+
+    def __init__(self, context: str, error: str):
+        """
+        Initializes the FrontEndErrorNotFound404.
+
+        Parameters
+        ----------
+        context : str
+            A descriptive error context.
+        error : str
+            A detailed error message.
+        """
+        super().__init__(context, error, "FrontEndErrorNotFound404")
+        self.message = f"{context}, error:{error}"
+
+    def __str__(self) -> str:
+        """
+        Returns a string representation of the exception.
+        """
+        return self.message
+
 
 
 class ITestQuery:
@@ -1209,8 +1238,14 @@ def run_http_ingest(
     # Cleanup the last database and table to ensure that the next steps of the test can run without issues.
     try:
         _http_delete_database(http_frontend_uri, user, password, database)
+    except FrontEndErrorNotFound404 as e:
+        _log.warning("[ EXPECTED ] %s", e)
+    except FrontEndError as e:
+        _log.error(e)
+        return False
     except Exception as e:
-        _log.warning(e)
+        _log.error("Failed to delete user database: %s, error: %s", database, e)
+        return False
 
     # Create the table and ingest data using the JSON option. Then query the table.
     try:
@@ -1312,8 +1347,28 @@ def run_http_ingest(
             except Exception as e:
                 _log.error(e)
                 return False
+
+        # Make the second attempt to delete the tables to ensure the frontend return http code 404.
+        for table in [table_json, table_json_utf8, table_csv, table_csv_utf8]:
+            try:
+                _http_delete_table(http_frontend_uri, user, password, database, table)
+            except FrontEndErrorNotFound404 as e:
+                _log.warning("[ EXPECTED ] %s", e)
+            except Exception as e:
+                _log.error(e)
+                return False
+
         try:
             _http_delete_database(http_frontend_uri, user, password, database)
+        except Exception as e:
+            _log.error(e)
+            return False
+
+        # Make the second attempt to delete the database to ensure the frontend return http code 404.
+        try:
+            _http_delete_database(http_frontend_uri, user, password, database)
+        except FrontEndErrorNotFound404 as e:
+            _log.warning("[ EXPECTED ] %s", e)
         except Exception as e:
             _log.error(e)
             return False
@@ -1635,7 +1690,7 @@ def _http_delete_database(
     elif resp.status_code == 404:
         resp_body = resp.json()
         error = resp_body["error"]
-        raise FrontEndError(f"Failed to delete user database: {database}, http_code: {resp.status_code}", error)
+        raise FrontEndErrorNotFound404(f"Failed to delete user database: {database}, http_code: {resp.status_code}", error)
     else:
         resp.raise_for_status()
 
@@ -1673,7 +1728,7 @@ def _http_delete_table(
     elif resp.status_code == 404:
         resp_body = resp.json()
         error = resp_body["error"]
-        raise FrontEndError(f"Failed to delete table: {table} from user database: {database}, http_code: {resp.status_code}", error)
+        raise FrontEndErrorNotFound404(f"Failed to delete table: {table} from user database: {database}, http_code: {resp.status_code}", error)
     else:
         resp.raise_for_status()
 
