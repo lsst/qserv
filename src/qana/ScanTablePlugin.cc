@@ -153,23 +153,22 @@ protojson::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stm
 #endif
         }
     }
+
     query::SelectList& sList = stmt.getSelectList();
     std::shared_ptr<query::ValueExprPtrVector> sVexpr = sList.getValueExprList();
-
     if (sVexpr) {
+        bool hasStar = false;
         query::ColumnRef::Vector cList;  // For each expr, get column refs.
-
-        typedef query::ValueExprPtrVector::const_iterator Iter;
-        for (Iter i = sVexpr->begin(), e = sVexpr->end(); i != e; ++i) {
-            (*i)->findColumnRefs(cList);
+        for (auto const& ve : *sVexpr) {
+            if (ve->isStar()) {
+                hasStar = true;  // a star reads every column
+                break;
+            }
+            ve->findColumnRefs(cList);
         }
-        // Resolve column refs, see if they include partitioned
-        // tables.
-        typedef query::ColumnRef::Vector::const_iterator ColIter;
-        for (ColIter i = cList.begin(), e = cList.end(); i != e; ++i) {
-            // FIXME: Need to resolve and see if it's a partitioned table.
-            hasSelectColumnRef = true;
-        }
+        // FIXME: Need to resolve and see if it's a partitioned table.
+        // If that happens, then the star check above also needs to be reworked.
+        hasSelectColumnRef = hasStar || !cList.empty();
     }
 
     StringPairVector scanTables;
