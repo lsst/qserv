@@ -73,11 +73,10 @@ void ScanTablePlugin::applyFinal(query::QueryContext& context) {
 
 struct getPartitioned : public query::TableRef::FuncC {
     getPartitioned(StringPairVector& sVector_) : sList(sVector_) {}
-    virtual void operator()(query::TableRef const& tRef) {
+    void operator()(query::TableRef const& tRef) override {
         StringPair entry(tRef.getDb(), tRef.getTable());
-        if (found.end() != found.find(entry)) return;
+        if (!found.insert(entry).second) return;
         sList.push_back(entry);
-        found.insert(entry);
     }
     std::set<StringPair> found;
     StringPairVector& sList;
@@ -87,8 +86,8 @@ struct getPartitioned : public query::TableRef::FuncC {
 StringPairVector filterPartitioned(query::TableRefList const& tList) {
     StringPairVector vector;
     getPartitioned gp(vector);
-    for (query::TableRefList::const_iterator i = tList.begin(), e = tList.end(); i != e; ++i) {
-        (**i).apply(gp);
+    for (auto const& tableRef : tList) {
+        tableRef->apply(gp);
     }
     return vector;
 }
@@ -118,12 +117,10 @@ protojson::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stm
     // the presence of a small-valued LIMIT should be enough to
     // de-classify a query as a scanning query.
 
-    bool hasSelectColumnRef = false;  // Requires row-reading for
-                                      // results
+    bool hasSelectColumnRef = false;  // Requires row-reading for results
     bool hasWhereColumnRef = false;   // Makes count(*) non-trivial
-    bool hasSecondaryKey = false;     // Using secondaryKey to restrict
-                                      // coverage, e.g., via objectId=123
-                                      // or objectId IN (123,133) ?
+    bool hasSecondaryKey = false;     // Using secondaryKey to restrict coverage, e.g., via
+                                      // objectId=123 or objectId IN (123,133) ?
 
     if (stmt.hasWhereClause()) {
         query::WhereClause& wc = stmt.getWhereClause();
