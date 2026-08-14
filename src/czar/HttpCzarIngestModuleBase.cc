@@ -365,7 +365,11 @@ json HttpCzarIngestModuleBase::_request(http::Method method, string const& url, 
                     errorMessageJson["failed_to_get_server_error"] = string(ex.what());
                 }
             }
-            throw http::Error(__func__, errorMessageJson.dump(), errorExt);
+            if (request->responseCode() == qhttp::STATUS_NOT_FOUND) {
+                throw http::ErrorNotFound404(__func__, errorMessageJson.dump(), errorExt);
+            } else {
+                throw http::Error(__func__, errorMessageJson.dump(), errorExt);
+            }
         }
     } else {
         // The client error message is expected to be available for requests which didn't finish

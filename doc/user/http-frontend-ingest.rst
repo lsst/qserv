@@ -897,6 +897,12 @@ For example:
 Deleting tables
 ---------------
 
+.. note::
+
+    As of the API version **60**, the service will return HTTP code ``404`` if the table does not exist.
+    The response body will contain the usual JSON object in which the ``success`` attribute will be set
+    to ``0`` and the ``error`` attribute will contain a message explaining details of the error.
+
 Existing tables can be deleted with the following service:
 
 ..  list-table::
@@ -920,7 +926,7 @@ For example:
 
     curl -k 'https://localhost:4041/ingest/table/user_gapon/employees' -X DELETE \
          -H 'Content-Type: application/json' \
-         -d'{"version":55}'
+         -d'{"version":60}'
 
 A few notes:
 
@@ -932,6 +938,12 @@ A few notes:
 
 Deleting user databases
 -----------------------
+
+.. note::
+
+    As of the API version **60**, the service will return HTTP code ``404`` if the database does not exist.
+    The response body will contain the usual JSON object in which the ``success`` attribute will be set
+    to ``0`` and the ``error`` attribute will contain a message explaining details of the error.
 
 Existing databases (including all tables within such databases) can be deleted with the following service:
 
@@ -953,7 +965,7 @@ For example:
 
     curl -k 'https://localhost:4041/ingest/database/user_gapon' -X DELETE \
          -H 'Content-Type: application/json' \
-         -d'{"version":55}'
+         -d'{"version":60}'
 
 A few notes:
 
