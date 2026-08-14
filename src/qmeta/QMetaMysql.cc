@@ -751,14 +751,12 @@ void QMetaMysql::addQueryMessages(QueryId queryId, shared_ptr<MessageStore> cons
         }
     }
     // Add the total number of cancel messages received.
-    if (cancelCount > 0 || execFailCount > 0) {
-        qmeta::QueryMessage qm(-1, "CANCELTOTAL", 0,
-                               string("{\"CANCEL_count\":") + to_string(cancelCount) +
-                                       ", \"EXECFAIL_count\":" + to_string(execFailCount) +
-                                       ", \"COMPLETE_count\":" + to_string(completeCount) + "}",
-                               qmeta::JobStatus::getNow(), MessageSeverity::MSG_INFO);
-        _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
-    }
+    qmeta::QueryMessage qm(-1, "CANCELTOTAL", 0,
+                           string("{\"CANCEL_count\":") + to_string(cancelCount) +
+                                   ", \"EXECFAIL_count\":" + to_string(execFailCount) +
+                                   ", \"COMPLETE_count\":" + to_string(completeCount) + "}",
+                           qmeta::JobStatus::getNow(), MessageSeverity::MSG_INFO);
+    _addQueryMessage(queryId, qm, cancelCount, completeCount, execFailCount, msgCountMap);
 
     for (auto const& elem : msgCountMap) {
         if (elem.second.count > _maxMsgSourceStore) {
@@ -857,9 +855,9 @@ chrono::time_point<chrono::system_clock> QMetaMysql::_getChunkMapUpdateTime(lock
 void QMetaMysql::_addQueryMessage(QueryId queryId, qmeta::QueryMessage const& qMsg, int& cancelCount,
                                   int& completeCount, int& execFailCount, map<string, ManyMsg>& msgCountMap) {
     // Don't add duplicate messages.
-    if (qMsg.msgSource == "DUPLICATE") return;
-    // Don't add MULTIERROR as it's all duplicates.
-    if (qMsg.msgSource == "MULTIERROR") return;
+    if (qMsg.msgSource == "DUPLICATE") {
+        return;
+    }
     // Don't add COMPLETE messages as no one is interested.
     if (qMsg.msgSource == "COMPLETE") {
         ++completeCount;

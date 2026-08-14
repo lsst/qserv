@@ -60,6 +60,22 @@ public:
         ABORTED     ///< Query execution was intentionally aborted
     };
 
+    static std::string qstatusToStr(QStatus qStatus) {
+        switch (qStatus) {
+            case EXECUTING:
+                return "EXECUTING";
+            case COMPLETED:
+                return "COMPLETED";
+            case FAILED:
+                return "FAILED";
+            case FAILED_LR:
+                return "FAILED_LR";
+            case ABORTED:
+                return "ABORTED";
+        }
+        throw std::runtime_error("QInfo::qstatusToStr invalid query status code: " + std::to_string(qStatus));
+    }
+
     /// Default constructor
     QInfo() : _qType(ANY), _qStatus(EXECUTING), _czarId(-1), _submitted(0), _completed(0), _returned(0) {}
 
