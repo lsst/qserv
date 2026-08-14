@@ -45,6 +45,7 @@
 #include "ccontrol/UserQueryProcessList.h"
 #include "ccontrol/UserQueryQueries.h"
 #include "ccontrol/UserQueryResources.h"
+#include "ccontrol/UserQueryResultDelete.h"
 #include "ccontrol/UserQuerySelect.h"
 #include "ccontrol/UserQuerySelectCountStar.h"
 #include "ccontrol/UserQuerySet.h"
@@ -77,6 +78,19 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryFactory");
 namespace lsst::qserv::ccontrol {
 
 using userQuerySharedResourcesPtr = std::shared_ptr<UserQuerySharedResources>;
+
+namespace {
+UserQuery::Ptr setBooleanGlobalVariable(std::string const& varName, std::string const& varValue, bool& flag) {
+    if (varValue == "0") {
+        flag = false;
+    } else if (varValue == "1") {
+        flag = true;
+    } else {
+        return std::make_shared<UserQueryInvalid>("Unsupported value for " + varName + ": " + varValue);
+    }
+    LOGS(_log, LOG_LVL_WARN, varName << "=" << (flag ? "1" : "0"));
+    return std::make_shared<UserQuerySet>(varName, varValue);
+}
 
 /**
  * @brief Determine if the table name in the FROM statement refers to PROCESSLIST table.
@@ -220,6 +234,7 @@ std::shared_ptr<UserQuerySharedResources> makeUserQuerySharedResources(
             std::make_shared<qmeta::QMetaSelect>(czarConfig->getMySqlQmetaConfig()), dbModels, czarName,
             czarConfig->getInteractiveChunkLimit());
 }
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////
 UserQueryFactory::UserQueryFactory(qproc::DatabaseModels::Ptr const& dbModels, std::string const& czarName)
@@ -289,15 +304,13 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
 
         // Parse SELECT
 
-        ParseRunner::Ptr parser;
+        query::SelectStmt::Ptr stmt;
         try {
-            parser = std::make_shared<ParseRunner>(query);
+            stmt = ParseRunner::makeSelectStmt(query);
         } catch (parser::ParseException& e) {
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
-        auto stmt = parser->getSelectStmt();
 
-        std::lock_guard focatoryLock(_factoryMtx);
         // handle special database/table names
         if (_stmtRefersToProcessListTable(stmt, defaultDb)) {
             return _makeUserQueryProcessList(stmt, _userQuerySharedResources, userQueryId, resultDb, aQuery,
@@ -382,13 +395,11 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
         }
         return uq;
     } else if (UserQueryType::isSelectResult(query, userJobId)) {
-        std::lock_guard factoryLock(_factoryMtx);
         auto uq = std::make_shared<UserQueryAsyncResult>(userJobId, _userQuerySharedResources->czarId,
                                                          _userQuerySharedResources->queryMetadata);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryAsyncResult: userJobId=" << userJobId);
         return uq;
     } else if (UserQueryType::isShowProcessList(query, full)) {
-        std::lock_guard factoryLock(_factoryMtx);
         LOGS(_log, LOG_LVL_DEBUG, "make UserQueryProcessList: full=" << (full ? 'y' : 'n'));
         try {
             return std::make_shared<UserQueryProcessList>(full, _userQuerySharedResources->qMetaSelect,
@@ -398,11 +409,26 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             return std::make_shared<UserQueryInvalid>(exc.what());
         }
     } else if (UserQueryType::isCall(query)) {
-        std::lock_guard factoryLock(_factoryMtx);
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+        std::string resultDeleteQueryId;
+        if (!UserQueryType::isResultDelete(query, resultDeleteQueryId)) {
+            return std::make_shared<UserQueryInvalid>("Only CALL QSERV_RESULT_DELETE is supported: " + query);
+        }
+        return std::make_shared<UserQueryResultDelete>(
+                _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb),
+                resultDeleteQueryId);
+#else
         auto parser = std::make_shared<ParseRunner>(
                 query, _userQuerySharedResources->makeUserQueryResources(userQueryId, resultDb));
         return parser->getUserQuery();
+#endif
     } else if (UserQueryType::isSet(query)) {
+        std::string varName, varValue;
+#ifdef QSERV_USE_HYRISE_SQL_PARSER
+        if (!UserQueryType::isSetGlobal(query, varName, varValue)) {
+            return std::make_shared<UserQueryInvalid>("Unsupported SET statement: " + query);
+        }
+#else
         ParseRunner::Ptr parser;
         try {
             parser = std::make_shared<ParseRunner>(query);
@@ -410,19 +436,18 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
             return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
         }
         auto uq = parser->getUserQuery();
-        std::lock_guard factoryLock(_factoryMtx);
         auto setQuery = std::static_pointer_cast<UserQuerySet>(uq);
-        if (setQuery->varName() == "QSERV_ROW_COUNTER_OPTIMIZATION") {
-            _useQservRowCounterOptimization = setQuery->varValue() != "0";
-            LOGS(_log, LOG_LVL_WARN,
-                 "QSERV_ROW_COUNTER_OPTIMIZATION=" << (_useQservRowCounterOptimization ? "1" : "0"));
-        } else if (setQuery->varName() == "QSERV_DEBUG_CZAR_NO_MERGE") {
-            _debugNoMerge = setQuery->varValue() != "0";
-            LOGS(_log, LOG_LVL_WARN, "QSERV_DEBUG_CZAR_NO_MERGE=" << (_debugNoMerge ? "1" : "0"));
+        varName = setQuery->varName();
+        varValue = setQuery->varValue();
+#endif
+        if (varName == "QSERV_ROW_COUNTER_OPTIMIZATION") {
+            return setBooleanGlobalVariable(varName, varValue, _useQservRowCounterOptimization);
+        } else if (varName == "QSERV_DEBUG_CZAR_NO_MERGE") {
+            return setBooleanGlobalVariable(varName, varValue, _debugNoMerge);
         }
-        return uq;
+        LOGS(_log, LOG_LVL_WARN, "Unsupported SET variable: " + varName);
+        return std::make_shared<UserQuerySet>(varName, varValue);
     } else {
-        std::lock_guard factoryLock(_factoryMtx);
         // something that we don't recognize
         auto uq = std::make_shared<UserQueryInvalid>("Invalid or unsupported query: " + query);
         return uq;

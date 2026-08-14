@@ -33,6 +33,7 @@
 
 // System headers
 #include <string>
+#include <vector>
 
 // Third-party headers
 
@@ -44,6 +45,7 @@
 
 // Qserv headers
 #include "mysql/MySqlConfig.h"
+#include "tests/ParserExpected.h"
 #include "qproc/QuerySession.h"
 #include "query/QueryContext.h"
 #include "query/SelectStmt.h"

@@ -94,7 +94,9 @@ void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T& clause
             valueExprRef.get() = valueExprMatch;
         } else if (matchIsRequired) {
             std::ostringstream os;
-            os << "Could not find a value expr match for " << *valueExprRef.get();
+            os << "qserv requires that expressions used in ORDER BY exactly match an entry in the SELECT "
+                  "list (using an alias if needed): \""
+               << valueExprRef.get()->sqlFragment(lsst::qserv::query::QueryTemplate::NO_ALIAS) << "\"";
             throw std::logic_error(os.str());
         }
     }

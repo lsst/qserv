@@ -85,6 +85,15 @@ boost::regex _callRe(R"(^call\s+.+$)",
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _setRe(R"(^set\s+.+$)", boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
+// regex extracting `SET GLOBAL <varName> = <value>`. GLOBAL is required, but the
+// value is intentionally not validated (left to the caller).
+boost::regex _setGlobalRe(R"(^set\s+global\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(\S.*?)\s*;?\s*$)",
+                          boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+// regex extracting the argument of `CALL QSERV_RESULT_DELETE(<queryId>)`
+boost::regex _resultDeleteRe(R"(^call\s+qserv_result_delete\s*\(\s*(\d+)\s*\)\s*;?\s*$)",
+                             boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
 }  // namespace
 
 namespace lsst::qserv::ccontrol {
@@ -180,6 +189,17 @@ bool UserQueryType::isCall(std::string const& query) {
     return boost::regex_match(query, _callRe);
 }
 
+bool UserQueryType::isResultDelete(std::string const& query, std::string& queryId) {
+    LOGS(_log, LOG_LVL_TRACE, "isResultDelete: " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _resultDeleteRe);
+    if (match) {
+        queryId = sm.str(1);
+        LOGS(_log, LOG_LVL_TRACE, "isResultDelete: queryId: " << queryId);
+    }
+    return match;
+}
+
 bool UserQueryType::isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& stmt, std::string& spelling) {
     if (stmt->hasWhereClause() || stmt->hasOrderBy() || stmt->hasGroupBy() || stmt->hasHaving()) {
         return false;
@@ -205,6 +225,18 @@ bool UserQueryType::isSet(std::string const& query) {
     bool match = boost::regex_match(query, sm, _setRe);
     if (match) {
         LOGS(_log, LOG_LVL_TRACE, "isSet: match");
+    }
+    return match;
+}
+
+bool UserQueryType::isSetGlobal(std::string const& query, std::string& varName, std::string& varValue) {
+    LOGS(_log, LOG_LVL_TRACE, "isSetGlobal (extract): " << query);
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _setGlobalRe);
+    if (match) {
+        varName = sm.str(1);
+        varValue = sm.str(2);
+        LOGS(_log, LOG_LVL_TRACE, "isSetGlobal: " << varName << "=" << varValue);
     }
     return match;
 }

@@ -5,6 +5,8 @@ target_include_directories(ccontrol PRIVATE
 )
 
 target_sources(ccontrol PRIVATE
+    HyriseAdapter.cc
+    HyriseDiagnostics.cc
     MergingHandler.cc
     ParseAdapters.cc
     ParseListener.cc
@@ -27,10 +29,15 @@ target_link_libraries(ccontrol PUBLIC
     cconfig
     css
     global
+    hyrise_sql_parser::sqlparser
     log
     parser
     sphgeom
 )
+
+if(QSERV_USE_HYRISE_SQL_PARSER)
+    target_compile_definitions(ccontrol PUBLIC QSERV_USE_HYRISE_SQL_PARSER)
+endif()
 
 install(TARGETS ccontrol)
 
@@ -58,7 +65,21 @@ FUNCTION(ccontrol_tests)
 ENDFUNCTION()
 
 ccontrol_tests(
-    testAntlr4GeneratedIR
     testCControl
+    testParserCorpus
     testUserQueryType
 )
+
+target_compile_definitions(testParserCorpus PRIVATE
+    QSERV_PARSER_CORPUS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata/parser-corpus"
+)
+
+if(QSERV_USE_HYRISE_SQL_PARSER)
+    ccontrol_tests(
+        testHyriseGeneratedIR
+    )
+else()
+    ccontrol_tests(
+        testAntlr4GeneratedIR
+    )
+endif()
