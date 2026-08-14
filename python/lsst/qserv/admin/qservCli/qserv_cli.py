@@ -53,6 +53,7 @@ from .opt import (
     env_ltd_password,
     env_ltd_user,
     env_mariadb_image,
+    env_ssl_proxy_image,
     env_qserv_image,
     env_run_base_image,
     env_user_build_image,
@@ -76,6 +77,7 @@ from .opt import (
     option_make,
     option_mariadb_image,
     option_mypy,
+    option_ssl_proxy_image,
     option_outdir,
     option_project,
     option_pull_image,
@@ -102,6 +104,7 @@ help_order = [
     "build-user-build-image",
     "build-run-base-image",
     "build-mariadb-image",
+    "build-ssl-proxy-image",
     "build-images",
     "build",
     "build-docs",
@@ -148,12 +151,14 @@ def qserv() -> None:
 @click.option(env_user_build_image.opt, is_flag=True)
 @click.option(env_run_base_image.opt, is_flag=True)
 @click.option(env_mariadb_image.opt, is_flag=True)
+@click.option(env_ssl_proxy_image.opt, is_flag=True)
 def show_qserv_environment(
     qserv_image: bool,
     build_image: bool,
     user_build_image: bool,
     run_base_image: bool,
     mariadb_image: bool,
+    ssl_proxy_image: bool,
 ) -> None:
     """Show qserv environment variables and default option values.
 
@@ -171,7 +176,9 @@ def show_qserv_environment(
         click.echo(env_run_base_image.val())
     if mariadb_image:
         click.echo(env_mariadb_image.val())
-    if any((qserv_image, build_image, user_build_image, run_base_image, mariadb_image)):
+    if ssl_proxy_image:
+        click.echo(env_ssl_proxy_image.val())
+    if any((qserv_image, build_image, user_build_image, run_base_image, mariadb_image, ssl_proxy_image)):
         return
     click.echo("Environment variables used for options:")
     click.echo(qserv_env_vals.describe())
@@ -366,6 +373,25 @@ def build_mariadb_image(
     "Build the mariadb image."
     launch.build_mariadb_image(
         mariadb_image=mariadb_image,
+        push_image=push_image,
+        pull_image=pull_image,
+        qserv_root=qserv_root,
+        dry=dry,
+    )
+
+
+@qserv.command()
+@option_ssl_proxy_image(help=env_ssl_proxy_image.help("The name of the ssl-proxy image to create."))
+@option_push_image()
+@option_pull_image()
+@option_qserv_root()
+@option_dry()
+def build_ssl_proxy_image(
+    ssl_proxy_image: str, qserv_root: str, push_image: bool, pull_image: bool, dry: bool
+) -> None:
+    "Build the ssl-proxy image."
+    launch.build_ssl_proxy_image(
+        ssl_proxy_image=ssl_proxy_image,
         push_image=push_image,
         pull_image=pull_image,
         qserv_root=qserv_root,
