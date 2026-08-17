@@ -102,6 +102,12 @@ public:
     static bool isCall(std::string const& query);
 
     /**
+     *  Returns true if query is `CALL QSERV_RESULT_DELETE(<queryId>)`
+     *  On a match, sets @p queryId to the numeric query id string (digits only).
+     */
+    static bool isResultDelete(std::string const& query, std::string& queryId);
+
+    /**
      *
      * @param stmt the statement to check
      * @param spelling if not nullptr will set the string to the spelling of
@@ -116,6 +122,12 @@ public:
 
     /// Returns true if query is SET (for variable assignment)
     static bool isSet(std::string const& query);
+
+    /**
+     *  Returns true if query is `SET GLOBAL <varName> = <value>`. On a match, sets @p varName and
+     *  @p varValue. The value is not validated here.
+     */
+    static bool isSetGlobal(std::string const& query, std::string& varName, std::string& varValue);
 };
 
 }  // namespace lsst::qserv::ccontrol

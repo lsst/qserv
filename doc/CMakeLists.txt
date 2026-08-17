@@ -19,11 +19,11 @@ add_custom_target(docs-linkcheck
     COMMENT "Checking documentation links with Sphinx"
     COMMAND ${SPHINX_EXECUTABLE}
         -b linkcheck
-        -d ${CMAKE_CURRENT_BINARY_DIR}/doctrees
+        -d ${CMAKE_CURRENT_BINARY_DIR}/doctrees-linkcheck
         -n -W
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/linkcheck
     BYPRODUCTS
-        ${CMAKE_CURRENT_BINARY_DIR}/doctrees
+        ${CMAKE_CURRENT_BINARY_DIR}/doctrees-linkcheck
         ${CMAKE_CURRENT_BINARY_DIR}/linkcheck
 )

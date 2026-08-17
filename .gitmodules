@@ -4,3 +4,7 @@
 [submodule "extern/log"]
 	path = extern/log
 	url = ../../lsst/log
+[submodule "extern/hyrise-sql-parser"]
+	path = extern/hyrise-sql-parser
+	url = ../../lsst/hyrise-sql-parser
+	branch = qserv-compat

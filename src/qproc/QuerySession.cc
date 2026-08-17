@@ -112,16 +112,14 @@ namespace lsst::qserv::qproc {
 ////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<query::SelectStmt> QuerySession::parseQuery(std::string const& statement) {
-    ccontrol::ParseRunner::Ptr parser;
     try {
-        parser = std::make_shared<ccontrol::ParseRunner>(statement);
+        return ccontrol::ParseRunner::makeSelectStmt(statement);
     } catch (parser::ParseException const& e) {
         LOGS(_log, LOG_LVL_DEBUG, "parse exception: " << e.what());
         _original = statement;
         _error = std::string("ParseException:") + e.what();
         return nullptr;
     }
-    return parser->getSelectStmt();
 }
 
 // Analyze SQL query issued by user
