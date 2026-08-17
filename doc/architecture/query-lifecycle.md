@@ -7,8 +7,10 @@ they diverge; update this doc when you change the code.*
 
 Two czar processes run the same `czar::Czar` core, differing only in name/transport;
 both also run a control HTTP server (`czar::HttpSvc`, `replication.http_port`) that
-**workers call back to** (`/queryjob-ready`, `/queryjob-error`, `/workerczarcomissue`,
-`/querystatus` replies, `/event` from the replication system).
+**workers call back to** (`/queryjob-ready`, `/queryjob-error`, `/workerczarcomissue`)
+and that the replication system notifies via `/event`. (The worker's answers to the
+czar's `/querystatus` polls ride the HTTP response to the czar's POST — they do not
+come through this server.)
 
 **mysql-proxy path** (`src/proxy/`): `mysql-proxy` runs `mysqlProxy.lua`, which calls
 into czar code via the `czarProxy` Lua extension. The Lua classifies each statement

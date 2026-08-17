@@ -13,9 +13,11 @@ hold catalog data that takes **days to weeks** to re-ingest. Before proposing an
 change, confirm it cannot cause Kubernetes or Argo CD to delete, recreate, or orphan
 those PVCs:
 
-- Renaming the chart, release, StatefulSet, or volumeClaimTemplate changes generated
-  PVC names → new empty volumes get bound and the old ones are stranded (or reclaimed,
-  depending on the StorageClass reclaim policy).
+- Renaming the chart, a StatefulSet, or a volumeClaimTemplate changes generated PVC
+  names → new empty volumes get bound and the old ones are stranded (or reclaimed,
+  depending on the StorageClass reclaim policy). STS names derive from the **chart
+  name**, not the Helm release name, so a release rename keeps PVC names — but it
+  changes the immutable selector labels and forces an STS delete/recreate.
 - Most `volumeClaimTemplates` spec fields are immutable; changes there force STS
   delete/recreate.
 - Argo CD prune/auto-sync could delete resources removed from the rendered chart. Sync
@@ -42,8 +44,10 @@ to existing PVCs.
 3. **Deployment config.** `qserv-deployments` repo (a separate git repo,
    conventionally checked out as a sibling: `../qserv-deployments/`; see its
    AGENTS.md): `deployments/usdf-qserv-{dev,int,prod}/application.yaml` pins chart
-   `targetRevision`; `values.yaml` pins image names, replica counts, storage
-   class/size, node tiers, and the external LoadBalancer. Update by PR to that repo.
+   `targetRevision`; `values.yaml` overrides node tiers, replica counts, ingest
+   enablement, and the external LoadBalancer. Image names and storage class/size come
+   from the chart's own `values.yaml`, pinned per chart release — the deployments
+   deliberately no longer override images. Update by PR to that repo.
 4. **Argo CD.** Watches `qserv-deployments` `main`. A human performs the sync in the
    Argo CD UI/CLI (manual by design). Rollout order matters: smig Jobs
    (`*-smig-job.yaml`) migrate DB schemas; StatefulSets restart pods against the

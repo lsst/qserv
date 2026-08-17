@@ -59,10 +59,10 @@ Python tooling under `/usr/local/python`, entered via `entrypoint`.
   compose-based integration suite (all three itest flavors) with container logs dumped
   on failure. Publishes images to GHCR (`packages: write`).
 - `docs.yaml` — builds Sphinx docs via `tox -e docs` (documenteer; **warnings are
-  errors**) and uploads to LSST-the-Docs (qserv.lsst.io) for tagged releases and
-  `tickets/*` PRs. Note: `doc/architecture/*.md` is excluded from the Sphinx build via
-  `exclude_patterns` in `doc/conf.py` — if you add *published* docs, wire them into a
-  toctree and expect `-W` strictness.
+  errors**) and uploads to LSST-the-Docs (qserv.lsst.io) on pushes to `main`,
+  published releases, and PRs from `tickets/*` branches. Note: `doc/architecture/*.md`
+  is excluded from the Sphinx build via `exclude_patterns` in `doc/conf.py` — if you
+  add *published* docs, wire them into a toctree and expect `-W` strictness.
 - `rebase_checker.yaml` — fails PRs whose ticket branch has `main` merged in; rebase
   ticket branches instead of merging main into them.
 

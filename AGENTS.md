@@ -22,9 +22,11 @@ fastest way to orient before touching unfamiliar subsystems.
   Qserv on Kubernetes. Never propose or perform chart changes, StatefulSet
   renames/deletions, `helm uninstall`, Argo CD sync/prune operations, or namespace
   deletions that could collaterally delete or orphan these PVCs without explicitly
-  flagging the risk and getting human confirmation. Note that renaming a release,
-  chart, or StatefulSet changes the generated PVC names, which strands or recreates
-  volumes. Argo CD sync is intentionally **manual** for this reason.
+  flagging the risk and getting human confirmation. Note that renaming the chart or a
+  StatefulSet changes the generated PVC names, which strands or recreates volumes
+  (STS names derive from the chart name, so a Helm release rename keeps PVC names —
+  but it changes immutable selector labels and still forces an STS delete/recreate).
+  Argo CD sync is intentionally **manual** for this reason.
 - **Trust the code over `doc/`:** Most of `doc/` is severely dated. The exceptions,
   which are current and trustworthy, are the user-guide sections *Asynchronous Query
   API* (`doc/user/async.rst`), *HTTP Frontend* (`doc/user/http-frontend*.rst`), and

@@ -22,7 +22,8 @@ Order: config (`wconfig::WorkerConfig`) → schedulers (GroupScheduler + Scan
 fast/med/slow + snail, blended by `wsched::BlendScheduler`) → `wpublish::QueriesAndChunks`
 global stats/booting threads → `wcontrol::SqlConnMgr` → `ChunkInventory` (retries
 `SELECT db FROM qservw_worker.Dbs` forever, 1 s loop — this doubles as the MariaDB
-readiness gate) → `Foreman` → results-dir GC (deletes *all* result files on restart) →
+readiness gate) → `Foreman` → results-dir GC (deletes *all* result files on restart;
+`results.clean_up_on_start`, default true) →
 `wcomms::HttpSvc` → a registry heartbeat thread POSTing worker name (the UUID from
 `qservw_worker.Id`, not the config name), FQDN, and both ports every ~1 s.
 

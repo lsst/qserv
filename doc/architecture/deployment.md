@@ -10,8 +10,13 @@ The Helm chart's StatefulSets create PVCs via `volumeClaimTemplates` — `worker
 catalog data that takes **days to weeks** to re-ingest. Releasing those PVCs by
 accident — through a rename that changes generated PVC names, an Argo CD prune, an STS
 recreate, or storage-class reclaim — is the largest operational risk of running Qserv
-on Kubernetes. Argo CD sync is **intentionally manual** as a guard. Treat every change
-to `deploy/helm/templates/*-sts.yaml`, release/chart names, labels/selectors, or
+on Kubernetes. Argo CD sync is **intentionally manual** as a guard. Note that the
+chart builds StatefulSet names from the **chart name** (`qserv-worker` → PVC
+`worker-data-qserv-worker-N`), not the Helm release name — so a release rename keeps
+PVC names, but it changes the immutable selector labels and forces an STS
+delete/recreate, while a chart or StatefulSet rename does change PVC names. Treat
+every change to
+`deploy/helm/templates/*-sts.yaml`, release/chart names, labels/selectors, or
 qserv-deployments as PVC-affecting until proven otherwise, and say so in the PR.
 
 ## Images
@@ -57,7 +62,8 @@ The same topology appears in docker-compose (dev/CI) and Kubernetes (production)
 
 `deploy/compose/docker-compose.yml`, driven by `./bin/qserv up|down`. Two workers,
 one czar (proxy + http), repl controller/registry + their MariaDBs. Container names are
-`$USER-<service>-1`. This is what integration tests (`./bin/qserv itest*`) run against.
+`$USER-<service>-1`. Note the proxy listens on **4040** here (deployments use 14040).
+This is what integration tests (`./bin/qserv itest*`) run against.
 Note the compose file passes fixed test passwords/keys (`CHANGEME`, `replauthkey`) —
 fine locally, never a pattern to copy elsewhere.
 
@@ -92,9 +98,13 @@ AGENTS.md with the deployment-change workflow. Layout:
   from `ghcr.io/lsst/charts` (`chart: qserv`, pinned `targetRevision`, e.g.
   `2026.8.1-rc2-23-g750048b57`) and this git repo for `values.yaml` (multi-source
   `$values` ref).
-- `values.yaml` — deployment overrides: image names, worker replica count (70 in dev
-  as of 2026-08), storage class `rubin-qserv-storage` + sizes, node tiers, external
-  LoadBalancer IP/allowed ranges.
+- `values.yaml` — deployment overrides: node tiers, worker replica count (70 in dev,
+  35 in int and prod as of 2026-08), ingest enablement, external LoadBalancer
+  IP/allowed ranges. Image names and storage (class `rubin-qserv-storage`, sizes such
+  as 10 Ti per worker) are **not** set here — they come from the chart's own
+  `values.yaml`, pinned per chart release. (The deployment values used to override
+  image names; that was deliberately removed — see qserv-deployments commit "Remove
+  image values".)
 
 Argo CD watches `main` of qserv-deployments and reconciles — but **sync is manual**: a
 human reviews the diff in Argo CD and syncs. Deploying a new Qserv version means: tag
