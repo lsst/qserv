@@ -1,7 +1,7 @@
-qservImageName: ghcr.io/lsst/qserv:2026.8.1-rc1-8-g3802bd501
-mariadbImageName: ghcr.io/lsst/qserv-mariadb:2026.8.1-rc1
-sslProxyImageName: qserv/mysql-proxy-ssl:latest
-ingestHelperImageName: ghcr.io/lsst/qserv-build-base:2026.8.1-rc1
+qservImageName: ""
+mariadbImageName: ""
+sslProxyImageName: ""
+ingestHelperImageName: ""
 
 qservImagePullPolicy: IfNotPresent
 mariadbImagePullPolicy: IfNotPresent
