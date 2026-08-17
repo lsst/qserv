@@ -262,7 +262,7 @@ json HttpCzarIngestModule::_ingestData() {
 
 json HttpCzarIngestModule::_deleteDatabase() {
     debug(__func__);
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 60);
 
     auto const databaseName = params().at("database");
     setTimeoutSec(max(1U, body().optional<unsigned int>("timeout", timeoutSec())));
@@ -281,7 +281,7 @@ json HttpCzarIngestModule::_deleteDatabase() {
 
 json HttpCzarIngestModule::_deleteTable() {
     debug(__func__);
-    checkApiVersion(__func__, 34);
+    checkApiVersion(__func__, 60);
 
     auto const databaseName = params().at("database");
     auto const tableName = params().at("table");
