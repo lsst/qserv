@@ -73,11 +73,10 @@ void ScanTablePlugin::applyFinal(query::QueryContext& context) {
 
 struct getPartitioned : public query::TableRef::FuncC {
     getPartitioned(StringPairVector& sVector_) : sList(sVector_) {}
-    virtual void operator()(query::TableRef const& tRef) {
+    void operator()(query::TableRef const& tRef) override {
         StringPair entry(tRef.getDb(), tRef.getTable());
-        if (found.end() != found.find(entry)) return;
+        if (!found.insert(entry).second) return;
         sList.push_back(entry);
-        found.insert(entry);
     }
     std::set<StringPair> found;
     StringPairVector& sList;
@@ -87,8 +86,8 @@ struct getPartitioned : public query::TableRef::FuncC {
 StringPairVector filterPartitioned(query::TableRefList const& tList) {
     StringPairVector vector;
     getPartitioned gp(vector);
-    for (query::TableRefList::const_iterator i = tList.begin(), e = tList.end(); i != e; ++i) {
-        (**i).apply(gp);
+    for (auto const& tableRef : tList) {
+        tableRef->apply(gp);
     }
     return vector;
 }
@@ -118,12 +117,10 @@ protojson::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stm
     // the presence of a small-valued LIMIT should be enough to
     // de-classify a query as a scanning query.
 
-    bool hasSelectColumnRef = false;  // Requires row-reading for
-                                      // results
+    bool hasSelectColumnRef = false;  // Requires row-reading for results
     bool hasWhereColumnRef = false;   // Makes count(*) non-trivial
-    bool hasSecondaryKey = false;     // Using secondaryKey to restrict
-                                      // coverage, e.g., via objectId=123
-                                      // or objectId IN (123,133) ?
+    bool hasSecondaryKey = false;     // Using secondaryKey to restrict coverage, e.g., via
+                                      // objectId=123 or objectId IN (123,133) ?
 
     if (stmt.hasWhereClause()) {
         query::WhereClause& wc = stmt.getWhereClause();
@@ -153,23 +150,22 @@ protojson::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stm
 #endif
         }
     }
+
     query::SelectList& sList = stmt.getSelectList();
     std::shared_ptr<query::ValueExprPtrVector> sVexpr = sList.getValueExprList();
-
     if (sVexpr) {
+        bool hasStar = false;
         query::ColumnRef::Vector cList;  // For each expr, get column refs.
-
-        typedef query::ValueExprPtrVector::const_iterator Iter;
-        for (Iter i = sVexpr->begin(), e = sVexpr->end(); i != e; ++i) {
-            (*i)->findColumnRefs(cList);
+        for (auto const& ve : *sVexpr) {
+            if (ve->isStar()) {
+                hasStar = true;  // a star reads every column
+                break;
+            }
+            ve->findColumnRefs(cList);
         }
-        // Resolve column refs, see if they include partitioned
-        // tables.
-        typedef query::ColumnRef::Vector::const_iterator ColIter;
-        for (ColIter i = cList.begin(), e = cList.end(); i != e; ++i) {
-            // FIXME: Need to resolve and see if it's a partitioned table.
-            hasSelectColumnRef = true;
-        }
+        // FIXME: Need to resolve and see if it's a partitioned table.
+        // If that happens, then the star check above also needs to be reworked.
+        hasSelectColumnRef = hasStar || !cList.empty();
     }
 
     StringPairVector scanTables;
