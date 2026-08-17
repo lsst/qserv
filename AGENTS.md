@@ -22,11 +22,10 @@ fastest way to orient before touching unfamiliar subsystems.
   Qserv on Kubernetes. Never propose or perform chart changes, StatefulSet
   renames/deletions, `helm uninstall`, Argo CD sync/prune operations, or namespace
   deletions that could collaterally delete or orphan these PVCs without explicitly
-  flagging the risk and getting human confirmation. Note that renaming the chart or a
-  StatefulSet changes the generated PVC names, which strands or recreates volumes
-  (STS names derive from the chart name, so a Helm release rename keeps PVC names —
-  but it changes immutable selector labels and still forces an STS delete/recreate).
-  Argo CD sync is intentionally **manual** for this reason.
+  flagging the risk and getting human confirmation. Renames are dangerous even when
+  nothing is deleted: chart/StatefulSet renames change the generated PVC names, and
+  even a release rename forces an STS recreate. Argo CD sync is intentionally
+  **manual** for this reason. Mechanics in `doc/architecture/deployment.md`.
 - **Trust the code over `doc/`:** Most of `doc/` is severely dated. The exceptions,
   which are current and trustworthy, are the user-guide sections *Asynchronous Query
   API* (`doc/user/async.rst`), *HTTP Frontend* (`doc/user/http-frontend*.rst`), and
@@ -84,10 +83,9 @@ git submodule update --init                 # once, after clone
   container runs them (`ARGS=-jN` parallelizes). A single suite can be run from the
   build dir, e.g. `ctest -R testCss`.
 - Formatting is enforced: clang-format via `src/.clang-format` (Google-based, 110 cols,
-  4-space indent, includes NOT sorted) —
-  `qserv build` fails in CI with `--clang-format CHECK`; use `--clang-format REFORMAT`
-  locally. Python: ruff (line length 110, py312) and strict-ish mypy — configs in
-  `pyproject.toml`.
+  4-space indent, includes NOT sorted); CI runs `--clang-format CHECK`, use
+  `--clang-format REFORMAT` locally. Python: ruff (line length 110, py312) and
+  strict-ish mypy — configs in `pyproject.toml`.
 - Docs build: `tox -e docs` (sphinx/documenteer, warnings are errors).
 
 ## Conventions
@@ -109,11 +107,9 @@ git submodule update --init                 # once, after clone
 
 ## Deployments (context, not something to do casually)
 
-USDF deployments (dev/int/prod) are Argo CD Applications defined in the
-`qserv-deployments` repo; each points at the published Helm chart
-(`ghcr.io/lsst/charts/qserv`) plus a per-deployment `values.yaml`. Release flow: push a
-tag like `2026.8.1-rc2` → CI publishes images `ghcr.io/lsst/qserv*:<git-describe>` →
-chart is published to `ghcr.io/lsst/charts` → bump `targetRevision`/image names in
-`qserv-deployments` → human syncs in Argo CD (sync is deliberately manual). See
-`doc/architecture/deployment.md` before touching any of this, and re-read the PVC
-caution above.
+USDF deployments (dev/int/prod) are Argo CD Applications in the `qserv-deployments`
+repo, each pinning a published chart version (`ghcr.io/lsst/charts/qserv`, which
+carries matching image tags) plus per-deployment values. Release flow: push a tag like
+`2026.8.1-rc2` → CI publishes images → chart published to `ghcr.io/lsst/charts` →
+bump `targetRevision` in qserv-deployments → human syncs in Argo CD (deliberately
+manual). See `doc/architecture/deployment.md` first, and re-read the PVC caution.

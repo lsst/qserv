@@ -53,19 +53,9 @@ to existing PVCs.
    (`*-smig-job.yaml`) migrate DB schemas; StatefulSets restart pods against the
    migrated schemas.
 
-## Topology reference (what a deployment looks like)
-
-- `qserv-czar` STS: containers `mariadb` (result tables + qmeta/css), `mysql-proxy`
-  (port 14040, SQL frontend), `czar-http` (port 4048, HTTP/REST frontend). PVC `czar-data`.
-- `qserv-worker` STS ×N: `mariadb` (chunk data), `worker-svc` (`qserv-worker-http`,
-  port 25010), `repl-worker` (`qserv-replica-worker`). PVC `worker-data`.
-- `qserv-repl` STS: `mariadb` (replication config/state DB) + `repl-controller`
-  (`qserv-replica-master-http`, port 25081). PVC `repl-data`.
-- `qserv-registry` Deployment (`qserv-replica-registry`, port 25082): service
-  discovery for workers/czars.
-- Optional `ingest` STS and `czar-external-svc` (MetalLB LoadBalancer at USDF).
-- Environment presets also exist in-repo: `deploy/helm/environments/usdf-{dev,int,prod}.yaml`
-  (the qserv-deployments values are the ones actually deployed).
+Deployment topology (StatefulSets, containers, ports, PVCs, optional services) is
+documented in `doc/architecture/deployment.md` — read it there rather than
+duplicating it here.
 
 ## Local sanity checks for chart changes
 

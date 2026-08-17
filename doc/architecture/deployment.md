@@ -15,9 +15,9 @@ chart builds StatefulSet names from the **chart name** (`qserv-worker` → PVC
 `worker-data-qserv-worker-N`), not the Helm release name — so a release rename keeps
 PVC names, but it changes the immutable selector labels and forces an STS
 delete/recreate, while a chart or StatefulSet rename does change PVC names. Treat
-every change to
-`deploy/helm/templates/*-sts.yaml`, release/chart names, labels/selectors, or
-qserv-deployments as PVC-affecting until proven otherwise, and say so in the PR.
+every change to `deploy/helm/templates/*-sts.yaml`, release/chart names,
+labels/selectors, or qserv-deployments as PVC-affecting until proven otherwise, and
+say so in the PR.
 
 ## Images
 
@@ -102,9 +102,8 @@ AGENTS.md with the deployment-change workflow. Layout:
   35 in int and prod as of 2026-08), ingest enablement, external LoadBalancer
   IP/allowed ranges. Image names and storage (class `rubin-qserv-storage`, sizes such
   as 10 Ti per worker) are **not** set here — they come from the chart's own
-  `values.yaml`, pinned per chart release. (The deployment values used to override
-  image names; that was deliberately removed — see qserv-deployments commit "Remove
-  image values".)
+  `values.yaml`, pinned per chart release (image overrides were deliberately removed;
+  see qserv-deployments commit "Remove image values").
 
 Argo CD watches `main` of qserv-deployments and reconciles — but **sync is manual**: a
 human reviews the diff in Argo CD and syncs. Deploying a new Qserv version means: tag
