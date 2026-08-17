@@ -2,7 +2,9 @@ from documenteer.conf.guide import *
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["misc", "CMakeLists.txt"]
+# "architecture" holds developer/agent-oriented markdown notes that are not part
+# of the published guide (see architecture/README.md).
+exclude_patterns = ["misc", "CMakeLists.txt", "architecture"]
 
 # Add any URL patterns to ignore (e.g. for private sites, or sites that
 # are frequently down).
