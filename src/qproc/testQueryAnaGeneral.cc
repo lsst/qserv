@@ -1999,6 +1999,44 @@ BOOST_AUTO_TEST_CASE(AngSepNotEqualsAlongsideValidEdgeStillFilters) {
                 actual.find("<>5") != std::string::npos || actual.find("<> 5") != std::string::npos);
 }
 
+BOOST_AUTO_TEST_CASE(NegatedSecondaryKeyPredicateNotUsedAsRestrictor) {
+    qsTest.sqlConfig = SqlConfig(
+            SqlConfig::MockDbTableColumns({{"LSST", {{"Object", {"objectIdObjTest", "ra_Test"}}}}}));
+    qsTest.css = lsst::qserv::css::CssAccess::createFromData(mapBuffer, /*readOnly=*/false);
+
+    // Equality on a director column *should* produce a restrictor (see opposite cases below).
+    {
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(
+                qsTest, "SELECT ra_Test FROM LSST.Object WHERE objectIdObjTest = 42");
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        BOOST_CHECK(qs->getSecIdxRestrictors() != nullptr);
+    }
+
+    // "col NOT IN (...)" is exclusionary rather than selecting specific values; should not restrict.
+    {
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(
+                qsTest, "SELECT ra_Test FROM LSST.Object WHERE objectIdObjTest NOT IN (1,2,3)");
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        BOOST_CHECK(qs->getSecIdxRestrictors() == nullptr);
+    }
+
+    // Same as above, but with "NOT (col = ...)"
+    {
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(
+                qsTest, "SELECT ra_Test FROM LSST.Object WHERE NOT (objectIdObjTest = 42)");
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        BOOST_CHECK(qs->getSecIdxRestrictors() == nullptr);
+    }
+
+    // "NOT (col IN (...))" negates the whole IN via enclosing factor; also should not restrict.
+    {
+        std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(
+                qsTest, "SELECT ra_Test FROM LSST.Object WHERE NOT (objectIdObjTest IN (1,2,3))");
+        BOOST_CHECK_EQUAL(qs->getError(), "");
+        BOOST_CHECK(qs->getSecIdxRestrictors() == nullptr);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(DirectorChildSpatialJoin) {
     std::string stmt =
             "select count(*) from LSST.Object o, LSST.Source s "
