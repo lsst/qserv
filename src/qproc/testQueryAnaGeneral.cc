@@ -1605,6 +1605,37 @@ BOOST_AUTO_TEST_SUITE_END()
 
 /// table JOIN table syntax
 BOOST_FIXTURE_TEST_SUITE(JoinSyntax, QueryAnaFixture)
+BOOST_AUTO_TEST_CASE(ImplicitJoin) {
+    std::vector<std::pair<std::string, std::string>> const joinForms = {
+            {"JOIN", "JOIN"},
+            {"INNER JOIN", PARSER_EXPECTED("JOIN", "INNER JOIN")},
+    };
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"foo", "objectIdObjTest"}}, {"Source", {"ra", "decl", "objectIdSourceTest"}}}}}));
+
+    for (auto const& [inputJoin, expectedJoin] : joinForms) {
+        BOOST_TEST_CONTEXT("join form: " << inputJoin) {
+            std::string const stmt = "SELECT s.ra, s.decl, o.foo FROM Source s " + inputJoin +
+                                     " Object o WHERE s.objectIdSourceTest = o.objectIdObjTest "
+                                     "AND o.objectIdObjTest = 430209694171136;";
+            std::string const expected =
+                    "SELECT `s`.`ra` AS `s.ra`,`s`.`decl` AS `s.decl`,`o`.`foo` AS `o.foo` "
+                    "FROM `LSST`.`Source_100` AS `s` " +
+                    expectedJoin +
+                    " `LSST`.`Object_100` AS `o` "
+                    "WHERE `s`.`objectIdSourceTest`=`o`.`objectIdObjTest` "
+                    "AND `o`.`objectIdObjTest`=430209694171136";
+
+            auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
+            BOOST_REQUIRE_EQUAL(queries.size(), 3);
+            BOOST_CHECK_EQUAL(queries[0], expected);
+            BOOST_CHECK(queries[1].empty());
+            BOOST_CHECK(queries[2].empty());
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(NoSpec) {
     std::string stmt =
             "SELECT s1.foo, s2.foo AS s2_foo "
