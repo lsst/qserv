@@ -71,9 +71,12 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
         // "UNION JOIN" is not expected to parse.
         ParseErrorQueryInfo(
                 "SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;",
-                "ParseException:Failed to instantiate query: \"SELECT s1.foo, s2.foo AS s2_foo FROM Source "
-                "s1 UNION "
-                "JOIN Source s2 WHERE s1.bar = s2.bar;\""),
+                PARSER_EXPECTED(
+                        "ParseException:syntax error, unexpected JOIN, expecting SELECT or '(' (line 0, "
+                        "column 53) in query: \"SELECT s1.foo, s2.foo AS s2_foo FROM Source s1 UNION JOIN "
+                        "Source s2 WHERE s1.bar = s2.bar;\"",
+                        "ParseException:Failed to instantiate query: \"SELECT s1.foo, s2.foo AS s2_foo FROM "
+                        "Source s1 UNION JOIN Source s2 WHERE s1.bar = s2.bar;\"")),
 
         // The qserv manual says:
         // "Expressions/functions in ORDER BY clauses are not allowed
@@ -89,17 +92,29 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
                         "ParseException:Error parsing query, near \"ABS(iE1_SG)\", qserv does not "
                         "support functions in ORDER BY.")),
 
-        ParseErrorQueryInfo("SELECT foo from Filter f limit 5 garbage query !#$%!#$",
-                            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 "
-                            "garbage query !#$%!#$\""),
+        ParseErrorQueryInfo(
+                "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+                PARSER_EXPECTED("ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
+                                "file (line 0, column 33) in query: \"SELECT foo from Filter f limit 5 "
+                                "garbage query !#$%!#$\"",
+                                "ParseException:Failed to instantiate query: \"SELECT foo from Filter f "
+                                "limit 5 garbage query !#$%!#$\"")),
 
-        ParseErrorQueryInfo("SELECT foo from Filter f limit 5 garbage query !#$%!#$",
-                            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 "
-                            "garbage query !#$%!#$\""),
+        ParseErrorQueryInfo(
+                "SELECT foo from Filter f limit 5 garbage query !#$%!#$",
+                PARSER_EXPECTED("ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
+                                "file (line 0, column 33) in query: \"SELECT foo from Filter f limit 5 "
+                                "garbage query !#$%!#$\"",
+                                "ParseException:Failed to instantiate query: \"SELECT foo from Filter f "
+                                "limit 5 garbage query !#$%!#$\"")),
 
-        ParseErrorQueryInfo("SELECT foo from Filter f limit 5; garbage query !#$%!#$",
-                            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5; "
-                            "garbage query !#$%!#$\""),
+        ParseErrorQueryInfo(
+                "SELECT foo from Filter f limit 5; garbage query !#$%!#$",
+                PARSER_EXPECTED("ParseException:syntax error, unexpected IDENTIFIER, expecting end of "
+                                "file (line 0, column 34) in query: \"SELECT foo from Filter f limit 5; "
+                                "garbage query !#$%!#$\"",
+                                "ParseException:Failed to instantiate query: \"SELECT foo from Filter f "
+                                "limit 5; garbage query !#$%!#$\"")),
 
         ParseErrorQueryInfo(
                 "SELECT count(*) AS n, AVG(ra_PS), AVG(decl_PS), _chunkId FROM Object GROUP BY _chunkId;",
@@ -134,8 +149,12 @@ static const std::vector<ParseErrorQueryInfo> PARSE_ERROR_QUERIES = {
                 "LECT sce.filterName,sce.field "
                 "FROM LSST.Science_Ccd_Exposure AS sce "
                 "WHERE sce.field=535 AND sce.camcol LIKE '%' ",
-                "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field "
-                "FROM LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""),
+                PARSER_EXPECTED(
+                        "ParseException:syntax error, unexpected IDENTIFIER, expecting SELECT or '(' (line "
+                        "0, column 0) in query: \"LECT sce.filterName,sce.field FROM "
+                        "LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"",
+                        "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field FROM "
+                        "LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"")),
 
         // per testQueryAnaGeneral: CASE in column spec is illegal.
         ParseErrorQueryInfo(
