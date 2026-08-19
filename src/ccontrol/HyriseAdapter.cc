@@ -617,6 +617,10 @@ std::shared_ptr<query::JoinSpec> buildJoinSpec(hsql::JoinDefinition const* join)
         // natural/cross joins have no specification
         return nullptr;
     }
+    if (join->type == hsql::kJoinInner) {
+        // Implicit join (no JOIN ... ON or USING)
+        return nullptr;
+    }
     unsupported("join without ON or USING");
 }
 
