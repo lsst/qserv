@@ -1439,14 +1439,22 @@ BOOST_AUTO_TEST_CASE(dm681) {
 
     stmt = "SELECT foo from Filter f limit 5 garbage query !#$%!#$";
     stmt2 = "SELECT foo from Filter f limit 5; garbage query !#$%!#$";
-    char const expectedErr[] =
+    char const expectedErr[] = PARSER_EXPECTED(
+            "ParseException:syntax error, unexpected IDENTIFIER, expecting end of file (line 0, column 33) "
+            "in query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\"",
             "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query "
-            "!#$%!#$\"";
+            "!#$%!#$\"");
+    char const expectedErr2[] = PARSER_EXPECTED(
+            "ParseException:syntax error, unexpected IDENTIFIER, expecting end of file (line 0, column 34) "
+            "in query: \"SELECT foo from Filter f limit 5; garbage query !#$%!#$\"",
+            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5; garbage query "
+            "!#$%!#$\"");
+
     std::shared_ptr<QuerySession> qs;
     qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
-    qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
+    qs = queryAnaHelper.buildQuerySession(qsTest, stmt2);
+    BOOST_CHECK_EQUAL(qs->getError(), expectedErr2);
 }
 
 BOOST_AUTO_TEST_CASE(FuncExprPred) {
@@ -1538,9 +1546,14 @@ BOOST_AUTO_TEST_CASE(Garbled) {
             "FROM LSST.Science_Ccd_Exposure AS sce "
             "WHERE sce.field=535 AND sce.camcol LIKE '%' ";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    BOOST_CHECK_EQUAL(qs->getError(),
-                      "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field "
-                      "FROM LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"");
+    BOOST_CHECK_EQUAL(
+            qs->getError(),
+            PARSER_EXPECTED(
+                    "ParseException:syntax error, unexpected IDENTIFIER, expecting SELECT or '(' (line 0, "
+                    "column 0) in query: \"LECT sce.filterName,sce.field FROM LSST.Science_Ccd_Exposure AS "
+                    "sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"",
+                    "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field FROM "
+                    "LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
