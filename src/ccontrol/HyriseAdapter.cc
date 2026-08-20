@@ -617,6 +617,10 @@ std::shared_ptr<query::JoinSpec> buildJoinSpec(hsql::JoinDefinition const* join)
         // natural/cross joins have no specification
         return nullptr;
     }
+    if (join->type == hsql::kJoinInner) {
+        // Implicit join (no JOIN ... ON or USING)
+        return nullptr;
+    }
     unsupported("join without ON or USING");
 }
 
@@ -770,7 +774,12 @@ std::shared_ptr<query::SelectStmt> HyriseAdapter::makeSelectStmt(std::string con
     hsql::SQLParser::parse(sql, &result);
 
     if (!result.isValid() || result.size() == 0) {
-        throw parser::ParseException("Failed to instantiate query: \"" + sql + '"');
+        if (result.errorMsg() != nullptr) {
+            throw parser::ParseException(std::string(result.errorMsg()) + " (line " +
+                                         std::to_string(result.errorLine()) + ", column " +
+                                         std::to_string(result.errorColumn()) + ") in query: \"" + sql + '"');
+        }
+        throw parser::ParseException("no statements found in query: \"" + sql + '"');
     }
 
     if (result.size() > 1) {

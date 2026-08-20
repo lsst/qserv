@@ -1439,14 +1439,22 @@ BOOST_AUTO_TEST_CASE(dm681) {
 
     stmt = "SELECT foo from Filter f limit 5 garbage query !#$%!#$";
     stmt2 = "SELECT foo from Filter f limit 5; garbage query !#$%!#$";
-    char const expectedErr[] =
+    char const expectedErr[] = PARSER_EXPECTED(
+            "ParseException:syntax error, unexpected IDENTIFIER, expecting end of file (line 0, column 33) "
+            "in query: \"SELECT foo from Filter f limit 5 garbage query !#$%!#$\"",
             "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5 garbage query "
-            "!#$%!#$\"";
+            "!#$%!#$\"");
+    char const expectedErr2[] = PARSER_EXPECTED(
+            "ParseException:syntax error, unexpected IDENTIFIER, expecting end of file (line 0, column 34) "
+            "in query: \"SELECT foo from Filter f limit 5; garbage query !#$%!#$\"",
+            "ParseException:Failed to instantiate query: \"SELECT foo from Filter f limit 5; garbage query "
+            "!#$%!#$\"");
+
     std::shared_ptr<QuerySession> qs;
     qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
     BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
-    qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    BOOST_CHECK_EQUAL(qs->getError(), expectedErr);
+    qs = queryAnaHelper.buildQuerySession(qsTest, stmt2);
+    BOOST_CHECK_EQUAL(qs->getError(), expectedErr2);
 }
 
 BOOST_AUTO_TEST_CASE(FuncExprPred) {
@@ -1538,9 +1546,14 @@ BOOST_AUTO_TEST_CASE(Garbled) {
             "FROM LSST.Science_Ccd_Exposure AS sce "
             "WHERE sce.field=535 AND sce.camcol LIKE '%' ";
     std::shared_ptr<QuerySession> qs = queryAnaHelper.buildQuerySession(qsTest, stmt);
-    BOOST_CHECK_EQUAL(qs->getError(),
-                      "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field "
-                      "FROM LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"");
+    BOOST_CHECK_EQUAL(
+            qs->getError(),
+            PARSER_EXPECTED(
+                    "ParseException:syntax error, unexpected IDENTIFIER, expecting SELECT or '(' (line 0, "
+                    "column 0) in query: \"LECT sce.filterName,sce.field FROM LSST.Science_Ccd_Exposure AS "
+                    "sce WHERE sce.field=535 AND sce.camcol LIKE '%' \"",
+                    "ParseException:Failed to instantiate query: \"LECT sce.filterName,sce.field FROM "
+                    "LSST.Science_Ccd_Exposure AS sce WHERE sce.field=535 AND sce.camcol LIKE '%' \""));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -1605,6 +1618,37 @@ BOOST_AUTO_TEST_SUITE_END()
 
 /// table JOIN table syntax
 BOOST_FIXTURE_TEST_SUITE(JoinSyntax, QueryAnaFixture)
+BOOST_AUTO_TEST_CASE(ImplicitJoin) {
+    std::vector<std::pair<std::string, std::string>> const joinForms = {
+            {"JOIN", "JOIN"},
+            {"INNER JOIN", PARSER_EXPECTED("JOIN", "INNER JOIN")},
+    };
+    qsTest.sqlConfig = SqlConfig(SqlConfig::MockDbTableColumns(
+            {{"LSST",
+              {{"Object", {"foo", "objectIdObjTest"}}, {"Source", {"ra", "decl", "objectIdSourceTest"}}}}}));
+
+    for (auto const& [inputJoin, expectedJoin] : joinForms) {
+        BOOST_TEST_CONTEXT("join form: " << inputJoin) {
+            std::string const stmt = "SELECT s.ra, s.decl, o.foo FROM Source s " + inputJoin +
+                                     " Object o WHERE s.objectIdSourceTest = o.objectIdObjTest "
+                                     "AND o.objectIdObjTest = 430209694171136;";
+            std::string const expected =
+                    "SELECT `s`.`ra` AS `s.ra`,`s`.`decl` AS `s.decl`,`o`.`foo` AS `o.foo` "
+                    "FROM `LSST`.`Source_100` AS `s` " +
+                    expectedJoin +
+                    " `LSST`.`Object_100` AS `o` "
+                    "WHERE `s`.`objectIdSourceTest`=`o`.`objectIdObjTest` "
+                    "AND `o`.`objectIdObjTest`=430209694171136";
+
+            auto queries = queryAnaHelper.getInternalQueries(qsTest, stmt);
+            BOOST_REQUIRE_EQUAL(queries.size(), 3);
+            BOOST_CHECK_EQUAL(queries[0], expected);
+            BOOST_CHECK(queries[1].empty());
+            BOOST_CHECK(queries[2].empty());
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(NoSpec) {
     std::string stmt =
             "SELECT s1.foo, s2.foo AS s2_foo "
