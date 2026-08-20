@@ -2382,6 +2382,44 @@ BOOST_DATA_TEST_CASE(hyrise_test, HYRISE_TEST_QUERIES, queryInfo) {
     BOOST_REQUIRE_EQUAL(serializedQuery, expectedSerializedQuery);
 }
 
+static std::vector<std::string> const IMPLICIT_JOIN_QUERIES = {
+        "SELECT * FROM Object o JOIN Source s WHERE o.objectId = s.objectId",
+        "SELECT * FROM Object o INNER JOIN Source s WHERE o.objectId = s.objectId",
+};
+
+BOOST_DATA_TEST_CASE(implicit_join, IMPLICIT_JOIN_QUERIES, sql) {
+    auto selectStatement = ccontrol::ParseRunner::makeSelectStmt(sql);
+    BOOST_REQUIRE(selectStatement != nullptr);
+    auto const& tables = selectStatement->getFromList().getTableRefList();
+    BOOST_REQUIRE_EQUAL(tables.size(), 1);
+    auto const& joins = tables.front()->getJoins();
+    BOOST_REQUIRE_EQUAL(joins.size(), 1);
+    BOOST_CHECK(joins.front()->getJoinType() == query::JoinRef::DEFAULT);
+    BOOST_CHECK(!joins.front()->isNatural());
+    BOOST_CHECK(joins.front()->getSpec() == nullptr);
+    BOOST_CHECK_EQUAL(selectStatement->getQueryTemplate().sqlFragment(),
+                      "SELECT * FROM `Object` AS `o` JOIN `Source` AS `s` WHERE "
+                      "`o`.`objectId`=`s`.`objectId`");
+}
+
+BOOST_AUTO_TEST_CASE(rsp_implicit_join) {
+    auto selectStatement = ccontrol::ParseRunner::makeSelectStmt(
+            "SELECT ut1.objid AS ut1_objid, ut1.ra AS ut1_ra, ut1.dec AS ut1_dec, "
+            "objectId, coord_ra, coord_dec, u_cModelMag, g_cModelMag, r_cModelMag, "
+            "i_cModelMag, z_cModelMag, y_cModelMag "
+            "FROM dp1.Object JOIN TAP_UPLOAD.ut1 AS ut1 "
+            "WHERE CONTAINS(POINT('ICRS', coord_ra, coord_dec), "
+            "CIRCLE('ICRS', ut1.ra, ut1.dec, 0.00027))=1");
+    BOOST_REQUIRE(selectStatement != nullptr);
+    auto const& tables = selectStatement->getFromList().getTableRefList();
+    BOOST_REQUIRE_EQUAL(tables.size(), 1);
+    auto const& joins = tables.front()->getJoins();
+    BOOST_REQUIRE_EQUAL(joins.size(), 1);
+    BOOST_CHECK(joins.front()->getJoinType() == query::JoinRef::DEFAULT);
+    BOOST_CHECK(!joins.front()->isNatural());
+    BOOST_CHECK(joins.front()->getSpec() == nullptr);
+}
+
 BOOST_AUTO_TEST_CASE(float_literal_text_preserved) {
     auto selectStatement = ccontrol::ParseRunner::makeSelectStmt(
             "SELECT objectId FROM Object WHERE ra_PS = 0.12345678901234567890123456789");
