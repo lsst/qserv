@@ -65,9 +65,7 @@ using namespace lsst::qserv;
 
 struct TestFixture {
     TestFixture(void) : metaSession(0) {
-        // To learn how to dump the map, see qserv/core/css/KvInterfaceImplMem.cc
-        // Use admin/examples/testMap_generateMap
-        std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap";  // FIXME
+        std::string kvMapPath = std::string(QANA_TEST_SRC_DIR) + "/testPlugins.kvmap";
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
     }

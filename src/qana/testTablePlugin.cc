@@ -64,7 +64,7 @@ struct TestFixture {
                        {"Very_Long_Database_Name_So_That_It_And_The",
                         {{"Table_are_65_char_long", {"ColumnName"}}}},
                        {"Long_Db_Name_So_That_It_And_The", {{"TandC_are_65_char_long", {"ColumnName"}}}}}))) {
-        std::string kvMapPath = "./core/modules/qana/testPlugins.kvmap";  // (from testPlugins was: FIXME ??)
+        std::string kvMapPath = std::string(QANA_TEST_SRC_DIR) + "/testPlugins.kvmap";
         std::ifstream stream(kvMapPath);
         css = lsst::qserv::css::CssAccess::createFromStream(stream, ".");
     }
