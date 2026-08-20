@@ -49,5 +49,6 @@ ENDFUNCTION()
 qana_tests(
     testDuplSelectExprPlugin
     testPlugins
+    testScanTablePlugin
     testTablePlugin
 )
