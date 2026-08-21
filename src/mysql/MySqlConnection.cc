@@ -149,7 +149,7 @@ bool MySqlConnection::queryUnbuffered(std::string const& query) {
 
 MySqlConnection::CancelStatus MySqlConnection::cancel() {
     unsigned int const threadId = _threadId.load();
-    if (!(connected() && (0 != threadId))) return CancelStatus::CANCEL_NOP;
+    if (!((nullptr != _mysql) && (0 != threadId))) return CancelStatus::CANCEL_NOP;
     MYSQL* killMysql = ::doConnect(_config);
     if (nullptr == killMysql) return CancelStatus::CANCEL_CONNECT_ERROR;
     std::string const killSql = "KILL QUERY " + std::to_string(threadId);
