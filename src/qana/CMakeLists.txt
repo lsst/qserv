@@ -25,6 +25,7 @@ install (TARGETS qana)
 FUNCTION(qana_tests)
     FOREACH(TEST IN ITEMS ${ARGV})
         add_executable(${TEST} ${TEST}.cc)
+        target_compile_definitions(${TEST} PRIVATE QANA_TEST_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
         target_link_libraries(${TEST} PUBLIC
             cconfig
             ccontrol
@@ -48,7 +49,6 @@ ENDFUNCTION()
 qana_tests(
     testDuplSelectExprPlugin
     testPlugins
+    testScanTablePlugin
     testTablePlugin
 )
-
-set_tests_properties(testPlugins testTablePlugin PROPERTIES WILL_FAIL 1)
