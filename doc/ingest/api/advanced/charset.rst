@@ -78,16 +78,3 @@ processing the contributions. This information is reported in the JSON response 
 
     {   "charset_name":<string>
     }
-
-
-qserv-replica-file
-^^^^^^^^^^^^^^^^^^
-
-The command line tool :ref:`ingest-tools-qserv-replica-file` allows ingesting contributions via the proprietary binary protocol
-and has an option ``--charset-name=<string>``:
-
-.. code-block:: bash
-
-  qserv-replica-file INGEST {FILE|FILE-LIST|FILE-LIST-TRANS} \
-     ... \
-     --charset-name=<string>

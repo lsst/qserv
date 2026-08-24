@@ -15,9 +15,8 @@ the specific needs of the client application. The following list outlines the av
 
   - :ref:`ingest-worker-contrib-by-ref` (WORKER)
 
-- **push**: Send the data over the proprietary binary protocol or ``http`` protocol to the ingest service:
+- **push**: Send the data over the ``http`` protocol to the ingest service:
 
-  - :ref:`ingest-tools-qserv-replica-file` (TOOLS)
   - :ref:`ingest-worker-contrib-by-val` (WORKER)
 
   The workflow can either read the data from the local filesystem or access the data directly from memory.
@@ -48,4 +47,4 @@ Pushing data from the workflow to the service
 
 .. image:: /_static/ingest-options-push.png
    :target: ../../../_images/ingest-options-push.png
-   :alt: Read Mode
+   :alt: Push Mode

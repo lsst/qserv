@@ -28,8 +28,7 @@ internal issues encountered during data loading. These are detailed in https://m
 
 The current implementation of the Ingest system leverages these features by capturing warnings (as well as notes and errors)
 and recording them within the Replication database in association with the corresponding contribution requests. This is done
-for each request regardless of how it was submitted, whether via the proprietary binary protocol of
-:ref:`ingest-tools-qserv-replica-file`, or by calling the REST services of the Ingest system:
+for each request regardless of how it was submitted:
 
 - :ref:`ingest-worker-contrib-by-ref` (WORKER)
 - :ref:`ingest-worker-contrib-by-val` (WORKER)

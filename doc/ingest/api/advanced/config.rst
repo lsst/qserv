@@ -30,19 +30,6 @@ The second group of parameters found in the section ``config.general.worker`` is
 are available to the individual worker ingest services for processing contributions. These are instructions
 for some of the most relevant parameters:
 
-- ``num-loader-processing-threads``:
-
-  The parameter affects a flow of ingest requests made via the proprietary binary protocol using the command-line
-  tool :ref:`ingest-tools-qserv-replica-file`. To achieve the maximum throughput of the ingest the workflows
-  should aim at having each participated worker loaded with as many parallel requests as there are threads
-  reported by this parameter.
-
-  .. warning::
-
-      Exceeding the number of threads will result in having clients to wait for connections to be established
-      with the workers. In some cases this may lead to the performance degradation if the network connection
-      is unstable.
-
 - ``num-http-loader-processing-threads``:
 
   The parameter affects a flow of ingest requests submitted via the HTTP-based ingest service. Note that
