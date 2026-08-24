@@ -46,12 +46,11 @@ Here is a brief summary of the Qserv Ingest System's features:
 - In its very foundation, the system has been designed for constructing high-performance and parallel ingest
   workflows w/o compromising the consistency of the ingested catalogs.
 
-- For the actual data loading, the system offers plenty of options, inluding pushing data into Qserv directly
-  via a proprietary binary protocol using :ref:`ingest-tools-qserv-replica-file`, :ref:`ingest-worker-contrib-by-val`
-  in the HTTP request body, or  :ref:`ingest-worker-contrib-by-ref`. In the latter case, the input data (so called table
-  *contributions*) will be pulled by the worker services from remote locations as instructed by the ingest workflows.
-  The presently supported sources include the object stores (via the HTTP/HTTPS protocols) and the locally mounted
-  distributed filesystems (via the POSIX protocol).
+- For the actual data loading, the system offers two options, inluding pushing data into Qserv directly
+  via :ref:`ingest-worker-contrib-by-val` in the HTTP request body, or  :ref:`ingest-worker-contrib-by-ref`.
+  In the latter case, the input data (so called table *contributions*) will be pulled by the worker services
+  from remote locations as instructed by the ingest workflows. The presently supported sources include
+  the object stores (via the HTTP/HTTPS protocols) and the locally mounted distributed filesystems (via the POSIX protocol).
 
   - The ongoing work on the system includes the development of the support for the ingesting contributions
     from the S3 object stores.

@@ -260,7 +260,6 @@ The schema of the relevant section of the respionse object is illustrated by the
     {   "config": {
             "general" : {
                 "worker" : {
-                    "num-loader-processing-threads" : 64,
                     "num-http-loader-processing-threads" : 8,
                     "num-async-loader-processing-threads" : 8,
 
@@ -282,10 +281,6 @@ Where:
 
 ``config.general.worker`` : *object*
   A collection of the general parameters of the worker ingest service.
-
-``num-loader-processing-threads`` : *number*
-  The number of ingest request processing threads in the service that supports the proprietary
-  binary protocol.
 
 ``num-http-loader-processing-threads`` : *number*
   The number of ingest request processing threads in the HTTP-based ingest service. Note that
@@ -359,8 +354,6 @@ The schema of the relevant section of the respionse object is illustrated by the
                         "addr" : "172.24.49.52",
                         "name" : "sdfqserv002.sdf.slac.stanford.edu"
                     },
-                    "loader-port" : 25002,
-                    "loader-tmp-dir" : "/qserv/data/ingest",
 
                     "http-loader-host" : {
                         "name" : "sdfqserv002.sdf.slac.stanford.edu",
@@ -387,25 +380,7 @@ Where:
 
 ``is-read-only`` : *number*
   The flag that tells if the worker node is read-only. If the value is set to ``0`` the worker node is read-write.
-  Workers which are in the read-only statte do not participate in the ingest activities.
-
-**Parameters of the ingest service that supports the proprietary binary protocol**:
-
-``loader-host`` : *object*
-  The object with the information about the loader host.
-
-  - ``addr`` : *string*
-    The IP address of the lder host.
-
-  - ``name`` : *string*
-    The FQDN (fully-qualified domain name) of the host.
-
-``loader-port`` : *number*
-  The port number of the ingest service.
-
-``loader-tmp-dir`` : *string*
-  The path to the temporary directory on the loader host that is used by the ingest service
-  as a staging area for the contributions.
+  Workers which are in the read-only state do not participate in the ingest activities.
 
 **Parameters of the HTTP-based ingest service**:
 
@@ -413,7 +388,7 @@ Where:
   The object with the information about the loader host.
 
   - ``addr`` : *string*
-    The IP address of the lder host.
+    The IP address of the loader host.
 
   - ``name`` : *string*
     The FQDN (fully-qualified domain name) of the host.

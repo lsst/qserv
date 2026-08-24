@@ -9,4 +9,3 @@ Ingest API Reference
    :maxdepth: 4
 
    rest/index
-   tools
