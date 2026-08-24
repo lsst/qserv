@@ -31,7 +31,6 @@
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/ingest/IngestHttpSvc.h"
-#include "replica/ingest/IngestSvc.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
 #include "replica/registry/Registry.h"
@@ -121,9 +120,6 @@ int WorkerApp::runImpl() {
     auto const fileSvr = FileServer::create(serviceProvider(), worker);
     thread fileSvrThread([fileSvr]() { fileSvr->run(); });
 
-    auto const ingestSvr = IngestSvc::create(serviceProvider(), worker);
-    thread ingestSvrThread([ingestSvr]() { ingestSvr->run(); });
-
     auto const ingestHttpSvr = IngestHttpSvc::create(serviceProvider(), worker);
     thread ingestHttpSvrThread([ingestHttpSvr]() { ingestHttpSvr->run(); });
 
@@ -150,7 +146,6 @@ int WorkerApp::runImpl() {
     }
     reqProcSvrThread.join();
     fileSvrThread.join();
-    ingestSvrThread.join();
     ingestHttpSvrThread.join();
     exportHttpSvrThread.join();
 
@@ -160,7 +155,6 @@ int WorkerApp::runImpl() {
 void WorkerApp::_verifyCreateFolders() const {
     auto const config = serviceProvider()->config();
     vector<string> const folders = {config->get<string>("worker", "data-dir"),
-                                    config->get<string>("worker", "loader-tmp-dir"),
                                     config->get<string>("worker", "exporter-tmp-dir"),
                                     config->get<string>("worker", "http-loader-tmp-dir")};
     FileUtils::verifyFolders("WORKER", folders, !_doNotCreateMissingFolders);

@@ -1029,8 +1029,6 @@ def load_simple(repl_ctrl_uri: str, auth_key: str) -> None:
         transaction_id,
         "0",
         False,
-        chunk_location.host,
-        chunk_location.port,
         chunk_location.http_host,
         chunk_location.http_port,
         data_file=data_file,

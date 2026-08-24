@@ -50,15 +50,11 @@ _log = logging.getLogger(__name__)
 
 class ChunkLocation(NamedTuple):
     chunk_id: str
-    host: str
-    port: str
     http_host: str
     http_port: str
 
 
 class RegularLocation(NamedTuple):
-    host: str
-    port: str
     http_host: str
     http_port: str
 
@@ -332,7 +328,7 @@ class ReplicationInterface:
         )
         loc = res["location"]
         return ChunkLocation(
-            loc["chunk"], loc["host"], str(loc["port"]), loc["http_host"], str(loc["http_port"])
+            loc["chunk"], loc["http_host"], str(loc["http_port"])
         )
 
     def ingest_chunk_configs(self, transaction_id: int, chunk_ids: list[int]) -> list[ChunkLocation]:
@@ -362,7 +358,7 @@ class ReplicationInterface:
         )
         return [
             ChunkLocation(
-                loc["chunk"], loc["host"], str(loc["port"]), loc["http_host"], str(loc["http_port"])
+                loc["chunk"], loc["http_host"], str(loc["http_port"])
             )
             for loc in res["locations"]
         ]
@@ -393,7 +389,7 @@ class ReplicationInterface:
         )
         return [
             RegularLocation(
-                location["host"], str(location["port"]), location["http_host"], str(location["http_port"])
+                location["http_host"], str(location["http_port"])
             )
             for location in res["locations"]
         ]
@@ -403,8 +399,6 @@ class ReplicationInterface:
         transaction_id: int,
         chunk_id: str,
         overlap: bool,
-        worker_host: str,
-        worker_port: str,
         worker_http_host: str,
         worker_http_port: str,
         data_file: str,
@@ -420,14 +414,10 @@ class ReplicationInterface:
             The chunk id.
         overlap : `bool`
             The flag indicating if the file reprsentes the chunk overlap.
-        worker_host : `str`
-            The name of the host ingesting the data.
-        worker_port : `str`
-            The worker_host port to use.
         worker_http_host : `str`
             The name of the host ingesting the data (HTTP protocol).
         worker_http_port : `str`
-            The worker_host port to use (HTTP protocol).
+            The worker port to use (HTTP protocol).
         data_file : `str`
             The path to the data file to ingest.
         table : `LoadTable`
@@ -539,16 +529,14 @@ class ReplicationInterface:
         # Ingest the chunk files:
         # Helpful note: Generator type decl is Generator[yield, send, return],
         # see https://www.python.org/dev/peps/pep-0484/#annotating-generator-functions-and-coroutines
-        def generate_locations() -> Generator[tuple[str, str, str, str, str, str, bool], None, None]:
+        def generate_locations() -> Generator[tuple[str, str, str, str, bool], None, None]:
             for location in locations:
                 for chunk_file in (chunk_file_t, chunk_overlap_file_t):
                     full_path = os.path.join(chunks_folder, chunk_file.format(chunk_id=location.chunk_id))
                     if os.path.exists(full_path):
                         _log.debug(
-                            "Ingesting %s to %s:%s/%s:%s chunk %s.",
+                            "Ingesting %s to %s:%s chunk %s.",
                             full_path,
-                            location.host,
-                            location.port,
                             location.http_host,
                             location.http_port,
                             location.chunk_id,
@@ -556,8 +544,6 @@ class ReplicationInterface:
                         overlap = "overlap" in chunk_file
                         yield (
                             full_path,
-                            location.host,
-                            location.port,
                             location.http_host,
                             location.http_port,
                             location.chunk_id,
@@ -569,13 +555,11 @@ class ReplicationInterface:
                             full_path,
                         )
 
-        for _file, host, port, http_host, http_port, chunk_id, overlap in generate_locations():
+        for _file, http_host, http_port, chunk_id, overlap in generate_locations():
             self.ingest_data_file(
                 transaction_id,
                 chunk_id,
                 overlap,
-                host,
-                port,
                 http_host,
                 http_port,
                 data_file=_file,
@@ -608,10 +592,8 @@ class ReplicationInterface:
         locations = self.ingest_regular_table(transaction_id)
         for location in locations:
             _log.debug(
-                "Ingesting %s to %s:%s/%s:%s table %s.",
+                "Ingesting %s to %s:%s table %s.",
                 data_file,
-                location.host,
-                location.port,
                 location.http_host,
                 location.http_port,
                 table.table_name,
@@ -620,8 +602,6 @@ class ReplicationInterface:
                 transaction_id,
                 "0",
                 False,
-                location.host,
-                location.port,
                 location.http_host,
                 location.http_port,
                 data_file=data_file,

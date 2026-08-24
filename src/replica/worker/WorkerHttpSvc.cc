@@ -76,7 +76,8 @@ void WorkerHttpSvc::registerServices(unique_ptr<httplib::Server> const& server) 
     // Static content is served from here.
     string const staticContentMountPoint = "/worker/director-index";
     string const staticContentDir =
-            serviceProvider()->config()->get<string>("worker", "loader-tmp-dir") + staticContentMountPoint;
+            serviceProvider()->config()->get<string>("worker", "http-loader-tmp-dir") +
+            staticContentMountPoint;
 
     // Recreate the folder for static content to make sure it's empty. The folder is used to store
     // the "director" index data which is extracted by the worker from its MySQL/MariaDB server,

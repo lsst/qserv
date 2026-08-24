@@ -1020,9 +1020,6 @@ json HttpIngestModule::_getRegular() {
         auto const worker = config->worker(workerName);
         json resultLocation;
         resultLocation["worker"] = worker.name;
-        resultLocation["host"] = worker.loaderHost.addr;
-        resultLocation["host_name"] = worker.loaderHost.name;
-        resultLocation["port"] = worker.loaderPort;
         resultLocation["http_host"] = worker.httpLoaderHost.addr;
         resultLocation["http_host_name"] = worker.httpLoaderHost.name;
         resultLocation["http_port"] = worker.httpLoaderPort;
