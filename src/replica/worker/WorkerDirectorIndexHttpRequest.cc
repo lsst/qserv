@@ -85,7 +85,7 @@ WorkerDirectorIndexHttpRequest::WorkerDirectorIndexHttpRequest(
           _connectionPool(connectionPool),
           _tmpDirName("worker/director-index/" + database::mysql::obj2fs(_databaseName) + "-" +
                       database::mysql::obj2fs(_tableName)),
-          _tmpDirFullPath(serviceProvider->config()->get<string>("worker", "loader-tmp-dir") + "/" +
+          _tmpDirFullPath(serviceProvider->config()->get<string>("worker", "http-loader-tmp-dir") + "/" +
                           _tmpDirName),
           _fileName(to_string(_chunkNumber) + (_hasTransactions ? "-p" + to_string(_transactionId) : "") +
                     "-" + hdr.id + ".csv"),

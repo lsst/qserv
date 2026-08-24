@@ -78,13 +78,6 @@ public:
     std::string dataDir;  // An absolute path to the data directory under which the MySQL
                           // database folders are residing.
 
-    ConfigHost loaderHost;    // The host name (and IP address) of the ingest (loader) service
-    uint16_t loaderPort = 0;  // The port number of the ingest service
-
-    std::string loaderTmpDir;  // An absolute path to the temporary directory which would be used
-                               // by the service. The folder must be write-enabled for a user
-                               // under which the service will be run.
-
     ConfigHost exporterHost;    // The host name (and IP address) of the data exporting service
     uint16_t exporterPort = 0;  // The port number of the data exporting service
 

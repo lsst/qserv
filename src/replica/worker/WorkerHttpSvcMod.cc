@@ -166,9 +166,10 @@ json WorkerHttpSvcMod::_deleteIndex() {
     // to the base directory for the "director" index data, and it should not contain any elements which could
     // lead to escaping the base directory. Any problems found at this stage are reported as invalid
     // parameters without any file system operations attempted.
-    fs::path const baseDir = (fs::path(_serviceProvider->config()->get<string>("worker", "loader-tmp-dir")) /
-                              "worker" / "director-index")
-                                     .lexically_normal();
+    fs::path const baseDir =
+            (fs::path(_serviceProvider->config()->get<string>("worker", "http-loader-tmp-dir")) / "worker" /
+             "director-index")
+                    .lexically_normal();
     fs::path const fullFilePath = (baseDir / folder / file).lexically_normal();
     if (fullFilePath.string().rfind(baseDir.string() + "/", 0) != 0) {
         throw invalid_argument(context() + "::" + string(__func__) + "  invalid path parameters");

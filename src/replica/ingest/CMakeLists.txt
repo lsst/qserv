@@ -14,8 +14,6 @@ target_sources(replica_ingest PRIVATE
     IngestResourceMgr.cc
     IngestResourceMgrP.cc
     IngestResourceMgrT.cc
-    IngestSvc.cc
-    IngestSvcConn.cc
     IngestUtils.cc
     TransactionContrib.cc
 )

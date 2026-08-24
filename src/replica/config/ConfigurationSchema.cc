@@ -296,10 +296,6 @@ json const ConfigurationSchema::_schemaJson = json::object(
               "The default buffer size for file and network operations at Replication worker's file "
               "service."},
              {"default", 4194304}}},
-           {"num-loader-processing-threads",
-            {{"description",
-              "The number of request processing threads in each Replication worker's ingest service."},
-             {"default", num_threads}}},
            {"exporter-threads",
             {{"description",
               "The number of threads in each HTTP server frontend of Replication worker's data export "
@@ -383,15 +379,6 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " The warnings (if any) will be recorded in the persisent state of the"
               " Replication/Inhgest system and returned to the ingest workflow upon request."},
              {"default", 64}}},
-           {"loader-port",
-            {{"description", "The port number for the worker's binary file ingest service."},
-             {"default", 25002}}},
-           {"loader-tmp-dir",
-            {{"description",
-              "A location for temporary files stored by the worker's binary"
-              " file ingest service before ingesting them into the adjacent Qserv worker's"
-              " MySQL database."},
-             {"default", "/qserv/data/ingest"}}},
            {"exporter-port",
             {{"description", "The port number for the worker's HTTP-based table export service."},
              {"default", 25003}}},
