@@ -409,7 +409,6 @@ class ReplicationInterface:
         worker_http_port: str,
         data_file: str,
         table: LoadTable,
-        load_http: bool,
     ) -> None:
         """Ingest table data from a file.
 
@@ -433,64 +432,31 @@ class ReplicationInterface:
             The path to the data file to ingest.
         table : `LoadTable`
             Table descriptor, including its name, ingest configuration, etc.
-        load_http : `bool`
-            The protocol to use for loading the data.
         """
         if not self.auth_key:
             raise RuntimeError("auth_key must be set to ingest a data file.")
-        if load_http:
-            encoder = MultipartEncoder(
-                fields={
-                    "auth_key": (None, self.auth_key),
-                    "transaction_id": (None, str(transaction_id)),
-                    "table": (None, table.table_name),
-                    "chunk": (None, str(chunk_id)),
-                    "overlap": (None, str("1" if overlap else "0")),
-                    "fields_terminated_by": (None, str(table.fields_terminated_by)),
-                    "fields_enclosed_by": (None, str(table.fields_enclosed_by)),
-                    "fields_escaped_by": (None, str(table.fields_escaped_by)),
-                    "lines_terminated_by": (None, str(table.lines_terminated_by)),
-                    "file": (os.path.basename(data_file), open(data_file, "rb"), "text/plain"),
-                }
-            )
-            _log.debug("encoder: %s", encoder)
-            res_http = _post_file_upload(
-                url=f"http://{worker_http_host}:{worker_http_port}/ingest/csv", encoder=encoder
-            )
-            if not res_http["success"]:
-                raise RuntimeError(f"Ingest failed ({res_http})")
-            _log.debug("ingest file res: %s", res_http)
-        else:
-            args = [
-                "qserv-replica-file",
-                "INGEST",
-                "FILE",
-                worker_host,
-                worker_port,
-                str(transaction_id),
-                table.table_name,
-                # app help says P for 'partitioned' and R for 'regular'/non-partitioned.
-                "P" if table.is_partitioned else "R",
-                data_file,
-                "--verbose",
-                f"--fields-terminated-by={table.fields_terminated_by}",
-                f"--fields-enclosed-by={table.fields_enclosed_by}",
-                f"--fields-escaped-by={table.fields_escaped_by}",
-                f"--auth-key={self.auth_key}",
-                f"--lines-terminated-by={table.lines_terminated_by}",
-            ]
-            _log.debug("ingest file args: %s", args)
-            res = subprocess.run(
-                args,
-                capture_output=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-            if res.returncode != 0:
-                raise RuntimeError(
-                    f"Subprocess failed ({res.returncode}) stdout:{res.stdout} stderr:{res.stderr}"
-                )
-            _log.debug("ingest file res: %s", res)
+        encoder = MultipartEncoder(
+            fields={
+                "auth_key": (None, self.auth_key),
+                "transaction_id": (None, str(transaction_id)),
+                "table": (None, table.table_name),
+                "chunk": (None, str(chunk_id)),
+                "overlap": (None, str("1" if overlap else "0")),
+                "fields_terminated_by": (None, str(table.fields_terminated_by)),
+                "fields_enclosed_by": (None, str(table.fields_enclosed_by)),
+                "fields_escaped_by": (None, str(table.fields_escaped_by)),
+                "lines_terminated_by": (None, str(table.lines_terminated_by)),
+                "file": (os.path.basename(data_file), open(data_file, "rb"), "text/plain"),
+            }
+        )
+        _log.debug("encoder: %s", encoder)
+        res_http = _post_file_upload(
+            url=f"http://{worker_http_host}:{worker_http_port}/ingest/csv", encoder=encoder
+        )
+        if not res_http["success"]:
+            raise RuntimeError(f"Ingest failed ({res_http})")
+        _log.debug("ingest file res: %s", res_http)
+
 
     def build_table_stats(
         self,
@@ -540,7 +506,6 @@ class ReplicationInterface:
         table: LoadTable,
         chunks_folder: str,
         chunk_info_file: str,
-        load_http: bool,
     ) -> None:
         """Ingest chunk data that was partitioned using sph-partition.
 
@@ -552,10 +517,8 @@ class ReplicationInterface:
             Table descriptor, including its name, ingest configuration, etc.
         chunks_folder : `str`
             The absolute path to the folder containing the chunk files to be ingested.
-        chunks_info_file : `str`
+        chunk_info_file : `str`
             The absolute path to the file containing information about the chunks to be ingested.
-        load_http : `bool`
-            The protocol to use for loading the data.
         """
         _log.debug(
             "ingest_chunks_data transaction_id: %s table_name: %s chunks_folder: %s",
@@ -617,7 +580,6 @@ class ReplicationInterface:
                 http_port,
                 data_file=_file,
                 table=table,
-                load_http=load_http,
             )
 
     def ingest_table_data(
@@ -625,7 +587,6 @@ class ReplicationInterface:
         transaction_id: int,
         table: LoadTable,
         data_file: str,
-        load_http: bool,
     ) -> None:
         """Ingest data for a non-partitioned table.
 
@@ -637,8 +598,6 @@ class ReplicationInterface:
             Table descriptor, including its name, ingest configuration, etc.
         data_file : `str`
             The absolute path to the file containing the table data.
-        load_http : `bool`
-            The protocol to use for loading the data.
         """
         _log.debug(
             "ingest_table_data: transaction_id: %s table.table_name: %s data_file: %s",
@@ -667,7 +626,6 @@ class ReplicationInterface:
                 location.http_port,
                 data_file=data_file,
                 table=table,
-                load_http=load_http,
             )
 
     def delete_database(

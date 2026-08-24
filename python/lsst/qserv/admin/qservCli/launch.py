@@ -926,7 +926,6 @@ def integration_test(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -967,8 +966,6 @@ def integration_test(
         will load test databases that are not loaded yet.
     reload : bool
         Remove and reload test data. Same as passing `unload=True` and `load=True`.
-    load_http : bool
-        Table loading protocol. If True, use the HTTP protocol to load tables.
     cases : List[str]
         Run this/these test cases only. If list is empty list will run all the cases.
     run_tests : bool
@@ -1018,7 +1015,6 @@ def integration_test(
     for opt, var in (
         ("--unload", unload),
         ("--reload", reload),
-        ("--load-http", load_http),
     ):
         if var:
             args.append(opt)
@@ -1060,7 +1056,6 @@ def integration_test_http(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -1092,8 +1087,6 @@ def integration_test_http(
         If True do not run the command; print what would have been run.
     project : `str`
         The name used for qserv instance customizations.
-    load_http : bool
-        Table loading protocol. If True, use the HTTP protocol to load tables.
     cases : List[str]
         Run this/these test cases only. If list is empty list will run all the cases.
     run_tests : bool
@@ -1143,7 +1136,6 @@ def integration_test_http(
     for opt, var in (
         ("--unload", unload),
         ("--reload", reload),
-        ("--load-http", load_http),
     ):
         if var:
             args.append(opt)
@@ -1282,7 +1274,6 @@ def itest(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -1326,7 +1317,6 @@ def itest(
             unload,
             load,
             reload,
-            load_http,
             cases,
             run_tests,
             tests_yaml,
@@ -1352,7 +1342,6 @@ def itest_http(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -1384,7 +1373,6 @@ def itest_http(
             unload,
             load,
             reload,
-            load_http,
             cases,
             run_tests,
             tests_yaml,

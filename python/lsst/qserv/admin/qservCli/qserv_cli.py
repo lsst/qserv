@@ -35,7 +35,6 @@ from ..cli.options import (
     option_czar_connection,
     option_keep_results,
     option_load,
-    option_load_http,
     option_log_level,
     option_reload,
     option_repl_connection,
@@ -534,7 +533,6 @@ def run_debug(
 @option_load()
 @option_unload()
 @option_reload()
-@option_load_http()
 @option_run_tests()
 @option_compare_results()
 @option_case()
@@ -562,7 +560,6 @@ def itest(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -586,7 +583,6 @@ def itest(
         unload=unload,
         load=load,
         reload=reload,
-        load_http=load_http,
         cases=cases,
         run_tests=run_tests,
         tests_yaml=tests_yaml,
@@ -611,7 +607,6 @@ def itest(
 @option_load()
 @option_unload()
 @option_reload()
-@option_load_http()
 @option_run_tests()
 @option_compare_results()
 @option_case()
@@ -639,7 +634,6 @@ def itest_http(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -663,7 +657,6 @@ def itest_http(
         unload=unload,
         load=load,
         reload=reload,
-        load_http=load_http,
         cases=cases,
         run_tests=run_tests,
         tests_yaml=tests_yaml,
