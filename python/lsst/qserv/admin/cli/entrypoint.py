@@ -48,7 +48,6 @@ from .options import (
     option_debug,
     option_keep_results,
     option_load,
-    option_load_http,
     option_log_cfg_file,
     option_log_level,
     option_options_file,
@@ -361,13 +360,12 @@ def entrypoint(log_level: str) -> None:
 @entrypoint.command()
 @option_repl_auth_key()
 @click.argument("repl_ctrl_uri")
-@option_load_http()
-def load_simple(repl_ctrl_uri: str, repl_auth_key: str, load_http: bool) -> None:
+def load_simple(repl_ctrl_uri: str, repl_auth_key: str) -> None:
     """Load a small test dataset into qserv.
 
     REPL_CTRL_URI is the uri to the replication controller.
     """
-    script.load_simple(repl_ctrl_uri, auth_key=repl_auth_key, load_http=load_http)
+    script.load_simple(repl_ctrl_uri, auth_key=repl_auth_key)
 
 
 @entrypoint.command()
@@ -379,7 +377,6 @@ def load_simple(repl_ctrl_uri: str, repl_auth_key: str, load_http: bool) -> None
 @option_unload()
 @option_load()
 @option_reload()
-@option_load_http()
 @option_case()
 @option_run_tests()
 @option_tests_yaml()
@@ -389,7 +386,6 @@ def integration_test(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -405,7 +401,6 @@ def integration_test(
         unload=unload,
         load=load,
         reload=reload,
-        load_http=load_http,
         cases=cases,
         run_tests=run_tests,
         tests_yaml=tests_yaml,
@@ -424,7 +419,6 @@ def integration_test(
 @option_unload()
 @option_load()
 @option_reload()
-@option_load_http()
 @option_case()
 @option_run_tests()
 @option_tests_yaml()
@@ -434,7 +428,6 @@ def integration_test_http(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -450,7 +443,6 @@ def integration_test_http(
         unload=unload,
         load=load,
         reload=reload,
-        load_http=load_http,
         cases=cases,
         run_tests=run_tests,
         tests_yaml=tests_yaml,
