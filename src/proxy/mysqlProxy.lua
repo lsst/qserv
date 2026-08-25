@@ -204,8 +204,7 @@ function queryType()
     end
 
     local isNotSupported = function(qU)
-        if string.find(qU, "^EXPLAIN ") or
-           string.find(qU, "^GRANT ") or
+        if string.find(qU, "^GRANT ") or
            (string.find(qU, "^FLUSH ") and not string.find(qU, "^FLUSH QSERV")) then
             err.set(ERR_NOT_SUPPORTED,
                     "Sorry, this type of queries is not supported in DC3b.")
