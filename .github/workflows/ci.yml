@@ -398,7 +398,7 @@ jobs:
 
       - name: Run integration tests of the HTTP frontend
         run: |
-          ./bin/qserv --log-level DEBUG itest-http --reload --load-http \
+          ./bin/qserv --log-level DEBUG itest-http --reload \
           --qserv-image ${{ needs.image-names.outputs.qserv-image }} \
           --mariadb-image ${{ needs.image-names.outputs.mariadb-image }}
 

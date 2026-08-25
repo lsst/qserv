@@ -133,7 +133,7 @@ string const& IngestFileSvc::openFile(TransactionId transactionId, string const&
     }
     try {
         _fileName = FileUtils::createTemporaryFile(
-                _serviceProvider->config()->get<string>("worker", "loader-tmp-dir"),
+                _serviceProvider->config()->get<string>("worker", "http-loader-tmp-dir"),
                 _database.name + "-" + _table.name + "-" + to_string(_chunk) + "-" +
                         to_string(_transactionId),
                 "-%%%%-%%%%-%%%%-%%%%", ".csv");

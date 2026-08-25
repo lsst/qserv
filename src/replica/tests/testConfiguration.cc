@@ -163,7 +163,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<size_t>("worker", "num-http-svc-threads") == 10);
     BOOST_CHECK(config->get<size_t>("worker", "num-fs-processing-threads") == 5);
     BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1024);
-    BOOST_CHECK(config->get<size_t>("worker", "num-loader-processing-threads") == 6);
     BOOST_CHECK(config->get<size_t>("worker", "exporter-threads") == 7);
     BOOST_CHECK(config->get<size_t>("worker", "num-http-loader-processing-threads") == 8);
     BOOST_CHECK(config->get<size_t>("worker", "num-async-loader-processing-threads") == 9);
@@ -345,11 +344,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "fs-buf-size-bytes", 1025));
     BOOST_CHECK(config->get<size_t>("worker", "fs-buf-size-bytes") == 1025);
 
-    BOOST_CHECK_THROW(config->set<size_t>("worker", "num-loader-processing-threads", 0),
-                      std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-loader-processing-threads", 7));
-    BOOST_CHECK(config->get<size_t>("worker", "num-loader-processing-threads") == 7);
-
     BOOST_CHECK_THROW(config->set<size_t>("worker", "exporter-threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "exporter-threads", 8));
     BOOST_CHECK(config->get<size_t>("worker", "exporter-threads") == 8);
@@ -513,7 +507,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK_EQUAL(workerA.svcHost, hostA);
     BOOST_CHECK_EQUAL(workerA.httpSvcHost, hostA);
     BOOST_CHECK_EQUAL(workerA.fsHost, hostA);
-    BOOST_CHECK_EQUAL(workerA.loaderHost, hostA);
     BOOST_CHECK_EQUAL(workerA.exporterHost, hostA);
     BOOST_CHECK_EQUAL(workerA.httpLoaderHost, hostA);
 
@@ -526,7 +519,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK_EQUAL(workerB.svcHost, hostB);
     BOOST_CHECK_EQUAL(workerB.httpSvcHost, hostB);
     BOOST_CHECK_EQUAL(workerB.fsHost, hostB);
-    BOOST_CHECK_EQUAL(workerB.loaderHost, hostB);
     BOOST_CHECK_EQUAL(workerB.exporterHost, hostB);
     BOOST_CHECK_EQUAL(workerB.httpLoaderHost, hostB);
     BOOST_CHECK_EQUAL(workerB.qservWorker.host, hostB);
@@ -540,7 +532,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_CHECK_EQUAL(workerC.svcHost, ConfigHost({"168.1.1.1", "host-C1"}));
     BOOST_CHECK_EQUAL(workerC.httpSvcHost, ConfigHost({"168.1.1.7", "host-C7"}));
     BOOST_CHECK_EQUAL(workerC.fsHost, ConfigHost({"168.1.1.2", "host-C2"}));
-    BOOST_CHECK_EQUAL(workerC.loaderHost, ConfigHost({"168.1.1.3", "host-C3"}));
     BOOST_CHECK_EQUAL(workerC.exporterHost, ConfigHost({"168.1.1.4", "host-C4"}));
     BOOST_CHECK_EQUAL(workerC.httpLoaderHost, ConfigHost({"168.1.1.5", "host-C5"}));
     BOOST_CHECK_EQUAL(workerC.qservWorker.host, ConfigHost({"168.1.1.6", "host-C6"}));

@@ -170,13 +170,6 @@ function(CSSLoader,
                         "cssClass": "bg-white"
                     },
                     {   "name":     "Ingest",
-                        "protocol": "binary",
-                        "port":     worker['loader-port'],
-                        "ip":       worker['loader-host']['addr'],
-                        "dns":      worker['loader-host']['name'],
-                        "cssClass": "bg-white"
-                    },
-                    {   "name":     "Ingest",
                         "protocol": "http",
                         "port":     worker['http-loader-port'],
                         "ip":       worker['http-loader-host']['addr'],

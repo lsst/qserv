@@ -28,6 +28,7 @@
  */
 
 // System headers
+#include <algorithm>
 #include <map>
 #include <ostream>
 #include <set>
@@ -66,45 +67,30 @@ public:
 class ArgumentParser {
 public:
     /**
-     * @return
-     *   'true' if the specified value belongs to a collection
-     *
-     * @param val
-     *   the value to be evaluated
-     *
-     * @param col
-     *   the collection of allowed values
+     * @param val the value to be evaluated
+     * @param col the collection of allowed values
+     * @return 'true' if the specified value belongs to a collection
      */
     template <typename T>
     static bool in(T const& val, std::vector<T> const& col) {
         return col.end() != std::find(col.begin(), col.end(), val);
     }
 
-    // Default construction and copy semantics are prohibited
-
     ArgumentParser() = delete;
     ArgumentParser(ArgumentParser const&) = delete;
     ArgumentParser& operator=(ArgumentParser const&) = delete;
+    virtual ~ArgumentParser() = default;
 
     /**
      * Construct the object
-     *
-     * @param name
-     *   the name of the parameter as it will be shown in error messages
-     *   (should there be any problem with parsing a value of the parameter)
-     *   and the 'help' printout (if the one is requested in the constructor
-     *   of the class)
-     *
-     * @param description
-     *   the description of the parameter as it will be shown in the 'help'
-     *   printout (if the one is requested in the constructor of the class)
+     * @param name the name of the parameter as it will be shown in error messages (should there be any
+     *  problem with parsing a value of the parameter) and the 'help' printout (if the one is requested
+     *  in the constructor of the class)
+     * @param description the description of the parameter as it will be shown in the 'help'
+     *  printout (if the one is requested in the constructor of the class)
      */
     ArgumentParser(std::string const& name, std::string const& description)
             : _name(name), _description(description) {}
-
-    virtual ~ArgumentParser() = default;
-
-    // Trivial state retrieval methods
 
     std::string const& name() const { return _name; }
     std::string const& description() const { return _description; }
@@ -112,12 +98,8 @@ public:
     /**
      * Let a subclass to parse the input string into a value of the corresponding
      * (as defined by the class) type.
-     *
-     * @param inStr
-     *   (optional) input string to be parsed
-     *
-     * @throws ParserErro
-     *   if the text can't be parsed
+     * @param inStr (optional) input string to be parsed
+     * @throws ParserError if the text can't be parsed
      */
     virtual void parse(std::string const& inStr = "") = 0;
 
@@ -125,30 +107,24 @@ public:
      * Default values are supposed to be captured from user-defined variables
      * at a time when the argument objects are constructed. They're used for
      * generating a documentation.
-     *
-     * @return
-     *   string representation of the default value of an argument
+     * @return The string representation of the default value of an argument
      */
     virtual std::string defaultValue() const = 0;
 
     /**
      * Dump the name of an argument and its value into an output stream
-     *
-     * @param
-     *   an output stream object
+     * @param os an output stream object
      */
     virtual void dumpNameValue(std::ostream& os) const = 0;
 
 private:
     // Parameters of the object passed via the class's constructor
-
     std::string const _name;
     std::string const _description;
 };
 
 /**
- * Dump a string representation of the argument name and its value
- * to the stream.
+ * Dump a string representation of the argument name and its value to the stream.
  */
 std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg);
 
@@ -158,30 +134,20 @@ std::ostream& operator<<(std::ostream& os, ArgumentParser const& arg);
 template <typename T>
 class ParameterParser : public ArgumentParser {
 public:
-    // Default construction and copy semantics are prohibited
-
     ParameterParser() = delete;
     ParameterParser(ParameterParser const&) = delete;
     ParameterParser& operator=(ParameterParser const&) = delete;
+    virtual ~ParameterParser() = default;
 
     /**
      * Construct the object
-     *
-     * @param name
-     *   the name of the parameter as it will be shown in error messages
-     *   (should there be any problem with parsing a value of the parameter)
-     *   and the 'help' printout (if the one is requested in the constructor
-     *   of the class)
-     *
-     * @param description
-     *   the description of the parameter as it will be shown in the 'help'
-     *   printout (if the one is requested in the constructor of the class)
-     *
-     * @param var
-     *   the reference to the corresponding variable to be initialized with
-     *   a value of the parameter after successful parsing. The type of the
-     *   parameter is determined by the template argument.
-     *
+     * @param name the name of the parameter as it will be shown in error messages (should there be any
+     *  problem with parsing a value of the parameter) and the 'help' printout (if the one is requested
+     *  in the constructor of the class)
+     * @param description the description of the parameter as it will be shown in the 'help'
+     *  printout (if the one is requested in the constructor of the class)
+     * @param var the reference to the corresponding variable to be initialized with a value of the parameter
+     *  after successful parsing. The type of the parameter is determined by the template argument.
      * @see ArgumentParser::ArgumentParser()
      */
     ParameterParser(std::string const& name, std::string const& description, T& var,
@@ -191,10 +157,7 @@ public:
               _defaultValue(var),
               _allowedValues(allowedValues) {}
 
-    virtual ~ParameterParser() = default;
-
-    /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr = "") final {
+    virtual void parse(std::string const& inStr = "") final {
         try {
             _var = boost::lexical_cast<T>(inStr);
         } catch (boost::bad_lexical_cast const& ex) {
@@ -208,25 +171,18 @@ public:
         }
     }
 
-    /// @see ArgumentParser::defaultValue()
-    std::string defaultValue() const final {
+    virtual std::string defaultValue() const final {
         std::ostringstream os;
         os << _defaultValue;
         return os.str();
     }
 
-    /// @see ArgumentParser::dumpNameValue()
-    void dumpNameValue(std::ostream& os) const final { os << name() << "=" << _var; }
+    virtual void dumpNameValue(std::ostream& os) const final { os << name() << "=" << _var; }
 
 private:
-    /// A reference to a user variable to be initialized
-    T& _var;
-
-    /// A copy of the variable is captured here
-    T const _defaultValue;
-
-    /// A collection of allowed values (if provided)
-    std::vector<T> const _allowedValues;
+    T& _var;                              ///< A reference to a user variable to be initialized
+    T const _defaultValue;                ///< A copy of the variable is captured here
+    std::vector<T> const _allowedValues;  ///< A collection of allowed values (if provided)
 };
 
 /**
@@ -235,30 +191,21 @@ private:
 template <typename T>
 class OptionParser : public ArgumentParser {
 public:
-    // Default construction and copy semantics are prohibited
-
     OptionParser() = delete;
     OptionParser(OptionParser const&) = delete;
     OptionParser& operator=(OptionParser const&) = delete;
+    virtual ~OptionParser() = default;
 
     /**
      * Construct the object
-     *
-     * @param name
-     *   the name of the parameter as it will be shown in error messages
-     *   (should there be any problem with parsing a value of the parameter)
-     *   and the 'help' printout (if the one is requested in the constructor
-     *   of the class)
-     *
-     * @param description
-     *   the description of the parameter as it will be shown in the 'help'
-     *   printout (if the one is requested in the constructor of the class)
-     *
-     * @param var
-     *   the reference to the corresponding variable to be initialized with
-     *   a value of the parameter after successful parsing. The type of the
-     *   parameter is determined by the template argument.
-     *
+     * @param name the name of the parameter as it will be shown in error messages (should there be any
+     *  problem with parsing a value of the parameter) and the 'help' printout (if the one is requested
+     *  in the constructor of the class)
+     * @param description the description of the parameter as it will be shown in the 'help'
+     *  printout (if the one is requested in the constructor of the class)
+     * @param var the reference to the corresponding variable to be initialized with a value of
+     *  the parameter after successful parsing. The type of the parameter is determined by the template
+     * argument.
      * @see ArgumentParser::ArgumentParser()
      */
     OptionParser(std::string const& name, std::string const& description, T& var,
@@ -268,10 +215,7 @@ public:
               _defaultValue(var),
               _allowedValues(allowedValues) {}
 
-    virtual ~OptionParser() = default;
-
-    /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr = "") final {
+    virtual void parse(std::string const& inStr = "") final {
         if (inStr.empty()) return;
         try {
             _var = boost::lexical_cast<T>(inStr);
@@ -286,25 +230,18 @@ public:
         }
     }
 
-    /// @see ArgumentParser::defaultValue()
-    std::string defaultValue() const final {
+    virtual std::string defaultValue() const final {
         std::ostringstream os;
         os << _defaultValue;
         return os.str();
     }
 
-    /// @see ArgumentParser::dumpNameValue()
-    void dumpNameValue(std::ostream& os) const final { os << name() << "=" << _var; }
+    virtual void dumpNameValue(std::ostream& os) const final { os << name() << "=" << _var; }
 
 private:
-    /// A reference to a user variable to be initialized
-    T& _var;
-
-    /// A copy of the variable is captured here
-    T const _defaultValue;
-
-    /// A collection of allowed values (if provided)
-    std::vector<T> const _allowedValues;
+    T& _var;                              ///< A reference to a user variable to be initialized
+    T const _defaultValue;                ///< A copy of the variable is captured here
+    std::vector<T> const _allowedValues;  ///< A collection of allowed values (if provided)
 };
 
 /**
@@ -312,58 +249,35 @@ private:
  */
 class FlagParser : public ArgumentParser {
 public:
-    // Default construction and copy semantics are prohibited
-
     FlagParser() = delete;
     FlagParser(FlagParser const&) = delete;
     FlagParser& operator=(FlagParser const&) = delete;
+    virtual ~FlagParser() = default;
 
     /**
      * Construct the object
-     *
-     * @param name
-     *   the name of the parameter as it will be shown in error messages
-     *   (should there be any problem with parsing a value of the parameter)
-     *   and the 'help' printout (if the one is requested in the constructor
-     *   of the class)
-     *
-     * @param description
-     *   the description of the parameter as it will be shown in the 'help'
-     *   printout (if the one is requested in the constructor of the class)
-     *
-     * @param var
-     *   the reference to the corresponding variable to be initialized with
-     *   a value of the parameter after successful parsing. The type of the
-     *   parameter is determined by the template argument.
-     *
-     * @param reverse
-     *   the parameter which would reverse the behavior of the parser
-     *   after finding the flag. If the parameter is set to 'true' then the result
-     *   will be reset to 'false'. The default behavior of the parser is to set
-     *   the result to 'true' if the flag was found.
-     *
+     * @param name the name of the parameter as it will be shown in error messages (should there be
+     *  any problem with parsing a value of the parameter) and the 'help' printout (if the one is
+     *  requested in the constructor of the class)
+     * @param description the description of the parameter as it will be shown in the 'help'
+     *  printout (if the one is requested in the constructor of the class)
+     * @param var the reference to the corresponding variable to be initialized with a value of the parameter
+     *  after successful parsing. The type of the parameter is determined by the template argument.
+     * @param reverse the parameter which would reverse the behavior of the parser after finding the flag.
+     *  If the parameter is set to 'true' then the result will be reset to 'false'. The default behavior of
+     *  the parser is to set the result to 'true' if the flag was found.
      * @see ArgumentParser::ArgumentParser()
      */
     FlagParser(std::string const& name, std::string const& description, bool& var, bool reverse)
             : ArgumentParser(name, description), _var(var), _reverse(reverse) {}
 
-    virtual ~FlagParser() = default;
-
-    /// @see ArgumentParser::parse()
-    void parse(std::string const& inStr = "") final { _var = _reverse ? false : true; }
-
-    /// @see ArgumentParser::defaultValue()
-    std::string defaultValue() const final { return _reverse ? "true" : "false"; }
-
-    /// @see ArgumentParser::dumpNameValue()
-    void dumpNameValue(std::ostream& os) const final { os << name() << "=" << bool2str(_var); }
+    virtual void parse(std::string const& inStr = "") final { _var = _reverse ? false : true; }
+    virtual std::string defaultValue() const final { return _reverse ? "true" : "false"; }
+    virtual void dumpNameValue(std::ostream& os) const final { os << name() << "=" << bool2str(_var); }
 
 private:
-    /// A reference to a user variable to be initialized
-    bool& _var;
-
-    /// The flag value reversing option
-    bool _reverse;
+    bool& _var;     ///< A reference to a user variable to be initialized
+    bool _reverse;  ///< The flag value reversing option
 };
 
 /**
@@ -371,25 +285,16 @@ private:
  */
 class Command {
 public:
-    // The default constructor
     Command() = default;
-
-    // The copy semantics is prohibited
-
     Command(Command const&) = delete;
     Command& operator=(Command const&) = delete;
-
     ~Command() = default;
 
     /**
      * Set a description of the command
-     *
-     * @param description
-     *   the description of the command as it will be shown in the 'help'
-     *   printout (if the one is requested in the constructor of the class)
-     *
-     * @return
-     *   a reference to the command object in order to allow chained calls
+     * @param description the description of the command as it will be shown in the 'help'
+     *  printout (if the one is requested in the constructor of the class)
+     * @return a reference to the command object in order to allow chained calls
      */
     Command& description(std::string const& descr) {
         _description = descr;
@@ -400,33 +305,18 @@ public:
      * Register a mandatory positional parameter for parsing. Positional
      * parameters are lined up based on an order in which the positional
      * parameter methods (this and 'optional') are called.
-     *
      * @see method Command::optional()
-     *
-     * @param name
-     *   the name of the parameter as it will be shown in error messages
-     *   (should there be any problem with parsing a value of the parameter)
-     *   and the 'help' printout (if the one is requested in the constructor
-     *   of the class)
-     *
-     * @param description
-     *   the description of the parameter as it will be shown in the 'help'
-     *   printout (if the one is requested in the constructor of the class)
-     *
-     * @param var
-     *   the reference to the corresponding variable to be initialized with
-     *   a value of the parameter after successful parsing. The type of the
-     *   parameter is determined by the template argument.
-     *
-     * @param allowedValues
-     *   (optional) collection of allowed values of the parameter.
-     *
-     * @throws std::invalid_argument
-     *   if the name of the argument is empty, or if another parameter, option
-     *   or flag under the same name was already requested earlier.
-     *
-     * @return
-     *   a reference to the command object in order to allow chained calls
+     * @param name the name of the parameter as it will be shown in error messages (should there be
+     *  any problem with parsing a value of the parameter) and the 'help' printout (if the one is
+     *  requested in the constructor of the class)
+     * @param description the description of the parameter as it will be shown in the 'help'
+     *  printout (if the one is requested in the constructor of the class)
+     * @param var the reference to the corresponding variable to be initialized with a value of the
+     *  parameter after successful parsing. The type of the parameter is determined by the template argument.
+     * @param allowedValues (optional) collection of allowed values of the parameter.
+     * @throws std::invalid_argument if the name of the argument is empty, or if another parameter,
+     *  option or flag under the same name was already requested earlier.
+     * @return a reference to the command object in order to allow chained calls
      */
     template <typename T>
     Command& required(std::string const& name, std::string const& description, T& var,
@@ -441,11 +331,8 @@ public:
      * value of the parameter. The value will stay intact if the parameter
      * won't be found in a command line. Otherwise this method is similar to
      * the above defined 'required'.
-     *
      * @see method Command::required()
-     *
-     * @return
-     *   a reference to the command object in order to allow chained calls
+     * @return a reference to the command object in order to allow chained calls
      */
     template <typename T>
     Command& optional(std::string const& name, std::string const& description, T& var,
@@ -460,9 +347,7 @@ public:
      * show up at any position in the command line.
      *
      * @see method Command::optional()
-     *
-     * @return
-     *   a reference to the command object in order to allow chained calls
+     * @return a reference to the command object in order to allow chained calls
      */
     template <typename T>
     Command& option(std::string const& name, std::string const& description, T& var,
@@ -476,18 +361,14 @@ public:
      * line parameters then the variable will be set to 'true'. Otherwise
      * it will be set to 'false'. Other parameters of the method are similar
      * to the ones of the above defined 'add' methods.
-     *
      * @see method Command::option()
-     *
-     * @return
-     *   a reference to the command object in order to allow chained calls
+     * @return a reference to the command object in order to allow chained calls
      */
     Command& flag(std::string const& name, std::string const& description, bool& var);
 
     /**
      * This variation of the flag registration method would result in reversing
      * result if a flag s found in the command line.
-     *
      * @see method Command::flag()
      */
     Command& reversedFlag(std::string const& name, std::string const& description, bool& var);
@@ -497,20 +378,11 @@ private:
     /// the command-line input
     friend class Parser;
 
-    /// The optional description of the command
-    std::string _description;
-
-    /// A sequence of the mandatory parameters
-    std::vector<std::unique_ptr<ArgumentParser>> _required;
-
-    /// A sequence of the optional parameters
-    std::vector<std::unique_ptr<ArgumentParser>> _optional;
-
-    /// A set of named options
-    std::map<std::string, std::unique_ptr<ArgumentParser>> _options;
-
-    /// A set of named flags
-    std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;
+    std::string _description;                                ///< The optional description of the command
+    std::vector<std::unique_ptr<ArgumentParser>> _required;  ///< A sequence of the mandatory parameters
+    std::vector<std::unique_ptr<ArgumentParser>> _optional;  ///< A sequence of the optional parameters
+    std::map<std::string, std::unique_ptr<ArgumentParser>> _options;  ///< A set of named options
+    std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;    ///< A set of named flags
 };
 
 /**
@@ -519,37 +391,23 @@ private:
  */
 class CommandsSet {
 public:
-    // Default construction and copy semantics are prohibited
-
     CommandsSet() = delete;
     CommandsSet(CommandsSet const&) = delete;
     CommandsSet& operator=(CommandsSet const&) = delete;
-
-    /**
-     * Construct the object
-     *
-     * @param commandNames
-     *   a collection of command names
-     *
-     * @param var
-     *   a user variable to be initialized with the name of a command detected
-     *   by the Parser.
-     */
-    CommandsSet(std::vector<std::string> const& commandNames, std::string& var);
-
     ~CommandsSet() = default;
 
     /**
+     * Construct the object
+     * @param commandNames a collection of command names
+     * @param var a user variable to be initialized with the name of a command detected by the Parser.
+     */
+    CommandsSet(std::vector<std::string> const& commandNames, std::string& var);
+
+    /**
      * Find a command in the set
-     *
-     * @param name
-     *   the name of a command
-     *
-     * @return
-     *   a reference to the command description object
-     *
-     * @throws std::range_error
-     *   if the command is unknown
+     * @param name the name of a command
+     * @return a reference to the command description object
+     * @throws std::range_error if the command is unknown
      */
     Command& command(std::string const& name);
 
@@ -558,11 +416,8 @@ private:
     /// the command-line input
     friend class Parser;
 
-    /// A collection of commands
-    std::map<std::string, std::unique_ptr<Command>> _commands;
-
-    /// A reference to a user variable to be initialized
-    std::string& _var;
+    std::map<std::string, std::unique_ptr<Command>> _commands;  ///< A collection of commands
+    std::string& _var;  ///< A reference to a user variable to be initialized
 };
 
 /**
@@ -587,12 +442,10 @@ public:
     Parser() = delete;
     Parser(Parser const&) = delete;
     Parser& operator=(Parser const&) = delete;
-
     virtual ~Parser() = default;
 
     /**
      * Construct and initialize the parser
-     *
      * @param arc argument count
      * @param argv vector of argument values
      * @param description description of an application
@@ -616,16 +469,13 @@ public:
 
     /**
      * Configure the Parser as the parser of "commands".
-     *
-     * @note This method can be called just once. Any subsequent attempts to call
-     *   the methods will result in throwing exception std::logic_error.
-     * @param name the name of the parameter as it will be shown in error messages
-     *   (should there be any problem with parsing a value of the parameter)
-     *   and the 'help' printout (if the one is requested in the constructor
-     *   of the class)
+     * @note This method can be called just once. Any subsequent attempts to call the methods will result
+     *  in throwing exception std::logic_error.
+     * @param name the name of the parameter as it will be shown in error messages (should there be any
+     *  problem with parsing a value of the parameter) and the 'help' printout (if the one is requested
+     *  in the constructor of the class)
      * @param commandNames a collection of column names
-     * @param var a user variable to be initialized with the name of a command detected
-     *   by the Parser.
+     * @param var a user variable to be initialized with the name of a command detected by the Parser.
      * @return a reference to the parser object in order to allow chained calls
      * @throws std::logic_error if the Parser was already configured in this way
      */
@@ -633,7 +483,6 @@ public:
 
     /**
      * Find a command in the set
-     *
      * @param name the name of a command
      * @return a reference to the command description object
      * @throws std::logic_error if the Parser was not configured in this way
@@ -646,20 +495,17 @@ public:
      * parameters are lined up based on an order in which the positional
      * parameter methods (this and 'optional') are
      * a being called.
-     *
      * @see method Parser::optional()
-     * @param name the name of the parameter as it will be shown in error messages
-     *   (should there be any problem with parsing a value of the parameter)
-     *   and the 'help' printout (if the one is requested in the constructor
-     *   of the class)
+     * @param name the name of the parameter as it will be shown in error messages (should there be any
+     *  problem with parsing a value of the parameter) and the 'help' printout (if the one is requested
+     *  in the constructor of the class)
      * @param description the description of the parameter as it will be shown in the 'help'
      *   printout (if the one is requested in the constructor of the class)
-     * @param var the reference to the corresponding variable to be initialized with
-     *   a value of the parameter after successful parsing. The type of the
-     *   parameter is determined by the template argument.
+     * @param var the reference to the corresponding variable to be initialized with a value of the parameter
+     *  after successful parsing. The type of the parameter is determined by the template argument.
      * @param allowedValues (optional) collection of allowed values of the parameter.
      * @throws std::invalid_argument if the name of the argument is empty, or if
-     *   another parameter, option or flag under the same name was already requested earlier.
+     *  another parameter, option or flag under the same name was already requested earlier.
      * @return a reference to the parser object in order to allow chained calls
      */
     template <typename T>
@@ -677,11 +523,8 @@ public:
      * value of the parameter. The value will stay intact if the parameter
      * won't be found in a command line. Otherwise this method is similar to
      * the above defined 'required'.
-     *
      * @see method Parser::required()
-     *
-     * @return
-     *   a reference to the parser object in order to allow chained calls
+     * @return a reference to the parser object in order to allow chained calls
      */
     template <typename T>
     Parser& optional(std::string const& name, std::string const& description, T& var,
@@ -696,7 +539,6 @@ public:
      * Register a named option which has a value. The method is similar to
      * the above defined 'required' except it may
      * show up at any position in the command line.
-     *
      * @see method Parser::optional()
      * @return  a reference to the parser object in order to allow chained calls
      */
@@ -714,7 +556,6 @@ public:
      * line parameters then the variable will be set to 'true'. Otherwise
      * it will be set to 'false'. Other parameters of the method are similar
      * to the ones of the above defined 'add' methods.
-     *
      * @see method Parser::option()
      * @return a reference to the parser object in order to allow chained calls
      */
@@ -723,7 +564,6 @@ public:
     /**
      * This variation of the flag registration method would result in reversing
      * result if a flag s found in the command line.
-     *
      * @see method Parser::flag()
      */
     Parser& reversedFlag(std::string const& name, std::string const& description, bool& var);
@@ -739,7 +579,6 @@ public:
      *
      * @see Parser::Status
      * @see method Parser::reset()
-     *
      * @return the completion code
      * @throws ParserError for any problems occurring during the parsing
      */
@@ -749,11 +588,9 @@ public:
     Status status() const { return _code; }
 
     /**
-     * @return serialize names and values of the parsed arguments
-     *   into a string
-     * @throws std::logic_error if called before attempted to parse
-     *   the command line parameters, or if the parsing didn't successfully
-     *   finish with Status::SUCCESS.
+     * @return serialize names and values of the parsed arguments into a string
+     * @throws std::logic_error if called before attempted to parse the command line parameters,
+     *  or if the parsing didn't successfully finish with Status::SUCCESS.
      */
     std::string serializeArguments() const;
 
@@ -761,7 +598,6 @@ private:
     /**
      * Verify the name of an argument (parameter, option or flag) to ensure
      * it has a valid name.
-     *
      * @param name the name of an argument
      * @throws std::invalid_argument if the name is not allowed or it's empty
      */
@@ -769,7 +605,6 @@ private:
 
     /**
      * Parse and store a value of an option in a collection if it's a valid option
-     *
      * @param options a collection of options to be updated
      * @param name the name of an option
      * @param value its value
@@ -780,7 +615,6 @@ private:
 
     /**
      * Parse and store a value of a flag in a collection if it's a valid flag
-     *
      * @param options a collection of flags to be updated
      * @param name the name of a flag
      * @return 'true' if this is a valid flag, and it's been successfully parsed
@@ -789,12 +623,10 @@ private:
 
     /**
      * Parse and store values of the positional parameters
-     *
      * @param out the output collection of parameters to be populated from the input one
      * @param inItr the current position of a modifiable iterator pointing to the input
-     *   collection of parameters to be analyzed and parsed
-     * @param inItrEnd the end iterator for the input collection of parameters to be analyzed
-     *   and parsed
+     *  collection of parameters to be analyzed and parsed
+     * @param inItrEnd the end iterator for the input collection of parameters to be analyzed and parsed
      */
     void _parseParameters(std::vector<std::unique_ptr<ArgumentParser>>& out,
                           std::vector<std::string>::const_iterator& inItr,
@@ -809,10 +641,9 @@ private:
     std::string const& _usage();
 
     /**
-     * @return the complete documentation to be returned if flag "--help"
-     *   is passed as an argument.  The current implementation of this method
-     *   will build and cache the string the first time the method is invoked
-     *   regardless if flag "--help" is registered or not for the application.
+     * @return the complete documentation to be returned if flag "--help" is passed as an argument.
+     *  The current implementation of this method will build and cache the string the first time the method
+     *  is invoked regardless if flag "--help" is registered or not for the application.
      */
     std::string const& _help();
 
@@ -820,12 +651,10 @@ private:
      * Read the input string and produce an output one with words
      * wrapped at wite spaces not to exceed the specified maximum width
      * of each line.
-     *
      * @param str the input string to be wrapped
      * @param indent the indent at the beginning of each line
      * @param width the maximum width of each line (including the specified indent)
-     * @return the wrapped text, in which each line (including the last one)
-     *   ends with the newline symbol.
+     * @return the wrapped text, in which each line (including the last one) ends with the newline symbol.
      */
     static std::string _wrap(std::string const& str, std::string const& indent = "      ", size_t width = 72);
 
@@ -835,20 +664,11 @@ private:
     const char* const* _argv;
     std::string const _description;
 
-    /// A sequence of the mandatory parameters
-    std::vector<std::unique_ptr<ArgumentParser>> _required;
-
-    /// A sequence of the optional parameters
-    std::vector<std::unique_ptr<ArgumentParser>> _optional;
-
-    /// A set of named options
-    std::map<std::string, std::unique_ptr<ArgumentParser>> _options;
-
-    /// A set of named flags
-    std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;
-
-    /// A set of commands
-    std::unique_ptr<CommandsSet> _commands;
+    std::vector<std::unique_ptr<ArgumentParser>> _required;  ///< A sequence of the mandatory parameters
+    std::vector<std::unique_ptr<ArgumentParser>> _optional;  ///< A sequence of the optional parameters
+    std::map<std::string, std::unique_ptr<ArgumentParser>> _options;  ///< A set of named options
+    std::map<std::string, std::unique_ptr<ArgumentParser>> _flags;    ///< A set of named flags
+    std::unique_ptr<CommandsSet> _commands;                           ///< A set of commands
 
     /// Status code set after parsing the arguments. It's also used to avoid
     /// invoking method Parser::parse() more than one time. The default value

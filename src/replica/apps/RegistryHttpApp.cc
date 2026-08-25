@@ -42,8 +42,8 @@ bool const enableServiceProvider = true;
 
 namespace lsst::qserv::replica {
 
-RegistryHttpApp::Ptr RegistryHttpApp::create(int argc, char* argv[]) {
-    return Ptr(new RegistryHttpApp(argc, argv));
+shared_ptr<RegistryHttpApp> RegistryHttpApp::create(int argc, char* argv[]) {
+    return shared_ptr<RegistryHttpApp>(new RegistryHttpApp(argc, argv));
 }
 
 RegistryHttpApp::RegistryHttpApp(int argc, char* argv[])

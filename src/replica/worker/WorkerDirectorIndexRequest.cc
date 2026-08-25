@@ -77,7 +77,7 @@ WorkerDirectorIndexRequest::WorkerDirectorIndexRequest(ServiceProvider::Ptr cons
         : WorkerRequest(serviceProvider, worker, "INDEX", id, priority, onExpired, requestExpirationIvalSec),
           _connectionPool(connectionPool),
           _request(request),
-          _tmpDirName(serviceProvider->config()->get<string>("worker", "loader-tmp-dir") + "/" +
+          _tmpDirName(serviceProvider->config()->get<string>("worker", "http-loader-tmp-dir") + "/" +
                       database::mysql::obj2fs(request.database())),
           _fileName(_tmpDirName + "/" + database::mysql::obj2fs(request.director_table()) + "-" +
                     to_string(request.chunk()) +

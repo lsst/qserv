@@ -48,7 +48,6 @@ public:
     Application() = delete;
     Application(Application const&) = delete;
     Application& operator=(Application const&) = delete;
-
     virtual ~Application() = default;
 
     /**
@@ -71,15 +70,15 @@ protected:
      * @param arc An argument count.
      * @param argv A vector of argument values.
      * @param description An optional description of an application as it will appear
-     *   in the documentation string reported with option "--help".
+     *  in the documentation string reported with option "--help".
      * @param injectDatabaseOptions An optional flag which will inject database options
-     *   and use an input from a user to change the corresponding defaults in the Configuration.
+     *  and use an input from a user to change the corresponding defaults in the Configuration.
      * @param boostProtobufVersionCheck An optional flag which will force Google Protobuf
-     *   version check. The check will ensure that a version of the Protobuf library linked
-     *   to an application is consistent with header files.
+     *  version check. The check will ensure that a version of the Protobuf library linked
+     *  to an application is consistent with header files.
      * @param enableServiceProvider An optional flag which will inject configuration
-     *   option "--config=<url>", load the configuration into Configuration and initialize
-     *   the ServiceProvider with the configuration.
+     *  option "--config=<url>", load the configuration into Configuration and initialize
+     *  the ServiceProvider with the configuration.
      */
     Application(int argc, const char* const argv[], std::string const& description = "",
                 bool const injectDatabaseOptions = true, bool const boostProtobufVersionCheck = false,
@@ -97,8 +96,8 @@ protected:
     /**
      * @return A reference to the ServiceProvider object.
      * @throws std::logic_error If Configuration loading and ServiceProvider is
-     *   not enabled in the constructor of the class, or if the method gets called
-     *   before Parser finishes processing command-line parameters.
+     *  not enabled in the constructor of the class, or if the method gets called
+     *  before Parser finishes processing command-line parameters.
      */
     ServiceProvider::Ptr const& serviceProvider() const;
 
@@ -136,7 +135,7 @@ private:
      * @param option the option to be checked.
      * @param the meaning of the option.
      * @throws std::logic_error If the method was called before Parser finished
-     *   processing command-line parameters, or if the option was not configured.
+     *  processing command-line parameters, or if the option was not configured.
      */
     void _assertValidOption(std::string const& func, bool option, std::string const& context) const;
 

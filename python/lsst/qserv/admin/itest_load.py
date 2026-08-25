@@ -341,7 +341,6 @@ def _load_database(
     repl_ctrl_uri: str,
     auth_key: str,
     admin_auth_key: str,
-    load_http: bool,
 ) -> None:
     """Load a database.
 
@@ -359,8 +358,6 @@ def _load_database(
         The authorizaiton key for the replication-ingest system.
     admin_auth_key : `str`
         The admin authorizaiton key for the replication-ingest system.
-    load_http : `bool`, optional
-        The protocol to use for loading the data.
     """
     _log.info(
         "Loading database %s for test %s auth_key %s admin_auth_key %s",
@@ -416,14 +413,12 @@ def _load_database(
                         table=table,
                         chunks_folder=staging_dir,
                         chunk_info_file=os.path.join(staging_dir, chunk_info_file),
-                        load_http=load_http,
                     )
                 else:
                     repl.ingest_table_data(
                         transaction_id=transaction_id,
                         table=table,
                         data_file=data_file,
-                        load_http=load_http,
                     )
                 repl.commit_transaction(transaction_id)
 
@@ -542,7 +537,6 @@ def load(
     test_cases_data: list[dict[Any, Any]],
     ref_db_admin: str,
     load: bool | None,
-    load_http: bool,
     cases: list[str] | None,
     auth_key: str,
     admin_auth_key: str,
@@ -565,8 +559,6 @@ def load(
         unload == True then will not load the database, otherwise if `None` will
         load the database if it is not yet loaded into qserv (assumes the ref
         database matches the qserv database.)
-    load_http : `bool`
-        The protocol to use for loading the data.
     cases : `list` [`str`], optional
         Restrict loading to these test cases if provided.
     auth_key : `str`
@@ -594,7 +586,6 @@ def load(
                 repl_ctrl_uri,
                 auth_key,
                 admin_auth_key,
-                load_http=load_http,
             )
 
 
