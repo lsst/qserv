@@ -258,9 +258,6 @@ json HttpIngestChunksModule::_addChunk() {
     json result = json::object();
     result["location"] = json::object({{"chunk", chunk},
                                        {"worker", worker.name},
-                                       {"host", worker.loaderHost.addr},
-                                       {"host_name", worker.loaderHost.name},
-                                       {"port", worker.loaderPort},
                                        {"http_host", worker.httpLoaderHost.addr},
                                        {"http_host_name", worker.httpLoaderHost.name},
                                        {"http_port", worker.httpLoaderPort}});
@@ -436,9 +433,6 @@ json HttpIngestChunksModule::_addChunks() {
         result["locations"].push_back(json::object({
                 {"chunk", chunk},
                 {"worker", worker.name},
-                {"host", worker.loaderHost.addr},
-                {"host_name", worker.loaderHost.name},
-                {"port", worker.loaderPort},
                 {"http_host", worker.httpLoaderHost.addr},
                 {"http_host_name", worker.httpLoaderHost.name},
                 {"http_port", worker.httpLoaderPort},
@@ -571,9 +565,6 @@ size_t HttpIngestChunksModule::_addChunk(map<string, size_t>& worker2replicasCac
         auto const worker = config->worker(workerName);
         locations.push_back(json::object({{"chunk", chunk},
                                           {"worker", worker.name},
-                                          {"host", worker.loaderHost.addr},
-                                          {"host_name", worker.loaderHost.name},
-                                          {"port", worker.loaderPort},
                                           {"http_host", worker.httpLoaderHost.addr},
                                           {"http_host_name", worker.httpLoaderHost.name},
                                           {"http_port", worker.httpLoaderPort}}));

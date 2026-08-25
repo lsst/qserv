@@ -111,8 +111,8 @@ private:
 
 namespace lsst::qserv::replica {
 
-QservXrootdSsiApp::Ptr QservXrootdSsiApp::create(int argc, char* argv[]) {
-    return Ptr(new QservXrootdSsiApp(argc, argv));
+shared_ptr<QservXrootdSsiApp> QservXrootdSsiApp::create(int argc, char* argv[]) {
+    return shared_ptr<QservXrootdSsiApp>(new QservXrootdSsiApp(argc, argv));
 }
 
 QservXrootdSsiApp::QservXrootdSsiApp(int argc, char* argv[])

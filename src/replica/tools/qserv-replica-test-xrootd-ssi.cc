@@ -19,23 +19,19 @@
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
 
-/**
- * @see ControllerApp
- */
-
 // System headers
 #include <iostream>
 #include <stdexcept>
 
 // Qserv headers
-#include "replica/apps/ControllerApp.h"
+#include "replica/apps/QservXrootdSsiApp.h"
 
 using namespace std;
 using namespace lsst::qserv::replica;
 
 int main(int argc, char* argv[]) {
     try {
-        auto const app = ControllerApp::create(argc, argv);
+        auto const app = QservXrootdSsiApp::create(argc, argv);
         return app->run();
     } catch (exception const& ex) {
         cerr << "main()  the application failed, exception: " << ex.what() << endl;

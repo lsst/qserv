@@ -115,7 +115,6 @@ def itest_args(**kwargs):
         unload=ANY,
         load=ANY,
         reload=ANY,
-        load_http=ANY,
         cases=ANY,
         run_tests=ANY,
         tests_yaml=ANY,

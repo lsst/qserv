@@ -87,10 +87,6 @@ vector<ConfigWorker> Registry::workers() const {
             worker.fsHost.name = hostName;
             worker.fsPort = replicationWorker.at("fs-port").get<uint16_t>();
             worker.dataDir = replicationWorker.at("data-dir").get<string>();
-            worker.loaderHost.addr = hostAddr;
-            worker.loaderHost.name = hostName;
-            worker.loaderPort = replicationWorker.at("loader-port").get<uint16_t>();
-            worker.loaderTmpDir = replicationWorker.at("loader-tmp-dir").get<string>();
             worker.exporterHost.addr = hostAddr;
             worker.exporterHost.name = hostName;
             worker.exporterPort = replicationWorker.at("exporter-port").get<uint16_t>();
@@ -127,8 +123,6 @@ void Registry::addWorker(string const& name) const {
                             {"http-svc-port", config->get<uint16_t>("worker", "http-svc-port")},
                             {"fs-port", config->get<uint16_t>("worker", "fs-port")},
                             {"data-dir", config->get<string>("worker", "data-dir")},
-                            {"loader-port", config->get<uint16_t>("worker", "loader-port")},
-                            {"loader-tmp-dir", config->get<string>("worker", "loader-tmp-dir")},
                             {"exporter-port", config->get<uint16_t>("worker", "exporter-port")},
                             {"exporter-tmp-dir", config->get<string>("worker", "exporter-tmp-dir")},
                             {"http-loader-port", config->get<uint16_t>("worker", "http-loader-port")},

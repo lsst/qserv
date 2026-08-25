@@ -21,6 +21,9 @@
 #ifndef LSST_QSERV_REPLICA_REGISTRYHTTPAPP_H
 #define LSST_QSERV_REPLICA_REGISTRYHTTPAPP_H
 
+// System headers
+#include <memory>
+
 // Qserv headers
 #include "replica/apps/Application.h"
 
@@ -42,24 +45,20 @@ public:
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
-     *
      * @param argc  The number of command-line arguments.
      * @param argv  A vector of command-line arguments.
      */
-    static Ptr create(int argc, char* argv[]);
+    static std::shared_ptr<RegistryHttpApp> create(int argc, char* argv[]);
 
     RegistryHttpApp() = delete;
     RegistryHttpApp(RegistryHttpApp const&) = delete;
     RegistryHttpApp& operator=(RegistryHttpApp const&) = delete;
-
     virtual ~RegistryHttpApp() final = default;
 
 protected:
-    /// @see Application::runImpl()
     virtual int runImpl() final;
 
 private:
-    /// @see RegistryHttpApp::create()
     RegistryHttpApp(int argc, char* argv[]);
 };
 

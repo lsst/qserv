@@ -135,13 +135,11 @@ In case of the successful completion of the request, the service will return the
                         "host-addr-peer"      : <string>,
                         "svc-port"            : <16-bit integer>,
                         "fs-port"             : <16-bit integer>,
-                        "loader-port"         : <16-bit integer>,
                         "exporter-port"       : <16-bit integer>,
                         "http-loader-port"    : <16-bit integer>,
                         "data-dir"            : <string>,
                         "exporter-tmp-dir"    : <string>,
                         "http-loader-tmp-dir" : <string>,
-                        "loader-tmp-dir"      : <string>,
                         "update-time-ms"      : <64-bit integer>
                     }
                 },
@@ -162,13 +160,11 @@ Where:
 - ``management-port``: The management port number for Qserv Czar and worker services.
 - ``svc-port``: The service port number for Replication Worker services.
 - ``fs-port``: The file system port number for Replication Worker services. The port is used by the Replication worker's file system services to communicate with other Replication Workers.
-- ``loader-port``: The loader port number for Replication Worker services.
 - ``exporter-port``: The exporter port number for Replication Worker services.
 - ``http-loader-port``: The HTTP loader port number for Replication Worker services.
 - ``data-dir``: The MySQL data directory path. The directory is used by Replication Worker services to directly access and manage the MySQL data files of the Qserv worker instance.
 - ``exporter-tmp-dir``: The temporary directory path for the exporter component of Replication Worker services.
 - ``http-loader-tmp-dir``: The temporary directory path for the HTTP loader component of Replication Worker services.
-- ``loader-tmp-dir``: The temporary directory path for the loader component of Replication Worker services.
 - ``update-time-ms``: A timestamp (in milliseconds since the epoch) indicating when the service last reported its location to the registry.
 
 An example illustrating using the service:
@@ -230,13 +226,11 @@ A successful response is shown below:
                         "host-addr-peer"      : "172.24.49.52",
                         "svc-port"            : 25800,
                         "fs-port"             : 25801,
-                        "loader-port"         : 25802,
                         "exporter-port"       : 25803,
                         "http-loader-port"    : 25804,
                         "data-dir"            : "/qserv/data/mysql",
                         "exporter-tmp-dir"    : "/qserv/data/export",
                         "http-loader-tmp-dir" : "/qserv/data/ingest",
-                        "loader-tmp-dir"      : "/qserv/data/ingest",
                         "update-time-ms"      : 1768940395177
                     }
                 }

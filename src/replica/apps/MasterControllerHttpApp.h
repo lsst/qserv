@@ -22,15 +22,21 @@
 #define LSST_QSERV_MASTERCONTROLLERHTTPAPP_H
 
 // System headers
+#include <memory>
 #include <string>
 
 // Qserv headers
 #include "replica/apps/Application.h"
-#include "replica/contr/Controller.h"
-#include "replica/contr/DeleteWorkerTask.h"
-#include "replica/contr/HealthMonitorTask.h"
-#include "replica/contr/ReplicationTask.h"
 #include "replica/util/OneWayFailer.h"
+
+// Forward declarations
+namespace lsst::qserv::replica {
+class Controller;
+class ControllerEvent;
+class DeleteWorkerTask;
+class HealthMonitorTask;
+class ReplicationTask;
+}  // namespace lsst::qserv::replica
 
 // This header declarations
 namespace lsst::qserv::replica {
@@ -43,29 +49,23 @@ namespace lsst::qserv::replica {
  */
 class MasterControllerHttpApp : public Application {
 public:
-    typedef std::shared_ptr<MasterControllerHttpApp> Ptr;
-
     /**
      * The factory method is the only way of creating objects of this class
      * because of the very base class's inheritance from 'enable_shared_from_this'.
-     *
      * @param argc The number of command-line arguments.
      * @param argv The vector of command-line arguments.
      */
-    static Ptr create(int argc, char* argv[]);
+    static std::shared_ptr<MasterControllerHttpApp> create(int argc, char* argv[]);
 
     MasterControllerHttpApp() = delete;
     MasterControllerHttpApp(MasterControllerHttpApp const&) = delete;
     MasterControllerHttpApp& operator=(MasterControllerHttpApp const&) = delete;
-
-    ~MasterControllerHttpApp() final = default;
+    virtual ~MasterControllerHttpApp() final = default;
 
 protected:
-    /// @see Application::runImpl()
-    int runImpl() final;
+    virtual int runImpl() final;
 
 private:
-    /// @see MasterControllerHttpApp::create()
     MasterControllerHttpApp(int argc, char* argv[]);
 
     /// @return the name of the application for the purpose of logging
@@ -74,8 +74,8 @@ private:
     /**
      * Evict the specified worker from the cluster.
      * @note This method is called by the health-monitoring thread when
-     *   a condition for evicting the worker is detected. The calling thread
-     *   will be blocked for a duration of this call.
+     *  a condition for evicting the worker is detected. The calling thread
+     *  will be blocked for a duration of this call.
      * @param worker The name of a worker to be evicted.
      */
     void _evict(std::string const& worker);
@@ -123,9 +123,9 @@ private:
      * This function will keep periodically updating Controller's info in the Replication
      * System's Registry.
      * @note The thread will terminate the process if the registraton request to the Registry
-     * was explicitly denied by the service. This means the application may be misconfigured.
-     * Transient communication errors when attempting to connect or send requests to
-     * the Registry will be posted into the log stream and ignored.
+     *  was explicitly denied by the service. This means the application may be misconfigured.
+     *  Transient communication errors when attempting to connect or send requests to
+     *  the Registry will be posted into the log stream and ignored.
      */
     void _registryUpdateLoop();
 
@@ -165,13 +165,13 @@ private:
     OneWayFailer _isFailed;
 
     /// The controller for launching operations with the Replication system services.
-    Controller::Ptr _controller;
+    std::shared_ptr<Controller> _controller;
 
     // Control threads
 
-    HealthMonitorTask::Ptr _healthMonitorTask;
-    ReplicationTask::Ptr _replicationTask;
-    DeleteWorkerTask::Ptr _deleteWorkerTask;
+    std::shared_ptr<HealthMonitorTask> _healthMonitorTask;
+    std::shared_ptr<ReplicationTask> _replicationTask;
+    std::shared_ptr<DeleteWorkerTask> _deleteWorkerTask;
 };
 
 }  // namespace lsst::qserv::replica

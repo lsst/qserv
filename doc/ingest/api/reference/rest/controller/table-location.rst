@@ -336,17 +336,6 @@ Attributes of the returned object are:
 
   **Note**: The worker's identifier is not the same as the worker's host name.
 
-``host`` : *string*
-  The IP address of the worker's Ingest service that supports the proprietary binary protocol.
-
-``host_name`` : *string*
-  The DNS name of the worker's Ingest service that supports the proprietary binary protocol.
-
-``port`` : *number*
-  The port number of the worker's Ingest service that supports the proprietary binary protocol. This service requires 
-  the content of an input file be sent directly to the service client. The Replication/Ingest system provides
-  an application :ref:`ingest-tools-qserv-replica-file` that relies on this protocol.
-
 ``http_host`` : *string*
   The IP address of the worker's Ingest service that supports the HTTP protocol.      
 

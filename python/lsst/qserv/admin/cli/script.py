@@ -964,7 +964,7 @@ def delete_database(
     repl.delete_database(database, admin)
 
 
-def load_simple(repl_ctrl_uri: str, auth_key: str, load_http: bool) -> None:
+def load_simple(repl_ctrl_uri: str, auth_key: str) -> None:
     """Load a simple predefined database into qserv.
 
     The database is called "test101" and have a table called Object with one row.
@@ -975,8 +975,6 @@ def load_simple(repl_ctrl_uri: str, auth_key: str, load_http: bool) -> None:
         The uri to the replication controller service.
     auth_key : `str`
         The authorizaiton key for the replication-ingest system.
-    load_http : `bool`
-        If true, the database will be loaded using the http interface.
     """
     repl = ReplicationInterface(repl_ctrl_uri, auth_key)
 
@@ -1031,13 +1029,10 @@ def load_simple(repl_ctrl_uri: str, auth_key: str, load_http: bool) -> None:
         transaction_id,
         "0",
         False,
-        chunk_location.host,
-        chunk_location.port,
         chunk_location.http_host,
         chunk_location.http_port,
         data_file=data_file,
         table=table,
-        load_http=load_http,
     )
     repl.commit_transaction(transaction_id)
     repl.publish_database(database)
@@ -1048,7 +1043,6 @@ def integration_test(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -1061,7 +1055,6 @@ def integration_test(
         unload=unload,
         load=load,
         reload=reload,
-        load_http=load_http,
         cases=cases,
         run_tests=run_tests,
         tests_yaml=tests_yaml,
@@ -1075,7 +1068,6 @@ def integration_test_http(
     unload: bool,
     load: bool | None,
     reload: bool,
-    load_http: bool,
     cases: list[str],
     run_tests: bool,
     tests_yaml: str,
@@ -1088,7 +1080,6 @@ def integration_test_http(
         unload=unload,
         load=load,
         reload=reload,
-        load_http=load_http,
         cases=cases,
         run_tests=run_tests,
         tests_yaml=tests_yaml,
