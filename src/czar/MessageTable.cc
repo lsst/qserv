@@ -119,15 +119,23 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery,
         auto msgStore = userQuery->getMessageStore();
         if (msgStore != nullptr) {
             int msgCount = msgStore->messageCount();
+            bool firstLine = true;
             for (int i = 0; i != msgCount; ++i) {
                 const qmeta::QueryMessage& qm = msgStore->getMessage(i);
                 std::string src = qm.msgSource;
+                // Try to restrict individual Job messages from being sent to the user as there may be
+                // thousands of them. TODO: enumerate sources instead of using strings.
                 if (src == "COMPLETE") {
                     ++completeCount;
                 } else if (src == "CANCEL") {
                     ++cancelCount;
-                } else if (src == "MULTIERROR") {
-                    multiErrStr += qm.description + "\n";
+                } else if (src == "MULTIERROR" || src == "SYSTEM" || src == "SYSTEM_SQL" || src == "MERGE") {
+                    if (firstLine) {
+                        firstLine = false;
+                    } else {
+                        multiErrStr += "\n";
+                    }
+                    multiErrStr += qm.description;
                 }
             }
         }
@@ -148,6 +156,8 @@ void MessageTable::_saveQueryMessages(ccontrol::UserQuery::Ptr const& userQuery,
         LOGS(_log, LOG_LVL_ERROR, exc.message());
         throw exc;
     }
+    LOGS(_log, LOG_LVL_INFO,
+         "MessageTable::_saveQueryMessages QID=" << userQuery->getQueryId() << " errStr=" << multiErrStr);
 }
 
 }  // namespace lsst::qserv::czar

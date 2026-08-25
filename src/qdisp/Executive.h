@@ -246,6 +246,7 @@ public:
 
     int64_t getResultFileSizeErr() const { return _resultFileSizeErr; }
 
+    /// Set the _resultFileSizeExceeded flag and set the file size that triggered it to `resultFileSizeErr`
     void setResultSizeErr(int64_t resultFileSizeErr) {
         _resultFileSizeExceeded = true;
         _resultFileSizeErr = resultFileSizeErr;

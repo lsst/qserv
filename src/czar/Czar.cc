@@ -395,9 +395,9 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     SubmitResult result;
 
     // instantiate message table manager
-    MessageTable msgTable(lockName, _czarConfig->getMySqlResultConfig());
+    auto msgTable = make_shared<MessageTable>(lockName, _czarConfig->getMySqlResultConfig());
     try {
-        msgTable.lock();
+        msgTable->lock();
     } catch (std::exception const& exc) {
         result.errorMessage = exc.what();
         return result;
@@ -438,7 +438,7 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
         bool querySuccess = (qState == ccontrol::QueryState::SUCCESS);
         try {
             // This will try to save messages to the message table before unlocking.
-            msgTable.unlock(uq, querySuccess);
+            msgTable->unlock(uq, querySuccess);
             if (uq) uq->discard();
         } catch (std::exception const& exc) {
             // TODO? if this fails there is no way to notify client, and client
@@ -458,22 +458,22 @@ SubmitResult Czar::submitQuery(string const& query, map<string, string> const& h
     if (uq->isAsync()) {
         // make separate message and result tables to return info about ASYNC query,
         // we do not need to lock message because result is ready before we return
-        string const resultTableName = resultDb + ".result_async_" + userQueryId;
+        string const asyncResultTableName = resultDb + ".result_async_" + userQueryId;
         string const asyncLockName = resultDb + ".message_async_" + userQueryId;
-        MessageTable msgTable(asyncLockName, _czarConfig->getMySqlResultConfig());
+        MessageTable asyncMsgTable(asyncLockName, _czarConfig->getMySqlResultConfig());
         try {
-            _makeAsyncResult(resultTableName, uq->getQueryId(), uq->getResultLocation());
-            msgTable.create();
+            _makeAsyncResult(asyncResultTableName, uq->getQueryId(), uq->getResultLocation());
+            asyncMsgTable.create();
         } catch (std::exception const& exc) {
             result.errorMessage = exc.what();
             return result;
         }
 
-        result.resultTable = resultTableName;
+        result.resultTable = asyncResultTableName;
         result.messageTable = asyncLockName;
-        if (not resultTableName.empty()) {
+        if (not asyncResultTableName.empty()) {
             // respond with info about the results table.
-            result.resultQuery = "SELECT * FROM " + resultTableName;
+            result.resultQuery = "SELECT * FROM " + asyncResultTableName;
         }
     } else {
         result.messageTable = lockName;

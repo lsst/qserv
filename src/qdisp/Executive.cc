@@ -692,7 +692,7 @@ string Executive::_getIncompleteJobsString(int maxToList) {
 void Executive::updateProxyMessages() {
     {
         // Add all messages to the message store. These will
-        // be used to populate qservMeta.QMessages for this query.
+        // be used to populate QMessages for this query.
         lock_guard lockJobMap(_jobMapMtx);
         for (auto const& entry : _jobMap) {
             JobQuery::Ptr const& job = entry.second;

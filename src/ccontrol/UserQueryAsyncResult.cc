@@ -74,6 +74,7 @@ UserQueryAsyncResult::UserQueryAsyncResult(QueryId queryId, CzarId czarId,
 }
 
 void UserQueryAsyncResult::submit() {
+    LOGS(_log, LOG_LVL_INFO, "UserQueryAsyncResult::submit start QID=" << _queryId);
     _qState = ERROR;
 
     // if there are messages already it means the error was detected, stop right here
@@ -97,33 +98,39 @@ void UserQueryAsyncResult::submit() {
 
     // If query has not finished yet return error
     // TODO: there may be more info available if status is FAILED or ABORTED
-    if (_qInfo.queryStatus() != qmeta::QInfo::COMPLETED) {
-        std::string message = "Query is still executing (or FAILED)";
+    auto const qStatus = _qInfo.queryStatus();
+    if (qStatus != qmeta::QInfo::COMPLETED) {
+        std::string message = "Query not COMPLETED status=" + qmeta::QInfo::qstatusToStr(qStatus);
         LOGS(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
+    }
+    if (qStatus == qmeta::QInfo::EXECUTING) {
         return;
     }
 
+    bool failed = (qStatus == qmeta::QInfo::FAILED || qStatus == qmeta::QInfo::FAILED_LR ||
+                   qStatus == qmeta::QInfo::ABORTED);
+
     // Can only return results from mysql tables
-    if (_qInfo.resultLocation().compare(0, 6, "table:") != 0) {
+    auto const resultLoc = _qInfo.resultLocation();
+    if (resultLoc.size() < 6 || resultLoc.compare(0, 6, "table:") != 0) {
         std::string message = "Cannot return result as it is not stored in table.";
         LOGS(_log, LOG_LVL_DEBUG, message);
         _messageStore->addErrorMessage("SYSTEM", message);
-        return;
+        failed = true;
     }
-    std::string const resultTableName = _qInfo.resultLocation().substr(6);
+    std::string const resultTableName = resultLoc.substr(6);
 
     // check that message and result tables exist
     auto const czarConfig = cconfig::CzarConfig::instance();
     auto const resultDbConn = sql::SqlConnectionFactory::make(czarConfig->getMySqlResultConfig());
     sql::SqlErrorObject sqlErrObj;
-
-    if (!resultDbConn->tableExists(resultTableName, sqlErrObj)) {
+    if (!failed && !resultDbConn->tableExists(resultTableName, sqlErrObj)) {
         string message = "Result table does not exist, result is likely expired.";
         LOGS(_log, LOG_LVL_INFO,
              message << " msgTable=" << _qInfo.msgTableName() << " resultTable=" << resultTableName);
         _messageStore->addErrorMessage("SYSTEM", message);
-        return;
+        failed = true;
     }
 
     if (resultDbConn->tableExists(_qInfo.msgTableName(), sqlErrObj)) {
@@ -161,12 +168,13 @@ void UserQueryAsyncResult::submit() {
             ++count;
         }
         LOGS(_log, LOG_LVL_DEBUG, "Copied " << count << " messages from " << _qInfo.msgTableName());
+
     } else {
         LOGS(_log, LOG_LVL_WARN,
              "Message table " << _qInfo.msgTableName() << " does not exist, skipping message copy");
     }
-
     // done
+    if (failed) return;
     _qState = SUCCESS;
 }
 
