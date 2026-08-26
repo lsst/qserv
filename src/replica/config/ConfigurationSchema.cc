@@ -277,7 +277,16 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " (if the server is not up, or if it's not reachable for some reason)"},
              {"default", 3600}}}}},
          {"worker",
-          {{"num-threads",
+          {{"request-timeout-sec",
+            {{"description",
+              "The default timeout for completing worker requests. A value depends on"
+              " a scale of catalogs served by Qserv and ingested by the Replication/Ingest system."
+              " It's recommended to set this parameter to 3600 seconds or higher. The value must be"
+              " greater than 0. Note that the timeout may be explicitly set in the Controller"
+              " in the requests sent to the worker. In this cases, the value specified in the request"
+              " will take precedence over the default timeout."},
+             {"default", 28800}}},
+           {"num-threads",
             {{"description", "The number of threads managed by BOOST ASIO. Must be greater than 0."},
              {"default", min(8, num_threads)}}},
            {"num-svc-processing-threads",
