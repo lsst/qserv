@@ -1,0 +1,12 @@
+{{- $enabled := (include "qserv.enable" . | fromYaml) -}}
+{{- if and $enabled.czar .Values.certManager.enabled (empty .Values.certManager.issuerRef) }}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  labels:
+    {{- include "qserv.labels" . | nindent 4 }}
+    app.kubernetes.io/component: czar
+spec:
+  selfSigned: {}
+{{- end }}

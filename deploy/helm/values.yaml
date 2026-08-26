@@ -40,3 +40,9 @@ ingest:
 
 czarExternalService:
   enable: false
+
+certManager:
+  enabled: false
+  # If empty, the chart creates a namespace-scoped self-signed Issuer
+  issuerRef: {}
+  dnsNames: []
