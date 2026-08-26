@@ -14,7 +14,7 @@
 # packages are preferred whenever suitable, though some here require source builds.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM almalinux:9 AS qserv-build-base
+FROM almalinux:10.2 AS qserv-build-base
 
 LABEL org.opencontainers.image.source=https://github.com/lsst/qserv
 LABEL org.opencontainers.image.description="Build env base image for the Qserv distributed database system"
@@ -51,6 +51,7 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         lua5.1-devel \
         make \
         mariadb-connector-c-devel \
+        mariadb-devel \
         netcat \
         openssl-devel \
         patch \
@@ -58,16 +59,19 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         protobuf-devel \
         python3.12 \
         python3.12-devel \
-        tini \
         tree \
         vim \
         zip \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
+ENV TINI_VERSION=v0.19.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
+RUN chmod +x /usr/bin/tini
+
 RUN dnf update -y \
     && dnf install -y \
-       https://apache.jfrog.io/artifactory/arrow/almalinux/9/apache-arrow-release-latest.rpm \
+       https://apache.jfrog.io/artifactory/arrow/almalinux/10/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
     && dnf config-manager --set-enabled crb \
     && dnf install -y \
@@ -133,7 +137,7 @@ RUN cd /usr/share/java \
 RUN cd /tmp \
     && git clone https://github.com/lsst/mysqlproxy \
     && cd mysqlproxy \
-    && git checkout 0.8.5.lsst8 \
+    && git checkout 0.8.5.lsst9 \
     && cp /usr/lib64/pkgconfig/lua-5.1.pc /usr/lib64/pkgconfig/lua5.1.pc \
     && ./configure \
     && make \
@@ -211,7 +215,7 @@ CMD ["tail", "-f", "/dev/null"]
 # DO NOT BLOAT THE RUN BASE
 #-------------------------------------------------------------------------------------------------------------
 
-FROM almalinux:9 AS qserv-run-base
+FROM almalinux:10.2 AS qserv-run-base
 
 LABEL org.opencontainers.image.source=https://github.com/lsst/qserv
 LABEL org.opencontainers.image.description="Runtime base image for the Qserv distributed database system"
@@ -240,20 +244,24 @@ RUN dnf install -y 'dnf-command(config-manager)' \
         procps-ng \
         protobuf \
         python3.12 \
-        tini \
         tree \
         vim \
         lsof \
         strace \
         net-tools \
-    && dnf install -y mysql \
+        openldap \
+        mariadb-client-utils \
     && dnf clean all \
     && rm -rf /var/cache/yum
+
+ENV TINI_VERSION=v0.19.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /usr/bin/tini
+RUN chmod +x /usr/bin/tini
 
 # FIXME: Keep only binaries, and not devel libraries
 RUN dnf update -y \
     && dnf install -y \
-       https://apache.jfrog.io/artifactory/arrow/almalinux/9/apache-arrow-release-latest.rpm \
+       https://apache.jfrog.io/artifactory/arrow/almalinux/10/apache-arrow-release-latest.rpm \
     && dnf config-manager --set-enabled epel \
     && dnf config-manager --set-enabled crb \
     && dnf install -y arrow2500-libs \
