@@ -78,7 +78,7 @@ WorkerRequest::WorkerRequest(ServiceProvider::Ptr const& serviceProvider, string
           _onExpired(onExpired),
           _requestExpirationIvalSec(
                   requestExpirationIvalSec == 0
-                          ? serviceProvider->config()->get<unsigned int>("controller", "request-timeout-sec")
+                          ? serviceProvider->config()->get<unsigned int>("worker", "request-timeout-sec")
                           : requestExpirationIvalSec),
           _requestExpirationTimer(serviceProvider->io_service()),
           _status(ProtocolStatus::CREATED),
