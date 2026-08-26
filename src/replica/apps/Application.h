@@ -69,20 +69,14 @@ protected:
      *
      * @param arc An argument count.
      * @param argv A vector of argument values.
-     * @param description An optional description of an application as it will appear
+     * @param description A description of an application as it will appear
      *  in the documentation string reported with option "--help".
-     * @param injectDatabaseOptions An optional flag which will inject database options
-     *  and use an input from a user to change the corresponding defaults in the Configuration.
-     * @param boostProtobufVersionCheck An optional flag which will force Google Protobuf
-     *  version check. The check will ensure that a version of the Protobuf library linked
-     *  to an application is consistent with header files.
-     * @param enableServiceProvider An optional flag which will inject configuration
+     * @param enableServiceProvider A flag which will inject configuration
      *  option "--repl-db=<url>", load the configuration into Configuration and initialize
      *  the ServiceProvider with the configuration.
      */
-    Application(int argc, const char* const argv[], std::string const& description = "",
-                bool const injectDatabaseOptions = true, bool const boostProtobufVersionCheck = false,
-                bool const enableServiceProvider = false);
+    Application(int argc, const char* const argv[], std::string const& description,
+                bool const enableServiceProvider);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -118,20 +112,7 @@ protected:
     virtual int runImpl() = 0;
 
 private:
-    /**
-     * @brief Make sure the command-line parsing has finished and the specified
-     *   option was configured in the c-tor of the class.
-     * @param func the name of the calling context.
-     * @param option the option to be checked.
-     * @param the meaning of the option.
-     * @throws std::logic_error If the method was called before Parser finished
-     *  processing command-line parameters, or if the option was not configured.
-     */
-    void _assertValidOption(std::string const& func, bool option, std::string const& context) const;
-
     // Input parameters
-    bool const _injectDatabaseOptions;
-    bool const _boostProtobufVersionCheck;
     bool const _enableServiceProvider;
 
     /// For parsing command-line parameters, options and flags

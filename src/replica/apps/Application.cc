@@ -44,11 +44,8 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Application");
 namespace lsst::qserv::replica {
 
 Application::Application(int argc, const char* const argv[], string const& description,
-                         bool const injectDatabaseOptions, bool const boostProtobufVersionCheck,
                          bool const enableServiceProvider)
-        : _injectDatabaseOptions(injectDatabaseOptions),
-          _boostProtobufVersionCheck(boostProtobufVersionCheck),
-          _enableServiceProvider(enableServiceProvider),
+        : _enableServiceProvider(enableServiceProvider),
           _parser(argc, argv, description),
           _debugFlag(false),
           _replDbUrl("mysql://qsreplica@localhost:3306/qservReplica"),
@@ -60,61 +57,62 @@ Application::Application(int argc, const char* const argv[], string const& descr
           _schemaUpgradeWaitTimeoutSec(Configuration::schemaUpgradeWaitTimeoutSec()) {
     // Verify that the version of the library that we linked against is
     // compatible with the version of the headers we compiled against.
-    if (_boostProtobufVersionCheck) {
-        GOOGLE_PROTOBUF_VERIFY_VERSION;
-    }
+    GOOGLE_PROTOBUF_VERIFY_VERSION;
 }
 
 int Application::run() {
-    // Add extra options to the parser configuration
-    parser().option("instance-id",
-                    " A unique identifier of a Qserv instance served by the Replication System."
-                    " Its value will be passed along various internal communication lines of"
-                    " the system to ensure that all services are related to the same instance."
-                    " This mechanism also prevents 'cross-talks' between two (or many) Replication"
-                    " System's setups in case of an accidental mis-configuration.",
-                    _instanceId)
-            .option("http-user", "The login name of a user for connecting to the Replication service.",
-                    _httpAuthContext.user)
-            .option("http-password",
-                    "The login password of a user for connecting to the Replication service. The value of "
-                    "the password"
-                    " will be ignored if the user is not specified. The password will be used for"
-                    " authenticating the user. The password can't be empty if the user is specified.",
-                    _httpAuthContext.password)
-            .option("auth-key",
-                    "An authorization key for operations affecting the state of Qserv or"
-                    " the Replication/Ingest system.",
-                    _httpAuthContext.authKey)
-            .option("admin-auth-key",
-                    "An administrator-level authorization key for critical operations affecting"
-                    " the state of Qserv of the Replication/Ingest system.",
-                    _httpAuthContext.adminAuthKey)
-            .flag("debug",
+    // The standard option which is available to all applications.
+    parser().flag("debug",
                   "Change the minimum logging level from ERROR to DEBUG. Note that the Logger"
                   " is configured via a configuration file (if any) presented to the application via"
                   " environment variable LSST_LOG_CONFIG. If this variable is not set then some"
                   " default configuration of the Logger will be assumed.",
                   _debugFlag);
-    if (_injectDatabaseOptions) {
+
+    // Add extra options if requested by an application.
+    if (_enableServiceProvider) {
+        parser().option("repl-db", "Configuration URL (a database connection string).", _replDbUrl);
+        parser().option("instance-id",
+                        " A unique identifier of a Qserv instance served by the Replication System."
+                        " Its value will be passed along various internal communication lines of"
+                        " the system to ensure that all services are related to the same instance."
+                        " This mechanism also prevents 'cross-talks' between two (or many) Replication"
+                        " System's setups in case of an accidental mis-configuration.",
+                        _instanceId);
+        parser().option("http-user", "The login name of a user for connecting to the Replication service.",
+                        _httpAuthContext.user);
+        parser().option(
+                "http-password",
+                "The login password of a user for connecting to the Replication service. The value "
+                "of the password is ignored if the user is not specified. The password will be used for"
+                " authenticating the user. The password can't be empty if the user is specified.",
+                _httpAuthContext.password);
+        parser().option("auth-key",
+                        "An authorization key for operations affecting the state of Qserv or"
+                        " the Replication/Ingest system.",
+                        _httpAuthContext.authKey);
+        parser().option("admin-auth-key",
+                        "An administrator-level authorization key for critical operations affecting"
+                        " the state of Qserv of the Replication/Ingest system.",
+                        _httpAuthContext.adminAuthKey);
         parser().option("db-allow-reconnect",
                         "Change the default database connection handling node. Set 0 to disable"
                         " automatic reconnects. Any other number would allow reconnects.",
-                        _databaseAllowReconnect)
-                .option("db-reconnect-timeout",
+                        _databaseAllowReconnect);
+        parser().option("db-reconnect-timeout",
                         "Change the default value limiting a duration of time for making automatic"
                         " reconnects to a database server before failing and reporting error"
                         " (if the server is not up, or if it's not reachable for some reason)",
-                        _databaseConnectTimeoutSec)
-                .option("db-max-reconnects",
+                        _databaseConnectTimeoutSec);
+        parser().option("db-max-reconnects",
                         "Change the default value limiting a number of attempts to repeat a sequence"
                         " of queries due to connection losses and subsequent reconnects before to fail.",
-                        _databaseMaxReconnects)
-                .option("db-transaction-timeout",
+                        _databaseMaxReconnects);
+        parser().option("db-transaction-timeout",
                         "Change the default value limiting a duration of each attempt to execute"
                         " a database transaction before to fail.",
-                        _databaseTransactionTimeoutSec)
-                .option("schema-upgrade-wait",
+                        _databaseTransactionTimeoutSec);
+        parser().option("schema-upgrade-wait",
                         "If the value of the option is 0 and the schema version of the Replication/Ingest "
                         "system's"
                         " database is either not available or is less than " +
@@ -127,15 +125,13 @@ int Application::run() {
                                 "expected one"
                                 " then the application will fail right away regardless of a value of either "
                                 "options.",
-                        _schemaUpgradeWait)
-                .option("schema-upgrade-wait-timeout",
+                        _schemaUpgradeWait);
+        parser().option("schema-upgrade-wait-timeout",
                         "This option specifies a duration of time to wait for the schema upgrade in case"
                         " if this feature is enabled in the option --schema-upgrade-wait.",
                         _schemaUpgradeWaitTimeoutSec);
-    }
-    if (_enableServiceProvider) {
-        parser().option("repl-db", "Configuration URL (a database connection string).", _replDbUrl);
-        // Inject options for th egeneral configuration parameters.
+
+        // Inject options for the general configuration parameters.
         for (auto&& itr : ConfigurationSchema::parameters()) {
             string const& category = itr.first;
             for (auto&& param : itr.second) {
@@ -157,7 +153,7 @@ int Application::run() {
     }
 
     // Change the default logging level if requested
-    if (not _debugFlag) {
+    if (!_debugFlag) {
         LOG_CONFIG_PROP(
                 "log4j.rootLogger=INFO, CONSOLE\n"
                 "log4j.appender.CONSOLE=org.apache.log4j.ConsoleAppender\n"
@@ -167,16 +163,16 @@ int Application::run() {
                 "log4j.logger.lsst.qserv=INFO");
     }
 
-    // Change default parameters of the database connectors
-    if (_injectDatabaseOptions) {
+    if (_enableServiceProvider) {
+        // Change default parameters of the database connectors
         Configuration::setDatabaseAllowReconnect(_databaseAllowReconnect != 0);
         Configuration::setDatabaseConnectTimeoutSec(_databaseConnectTimeoutSec);
         Configuration::setDatabaseMaxReconnects(_databaseMaxReconnects);
         Configuration::setDatabaseTransactionTimeoutSec(_databaseTransactionTimeoutSec);
         Configuration::setSchemaUpgradeWait(_schemaUpgradeWait != 0);
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
-    }
-    if (_enableServiceProvider) {
+
+        // Create the service provider instance and initialize the Configuration.
         _serviceProvider = ServiceProvider::create(_replDbUrl, _instanceId, _httpAuthContext);
 
         // Update general configuration parameters.
@@ -199,7 +195,7 @@ int Application::run() {
         _serviceProvider->run();
     }
 
-    // Let the user's code to do its job
+    // Let the subclass implementation do its job
     int const exitCode = runImpl();
 
     // Shutdown the provider and join with its threads
@@ -210,19 +206,15 @@ int Application::run() {
 }
 
 ServiceProvider::Ptr const& Application::serviceProvider() const {
-    _assertValidOption(__func__, _enableServiceProvider, " service provider options");
-    return _serviceProvider;
-}
-
-void Application::_assertValidOption(string const& func, bool option, string const& context) const {
-    string const context_ = "Application::" + func + " ";
+    string const context_ = "Application::" + string(__func__) + " ";
     if (_parser.status() != Parser::SUCCESS) {
         throw logic_error(context_ +
                           "calling this method isn't allowed before invoking the command-line parser.");
     }
-    if (!option) {
-        throw logic_error(context_ + "this application was not configured with " + context + ".");
+    if (!_enableServiceProvider) {
+        throw logic_error(context_ + "this application was not configured with the service provider.");
     }
+    return _serviceProvider;
 }
 
 }  // namespace lsst::qserv::replica
