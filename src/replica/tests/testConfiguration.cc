@@ -158,6 +158,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
 
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
 
+    BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 122);
     BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 3);
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 4);
     BOOST_CHECK(config->get<size_t>("worker", "num-http-svc-threads") == 10);
@@ -323,6 +324,10 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services-pool-size", 3));
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 3);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 123));
+    BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 123);
 
     BOOST_CHECK_THROW(config->set<size_t>("worker", "num-threads", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("worker", "num-threads", 4));
