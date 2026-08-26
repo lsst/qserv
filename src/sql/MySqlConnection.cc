@@ -25,11 +25,12 @@
 #include "sql/MySqlConnection.h"
 
 // System headers
-#include <cstdio>
 #include <cstddef>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 // LSST headers
 #include "lsst/log/Log.h"
@@ -41,13 +42,13 @@
 
 namespace {
 void populateErrorObject(lsst::qserv::mysql::MySqlConnection& m, lsst::qserv::sql::SqlErrorObject& o) {
-    MYSQL* mysql = m.getMySql();
-    if (mysql == nullptr) {
-        o.setErrNo(-999);
-        o.addErrMsg("Error connecting to mysql with config:" + m.getConfig().toString());
-    } else {
+    try {
+        MYSQL* mysql = m.getMySql();
         o.setErrNo(mysql_errno(mysql));
         o.addErrMsg(mysql_error(mysql));
+    } catch (std::logic_error const&) {
+        o.setErrNo(-999);
+        o.addErrMsg("Error connecting to mysql with config:" + m.getConfig().toString());
     }
 }
 
