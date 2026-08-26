@@ -93,8 +93,6 @@ string const description =
         " The controller has the built-in REST API which accepts external commands"
         " or request for information.";
 
-bool const injectDatabaseOptions = true;
-bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
 }  // namespace
@@ -106,8 +104,7 @@ shared_ptr<MasterControllerHttpApp> MasterControllerHttpApp::create(int argc, ch
 }
 
 MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
-                      ::enableServiceProvider),
+        : Application(argc, argv, ::description, ::enableServiceProvider),
           _healthProbeIntervalSec(::defaultOptions.healthProbeIntervalSec),
           _replicationIntervalSec(::defaultOptions.replicationIntervalSec),
           _czarResponseTimeoutSec(::defaultOptions.czarResponseTimeoutSec),
@@ -120,8 +117,6 @@ MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
           _forceQservSync(::defaultOptions.forceQservSync),
           _permanentDelete(::defaultOptions.permanentDelete),
           _qservCzarDbUrl(Configuration::qservCzarDbUrl()) {
-    // Configure the command line parser
-
     parser().option("name",
                     "The unique name of the controller as it's seen in the service discovery Registry.",
                     _name);

@@ -50,8 +50,6 @@ namespace {
 
 string const description = "This application represents the worker service of the Replication system.";
 
-bool const injectDatabaseOptions = true;
-bool const boostProtobufVersionCheck = true;
 bool const enableServiceProvider = true;
 
 LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.WorkerApp");
@@ -67,8 +65,7 @@ shared_ptr<WorkerApp> WorkerApp::create(int argc, char* argv[]) {
 }
 
 WorkerApp::WorkerApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
-                      ::enableServiceProvider),
+        : Application(argc, argv, ::description, ::enableServiceProvider),
           _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
     parser().option("qserv-worker-db",
                     "A connection url for the MySQL service of the Qserv"
