@@ -46,8 +46,6 @@ string const description =
         "This application for interacting with AWS S3 services."
         " The application uses AWS C++ SDK.";
 
-bool const injectDatabaseOptions = false;
-bool const boostProtobufVersionCheck = false;
 bool const enableServiceProvider = false;
 
 }  // namespace
@@ -59,8 +57,7 @@ shared_ptr<TestAwsS3App> TestAwsS3App::create(int argc, char* argv[]) {
 }
 
 TestAwsS3App::TestAwsS3App(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::injectDatabaseOptions, ::boostProtobufVersionCheck,
-                      ::enableServiceProvider) {
+        : Application(argc, argv, ::description, ::enableServiceProvider) {
     parser().commands("operation", {"READ", "WRITE", "DELETE"}, _operation)
             .option("endpoint", "The S3 service endpoint (host[:port]).", _endpoint)
             .option("access-key", "The service key (for authentication/authorization).", _accessKey)
