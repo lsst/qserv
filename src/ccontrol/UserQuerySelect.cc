@@ -87,8 +87,9 @@
 #include "qmeta/Exceptions.h"
 #include "qmeta/QMeta.h"
 #include "qmeta/QProgress.h"
-#include "qproc/IndexMap.h"
 #include "qproc/QuerySession.h"
+#include "qproc/IndexMap.h"
+#include "query/ScanTableInfo.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/JoinRef.h"
@@ -245,7 +246,7 @@ void UserQuerySelect::submit() {
     }
 
     exec->setScanInteractive(_qSession->getScanInteractive());
-    exec->setScanInfo(_qSession->getScanInfo());
+    exec->setScanInfo(*_qSession->getScanInfo());
 
     string dbName("");
     bool dbNameSet = false;

@@ -59,8 +59,8 @@ struct TestFixture {
         css->setScanTableParams("Somedb", "Object", css::ScanTableParams(true, 1));
     }
 
-    protojson::ScanInfo::Ptr runScanTablePlugin(std::string const& query, int interactiveChunkLimit = 0,
-                                                int chunkCount = 0) {
+    query::ScanInfo::Ptr runScanTablePlugin(std::string const& query, int interactiveChunkLimit = 0,
+                                            int chunkCount = 0) {
         query::SelectStmt::Ptr selectStmt;
         BOOST_REQUIRE_NO_THROW(selectStmt = ccontrol::ParseRunner::makeSelectStmt(query));
         BOOST_REQUIRE(selectStmt != nullptr);

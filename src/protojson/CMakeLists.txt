@@ -53,4 +53,5 @@ protojson_tests(
 	testUberJobErrorMsg
     testUberJobReadyMsg
     testUberJobMsg
+    testScanTableInfo
 )

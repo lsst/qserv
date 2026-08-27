@@ -219,7 +219,7 @@ public:
     void killIncompleteUberJobsOnWorker(std::string const& workerId);
 
     // Try to remove this and put in constructor
-    void setScanInfo(protojson::ScanInfo::Ptr const& scanInfo) { _scanInfo = scanInfo; }
+    void setScanInfo(query::ScanInfo const& scanInfo) { _scanInfo = protojson::ScanInfo::create(scanInfo); }
 
     /// Return a pointer to _scanInfo.
     protojson::ScanInfo::Ptr getScanInfo() { return _scanInfo; }
