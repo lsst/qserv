@@ -53,6 +53,7 @@
 #include "global/constants.h"
 #include "global/stringTypes.h"
 #include "parser/ParseException.h"
+#include "proto/ScanTableInfo.h"
 #include "qana/AggregatePlugin.h"
 #include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
@@ -445,7 +446,7 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
     // name in the ChunkQuerySpec is to build the CSS resource path. See details in the implementation
     // of the class.
     auto cQSpec = std::make_shared<ChunkQuerySpec>(*(_context->dominantDbs.begin()), chunkSpec.chunkId,
-                                                   _context->scanInfo, _scanInteractive);
+                                                   proto::ScanInfo(_context->scanInfo), _scanInteractive);
     // Reset subChunkTables
     qana::QueryMapping const& queryMapping = *(_context->queryMapping);
     DbTableSet const& sTables = queryMapping.getSubChunkTables();

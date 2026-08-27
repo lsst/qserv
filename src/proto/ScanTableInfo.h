@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "proto/worker.pb.h"
+#include "query/ScanTableInfo.h"
 
 namespace lsst::qserv::proto {
 
@@ -66,6 +67,15 @@ struct ScanTableInfo {
 struct ScanInfo {
     /// Threshold priority values. Scan priorities are not limited to these values.
     enum Rating { FASTEST = 0, FAST = 10, MEDIUM = 20, SLOW = 30, SLOWEST = 100 };
+
+    ScanInfo() = default;
+    /// Convert query analysis ScanInfo to the dispatch representation.
+    explicit ScanInfo(query::ScanInfo const& qScanInfo) : scanRating(qScanInfo.scanRating) {
+        infoTables.reserve(qScanInfo.infoTables.size());
+        for (auto const& qTbl : qScanInfo.infoTables) {
+            infoTables.emplace_back(qTbl.db, qTbl.table, qTbl.lockInMemory, qTbl.scanRating);
+        }
+    }
 
     void sortTablesSlowestFirst();
     int compareTables(ScanInfo const& rhs);

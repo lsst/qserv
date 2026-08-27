@@ -41,7 +41,6 @@
 
 // Qserv headers
 #include "global/stringTypes.h"
-#include "proto/ScanTableInfo.h"
 #include "query/ColumnRef.h"
 #include "query/FromList.h"
 #include "query/QueryContext.h"
@@ -93,7 +92,7 @@ StringPairVector filterPartitioned(query::TableRefList const& tList) {
     return vector;
 }
 
-proto::ScanInfo ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, query::QueryContext& context) {
+query::ScanInfo ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, query::QueryContext& context) {
     // Might be better as a separate plugin
 
     // All tables of a query are scan tables if the statement both:
@@ -187,15 +186,14 @@ proto::ScanInfo ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, query:
 
     // Ask css if any of the tables should be locked in memory and their scan rating.
     // Use this information to determine scanPriority.
-    proto::ScanInfo scanInfo;
+    query::ScanInfo scanInfo;
     for (auto& pair : scanTables) {
-        proto::ScanTableInfo info(pair.first, pair.second);
+        query::ScanTableInfo info(pair.first, pair.second);
         css::ScanTableParams const params = context.css->getScanTableParams(info.db, info.table);
         info.lockInMemory = params.lockInMem;
         info.scanRating = params.scanRating;
         scanInfo.infoTables.push_back(info);
         scanInfo.scanRating = std::max(scanInfo.scanRating, info.scanRating);
-        scanInfo.scanRating = std::min(scanInfo.scanRating, static_cast<int>(proto::ScanInfo::SLOWEST));
         LOGS(_log, LOG_LVL_INFO,
              "ScanInfo " << info.db << "." << info.table << " lockInMemory=" << info.lockInMemory
                          << " rating=" << info.scanRating);
