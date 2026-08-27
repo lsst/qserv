@@ -34,7 +34,7 @@ struct ScanTableParams {
     ScanTableParams(bool lockInMem_, int scanRating_) : lockInMem(lockInMem_), scanRating(scanRating_) {}
 
     bool lockInMem{false};  ///< True if table should be locked in memory for shared scan
-    int scanRating{0};      ///< Speed of shared scan. 1-fast, 2-medium, 3-slow
+    int scanRating{0};      ///< Speed of shared scan. @see proto::ScanInfo::Rating
 };
 
 }  // namespace lsst::qserv::css

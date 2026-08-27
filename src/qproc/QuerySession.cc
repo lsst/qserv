@@ -71,7 +71,6 @@
 #include "query/SecIdxRestrictor.h"
 #include "query/SelectList.h"
 #include "query/SelectStmt.h"
-#include "query/SelectList.h"
 #include "query/typedefs.h"
 #include "sql/SqlException.h"
 #include "util/IterableFormatter.h"

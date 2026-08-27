@@ -78,7 +78,10 @@ std::shared_ptr<proto::TaskMsg> TaskMsgFactory::_makeMsg(ChunkQuerySpec const& c
 
     for (auto const& sTbl : chunkQuerySpec.scanInfo.infoTables) {
         lsst::qserv::proto::TaskMsg_ScanTable* msgScanTbl = taskMsg->add_scantable();
-        sTbl.copyToScanTable(msgScanTbl);
+        msgScanTbl->set_db(sTbl.db);
+        msgScanTbl->set_table(sTbl.table);
+        msgScanTbl->set_lockinmemory(sTbl.lockInMemory);
+        msgScanTbl->set_scanrating(sTbl.scanRating);
     }
 
     taskMsg->set_scanpriority(chunkQuerySpec.scanInfo.scanRating);

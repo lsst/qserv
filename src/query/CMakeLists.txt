@@ -1,6 +1,4 @@
 add_library(query SHARED)
-add_dependencies(query proto)
-
 target_sources(query PRIVATE
     AggOp.cc
     AndTerm.cc
