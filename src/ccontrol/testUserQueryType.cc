@@ -83,4 +83,28 @@ BOOST_AUTO_TEST_CASE(testSetQueryType) {
             false);
 }
 
+BOOST_AUTO_TEST_CASE(testExplainQueryType) {
+    std::string stripped;
+    bool jsonFormat = true;  // start non-default to confirm it is written
+
+    // EXPLAIN <select>.
+    BOOST_CHECK_EQUAL(
+            ccontrol::UserQueryType::isExplain("EXPLAIN SELECT * FROM LSST.Object", stripped, jsonFormat),
+            true);
+    BOOST_CHECK_EQUAL(stripped, "SELECT * FROM LSST.Object");
+    BOOST_CHECK_EQUAL(jsonFormat, false);
+
+    // EXPLAIN FORMAT=JSON <select>.
+    BOOST_CHECK_EQUAL(
+            ccontrol::UserQueryType::isExplain("EXPLAIN FORMAT=JSON SELECT a FROM b", stripped, jsonFormat),
+            true);
+    BOOST_CHECK_EQUAL(stripped, "SELECT a FROM b");
+    BOOST_CHECK_EQUAL(jsonFormat, true);
+
+    // Non-matches
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isExplain("SELECT * FROM Obj", stripped, jsonFormat), false);
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isExplain("EXPLAINX SELECT 1", stripped, jsonFormat), false);
+    BOOST_CHECK_EQUAL(ccontrol::UserQueryType::isExplain("EXPLAIN", stripped, jsonFormat), false);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
