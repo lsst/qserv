@@ -198,6 +198,8 @@ void QuerySession::addChunk(ChunkSpec const& cs) {
     _chunks.push_back(cs);
 }
 
+query::ScanInfo QuerySession::getScanInfo() const { return _context->scanInfo; }
+
 void QuerySession::setScanInteractive() {
     // Default is for interactive scan.
     if (_context->chunkCount > _interactiveChunkLimit) {

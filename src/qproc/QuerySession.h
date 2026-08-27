@@ -111,6 +111,9 @@ public:
     void addChunk(ChunkSpec const& cs);
     void setDummy();
 
+    /// @return true if this query runs against the dummy chunk rather than real chunk coverage.
+    bool isDummy() const { return _isDummy; }
+
     /**
      * @brief Compute this query's chunk coverage.
      *
@@ -197,6 +200,8 @@ public:
 
     void setScanInteractive();
     bool getScanInteractive() const { return _scanInteractive; }
+
+    query::ScanInfo getScanInfo() const;
 
     /**
      *  Print query session to stream.
