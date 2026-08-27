@@ -422,37 +422,7 @@ void UserQuerySelect::_expandSelectStarInMergeStatment(std::shared_ptr<query::Se
 
 void UserQuerySelect::saveResultQuery() { _queryMetadata->saveResultQuery(_queryId, getResultQuery()); }
 
-void UserQuerySelect::_setupChunking() {
-    LOGS(_log, LOG_LVL_TRACE, "Setup chunking  _qSession: " << _qSession);
-    if (_qSession->hasChunks()) {
-        auto areaRestrictors = _qSession->getAreaRestrictors();
-        auto secIdxRestrictors = _qSession->getSecIdxRestrictors();
-        css::StripingParams partStriping = _qSession->getDbStriping();
-        auto const im = std::make_shared<qproc::IndexMap>(partStriping, _secondaryIndex);
-        qproc::ChunkSpecVector csv;
-        if (areaRestrictors != nullptr || secIdxRestrictors != nullptr) {
-            csv = im->getChunks(areaRestrictors, secIdxRestrictors);
-        } else {  // Unrestricted: full-sky
-            csv = im->getAllChunks();
-        }
-        LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
-
-        // Filter out empty chunks
-        std::shared_ptr<IntSet const> eSet = _qSession->getEmptyChunks();
-        if (!eSet) {
-            eSet = std::make_shared<IntSet const>();
-            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
-        }
-        for (qproc::ChunkSpecVector::const_iterator i = csv.begin(), e = csv.end(); i != e; ++i) {
-            if (eSet->count(i->chunkId) == 0) {  // chunk not in empty?
-                _qSession->addChunk(*i);
-            }
-        }
-    } else {
-        LOGS(_log, LOG_LVL_TRACE, "No chunks added, QuerySession will add dummy chunk");
-    }
-    _qSession->setScanInteractive();
-}
+void UserQuerySelect::_setupChunking() { _qSession->setupChunking(_secondaryIndex); }
 
 void UserQuerySelect::qMetaRegister(std::string const& resultLocation, std::string const& msgTableName) {
     qmeta::QInfo::QType qType = _async ? qmeta::QInfo::ASYNC : qmeta::QInfo::SYNC;
