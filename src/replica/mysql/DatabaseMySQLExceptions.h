@@ -206,7 +206,7 @@ public:
  *   ALTER TABLE <database>.<table> DROP PARTITION <partition>;
  * @endcode
  */
-class ER_DROP_PARTITION_NON_EXISTENT_ : public Error {
+class ER_PARTITION_DOES_NOT_EXIST_ : public Error {
 public:
     using Error::Error;
 };

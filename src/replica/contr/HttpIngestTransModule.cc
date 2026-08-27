@@ -583,7 +583,7 @@ void HttpIngestTransModule::_removePartitionFromDirectorIndex(DatabaseInfo const
     // created after the transaction was created.
     try {
         h.conn->executeInOwnTransaction([&query](decltype(h.conn) conn) { conn->execute(query); });
-    } catch (database::mysql::ER_DROP_PARTITION_NON_EXISTENT_ const&) {
+    } catch (database::mysql::ER_PARTITION_DOES_NOT_EXIST_ const&) {
         ;
     }
 }

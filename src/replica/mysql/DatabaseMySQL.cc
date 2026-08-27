@@ -237,8 +237,8 @@ void Connection::_processLastError(string const& context, bool instantAutoReconn
         case ER_UNKNOWN_PARTITION:
             throw ER_UNKNOWN_PARTITION_(msg);
 
-        case ER_DROP_PARTITION_NON_EXISTENT:
-            throw ER_DROP_PARTITION_NON_EXISTENT_(msg);
+        case ER_PARTITION_DOES_NOT_EXIST:
+            throw ER_PARTITION_DOES_NOT_EXIST_(msg);
 
         case ER_LOCK_DEADLOCK:
             throw ER_LOCK_DEADLOCK_(msg);
