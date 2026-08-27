@@ -55,6 +55,11 @@ boost::regex _showProcessListRe(R"(^show\s+(full\s+)?processlist$)",
 boost::regex _submitRe(R"(^submit\s+(.+)$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
+// regex for EXPLAIN [FORMAT=JSON|TRADITIONAL] ...
+// group 1 (optional) is the requested output format, group 2 is the stripped query
+boost::regex _explainRe(R"(^explain\s+(?:format\s*=\s*(json|traditional)\s+)?(.+)$)",
+                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
 // regex for SELECT * FROM QSERV_RESULT(12345)
 // group 1 is the query ID number
 // Note that parens around whole string are not part of the regex but raw string literal
@@ -134,6 +139,17 @@ bool UserQueryType::isSubmit(std::string const& query, std::string& stripped) {
     bool match = boost::regex_match(query, sm, _submitRe);
     if (match) {
         stripped = sm.str(1);
+    }
+    return match;
+}
+
+/// Returns true if query is EXPLAIN [FORMAT=JSON|TRADITIONAL] ...
+bool UserQueryType::isExplain(std::string const& query, std::string& stripped, bool& jsonFormat) {
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _explainRe);
+    if (match) {
+        jsonFormat = boost::to_lower_copy(sm.str(1)) == "json";
+        stripped = sm.str(2);
     }
     return match;
 }

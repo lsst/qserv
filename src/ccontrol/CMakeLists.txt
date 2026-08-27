@@ -15,6 +15,7 @@ target_sources(ccontrol PRIVATE
     ParseRunner.cc
     QueryState.cc
     UserQueryAsyncResult.cc
+    UserQueryExplain.cc
     UserQueryFactory.cc
     UserQueryProcessList.cc
     UserQueryQueries.cc
