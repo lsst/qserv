@@ -194,7 +194,7 @@ CurlEasy& CurlEasy::perform() {
 CurlEasy& CurlEasy::validate(lsst::qserv::qhttp::Status responseCode, std::string const& contentType) {
     long recdResponseCode;
     char* recdContentType = nullptr;
-    double recdContentLength;
+    curl_off_t recdContentLength;
 
     BOOST_TEST(curl_easy_getinfo(hcurl, CURLINFO_RESPONSE_CODE, &recdResponseCode) == CURLE_OK);
     BOOST_TEST(recdResponseCode == responseCode);
@@ -202,8 +202,8 @@ CurlEasy& CurlEasy::validate(lsst::qserv::qhttp::Status responseCode, std::strin
     BOOST_TEST(curl_easy_getinfo(hcurl, CURLINFO_CONTENT_TYPE, &recdContentType) == CURLE_OK);
     BOOST_TEST(recdContentType == contentType);
 
-    BOOST_TEST(curl_easy_getinfo(hcurl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &recdContentLength) == CURLE_OK);
-    BOOST_TEST(recdContentLength == recdContent.size());
+    BOOST_TEST(curl_easy_getinfo(hcurl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &recdContentLength) == CURLE_OK);
+    BOOST_TEST(recdContentLength == static_cast<curl_off_t>(recdContent.size()));
 
     return *this;
 }
