@@ -186,7 +186,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
     LOGS(_log, LOG_LVL_TRACE, "ScanScheduler::queCmd cmds.sz=" << cmds.size());
     std::vector<wbase::Task::Ptr> tasks;
     bool first = true;
-    QueryId qid;
+    QueryId qid = 0;
     int jid = 0;
     // Convert to a vector of tasks
     for (auto const& cmd : cmds) {
@@ -203,7 +203,7 @@ void ScanScheduler::queCmd(vector<util::Command::Ptr> const& cmds) {
             if (qid != tsk->getQueryId()) {
                 string eMsg("Mismatch multiple query/job ids in single queCmd ");
                 eMsg += " expected QID=" + to_string(qid) + " got=" + to_string(tsk->getQueryId());
-                eMsg += " expected JID=" + to_string(qid) + " got=" + to_string(tsk->getJobId());
+                eMsg += " expected JID=" + to_string(jid) + " got=" + to_string(tsk->getJobId());
                 LOGS(_log, LOG_LVL_ERROR, eMsg);
                 // This could cause difficult to detect problems later on.
                 throw util::Bug(ERR_LOC, eMsg);

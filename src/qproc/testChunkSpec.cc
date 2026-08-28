@@ -35,6 +35,7 @@
 #include <iterator>
 #include <list>
 #include <map>
+#include <random>
 #include <sstream>
 #include <string>
 
@@ -121,7 +122,7 @@ BOOST_AUTO_TEST_CASE(Intersect) {
     BOOST_CHECK(c1c2.subChunks.size() != c2.subChunks.size());
 
     // Same results after shuffling
-    std::random_shuffle(c1c2.subChunks.begin(), c1c2.subChunks.end());
+    std::ranges::shuffle(c1c2.subChunks, std::mt19937{std::random_device{}()});
     ChunkSpec nc1c2 = c1c2.intersect(c2);
     // Sort c1c2 so that the equals comparison works.
     std::sort(c1c2.subChunks.begin(), c1c2.subChunks.end());

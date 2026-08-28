@@ -53,9 +53,13 @@ namespace detail {
  *  is the sequence of strings (pointers) and their lengths. Pointer may be NULL
  *  if the column value is NONE.
  */
-class SqlResults_Iterator
-        : public std::iterator<std::input_iterator_tag, std::vector<std::pair<char const*, unsigned long>>> {
+class SqlResults_Iterator {
 public:
+    using iterator_category = std::input_iterator_tag;
+    using value_type = std::vector<std::pair<char const*, unsigned long>>;
+    using difference_type = std::ptrdiff_t;
+    using pointer = value_type*;
+    using reference = value_type&;
     SqlResults_Iterator();
     SqlResults_Iterator(std::vector<MYSQL_RES*> const& results);
 

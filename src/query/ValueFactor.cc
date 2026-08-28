@@ -58,9 +58,9 @@ ValueFactor::ValueFactor(std::shared_ptr<ColumnRef> const& columnRef)
         : _type(COLUMNREF), _columnRef(columnRef) {}
 
 ValueFactor::ValueFactor(std::string const& constVal) : _type(CONST), _constVal(constVal) {
-    auto&& removeFrom = std::find_if(_constVal.rbegin(), _constVal.rend(), [](unsigned char c) {
-                            return !std::isspace(c);
-                        }).base();
+    auto removeFrom = std::find_if(_constVal.rbegin(), _constVal.rend(), [](unsigned char c) {
+                          return !std::isspace(c);
+                      }).base();
     _constVal.erase(removeFrom, _constVal.end());
 }
 

@@ -51,7 +51,7 @@ bool ptrCompare(std::shared_ptr<T> const& lhs, std::shared_ptr<T> const& rhs) {
     if (rhs == nullptr || lhs == nullptr) {
         return false;
     }
-    if (*lhs == *rhs) {
+    if ((*lhs).operator==(*rhs)) {
         return true;
     }
     return false;

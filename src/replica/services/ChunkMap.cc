@@ -82,7 +82,7 @@ bool ChunkMap::update() {
     for (auto const& [workerName, databases] : *_chunks) {
         for (auto const& [databaseName, tables] : databases) {
             for (auto const& [tableName, chunks] : tables) {
-                for (auto const [chunkId, size] : chunks) {
+                for (auto const& [chunkId, size] : chunks) {
                     rows.push_back(g.packVals(workerName, databaseName, tableName, chunkId, size));
                 }
             }

@@ -68,9 +68,10 @@ char const* getOrderStr(OrderByTerm::Order o) {
 
 namespace lsst::qserv::query {
 
-class OrderByTerm::render : public std::unary_function<OrderByTerm, void> {
+class OrderByTerm::render {
 public:
     render(QueryTemplate& qt) : _qt(qt), _count(0) {}
+
     void applyToQT(OrderByTerm const& term) {
         if (_count++ > 0) {
             _qt.append(", ");
@@ -78,6 +79,7 @@ public:
         term.renderTo(_qt);
         LOGS(_log, LOG_LVL_TRACE, "Query Template: " << _qt);
     }
+
     QueryTemplate& _qt;
     int _count;
 };
