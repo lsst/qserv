@@ -60,7 +60,7 @@ void SecIdxCompRestrictor::renderTo(QueryTemplate& qt) const { _compPredicate->r
 
 bool SecIdxCompRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
     auto rhsCompRestrictor = static_cast<SecIdxCompRestrictor const&>(rhs);
-    return *_compPredicate == *rhsCompRestrictor._compPredicate;
+    return (*_compPredicate).operator==(*rhsCompRestrictor._compPredicate);
 }
 
 std::shared_ptr<query::ColumnRef const> SecIdxCompRestrictor::getSecIdxColumnRef() const {
@@ -82,7 +82,7 @@ void SecIdxBetweenRestrictor::renderTo(QueryTemplate& qt) const { _betweenPredic
 
 bool SecIdxBetweenRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
     auto rhsBetweenRestrictor = static_cast<SecIdxBetweenRestrictor const&>(rhs);
-    return *_betweenPredicate == *rhsBetweenRestrictor._betweenPredicate;
+    return (*_betweenPredicate).operator==(*rhsBetweenRestrictor._betweenPredicate);
 }
 
 std::shared_ptr<query::ColumnRef const> SecIdxBetweenRestrictor::getSecIdxColumnRef() const {
@@ -104,7 +104,7 @@ void SecIdxInRestrictor::renderTo(QueryTemplate& qt) const { _inPredicate->rende
 
 bool SecIdxInRestrictor::isEqual(const SecIdxRestrictor& rhs) const {
     auto rhsRestrictor = static_cast<SecIdxInRestrictor const&>(rhs);
-    return *_inPredicate == *rhsRestrictor._inPredicate;
+    return (*_inPredicate).operator==(*rhsRestrictor._inPredicate);
 }
 
 std::shared_ptr<query::ColumnRef const> SecIdxInRestrictor::getSecIdxColumnRef() const {
