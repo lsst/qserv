@@ -34,35 +34,9 @@
 
 namespace lsst::qserv {
 
-/// @return true if a string is safe enough to use as a name in our SQL dialect.
-bool inline isNameSafe(std::string::value_type const& c) {
-    std::locale loc;
-    if (std::isalnum(c)) {  // Not sure that using the default locale is safe.
-        return true;
-    }
-    switch (c) {  // Special cases. '_' is the only one right now.
-        case '_':
-            return true;
-        default:
-            return false;
-    }
-}
-
-/// Function object version of isNameSafe
-struct isNameSafePred {
-    inline bool operator()(std::string::value_type const& c) const { return isNameSafe(c); }
-    typedef std::string::value_type argument_type;
-};
-
 /// @return a string equal to the original string with non-safe characters
 /// removed.
-inline std::string sanitizeName(std::string const& name) {
-    std::string out;
-    std::remove_copy_if(name.begin(), name.end(), std::insert_iterator<std::string>(out, out.begin()),
-                        std::not1(isNameSafePred()));
-
-    return out;
-}
+std::string sanitizeName(std::string const& name);
 
 /// @return: string version of the contents of 'a'.
 template <typename A>

@@ -25,13 +25,45 @@
 // System headers
 #include <algorithm>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <stdexcept>
 
 // Third-party headers
 #include <boost/algorithm/string/trim.hpp>
 
+namespace {
+
+/// @return true if a string is safe enough to use as a name in our SQL dialect.
+bool inline isNameSafe(std::string::value_type const& c) {
+    if (std::isalnum(static_cast<unsigned char>(c)) != 0) {
+        return true;
+    }
+    switch (c) {  // Special cases. '_' is the only one right now.
+        case '_':
+            return true;
+        default:
+            return false;
+    }
+}
+
+/// Function object version of isNameSafe
+struct isNameSafePred {
+    inline bool operator()(std::string::value_type const& c) const { return isNameSafe(c); }
+    typedef std::string::value_type argument_type;
+};
+
+}  // anonymous namespace
+
 namespace lsst::qserv {
+
+std::string sanitizeName(std::string const& name) {
+    std::string out;
+    std::remove_copy_if(name.begin(), name.end(), std::insert_iterator<std::string>(out, out.begin()),
+                        std::not_fn(isNameSafePred()));
+
+    return out;
+}
 
 unsigned int stoui(std::string const& str, size_t* idx, int base) {
     unsigned long u = std::stoul(str, idx, base);
