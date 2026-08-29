@@ -5,6 +5,11 @@ x-worker-mariadb:
     command: --port 3306
     environment:
         MYSQL_ROOT_PASSWORD: CHANGEME
+    healthcheck:
+        test: ["CMD", "healthcheck.sh", "--defaults-extra-file=/qserv/data/mysql/.my-healthcheck.cnf", "--connect", "--innodb_initialized"]
+        start_period: 30s
+        interval: 5s
+        timeout: 3s
 
 x-worker-mariadb-cnf-volume:
     &worker-mariadb-cnf-volume
@@ -215,6 +220,11 @@ services:
         command: --port 3306
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--defaults-extra-file=/qserv/data/mysql/.my-healthcheck.cnf", "--connect", "--innodb_initialized"]
+            start_period: 30s
+            interval: 5s
+            timeout: 3s
         volumes:
             - type: volume
               source: volume_czar_mariadb_data
@@ -311,6 +321,11 @@ services:
         command: --port 3306
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--defaults-extra-file=/qserv/data/mysql/.my-healthcheck.cnf", "--connect", "--innodb_initialized"]
+            start_period: 30s
+            interval: 5s
+            timeout: 3s
         volumes:
             - type: volume
               source: volume_repl_mariadb_data
