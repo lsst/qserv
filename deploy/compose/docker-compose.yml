@@ -5,21 +5,25 @@ x-worker-mariadb:
     command: --port 3306
     environment:
         MYSQL_ROOT_PASSWORD: CHANGEME
+
 x-worker-mariadb-cnf-volume:
     &worker-mariadb-cnf-volume
     - type: bind
       source: ../../src/admin/templates/mariadb/etc/my.cnf
       target: /etc/mysql/my.cnf
+
 x-log-volume:
     &log-volume
     - type: bind
       source: ./log/
       target: /config-etc/log/
+
 x-worker-cmsd:
     &worker-cmsd
     image: "${QSERV_IMAGE:?err}"
     init: true
     # ports are published in worker-xrootd because this container uses that container's network stack.
+
 x-worker-xrootd:
     &worker-xrootd
     image: "${QSERV_IMAGE:?err}"
@@ -28,6 +32,7 @@ x-worker-xrootd:
         - "1094"
         - "2131"
         - "3306" # for the worker db, which shares this container's network stack.
+
 x-repl-worker:
     &repl-worker
     image: "${QSERV_IMAGE:?err}"
@@ -39,6 +44,7 @@ x-repl-worker:
         - "25004"
 
 volumes:
+
     volume_czar_xrootd:
     volume_czar_home:
     volume_czar_cfg:
@@ -72,6 +78,7 @@ volumes:
     volume_repl_worker_1_cfg:
 
 networks:
+
     default:
         ipam:
             driver: default
@@ -79,6 +86,7 @@ networks:
                 - subnet: 192.168.3.0/24
 
 services:
+
     # worker 0 uses and validates ip+port to connect to the worker-mariadb
     worker-mariadb-0:
         << : *worker-mariadb
@@ -97,6 +105,7 @@ services:
               source: volume_worker_0_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
         network_mode: "service:worker-xrootd-0"
+
     worker-xrootd-0:
         << : *worker-xrootd
         command: >
@@ -131,6 +140,7 @@ services:
                 aliases:
                     - worker-cmsd-0
                     - worker-mariadb-0
+
     worker-cmsd-0:
         << : *worker-cmsd
         command: >
@@ -159,6 +169,7 @@ services:
               source: volume_worker_0_mariadb_run
               target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
             - << : *log-volume
+
     repl-worker-0:
         << : *repl-worker
         command: >
@@ -183,6 +194,7 @@ services:
               source: volume_worker_0_home
               target: /home/qserv
             - << : *log-volume
+
     # worker 1 uses and validates socket file (where possible) to connect to the worker-mariadb
     worker-mariadb-1:
         << : *worker-mariadb
@@ -201,6 +213,7 @@ services:
               source: volume_worker_1_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
         network_mode: "service:worker-xrootd-1"
+
     worker-xrootd-1:
         << : *worker-xrootd
         command: >
@@ -236,6 +249,7 @@ services:
                 aliases:
                     - worker-cmsd-1
                     - worker-mariadb-1
+
     worker-cmsd-1:
         << : *worker-cmsd
         command: >
@@ -264,6 +278,7 @@ services:
               source: volume_worker_1_mariadb_run
               target: /qserv/mariadb/run
             - << : *log-volume
+
     repl-worker-1:
         << : *repl-worker
         # qserv-replica-worker app does not support socket file yet.
@@ -289,6 +304,7 @@ services:
               source: volume_worker_1_home
               target: /home/qserv
             - << : *log-volume
+
     czar-xrootd:
         image: "${QSERV_IMAGE:?err}"
         init: true
@@ -311,6 +327,7 @@ services:
             default:
                 aliases:
                     - czar-cmsd
+
     czar-cmsd:
         image: "${QSERV_IMAGE:?err}"
         init: true
@@ -325,6 +342,7 @@ services:
               source: volume_czar_home
               target: /home/qserv
             - << : *log-volume
+
     czar-mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
@@ -348,6 +366,7 @@ services:
             - type: volume
               source: volume_czar_mariadb_run
               target: /var/run/mysqld
+
     czar-proxy:
         image: "${QSERV_IMAGE:?err}"
         init: true
@@ -384,8 +403,7 @@ services:
             default:
                 aliases:
                     - czar-mariadb
-        # ports:
-        #     - "127.0.0.1:4040:4040"
+
     czar-http:
         image: "${QSERV_IMAGE:?err}"
         init: true
@@ -421,6 +439,7 @@ services:
             - "4048"
         ports:
             - "0.0.0.0:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
+
     repl-mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
@@ -439,6 +458,7 @@ services:
             - type: volume
               source: volume_repl_mariadb_lib
               target: /var/lib/mysql
+
     repl-controller:
         image: "${QSERV_IMAGE:?err}"
         init: true
@@ -473,6 +493,7 @@ services:
               source: ../../src/www
               target: /usr/local/qserv/www
             - << : *log-volume
+
     repl-registry:
         image: "${QSERV_IMAGE:?err}"
         init: true
