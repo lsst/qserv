@@ -48,11 +48,14 @@
 // Qserv headers
 #include "ccontrol/ParseRunner.h"
 #include "css/CssAccess.h"
+#include "qproc/IndexMap.h"
+#include "qproc/SecondaryIndex.h"
 #include "css/CssError.h"
 #include "css/EmptyChunks.h"
 #include "global/constants.h"
 #include "global/stringTypes.h"
 #include "parser/ParseException.h"
+#include "proto/ScanTableInfo.h"
 #include "qana/AggregatePlugin.h"
 #include "qana/AnalysisError.h"
 #include "qana/DuplSelectExprPlugin.h"
@@ -195,11 +198,47 @@ void QuerySession::addChunk(ChunkSpec const& cs) {
     _chunks.push_back(cs);
 }
 
+query::ScanInfo QuerySession::getScanInfo() const { return _context->scanInfo; }
+
 void QuerySession::setScanInteractive() {
     // Default is for interactive scan.
     if (_context->chunkCount > _interactiveChunkLimit) {
         _scanInteractive = false;
     }
+}
+
+void QuerySession::setupChunking(std::shared_ptr<SecondaryIndex> const& secondaryIndex) {
+    if (hasChunks()) {
+        auto areaRestrictors = getAreaRestrictors();
+        auto secIdxRestrictors = getSecIdxRestrictors();
+        css::StripingParams partStriping = getDbStriping();
+        auto const im = std::make_shared<IndexMap>(partStriping, secondaryIndex);
+        ChunkSpecVector csv;
+        if (areaRestrictors != nullptr || secIdxRestrictors != nullptr) {
+            csv = im->getChunks(areaRestrictors, secIdxRestrictors);
+        } else {  // Unrestricted: full-sky
+            csv = im->getAllChunks();
+        }
+        LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
+
+        // Filter out empty chunks
+        std::shared_ptr<IntSet const> eSet = getEmptyChunks();
+        if (!eSet) {
+            eSet = std::make_shared<IntSet const>();
+            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
+        }
+        for (ChunkSpecVector::const_iterator i = csv.begin(), e = csv.end(); i != e; ++i) {
+            if (eSet->count(i->chunkId) == 0) {  // chunk not in empty?
+                addChunk(*i);
+            }
+        }
+    } else {
+        LOGS(_log, LOG_LVL_TRACE, "No chunks added, QuerySession will add dummy chunk");
+    }
+
+    // Must run after the chunks above have been added: it compares the resulting chunk count against
+    // _interactiveChunkLimit, so running it any earlier always sees a count of zero.
+    setScanInteractive();
 }
 
 void QuerySession::setDummy() {
@@ -445,7 +484,7 @@ ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect
     // name in the ChunkQuerySpec is to build the CSS resource path. See details in the implementation
     // of the class.
     auto cQSpec = std::make_shared<ChunkQuerySpec>(*(_context->dominantDbs.begin()), chunkSpec.chunkId,
-                                                   _context->scanInfo, _scanInteractive);
+                                                   proto::ScanInfo(_context->scanInfo), _scanInteractive);
     // Reset subChunkTables
     qana::QueryMapping const& queryMapping = *(_context->queryMapping);
     DbTableSet const& sTables = queryMapping.getSubChunkTables();

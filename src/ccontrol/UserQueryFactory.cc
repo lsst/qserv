@@ -41,6 +41,7 @@
 #include "ccontrol/ConfigMap.h"
 #include "ccontrol/ParseRunner.h"
 #include "ccontrol/UserQueryAsyncResult.h"
+#include "ccontrol/UserQueryExplain.h"
 #include "ccontrol/UserQueryInvalid.h"
 #include "ccontrol/UserQueryProcessList.h"
 #include "ccontrol/UserQueryQueries.h"
@@ -182,6 +183,63 @@ std::shared_ptr<UserQuery> _makeUserQueryQueries(query::SelectStmt::Ptr& stmt,
 }
 
 /**
+ * @brief Make a UserQueryExplain (or UserQueryInvalid) from given parameters.
+ *
+ * Runs czar-side analysis (parse, plugins, restrictor and chunk coverage) on the provided SELECT without
+ * actually dispatching any work.
+ *
+ * @param innerQuery The SELECT statement to analyze
+ * @param jsonFormat True if JSON format was requested.
+ * @param sharedResources Resources used by UserQueryFactory to create UserQueries.
+ * @param defaultDb Default database name, may be empty.
+ * @param userQueryId Unique string identifying the query.
+ * @param resultDb Name of the database that will contain results.
+ * @return std::shared_ptr<UserQuery>, will be a UserQueryExplain or UserQueryInvalid.
+ */
+std::shared_ptr<UserQuery> _makeUserQueryExplain(std::string const& innerQuery, bool jsonFormat,
+                                                 userQuerySharedResourcesPtr& sharedResources,
+                                                 std::string const& defaultDb, std::string const& userQueryId,
+                                                 std::string const& resultDb) {
+    LOGS(_log, LOG_LVL_DEBUG,
+         "make UserQueryExplain: jsonFormat=" << (jsonFormat ? 'y' : 'n') << " query=" << innerQuery);
+
+    if (!UserQueryType::isSelect(innerQuery)) {
+        return std::make_shared<UserQueryInvalid>("EXPLAIN not supported for: " + innerQuery);
+    }
+    query::SelectStmt::Ptr stmt;
+    try {
+        stmt = ParseRunner::makeSelectStmt(innerQuery);
+    } catch (parser::ParseException& e) {
+        return std::make_shared<UserQueryInvalid>(std::string("ParseException:") + e.what());
+    }
+
+    auto qs = std::make_shared<qproc::QuerySession>(sharedResources->css, sharedResources->databaseModels,
+                                                    defaultDb, sharedResources->interactiveChunkLimit);
+    try {
+        qs->analyzeQuery(innerQuery, stmt);
+    } catch (...) {
+        return std::make_shared<UserQueryInvalid>(
+                "Unknown failure occurred setting up QuerySession for EXPLAIN (query is invalid).");
+    }
+
+    if (!qs->getError().empty()) {
+        return std::make_shared<UserQueryInvalid>("Invalid query: " + qs->getError());
+    }
+
+    try {
+        // Compute chunk coverage
+        qs->setupChunking(sharedResources->secondaryIndex);
+
+        // Analysis before submission
+        qs->finalize();
+    } catch (std::exception const& exc) {
+        return std::make_shared<UserQueryInvalid>(std::string("EXPLAIN analysis failed: ") + exc.what());
+    }
+
+    return std::make_shared<UserQueryExplain>(qs, userQueryId, resultDb, jsonFormat);
+}
+
+/**
  * @brief Determine if the qmeta database has a metadata table with chunks & row
  *        counts that represents the table in the FROM statement for a SELECT
  *        COUNT(*) query.
@@ -297,6 +355,13 @@ UserQuery::Ptr UserQueryFactory::newUserQuery(std::string const& aQuery, std::st
     std::string dbName, tableName;
     bool full = false;
     QueryId userJobId = 0;
+
+    std::string explainStripped;
+    bool explainInJson = false;
+    if (UserQueryType::isExplain(query, explainStripped, explainInJson)) {
+        return _makeUserQueryExplain(explainStripped, explainInJson, _userQuerySharedResources, defaultDb,
+                                     userQueryId, resultDb);
+    }
 
     if (UserQueryType::isSelect(query)) {
         // Processing regular select query

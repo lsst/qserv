@@ -30,7 +30,6 @@
 #include "boost/algorithm/string/case_conv.hpp"
 
 // LSST headers
-#include "lsst/log/Log.h"
 #include "query/FromList.h"
 #include "query/SelectStmt.h"
 #include "query/SelectList.h"
@@ -38,8 +37,6 @@
 #include "query/ValueExpr.h"
 
 namespace {
-
-LOG_LOGGER _log = LOG_GET("lsst.qserv.ccontrol.UserQueryType");
 
 // regex for SELECT *
 // Note that parens around whole string are not part of the regex but raw string literal
@@ -57,6 +54,11 @@ boost::regex _showProcessListRe(R"(^show\s+(full\s+)?processlist$)",
 // Note that parens around whole string are not part of the regex but raw string literal
 boost::regex _submitRe(R"(^submit\s+(.+)$)",
                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
+
+// regex for EXPLAIN [FORMAT=JSON|TRADITIONAL] ...
+// group 1 (optional) is the requested output format, group 2 is the stripped query
+boost::regex _explainRe(R"(^explain\s+(?:format\s*=\s*(json|traditional)\s+)?(.+)$)",
+                        boost::regex::ECMAScript | boost::regex::icase | boost::regex::optimize);
 
 // regex for SELECT * FROM QSERV_RESULT(12345)
 // group 1 is the query ID number
@@ -100,13 +102,10 @@ namespace lsst::qserv::ccontrol {
 
 /// Returns true if query is regular SELECT (not isSelectResult())
 bool UserQueryType::isSelect(std::string const& query) {
-    LOGS(_log, LOG_LVL_TRACE, "isSelect: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _selectRe);
     if (match) {
-        LOGS(_log, LOG_LVL_TRACE, "isSelect: match");
         if (boost::regex_match(query, sm, _selectResultRe)) {
-            LOGS(_log, LOG_LVL_TRACE, "isSelect: match select result");
             match = false;
         }
     }
@@ -115,12 +114,10 @@ bool UserQueryType::isSelect(std::string const& query) {
 
 /// Returns true if query is SHOW [FULL] PROCESSLIST
 bool UserQueryType::isShowProcessList(std::string const& query, bool& full) {
-    LOGS(_log, LOG_LVL_TRACE, "isShowProcessList: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _showProcessListRe);
     if (match) {
         full = sm.length(1) != 0;
-        LOGS(_log, LOG_LVL_TRACE, "isShowProcessList: full: " << (full ? 'y' : 'n'));
     }
     return match;
 }
@@ -138,64 +135,62 @@ bool UserQueryType::isQueriesTable(std::string const& dbName, std::string const&
 
 /// Returns true if query is SUBMIT ...
 bool UserQueryType::isSubmit(std::string const& query, std::string& stripped) {
-    LOGS(_log, LOG_LVL_TRACE, "isSubmit: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _submitRe);
     if (match) {
         stripped = sm.str(1);
-        LOGS(_log, LOG_LVL_TRACE, "isSubmit: match: " << stripped);
+    }
+    return match;
+}
+
+/// Returns true if query is EXPLAIN [FORMAT=JSON|TRADITIONAL] ...
+bool UserQueryType::isExplain(std::string const& query, std::string& stripped, bool& jsonFormat) {
+    boost::smatch sm;
+    bool match = boost::regex_match(query, sm, _explainRe);
+    if (match) {
+        jsonFormat = boost::to_lower_copy(sm.str(1)) == "json";
+        stripped = sm.str(2);
     }
     return match;
 }
 
 /// Returns true if query is SELECT * FROM QSERV_RESULT(...)
 bool UserQueryType::isSelectResult(std::string const& query, QueryId& queryId) {
-    LOGS(_log, LOG_LVL_TRACE, "isSelectResult: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _selectResultRe);
     if (match) {
         queryId = std::stoull(sm.str(1));
-        LOGS(_log, LOG_LVL_TRACE, "isSelectResult: queryId: " << queryId);
     }
     return match;
 }
 
 // Returns true if query is KILL [QUERY|CONNECTION] NNN
 bool UserQueryType::isKill(std::string const& query, int& threadId) {
-    LOGS(_log, LOG_LVL_TRACE, "isKill: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _killRe);
     if (match) {
         threadId = std::stoi(sm.str(1));
-        LOGS(_log, LOG_LVL_TRACE, "isKill: threadId: " << threadId);
     }
     return match;
 }
 
 // Returns true if query is CANCEL NNN
 bool UserQueryType::isCancel(std::string const& query, QueryId& queryId) {
-    LOGS(_log, LOG_LVL_TRACE, "isCancel: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _cancelRe);
     if (match) {
         queryId = std::stoull(sm.str(1));
-        LOGS(_log, LOG_LVL_TRACE, "isCancel: queryId: " << queryId);
     }
     return match;
 }
 
-bool UserQueryType::isCall(std::string const& query) {
-    LOGS(_log, LOG_LVL_TRACE, "isCall: " << query);
-    return boost::regex_match(query, _callRe);
-}
+bool UserQueryType::isCall(std::string const& query) { return boost::regex_match(query, _callRe); }
 
 bool UserQueryType::isResultDelete(std::string const& query, std::string& queryId) {
-    LOGS(_log, LOG_LVL_TRACE, "isResultDelete: " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _resultDeleteRe);
     if (match) {
         queryId = sm.str(1);
-        LOGS(_log, LOG_LVL_TRACE, "isResultDelete: queryId: " << queryId);
     }
     return match;
 }
@@ -220,23 +215,16 @@ bool UserQueryType::isSimpleCountStar(std::shared_ptr<query::SelectStmt> const& 
 
 /// Returns true if query is SET
 bool UserQueryType::isSet(std::string const& query) {
-    LOGS(_log, LOG_LVL_TRACE, "isSet: " << query);
     boost::smatch sm;
-    bool match = boost::regex_match(query, sm, _setRe);
-    if (match) {
-        LOGS(_log, LOG_LVL_TRACE, "isSet: match");
-    }
-    return match;
+    return boost::regex_match(query, sm, _setRe);
 }
 
 bool UserQueryType::isSetGlobal(std::string const& query, std::string& varName, std::string& varValue) {
-    LOGS(_log, LOG_LVL_TRACE, "isSetGlobal (extract): " << query);
     boost::smatch sm;
     bool match = boost::regex_match(query, sm, _setGlobalRe);
     if (match) {
         varName = sm.str(1);
         varValue = sm.str(2);
-        LOGS(_log, LOG_LVL_TRACE, "isSetGlobal: " << varName << "=" << varValue);
     }
     return match;
 }

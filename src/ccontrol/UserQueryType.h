@@ -79,6 +79,12 @@ public:
     static bool isSubmit(std::string const& query, std::string& stripped);
 
     /**
+     *  Returns true if query is EXPLAIN [FORMAT=JSON|TRADITIONAL] <query>, returns query without "EXPLAIN" in
+     * `stripped` string and whether or not JSON format was requested in `jsonFormat`.
+     */
+    static bool isExplain(std::string const& query, std::string& stripped, bool& jsonFormat);
+
+    /**
      *  Returns true if query is SELECT * FROM QSERV_RESULT(...), returns
      *  query ID in `queryId` argument.
      */
