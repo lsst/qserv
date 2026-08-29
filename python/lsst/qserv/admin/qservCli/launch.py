@@ -1610,7 +1610,7 @@ def up(
     args = ["docker", "compose", "-f", yaml_file]
     if project:
         args.extend(["-p", project])
-    args.extend(["up", "-d"])
+    args.extend(["up", "-d", "--wait"])
     env_override = {
         env_qserv_image.env_var: qserv_image,
         env_mariadb_image.env_var: mariadb_image,
