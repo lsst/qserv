@@ -102,6 +102,9 @@ services:
 
     worker-xrootd-0:
         << : *worker-xrootd
+        depends_on:
+            worker-mariadb-0:
+                condition: service_healthy
         command: >
           entrypoint worker-xrootd
           --db-uri mysql://qsmaster:CHANGEME@worker-mariadb-0:3306
@@ -132,6 +135,9 @@ services:
 
     worker-cmsd-0:
         << : *worker-cmsd
+        depends_on:
+            worker-mariadb-0:
+                condition: service_healthy
         command: >
           entrypoint worker-cmsd
           --db-uri mysql://qsmaster:CHANGEME@worker-mariadb-0:3306
@@ -161,6 +167,11 @@ services:
 
     repl-worker-0:
         << : *repl-worker
+        depends_on:
+            worker-mariadb-0:
+                condition: service_healthy
+            repl-mariadb:
+                condition: service_healthy
         command: >
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-mariadb-0:3306/qservw_worker
@@ -204,6 +215,9 @@ services:
 
     worker-xrootd-1:
         << : *worker-xrootd
+        depends_on:
+            worker-mariadb-1:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG worker-xrootd
           --db-uri mysql://qsmaster:CHANGEME@worker-mariadb-1:3306?socket={{db_socket}}
@@ -265,6 +279,11 @@ services:
     repl-worker-1:
         << : *repl-worker
         # qserv-replica-worker app does not support socket file yet.
+        depends_on:
+            worker-mariadb-1:
+                condition: service_healthy
+            repl-mariadb:
+                condition: service_healthy
         command: >
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-mariadb-1:3306/qservw_worker
@@ -351,6 +370,9 @@ services:
         image: "${QSERV_IMAGE:?err}"
         init: true
         network_mode: "service:czar-mariadb"
+        depends_on:
+            czar-mariadb:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG proxy
           --db-uri mysql://qsmaster:CHANGEME@czar-mariadb:3306?socket={{db_socket}}
@@ -381,6 +403,9 @@ services:
     czar-http:
         image: "${QSERV_IMAGE:?err}"
         init: true
+        depends_on:
+            czar-mariadb:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG czar-http
           --db-uri mysql://qsmaster:CHANGEME@czar-mariadb:3306/
@@ -437,6 +462,11 @@ services:
     repl-controller:
         image: "${QSERV_IMAGE:?err}"
         init: true
+        depends_on:
+            repl-mariadb:
+                condition: service_healthy
+            czar-mariadb:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG replication-controller
           --db-uri mysql://qsreplica@repl-mariadb:3306/qservReplica
@@ -470,6 +500,9 @@ services:
     repl-registry:
         image: "${QSERV_IMAGE:?err}"
         init: true
+        depends_on:
+            repl-mariadb:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG replication-registry
           --db-uri mysql://qsreplica@repl-mariadb:3306/qservReplica
