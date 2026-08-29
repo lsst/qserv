@@ -414,3 +414,16 @@ services:
           --debug
         volumes:
             - << : *log-volume
+
+    cluster-ready:
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        command: sleep infinity
+        depends_on:
+            repl-registry:
+                condition: service_started
+        healthcheck:
+            test: ["CMD-SHELL", "curl -sf 'http://repl-registry:25082/services?instance_id=qserv_proj' | python3 -c \"import sys,json; d=json.load(sys.stdin)['services']; exit(0 if len(d['workers'])>=2 and len(d['czars'])>=1 else 1)\""]
+            start_period: 120s
+            interval: 5s
+            timeout: 5s
