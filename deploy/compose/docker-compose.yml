@@ -5,16 +5,19 @@ x-worker-mariadb:
     command: --port 3306
     environment:
         MYSQL_ROOT_PASSWORD: CHANGEME
+
 x-worker-mariadb-cnf-volume:
     &worker-mariadb-cnf-volume
     - type: bind
       source: ../../src/admin/templates/mariadb/etc/my.cnf
       target: /etc/mysql/my.cnf
+
 x-log-volume:
     &log-volume
     - type: bind
       source: ./log/
       target: /config-etc/log/
+
 x-worker-svc:
     &worker-svc
     image: "${QSERV_IMAGE:?err}"
@@ -32,6 +35,7 @@ x-repl-worker:
         - "25004"
 
 volumes:
+
     volume_czar_xrootd:
     volume_czar_home:
     volume_czar_cfg:
@@ -64,6 +68,7 @@ volumes:
     volume_repl_worker_1_cfg:
 
 networks:
+
     default:
         ipam:
             driver: default
@@ -71,6 +76,7 @@ networks:
                 - subnet: 192.168.3.0/24
 
 services:
+
     # worker 0 uses and validates ip+port to connect to the worker-mariadb
     worker-mariadb-0:
         << : *worker-mariadb
@@ -118,6 +124,7 @@ services:
             default:
                 aliases:
                     - worker-mariadb-0
+
     repl-worker-0:
         << : *repl-worker
         command: >
@@ -191,6 +198,7 @@ services:
             default:
                 aliases:
                     - worker-mariadb-1
+
     repl-worker-1:
         << : *repl-worker
         # qserv-replica-worker app does not support socket file yet.
@@ -271,7 +279,6 @@ services:
             - type: volume
               source: volume_czar_transfer
               target: /tmp
-
             - << : *log-volume
         expose:
             - "3306" # for czar-mariadb
@@ -280,8 +287,7 @@ services:
             default:
                 aliases:
                     - czar-mariadb
-        # ports:
-        #     - "127.0.0.1:4040:4040"
+
     czar-http:
         image: "${QSERV_IMAGE:?err}"
         init: true
@@ -319,6 +325,7 @@ services:
             - "4048"
         ports:
             - "0.0.0.0:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
+
     repl-mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
@@ -337,6 +344,7 @@ services:
             - type: volume
               source: volume_repl_mariadb_lib
               target: /var/lib/mysql
+
     repl-controller:
         image: "${QSERV_IMAGE:?err}"
         init: true
@@ -370,6 +378,7 @@ services:
               source: ../../src/www
               target: /usr/local/qserv/www
             - << : *log-volume
+
     repl-registry:
         image: "${QSERV_IMAGE:?err}"
         init: true
