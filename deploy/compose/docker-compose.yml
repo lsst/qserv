@@ -88,14 +88,13 @@ services:
             - type: volume
               source: volume_worker_0_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
-        network_mode: "service:worker-svc-0"
 
     worker-svc-0:
         << : *worker-svc
         command: >
           entrypoint worker-svc
-          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306
-          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
+          --db-uri mysql://qsmaster:CHANGEME@worker-mariadb-0:3306
+          --db-admin-uri mysql://root:CHANGEME@worker-mariadb-0:3306
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -114,10 +113,6 @@ services:
               source: volume_worker_0_mariadb_run
               target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
             - << : *log-volume
-        networks:
-            default:
-                aliases:
-                    - worker-mariadb-0
 
     repl-worker-0:
         << : *repl-worker
@@ -161,14 +156,13 @@ services:
             - type: volume
               source: volume_worker_1_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
-        network_mode: "service:worker-svc-1"
 
     worker-svc-1:
         << : *worker-svc
         command: >
           entrypoint --log-level DEBUG worker-svc
-          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
-          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
+          --db-uri mysql://qsmaster:CHANGEME@worker-mariadb-1:3306?socket={{db_socket}}
+          --db-admin-uri mysql://root:CHANGEME@worker-mariadb-1:3306?socket={{db_socket}}
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -188,10 +182,6 @@ services:
               source: volume_worker_1_mariadb_run
               target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
             - << : *log-volume
-        networks:
-            default:
-                aliases:
-                    - worker-mariadb-1
 
     repl-worker-1:
         << : *repl-worker
@@ -223,7 +213,6 @@ services:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
         command: --port 3306
-        network_mode: "service:czar-proxy"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
         volumes:
@@ -242,14 +231,19 @@ services:
             - type: volume
               source: volume_czar_mariadb_run
               target: /var/run/mysqld
+        networks:
+            default:
+                aliases:
+                    - czar-proxy
 
     czar-proxy:
         image: "${QSERV_IMAGE:?err}"
         init: true
+        network_mode: "service:czar-mariadb"
         command: >
           entrypoint --log-level DEBUG proxy
-          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
-          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
+          --db-uri mysql://qsmaster:CHANGEME@czar-mariadb:3306?socket={{db_socket}}
+          --db-admin-uri mysql://root:CHANGEME@czar-mariadb:3306?socket={{db_socket}}
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --log-cfg-file=/config-etc/log/log-czar-proxy.cfg
           --repl-instance-id qserv_proj
@@ -274,10 +268,6 @@ services:
               source: volume_czar_transfer
               target: /tmp
             - << : *log-volume
-        networks:
-            default:
-                aliases:
-                    - czar-mariadb
 
     czar-http:
         image: "${QSERV_IMAGE:?err}"
@@ -313,7 +303,7 @@ services:
               target: /home/qserv
             - << : *log-volume
         ports:
-            - "0.0.0.0:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
+            - "127.0.0.1:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
 
     repl-mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
@@ -350,8 +340,6 @@ services:
           --qserv-sync-force
           --qserv-chunk-map-update
           --debug
-        ports:
-            - "0.0.0.0:${QSERV_DASHBOARD_PORT:-25081}:25081"
         volumes:
             - type: volume
               source: volume_repl_mariadb_data
@@ -363,6 +351,8 @@ services:
               source: ../../src/www
               target: /usr/local/qserv/www
             - << : *log-volume
+        ports:
+            - "127.0.0.1:${QSERV_DASHBOARD_PORT:-25081}:25081"
 
     repl-registry:
         image: "${QSERV_IMAGE:?err}"
