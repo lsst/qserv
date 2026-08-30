@@ -22,17 +22,11 @@ x-worker-svc:
     &worker-svc
     image: "${QSERV_IMAGE:?err}"
     init: true
-    expose:
-        - "3306" # for the worker db, which shares this container's network stack.
+
 x-repl-worker:
     &repl-worker
     image: "${QSERV_IMAGE:?err}"
     init: true
-    expose:
-        - "25000"
-        - "25001"
-        - "25003"
-        - "25004"
 
 volumes:
 
@@ -280,9 +274,6 @@ services:
               source: volume_czar_transfer
               target: /tmp
             - << : *log-volume
-        expose:
-            - "3306" # for czar-mariadb
-            - "4040"
         networks:
             default:
                 aliases:
@@ -321,8 +312,6 @@ services:
               source: volume_czar_home
               target: /home/qserv
             - << : *log-volume
-        expose:
-            - "4048"
         ports:
             - "0.0.0.0:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
 
@@ -330,8 +319,6 @@ services:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
         command: --port 3306
-        expose:
-            - "3306"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
         volumes:
@@ -363,8 +350,6 @@ services:
           --qserv-sync-force
           --qserv-chunk-map-update
           --debug
-        expose:
-            - "25081"
         ports:
             - "0.0.0.0:${QSERV_DASHBOARD_PORT:-25081}:25081"
         volumes:
@@ -392,7 +377,5 @@ services:
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey
           --debug
-        expose:
-            - "25082"
         volumes:
             - << : *log-volume
