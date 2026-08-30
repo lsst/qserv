@@ -37,6 +37,7 @@ from .opt import (
     env_dashboard_port,
     env_http_frontend_port,
     env_mariadb_image,
+    env_mysql_frontend_port,
     env_qserv_image,
 )
 
@@ -1638,6 +1639,7 @@ def up(
     mariadb_image: str,
     dashboard_port: int | None,
     http_frontend_port: int | None,
+    mysql_frontend_port: int | None,
 ) -> None:
     """Send docker compose up and down commands.
 
@@ -1657,6 +1659,8 @@ def up(
         The host port to use for the qserv dashboard.
     http_frontend_port : `int` or `None`
         The host port to use for the qserv HTTP frontend.
+    mysql_frontend_port : `int` or `None`
+        The host port to use for the qserv MySQL frontend.
     """
     args = ["docker", "compose", "-f", yaml_file]
     if project:
@@ -1670,6 +1674,8 @@ def up(
         env_override[env_dashboard_port.env_var] = str(dashboard_port)
     if http_frontend_port:
         env_override[env_http_frontend_port.env_var] = str(http_frontend_port)
+    if mysql_frontend_port:
+        env_override[env_mysql_frontend_port.env_var] = str(mysql_frontend_port)
     if dry:
         env_str = " ".join([f"{k}={v}" for k, v in env_override.items()])
         print(f"{env_str} {' '.join(args)}")
