@@ -365,6 +365,12 @@ services:
             - type: volume
               source: volume_czar_mariadb_run
               target: /var/run/mysqld
+        networks:
+            default:
+                aliases:
+                    - czar-proxy
+        ports:
+            - "127.0.0.1:${QSERV_MYSQL_FRONTEND_PORT:-4040}:4040"
 
     czar-proxy:
         image: "${QSERV_IMAGE:?err}"
