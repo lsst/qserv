@@ -72,10 +72,7 @@ json const ConfigurationSchema::_schemaJson = json::object(
         {{"common",
           {{"request-buf-size-bytes",
             {{"description", "The default buffer size for network communications. Must be greater than 0."},
-             {"default", 4096}}},
-           {"request-retry-interval-sec",
-            {{"description", "The default retry timeout for network communications. Must be greater than 0."},
-             {"default", 1}}}}},
+             {"default", 4096}}}}},
          {"registry",
           {{"host",
             {{"description", "The IP address or the DNS host name for the registry's HTTP server."},
@@ -108,6 +105,9 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " It's recommended to set this parameter to 3600 seconds or higher. The value must be"
               " greater than 0."},
              {"default", 28800}}},
+           {"request-retry-interval-sec",
+            {{"description", "The default retry timeout for network communications. Must be greater than 0."},
+             {"default", 1}}},
            {"job-timeout-sec",
             {{"description",
               "The default timeout for completing jobs. A value depends on"
