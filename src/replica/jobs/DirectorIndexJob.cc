@@ -399,10 +399,11 @@ void DirectorIndexJob::_loadDataIntoTable() {
         // Load request's data into the destination table.
         bool const localFile = true;
         try {
-            string const query = g.loadDataInfile(
-                    request->responseData().fileName, directorIndexTableName(database(), directorTable()),
-                    controller()->serviceProvider()->config()->get<string>("worker", "ingest-charset-name"),
-                    localFile);
+            string const query = g.loadDataInfile(request->responseData().fileName,
+                                                  directorIndexTableName(database(), directorTable()),
+                                                  controller()->serviceProvider()->config()->get<string>(
+                                                          "controller", "director-index-charset-name"),
+                                                  localFile);
             h.conn->executeInOwnTransaction([&](auto conn) {
                 conn->execute(query);
                 // Loading operations based on this mechanism won't result in throwing exceptions in

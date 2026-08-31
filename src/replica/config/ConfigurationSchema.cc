@@ -196,6 +196,12 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " yield any benefits in terms of the overall performance of the index ingest. This"
               " will just result in the useless increase in the CPU time consumed by MySQL."},
              {"default", 2}}},
+           {"director-index-charset-name",
+            {{"description",
+              "The name of the default character set for ingesting contributions into the"
+              " director index tables. The name can be any valid character set recognized by"
+              " the MySQL server."},
+             {"default", "latin1"}}},
            {"director-index-engine",
             {{"description", "The default MySQL engine of the 'director' index tables."},
              {"default", "InnoDB"}}}}},
@@ -414,7 +420,10 @@ json const ConfigurationSchema::_schemaJson = json::object(
               " the adjacent Qserv worker's MySQL database."},
              {"default", "/qserv/data/ingest"}}},
            {"ingest-charset-name",
-            {{"description", "The name of a character set for parsing the payload of the contributions."},
+            {{"description",
+              "The name of the default character set for parsing the payload of"
+              " the contributions. The name can be any valid character set recognized by"
+              " the MySQL server."},
              {"default", "latin1"}}},
            {"ingest-num-retries",
             {{"description",
