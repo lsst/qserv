@@ -268,7 +268,7 @@ void DirectorIndexJob::startImpl(replica::Lock const& lock) {
     // to absorb the latency of the network and disk I/O, so that worker threads
     // would be able to work on another batch of the data extraction requests while
     // results of the previous batch were being sent back to the Controller.
-    size_t const maxRequestsPerWorker = config->get<size_t>("worker", "num-svc-processing-threads");
+    size_t const maxRequestsPerWorker = config->get<size_t>("controller", "num-requests-per-worker");
     for (auto&& workerName : workerNames) {
         for (auto&& ptr : _launchRequests(lock, workerName, maxRequestsPerWorker)) {
             _inFlightRequests[ptr->id()] = ptr;
