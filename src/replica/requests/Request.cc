@@ -121,7 +121,7 @@ Request::Request(shared_ptr<Controller> const& controller, string const& type, s
                   controller->serviceProvider()->config()->get<size_t>("common", "request-buf-size-bytes"))),
           _worker(controller->serviceProvider()->config()->worker(workerName)),
           _timerIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
-                  "common", "request-retry-interval-sec")),
+                  "controller", "request-retry-interval-sec")),
           _timer(controller->serviceProvider()->io_service()),
           _requestExpirationIvalSec(controller->serviceProvider()->config()->get<unsigned int>(
                   "controller", "request-timeout-sec")),
