@@ -29,15 +29,29 @@ namespace lsst::qserv::replica {
 
 map<string, set<string>> ConfigTestData::parameters() {
     return map<string, set<string>>(
-            {{"common", {"request-buf-size-bytes", "request-retry-interval-sec"}},
+            {{"common", {"request-buf-size-bytes"}},
              {"registry", {"host", "port", "max-listen-conn", "threads", "heartbeat-ival-sec"}},
              {"controller",
-              {"num-threads", "http-server-port", "http-max-listen-conn", "http-server-threads",
-               "request-timeout-sec", "job-timeout-sec", "job-heartbeat-sec", "num-requests-per-worker",
-               "max-repl-level", "worker-evict-priority-level", "health-monitor-priority-level",
-               "ingest-priority-level", "catalog-management-priority-level", "auto-register-workers",
-               "auto-register-czars", "ingest-job-monitor-ival-sec", "num-director-index-connections",
-               "director-index-charset-name", "director-index-engine"}},
+              {"num-threads",
+               "http-server-port",
+               "http-max-listen-conn",
+               "http-server-threads",
+               "request-timeout-sec",
+               "request-retry-interval-sec",
+               "job-timeout-sec",
+               "job-heartbeat-sec",
+               "num-requests-per-worker",
+               "max-repl-level",
+               "worker-evict-priority-level",
+               "health-monitor-priority-level",
+               "ingest-priority-level",
+               "catalog-management-priority-level",
+               "auto-register-workers",
+               "auto-register-czars",
+               "ingest-job-monitor-ival-sec",
+               "num-director-index-connections",
+               "director-index-charset-name",
+               "director-index-engine"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
                "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
@@ -78,8 +92,7 @@ map<string, set<string>> ConfigTestData::parameters() {
 json ConfigTestData::data() {
     json obj;
     json& generalObj = obj["general"];
-    generalObj["common"] =
-            json::object({{"request-buf-size-bytes", 8192}, {"request-retry-interval-sec", 1}});
+    generalObj["common"] = json::object({{"request-buf-size-bytes", 8192}});
     generalObj["registry"] = json::object({{"host", "127.0.0.1"},
                                            {"port", 8081},
                                            {"max-listen-conn", 512},
@@ -90,6 +103,7 @@ json ConfigTestData::data() {
                                              {"http-max-listen-conn", 256},
                                              {"http-server-threads", 3},
                                              {"request-timeout-sec", 100},
+                                             {"request-retry-interval-sec", 1},
                                              {"job-timeout-sec", 200},
                                              {"job-heartbeat-sec", 300},
                                              {"num-requests-per-worker", 1},
