@@ -310,7 +310,7 @@ void PurgeJob::_onPrecursorJobFinish() {
     // the number of the service processing threads at each worker multiplied
     // by the number of workers involved into the operation.
     size_t const maxJobsPerWorker =
-            controller()->serviceProvider()->config()->get<size_t>("worker", "num-svc-processing-threads");
+            controller()->serviceProvider()->config()->get<size_t>("controller", "num-requests-per-worker");
 
     for (auto&& itr : _targetWorker2tasks) {
         auto&& targetWorkerName = itr.first;

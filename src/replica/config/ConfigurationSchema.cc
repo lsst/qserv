@@ -120,6 +120,12 @@ json const ConfigurationSchema::_schemaJson = json::object(
             {{"description", "The heartbeat interval for jobs. A value of 0 disables heartbeats."},
              {"empty-allowed", 1},
              {"default", 0}}},
+           {"num-requests-per-worker",
+            {{"description",
+              "The number of simultaneous requests to be sent to each Replication worker service."
+              " For the best performance of the system, the number should match the number of"
+              " the service threads at the worker. This number must be greater than 0."},
+             {"default", 2}}},
            {"http-server-threads",
             {{"description",
               "The number of threads managed by BOOST ASIO for the HTTP server. Must be greater than 0."},

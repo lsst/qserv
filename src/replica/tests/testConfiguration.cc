@@ -128,6 +128,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<unsigned int>("controller", "request-timeout-sec") == 100);
     BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 200);
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 300);
+    BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 1);
     BOOST_CHECK(config->get<unsigned int>("controller", "max-repl-level") == 2);
     BOOST_CHECK(config->get<int>("controller", "worker-evict-priority-level") == 1);
     BOOST_CHECK(config->get<int>("controller", "health-monitor-priority-level") == 2);
@@ -244,6 +245,11 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
 
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job-heartbeat-sec", 0));
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 0);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "num-requests-per-worker", 0),
+                      std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "num-requests-per-worker", 2));
+    BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 2);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("controller", "max-repl-level", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<int>("controller", "max-repl-level", 3));
