@@ -37,7 +37,7 @@ map<string, set<string>> ConfigTestData::parameters() {
                "max-repl-level", "worker-evict-priority-level", "health-monitor-priority-level",
                "ingest-priority-level", "catalog-management-priority-level", "auto-register-workers",
                "auto-register-czars", "ingest-job-monitor-ival-sec", "num-director-index-connections",
-               "director-index-engine"}},
+               "director-index-charset-name", "director-index-engine"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
                "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
