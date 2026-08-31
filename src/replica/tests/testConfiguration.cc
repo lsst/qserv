@@ -113,7 +113,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
 
     // Fetching values of general parameters.
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
-    BOOST_CHECK(config->get<unsigned int>("common", "request-retry-interval-sec") == 1);
 
     BOOST_CHECK(config->get<string>("registry", "host") == "127.0.0.1");
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
@@ -126,6 +125,7 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<unsigned int>("controller", "http-max-listen-conn") == 256);
     BOOST_CHECK(config->get<size_t>("controller", "http-server-threads") == 3);
     BOOST_CHECK(config->get<unsigned int>("controller", "request-timeout-sec") == 100);
+    BOOST_CHECK(config->get<unsigned int>("controller", "request-retry-interval-sec") == 1);
     BOOST_CHECK(config->get<unsigned int>("controller", "job-timeout-sec") == 200);
     BOOST_CHECK(config->get<unsigned int>("controller", "job-heartbeat-sec") == 300);
     BOOST_CHECK(config->get<unsigned int>("controller", "num-requests-per-worker") == 1);
@@ -190,11 +190,6 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 0),
-                      std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("common", "request-retry-interval-sec", 2));
-    BOOST_CHECK(config->get<unsigned int>("common", "request-retry-interval-sec") == 2);
-
     BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
     BOOST_CHECK(config->get<string>("registry", "host") == "localhost");
@@ -236,6 +231,11 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
                       std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "request-timeout-sec", 101));
     BOOST_CHECK(config->get<unsigned int>("controller", "request-timeout-sec") == 101);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("controller", "request-retry-interval-sec", 0),
+                      std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "request-retry-interval-sec", 2));
+    BOOST_CHECK(config->get<unsigned int>("controller", "request-retry-interval-sec") == 2);
 
     BOOST_CHECK_THROW(config->set<unsigned int>("controller", "job-timeout-sec", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("controller", "job-timeout-sec", 201));
