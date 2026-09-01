@@ -37,6 +37,7 @@ from .opt import (
     env_dashboard_port,
     env_http_frontend_port,
     env_mariadb_image,
+    env_mysql_frontend_port,
     env_qserv_image,
 )
 
@@ -871,6 +872,14 @@ def itest_ref(
         f"src={itest_volumes.db_lib},dst=/var/lib/mysql,type=volume",
         "-e",
         "MYSQL_ROOT_PASSWORD=CHANGEME",
+        "--health-cmd",
+        "healthcheck.sh --defaults-extra-file=/qserv/data/mysql/.my-healthcheck.cnf --connect --innodb_initialized",
+        "--health-start-period",
+        "30s",
+        "--health-interval",
+        "5s",
+        "--health-timeout",
+        "3s",
     ]
     add_network_option(args, project)
     args.extend(
@@ -885,6 +894,49 @@ def itest_ref(
         return
     _log.debug(f"Running {' '.join(args)}")
     subproc.run(args)
+    _wait_for_container_healthy(container_name)
+
+
+def _wait_for_container_healthy(container_name: str, timeout: int = 120, interval: int = 2) -> None:
+    """Poll Docker until a container's healthcheck reports healthy.
+
+    Parameters
+    ----------
+    container_name : `str`
+        The name of the container to monitor.
+    timeout : `int`
+        Maximum seconds to wait before raising.
+    interval : `int`
+        Seconds between polls.
+    """
+    _log.info(f"Waiting for container {container_name} to become healthy (timeout {timeout}s)...")
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        result = subprocess.run(
+            [
+                "docker",
+                "inspect",
+                "--format",
+                "{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}",
+                container_name,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"docker inspect failed for {container_name}: {result.stderr.strip()}")
+        status = result.stdout.strip()
+        if status == "none":
+            raise RuntimeError(f"Container {container_name} has no healthcheck configured")
+        if status == "healthy":
+            elapsed = timeout - (deadline - time.time())
+            _log.info(f"Container {container_name} is healthy (after {elapsed:.0f}s).")
+            return
+        if status == "unhealthy":
+            raise RuntimeError(f"Container {container_name} became unhealthy")
+        _log.debug(f"Container {container_name} health status: {status}")
+        time.sleep(interval)
+    raise RuntimeError(f"Container {container_name} did not become healthy within {timeout}s")
 
 
 def stop_itest_ref(container_name: str, dry: bool) -> int:
@@ -1587,6 +1639,7 @@ def up(
     mariadb_image: str,
     dashboard_port: int | None,
     http_frontend_port: int | None,
+    mysql_frontend_port: int | None,
 ) -> None:
     """Send docker compose up and down commands.
 
@@ -1606,11 +1659,13 @@ def up(
         The host port to use for the qserv dashboard.
     http_frontend_port : `int` or `None`
         The host port to use for the qserv HTTP frontend.
+    mysql_frontend_port : `int` or `None`
+        The host port to use for the qserv MySQL frontend.
     """
     args = ["docker", "compose", "-f", yaml_file]
     if project:
         args.extend(["-p", project])
-    args.extend(["up", "-d"])
+    args.extend(["up", "-d", "--wait"])
     env_override = {
         env_qserv_image.env_var: qserv_image,
         env_mariadb_image.env_var: mariadb_image,
@@ -1619,6 +1674,8 @@ def up(
         env_override[env_dashboard_port.env_var] = str(dashboard_port)
     if http_frontend_port:
         env_override[env_http_frontend_port.env_var] = str(http_frontend_port)
+    if mysql_frontend_port:
+        env_override[env_mysql_frontend_port.env_var] = str(mysql_frontend_port)
     if dry:
         env_str = " ".join([f"{k}={v}" for k, v in env_override.items()])
         print(f"{env_str} {' '.join(args)}")

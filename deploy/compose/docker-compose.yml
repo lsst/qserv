@@ -5,33 +5,36 @@ x-worker-mariadb:
     command: --port 3306
     environment:
         MYSQL_ROOT_PASSWORD: CHANGEME
+    healthcheck:
+        test: ["CMD", "healthcheck.sh", "--defaults-extra-file=/qserv/data/mysql/.my-healthcheck.cnf", "--connect", "--innodb_initialized"]
+        start_period: 30s
+        interval: 5s
+        timeout: 3s
+
 x-worker-mariadb-cnf-volume:
     &worker-mariadb-cnf-volume
     - type: bind
       source: ../../src/admin/templates/mariadb/etc/my.cnf
       target: /etc/mysql/my.cnf
+
 x-log-volume:
     &log-volume
     - type: bind
       source: ./log/
       target: /config-etc/log/
+
 x-worker-svc:
     &worker-svc
     image: "${QSERV_IMAGE:?err}"
     init: true
-    expose:
-        - "3306" # for the worker db, which shares this container's network stack.
+
 x-repl-worker:
     &repl-worker
     image: "${QSERV_IMAGE:?err}"
     init: true
-    expose:
-        - "25000"
-        - "25001"
-        - "25003"
-        - "25004"
 
 volumes:
+
     volume_czar_xrootd:
     volume_czar_home:
     volume_czar_cfg:
@@ -64,6 +67,7 @@ volumes:
     volume_repl_worker_1_cfg:
 
 networks:
+
     default:
         ipam:
             driver: default
@@ -71,6 +75,7 @@ networks:
                 - subnet: 192.168.3.0/24
 
 services:
+
     # worker 0 uses and validates ip+port to connect to the worker-mariadb
     worker-mariadb-0:
         << : *worker-mariadb
@@ -88,14 +93,16 @@ services:
             - type: volume
               source: volume_worker_0_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
-        network_mode: "service:worker-svc-0"
 
     worker-svc-0:
         << : *worker-svc
+        depends_on:
+            worker-mariadb-0:
+                condition: service_healthy
         command: >
           entrypoint worker-svc
-          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306
-          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306
+          --db-uri mysql://qsmaster:CHANGEME@worker-mariadb-0:3306
+          --db-admin-uri mysql://root:CHANGEME@worker-mariadb-0:3306
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -114,12 +121,14 @@ services:
               source: volume_worker_0_mariadb_run
               target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
             - << : *log-volume
-        networks:
-            default:
-                aliases:
-                    - worker-mariadb-0
+
     repl-worker-0:
         << : *repl-worker
+        depends_on:
+            worker-mariadb-0:
+                condition: service_healthy
+            repl-mariadb:
+                condition: service_healthy
         command: >
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-mariadb-0:3306/qservw_worker
@@ -160,14 +169,16 @@ services:
             - type: volume
               source: volume_worker_1_mariadb_run
               target: /var/run/mysqld  # This is where the mariadb container puts the socket file
-        network_mode: "service:worker-svc-1"
 
     worker-svc-1:
         << : *worker-svc
+        depends_on:
+            worker-mariadb-1:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG worker-svc
-          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
-          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
+          --db-uri mysql://qsmaster:CHANGEME@worker-mariadb-1:3306?socket={{db_socket}}
+          --db-admin-uri mysql://root:CHANGEME@worker-mariadb-1:3306?socket={{db_socket}}
           --repl-instance-id qserv_proj
           --repl-auth-key replauthkey
           --repl-admin-auth-key=repladminauthkey
@@ -187,13 +198,15 @@ services:
               source: volume_worker_1_mariadb_run
               target: /qserv/mariadb/run  # This matches the ?socket=... location in --db-uri and --db-admin-uri
             - << : *log-volume
-        networks:
-            default:
-                aliases:
-                    - worker-mariadb-1
+
     repl-worker-1:
         << : *repl-worker
         # qserv-replica-worker app does not support socket file yet.
+        depends_on:
+            worker-mariadb-1:
+                condition: service_healthy
+            repl-mariadb:
+                condition: service_healthy
         command: >
           entrypoint worker-repl
           --db-admin-uri mysql://root:CHANGEME@worker-mariadb-1:3306/qservw_worker
@@ -221,9 +234,13 @@ services:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
         command: --port 3306
-        network_mode: "service:czar-proxy"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--defaults-extra-file=/qserv/data/mysql/.my-healthcheck.cnf", "--connect", "--innodb_initialized"]
+            start_period: 30s
+            interval: 5s
+            timeout: 3s
         volumes:
             - type: volume
               source: volume_czar_mariadb_data
@@ -240,14 +257,24 @@ services:
             - type: volume
               source: volume_czar_mariadb_run
               target: /var/run/mysqld
+        networks:
+            default:
+                aliases:
+                    - czar-proxy
+        ports:
+            - "127.0.0.1:${QSERV_MYSQL_FRONTEND_PORT:-4040}:4040"
 
     czar-proxy:
         image: "${QSERV_IMAGE:?err}"
         init: true
+        network_mode: "service:czar-mariadb"
+        depends_on:
+            czar-mariadb:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG proxy
-          --db-uri mysql://qsmaster:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
-          --db-admin-uri mysql://root:CHANGEME@127.0.0.1:3306?socket={{db_socket}}
+          --db-uri mysql://qsmaster:CHANGEME@czar-mariadb:3306?socket={{db_socket}}
+          --db-admin-uri mysql://root:CHANGEME@czar-mariadb:3306?socket={{db_socket}}
           --targs db_socket=/qserv/mariadb/run/mysqld.sock
           --log-cfg-file=/config-etc/log/log-czar-proxy.cfg
           --repl-instance-id qserv_proj
@@ -271,20 +298,14 @@ services:
             - type: volume
               source: volume_czar_transfer
               target: /tmp
-
             - << : *log-volume
-        expose:
-            - "3306" # for czar-mariadb
-            - "4040"
-        networks:
-            default:
-                aliases:
-                    - czar-mariadb
-        # ports:
-        #     - "127.0.0.1:4040:4040"
+
     czar-http:
         image: "${QSERV_IMAGE:?err}"
         init: true
+        depends_on:
+            czar-mariadb:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG czar-http
           --db-uri mysql://qsmaster:CHANGEME@czar-mariadb:3306/
@@ -315,18 +336,20 @@ services:
               source: volume_czar_home
               target: /home/qserv
             - << : *log-volume
-        expose:
-            - "4048"
         ports:
-            - "0.0.0.0:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
+            - "127.0.0.1:${QSERV_HTTP_FRONTEND_PORT:-4048}:4048"
+
     repl-mariadb:
         image: "${QSERV_MARIADB_IMAGE:?err}"
         init: true
         command: --port 3306
-        expose:
-            - "3306"
         environment:
             MYSQL_ROOT_PASSWORD: CHANGEME
+        healthcheck:
+            test: ["CMD", "healthcheck.sh", "--defaults-extra-file=/qserv/data/mysql/.my-healthcheck.cnf", "--connect", "--innodb_initialized"]
+            start_period: 30s
+            interval: 5s
+            timeout: 3s
         volumes:
             - type: volume
               source: volume_repl_mariadb_data
@@ -337,9 +360,15 @@ services:
             - type: volume
               source: volume_repl_mariadb_lib
               target: /var/lib/mysql
+
     repl-controller:
         image: "${QSERV_IMAGE:?err}"
         init: true
+        depends_on:
+            repl-mariadb:
+                condition: service_healthy
+            czar-mariadb:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG replication-controller
           --db-uri mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
@@ -355,10 +384,6 @@ services:
           --qserv-sync-force
           --qserv-chunk-map-update
           --debug
-        expose:
-            - "25081"
-        ports:
-            - "0.0.0.0:${QSERV_DASHBOARD_PORT:-25081}:25081"
         volumes:
             - type: volume
               source: volume_repl_mariadb_data
@@ -370,9 +395,15 @@ services:
               source: ../../src/www
               target: /usr/local/qserv/www
             - << : *log-volume
+        ports:
+            - "127.0.0.1:${QSERV_DASHBOARD_PORT:-25081}:25081"
+
     repl-registry:
         image: "${QSERV_IMAGE:?err}"
         init: true
+        depends_on:
+            repl-mariadb:
+                condition: service_healthy
         command: >
           entrypoint --log-level DEBUG replication-registry
           --db-uri mysql://qsreplica:CHANGEME@repl-mariadb:3306/qservReplica
@@ -383,7 +414,18 @@ services:
           --auth-key=replauthkey
           --admin-auth-key=repladminauthkey
           --debug
-        expose:
-            - "25082"
         volumes:
             - << : *log-volume
+
+    cluster-ready:
+        image: "${QSERV_IMAGE:?err}"
+        init: true
+        command: sleep infinity
+        depends_on:
+            repl-registry:
+                condition: service_started
+        healthcheck:
+            test: ["CMD-SHELL", "curl -sf 'http://repl-registry:25082/services?instance_id=qserv_proj' | python3 -c \"import sys,json; d=json.load(sys.stdin)['services']; exit(0 if len(d['workers'])>=2 and len(d['czars'])>=1 else 1)\""]
+            start_period: 120s
+            interval: 5s
+            timeout: 5s
