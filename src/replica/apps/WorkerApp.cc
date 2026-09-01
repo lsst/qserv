@@ -30,6 +30,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
+#include "replica/config/ConfigurationSchemaWorker.h"
 #include "replica/ingest/IngestHttpSvc.h"
 #include "replica/mysql/DatabaseMySQL.h"
 #include "replica/mysql/DatabaseMySQLUtils.h"
@@ -65,7 +66,7 @@ shared_ptr<WorkerApp> WorkerApp::create(int argc, char* argv[]) {
 }
 
 WorkerApp::WorkerApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider),
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaWorker()),
           _qservWorkerDbUrl(Configuration::qservWorkerDbUrl()) {
     parser().option("qserv-worker-db",
                     "A connection url for the MySQL service of the Qserv"
