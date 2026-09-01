@@ -28,7 +28,6 @@
 // Qserv headers
 #include "replica/config/Configuration.h"
 #include "replica/config/ConfigParserMySQL.h"
-#include "replica/config/ConfigurationSchema.h"
 #include "replica/proto/protocol.pb.h"
 #include "util/Issue.h"
 
@@ -44,8 +43,9 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.Application");
 namespace lsst::qserv::replica {
 
 Application::Application(int argc, const char* const argv[], string const& description,
-                         bool const enableServiceProvider)
+                         bool const enableServiceProvider, ConfigurationSchema const& configSchema)
         : _enableServiceProvider(enableServiceProvider),
+          _configSchema(configSchema),
           _parser(argc, argv, description),
           _debugFlag(false),
           _replDbUrl("mysql://qsreplica@localhost:3306/qservReplica"),
@@ -132,13 +132,13 @@ int Application::run() {
                         _schemaUpgradeWaitTimeoutSec);
 
         // Inject options for the general configuration parameters.
-        for (auto&& itr : ConfigurationSchema::parameters()) {
+        for (auto&& itr : _configSchema.parameters()) {
             string const& category = itr.first;
             for (auto&& param : itr.second) {
                 // The read-only parameters can't be updated programmatically.
-                if (ConfigurationSchema::readOnly(category, param)) continue;
-                _generalParams[category][param] = ConfigurationSchema::defaultValueAsString(category, param);
-                parser().option(category + "-" + param, ConfigurationSchema::description(category, param),
+                if (_configSchema.readOnly(category, param)) continue;
+                _generalParams[category][param] = _configSchema.defaultValueAsString(category, param);
+                parser().option(category + "-" + param, _configSchema.description(category, param),
                                 _generalParams[category][param]);
             }
         }
@@ -173,7 +173,7 @@ int Application::run() {
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
 
         // Create the service provider instance and initialize the Configuration.
-        _serviceProvider = ServiceProvider::create(_replDbUrl, _instanceId, _httpAuthContext);
+        _serviceProvider = ServiceProvider::create(_configSchema, _replDbUrl, _instanceId, _httpAuthContext);
 
         // Update general configuration parameters.
         // Note that options specified by a user will have non-empty values.

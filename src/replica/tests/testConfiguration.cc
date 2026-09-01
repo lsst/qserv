@@ -27,6 +27,7 @@
 #include <limits>
 #include <map>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -40,8 +41,13 @@
 
 // Qserv headers
 #include "global/constants.h"
-#include "replica/config/ConfigTestData.h"
+#include "replica/config/ConfigTestDataController.h"
+#include "replica/config/ConfigTestDataRegistry.h"
+#include "replica/config/ConfigTestDataWorker.h"
 #include "replica/config/Configuration.h"
+#include "replica/config/ConfigurationSchemaController.h"
+#include "replica/config/ConfigurationSchemaRegistry.h"
+#include "replica/config/ConfigurationSchemaWorker.h"
 #include "replica/util/Common.h"
 #include "replica/util/ProtocolBuffer.h"
 
@@ -55,13 +61,15 @@ using json = nlohmann::json;
 using namespace lsst::qserv::replica;
 
 namespace {
-/// The configuration is shared by all tests.
-Configuration::Ptr config;
+// The configurations are shared by all tests.
+Configuration::Ptr configController;
+Configuration::Ptr configRegistry;
+Configuration::Ptr configWorker;
 }  // namespace
 
 BOOST_AUTO_TEST_SUITE(Suite)
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
+BOOST_AUTO_TEST_CASE(ConfigTestStaticParams) {
     LOGS_INFO("Testing static parameters");
 
     BOOST_CHECK_THROW(Configuration::setQservCzarDbUrl(""), std::invalid_argument);
@@ -94,33 +102,79 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestStaticParameters) {
     BOOST_CHECK(Configuration::schemaUpgradeWaitTimeoutSec() == 4);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationInitTestJSON) {
+BOOST_AUTO_TEST_CASE(ConfigInitTestJSON) {
     LOGS_INFO("Testing JSON initialization");
-    BOOST_REQUIRE_NO_THROW(config = Configuration::load(ConfigTestData::data()));
-    BOOST_CHECK(config != nullptr);
-    BOOST_CHECK(config->replDbUrl().empty());
-    string const configJsonStr = config->toJson().dump();
+
+    BOOST_REQUIRE_NO_THROW(configController = Configuration::load(ConfigurationSchemaController(),
+                                                                  ConfigTestDataController::data()));
+    BOOST_CHECK(configController != nullptr);
+    BOOST_CHECK(configController->replDbUrl().empty());
+    string const configJsonStr = configController->toJson().dump();
     BOOST_CHECK(!configJsonStr.empty());
+
+    BOOST_REQUIRE_NO_THROW(configRegistry = Configuration::load(ConfigurationSchemaRegistry(),
+                                                                ConfigTestDataRegistry::data()));
+    BOOST_CHECK(configRegistry != nullptr);
+    BOOST_CHECK(configRegistry->replDbUrl().empty());
+    string const configJsonStrRegistry = configRegistry->toJson().dump();
+    BOOST_CHECK(!configJsonStrRegistry.empty());
+
+    BOOST_REQUIRE_NO_THROW(
+            configWorker = Configuration::load(ConfigurationSchemaWorker(), ConfigTestDataWorker::data()));
+    BOOST_CHECK(configWorker != nullptr);
+    BOOST_CHECK(configWorker->replDbUrl().empty());
+    string const configJsonStrWorker = configWorker->toJson().dump();
+    BOOST_CHECK(!configJsonStrWorker.empty());
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestDir) {
-    LOGS_INFO("Testing directory functions");
-    BOOST_CHECK(config->parameters() == ConfigTestData::parameters());
+BOOST_AUTO_TEST_CASE(ConfigTestDir) {
+    Configuration::Ptr config;
+    auto const logParameters = [](map<string, set<string>> const& parameters, string const& scope) {
+        LOGS_INFO(scope << " config parameters");
+        for (auto const& [key, values] : parameters) {
+            ostringstream valuesStream;
+            bool first = true;
+            for (auto const& value : values) {
+                if (!first) valuesStream << ", ";
+                valuesStream << value;
+                first = false;
+            }
+            LOGS_INFO("  " << key << ": " << valuesStream.str());
+        }
+    };
+
+    LOGS_INFO("Testing directory functions of the Controller");
+    config = configController;
+    logParameters(config->parameters(), "Controller:actual");
+    logParameters(ConfigTestDataController::parameters(), "Controller:expected");
+    BOOST_CHECK(config->parameters() == ConfigTestDataController::parameters());
+
+    LOGS_INFO("Testing directory functions of the Registry");
+    config = configRegistry;
+    logParameters(config->parameters(), "Registry:actual");
+    logParameters(ConfigTestDataRegistry::parameters(), "Registry:expected");
+    BOOST_CHECK(config->parameters() == ConfigTestDataRegistry::parameters());
+
+    LOGS_INFO("Testing directory functions of the Worker");
+    config = configWorker;
+    logParameters(config->parameters(), "Worker:actual");
+    logParameters(ConfigTestDataWorker::parameters(), "Worker:expected");
+    BOOST_CHECK(config->parameters() == ConfigTestDataWorker::parameters());
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
-    LOGS_INFO("Testing reading general parameters");
+BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
+    Configuration::Ptr config;
 
-    // Fetching values of general parameters.
+    LOGS_INFO("Testing reading general parameters of the Controller");
+    config = configController;
+
+    BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 2);
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
 
     BOOST_CHECK(config->get<string>("registry", "host") == "127.0.0.1");
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
-    BOOST_CHECK(config->get<unsigned int>("registry", "max-listen-conn") == 512);
-    BOOST_CHECK(config->get<size_t>("registry", "threads") == 4);
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 10);
 
-    BOOST_CHECK(config->get<size_t>("controller", "num-threads") == 2);
     BOOST_CHECK(config->get<uint16_t>("controller", "http-server-port") == 8080);
     BOOST_CHECK(config->get<unsigned int>("controller", "http-max-listen-conn") == 256);
     BOOST_CHECK(config->get<size_t>("controller", "http-server-threads") == 3);
@@ -160,6 +214,52 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
 
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
 
+    LOGS_INFO("Testing reading general parameters of the Registry");
+    config = configRegistry;
+
+    BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 2);
+    BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
+
+    BOOST_CHECK(config->get<string>("registry", "host") == "127.0.0.1");
+    BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
+    BOOST_CHECK(config->get<unsigned int>("registry", "max-listen-conn") == 512);
+    BOOST_CHECK(config->get<size_t>("registry", "threads") == 4);
+    BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 10);
+
+    BOOST_CHECK(config->get<string>("database", "host") == "localhost");
+    BOOST_CHECK(config->get<uint16_t>("database", "port") == 13306);
+    BOOST_CHECK(config->get<string>("database", "user") == "qsreplica");
+    BOOST_CHECK(config->get<string>("database", "password") == "changeme");
+    BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
+
+    BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
+    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
+    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
+
+    BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
+
+    LOGS_INFO("Testing reading general parameters of the Worker");
+    config = configWorker;
+
+    BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 2);
+    BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
+
+    BOOST_CHECK(config->get<string>("registry", "host") == "127.0.0.1");
+    BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
+    BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 10);
+
+    BOOST_CHECK(config->get<string>("database", "host") == "localhost");
+    BOOST_CHECK(config->get<uint16_t>("database", "port") == 13306);
+    BOOST_CHECK(config->get<string>("database", "user") == "qsreplica");
+    BOOST_CHECK(config->get<string>("database", "password") == "changeme");
+    BOOST_CHECK(config->get<string>("database", "name") == "qservReplica");
+
+    BOOST_CHECK(config->get<string>("database", "qserv-master-user") == "qsmaster");
+    BOOST_CHECK(config->qservCzarDbUrl() == "mysql://qsmaster@localhost:3306/qservMeta");
+    BOOST_CHECK(config->qservWorkerDbUrl() == "mysql://qsmaster@localhost:3306/qservw_worker");
+
+    BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 2);
+
     BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 122);
     BOOST_CHECK(config->get<size_t>("worker", "num-threads") == 3);
     BOOST_CHECK(config->get<size_t>("worker", "num-svc-processing-threads") == 4);
@@ -183,8 +283,15 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingGeneralParameters) {
     BOOST_CHECK(config->get<unsigned int>("worker", "create-databases-on-scan") == 1);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
-    LOGS_INFO("Testing modifying general parameters");
+BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
+    Configuration::Ptr config;
+
+    LOGS_INFO("Testing modifying general parameters of the Controller");
+    config = configController;
+
+    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "asio-num-threads", 3));
+    BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 3);
 
     BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
@@ -198,21 +305,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("registry", "port", 8083));
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8083);
 
-    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "max-listen-conn", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "max-listen-conn", 1024));
-    BOOST_CHECK(config->get<unsigned int>("registry", "max-listen-conn") == 1024);
-
-    BOOST_CHECK_THROW(config->set<size_t>("registry", "threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("registry", "threads", 5));
-    BOOST_CHECK(config->get<size_t>("registry", "threads") == 5);
-
     BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 11));
     BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 11);
-
-    BOOST_CHECK_THROW(config->set<size_t>("controller", "num-threads", 0), std::invalid_argument);
-    BOOST_REQUIRE_NO_THROW(config->set<size_t>("controller", "num-threads", 3));
-    BOOST_CHECK(config->get<size_t>("controller", "num-threads") == 3);
 
     BOOST_CHECK_THROW(config->set<uint16_t>("controller", "http-server-port", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("controller", "http-server-port", 8081));
@@ -337,6 +432,68 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingGeneralParameters) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services-pool-size", 3));
     BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 3);
 
+    LOGS_INFO("Testing modifying general parameters of the Registry");
+    config = configRegistry;
+
+    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "asio-num-threads", 3));
+    BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 3);
+
+    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
+    BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
+
+    BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
+    BOOST_CHECK(config->get<string>("registry", "host") == "localhost");
+
+    BOOST_CHECK_THROW(config->set<uint16_t>("registry", "port", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("registry", "port", 8083));
+    BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8083);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "max-listen-conn", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "max-listen-conn", 1024));
+    BOOST_CHECK(config->get<unsigned int>("registry", "max-listen-conn") == 1024);
+
+    BOOST_CHECK_THROW(config->set<size_t>("registry", "threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("registry", "threads", 5));
+    BOOST_CHECK(config->get<size_t>("registry", "threads") == 5);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 11));
+    BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 11);
+
+    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services-pool-size", 3));
+    BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 3);
+
+    LOGS_INFO("Testing modifying general parameters of the Worker");
+    config = configWorker;
+
+    BOOST_CHECK_THROW(config->set<size_t>("common", "asio-num-threads", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "asio-num-threads", 3));
+    BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 3);
+
+    BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
+    BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
+
+    BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
+    BOOST_CHECK(config->get<string>("registry", "host") == "localhost");
+
+    BOOST_CHECK_THROW(config->set<uint16_t>("registry", "port", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<uint16_t>("registry", "port", 8083));
+    BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8083);
+
+    BOOST_CHECK_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("registry", "heartbeat-ival-sec", 11));
+    BOOST_CHECK(config->get<unsigned int>("registry", "heartbeat-ival-sec") == 11);
+
+    BOOST_CHECK_THROW(config->set<size_t>("database", "services-pool-size", 0), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<size_t>("database", "services-pool-size", 3));
+    BOOST_CHECK(config->get<size_t>("database", "services-pool-size") == 3);
+
     BOOST_CHECK_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<unsigned int>("worker", "request-timeout-sec", 123));
     BOOST_CHECK(config->get<unsigned int>("worker", "request-timeout-sec") == 123);
@@ -448,8 +605,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerOperators) {
     BOOST_CHECK(!(w1 == w2));
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
-    LOGS_INFO("Testing worker services");
+BOOST_AUTO_TEST_CASE(ConfigContrTestWorkers) {
+    LOGS_INFO("Testing worker configuration in the Controller");
+    auto config = configController;
 
     // Default assumptions for optional parameters of the workers selector.
     vector<string> workers1;
@@ -509,8 +667,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkers) {
     BOOST_CHECK_THROW(config->updateWorker(unknownWorker), ConfigUnknownWorker);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
-    LOGS_INFO("Testing worker parameters");
+BOOST_AUTO_TEST_CASE(ConfigContrTestWorkerParams) {
+    LOGS_INFO("Testing worker parameters in the Controller");
+    auto config = configController;
 
     ConfigHost const hostA({"127.0.0.1", "host-A"});
     BOOST_CHECK_EQUAL(hostA.addr, "127.0.0.1");
@@ -623,8 +782,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestWorkerParameters) {
     BOOST_REQUIRE_NO_THROW(updatedWorker = config->updateWorker(updatedWorker));
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
+BOOST_AUTO_TEST_CASE(ConfigContrTestFamilies) {
     LOGS_INFO("Testing database families");
+    auto config = configController;
 
     // Selecting and probing database families.
     vector<string> families;
@@ -697,8 +857,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestFamilies) {
     BOOST_REQUIRE_THROW(config->deleteDatabaseFamily("non-existing"), ConfigUnknownDatabaseFamily);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestReadingDatabases) {
-    LOGS_INFO("Testing reading databases");
+BOOST_AUTO_TEST_CASE(ConfigContrTestReadDatabases) {
+    LOGS_INFO("Testing reading databases in the Controller");
+    auto config = configController;
 
     // Database selectors.
     vector<string> databases1;
@@ -764,8 +925,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingDatabases) {
     BOOST_REQUIRE_THROW(config->deleteDatabase("non-existing"), ConfigUnknownDatabase);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
-    LOGS_INFO("Testing reading tables");
+BOOST_AUTO_TEST_CASE(ConfigContrTestReadTables) {
+    LOGS_INFO("Testing reading tables in the Controller");
+    auto config = configController;
 
     DirectorTableRef tableRef1;
     BOOST_CHECK(tableRef1.empty());
@@ -1310,8 +1472,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestReadingTables) {
     BOOST_CHECK(table.publishTime == 6611);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
-    LOGS_INFO("Testing adding databases");
+BOOST_AUTO_TEST_CASE(ConfigContrTestAddDatabases) {
+    LOGS_INFO("Testing adding databases in the Controller");
+    auto config = configController;
 
     // Adding new databases.
     {
@@ -1358,8 +1521,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestAddingDatabases) {
     }
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
-    LOGS_INFO("Testing modifying tables");
+BOOST_AUTO_TEST_CASE(ConfigContrTestModifyTables) {
+    LOGS_INFO("Testing modifying tables in the Controller");
+    auto config = configController;
     {
         DatabaseInfo database;
         BOOST_REQUIRE_NO_THROW(database = config->databaseInfo("new"));
@@ -1475,8 +1639,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestModifyingTables) {
     BOOST_CHECK_THROW(config->deleteTable("new", "Non-existing"), ConfigUnknownTable);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
-    LOGS_INFO("Testing publishing databases");
+BOOST_AUTO_TEST_CASE(ConfigContrTestPublishDatabases) {
+    LOGS_INFO("Testing publishing databases in the Controller");
+    auto config = configController;
     {
         DatabaseInfo database;
         BOOST_REQUIRE_NO_THROW(database = config->publishDatabase("new"));
@@ -1502,8 +1667,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestPublishingDatabases) {
     BOOST_REQUIRE_NO_THROW(config->deleteTable("new", "T1"));
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestUnPublishingDatabases) {
-    LOGS_INFO("Testing un-publishing databases");
+BOOST_AUTO_TEST_CASE(ConfigContrTestUnPublishDatabases) {
+    LOGS_INFO("Testing un-publishing databases in the Controller");
+    auto config = configController;
     {
         DatabaseInfo database;
         BOOST_REQUIRE_NO_THROW(database = config->unPublishDatabase("new"));
@@ -1522,14 +1688,17 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestUnPublishingDatabases) {
     BOOST_CHECK_NO_THROW(config->addTable(inTable));
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingDatabases) {
-    LOGS_INFO("Testing deleting databases");
+BOOST_AUTO_TEST_CASE(ConfigContrTestDeleteDatabases) {
+    LOGS_INFO("Testing deleting databases in the Controller");
+    auto config = configController;
+
     BOOST_REQUIRE_NO_THROW(config->deleteDatabase("new"));
     BOOST_CHECK_THROW(config->deleteDatabase("new"), ConfigUnknownDatabase);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingFamilies) {
-    LOGS_INFO("Testing deleting families");
+BOOST_AUTO_TEST_CASE(ConfigContrTestDeleteFamilies) {
+    LOGS_INFO("Testing deleting families in the Controller");
+    auto config = configController;
 
     // Test if deleting a family would also eliminate the dependent databases if
     // the 'force' option is used.
@@ -1552,8 +1721,8 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestDeletingFamilies) {
     BOOST_CHECK(config->isKnownDatabase("db6"));
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestCzarOperators) {
-    LOGS_INFO("Testing Czar comparison operators");
+BOOST_AUTO_TEST_CASE(ConfigContrTestCzarOperators) {
+    LOGS_INFO("Testing Czar comparison operators in the Controller");
 
     ConfigCzar c1;
     ConfigCzar c2;
@@ -1566,8 +1735,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzarOperators) {
     BOOST_CHECK(!(c1 == c2));
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestCzars) {
-    LOGS_INFO("Testing Czar collection");
+BOOST_AUTO_TEST_CASE(ConfigContrTestCzars) {
+    LOGS_INFO("Testing Czar collection in the Controller");
+    auto config = configController;
 
     vector<string> czars1;
     BOOST_REQUIRE_NO_THROW(czars1 = config->allCzars());
@@ -1586,8 +1756,9 @@ BOOST_AUTO_TEST_CASE(ConfigurationTestCzars) {
     BOOST_CHECK_THROW(config->czar("non-existing"), ConfigUnknownCzar);
 }
 
-BOOST_AUTO_TEST_CASE(ConfigurationTestCzarParameters) {
-    LOGS_INFO("Testing Czar parameters");
+BOOST_AUTO_TEST_CASE(ConfigContrTestCzarParams) {
+    LOGS_INFO("Testing Czar parameters in the Controller");
+    auto config = configController;
 
     ConfigHost const hostA({"127.0.0.1", "host-A"});
     BOOST_CHECK_EQUAL(hostA.addr, "127.0.0.1");

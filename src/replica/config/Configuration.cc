@@ -186,16 +186,16 @@ void Configuration::setSchemaUpgradeWaitTimeoutSec(unsigned int value) {
     _schemaUpgradeWaitTimeoutSec = value;
 }
 
-Configuration::Ptr Configuration::load(string const& replDbUrl) {
-    Ptr const ptr(new Configuration());
+Configuration::Ptr Configuration::load(ConfigurationSchema const& _configSchema, string const& replDbUrl) {
+    Ptr const ptr(new Configuration(_configSchema));
     replica::Lock const lock(ptr->_mtx, _context(__func__));
     bool const reset = false;
     ptr->_load(lock, replDbUrl, reset);
     return ptr;
 }
 
-Configuration::Ptr Configuration::load(json const& obj) {
-    Ptr const ptr(new Configuration());
+Configuration::Ptr Configuration::load(ConfigurationSchema const& _configSchema, json const& obj) {
+    Ptr const ptr(new Configuration(_configSchema));
     replica::Lock const lock(ptr->_mtx, _context(__func__));
     bool const reset = false;
     ptr->_load(lock, obj, reset);
@@ -208,7 +208,8 @@ string Configuration::_context(string const& func) { return "CONFIG  " + func; }
 // The instance API.
 // -----------------
 
-Configuration::Configuration() : _data(ConfigurationSchema::defaultConfigData()) {}
+Configuration::Configuration(ConfigurationSchema const& configSchema)
+        : _configSchema(configSchema), _data(configSchema.defaultConfigData()) {}
 
 void Configuration::reload() {
     replica::Lock const lock(_mtx, _context(__func__));
@@ -236,11 +237,11 @@ string Configuration::replDbUrl(bool showPassword) const {
     return _connectionParams.toString(showPassword);
 }
 
-map<string, set<string>> Configuration::parameters() const { return ConfigurationSchema::parameters(); }
+map<string, set<string>> Configuration::parameters() const { return _configSchema.parameters(); }
 
 string Configuration::getAsString(string const& category, string const& param) const {
     replica::Lock const lock(_mtx, _context(__func__));
-    return ConfigurationSchema::json2string(
+    return _configSchema.json2string(
             _context(__func__) + " category: '" + category + "' param: '" + param + "' ",
             _get(lock, category, param));
 }
@@ -277,11 +278,11 @@ void Configuration::_load(replica::Lock const& lock, json const& obj, bool reset
 
     // Validate and update configuration parameters.
     // Catch exceptions for error reporting.
-    ConfigParserJSON parser(_data, _workers, _databaseFamilies, _databases, _czars);
+    ConfigParserJSON parser(_configSchema, _data, _workers, _databaseFamilies, _databases, _czars);
     parser.parse(obj);
 
     bool const showPassword = false;
-    LOGS(_log, LOG_LVL_DEBUG, _context() << _toJson(lock, showPassword).dump());
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << " " << _toJson(lock, showPassword).dump());
 }
 
 void Configuration::_load(replica::Lock const& lock, string const& replDbUrl, bool reset) {
@@ -319,7 +320,7 @@ void Configuration::_load(replica::Lock const& lock, string const& replDbUrl, bo
     while (true) {
         try {
             _connectionPtr->executeInOwnTransaction([&](decltype(_connectionPtr) conn) {
-                ConfigParserMySQL parser(conn, _data, _workers, _databaseFamilies, _databases);
+                ConfigParserMySQL parser(conn, _workers, _databaseFamilies, _databases);
                 parser.parse();
             });
             break;
@@ -327,35 +328,36 @@ void Configuration::_load(replica::Lock const& lock, string const& replDbUrl, bo
             if (Configuration::schemaUpgradeWait()) {
                 if (ex.version > ex.requiredVersion) {
                     LOGS(_log, LOG_LVL_ERROR,
-                         _context() << "Database schema version is newer than"
-                                    << " the one required by the application, ex: " << ex.what());
+                         _context(__func__) << "Database schema version is newer than"
+                                            << " the one required by the application, ex: " << ex.what());
                     throw;
                 }
                 schemaUpgradeTimer.stop();
                 if (schemaUpgradeTimer.getElapsed() > Configuration::schemaUpgradeWaitTimeoutSec()) {
                     LOGS(_log, LOG_LVL_ERROR,
-                         _context() << "The maximum duration of time ("
-                                    << Configuration::schemaUpgradeWaitTimeoutSec() << " seconds) has expired"
-                                    << " while waiting for the database schema upgrade. The schema version "
-                                       "is still older than"
-                                    << " the one required by the application, ex: " << ex.what());
+                         _context(__func__)
+                                 << "The maximum duration of time ("
+                                 << Configuration::schemaUpgradeWaitTimeoutSec() << " seconds) has expired"
+                                 << " while waiting for the database schema upgrade. The schema version "
+                                    "is still older than"
+                                 << " the one required by the application, ex: " << ex.what());
                     throw;
                 } else {
                     LOGS(_log, LOG_LVL_WARN,
-                         _context() << "Database schema version is still older than the one"
-                                    << " required by the application after "
-                                    << schemaUpgradeTimer.getElapsed()
-                                    << " seconds of waiting for the schema upgrade, ex: " << ex.what());
+                         _context(__func__)
+                                 << "Database schema version is still older than the one"
+                                 << " required by the application after " << schemaUpgradeTimer.getElapsed()
+                                 << " seconds of waiting for the schema upgrade, ex: " << ex.what());
                 }
             } else {
-                LOGS(_log, LOG_LVL_ERROR, _context() << ex.what());
+                LOGS(_log, LOG_LVL_ERROR, _context(__func__) << ex.what());
                 throw;
             }
         }
         std::this_thread::sleep_for(5000ms);
     }
     bool const showPassword = false;
-    LOGS(_log, LOG_LVL_DEBUG, _context() << _toJson(lock, showPassword).dump());
+    LOGS(_log, LOG_LVL_DEBUG, _context(__func__) << _toJson(lock, showPassword).dump());
 }
 
 vector<string> Configuration::workers(bool isEnabled, bool isReadOnly) const {

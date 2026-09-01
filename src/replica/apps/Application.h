@@ -30,6 +30,7 @@
 // Qserv headers
 #include "http/Auth.h"
 #include "replica/apps/ApplicationTypes.h"
+#include "replica/config/ConfigurationSchema.h"
 #include "replica/services/ServiceProvider.h"
 
 // This header declarations
@@ -74,9 +75,10 @@ protected:
      * @param enableServiceProvider A flag which will inject configuration
      *  option "--repl-db=<url>", load the configuration into Configuration and initialize
      *  the ServiceProvider with the configuration.
+     * @param configSchema The configuration schema to be used by the application.
      */
     Application(int argc, const char* const argv[], std::string const& description,
-                bool const enableServiceProvider);
+                bool const enableServiceProvider, ConfigurationSchema const& configSchema);
 
     /// @return a shared pointer of the desired subclass (no dynamic type checking)
     template <class T>
@@ -114,6 +116,7 @@ protected:
 private:
     // Input parameters
     bool const _enableServiceProvider;
+    ConfigurationSchema const _configSchema;
 
     /// For parsing command-line parameters, options and flags
     Parser _parser;
