@@ -38,6 +38,9 @@
 #include <aws/s3/model/PutObjectRequest.h>
 #include <aws/s3/S3Client.h>
 
+// Qserv headers
+#include "replica/config/ConfigurationSchema.h"
+
 using namespace std;
 
 namespace {
@@ -57,7 +60,7 @@ shared_ptr<TestAwsS3App> TestAwsS3App::create(int argc, char* argv[]) {
 }
 
 TestAwsS3App::TestAwsS3App(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider) {
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchema()) {
     parser().commands("operation", {"READ", "WRITE", "DELETE"}, _operation)
             .option("endpoint", "The S3 service endpoint (host[:port]).", _endpoint)
             .option("access-key", "The service key (for authentication/authorization).", _accessKey)

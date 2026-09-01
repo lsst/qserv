@@ -47,14 +47,15 @@ LOG_LOGGER _log = LOG_GET("lsst.qserv.replica.ServiceProvider");
 
 namespace lsst::qserv::replica {
 
-ServiceProvider::Ptr ServiceProvider::create(string const& replDbUrl, string const& instanceId,
+ServiceProvider::Ptr ServiceProvider::create(ConfigurationSchema const& configSchema, string const& replDbUrl,
+                                             string const& instanceId,
                                              http::AuthContext const& httpAuthContext) {
-    return ServiceProvider::Ptr(new ServiceProvider(replDbUrl, instanceId, httpAuthContext));
+    return ServiceProvider::Ptr(new ServiceProvider(configSchema, replDbUrl, instanceId, httpAuthContext));
 }
 
-ServiceProvider::ServiceProvider(string const& replDbUrl, string const& instanceId,
-                                 http::AuthContext const& httpAuthContext)
-        : _configuration(Configuration::load(replDbUrl)),
+ServiceProvider::ServiceProvider(ConfigurationSchema const& configSchema, string const& replDbUrl,
+                                 string const& instanceId, http::AuthContext const& httpAuthContext)
+        : _configuration(Configuration::load(configSchema, replDbUrl)),
           _instanceId(instanceId),
           _httpAuthContext(httpAuthContext) {}
 
@@ -114,7 +115,7 @@ void ServiceProvider::run() {
     _work.reset(new boost::asio::io_service::work(_io_service));
     auto self = shared_from_this();
     _threads.clear();
-    for (size_t i = 0; i < config()->get<size_t>("controller", "num-threads"); ++i) {
+    for (size_t i = 0; i < config()->get<size_t>("common", "asio-num-threads"); ++i) {
         _threads.push_back(make_unique<thread>([self]() {
             // This will prevent the I/O service from exiting the .run()
             // method event when it will run out of any requests to process.
