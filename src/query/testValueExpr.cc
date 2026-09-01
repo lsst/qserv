@@ -58,6 +58,20 @@ BOOST_AUTO_TEST_CASE(subsetOf) {
     BOOST_REQUIRE_EQUAL(aliasInColumn->isSubsetOf(*fullValue), true);
 }
 
+BOOST_AUTO_TEST_CASE(functionSubsetIgnoresNameCase) {
+    auto aggregate = [](std::string const& name, std::string const& column) {
+        return ValueExpr::newSimple(ValueFactor::newAggFactor(FuncExpr::newArg1(name, column)));
+    };
+    auto lower = aggregate("count", "objectId");
+    auto upper = aggregate("COUNT", "objectId");
+    auto mixed = aggregate("CoUnT", "objectId");
+    BOOST_CHECK(lower->isSubsetOf(*upper));
+    BOOST_CHECK(upper->isSubsetOf(*lower));
+    BOOST_CHECK(mixed->isSubsetOf(*upper));
+    BOOST_CHECK(!lower->isSubsetOf(*aggregate("SUM", "objectId")));
+    BOOST_CHECK(!lower->isSubsetOf(*aggregate("COUNT", "otherColumn")));
+}
+
 BOOST_AUTO_TEST_CASE(renderValueExpr) {
     auto getRendered = [](std::shared_ptr<ValueExpr> const& valueExpr,
                           QueryTemplate::SetAliasMode aliasMode) -> std::string {
