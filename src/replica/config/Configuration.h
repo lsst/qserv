@@ -106,13 +106,15 @@ public:
      * from the given JSON object.
      * @note Configuration objects created by this method won't have any persistent
      *   backend should any changes to the transient state be made.
+     * @param configSchema The schema against which the input configuration will be validated.
      * @param obj The input configuration parameters. The object is optional.
      *   If it's not given (the default value), or if it's empty then no changes
      *   will be made to the default transient state.
      * @throw std::runtime_error If the input configuration is not consistent
      *   with the transient schema.
      */
-    static Ptr load(nlohmann::json const& obj = nlohmann::json::object());
+    static Ptr load(ConfigurationSchema const& configSchema,
+                    nlohmann::json const& obj = nlohmann::json::object());
 
     /**
      * The static factory method will create a new object and initialize its content
@@ -124,13 +126,14 @@ public:
      *   the persistent backend for any requests to update the state of the transient
      *   parameters. A connection object to the MySQL service will be initialized
      *   as the corresponding data member of the class.
+     * @param configSchema The schema against which the input configuration will be validated.
      * @param replDbUrl Connection URL for the Replication database.
      * @throw std::invalid_argument If the URL has unsupported scheme or it
      *   couldn't be parsed.
      * @throw std::runtime_error If the input configuration is not consistent
      *   with the transient schema.
      */
-    static Ptr load(std::string const& replDbUrl);
+    static Ptr load(ConfigurationSchema const& configSchema, std::string const& replDbUrl);
 
     /**
      * Return a connection object for the czar's MySQL service with the name of
@@ -264,6 +267,8 @@ public:
     Configuration& operator=(Configuration const&) = delete;
     ~Configuration() = default;
 
+    ConfigurationSchema const& configSchema() const { return _configSchema; }
+
     /**
      * Reload non-static parameters of the Configuration from the same source
      * they were originally read before.
@@ -356,15 +361,17 @@ public:
      */
     template <typename T>
     void set(std::string const& category, std::string const& param, T const& val) {
-        std::string const context_ =
-                _context(__func__) + " category='" + category + "' param='" + param + "' ";
+        auto const context_ = _context(__func__) + " category='" + category + "' param='" + param + "' ";
         replica::Lock const lock(_mtx, context_);
+
         // Some parameters can't be updated using this interface.
-        if (ConfigurationSchema::readOnly(category, param)) {
+        if (_configSchema.readOnly(category, param)) {
             throw std::logic_error(context_ + "the read-only parameters can't be updated via the API.");
         }
+
         // Validate the value in case if the schema enforces restrictions.
-        ConfigurationSchema::validate(category, param, val);
+        _configSchema.validate<T>(category, param, val);
+
         // Update transient states.
         try {
             nlohmann::json& obj = _get(lock, category, param);
@@ -743,14 +750,15 @@ private:
     static std::string _context(std::string const& func = std::string());
 
     /**
-     * The light weight c-tor to initialize the default state of the configuration.
-     * The rest of the state will get populated by specialized methods mentioned below.
+     * The light weight c-tor to initialize the default state of the configuration
+     * for the specified schema. The rest of the state will get populated by the specialized
+     * _load() methods explained below.
      */
-    Configuration();
+    Configuration(ConfigurationSchema const& configSchema);
 
     /**
      * Load from the transient JSON object. Parameters read from the object will
-     * be applying to the internal state.
+     * be applying to the internal state only. No changes to the persistent back-end will be made.
      * @param lock The lock on '_mtx' to be acquired prior to calling the method.
      * @param obj An object to be used as a source for updating the default values
      *   of the configuration parameters. Note that this source doesn't assume a presence
@@ -865,6 +873,8 @@ private:
 
     static replica::Mutex _classMtx;  ///< For implementing static synchronized methods.
 
+    ConfigurationSchema const
+            _configSchema;   ///< The schema against which the configuration will be validated.
     std::string _replDbUrl;  ///< The connection URL for the Replication database (if any).
 
     // These parameters  will be set for the MySQL back-end (if any).
