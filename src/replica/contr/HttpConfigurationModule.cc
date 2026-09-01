@@ -48,13 +48,14 @@ namespace {
 /// @return A JSON object with metadata for the general parameters.
 json meta4general(Configuration::Ptr const& config) {
     json result;
-    for (auto&& itr : ConfigurationSchema::parameters()) {
+    auto const& configSchema = config->configSchema();
+    for (auto&& itr : configSchema.parameters()) {
         string const& category = itr.first;
         for (auto&& parameter : itr.second) {
             json& obj = result[category][parameter];
-            obj["read_only"] = ConfigurationSchema::readOnly(category, parameter) ? 0 : 1;
-            obj["description"] = ConfigurationSchema::description(category, parameter);
-            obj["security_context"] = ConfigurationSchema::securityContext(category, parameter) ? 1 : 0;
+            obj["read_only"] = configSchema.readOnly(category, parameter) ? 0 : 1;
+            obj["description"] = configSchema.description(category, parameter);
+            obj["security_context"] = configSchema.securityContext(category, parameter) ? 1 : 0;
         }
     }
     return result;
@@ -125,7 +126,7 @@ json HttpConfigurationModule::_updateGeneral() {
     string const category = body().required<string>("category");
     string const parameter = body().required<string>("parameter");
     string const value = body().required<string>("value");
-    if (ConfigurationSchema::readOnly(category, parameter)) {
+    if (config->configSchema().readOnly(category, parameter)) {
         throw invalid_argument(context() + "::" + string(__func__) +
                                "  this is the read-only parameter that can't be changed via this method.");
     }
