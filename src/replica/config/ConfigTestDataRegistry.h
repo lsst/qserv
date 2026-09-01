@@ -18,8 +18,8 @@
  * the GNU General Public License along with this program.  If not,
  * see <http://www.lsstcorp.org/LegalNotices/>.
  */
-#ifndef LSST_QSERV_REPLICA_CONFIGTESTDATA_H
-#define LSST_QSERV_REPLICA_CONFIGTESTDATA_H
+#ifndef LSST_QSERV_REPLICA_CONFIGTESTDATAREGISTRY_H
+#define LSST_QSERV_REPLICA_CONFIGTESTDATAREGISTRY_H
 
 // System headers
 #include <map>
@@ -34,9 +34,9 @@ namespace lsst::qserv::replica {
 
 /**
  * This utility class ConfigTestData provides inputs for testing the Configuration
- * service.
+ * service used by the Registry.
  */
-class ConfigTestData {
+class ConfigTestDataRegistry {
 public:
     /// @return A collection of the general configuration parameters. The parameters
     ///   are compatible with the current JSON configuration schema.
@@ -51,4 +51,4 @@ public:
 
 }  // namespace lsst::qserv::replica
 
-#endif  // LSST_QSERV_REPLICA_CONFIGTESTDATA_H
+#endif  // LSST_QSERV_REPLICA_CONFIGTESTDATAREGISTRY_H

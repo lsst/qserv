@@ -37,6 +37,7 @@
 #include "http/MetaModule.h"
 #include "http/Method.h"
 #include "replica/config/Configuration.h"
+#include "replica/config/ConfigurationSchemaController.h"
 #include "replica/contr/Controller.h"
 #include "replica/contr/DeleteWorkerTask.h"
 #include "replica/contr/HealthMonitorTask.h"
@@ -104,7 +105,7 @@ shared_ptr<MasterControllerHttpApp> MasterControllerHttpApp::create(int argc, ch
 }
 
 MasterControllerHttpApp::MasterControllerHttpApp(int argc, char* argv[])
-        : Application(argc, argv, ::description, ::enableServiceProvider),
+        : Application(argc, argv, ::description, ::enableServiceProvider, ConfigurationSchemaController()),
           _healthProbeIntervalSec(::defaultOptions.healthProbeIntervalSec),
           _replicationIntervalSec(::defaultOptions.replicationIntervalSec),
           _czarResponseTimeoutSec(::defaultOptions.czarResponseTimeoutSec),

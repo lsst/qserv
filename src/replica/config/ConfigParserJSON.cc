@@ -33,10 +33,12 @@ using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-ConfigParserJSON::ConfigParserJSON(json& data, map<string, ConfigWorker>& workers,
+ConfigParserJSON::ConfigParserJSON(ConfigurationSchema const& configSchema, json& data,
+                                   map<string, ConfigWorker>& workers,
                                    map<string, DatabaseFamilyInfo>& databaseFamilies,
                                    map<string, DatabaseInfo>& databases, map<string, ConfigCzar>& czars)
-        : _data(data),
+        : _configSchema(configSchema),
+          _data(data),
           _workers(workers),
           _databaseFamilies(databaseFamilies),
           _databases(databases),
