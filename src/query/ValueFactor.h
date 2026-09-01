@@ -102,6 +102,9 @@ public:
 
     void findColumnRefs(ColumnRef::Vector& vector) const;
 
+    /// @return true if this factor is an aggregation, or contains one at any depth
+    bool hasAggregation() const;
+
     ValueFactorPtr clone() const;
 
     static ValueFactorPtr newColumnRefFactor(std::shared_ptr<ColumnRef const> cr);
