@@ -20,86 +20,39 @@
  */
 
 // Class header
-#include "replica/config/ConfigTestData.h"
+#include "replica/config/ConfigTestDataController.h"
 
 using namespace std;
 using json = nlohmann::json;
 
 namespace lsst::qserv::replica {
 
-map<string, set<string>> ConfigTestData::parameters() {
+map<string, set<string>> ConfigTestDataController::parameters() {
     return map<string, set<string>>(
-            {{"common", {"request-buf-size-bytes"}},
-             {"registry", {"host", "port", "max-listen-conn", "threads", "heartbeat-ival-sec"}},
+            {{"common", {"asio-num-threads", "request-buf-size-bytes"}},
+             {"registry", {"host", "port", "heartbeat-ival-sec"}},
              {"controller",
-              {"num-threads",
-               "http-server-port",
-               "http-max-listen-conn",
-               "http-server-threads",
-               "request-timeout-sec",
-               "request-retry-interval-sec",
-               "job-timeout-sec",
-               "job-heartbeat-sec",
-               "num-requests-per-worker",
-               "max-repl-level",
-               "worker-evict-priority-level",
-               "health-monitor-priority-level",
-               "ingest-priority-level",
-               "catalog-management-priority-level",
-               "auto-register-workers",
-               "auto-register-czars",
-               "ingest-job-monitor-ival-sec",
-               "num-director-index-connections",
-               "director-index-charset-name",
-               "director-index-engine"}},
+              {"http-server-port", "http-max-listen-conn", "http-server-threads", "request-timeout-sec",
+               "request-retry-interval-sec", "job-timeout-sec", "job-heartbeat-sec",
+               "num-requests-per-worker", "max-repl-level", "worker-evict-priority-level",
+               "health-monitor-priority-level", "ingest-priority-level", "catalog-management-priority-level",
+               "auto-register-workers", "auto-register-czars", "ingest-job-monitor-ival-sec",
+               "num-director-index-connections", "director-index-charset-name", "director-index-engine"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
                "qserv-master-services-pool-size", "qserv-master-tmp-dir"}},
              {"xrootd",
-              {"auto-notify", "request-timeout-sec", "host", "port", "allow-reconnect", "reconnect-timeout"}},
-             {"worker",
-              {"request-timeout-sec",
-               "num-threads",
-               "num-svc-processing-threads",
-               "num-http-svc-threads",
-               "num-fs-processing-threads",
-               "fs-buf-size-bytes",
-               "exporter-threads",
-               "num-http-loader-processing-threads",
-               "num-async-loader-processing-threads",
-               "async-loader-auto-resume",
-               "async-loader-cleanup-on-resume",
-               "http-max-listen-conn",
-               "http-max-queued-requests",
-               "exporter-max-queued-requests",
-               "http-svc-max-queued-requests",
-               "svc-port",
-               "http-svc-port",
-               "fs-port",
-               "data-dir",
-               "loader-max-warnings",
-               "exporter-port",
-               "exporter-tmp-dir",
-               "http-loader-port",
-               "http-loader-tmp-dir",
-               "ingest-charset-name",
-               "ingest-num-retries",
-               "ingest-max-retries",
-               "director-index-record-size",
-               "create-databases-on-scan"}}});
+              {"auto-notify", "request-timeout-sec", "host", "port", "allow-reconnect",
+               "reconnect-timeout"}}});
 }
 
-json ConfigTestData::data() {
+json ConfigTestDataController::data() {
     json obj;
     json& generalObj = obj["general"];
-    generalObj["common"] = json::object({{"request-buf-size-bytes", 8192}});
-    generalObj["registry"] = json::object({{"host", "127.0.0.1"},
-                                           {"port", 8081},
-                                           {"max-listen-conn", 512},
-                                           {"threads", 4},
-                                           {"heartbeat-ival-sec", 10}});
-    generalObj["controller"] = json::object({{"num-threads", 2},
-                                             {"http-server-port", 8080},
+    generalObj["common"] = json::object({{"asio-num-threads", 2}, {"request-buf-size-bytes", 8192}});
+    generalObj["registry"] =
+            json::object({{"host", "127.0.0.1"}, {"port", 8081}, {"heartbeat-ival-sec", 10}});
+    generalObj["controller"] = json::object({{"http-server-port", 8080},
                                              {"http-max-listen-conn", 256},
                                              {"http-server-threads", 3},
                                              {"request-timeout-sec", 100},
@@ -131,31 +84,6 @@ json ConfigTestData::data() {
                                          {"request-timeout-sec", 400},
                                          {"allow-reconnect", 0},
                                          {"reconnect-timeout", 500}});
-    generalObj["worker"] = json::object({{"request-timeout-sec", 122},
-                                         {"num-threads", 3},
-                                         {"num-svc-processing-threads", 4},
-                                         {"num-http-svc-threads", 10},
-                                         {"num-fs-processing-threads", 5},
-                                         {"fs-buf-size-bytes", 1024},
-                                         {"exporter-threads", 7},
-                                         {"num-http-loader-processing-threads", 8},
-                                         {"num-async-loader-processing-threads", 9},
-                                         {"async-loader-auto-resume", 0},
-                                         {"async-loader-cleanup-on-resume", 0},
-                                         {"http-max-listen-conn", 512},
-                                         {"http-max-queued-requests", 1024},
-                                         {"exporter-max-queued-requests", 4096},
-                                         {"http-svc-max-queued-requests", 2048},
-                                         {"svc-port", 51000},
-                                         {"http-svc-port", 56000},
-                                         {"fs-port", 52000},
-                                         {"data-dir", "/data"},
-                                         {"loader-max-warnings", 2},
-                                         {"exporter-port", 54000},
-                                         {"exporter-tmp-dir", "/tmp"},
-                                         {"http-loader-port", 55000},
-                                         {"http-loader-tmp-dir", "/tmp"},
-                                         {"create-databases-on-scan", 1}});
 
     obj["workers"] = json::array();
     {

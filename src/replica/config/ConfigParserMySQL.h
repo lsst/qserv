@@ -56,11 +56,10 @@ public:
      * Construct the parser with references to the collections of the confituration
      * data to be filled in.
      * @param conn A connection to the MySQL service for parsing the parameters.
-     * @param data The collection of the general parameters.
      * @param databaseFamilies The collection of the database family descriptors.
      * @param databases The collection of the database descriptors.
      */
-    ConfigParserMySQL(database::mysql::Connection::Ptr const& conn, nlohmann::json& data,
+    ConfigParserMySQL(database::mysql::Connection::Ptr const& conn,
                       std::map<std::string, ConfigWorker>& workers,
                       std::map<std::string, DatabaseFamilyInfo>& databaseFamilies,
                       std::map<std::string, DatabaseInfo>& databases);
@@ -125,7 +124,6 @@ private:
 
     database::mysql::Connection::Ptr const _conn;
     database::mysql::QueryGenerator const _g;
-    nlohmann::json& _data;
     std::map<std::string, ConfigWorker>& _workers;
     std::map<std::string, DatabaseFamilyInfo>& _databaseFamilies;
     std::map<std::string, DatabaseInfo>& _databases;
