@@ -30,6 +30,7 @@ namespace lsst::qserv::replica {
 map<string, set<string>> ConfigTestDataWorker::parameters() {
     return map<string, set<string>>(
             {{"common", {"asio-num-threads", "request-buf-size-bytes"}},
+             {"security", {"auth-key", "admin-auth-key", "http-user", "http-password", "instance-id"}},
              {"registry", {"host", "port", "heartbeat-ival-sec"}},
              {"database",
               {"services-pool-size", "host", "port", "user", "password", "name", "qserv-master-user",
@@ -70,6 +71,11 @@ json ConfigTestDataWorker::data() {
     json obj;
     json& generalObj = obj["general"];
     generalObj["common"] = json::object({{"asio-num-threads", 2}, {"request-buf-size-bytes", 8192}});
+    generalObj["security"] = json::object({{"auth-key", "key1"},
+                                           {"admin-auth-key", "key2"},
+                                           {"http-user", "qsreplica"},
+                                           {"http-password", "CHANGEME"},
+                                           {"instance-id", "qserv-1"}});
     generalObj["registry"] =
             json::object({{"host", "127.0.0.1"}, {"port", 8081}, {"heartbeat-ival-sec", 10}});
     generalObj["database"] = json::object({{"host", "localhost"},
