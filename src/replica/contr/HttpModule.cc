@@ -53,7 +53,7 @@ HttpModule::HttpModule(Controller::Ptr const& controller, string const& taskName
                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
                        qhttp::Response::Ptr const& resp)
         : EventLogger(controller, taskName),
-          http::QhttpModule(controller->serviceProvider()->httpAuthContext(), req, resp),
+          http::QhttpModule(controller->serviceProvider()->config()->httpAuthContext(), req, resp),
           _processorConfig(processorConfig) {}
 
 string HttpModule::context() const { return name() + " "; }

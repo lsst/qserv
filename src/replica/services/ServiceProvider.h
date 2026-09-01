@@ -31,7 +31,6 @@
 #include "boost/asio.hpp"
 
 // Qserv headers
-#include "http/Auth.h"
 #include "replica/services/ChunkLocker.h"
 #include "replica/util/Mutex.h"
 #include "replica/util/NamedMutexRegistry.h"
@@ -67,18 +66,9 @@ public:
      *
      * @param configSchema  The configuration schema used by the service provider.
      * @param replDbUrl  Connection URL for the Replication database
-     * @param instanceId  A unique identifier of a Qserv instance served by
-     *  the Replication System. Its value will be passed along various internal
-     *  communication lines of the system to ensure that all services are related
-     *  to the same instance. This mechanism also prevents 'cross-talks' between
-     *  two (or many) Replication System's setups in case of an accidental
-     *  mis-configuration.
-     * @param httpAuthContext  An authorization context for operations affecting the state of
      *  Qserv or the Replication/Ingest system.
      */
-    static ServiceProvider::Ptr create(ConfigurationSchema const& configSchema, std::string const& replDbUrl,
-                                       std::string const& instanceId,
-                                       http::AuthContext const& httpAuthContext);
+    static ServiceProvider::Ptr create(ConfigurationSchema const& configSchema, std::string const& replDbUrl);
 
     ~ServiceProvider() = default;
 
@@ -105,12 +95,6 @@ public:
 
     /// @return a reference to the configuration service
     std::shared_ptr<Configuration> const& config() const { return _configuration; }
-
-    /// @return A unique identifier of a Qserv instance served by the Replication System
-    std::string const& instanceId() const { return _instanceId; }
-
-    /// @return the authorization context for operations affecting the state of Qserv or
-    http::AuthContext httpAuthContext() const { return _httpAuthContext; }
 
     /// @return a reference to the local (process) chunk locking services
     ChunkLocker& chunkLocker() { return _chunkLocker; }
@@ -169,8 +153,7 @@ public:
 
 private:
     /// @see ServiceProvider::create()
-    ServiceProvider(ConfigurationSchema const& configSchema, std::string const& replDbUrl,
-                    std::string const& instanceId, http::AuthContext const& httpAuthContext);
+    ServiceProvider(ConfigurationSchema const& configSchema, std::string const& replDbUrl);
 
     /// @return the context string for debugging and diagnostic printouts
     std::string _context() const;
@@ -184,12 +167,6 @@ private:
     /// Configuration manager (constructed from the Configuration specification
     /// URL passed into the constructor of the class).
     std::shared_ptr<Configuration> const _configuration;
-
-    /// A unique identifier of a Qserv instance served by the Replication System
-    std::string const _instanceId;
-
-    /// Authorization context
-    http::AuthContext const _httpAuthContext;
 
     /// For claiming exclusive ownership over chunks during replication
     /// operations to ensure consistency of the operations.

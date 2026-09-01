@@ -28,7 +28,6 @@
 #include <string>
 
 // Qserv headers
-#include "http/Auth.h"
 #include "replica/apps/ApplicationTypes.h"
 #include "replica/config/ConfigurationSchema.h"
 #include "replica/services/ServiceProvider.h"
@@ -97,12 +96,6 @@ protected:
      */
     ServiceProvider::Ptr const& serviceProvider() const;
 
-    /// @return The unique identifier of a Qserv instance served by the Replication System.
-    std::string const& instanceId() const { return _instanceId; }
-
-    /// @return The authorization context.
-    http::AuthContext const& httpAuthContext() const { return _httpAuthContext; }
-
     /**
      * This method is required to be implements by subclasses to run
      * the application's logic. The method is called after successfully
@@ -126,13 +119,6 @@ private:
 
     /// Connection URL for the Replication database.
     std::string _replDbUrl;
-
-    /// A unique identifier of a Qserv instance served by the Replication System
-    std::string _instanceId;
-
-    // Authorization context for operations that may change a state of Qserv or
-    // the Replication/Ingest system.
-    http::AuthContext _httpAuthContext;
 
     // Database connector options (if enabled)
 

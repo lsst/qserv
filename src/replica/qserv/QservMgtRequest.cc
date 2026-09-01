@@ -192,9 +192,10 @@ void QservMgtRequest::cancel() {
 
 void QservMgtRequest::createHttpReq(replica::Lock const& lock, string const& service, string const& query) {
     _assertNotStarted(__func__);
-    string const target = service + query + string(query.empty() ? "?" : "&") + "id=" + _id +
-                          "&instance_id=" + _serviceProvider->instanceId() + "&" + _remoteServiceKey + "=" +
-                          _remoteServiceId + "&version=" + to_string(http::MetaModule::version);
+    string const target =
+            service + query + string(query.empty() ? "?" : "&") + "id=" + _id +
+            "&instance_id=" + _serviceProvider->config()->get<string>("security", "instance-id") + "&" +
+            _remoteServiceKey + "=" + _remoteServiceId + "&version=" + to_string(http::MetaModule::version);
     _httpRequest = http::AsyncReq::create(
             _serviceProvider->io_service(),
             [self = shared_from_this()](shared_ptr<http::AsyncReq> const&) { self->_processResponse(); },
@@ -206,10 +207,10 @@ void QservMgtRequest::createHttpReq(replica::Lock const& lock, http::Method meth
     _assertNotStarted(__func__);
     json data = body;
     data["id"] = _id;
-    data["instance_id"] = _serviceProvider->instanceId();
+    data["instance_id"] = _serviceProvider->config()->get<string>("security", "instance-id");
     data[_remoteServiceKey] = _remoteServiceId;
-    data["auth_key"] = _serviceProvider->httpAuthContext().authKey;
-    data["admin_auth_key"] = _serviceProvider->httpAuthContext().adminAuthKey;
+    data["auth_key"] = _serviceProvider->config()->httpAuthContext().authKey;
+    data["admin_auth_key"] = _serviceProvider->config()->httpAuthContext().adminAuthKey;
     data["version"] = http::MetaModule::version;
     unordered_map<string, string> const headers = {{"Content-Type", "application/json"}};
     _httpRequest = http::AsyncReq::create(

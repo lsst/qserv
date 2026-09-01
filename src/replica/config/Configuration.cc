@@ -28,6 +28,7 @@
 #include <thread>
 
 // Qserv headers
+#include "http/Auth.h"
 #include "replica/config/ConfigParserJSON.h"
 #include "replica/config/ConfigParserMySQL.h"
 #include "replica/mysql/DatabaseMySQLExceptions.h"
@@ -264,6 +265,14 @@ void Configuration::setFromString(string const& category, string const& param, s
         throw invalid_argument(_context(__func__) + " unsupported data type of category: '" + category +
                                "' param: '" + param + "' value: " + val + "'.");
     }
+}
+
+http::AuthContext Configuration::httpAuthContext() const {
+    replica::Lock const lock(_mtx, _context(__func__));
+    return http::AuthContext(_get(lock, "security", "http-user").get<string>(),
+                             _get(lock, "security", "http-password").get<string>(),
+                             _get(lock, "security", "auth-key").get<string>(),
+                             _get(lock, "security", "admin-auth-key").get<string>());
 }
 
 void Configuration::_load(replica::Lock const& lock, json const& obj, bool reset) {
@@ -815,6 +824,15 @@ json Configuration::toJson(bool showPassword) const {
 json Configuration::_toJson(replica::Lock const& lock, bool showPassword) const {
     json data;
     data["general"] = _data;
+    if (!showPassword) {
+        for (auto const& [category, params] : data["general"].items()) {
+            for (auto const& [param, _] : params.items()) {
+                if (_configSchema.securityContext(category, param)) {
+                    data["general"][category][param] = "******";
+                }
+            }
+        }
+    }
     json& workersJson = data["workers"];
     for (auto&& [name, worker] : _workers) {
         workersJson.push_back(worker.toJson());

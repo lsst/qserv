@@ -72,29 +72,6 @@ int Application::run() {
     // Add extra options if requested by an application.
     if (_enableServiceProvider) {
         parser().option("repl-db", "Configuration URL (a database connection string).", _replDbUrl);
-        parser().option("instance-id",
-                        " A unique identifier of a Qserv instance served by the Replication System."
-                        " Its value will be passed along various internal communication lines of"
-                        " the system to ensure that all services are related to the same instance."
-                        " This mechanism also prevents 'cross-talks' between two (or many) Replication"
-                        " System's setups in case of an accidental mis-configuration.",
-                        _instanceId);
-        parser().option("http-user", "The login name of a user for connecting to the Replication service.",
-                        _httpAuthContext.user);
-        parser().option(
-                "http-password",
-                "The login password of a user for connecting to the Replication service. The value "
-                "of the password is ignored if the user is not specified. The password will be used for"
-                " authenticating the user. The password can't be empty if the user is specified.",
-                _httpAuthContext.password);
-        parser().option("auth-key",
-                        "An authorization key for operations affecting the state of Qserv or"
-                        " the Replication/Ingest system.",
-                        _httpAuthContext.authKey);
-        parser().option("admin-auth-key",
-                        "An administrator-level authorization key for critical operations affecting"
-                        " the state of Qserv of the Replication/Ingest system.",
-                        _httpAuthContext.adminAuthKey);
         parser().option("db-allow-reconnect",
                         "Change the default database connection handling node. Set 0 to disable"
                         " automatic reconnects. Any other number would allow reconnects.",
@@ -173,7 +150,7 @@ int Application::run() {
         Configuration::setSchemaUpgradeWaitTimeoutSec(_schemaUpgradeWaitTimeoutSec);
 
         // Create the service provider instance and initialize the Configuration.
-        _serviceProvider = ServiceProvider::create(_configSchema, _replDbUrl, _instanceId, _httpAuthContext);
+        _serviceProvider = ServiceProvider::create(_configSchema, _replDbUrl);
 
         // Update general configuration parameters.
         // Note that options specified by a user will have non-empty values.

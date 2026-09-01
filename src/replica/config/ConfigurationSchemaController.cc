@@ -51,6 +51,41 @@ json const controllerSchemaJson = json::object(
            {"request-buf-size-bytes",
             {{"description", "The default buffer size for network communications. Must be greater than 0."},
              {"default", 4096}}}}},
+         {"security",
+          {{"auth-key",
+            {{"description",
+              "An authorization key for operations affecting the state of Qserv or"
+              " the Replication/Ingest system."},
+             {"empty-allowed", 1},
+             {"security-context", 1},
+             {"default", ""}}},
+           {"admin-auth-key",
+            {{"description",
+              "An administrator-level authorization key for critical operations affecting"
+              " the state of Qserv of the Replication/Ingest system."},
+             {"empty-allowed", 1},
+             {"security-context", 1},
+             {"default", ""}}},
+           {"http-user",
+            {{"description", "The login name of a user for connecting to the Replication service."},
+             {"empty-allowed", 1},
+             {"default", ""}}},
+           {"http-password",
+            {{"description",
+              "The login password of a user for connecting to the Replication service. The value "
+              "of the password is ignored if the user is not specified. The password will be used for"
+              " authenticating the user. The password can't be empty if the user is specified."},
+             {"empty-allowed", 1},
+             {"security-context", 1},
+             {"default", ""}}},
+           {"instance-id",
+            {{"description",
+              "A unique identifier of a Qserv instance served by the Replication System."
+              " Its value will be passed along various internal communication lines of"
+              " the system to ensure that all services are related to the same instance."
+              " This mechanism also prevents 'cross-talks' between two (or many) Replication"
+              " System's setups in case of an accidental mis-configuration."},
+             {"default", "qserv"}}}}},
          {"registry",
           {{"host",
             {{"description", "The IP address or the DNS host name for the registry's HTTP server."},

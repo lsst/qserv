@@ -167,9 +167,9 @@ services:
           --repl-connection mysql://qsreplica@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
-          --instance-id=qserv_proj
-          --auth-key=replauthkey
-          --admin-auth-key=repladminauthkey
+          --security-instance-id=qserv_proj
+          --security-auth-key=replauthkey
+          --security-admin-auth-key=repladminauthkey
           --registry-host=repl-registry
           --debug
         volumes:
@@ -273,9 +273,9 @@ services:
           --repl-connection mysql://qsreplica@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-worker.cnf
           --
-          --instance-id=qserv_proj
-          --auth-key=replauthkey
-          --admin-auth-key=repladminauthkey
+          --security-instance-id=qserv_proj
+          --security-auth-key=replauthkey
+          --security-admin-auth-key=repladminauthkey
           --registry-host=repl-registry
           --debug
         volumes:
@@ -449,9 +449,9 @@ services:
           --qserv-czar-db=mysql://root:CHANGEME@czar-mariadb:3306/qservMeta
           --log-cfg-file=/config-etc/log/log-repl-controller.cnf
           --
-          --instance-id=qserv_proj
-          --auth-key=replauthkey
-          --admin-auth-key=repladminauthkey
+          --security-instance-id=qserv_proj
+          --security-auth-key=replauthkey
+          --security-admin-auth-key=repladminauthkey
           --xrootd-host=czar-xrootd
           --registry-host=repl-registry
           --controller-auto-register-workers=1
@@ -482,9 +482,9 @@ services:
           --db-admin-uri mysql://root:CHANGEME@repl-mariadb:3306/qservReplica
           --log-cfg-file=/config-etc/log/log-repl-registry.cnf
           --
-          --instance-id=qserv_proj
-          --auth-key=replauthkey
-          --admin-auth-key=repladminauthkey
+          --security-instance-id=qserv_proj
+          --security-auth-key=replauthkey
+          --security-admin-auth-key=repladminauthkey
           --debug
         expose:
             - "25082"

@@ -41,6 +41,7 @@
 
 // Qserv headers
 #include "global/constants.h"
+#include "http/Auth.h"
 #include "replica/config/ConfigTestDataController.h"
 #include "replica/config/ConfigTestDataRegistry.h"
 #include "replica/config/ConfigTestDataWorker.h"
@@ -164,12 +165,22 @@ BOOST_AUTO_TEST_CASE(ConfigTestDir) {
 
 BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     Configuration::Ptr config;
+    lsst::qserv::http::AuthContext expectedAuthContext;
 
     LOGS_INFO("Testing reading general parameters of the Controller");
     config = configController;
 
     BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 2);
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
+
+    BOOST_CHECK(config->get<string>("security", "auth-key") == "key1");
+    BOOST_CHECK(config->get<string>("security", "admin-auth-key") == "key2");
+    BOOST_CHECK(config->get<string>("security", "http-user") == "qsreplica");
+    BOOST_CHECK(config->get<string>("security", "http-password") == "CHANGEME");
+    BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-1");
+
+    expectedAuthContext = lsst::qserv::http::AuthContext("qsreplica", "CHANGEME", "key1", "key2");
+    BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
 
     BOOST_CHECK(config->get<string>("registry", "host") == "127.0.0.1");
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
@@ -220,6 +231,15 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
     BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 2);
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
 
+    BOOST_CHECK(config->get<string>("security", "auth-key") == "key1");
+    BOOST_CHECK(config->get<string>("security", "admin-auth-key") == "key2");
+    BOOST_CHECK(config->get<string>("security", "http-user") == "qsreplica");
+    BOOST_CHECK(config->get<string>("security", "http-password") == "CHANGEME");
+    BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-1");
+
+    expectedAuthContext = lsst::qserv::http::AuthContext("qsreplica", "CHANGEME", "key1", "key2");
+    BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
+
     BOOST_CHECK(config->get<string>("registry", "host") == "127.0.0.1");
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
     BOOST_CHECK(config->get<unsigned int>("registry", "max-listen-conn") == 512);
@@ -243,6 +263,15 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
 
     BOOST_CHECK(config->get<size_t>("common", "asio-num-threads") == 2);
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8192);
+
+    BOOST_CHECK(config->get<string>("security", "auth-key") == "key1");
+    BOOST_CHECK(config->get<string>("security", "admin-auth-key") == "key2");
+    BOOST_CHECK(config->get<string>("security", "http-user") == "qsreplica");
+    BOOST_CHECK(config->get<string>("security", "http-password") == "CHANGEME");
+    BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-1");
+
+    expectedAuthContext = lsst::qserv::http::AuthContext("qsreplica", "CHANGEME", "key1", "key2");
+    BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
 
     BOOST_CHECK(config->get<string>("registry", "host") == "127.0.0.1");
     BOOST_CHECK(config->get<uint16_t>("registry", "port") == 8081);
@@ -285,6 +314,7 @@ BOOST_AUTO_TEST_CASE(ConfigTestReadGeneralParams) {
 
 BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     Configuration::Ptr config;
+    lsst::qserv::http::AuthContext expectedAuthContext;
 
     LOGS_INFO("Testing modifying general parameters of the Controller");
     config = configController;
@@ -296,6 +326,22 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
+
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "auth-key", string()));
+    BOOST_CHECK(config->get<string>("security", "auth-key") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "admin-auth-key", string()));
+    BOOST_CHECK(config->get<string>("security", "admin-auth-key") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "http-user", string()));
+    BOOST_CHECK(config->get<string>("security", "http-user") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "http-password", string()));
+    BOOST_CHECK(config->get<string>("security", "http-password") == string());
+
+    expectedAuthContext = lsst::qserv::http::AuthContext("", "", "", "");
+    BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
+
+    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "instance-id", "qserv-2"));
+    BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-2");
 
     BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
@@ -443,6 +489,22 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
 
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "auth-key", string()));
+    BOOST_CHECK(config->get<string>("security", "auth-key") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "admin-auth-key", string()));
+    BOOST_CHECK(config->get<string>("security", "admin-auth-key") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "http-user", string()));
+    BOOST_CHECK(config->get<string>("security", "http-user") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "http-password", string()));
+    BOOST_CHECK(config->get<string>("security", "http-password") == string());
+
+    expectedAuthContext = lsst::qserv::http::AuthContext("", "", "", "");
+    BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
+
+    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "instance-id", "qserv-2"));
+    BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-2");
+
     BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
     BOOST_CHECK(config->get<string>("registry", "host") == "localhost");
@@ -477,6 +539,22 @@ BOOST_AUTO_TEST_CASE(ConfigTestModifyGeneralParams) {
     BOOST_CHECK_THROW(config->set<size_t>("common", "request-buf-size-bytes", 0), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<size_t>("common", "request-buf-size-bytes", 8193));
     BOOST_CHECK(config->get<size_t>("common", "request-buf-size-bytes") == 8193);
+
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "auth-key", string()));
+    BOOST_CHECK(config->get<string>("security", "auth-key") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "admin-auth-key", string()));
+    BOOST_CHECK(config->get<string>("security", "admin-auth-key") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "http-user", string()));
+    BOOST_CHECK(config->get<string>("security", "http-user") == string());
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "http-password", string()));
+    BOOST_CHECK(config->get<string>("security", "http-password") == string());
+
+    expectedAuthContext = lsst::qserv::http::AuthContext("", "", "", "");
+    BOOST_CHECK(config->httpAuthContext() == expectedAuthContext);
+
+    BOOST_CHECK_THROW(config->set<string>("security", "instance-id", string()), std::invalid_argument);
+    BOOST_REQUIRE_NO_THROW(config->set<string>("security", "instance-id", "qserv-2"));
+    BOOST_CHECK(config->get<string>("security", "instance-id") == "qserv-2");
 
     BOOST_CHECK_THROW(config->set<string>("registry", "host", string()), std::invalid_argument);
     BOOST_REQUIRE_NO_THROW(config->set<string>("registry", "host", "localhost"));
