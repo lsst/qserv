@@ -125,6 +125,23 @@ void ValueFactor::findColumnRefs(ColumnRef::Vector& vector) const {
     }
 }
 
+bool ValueFactor::hasAggregation() const {
+    switch (_type) {
+        case AGGFUNC:
+            return true;
+        case FUNCTION:
+            // A scalar function may contain an aggregation:
+            for (auto const& param : _funcExpr->params) {
+                if (param->hasAggregation()) return true;
+            }
+            return false;
+        case EXPR:
+            return _valueExpr->hasAggregation();
+        default:
+            return false;
+    }
+}
+
 ValueFactorPtr ValueFactor::clone() const {
     ValueFactorPtr expr = std::make_shared<ValueFactor>(*this);
     // Clone refs.
