@@ -39,13 +39,11 @@ using namespace database::mysql;
 
 int const ConfigParserMySQL::expectedSchemaVersion = 15;
 
-ConfigParserMySQL::ConfigParserMySQL(Connection::Ptr const& conn, json& data,
-                                     map<string, ConfigWorker>& workers,
+ConfigParserMySQL::ConfigParserMySQL(Connection::Ptr const& conn, map<string, ConfigWorker>& workers,
                                      map<string, DatabaseFamilyInfo>& databaseFamilies,
                                      map<string, DatabaseInfo>& databases)
         : _conn(conn),
           _g(conn),
-          _data(data),
           _workers(workers),
           _databaseFamilies(databaseFamilies),
           _databases(databases) {}
