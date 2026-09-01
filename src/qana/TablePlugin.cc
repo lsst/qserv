@@ -54,6 +54,7 @@
 // Qserv headers
 #include "css/CssAccess.h"
 #include "css/CssError.h"
+#include "qana/AnalysisError.h"
 #include "qana/QueryMapping.h"
 #include "qana/RelationGraph.h"
 #include "qana/TableInfoPool.h"
@@ -77,29 +78,51 @@
 #include "util/IterableFormatter.h"
 
 namespace {
+namespace query = lsst::qserv::query;
+using lsst::qserv::qana::AnalysisError;
+
 LOG_LOGGER _log = LOG_GET("lsst.qserv.qana.TablePlugin");
 
 #define MYSQL_FIELD_MAX_LEN 64
 
-template <typename CLAUSE_T>
-void matchValueExprs(lsst::qserv::query::QueryContext& context, CLAUSE_T& clause, bool matchIsRequired) {
-    lsst::qserv::query::ValueExprPtrRefVector valueExprRefs;
+void validateOptionalMatch(query::ValueExprPtr const&, query::ValueExprPtr const&) {
+    // If the match is optional, we don't need to do anything here.
+}
+
+void validateOrderByMatch(query::ValueExprPtr const& valueExpr, query::ValueExprPtr const& valueExprMatch) {
+    if (valueExprMatch == nullptr) {
+        throw AnalysisError("ORDER BY expressions must match an entry or alias in the SELECT list: \"" +
+                            valueExpr->sqlFragment(query::QueryTemplate::NO_ALIAS) + "\"");
+    }
+}
+
+void validateHavingMatch(query::ValueExprPtr const& valueExpr, query::ValueExprPtr const& valueExprMatch) {
+    if (valueExpr->hasAggregation() && valueExprMatch == nullptr) {
+        throw AnalysisError(
+                "HAVING aggregate expressions must match an entry or alias in the SELECT list: \"" +
+                valueExpr->sqlFragment(query::QueryTemplate::NO_ALIAS) + "\"");
+    }
+}
+
+template <typename CLAUSE_T, typename MatchValidator>
+void matchValueExprs(query::QueryContext& context, CLAUSE_T& clause, MatchValidator validateMatch) {
+    query::ValueExprPtrRefVector valueExprRefs;
     clause.findValueExprRefs(valueExprRefs);
     for (auto&& valueExprRef : valueExprRefs) {
-        auto&& valueExprMatch = context.getValueExprMatch(valueExprRef.get());
-        if (nullptr != valueExprMatch) {
+        auto valueExprMatch = context.getValueExprMatch(valueExprRef.get());
+        validateMatch(valueExprRef.get(), valueExprMatch);
+        if (valueExprMatch != nullptr) {
             LOGS(_log, LOG_LVL_TRACE,
                  __FUNCTION__ << " replacing valueExpr " << *valueExprRef.get() << " in " << clause
                               << " with " << *valueExprMatch);
             valueExprRef.get() = valueExprMatch;
-        } else if (matchIsRequired) {
-            std::ostringstream os;
-            os << "qserv requires that expressions used in ORDER BY exactly match an entry in the SELECT "
-                  "list (using an alias if needed): \""
-               << valueExprRef.get()->sqlFragment(lsst::qserv::query::QueryTemplate::NO_ALIAS) << "\"";
-            throw std::logic_error(os.str());
         }
     }
+}
+
+template <typename CLAUSE_T>
+void matchValueExprs(query::QueryContext& context, CLAUSE_T& clause) {
+    matchValueExprs(context, clause, validateOptionalMatch);
 }
 
 void matchTableRefs(lsst::qserv::query::QueryContext& context,
@@ -109,9 +132,7 @@ void matchTableRefs(lsst::qserv::query::QueryContext& context,
         auto tableRefMatch = context.getTableRefMatch(columnRef);
         if (nullptr == tableRefMatch) {
             if (matchIsRequired) {
-                std::ostringstream os;
-                os << "Could not find a table ref match for " << *columnRef;
-                throw std::logic_error(os.str());
+                throw AnalysisError("Could not find a table ref match for " + columnRef->sqlFragment());
             }
         } else {
             LOGS(_log, LOG_LVL_TRACE,
@@ -232,19 +253,19 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
 
     if (stmt.hasOrderBy()) {
         matchTableRefs(context, stmt.getOrderBy(), false);
-        matchValueExprs(context, stmt.getOrderBy(), true);
+        matchValueExprs(context, stmt.getOrderBy(), validateOrderByMatch);
     }
     if (stmt.hasWhereClause()) {
         matchTableRefs(context, stmt.getWhereClause(), true);
-        matchValueExprs(context, stmt.getWhereClause(), false);
+        matchValueExprs(context, stmt.getWhereClause());
     }
     if (stmt.hasGroupBy()) {
         matchTableRefs(context, stmt.getGroupBy(), false);
-        matchValueExprs(context, stmt.getGroupBy(), false);
+        matchValueExprs(context, stmt.getGroupBy());
     }
     if (stmt.hasHaving()) {
         matchTableRefs(context, stmt.getHaving(), false);
-        matchValueExprs(context, stmt.getHaving(), false);
+        matchValueExprs(context, stmt.getHaving(), validateHavingMatch);
     }
 
     LOGS(_log, LOG_LVL_TRACE, "OnClauses of Join:");
@@ -258,7 +279,7 @@ void TablePlugin::applyLogical(query::SelectStmt& stmt, query::QueryContext& con
                 auto const& onBoolTerm = joinSpec->getOn();
                 if (onBoolTerm) {
                     matchTableRefs(context, *onBoolTerm, false);
-                    matchValueExprs(context, *onBoolTerm, false);
+                    matchValueExprs(context, *onBoolTerm);
                 }
             }
         }

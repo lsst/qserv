@@ -2488,6 +2488,7 @@ BOOST_AUTO_TEST_CASE(window_function_not_supported) {
 // Aggregate functions outside the supported set (COUNT/MIN/MAX/SUM/AVG) are not supported by qserv.
 static std::vector<std::string> const UNSUPPORTED_AGGREGATE_QUERIES = {
         "SELECT STDDEV(ra_PS) FROM Object",
+        "SELECT GROUP_CONCAT(filterName) FROM Object",
         "SELECT JSON_ARRAYAGG(objectId) FROM Object",
         "SELECT JSON_OBJECTAGG(objectId, ra_PS) FROM Object",
 };
@@ -2513,17 +2514,36 @@ BOOST_DATA_TEST_CASE(having_supported, HAVING_QUERIES, query) {
     BOOST_CHECK_NO_THROW(ccontrol::ParseRunner::makeSelectStmt(query));
 }
 
-// An aggregate's argument must be exactly a bare column reference or COUNT(*) (ANTLR compatibility)
 static std::vector<std::string> const AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES = {
-        "SELECT COUNT(1) FROM Object",
-        "SELECT MAX(1) FROM Object",
-        "SELECT MAX(objectId + 1) FROM Object",
-        "SELECT MAX(LENGTH(filterName)) FROM Object",
-        "SELECT LENGTH(MAX(filterName)) FROM Object",
-        "SELECT SUM(MAX(objectId)) FROM Object",
+        "SELECT MAX(objectId, 1) FROM Object",
+        "SELECT COUNT(objectId, 1) FROM Object",
+        "SELECT COUNT(DISTINCT objectId) FROM Object",
+        "SELECT MAX(*) FROM Object",
+        "SELECT MIN(*) FROM Object",
+        "SELECT SUM(*) FROM Object",
+        "SELECT AVG(*) FROM Object",
+        "SELECT BIT_OR(*) FROM Object",
+        "SELECT BIT_AND(*) FROM Object",
+        "SELECT BIT_XOR(*) FROM Object",
 };
 
 BOOST_DATA_TEST_CASE(aggregate_argument_not_supported, AGGREGATE_ARGUMENT_NOT_SUPPORTED_QUERIES, query) {
+    BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt(query), parser::ParseException);
+}
+
+static std::vector<std::string> const AGGREGATE_PLACEMENT_NOT_SUPPORTED_QUERIES = {
+        "SELECT objectId FROM Object WHERE SUM(ra_PS) > 5",
+        "SELECT objectId FROM Object WHERE ROUND(SUM(ra_PS), 2) > 5",
+        "SELECT o.objectId, s.objectId FROM Object o JOIN Source s ON SUM(o.objectId) = s.objectId",
+        "SELECT o.objectId, s.objectId FROM Object o JOIN Source s "
+        "ON o.objectId = s.objectId AND o.ra_PS > MAX(s.raFlux)",
+        "SELECT o.objectId, s.objectId FROM Object o, Source s "
+        "WHERE o.objectId = s.objectId AND o.ra_PS > MAX(s.raFlux)",
+        "SELECT objectId FROM Object GROUP BY SUM(objectId)",
+        "SELECT objectId FROM Object GROUP BY ROUND(MAX(ra_PS), 2)",
+};
+
+BOOST_DATA_TEST_CASE(aggregate_placement_not_supported, AGGREGATE_PLACEMENT_NOT_SUPPORTED_QUERIES, query) {
     BOOST_CHECK_THROW(ccontrol::ParseRunner::makeSelectStmt(query), parser::ParseException);
 }
 
@@ -2532,11 +2552,26 @@ static std::vector<std::string> const AGGREGATE_ARGUMENT_SUPPORTED_QUERIES = {
         "SELECT COUNT(*) FROM Object",
         "SELECT MAX(objectId) FROM Object",
         "SELECT SUM(objectId) FROM Object",
-        // Arithmetic surrounding a bare aggregate is still accepted, matching ANTLR
         "SELECT MAX(objectId) + 1 FROM Object",
+        "SELECT COUNT(1) FROM Object",
+        "SELECT MAX(1) FROM Object",
+        "SELECT MAX(objectId + 1) FROM Object",
+        "SELECT MAX(LENGTH(filterName)) FROM Object",
+        "SELECT LENGTH(MAX(filterName)) FROM Object",
+        "SELECT ROUND(100.0 * COUNT(filterName) / COUNT(*), 1) FROM Object",
+        "SELECT SUM(MAX(objectId)) FROM Object",
 };
 
 BOOST_DATA_TEST_CASE(aggregate_argument_supported, AGGREGATE_ARGUMENT_SUPPORTED_QUERIES, query) {
+    BOOST_CHECK_NO_THROW(ccontrol::ParseRunner::makeSelectStmt(query));
+}
+
+static std::vector<std::string> const SCALAR_GROUP_BY_SUPPORTED_QUERIES = {
+        "SELECT ROUND(ra_PS, 1) AS raBin FROM Object GROUP BY raBin",
+        "SELECT LENGTH(filterName) AS nameLength FROM Object GROUP BY LENGTH(filterName)",
+};
+
+BOOST_DATA_TEST_CASE(scalar_group_by_supported, SCALAR_GROUP_BY_SUPPORTED_QUERIES, query) {
     BOOST_CHECK_NO_THROW(ccontrol::ParseRunner::makeSelectStmt(query));
 }
 
