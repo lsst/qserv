@@ -33,11 +33,14 @@ mysql --port=4040 --protocol=TCP proxyTest -e "desc Obj"
 mysql --port=4040 --protocol=TCP proxyTest -e "rollback"
 mysql --port=4040 --protocol=TCP proxyTest -e "commit"
 
+# EXPLAIN
+mysql --port=4040 --protocol=TCP proxyTest -e "explain select * from Obj"
+mysql --port=4040 --protocol=TCP proxyTest -e "explain format=json select * from Obj"
+
 # these all should fail
 mysql --port=4040 --protocol=TCP proxyTest -e "insert into Obj values(1, 2)"
 mysql --port=4040 --protocol=TCP -e "create database xyz"
 mysql --port=4040 --protocol=TCP proxyTest -e "create table tt (i int)"
-mysql --port=4040 --protocol=TCP proxyTest -e "explain select * from Obj"
 
 
 mysql -e "DROP DATABASE proxyTest"

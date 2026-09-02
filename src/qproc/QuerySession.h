@@ -59,6 +59,9 @@ namespace query {
 class SelectStmt;
 class QueryContext;
 }  // namespace query
+namespace qproc {
+class SecondaryIndex;
+}  // namespace qproc
 }  // namespace lsst::qserv
 
 namespace lsst::qserv::qproc {
@@ -107,6 +110,17 @@ public:
 
     void addChunk(ChunkSpec const& cs);
     void setDummy();
+
+    /// @return true if this query runs against the dummy chunk rather than real chunk coverage.
+    bool isDummy() const { return _isDummy; }
+
+    /**
+     * @brief Compute this query's chunk coverage.
+     *
+     * Uses the secondary index + restrictors to determine the set of chunks the query touches (empty chunks
+     * are filtered out). analyzeQuery() must be called first.
+     */
+    void setupChunking(std::shared_ptr<SecondaryIndex> const& secondaryIndex);
 
     query::SelectStmt const& getStmt() const { return *_stmt; }
 

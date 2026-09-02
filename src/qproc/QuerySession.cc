@@ -65,7 +65,9 @@
 #include "qana/TablePlugin.h"
 #include "qana/WherePlugin.h"
 #include "qproc/DatabaseModels.h"
+#include "qproc/IndexMap.h"
 #include "qproc/QueryProcessingBug.h"
+#include "qproc/SecondaryIndex.h"
 #include "query/AreaRestrictor.h"
 #include "query/QueryContext.h"
 #include "query/SecIdxRestrictor.h"
@@ -200,6 +202,40 @@ void QuerySession::setScanInteractive() {
     if (_context->chunkCount > _interactiveChunkLimit) {
         _scanInteractive = false;
     }
+}
+
+void QuerySession::setupChunking(std::shared_ptr<SecondaryIndex> const& secondaryIndex) {
+    if (hasChunks()) {
+        auto areaRestrictors = getAreaRestrictors();
+        auto secIdxRestrictors = getSecIdxRestrictors();
+        css::StripingParams partStriping = getDbStriping();
+        auto const im = std::make_shared<IndexMap>(partStriping, secondaryIndex);
+        ChunkSpecVector csv;
+        if (areaRestrictors != nullptr || secIdxRestrictors != nullptr) {
+            csv = im->getChunks(areaRestrictors, secIdxRestrictors);
+        } else {  // Unrestricted: full-sky
+            csv = im->getAllChunks();
+        }
+        LOGS(_log, LOG_LVL_TRACE, "Chunk specs: " << util::printable(csv));
+
+        // Filter out empty chunks
+        std::shared_ptr<IntSet const> eSet = getEmptyChunks();
+        if (!eSet) {
+            eSet = std::make_shared<IntSet const>();
+            LOGS(_log, LOG_LVL_WARN, "Missing empty chunks info for dominantDbs");
+        }
+        for (ChunkSpecVector::const_iterator i = csv.begin(), e = csv.end(); i != e; ++i) {
+            if (eSet->count(i->chunkId) == 0) {  // chunk not in empty?
+                addChunk(*i);
+            }
+        }
+    } else {
+        LOGS(_log, LOG_LVL_TRACE, "No chunks added, QuerySession will add dummy chunk");
+    }
+
+    // Must run after the chunks above have been added: it compares the resulting chunk count against
+    // _interactiveChunkLimit, so running it any earlier always sees a count of zero.
+    setScanInteractive();
 }
 
 void QuerySession::setDummy() {
