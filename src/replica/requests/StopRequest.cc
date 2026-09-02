@@ -108,7 +108,7 @@ void StopRequest::awaken(boost::system::error_code const& ec) {
 }
 
 void StopRequest::_send(replica::Lock const& lock) {
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseStop>(
+    controller()->messenger()->send<ProtocolResponseStop>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<StopRequest>()](string const& id, bool success,
                                                      ProtocolResponseStop const& response) {

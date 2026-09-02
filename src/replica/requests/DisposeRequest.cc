@@ -115,7 +115,7 @@ void DisposeRequest::startImpl(replica::Lock const& lock) {
 
 void DisposeRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseDispose>(
+    controller()->messenger()->send<ProtocolResponseDispose>(
             workerName(), id(), priority(), buffer(),
             // Don't forward the first parameter (request's identifier) of the callback
             // to the response's analyzer. A value of the identifier is already known

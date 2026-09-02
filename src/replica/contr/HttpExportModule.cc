@@ -43,17 +43,15 @@ using json = nlohmann::json;
 namespace lsst::qserv::replica {
 
 void HttpExportModule::process(Controller::Ptr const& controller, string const& taskName,
-                               HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                               qhttp::Response::Ptr const& resp, string const& subModuleName,
-                               http::AuthType const authType) {
-    HttpExportModule module(controller, taskName, processorConfig, req, resp);
+                               qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                               string const& subModuleName, http::AuthType const authType) {
+    HttpExportModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpExportModule::HttpExportModule(Controller::Ptr const& controller, string const& taskName,
-                                   HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                                   qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+                                   qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpExportModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "CONFIG-DATABASE") return _getDatabaseConfig();

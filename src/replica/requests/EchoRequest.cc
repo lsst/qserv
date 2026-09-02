@@ -127,7 +127,7 @@ void EchoRequest::awaken(boost::system::error_code const& ec) {
 
 void EchoRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseEcho>(
+    controller()->messenger()->send<ProtocolResponseEcho>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<EchoRequest>()](string const& id, bool success,
                                                      ProtocolResponseEcho const& response) {
