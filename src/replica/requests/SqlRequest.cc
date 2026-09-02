@@ -148,7 +148,7 @@ void SqlRequest::awaken(boost::system::error_code const& ec) {
 void SqlRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
     auto self = shared_from_base<SqlRequest>();
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseSql>(
+    controller()->messenger()->send<ProtocolResponseSql>(
             workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseSql const& response) {
                 self->_analyze(success, response);

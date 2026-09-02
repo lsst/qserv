@@ -69,7 +69,7 @@ bool ChunkMap::update() {
     // abort the transaction should any problem occurred when loading data into the table.
     ConnectionHandler h;
     try {
-        h.conn = Connection::open(Configuration::qservCzarDbParams("qservMeta"));
+        h.conn = Connection::open(_serviceProvider->config()->qservCzarDbParams("qservMeta"));
     } catch (exception const& ex) {
         LOGS(_log, LOG_LVL_ERROR,
              context << "failed to connect to the czar's database server, ex: " << ex.what());

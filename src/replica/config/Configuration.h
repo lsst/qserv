@@ -141,24 +141,6 @@ public:
     static Ptr load(ConfigurationSchema const& configSchema, std::string const& replDbUrl);
 
     /**
-     * Return a connection object for the czar's MySQL service with the name of
-     * a database optionally rewritten from the one stored in the corresponding URL.
-     * This is done for the sake of convenience of clients to ensure a specific
-     * database is set as the default context.
-     * @param database The optional name of a database to assume if a non-empty
-     *   string was provided.
-     * @return The parsed connection object with the name of the database optionally
-     *   overwritten.
-     */
-    static database::mysql::ConnectionParams qservCzarDbParams(std::string const& database = std::string());
-
-    /// @return A connection string for accessing Qserv czar's database.
-    static std::string qservCzarDbUrl();
-
-    /// @param url A connection string for accessing Qserv czar's database.
-    static void setQservCzarDbUrl(std::string const& url);
-
-    /**
      * Return a connection object for the worker's MySQL service with the name of
      * a database optionally rewritten from the one stored in the corresponding URL.
      * This is done for the sake of convenience of clients to ensure a specific
@@ -311,6 +293,18 @@ public:
      * @return The constructed connection URL.
      */
     std::string replDbUrl(bool showPassword = false) const;
+
+    /**
+     * Return a connection object for the czar's MySQL service with the name of
+     * a database optionally rewritten from the one stored in the corresponding URL.
+     * This is done for the sake of convenience of clients to ensure a specific
+     * database is set as the default context.
+     * @param database The optional name of a database to assume if a non-empty
+     *   string was provided.
+     * @return The parsed connection object with the name of the database optionally
+     *   overwritten.
+     */
+    database::mysql::ConnectionParams qservCzarDbParams(std::string const& database = std::string());
 
     /**
      * The directory method for locating categories and parameters within
@@ -878,7 +872,6 @@ private:
     static unsigned int _databaseTransactionTimeoutSec;
     static bool _schemaUpgradeWait;
     static unsigned int _schemaUpgradeWaitTimeoutSec;
-    static std::string _qservCzarDbUrl;
     static std::string _qservWorkerDbUrl;
 
     static replica::Mutex _classMtx;  ///< For implementing static synchronized methods.

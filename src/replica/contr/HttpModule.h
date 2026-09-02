@@ -31,7 +31,6 @@
 #include "qhttp/Response.h"
 #include "replica/config/Configuration.h"
 #include "replica/contr/EventLogger.h"
-#include "replica/contr/HttpProcessorConfig.h"
 
 // Forward declarations
 namespace lsst::qserv {
@@ -66,19 +65,11 @@ protected:
      *
      * @param controller       The Controller provides the network I/O services (BOOST ASIO)
      * @param taskName         The name of a task in a context of the Master Replication Controller
-     * @param processorConfig  Shared parameters of the HTTP services
      * @param req              The HTTP request
      * @param resp             The HTTP response channel
      */
-    HttpModule(Controller::Ptr const& controller, std::string const& taskName,
-               HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
+    HttpModule(Controller::Ptr const& controller, std::string const& taskName, qhttp::Request::Ptr const& req,
                qhttp::Response::Ptr const& resp);
-
-    unsigned int czarResponseTimeoutSec() const { return _processorConfig.czarResponseTimeoutSec; }
-    unsigned int workerResponseTimeoutSec() const { return _processorConfig.workerResponseTimeoutSec; }
-    unsigned int qservSyncTimeoutSec() const { return _processorConfig.qservSyncTimeoutSec; }
-    unsigned int workerReconfigTimeoutSec() const { return _processorConfig.workerReconfigTimeoutSec; }
-    bool qservChunkMapUpdate() const { return _processorConfig.qservChunkMapUpdate; }
 
     /// @see http::Module::context()
     virtual std::string context() const final;
@@ -99,11 +90,9 @@ protected:
      * in the mostly static state of the system.
      * @param databaseInfo  defines a scope of the operation (used for status and error reporting)
      * @param allWorkers  'true' if all workers are involved into the operation
-     * @param workerResponseTimeoutSec  do not wait longer than the specified number of seconds
      * @return non-empty string to indicate a error
      */
-    std::string reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers,
-                                   unsigned int workerResponseTimeoutSec) const;
+    std::string reconfigureWorkers(DatabaseInfo const& databaseInfo, bool allWorkers) const;
 
     /**
      * Fetch a mode of building the "director" index as requested by a catalog
@@ -158,9 +147,6 @@ protected:
      * @throws http::ErrorNotFound404 if the table is not found.
      */
     TableInfo getTableFromParamOrThrow404(std::string const& func, DatabaseInfo const& database);
-
-private:
-    HttpProcessorConfig const _processorConfig;
 };
 
 }  // namespace lsst::qserv::replica

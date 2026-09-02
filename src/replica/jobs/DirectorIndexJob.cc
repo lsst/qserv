@@ -372,11 +372,13 @@ void DirectorIndexJob::_loadDataIntoTable() {
     string const context_ = context() + string(__func__) + " ";
     LOGS(_log, LOG_LVL_DEBUG, context_);
 
+    auto const config = controller()->serviceProvider()->config();
+
     // Open MySQL connection using the RAII-style handler that would automatically
     // abort the transaction should any problem occurred when loading data into the table.
     Connection::Ptr conn;
     try {
-        conn = Connection::open(Configuration::qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
+        conn = Connection::open(config->qservCzarDbParams(lsst::qserv::SEC_INDEX_DB));
     } catch (exception const& ex) {
         string const error =
                 context_ + "failed to connect to the czar's database server, ex: " + string(ex.what());
@@ -399,11 +401,9 @@ void DirectorIndexJob::_loadDataIntoTable() {
         // Load request's data into the destination table.
         bool const localFile = true;
         try {
-            string const query = g.loadDataInfile(request->responseData().fileName,
-                                                  directorIndexTableName(database(), directorTable()),
-                                                  controller()->serviceProvider()->config()->get<string>(
-                                                          "controller", "director-index-charset-name"),
-                                                  localFile);
+            string const query = g.loadDataInfile(
+                    request->responseData().fileName, directorIndexTableName(database(), directorTable()),
+                    config->get<string>("controller", "director-index-charset-name"), localFile);
             h.conn->executeInOwnTransaction([&](auto conn) {
                 conn->execute(query);
                 // Loading operations based on this mechanism won't result in throwing exceptions in
