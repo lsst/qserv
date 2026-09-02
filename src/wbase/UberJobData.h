@@ -36,6 +36,7 @@
 #include "global/intTypes.h"
 #include "global/UberJobBase.h"
 #include "http/Method.h"
+#include "util/Error.h"
 #include "util/QdispPool.h"
 #include "wbase/SendChannel.h"
 
@@ -123,6 +124,10 @@ public:
     }
 
     bool getCancelled() const { return _cancelled; }
+
+    /// Build and send an error message informing the czar that this UberJob has failed.
+    /// This goes through the _fileChannelShared object to keep its state consistent.
+    void fatalError(util::Error const& err);
 
     /// Cancel all Tasks in this UberJob.
     void cancelAllTasks();

@@ -344,18 +344,31 @@ bool FileChannelShared::isRowLimitComplete() const {
 void FileChannelShared::buildAndTransmitError(util::MultiError& multiErr, shared_ptr<Task> const& task,
                                               bool cancelled) {
     lock_guard<mutex> const tMtxLock(_tMtx);
+    _buildAndTransmitError(tMtxLock, multiErr, task->getIdStr(), task->getChunkId(), task->getLvlET(),
+                           cancelled);
+}
+
+void FileChannelShared::buildAndTransmitUJError(util::MultiError& multiErr, string const& idStr) {
+    lock_guard<mutex> const tMtxLock(_tMtx);
+    int const chunkId = -1;           // This method is not used for individual chunks.
+    bool const notCancelled = false;  // This only applies to individual tasks
+    _buildAndTransmitError(tMtxLock, multiErr, idStr, chunkId, LOG_LVL_ERROR, notCancelled);
+}
+
+void FileChannelShared::_buildAndTransmitError(lock_guard<mutex> const& streamMutexLock,
+                                               util::MultiError& multiErr, string const& idStr, int chunkId,
+                                               int logLvl, bool cancelled) {
     if (_rowLimitComplete) {
-        LOGS(_log, LOG_LVL_WARN,
-             __func__ << " already enough rows, this call likely a side effect" << task->getIdStr());
+        LOGS(_log, LOG_LVL_WARN, __func__ << " already enough rows, this call likely a side effect" << idStr);
         return;
     }
 
     auto ujd = _uberJobData.lock();
     if (ujd != nullptr) {
-        ujd->responseError(multiErr, task->getChunkId(), cancelled, task->getLvlET());
+        ujd->responseError(multiErr, chunkId, cancelled, logLvl);
     }
     // Flag the result as dead after sending the error to avoid races on queries with missing tables.
-    _kill(tMtxLock, " buildAndTransmitError");
+    _kill(streamMutexLock, " buildAndTransmitError");
 }
 
 bool FileChannelShared::buildAndTransmitResult(MYSQL_RES* mResult, shared_ptr<Task> const& task,

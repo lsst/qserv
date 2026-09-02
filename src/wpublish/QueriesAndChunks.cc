@@ -29,6 +29,7 @@
 
 // Qserv headers
 #include "util/Bug.h"
+#include "util/Error.h"
 #include "util/HoldTrack.h"
 #include "util/TimeUtils.h"
 #include "wbase/TaskState.h"
@@ -77,7 +78,8 @@ QueriesAndChunks::QueriesAndChunks(chrono::seconds deadAfter, chrono::seconds ex
         : _deadAfter(deadAfter),
           _examineAfter(examineAfter),
           _maxTasksBooted(wconfig::WorkerConfig::instance()->getMaxTasksBootedPerUserQuery()),
-          _maxDarkTasks(wconfig::WorkerConfig::instance()->getMaxConcurrentBootedTasks()) {
+          _maxDarkTasks(wconfig::WorkerConfig::instance()->getMaxConcurrentBootedTasks()),
+          _maxQueryAgeMinutes(wconfig::WorkerConfig::instance()->getMaxQueryAgeMinutes()) {
     auto rDead = [this]() {
         while (_loopRemoval) {
             removeDead();
@@ -332,6 +334,24 @@ void QueriesAndChunks::examineAll() {
         for (auto const& [statsQId, qStatsPtr] : _queryStatsMap) {
             uqStatList.push_back(qStatsPtr);
             LOGS(_log, LOG_LVL_TRACE, __func__ << " read stats for " << statsQId);
+        }
+    }
+
+    double const maxAgeSeconds = _maxQueryAgeMinutes * 60.0;
+
+    // Check all query for taking too long, and cancel it if it is.
+    if (maxAgeSeconds > 0) {
+        for (auto const& uqElem : uqStatList) {
+            //&&&; // don't check if query is finished.
+            auto const ageSeconds = uqElem->getAgeSeconds();
+            if (ageSeconds > maxAgeSeconds) {
+                auto const uqInfo = uqElem->getUserQueryInfo();
+                string errMsg = string("Query is too old, age=") + to_string(ageSeconds) +
+                                " maxAge=" + to_string(maxAgeSeconds);
+                LOGS(_log, LOG_LVL_ERROR, errMsg);
+                util::Error error(util::Error::WORKER_QUERY_TOO_OLD, util::Error::NONE, errMsg);
+                uqInfo->fatalErrorForAllUberJobs(error);
+            }
         }
     }
 

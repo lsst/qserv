@@ -242,6 +242,16 @@ std::string UberJobData::resultFileHttpUrl() const {
     return "http://" + _foreman->getFqdn() + ":" + to_string(_resultsHttpPort) + "/" + _resultFileName();
 }
 
+void UberJobData::fatalError(util::Error const& err) {
+    auto const fcs = getFileChannelShared();
+    if (fcs != nullptr) {
+        util::MultiError multiErr;
+        multiErr.insert(err);
+        fcs->buildAndTransmitUJError(multiErr, getIdStr());
+    }
+    cancelAllTasks();
+}
+
 void UberJobData::cancelAllTasks() {
     LOGS(_log, LOG_LVL_INFO, cName(__func__));
     int count = 0;

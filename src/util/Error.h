@@ -86,6 +86,7 @@ public:
         JOB_CANCEL,
         // Worker errors:
         WORKER_RESULT_TOO_LARGE,
+        WORKER_QUERY_TOO_OLD,
         WORKER_ERROR,
         WORKER_QUERY,
         WORKER_SQL_CONNECT,
