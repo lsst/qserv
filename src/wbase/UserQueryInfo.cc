@@ -24,6 +24,7 @@
 
 // Qserv headers
 #include "util/Bug.h"
+#include "util/MultiError.h"
 #include "wbase/UberJobData.h"
 
 // LSST headers
@@ -105,6 +106,16 @@ void UserQueryInfo::cancelAllUberJobs() {
         auto ujPtr = weakUjPtr.lock();
         if (ujPtr != nullptr) {
             ujPtr->cancelAllTasks();
+        }
+    }
+}
+
+void UserQueryInfo::fatalErrorForAllUberJobs(util::Error const& err) {
+    lock_guard<mutex> lockUq(_uberJobMapMtx);
+    for (auto const& [ujKey, weakUjPtr] : _uberJobMap) {
+        auto const ujPtr = weakUjPtr.lock();
+        if (ujPtr != nullptr) {
+            ujPtr->fatalError(err);
         }
     }
 }

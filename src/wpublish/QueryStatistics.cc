@@ -70,6 +70,11 @@ QueryStatistics::QueryStatistics(QueryId qId_, CzarId czarId_)
             string("TimeFillingBuffersPerTask_") + qidStr, {0.1, 1, 10, 30, 60, 120, 300, 600, 1200, 10000}));
 }
 
+double QueryStatistics::getAgeSeconds() const {
+    std::chrono::duration<double> seconds = CLOCK::now() - creationTime;
+    return seconds.count();
+}
+
 /// Return a json object containing high level data, such as histograms.
 nlohmann::json QueryStatistics::getJsonHist() const {
     nlohmann::json js = nlohmann::json::object();

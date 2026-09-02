@@ -148,6 +148,9 @@ public:
     /// Build and transmit a transmit data object indicating the errors in 'multiErr'.
     void buildAndTransmitError(util::MultiError& multiErr, std::shared_ptr<Task> const& task, bool cancelled);
 
+    /// This method is for errors associated with the entire UberJob, not during a single Task.
+    void buildAndTransmitUJError(util::MultiError& multiErr, std::string const& idStr);
+
     /// Extract the SQL results and write them into the file and notify Czar after the last
     /// row of the result result set depending on theis channel has been processed.
     /// @return true if there was an error.
@@ -168,6 +171,10 @@ public:
 private:
     /// Private constructor to protect shared pointer integrity.
     FileChannelShared(std::shared_ptr<wbase::UberJobData> const& uberJobData);
+
+    void _buildAndTransmitError(std::lock_guard<std::mutex> const& streamMutexLock,
+                                util::MultiError& multiErr, std::string const& idStr, int chunkId, int logLvl,
+                                bool cancelled);
 
     /// @see wbase::SendChannel::kill
     /// @param streamMutexLock - Lock on mutex _streamMutex to be acquired before calling the method.
