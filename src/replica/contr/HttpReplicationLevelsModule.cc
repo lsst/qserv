@@ -48,22 +48,19 @@ uint64_t HttpReplicationLevelsModule::_replicationLevelReportTimeMs = 0;
 replica::Mutex HttpReplicationLevelsModule::_replicationLevelMtx;
 
 void HttpReplicationLevelsModule::process(Controller::Ptr const& controller, string const& taskName,
-                                          HttpProcessorConfig const& processorConfig,
                                           qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                           HealthMonitorTask::Ptr const& healthMonitorTask,
                                           string const& subModuleName, http::AuthType const authType) {
-    HttpReplicationLevelsModule module(controller, taskName, processorConfig, req, resp, healthMonitorTask);
+    HttpReplicationLevelsModule module(controller, taskName, req, resp, healthMonitorTask);
     module.execute(subModuleName, authType);
 }
 
 HttpReplicationLevelsModule::HttpReplicationLevelsModule(Controller::Ptr const& controller,
                                                          string const& taskName,
-                                                         HttpProcessorConfig const& processorConfig,
                                                          qhttp::Request::Ptr const& req,
                                                          qhttp::Response::Ptr const& resp,
                                                          HealthMonitorTask::Ptr const& healthMonitorTask)
-        : HttpModule(controller, taskName, processorConfig, req, resp),
-          _healthMonitorTask(healthMonitorTask) {}
+        : HttpModule(controller, taskName, req, resp), _healthMonitorTask(healthMonitorTask) {}
 
 json HttpReplicationLevelsModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "GET")

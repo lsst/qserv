@@ -116,7 +116,7 @@ void QservSyncJob::startImpl(replica::Lock const& lock) {
 
     auto const databases = controller()->serviceProvider()->config()->databases(databaseFamily());
     auto const databaseServices = controller()->serviceProvider()->databaseServices();
-    auto const qservMgtServices = controller()->serviceProvider()->qservMgtServices();
+    auto const qservMgtServices = controller()->qservMgtServices();
     auto const self = shared_from_base<QservSyncJob>();
 
     // As a first step, before submitting requests to Qserv workers, pull replicas

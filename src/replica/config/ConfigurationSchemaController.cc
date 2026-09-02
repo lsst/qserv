@@ -99,7 +99,14 @@ json const controllerSchemaJson = json::object(
               "than 0."},
              {"default", 5}}}}},
          {"controller",
-          {{"request-timeout-sec",
+          {{"name",
+            {{"description",
+              "The unique name of the controller as it's seen in the service discovery Registry."},
+             {"default", "master"}}},
+           {"http-server-port",
+            {{"description", "The port number for the controller's HTTP server. Must be greater than 0."},
+             {"default", 25081}}},
+           {"request-timeout-sec",
             {{"description",
               "The default timeout for completing worker requests. A value depends on"
               " a scale of catalogs served by Qserv and ingested by the Replication/Ingest system."
@@ -146,6 +153,77 @@ json const controllerSchemaJson = json::object(
               " hard limit is meant to prevent the Replication system's algorithms from utilizing too"
               " much storage. The limit is enforced at run time. The number must be greater than 0."},
              {"default", 4}}},
+           {"health-probe-interval",
+            {{"description", "The interval (seconds) between iterations of the health monitoring probes."},
+             {"default", 60}}},
+           {"replication-interval",
+            {{"description",
+              "The interval (seconds) between replication cycles (replica scanning, fixup, replicate, "
+              "rebalance, replica purge, etc.)."},
+             {"default", 60}}},
+           {"czar-response-timeout",
+            {{"description",
+              "The maximum number of seconds to wait for the completion of the czar's requests."},
+             {"default", 60}}},
+           {"worker-response-timeout",
+            {{"description",
+              "The maximum number of seconds to wait for the completion of the worker's requests."},
+             {"default", 60}}},
+           {"worker-config-timeout",
+            {{"description",
+              "The maximum number of seconds to wait for the completion of the worker"
+              " reconfiguration requests."},
+             {"default", 600}}},
+           {"worker-evict-timeout",
+            {{"description",
+              "The maximum number of seconds both the Replication and Qserv services"
+              " run on the same worker node are allowed not to respond before evicting"
+              " that worker from the cluster."},
+             {"default", 3600}}},
+           {"qserv-sync-timeout",
+            {{"description",
+              "The maximum number of seconds to wait before Qserv workers respond"
+              " to the synchronization requests before bailing out and proceeding"
+              " to the next step in the normal replication sequence."},
+             {"default", 1800}}},
+           {"qserv-sync-disable",
+            {{"description", "The flag if not 0 disables replica synchroization at Qserv workers."},
+             {"empty-allowed", 1},
+             {"default", 0}}},
+           {"qserv-sync-force",
+            {{"description",
+              "The flag which would force Qserv workers to update their list of replicas"
+              " even if some of the chunk replicas were still in use by on-going queries."
+              " This affect replicas to be deleted from the workers during the synchronization"
+              " stages."},
+             {"empty-allowed", 1},
+             {"default", 0}}},
+           {"chunk-map-update",
+            {{"description",
+              "The flag if not 0 would result in updating the chunk disposition map"
+              " in Qserv's QMeta database."},
+             {"empty-allowed", 1},
+             {"default", 1}}},
+           {"purge-excess-replicas",
+            {{"description",
+              "The flag if not 0 would result in purging excess replicas of the chunks"
+              " where the number of replicas exceeds the required replication level."},
+             {"empty-allowed", 1},
+             {"default", 0}}},
+           {"permanent-worker-delete",
+            {{"description",
+              "The flag if not 0 would result in permanently removing the evicted workers"
+              " from the configuration of the Replication system. Please, use this option"
+              " with caution as it will result in losing all records associated with the"
+              " deleted workers."},
+             {"empty-allowed", 1},
+             {"default", 0}}},
+           {"http-root",
+            {{"description",
+              "The root directory (if any) for the controller's HTTP server. If specified,"
+              " the directory must exist and be accessible by the Controller's process."},
+             {"empty-allowed", 1},
+             {"default", "/usr/local/qserv/www/"}}},
            {"worker-evict-priority-level",
             {{"description",
               "The priority level of the worker eviction task that is run to compensate for"
@@ -205,7 +283,14 @@ json const controllerSchemaJson = json::object(
              {"default", "latin1"}}},
            {"director-index-engine",
             {{"description", "The default MySQL engine of the 'director' index tables."},
-             {"default", "InnoDB"}}}}},
+             {"default", "InnoDB"}}},
+           {"create-folders",
+            {{"description",
+              "The flag (if it's not 0) tells the Controller to create missing folders used"
+              " by the Controller. It's suggested to disable this feature in the production deployments"
+              " of the Replication/Ingest system."},
+             {"empty-allowed", 1},
+             {"default", 1}}}}},
          {"database",
           {{"services-pool-size",
             {{"description", "The pool size at the client database services connector."},
@@ -259,7 +344,15 @@ json const controllerSchemaJson = json::object(
            {"qserv-master-tmp-dir",
             {{"description",
               "The temporary folder for exchanging data with the Qserv 'czar' database service."},
-             {"default", "/qserv/data/ingest"}}}}},
+             {"default", "/qserv/data/ingest"}}},
+           {"repl-db-conn",
+            {{"description", "A connection URL for the MySQL service of the Replication system's database."},
+             {"security-context", 1},
+             {"default", "mysql://qsreplica@localhost:3306/qservReplica"}}},
+           {"czar-db-conn",
+            {{"description", "A connection URL for the MySQL service of the Qserv 'czar' database."},
+             {"security-context", 1},
+             {"default", "mysql://qsmaster@localhost:3306/qservMeta"}}}}},
          {"xrootd",
           {{"auto-notify",
             {{"description", "Automatically notify Qserv on changes in replica disposition."},
