@@ -128,7 +128,7 @@ void StatusRequest::awaken(boost::system::error_code const& ec) {
 }
 
 void StatusRequest::_send(replica::Lock const& lock) {
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseStatus>(
+    controller()->messenger()->send<ProtocolResponseStatus>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<StatusRequest>()](string const& id, bool success,
                                                        ProtocolResponseStatus const& response) {

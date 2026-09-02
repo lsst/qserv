@@ -187,7 +187,7 @@ void ServiceManagementRequestBase::startImpl(replica::Lock const& lock) {
     buffer()->serialize(hdr);
 
     // Send the message
-    controller()->serviceProvider()->messenger()->send<ProtocolServiceResponse>(
+    controller()->messenger()->send<ProtocolServiceResponse>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<ServiceManagementRequestBase>()](
                     string const& id, bool success, ProtocolServiceResponse const& response) {

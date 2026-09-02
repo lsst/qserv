@@ -166,7 +166,7 @@ void ClusterHealthJob::startImpl(replica::Lock const& lock) {
         _requests[replicationRequest->id()] = replicationRequest;
         ++_numStarted;
 
-        auto const qservRequest = controller()->serviceProvider()->qservMgtServices()->echo(
+        auto const qservRequest = controller()->qservMgtServices()->echo(
                 worker, testData, id(), /* jobId */
                 [self](TestEchoQservMgtRequest::Ptr request) { self->_onRequestFinish(request); },
                 timeoutSec());

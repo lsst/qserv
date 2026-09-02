@@ -176,9 +176,8 @@ int Application::run() {
     int const exitCode = runImpl();
 
     // Shutdown the provider and join with its threads
-    if (_enableServiceProvider) {
-        _serviceProvider->stop();
-    }
+    if (_enableServiceProvider) _serviceProvider->stop();
+
     return exitCode;
 }
 

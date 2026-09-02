@@ -29,7 +29,6 @@
 #include "replica/contr/Controller.h"
 #include "replica/contr/EventLogger.h"
 #include "replica/contr/HealthMonitorTask.h"
-#include "replica/contr/HttpProcessorConfig.h"
 #include "replica/util/HttpSvc.h"
 #include "replica/util/NamedMutexRegistry.h"
 
@@ -57,27 +56,19 @@ public:
      * Create an instance of the service.
      *
      * @param controller For configuration, etc. services.
-     * @param processorConfig Configuration parameters of the processor.
      * @return A pointer to the created object.
      */
-    static Ptr create(Controller::Ptr const& controller, HttpProcessorConfig const& processorConfig,
-                      HealthMonitorTask::Ptr const& healthMonitorTask);
+    static Ptr create(Controller::Ptr const& controller, HealthMonitorTask::Ptr const& healthMonitorTask);
 
 protected:
-    /// @see HttpSvc::context()
     virtual std::string const& context() const;
-
-    /// @see HttpSvc::registerServices()
     virtual void registerServices();
 
 private:
-    /// @see HttpProcessor::create()
-    HttpProcessor(Controller::Ptr const& controller, HttpProcessorConfig const& processorConfig,
-                  HealthMonitorTask::Ptr const& healthMonitorTask);
+    HttpProcessor(Controller::Ptr const& controller, HealthMonitorTask::Ptr const& healthMonitorTask);
 
     // Input parameters
 
-    HttpProcessorConfig const _processorConfig;
     HealthMonitorTask::Ptr const _healthMonitorTask;
 
     /// Named mutexes are used for acquiring exclusive transient locks on the transaction
