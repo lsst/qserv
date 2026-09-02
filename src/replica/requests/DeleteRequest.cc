@@ -123,7 +123,7 @@ void DeleteRequest::awaken(boost::system::error_code const& ec) {
 
 void DeleteRequest::_send(replica::Lock const& lock) {
     auto self = shared_from_base<DeleteRequest>();
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseDelete>(
+    controller()->messenger()->send<ProtocolResponseDelete>(
             workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseDelete const& response) {
                 self->_analyze(success, response);

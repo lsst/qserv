@@ -28,9 +28,7 @@
 
 // Qserv headers
 #include "replica/config/Configuration.h"
-#include "replica/qserv/QservMgtServices.h"
 #include "replica/registry/Registry.h"
-#include "replica/requests/Messenger.h"
 #include "replica/services/ChunkMap.h"
 #include "replica/services/DatabaseServicesPool.h"
 
@@ -61,22 +59,6 @@ DatabaseServices::Ptr const& ServiceProvider::databaseServices() {
         _databaseServices = DatabaseServicesPool::create(_configuration);
     }
     return _databaseServices;
-}
-
-QservMgtServices::Ptr const& ServiceProvider::qservMgtServices() {
-    replica::Lock lock(_mtx, _context() + __func__);
-    if (_qservMgtServices == nullptr) {
-        _qservMgtServices = QservMgtServices::create(shared_from_this());
-    }
-    return _qservMgtServices;
-}
-
-Messenger::Ptr const& ServiceProvider::messenger() {
-    replica::Lock lock(_mtx, _context() + __func__);
-    if (_messenger == nullptr) {
-        _messenger = Messenger::create(_configuration, _io_service);
-    }
-    return _messenger;
 }
 
 Registry::Ptr const& ServiceProvider::registry() {
@@ -133,9 +115,6 @@ void ServiceProvider::stop() {
 
     // Check if the service is already stopped
     if (_threads.empty()) return;
-
-    // These steps will cancel all outstanding requests to workers (if any)
-    if (_messenger != nullptr) _messenger->stop();
 
     // Destroying this object will let the I/O service to (eventually) finish
     // all on-going work and shut down all service threads. In that case there

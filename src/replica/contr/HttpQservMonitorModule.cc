@@ -260,8 +260,8 @@ json HttpQservMonitorModule::_worker() {
 
     string const noParentJobId;
     GetStatusQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->status(
-            workerName, noParentJobId, taskSelector, onFinish, timeoutSec);
+    auto const request = controller()->qservMgtServices()->status(workerName, noParentJobId, taskSelector,
+                                                                  onFinish, timeoutSec);
     request->wait();
 
     json result = json::object();
@@ -290,8 +290,8 @@ json HttpQservMonitorModule::_workerConfig() {
 
     string const noParentJobId;
     GetConfigQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->config(
-            workerName, noParentJobId, onFinish, timeoutSec);
+    auto const request =
+            controller()->qservMgtServices()->config(workerName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -309,8 +309,8 @@ json HttpQservMonitorModule::_workerDb() {
 
     string const noParentJobId;
     GetDbStatusQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->databaseStatus(
-            workerName, noParentJobId, onFinish, timeoutSec);
+    auto const request =
+            controller()->qservMgtServices()->databaseStatus(workerName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -332,8 +332,8 @@ json HttpQservMonitorModule::_workerFiles() {
 
     string const noParentJobId;
     GetResultFilesQservMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->resultFiles(
-            workerName, noParentJobId, queryIds, maxFiles, onFinish, timeoutSec);
+    auto const request = controller()->qservMgtServices()->resultFiles(workerName, noParentJobId, queryIds,
+                                                                       maxFiles, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -353,8 +353,8 @@ json HttpQservMonitorModule::_czar() {
 
     string const noParentJobId;
     GetStatusQservCzarMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->czarStatus(
-            czarName, noParentJobId, onFinish, timeoutSec);
+    auto const request =
+            controller()->qservMgtServices()->czarStatus(czarName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -371,8 +371,8 @@ json HttpQservMonitorModule::_czarConfig() {
 
     string const noParentJobId;
     GetConfigQservCzarMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->czarConfig(
-            czarName, noParentJobId, onFinish, timeoutSec);
+    auto const request =
+            controller()->qservMgtServices()->czarConfig(czarName, noParentJobId, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);
 
@@ -520,7 +520,7 @@ json HttpQservMonitorModule::_activeQueriesProgress() {
 
     string const noParentJobId;
     GetQueryProgressQservCzarMgtRequest::CallbackType const onFinish = nullptr;
-    auto const request = controller()->serviceProvider()->qservMgtServices()->czarQueryProgress(
+    auto const request = controller()->qservMgtServices()->czarQueryProgress(
             czarName, noParentJobId, queryIds, lastSeconds, queryStatus, onFinish, timeoutSec);
     request->wait();
     _throwIfNotSucceeded(__func__, request);

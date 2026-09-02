@@ -130,7 +130,7 @@ void FindRequest::awaken(boost::system::error_code const& ec) {
 
 void FindRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseFind>(
+    controller()->messenger()->send<ProtocolResponseFind>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<FindRequest>()](string const& id, bool success,
                                                      ProtocolResponseFind const& response) {

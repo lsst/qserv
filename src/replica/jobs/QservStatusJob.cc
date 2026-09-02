@@ -101,7 +101,7 @@ void QservStatusJob::startImpl(replica::Lock const& lock) {
     for (auto const& worker : workers) {
         _qservStatus.workers[worker] = false;
         _qservStatus.info[worker] = json::object();
-        auto const request = controller()->serviceProvider()->qservMgtServices()->status(
+        auto const request = controller()->qservMgtServices()->status(
                 worker, id(), /* jobId */
                 taskSelector(),
                 [self](GetStatusQservMgtRequest::Ptr request) { self->_onRequestFinish(request); },
