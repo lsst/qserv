@@ -175,7 +175,7 @@ void DirectorIndexRequest::_sendStatusRequest(replica::Lock const& lock) {
 
 void DirectorIndexRequest::_send(replica::Lock const& lock) {
     LOGS(_log, LOG_LVL_DEBUG, context() << __func__);
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseDirectorIndex>(
+    controller()->messenger()->send<ProtocolResponseDirectorIndex>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<DirectorIndexRequest>()](string const& id, bool success,
                                                               ProtocolResponseDirectorIndex const& response) {

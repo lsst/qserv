@@ -34,21 +34,18 @@ using json = nlohmann::json;
 namespace lsst::qserv::replica {
 
 void HttpWorkerStatusModule::process(Controller::Ptr const& controller, string const& taskName,
-                                     HttpProcessorConfig const& processorConfig,
                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                      HealthMonitorTask::Ptr const& healthMonitorTask,
                                      string const& subModuleName, http::AuthType const authType) {
-    HttpWorkerStatusModule module(controller, taskName, processorConfig, req, resp, healthMonitorTask);
+    HttpWorkerStatusModule module(controller, taskName, req, resp, healthMonitorTask);
     module.execute(subModuleName, authType);
 }
 
 HttpWorkerStatusModule::HttpWorkerStatusModule(Controller::Ptr const& controller, string const& taskName,
-                                               HttpProcessorConfig const& processorConfig,
                                                qhttp::Request::Ptr const& req,
                                                qhttp::Response::Ptr const& resp,
                                                HealthMonitorTask::Ptr const& healthMonitorTask)
-        : HttpModule(controller, taskName, processorConfig, req, resp),
-          _healthMonitorTask(healthMonitorTask) {}
+        : HttpModule(controller, taskName, req, resp), _healthMonitorTask(healthMonitorTask) {}
 
 json HttpWorkerStatusModule::executeImpl(string const& subModuleName) {
     debug(__func__);
