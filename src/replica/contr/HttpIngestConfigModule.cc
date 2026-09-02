@@ -39,18 +39,16 @@ using json = nlohmann::json;
 namespace lsst::qserv::replica {
 
 void HttpIngestConfigModule::process(Controller::Ptr const& controller, string const& taskName,
-                                     HttpProcessorConfig const& processorConfig,
                                      qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                      string const& subModuleName, http::AuthType const authType) {
-    HttpIngestConfigModule module(controller, taskName, processorConfig, req, resp);
+    HttpIngestConfigModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpIngestConfigModule::HttpIngestConfigModule(Controller::Ptr const& controller, string const& taskName,
-                                               HttpProcessorConfig const& processorConfig,
                                                qhttp::Request::Ptr const& req,
                                                qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpIngestConfigModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "GET")

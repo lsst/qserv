@@ -65,18 +65,16 @@ json meta4general(Configuration::Ptr const& config) {
 namespace lsst::qserv::replica {
 
 void HttpConfigurationModule::process(Controller::Ptr const& controller, string const& taskName,
-                                      HttpProcessorConfig const& processorConfig,
                                       qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
                                       string const& subModuleName, http::AuthType const authType) {
-    HttpConfigurationModule module(controller, taskName, processorConfig, req, resp);
+    HttpConfigurationModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpConfigurationModule::HttpConfigurationModule(Controller::Ptr const& controller, string const& taskName,
-                                                 HttpProcessorConfig const& processorConfig,
                                                  qhttp::Request::Ptr const& req,
                                                  qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpConfigurationModule::executeImpl(string const& subModuleName) {
     if (subModuleName.empty())
@@ -297,7 +295,7 @@ json HttpConfigurationModule::_unpublishDatabase() {
 
     // This step is needed to get workers' Configuration in-sync with its persistent state.
     bool const allWorkers = true;
-    string const error = reconfigureWorkers(database, allWorkers, workerReconfigTimeoutSec());
+    string const error = reconfigureWorkers(database, allWorkers);
     if (!error.empty()) throw http::Error(__func__, error);
     json result;
     result["config"]["databases"][database.name] = database.toJson();

@@ -51,8 +51,8 @@ public:
      * @throws std::invalid_argument for unknown values of parameter 'subModuleName'
      */
     static void process(Controller::Ptr const& controller, std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp, std::string const& subModuleName = std::string(),
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                        std::string const& subModuleName = std::string(),
                         http::AuthType const authType = http::AuthType::NONE);
 
     HttpSqlSchemaModule() = delete;
@@ -66,8 +66,7 @@ protected:
 
 private:
     HttpSqlSchemaModule(Controller::Ptr const& controller, std::string const& taskName,
-                        HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                        qhttp::Response::Ptr const& resp);
+                        qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp);
 
     /// Pull table schema from Qserv master database's 'INFORMATION_SCHEMA'
     nlohmann::json _getTableSchema();

@@ -135,7 +135,7 @@ void ReplicationRequest::awaken(boost::system::error_code const& ec) {
 
 void ReplicationRequest::_send(replica::Lock const& lock) {
     auto self = shared_from_base<ReplicationRequest>();
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseReplicate>(
+    controller()->messenger()->send<ProtocolResponseReplicate>(
             workerName(), id(), priority(), buffer(),
             [self](string const& id, bool success, ProtocolResponseReplicate const& response) {
                 self->_analyze(success, response);

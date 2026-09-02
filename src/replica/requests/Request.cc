@@ -291,7 +291,7 @@ void Request::finish(replica::Lock const& lock, ExtendedState extendedState) {
     // will be at the messenger's queue. This optimization also reduces extra
     // locking (and delays) in the messenger because the operation is synchronized.
     if (extendedState != Request::ExtendedState::SUCCESS) {
-        controller()->serviceProvider()->messenger()->cancel(workerName(), id());
+        controller()->messenger()->cancel(workerName(), id());
     }
 
     // Tell the worker to dispose the request if a subclass made such requirement,
@@ -366,8 +366,8 @@ void Request::dispose(replica::Lock const& lock, int priority, OnDisposeCallback
     message.add_ids(id());
     buffer()->serialize(message);
 
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseDispose>(workerName(), id(), priority,
-                                                                                buffer(), onFinish);
+    controller()->messenger()->send<ProtocolResponseDispose>(workerName(), id(), priority, buffer(),
+                                                             onFinish);
 }
 
 boost::asio::io_service& Request::_ioService() { return controller()->serviceProvider()->io_service(); }
