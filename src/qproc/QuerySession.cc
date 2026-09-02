@@ -436,7 +436,7 @@ std::ostream& operator<<(std::ostream& out, QuerySession const& querySession) {
     return out;
 }
 
-protojson::ScanInfo::Ptr QuerySession::getScanInfo() const { return _context->scanInfo; }
+query::ScanInfo::Ptr QuerySession::getScanInfo() const { return _context->scanInfo; }
 
 ChunkQuerySpec::Ptr QuerySession::buildChunkQuerySpec(query::QueryTemplate::Vect const& queryTemplates,
                                                       ChunkSpec const& chunkSpec,

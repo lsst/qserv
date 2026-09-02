@@ -25,12 +25,16 @@
 #define LSST_QSERV_PROTOJSON_SCANTABLEINFO_H
 
 // System headers
+#include <iosfwd>
 #include <memory>
 #include <string>
 #include <vector>
 
 // Third party headers
 #include "nlohmann/json.hpp"
+
+// Qserv headers
+#include "query/ScanTableInfo.h"
 
 namespace lsst::qserv::protojson {
 
@@ -66,12 +70,23 @@ public:
     ScanInfo() = default;
     ScanInfo(ScanInfo const&) = default;
 
+    /// Convert query analysis ScanInfo to the dispatch representation.
+    explicit ScanInfo(query::ScanInfo const& qScanInfo) : scanRating(qScanInfo.scanRating) {
+        infoTables.reserve(qScanInfo.infoTables.size());
+        for (auto const& qTbl : qScanInfo.infoTables) {
+            infoTables.emplace_back(qTbl.db, qTbl.table, qTbl.lockInMemory, qTbl.scanRating);
+        }
+    }
+
     static Ptr create() { return Ptr(new ScanInfo()); }
 
     static Ptr createFromJson(nlohmann::json const& ujJson);
 
     /// Return a json version of the contents of this class.
     nlohmann::json toJson() const;
+
+    /// @return a dispatch ScanInfo converted from query analysis ScanInfo.
+    static Ptr create(query::ScanInfo const& qScanInfo) { return Ptr(new ScanInfo(qScanInfo)); }
 
     void sortTablesSlowestFirst();
     int compareTables(ScanInfo const& rhs);

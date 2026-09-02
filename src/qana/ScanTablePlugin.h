@@ -27,7 +27,7 @@
 #include "qana/QueryPlugin.h"
 
 // Qserv headers
-#include "protojson/ScanTableInfo.h"
+#include "query/ScanTableInfo.h"
 
 namespace lsst::qserv::qana {
 
@@ -55,8 +55,8 @@ public:
     std::string name() const override { return "ScanTablePlugin"; }
 
 private:
-    protojson::ScanInfo::Ptr _findScanTables(query::SelectStmt& stmt, query::QueryContext& context);
-    protojson::ScanInfo::Ptr _scanInfo;
+    query::ScanInfo::Ptr _findScanTables(query::SelectStmt& stmt, query::QueryContext& context);
+    query::ScanInfo::Ptr _scanInfo;
     int _interactiveChunkLimit;
 };
 

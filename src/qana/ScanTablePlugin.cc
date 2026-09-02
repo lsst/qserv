@@ -92,8 +92,7 @@ StringPairVector filterPartitioned(query::TableRefList const& tList) {
     return vector;
 }
 
-protojson::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stmt,
-                                                          query::QueryContext& context) {
+query::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stmt, query::QueryContext& context) {
     // Might be better as a separate plugin
 
     // All tables of a query are scan tables if the statement both:
@@ -187,15 +186,14 @@ protojson::ScanInfo::Ptr ScanTablePlugin::_findScanTables(query::SelectStmt& stm
 
     // Ask css if any of the tables should be locked in memory and their scan rating.
     // Use this information to determine scanPriority.
-    auto scanInfo = protojson::ScanInfo::create();
-    for (auto& pair : scanTables) {
-        protojson::ScanTableInfo info(pair.first, pair.second);
+    auto scanInfo = query::ScanInfo::create();
+    for (auto const& pair : scanTables) {
+        query::ScanTableInfo info(pair.first, pair.second);
         css::ScanTableParams const params = context.css->getScanTableParams(info.db, info.table);
         info.lockInMemory = params.lockInMem;
         info.scanRating = params.scanRating;
         scanInfo->infoTables.push_back(info);
         scanInfo->scanRating = std::max(scanInfo->scanRating, info.scanRating);
-        scanInfo->scanRating = std::min(scanInfo->scanRating, static_cast<int>(protojson::ScanInfo::SLOWEST));
         LOGS(_log, LOG_LVL_INFO,
              "ScanInfo " << info.db << "." << info.table << " lockInMemory=" << info.lockInMemory
                          << " rating=" << info.scanRating);
