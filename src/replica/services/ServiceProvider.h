@@ -41,8 +41,6 @@ class ChunkMap;
 class Configuration;
 class ConfigurationSchema;
 class DatabaseServices;
-class Messenger;
-class QservMgtServices;
 class Registry;
 }  // namespace lsst::qserv::replica
 
@@ -101,12 +99,6 @@ public:
 
     /// @return a reference to the database services
     std::shared_ptr<DatabaseServices> const& databaseServices();
-
-    /// @return a reference to the Qserv notification services (via the XRootD/SSI protocol)
-    std::shared_ptr<QservMgtServices> const& qservMgtServices();
-
-    /// @return a reference to worker messenger service (configured for controllers)
-    std::shared_ptr<Messenger> const& messenger();
 
     /// @return a reference to worker registration service
     std::shared_ptr<Registry> const& registry();
@@ -174,12 +166,6 @@ private:
 
     /// Database services (lazy instantiation on a first request)
     std::shared_ptr<DatabaseServices> _databaseServices;
-
-    /// Qserv management services (lazy instantiation on a first request)
-    std::shared_ptr<QservMgtServices> _qservMgtServices;
-
-    /// Worker messenger service (lazy instantiation on a first request)
-    std::shared_ptr<Messenger> _messenger;
 
     /// Worker registration service (lazy instantiation on a first request)
     std::shared_ptr<Registry> _registry;

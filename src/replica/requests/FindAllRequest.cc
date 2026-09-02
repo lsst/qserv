@@ -123,7 +123,7 @@ void FindAllRequest::awaken(boost::system::error_code const& ec) {
 }
 
 void FindAllRequest::_send(replica::Lock const& lock) {
-    controller()->serviceProvider()->messenger()->send<ProtocolResponseFindAll>(
+    controller()->messenger()->send<ProtocolResponseFindAll>(
             workerName(), id(), priority(), buffer(),
             [self = shared_from_base<FindAllRequest>()](string const& id, bool success,
                                                         ProtocolResponseFindAll const& response) {

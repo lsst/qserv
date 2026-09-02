@@ -252,6 +252,9 @@ int MasterControllerHttpApp::runImpl() {
     if ((_replicationTask != nullptr) && _replicationTask->isRunning()) _replicationTask->stop();
     _logControllerStoppedEvent();
 
+    // Cancel all outstanding requests to workers (if any)
+    _controller->stop();
+
     return 1;
 }
 

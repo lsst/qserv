@@ -288,7 +288,7 @@ void CreateReplicaJob::_qservAddReplica(replica::Lock const& lock, unsigned int 
          context() << __func__ << "  ** START ** Qserv notification on ADD replica:"
                    << ", chunk=" << chunk << ", databases=" << util::String::toString(databases)
                    << "  worker=" << worker);
-    controller()->serviceProvider()->qservMgtServices()->addReplica(
+    controller()->qservMgtServices()->addReplica(
             chunk, databases, worker,
             [self = shared_from_this(), onFinish](AddReplicaQservMgtRequest::Ptr const& request) {
                 LOGS(_log, LOG_LVL_DEBUG,
