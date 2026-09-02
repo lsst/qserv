@@ -52,13 +52,13 @@ struct ColTypeFactory {
                 _setDecimal(f);
                 break;
             case MYSQL_TYPE_TINY:
-                _setGeneric("TINYINT", f.length);
+                _setInteger("TINYINT", f);
                 break;  //,n
             case MYSQL_TYPE_SHORT:
-                _setGeneric("SMALLINT", f.length);
+                _setInteger("SMALLINT", f);
                 break;  //,n
             case MYSQL_TYPE_LONG:
-                _setGeneric("INT", f.length);
+                _setInteger("INT", f);
                 break;  //,n
             case MYSQL_TYPE_FLOAT:
                 sqlType = "FLOAT";
@@ -74,10 +74,10 @@ struct ColTypeFactory {
                 _setDateTime("TIMESTAMP", f.decimals);
                 break;
             case MYSQL_TYPE_LONGLONG:
-                _setGeneric("BIGINT", f.length);
+                _setInteger("BIGINT", f);
                 break;
             case MYSQL_TYPE_INT24:
-                sqlType = "MEDIUMINT";
+                _setInteger("MEDIUMINT", f);
                 break;
             case MYSQL_TYPE_DATE:
                 sqlType = "DATE";
@@ -153,6 +153,11 @@ private:
         std::ostringstream os;
         os << baseType << "(" << length << ")";
         sqlType = os.str();
+    }
+
+    void _setInteger(char const* baseType, MYSQL_FIELD const& f) {
+        _setGeneric(baseType, f.length);
+        if (_hasFlagUnsigned(f)) sqlType += " UNSIGNED";
     }
 
     void _setDateTime(char const* baseType, int length) {
