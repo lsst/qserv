@@ -76,6 +76,10 @@ public:
     /// be killed but there's no need to track UberJob id's anymore.
     void cancelFromCzar();
 
+    /// Return true if no more Tasks need to be run for the query,
+    /// there may still be a need for the result files.
+    bool isWorkDone() const { return _cancelledByCzar; }
+
     /// Cancel all associated tasks and track the killed UberJob id's
     /// The user query itself may still be alive, so the czar may need
     /// information about which UberJobs are dead.
