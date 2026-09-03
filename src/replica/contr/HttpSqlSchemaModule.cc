@@ -47,17 +47,15 @@ namespace lsst::qserv::replica {
 using namespace database::mysql;
 
 void HttpSqlSchemaModule::process(Controller::Ptr const& controller, string const& taskName,
-                                  HttpProcessorConfig const& processorConfig, qhttp::Request::Ptr const& req,
-                                  qhttp::Response::Ptr const& resp, string const& subModuleName,
-                                  http::AuthType const authType) {
-    HttpSqlSchemaModule module(controller, taskName, processorConfig, req, resp);
+                                  qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp,
+                                  string const& subModuleName, http::AuthType const authType) {
+    HttpSqlSchemaModule module(controller, taskName, req, resp);
     module.execute(subModuleName, authType);
 }
 
 HttpSqlSchemaModule::HttpSqlSchemaModule(Controller::Ptr const& controller, string const& taskName,
-                                         HttpProcessorConfig const& processorConfig,
                                          qhttp::Request::Ptr const& req, qhttp::Response::Ptr const& resp)
-        : HttpModule(controller, taskName, processorConfig, req, resp) {}
+        : HttpModule(controller, taskName, req, resp) {}
 
 json HttpSqlSchemaModule::executeImpl(string const& subModuleName) {
     if (subModuleName == "GET-TABLE-SCHEMA")

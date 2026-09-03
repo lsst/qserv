@@ -192,8 +192,6 @@ commands = OrderedDict(
             CommandInfo(
                 "qserv-replica-master-http "
                 "--repl-db={{db_uri}} "
-                "--http-root={{http_root}} "
-                "--qserv-czar-db={{qserv_czar_db}} "
                 "{% for arg in extended_args %}{{arg}} {% endfor %}"
             ),
         ),
@@ -917,13 +915,6 @@ def worker_repl(ctx: click.Context, **kwargs: Any) -> None:
 )
 @option_log_cfg_file()
 @options_cms()
-@click.option(
-    "--http-root",
-    help="The root folder for the static content to be served by the built-in HTTP service.",
-    default="/usr/local/qserv/www",
-    show_default=True,
-)
-@click.option("--qserv-czar-db", help="The connection URL to the MySQL server of the Qserv master database.")
 @options_targs()
 @option_run()
 @option_options_file()

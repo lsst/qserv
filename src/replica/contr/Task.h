@@ -242,13 +242,11 @@ protected:
 
     /**
      * Launch Qserv synchronization jobs.
-     * @param qservSyncTimeoutSec The number of seconds to wait before a completion of
-     *   the synchronization operation.
-     * @param forceQservSync (optional) The flag to force Qserv synchronization if 'true'.
      * @throws TaskStopped when the task cancellation request was detected.
      * @see QservSyncJob
      */
-    void sync(unsigned int qservSyncTimeoutSec, bool forceQservSync = false);
+    void sync();
+
     /**
      * Track the completion of all jobs. Also monitor the task cancellation
      * condition while tracking the jobs. When such condition will be seen
